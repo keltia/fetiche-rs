@@ -1,0 +1,17 @@
+[package]
+name = "drone-gencsv"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.65"
+chrono = { version = "0.4.22", features = ["serde"] }
+clap = { version = "4", features = [ "cargo", "derive" ] }
+csv = "1.1.6"
+home = "0.5.4"
+reqwest = { version = "0.11.12", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
+serde = { version = "1.0.145", features = [ "derive" ] }
+serde_json = "1.0.86"
+toml = "0"
