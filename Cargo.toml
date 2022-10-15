@@ -2,6 +2,19 @@
 name = "drone-gencsv"
 version = "0.1.0"
 edition = "2021"
+authors = [ "Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "CLI utility to convert Aeroscope data into Cat21 CSV."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/drone-gencsv"
+categories = [ "command-line-utilities" ]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -14,4 +27,8 @@ home = "0.5.4"
 reqwest = { version = "0.11.12", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
 serde = { version = "1.0.145", features = [ "derive" ] }
 serde_json = "1.0.86"
+tempfile = "3.3.0"
 toml = "0"
+
+[dev-dependencies]
+assert_cmd = "2.0"
