@@ -60,7 +60,8 @@ pub struct In {
 /// Load and transform data from a Reader
 ///
 pub fn process_data<T>(rdr: &mut Reader<T>) -> Result<Vec<Cat21>>
-    where T: Read,
+where
+    T: Read,
 {
     let mut cnt = 1;
     let res: Vec<Cat21> = rdr

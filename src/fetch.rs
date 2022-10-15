@@ -3,7 +3,7 @@
 
 use crate::Context;
 
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use serde::Deserialize;
 
 /// Access token derived from username/password

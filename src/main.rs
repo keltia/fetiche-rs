@@ -16,7 +16,7 @@ mod version;
 
 use crate::config::{get_config, Config};
 use crate::fetch::fetch_csv;
-use crate::process::{Cat21, prepare_csv, process_data};
+use crate::process::{prepare_csv, process_data, Cat21};
 use crate::version::version;
 
 use std::fs;
@@ -66,7 +66,7 @@ fn get_from_source(ctx: &Context, what: Option<PathBuf>) -> Result<Vec<Cat21>> {
             println!("Reading from {:?}", what.to_str().unwrap());
             let mut rdr = ReaderBuilder::new().from_path(what)?;
             process_data(&mut rdr)
-        },
+        }
         _ => {
             // Fetch from network
             //
@@ -74,7 +74,7 @@ fn get_from_source(ctx: &Context, what: Option<PathBuf>) -> Result<Vec<Cat21>> {
             let res = fetch_csv(ctx)?;
             let mut rdr = ReaderBuilder::new().from_reader(res.as_bytes());
             process_data(&mut rdr)
-        },
+        }
     }
 }
 
