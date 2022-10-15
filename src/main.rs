@@ -12,6 +12,12 @@ use std::path::PathBuf;
 use crate::fetch::fetch_csv;
 use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use csv::ReaderBuilder;
+
+pub struct Context {
+    pub cfg: Config,
+    pub client: reqwest::blocking::Client,
+}
 
 /// CLI options
 #[derive(Parser, Debug)]
@@ -50,8 +56,10 @@ fn main() -> Result<()> {
     // Load default config if nothing is specified
     let cfg = get_config(opts.config);
 
-    let data = fetch_csv(cfg);
-    dbg!(&data);
+    let ctx = Context {
+        client: reqwest::blocking::Client::new(),
+        cfg,
+    };
 
     // Load data from original csv
     //
