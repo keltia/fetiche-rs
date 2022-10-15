@@ -4,7 +4,8 @@ mod process;
 mod version;
 
 use crate::config::{get_config, Config};
-use crate::process::{load_data, prepare_csv};
+use crate::process::{Cat21, prepare_csv, process_data};
+use crate::version::version;
 
 use std::fs;
 use std::path::PathBuf;
@@ -43,6 +44,26 @@ struct Opts {
     input: Option<PathBuf>,
 }
 
+/// Get the input csv either from the given file or from the network
+///
+fn get_from_source(ctx: &Context, what: Option<PathBuf>) -> Result<Vec<Cat21>> {
+    match what {
+        Some(what) => {
+            // Fetch from given file
+            //
+            let mut rdr = ReaderBuilder::new().from_path(what)?;
+            process_data(&mut rdr)
+        },
+        _ => {
+            // Fetch from network
+            //
+            let res = fetch_csv(ctx)?;
+            let mut rdr = ReaderBuilder::new().from_reader(res.as_bytes());
+            process_data(&mut rdr)
+        },
+    }
+}
+
 fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
@@ -61,11 +82,11 @@ fn main() -> Result<()> {
         cfg,
     };
 
-    // Load data from original csv
+    // Load data from original csv or site
     //
     let what = opts.input;
-    let data = load_data(&what)?;
 
+    let data = get_from_source(&ctx, what)?;
     let data = prepare_csv(data)?;
 
     match opts.output {
