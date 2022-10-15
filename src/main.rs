@@ -24,7 +24,7 @@ pub struct Context {
 #[derive(Parser, Debug)]
 #[command(disable_version_flag = true)]
 #[clap(name = crate_name!(), about = crate_description!())]
-#[clap(version = crate_version ! (), author = crate_authors ! ())]
+#[clap(version = crate_version!(), author = crate_authors!())]
 struct Opts {
     /// configuration file
     #[clap(short = 'c', long)]
