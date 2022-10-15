@@ -2,11 +2,11 @@
 //! CSV data Cat21-like
 //!
 
-use std::path::PathBuf;
+use std::io::Read;
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use csv::{ReaderBuilder, WriterBuilder};
+use csv::{Reader, WriterBuilder};
 use serde::{Deserialize, Serialize};
 
 /// Our input structure from the csv file coming out of the aeroscope
@@ -57,11 +57,11 @@ pub struct In {
     pub speed: f32,
 }
 
-/// Load data from the specified file and performs the various transformations
-/// into our pseudo-Cat21
+/// Load and transform data from a Reader
 ///
-pub fn load_data(fname: &PathBuf) -> Result<Vec<Cat21>> {
-    let mut rdr = ReaderBuilder::new().from_path(fname)?;
+pub fn process_data<T>(rdr: &mut Reader<T>) -> Result<Vec<Cat21>>
+    where T: Read,
+{
     let mut cnt = 1;
     let res: Vec<Cat21> = rdr
         .deserialize()
