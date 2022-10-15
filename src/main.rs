@@ -75,6 +75,7 @@ fn main() -> Result<()> {
     }
 
     // Load default config if nothing is specified
+    //
     let cfg = get_config(opts.config);
 
     let ctx = Context {
