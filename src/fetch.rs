@@ -1,6 +1,9 @@
 //! Module to fetch the Aeroscope data using the HTTP API
 //!
 
+use crate::Context;
+
+use anyhow::{Result, bail};
 use serde::Deserialize;
 
 /// Access token derived from username/password
@@ -13,7 +16,10 @@ struct Token {
 
 /// Fetch the access token linked to the given login/password
 ///
-pub fn fetch_token(client: &reqwest::blocking::Client, cfg: &Config) -> String {
+fn fetch_token(ctx: &Context) -> String {
+    let cfg = &ctx.cfg;
+    let client = &ctx.client;
+
     // Prepare our data
     //
     let body = format!(
@@ -42,14 +48,13 @@ pub fn fetch_token(client: &reqwest::blocking::Client, cfg: &Config) -> String {
 
 /// Using the access token obtained through `fetch_token()`, fetch the given CSV data
 ///
-pub fn fetch_csv(cfg: Config) -> String {
-    // Prepare client, no need to go async
-    //
-    let client = reqwest::blocking::Client::new();
-
+pub fn fetch_csv(ctx: &Context) -> Result<String> {
     // First call to gen auth token
     //
-    let token = fetch_token(&client, &cfg);
+    let token = fetch_token(ctx);
+
+    let cfg = &ctx.cfg;
+    let client = &ctx.client;
 
     // Use the token to authenticate ourselves
     //
