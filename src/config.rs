@@ -17,7 +17,7 @@ const CONFIG: &str = "config.toml";
 const BASEDIR: &str = ".config";
 
 /// Main struct holding configurations
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct Config {
     /// ASD address
     pub base_url: String,
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_config_load() {
-        let cn = PathBuf::from("config.toml");
+        let cn = PathBuf::from("src/config.toml");
         let cfg = Config::load(&cn);
         assert!(cfg.is_ok());
 
