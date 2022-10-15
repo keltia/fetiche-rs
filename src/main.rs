@@ -69,16 +69,15 @@ fn get_from_source(ctx: &Context, what: Option<PathBuf>) -> Result<Vec<Cat21>> {
 fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
-    // Bypass
-    //
-    if opts.version {
-        println!("{}", version());
-        return Ok(());
-    }
-
     // Add banner
     //
     println!("{}\n", version());
+
+    // Exit if needed
+    //
+    if opts.version {
+        return Ok(());
+    }
 
     // Load default config if nothing is specified
     //
