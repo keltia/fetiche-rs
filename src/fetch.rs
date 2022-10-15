@@ -1,11 +1,14 @@
-use crate::Config;
-use anyhow::bail;
+//! Module to fetch the Aeroscope data using the HTTP API
+//!
 
 use serde::Deserialize;
 
+/// Access token derived from username/password
+///
 #[derive(Debug, Deserialize)]
-pub struct Token {
-    pub access_token: String,
+struct Token {
+    /// Token (SHA-256 or -512 data I guess)
+    access_token: String,
 }
 
 /// Fetch the access token linked to the given login/password
@@ -37,7 +40,7 @@ pub fn fetch_token(client: &reqwest::blocking::Client, cfg: &Config) -> String {
     res.access_token.to_owned()
 }
 
-/// Using the access token obtained through `fetch_token()`, fetch the gaiven CSV data
+/// Using the access token obtained through `fetch_token()`, fetch the given CSV data
 ///
 pub fn fetch_csv(cfg: Config) -> String {
     // Prepare client, no need to go async
