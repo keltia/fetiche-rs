@@ -61,6 +61,7 @@ pub fn fetch_csv(ctx: &Context) -> Result<String> {
     let url = format!("{}/drone/get", cfg.base_url);
     let resp = client
         .get(url)
+        .header("content-type", "application/json")
         .header("Authorization", format!("Bearer {}", token))
         .send();
 
