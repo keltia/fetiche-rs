@@ -40,7 +40,7 @@ struct Opts {
     #[clap(short = 'V', long)]
     version: bool,
     /// Input file
-    input: PathBuf,
+    input: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
