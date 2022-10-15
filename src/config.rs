@@ -7,7 +7,6 @@ use anyhow::{Context, Result};
 use clap::crate_name;
 use serde::Deserialize;
 
-use crate::Opts;
 #[cfg(unix)]
 use home::home_dir;
 
