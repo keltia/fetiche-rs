@@ -31,7 +31,7 @@ fn fetch_token(ctx: &Context) -> String {
     //
     let url = format!("{}/login", cfg.base_url);
     let resp = client
-        .post(&cfg.base_url)
+        .post(url)
         .header("content-type", "application/json")
         .body(body)
         .send();
@@ -43,7 +43,7 @@ fn fetch_token(ctx: &Context) -> String {
 
     let res: Token = serde_json::from_str(&resp).unwrap();
     dbg!(&res);
-    res.access_token.to_owned()
+    res.access_token
 }
 
 /// Using the access token obtained through `fetch_token()`, fetch the given CSV data
@@ -58,7 +58,7 @@ pub fn fetch_csv(ctx: &Context) -> Result<String> {
 
     // Use the token to authenticate ourselves
     //
-    let url = format!("{}/drone/get", cfg.base_url);
+    let url = format!("{}/drone/get", &cfg.base_url);
     let resp = client
         .get(url)
         .header("content-type", "application/json")
@@ -66,7 +66,7 @@ pub fn fetch_csv(ctx: &Context) -> Result<String> {
         .send();
 
     match resp {
-        Ok(resp) => resp.unwrap().text().unwrap(),
+        Ok(resp) => Ok(resp.text().unwrap()),
         Err(e) => bail!("HTTP error: {}", e),
     }
 }
