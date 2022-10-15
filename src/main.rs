@@ -1,3 +1,14 @@
+//! This is the Rust version of `aeroscope.sh` write by Marc Gravis for the ACUTE Project.
+//!
+//! It can load from either the Aeroscope server or from a file (easier for offline tests). It uses
+//! a configuration file  from `$HOME/.config/drone-gencsv` or `%LOCALAPPDATA%/drone-gencsv` on
+//! UNIX/Linux and Windows.
+//!
+//! The mapping from the Aeroscope CSV to the pseudo-Cat21 format is in `process.rs`.
+//!
+//! Author: Ollivier Robert <ollivier.robert@eurocontrol.int> for the EIH
+//! Copyright: (c) 2022 by Ollivier Robert
+//!
 mod config;
 mod fetch;
 mod process;
@@ -15,6 +26,7 @@ use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use csv::ReaderBuilder;
 
+#[derive(Debug)]
 pub struct Context {
     pub cfg: Config,
     pub client: reqwest::blocking::Client,
