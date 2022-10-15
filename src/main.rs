@@ -4,13 +4,13 @@ mod process;
 mod version;
 
 use crate::config::{get_config, Config};
+use crate::fetch::fetch_csv;
 use crate::process::{Cat21, prepare_csv, process_data};
 use crate::version::version;
 
 use std::fs;
 use std::path::PathBuf;
 
-use crate::fetch::fetch_csv;
 use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use csv::ReaderBuilder;
