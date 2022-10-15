@@ -51,12 +51,14 @@ fn get_from_source(ctx: &Context, what: Option<PathBuf>) -> Result<Vec<Cat21>> {
         Some(what) => {
             // Fetch from given file
             //
+            println!("Reading from {:?}", what.to_str().unwrap());
             let mut rdr = ReaderBuilder::new().from_path(what)?;
             process_data(&mut rdr)
         },
         _ => {
             // Fetch from network
             //
+            println!("Fetching from {}", ctx.cfg.base_url);
             let res = fetch_csv(ctx)?;
             let mut rdr = ReaderBuilder::new().from_reader(res.as_bytes());
             process_data(&mut rdr)
@@ -73,6 +75,10 @@ fn main() -> Result<()> {
         println!("{}", version());
         return Ok(());
     }
+
+    // Add banner
+    //
+    println!("{}\n", version());
 
     // Load default config if nothing is specified
     //
