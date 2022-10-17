@@ -116,8 +116,8 @@ fn new_context(opts: &Opts, cfg: Config) -> Context {
     let mut ctx = Context {
         client: reqwest::blocking::Client::new(),
         today: false,
-        begin: opts.begin.clone(),
-        end: opts.end.clone(),
+        begin: opts.begin,
+        end: opts.end,
         cfg,
     };
 

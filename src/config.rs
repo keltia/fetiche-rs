@@ -91,7 +91,7 @@ pub fn get_config(fname: &Option<PathBuf>) -> Config {
     let cfg = match fname {
         // We have a configuration file
         //
-        Some(c) => Config::load(&c).with_context(|| format!("No file {:?}", c)),
+        Some(c) => Config::load(c).with_context(|| format!("No file {:?}", c)),
         // Need to load our own
         //
         None => {
