@@ -1,4 +1,4 @@
-//! This is the Rust version of `aeroscope.sh` write by Marc Gravis for the ACUTE Project.
+//! This is the [Rust] version of `aeroscope.sh` write by Marc Gravis for the ACUTE Project.
 //!
 //! It can load from either the Aeroscope server or from a file (easier for offline tests). It uses
 //! a configuration file  from `$HOME/.config/drone-gencsv` or `%LOCALAPPDATA%/drone-gencsv` on
@@ -8,6 +8,8 @@
 //!
 //! Author: Ollivier Robert <ollivier.robert@eurocontrol.int> for the EIH
 //! Copyright: (c) 2022 by Ollivier Robert
+//!
+//! [Rust]: https://rust-lang.org/
 //!
 mod config;
 mod fetch;
