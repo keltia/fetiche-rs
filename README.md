@@ -35,15 +35,17 @@ CLI utility to convert Aeroscope data into Cat21 CSV.
 Usage: drone-gencsv [OPTIONS] [INPUT]
 
 Arguments:
-[INPUT]  Input file
+  [INPUT]  Input file
 
 Options:
--c, --config <CONFIG>    configuration file
--D, --debug              debug mode
--o, --output <OUTPUT>    Output file
--v, --verbose <VERBOSE>  Verbose mode
--V, --version
--h, --help               Print help information
+  -c, --config <CONFIG>      configuration file
+  -D, --debug                debug mode
+  -o, --output <OUTPUT>      Output file
+  -P, --password <PASSWORD>  Optional password
+  -U, --username <USERNAME>  Optional username for the server API
+  -v, --verbose <VERBOSE>    Verbose mode
+  -V, --version              Display utility full version
+  -h, --help                 Print help information
 ```
 
 The `drone-gencsv` utility uses a configuration file in the [TOML] file format.
