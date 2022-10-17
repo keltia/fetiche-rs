@@ -4,7 +4,7 @@
 use crate::Context;
 
 use anyhow::{bail, Result};
-use log::{trace, info};
+use log::{trace, info, debug};
 use serde::Deserialize;
 
 /// Access token derived from username/password
@@ -17,7 +17,7 @@ struct Token {
 
 /// Fetch the access token linked to the given login/password
 ///
-fn fetch_token(ctx: &Context) -> String {
+fn fetch_token(ctx: &Context) -> Result<String> {
     let cfg = &ctx.cfg;
     let client = &ctx.client;
 
@@ -38,14 +38,11 @@ fn fetch_token(ctx: &Context) -> String {
         .body(body)
         .send();
 
-    let resp = match resp {
-        Ok(resp) => resp.text().unwrap(),
-        Err(e) => panic!("{}", e),
-    };
+    let resp = resp?.text()?;
 
     let res: Token = serde_json::from_str(&resp).unwrap();
-    dbg!(&res);
-    res.access_token
+    debug!("{:?}", res);
+    Ok(res.access_token)
 }
 
 /// Using the access token obtained through `fetch_token()`, fetch the given CSV data
@@ -54,7 +51,7 @@ pub fn fetch_csv(ctx: &Context) -> Result<String> {
     info!("Fetch data from network…");
     // First call to gen auth token
     //
-    let token = fetch_token(ctx);
+    let token = fetch_token(ctx)?;
 
     let cfg = &ctx.cfg;
     let client = &ctx.client;
