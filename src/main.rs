@@ -52,6 +52,10 @@ struct Opts {
     /// Output file
     #[clap(short = 'o', long)]
     output: Option<PathBuf>,
+    #[clap(short = 'P', long)]
+    password: Option<String>,
+    #[clap(short = 'U', long)]
+    username: Option<String>,
     /// Verbose mode
     #[clap(short = 'v', long)]
     verbose: Option<usize>,
@@ -106,7 +110,16 @@ fn main() -> Result<()> {
     // Load default config if nothing is specified
     //
     info!("Loading config…");
-    let cfg = get_config(opts.config);
+    let mut cfg = get_config(opts.config);
+
+    // Allow overriding credentials on CLI (not safe)
+    //
+    if let Some(login) = opts.username {
+        cfg.login = login;
+    }
+    if let Some(password) = opts.password {
+        cfg.password = password;
+    }
 
     let ctx = Context {
         client: reqwest::blocking::Client::new(),
