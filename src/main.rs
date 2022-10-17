@@ -25,6 +25,8 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use csv::ReaderBuilder;
+use log::info;
+use stderrlog::LogLevelNum::Trace;
 
 #[derive(Debug)]
 pub struct Context {
@@ -49,7 +51,7 @@ struct Opts {
     output: Option<PathBuf>,
     /// Verbose mode
     #[clap(short = 'v', long)]
-    verbose: bool,
+    verbose: Option<usize>,
     #[clap(short = 'V', long)]
     version: bool,
     /// Input file
@@ -63,16 +65,20 @@ fn get_from_source(ctx: &Context, what: Option<PathBuf>) -> Result<Vec<Cat21>> {
         Some(what) => {
             // Fetch from given file
             //
-            println!("Reading from {:?}", what.to_str().unwrap());
-            let mut rdr = ReaderBuilder::new().from_path(what)?;
+            info!("Reading from {:?}", what.to_str().unwrap());
+            let mut rdr = ReaderBuilder::new()
+                .flexible(true)
+                .from_path(what)?;
             process_data(&mut rdr)
         }
         _ => {
             // Fetch from network
             //
-            println!("Fetching from {}", ctx.cfg.base_url);
+            info!("Fetching from {}", ctx.cfg.base_url);
             let res = fetch_csv(ctx)?;
-            let mut rdr = ReaderBuilder::new().from_reader(res.as_bytes());
+            let mut rdr = ReaderBuilder::new()
+                .flexible(true)
+                .from_reader(res.as_bytes());
             process_data(&mut rdr)
         }
     }
@@ -91,8 +97,14 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(Trace)
+        .init()?;
+
     // Load default config if nothing is specified
     //
+    info!("Loading config…");
     let cfg = get_config(opts.config);
 
     let ctx = Context {
@@ -104,9 +116,11 @@ fn main() -> Result<()> {
     //
     let what = opts.input;
 
+    info!("Loading data…");
     let data = get_from_source(&ctx, what)?;
     let data = prepare_csv(data)?;
 
+    info!("Processing data…");
     match opts.output {
         Some(output) => fs::write(output, data)?,
         _ => println!("{}", data),

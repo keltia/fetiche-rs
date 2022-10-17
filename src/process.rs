@@ -7,6 +7,7 @@ use std::io::Read;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use csv::{Reader, WriterBuilder};
+use log::trace;
 use serde::{Deserialize, Serialize};
 
 /// Our input structure from the csv file coming out of the aeroscope
@@ -63,6 +64,7 @@ pub fn process_data<T>(rdr: &mut Reader<T>) -> Result<Vec<Cat21>>
 where
     T: Read,
 {
+    trace!("Reading & transforming…");
     let mut cnt = 1;
     let res: Vec<Cat21> = rdr
         .deserialize()
@@ -211,6 +213,7 @@ impl From<In> for Cat21 {
 /// Output the final csv file with a different delimiter 'now ":")
 ///
 pub fn prepare_csv(data: Vec<Cat21>) -> Result<String> {
+    trace!("Generating output…");
     // Prepare the writer
     //
     let mut wtr = WriterBuilder::new()

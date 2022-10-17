@@ -291,9 +291,11 @@ dependencies = [
  "clap",
  "csv",
  "home",
+ "log",
  "reqwest",
  "serde",
  "serde_json",
+ "stderrlog",
  "toml",
 ]
 
@@ -646,6 +648,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
 dependencies = [
  "cfg-if",
+ "serde",
 ]
 
 [[package]]
@@ -1050,6 +1053,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "stderrlog"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af95cb8a5f79db5b2af2a46f44da7594b5adbcbb65cbf87b8da0959bfdd82460"
+dependencies = [
+ "atty",
+ "chrono",
+ "log",
+ "termcolor",
+ "thread_local",
+]
+
+[[package]]
 name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1113,6 +1129,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "thread_local"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
+dependencies = [
+ "once_cell",
 ]
 
 [[package]]
