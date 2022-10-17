@@ -85,7 +85,7 @@ impl Config {
 
 /// Load configuration from either the specified file or the default one.
 ///
-pub fn get_config(fname: Option<PathBuf>) -> Config {
+pub fn get_config(fname: &Option<PathBuf>) -> Config {
     // Load default config if nothing is specified
     //
     let cfg = match fname {
