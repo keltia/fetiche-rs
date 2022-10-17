@@ -43,21 +43,28 @@ pub struct Context {
 #[clap(name = crate_name!(), about = crate_description!())]
 #[clap(version = crate_version!(), author = crate_authors!())]
 struct Opts {
-    /// configuration file
+    /// configuration file.
     #[clap(short = 'c', long)]
     config: Option<PathBuf>,
-    /// debug mode
+    /// debug mode.
     #[clap(short = 'D', long = "debug")]
     debug: bool,
-    /// Output file
+    /// Output file.
     #[clap(short = 'o', long)]
     output: Option<PathBuf>,
-    /// Verbose mode
+    /// Optional password.
+    #[clap(short = 'P', long)]
+    password: Option<String>,
+    /// Optional username for the server API.
+    #[clap(short = 'U', long)]
+    username: Option<String>,
+    /// Verbose mode.
     #[clap(short = 'v', long)]
     verbose: Option<usize>,
+    /// Display utility full version.
     #[clap(short = 'V', long)]
     version: bool,
-    /// Input file
+    /// Input file.
     input: Option<PathBuf>,
 }
 
@@ -106,7 +113,16 @@ fn main() -> Result<()> {
     // Load default config if nothing is specified
     //
     info!("Loading config…");
-    let cfg = get_config(opts.config);
+    let mut cfg = get_config(opts.config);
+
+    // Allow overriding credentials on CLI (not safe)
+    //
+    if let Some(login) = opts.username {
+        cfg.login = login;
+    }
+    if let Some(password) = opts.password {
+        cfg.password = password;
+    }
 
     let ctx = Context {
         client: reqwest::blocking::Client::new(),
