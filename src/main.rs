@@ -131,8 +131,11 @@ fn main() -> Result<()> {
         cfg.password = password;
     }
 
+    // Create our context
+    //
     let ctx = Context {
         client: reqwest::blocking::Client::new(),
+        today: false,
         cfg,
     };
 
