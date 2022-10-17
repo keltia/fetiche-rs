@@ -117,9 +117,10 @@ fn main() -> Result<()> {
     //
     let what = opts.input;
 
+    info!("Loading data…");
+
     let now = Instant::now();
 
-    info!("Loading data…");
     let data = get_from_source(&ctx, what)?;
     let len = data.len();
     let data = prepare_csv(data)?;
