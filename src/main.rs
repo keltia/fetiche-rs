@@ -153,14 +153,14 @@ fn main() -> Result<()> {
 
     let now = now.elapsed().as_millis();
 
-    info!("Processing data…");
+    info!("Generating csv…");
     match opts.output {
         Some(output) => fs::write(output, data)?,
         _ => println!("{}", data),
     }
 
     info!(
-        "{} lines process in {}ms: {} lines/s",
+        "{} lines processed in {}ms: {} lines/s",
         len,
         now,
         (len as u128 / now * 1000)
