@@ -1,6 +1,6 @@
 [package]
 name = "drone-gencsv"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = [ "Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "CLI utility to convert Aeroscope data into Cat21 CSV."
@@ -29,6 +29,7 @@ reqwest = { version = "0.11.12", features = ["blocking", "gzip", "json", "serde_
 serde = { version = "1.0.145", features = [ "derive" ] }
 serde_json = "1.0.86"
 stderrlog = "0.5.3"
+time = "0.3.15"
 toml = "0"
 
 [dev-dependencies]
