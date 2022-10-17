@@ -26,7 +26,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::Result;
-use chrono::{Date, DateTime, Datelike, TimeZone, Utc};
+use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use csv::ReaderBuilder;
 use log::info;
