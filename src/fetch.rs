@@ -4,7 +4,7 @@
 use crate::Context;
 
 use anyhow::{bail, Result};
-use log::{trace, info, debug};
+use log::{debug, info, trace};
 use serde::Deserialize;
 
 /// Access token derived from username/password

@@ -67,9 +67,7 @@ fn get_from_source(ctx: &Context, what: Option<PathBuf>) -> Result<Vec<Cat21>> {
             // Fetch from given file
             //
             info!("Reading from {:?}", what.to_str().unwrap());
-            let mut rdr = ReaderBuilder::new()
-                .flexible(true)
-                .from_path(what)?;
+            let mut rdr = ReaderBuilder::new().flexible(true).from_path(what)?;
             process_data(&mut rdr)
         }
         _ => {
@@ -133,7 +131,12 @@ fn main() -> Result<()> {
         _ => println!("{}", data),
     }
 
-    info!("{} lines process in {}ms: {} lines/s", len, now, (len as u128/now * 1000));
+    info!(
+        "{} lines process in {}ms: {} lines/s",
+        len,
+        now,
+        (len as u128 / now * 1000)
+    );
 
     Ok(())
 }
