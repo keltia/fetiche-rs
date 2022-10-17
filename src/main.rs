@@ -33,7 +33,11 @@ use stderrlog::LogLevelNum::Trace;
 
 #[derive(Debug)]
 pub struct Context {
+    /// Config taken from `config.toml`, modified by flags.
     pub cfg: Config,
+    /// We want to restrict ourselves to today's data
+    pub today: bool,
+    /// We want to reuse the HTTP client
     pub client: reqwest::blocking::Client,
 }
 
@@ -55,6 +59,9 @@ struct Opts {
     /// Optional password.
     #[clap(short = 'P', long)]
     password: Option<String>,
+    /// We want today only
+    #[clap(long)]
+    today: bool,
     /// Optional username for the server API.
     #[clap(short = 'U', long)]
     username: Option<String>,
