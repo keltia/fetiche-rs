@@ -21,6 +21,7 @@ use crate::version::version;
 
 use std::fs;
 use std::path::PathBuf;
+use std::time::Instant;
 
 use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
@@ -116,15 +117,22 @@ fn main() -> Result<()> {
     //
     let what = opts.input;
 
+    let now = Instant::now();
+
     info!("Loading data…");
     let data = get_from_source(&ctx, what)?;
+    let len = data.len();
     let data = prepare_csv(data)?;
+
+    let now = now.elapsed().as_millis();
 
     info!("Processing data…");
     match opts.output {
         Some(output) => fs::write(output, data)?,
         _ => println!("{}", data),
     }
+
+    info!("{} lines process in {}ms: {} lines/s", len, now, (len as u128/now * 1000));
 
     Ok(())
 }
