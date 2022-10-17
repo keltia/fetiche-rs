@@ -11,11 +11,13 @@
 //!
 //! [Rust]: https://rust-lang.org/
 //!
+mod cli;
 mod config;
 mod fetch;
 mod process;
 mod version;
 
+use crate::cli::Opts;
 use crate::config::{get_config, Config};
 use crate::fetch::fetch_csv;
 use crate::process::{prepare_csv, process_data, Cat21};
@@ -27,7 +29,7 @@ use std::time::Instant;
 
 use anyhow::Result;
 use chrono::{DateTime, Datelike, TimeZone, Utc};
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use clap::Parser;
 use csv::ReaderBuilder;
 use log::info;
 use stderrlog::LogLevelNum::Trace;
@@ -44,46 +46,6 @@ pub struct Context {
     pub end: Option<DateTime<Utc>>,
     /// We want to reuse the HTTP client
     pub client: reqwest::blocking::Client,
-}
-
-/// CLI options
-#[derive(Parser, Debug)]
-#[command(disable_version_flag = true)]
-#[clap(name = crate_name!(), about = crate_description!())]
-#[clap(version = crate_version!(), author = crate_authors!())]
-struct Opts {
-    /// Start the data at specified date (optional)
-    #[clap(short = 'B', long)]
-    begin: Option<DateTime<Utc>>,
-    /// configuration file.
-    #[clap(short = 'c', long)]
-    config: Option<PathBuf>,
-    /// debug mode.
-    #[clap(short = 'D', long = "debug")]
-    debug: bool,
-    /// End date (optional)
-    #[clap(short = 'E', long)]
-    end: Option<DateTime<Utc>>,
-    /// Output file.
-    #[clap(short = 'o', long)]
-    output: Option<PathBuf>,
-    /// Optional password.
-    #[clap(short = 'P', long)]
-    password: Option<String>,
-    /// We want today only
-    #[clap(long)]
-    today: bool,
-    /// Optional username for the server API.
-    #[clap(short = 'U', long)]
-    username: Option<String>,
-    /// Verbose mode.
-    #[clap(short = 'v', long)]
-    verbose: Option<usize>,
-    /// Display utility full version.
-    #[clap(short = 'V', long)]
-    version: bool,
-    /// Input file.
-    input: Option<PathBuf>,
 }
 
 /// Get the input csv either from the given file or from the network
@@ -125,9 +87,9 @@ fn new_context(opts: &Opts, cfg: Config) -> Context {
     //
     if opts.today {
         let now: DateTime<Utc> = Utc::now();
-        let begin = Utc.ymd(now.year(), now.month(), now.day())
-            .and_hms(0, 0, 0);
-        let end = Utc.ymd(now.year(), now.month(), now.day())
+        let begin = Utc.ymd(now.year(), now.month(), now.day()).and_hms(0, 0, 0);
+        let end = Utc
+            .ymd(now.year(), now.month(), now.day())
             .and_hms(23, 59, 59);
         ctx.begin = Some(begin);
         ctx.end = Some(end);
