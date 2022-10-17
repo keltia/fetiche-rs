@@ -165,7 +165,7 @@ pub struct Cat21 {
 impl From<In> for Cat21 {
     /// Makes the loading and transformations
     ///
-    /// The default values are arbitrary and taken from the original `aeroscope.sh` scipt
+    /// The default values are arbitrary and taken from the original `aeroscope.sh` script
     /// by Marc Gravis.
     ///
     fn from(line: In) -> Self {
