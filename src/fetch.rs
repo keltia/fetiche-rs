@@ -40,7 +40,7 @@ fn fetch_token(ctx: &Context) -> Result<String> {
 
     let resp = resp?.text()?;
 
-    let res: Token = serde_json::from_str(&resp).unwrap();
+    let res: Token = serde_json::from_str(&resp)?;
     debug!("{:?}", res);
     Ok(res.access_token)
 }
