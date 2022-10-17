@@ -43,25 +43,28 @@ pub struct Context {
 #[clap(name = crate_name!(), about = crate_description!())]
 #[clap(version = crate_version!(), author = crate_authors!())]
 struct Opts {
-    /// configuration file
+    /// configuration file.
     #[clap(short = 'c', long)]
     config: Option<PathBuf>,
-    /// debug mode
+    /// debug mode.
     #[clap(short = 'D', long = "debug")]
     debug: bool,
-    /// Output file
+    /// Output file.
     #[clap(short = 'o', long)]
     output: Option<PathBuf>,
+    /// Optional password.
     #[clap(short = 'P', long)]
     password: Option<String>,
+    /// Optional username for the server API.
     #[clap(short = 'U', long)]
     username: Option<String>,
-    /// Verbose mode
+    /// Verbose mode.
     #[clap(short = 'v', long)]
     verbose: Option<usize>,
+    /// Display utility full version.
     #[clap(short = 'V', long)]
     version: bool,
-    /// Input file
+    /// Input file.
     input: Option<PathBuf>,
 }
 
