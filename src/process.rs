@@ -202,6 +202,7 @@ impl From<In> for Cat21 {
             ds_id: 18,
             report_type: 3,
             tod_calculated: "N".to_string(),
+            // We do truncate the drone_id for privacy reasons
             callsign: line.drone_id[2..10].to_owned(),
             groundspeed_kt: 0.54 * line.speed,
             track_angle_deg: line.azimuth,
