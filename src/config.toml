@@ -1,3 +1,13 @@
-base_url = "http://192.70.89.240:2400/"
+default = "someplace"
+
+[[sources.someplace]]
+
+base_url = "http://127.0.0.1:2400/"
 login = "SOMETHING"
 password = "NOPE"
+
+[[sources.else]]
+
+base_url = "http://192.70.89.240:2400/"
+login = "USER"
+password = "MAYBE"

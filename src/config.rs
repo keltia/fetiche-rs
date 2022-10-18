@@ -1,11 +1,14 @@
 //! Main configuration management and loading
 //!
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{env, fs};
 
 use anyhow::{Context, Result};
 use clap::crate_name;
 use serde::Deserialize;
+
+use crate::source::Source;
 
 #[cfg(unix)]
 use home::home_dir;
@@ -19,12 +22,8 @@ const BASEDIR: &str = ".config";
 /// Main struct holding configurations
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct Config {
-    /// ASD address
-    pub base_url: String,
-    /// Login to ASD server
-    pub login: String,
-    /// Password to ASD server
-    pub password: String,
+    pub default: String,
+    pub sites: HashMap<String, Source>,
 }
 
 /// `Default` is for `unwrap_or_default()`.
@@ -37,10 +36,10 @@ impl Default for Config {
 impl Config {
     /// Returns an empty struct
     pub fn new() -> Config {
+        let mut h = HashMap::<String, Source>::new();
         Config {
-            base_url: "".into(),
-            login: "USERNAME".into(),
-            password: "NICETRY".into(),
+            default: "NONE".into(),
+            sites: h,
         }
     }
 
@@ -107,7 +106,6 @@ pub fn get_config(fname: &Option<PathBuf>) -> Config {
         Err(e) => panic!("Need a config file! {}", e),
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -115,14 +113,8 @@ mod tests {
     #[test]
     fn test_new() {
         let a = Config::new();
-        assert_eq!(
-            a,
-            Config {
-                base_url: "".into(),
-                login: "USERNAME".into(),
-                password: "NICETRY".into(),
-            }
-        );
+        assert_eq!("NONE", a.default);
+        assert!(a.sites.is_empty());
         println!("{:?}", a)
     }
 
@@ -133,7 +125,7 @@ mod tests {
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
-        assert!(!cfg.base_url.is_empty());
-        assert_eq!("NOPE", cfg.password);
+        assert!(!cfg.sites.is_empty());
+        assert_eq!("NOPE", cfg["someplace"].password);
     }
 }
