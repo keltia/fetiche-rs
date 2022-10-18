@@ -27,6 +27,9 @@ pub struct Opts {
     /// Optional password.
     #[clap(short = 'P', long)]
     pub password: Option<String>,
+    /// Site to fetch data from
+    #[clap(short = 'S', long)]
+    pub site: Option<String>,
     /// We want today only
     #[clap(long)]
     pub today: bool,
