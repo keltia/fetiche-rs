@@ -169,7 +169,7 @@ pub struct Cat21 {
 ///
 #[inline]
 fn to_feet(a: f32) -> u32 {
-    a * 3.28084 as u32
+    (a * 3.28084) as u32
 }
 
 /// Convert into knots
