@@ -89,6 +89,9 @@ where
 /// TARGET_ADDR:CAT:LINE_ID:DS_ID:REPORT_TYPE:TOD_CALCULATED:CALLSIGN:GROUNDSPEED_KT:T
 /// RACK_ANGLE_DEG:REC_NUM
 ///
+/// Time calculations are done in `i64` to avoid the upcoming 2037 bug with 32-bit time_t.
+/// Most systems are using `i64` now.
+///
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct Cat21 {
@@ -105,9 +108,9 @@ pub struct Cat21 {
     // $c3
     pub alt_baro_ft: u32,
     // $d
-    pub tod: u32,
+    pub tod: i64,
     // $d1
-    pub rec_time_posix: u32,
+    pub rec_time_posix: i64,
     // $d2
     pub rec_time_ms: u32,
     // $e
@@ -162,6 +165,20 @@ pub struct Cat21 {
     pub rec_num: usize,
 }
 
+/// Convert into feet
+///
+#[inline]
+fn to_feet(a: f32) -> u32 {
+    a * 3.28084 as u32
+}
+
+/// Convert into knots
+///
+#[inline]
+fn to_knots(a: f32) -> f32 {
+    a * 0.54
+}
+
 impl From<In> for Cat21 {
     /// Makes the loading and transformations
     ///
@@ -170,14 +187,14 @@ impl From<In> for Cat21 {
     ///
     fn from(line: In) -> Self {
         let tod = line.receive_date.parse::<DateTime<Utc>>().unwrap();
-        let tod = tod.format("%s").to_string().parse::<u32>().unwrap();
+        let tod = tod.timestamp();
         Cat21 {
             sac: 8,
             sic: 200,
-            alt_geo_ft: (3.28084 * line.altitude) as u32,
+            alt_geo_ft: to_feet(line.altitude),
             pos_lat_deg: line.coordinate_latitude,
             pos_long_deg: line.coordinate_longitude,
-            alt_baro_ft: (3.28084 * line.altitude) as u32,
+            alt_baro_ft: to_feet(line.altitude),
             tod: 128 * (tod % 86400),
             rec_time_posix: tod,
             rec_time_ms: 0,
@@ -204,7 +221,7 @@ impl From<In> for Cat21 {
             tod_calculated: "N".to_string(),
             // We do truncate the drone_id for privacy reasons
             callsign: line.drone_id[2..10].to_owned(),
-            groundspeed_kt: 0.54 * line.speed,
+            groundspeed_kt: to_knots(line.speed),
             track_angle_deg: line.azimuth,
             rec_num: 1,
         }
