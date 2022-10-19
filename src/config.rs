@@ -8,7 +8,8 @@ use anyhow::{Context, Result};
 use clap::crate_name;
 use serde::Deserialize;
 
-use crate::source::Source;
+use crate::format::Source;
+use crate::site::Site;
 
 #[cfg(unix)]
 use home::home_dir;
@@ -22,8 +23,8 @@ const BASEDIR: &str = ".config";
 /// Main struct holding configurations
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct Config {
-    pub default: String,
-    pub sites: HashMap<String, Source>,
+    pub default: Source,
+    pub sites: HashMap<String, Site>,
 }
 
 /// `Default` is for `unwrap_or_default()`.
@@ -36,9 +37,9 @@ impl Default for Config {
 impl Config {
     /// Returns an empty struct
     pub fn new() -> Config {
-        let mut h = HashMap::<String, Source>::new();
+        let h = HashMap::<String, Site>::new();
         Config {
-            default: "NONE".into(),
+            default: Source::None,
             sites: h,
         }
     }
@@ -113,7 +114,7 @@ mod tests {
     #[test]
     fn test_new() {
         let a = Config::new();
-        assert_eq!("NONE", a.default);
+        assert_eq!(Source::None, a.default);
         assert!(a.sites.is_empty());
         println!("{:?}", a)
     }
