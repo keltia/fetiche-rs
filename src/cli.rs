@@ -24,18 +24,12 @@ pub struct Opts {
     /// Output file.
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
-    /// Optional password.
-    #[clap(short = 'P', long)]
-    pub password: Option<String>,
     /// Site to fetch data from
     #[clap(short = 'S', long)]
     pub site: Option<String>,
     /// We want today only
     #[clap(long)]
     pub today: bool,
-    /// Optional username for the server API.
-    #[clap(short = 'U', long)]
-    pub username: Option<String>,
     /// Verbose mode.
     #[clap(short = 'v', long)]
     pub verbose: Option<usize>,

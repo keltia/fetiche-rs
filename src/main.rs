@@ -119,15 +119,7 @@ fn main() -> Result<()> {
     //
     info!("Loading config…");
     let mut cfg = get_config(&opts.config);
-
-    // Allow overriding credentials on CLI (not safe)
-    //
-    if let Some(login) = opts.username.clone() {
-        cfg.login = login;
-    }
-    if let Some(password) = opts.password.clone() {
-        cfg.password = password;
-    }
+    trace!("{} sites loaded", cfg.sites.len());
 
     let ctx = new_context(&opts, cfg);
 
