@@ -21,6 +21,9 @@ pub struct Opts {
     /// End date (optional)
     #[clap(short = 'E', long)]
     pub end: Option<DateTime<Utc>>,
+    /// Format must be specified if looking at a file.
+    #[clap(short = 'F', long)]
+    pub format: Option<String>,
     /// Output file.
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
