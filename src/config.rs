@@ -104,6 +104,7 @@ pub fn get_config(fname: &Option<PathBuf>) -> Config {
     };
     cfg
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -119,6 +120,7 @@ mod tests {
     #[test]
     fn test_config_load() {
         let cn = PathBuf::from("src/config.toml");
+
         let cfg = Config::load(&cn);
         assert!(cfg.is_ok());
 
