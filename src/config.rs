@@ -6,7 +6,7 @@ use std::{env, fs};
 
 use anyhow::{Context, Result};
 use clap::crate_name;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::format::Source;
 use crate::site::Site;
@@ -21,9 +21,11 @@ const CONFIG: &str = "config.toml";
 const BASEDIR: &str = ".config";
 
 /// Main struct holding configurations
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct Config {
-    pub default: Source,
+    /// Default format
+    pub default: String,
+    /// Site map
     pub sites: HashMap<String, Site>,
 }
 
@@ -39,7 +41,7 @@ impl Config {
     pub fn new() -> Config {
         let h = HashMap::<String, Site>::new();
         Config {
-            default: Source::None,
+            default: "none".to_string(),
             sites: h,
         }
     }
@@ -114,7 +116,7 @@ mod tests {
     #[test]
     fn test_new() {
         let a = Config::new();
-        assert_eq!(Source::None, a.default);
+        assert_eq!("none", a.default);
         assert!(a.sites.is_empty());
         println!("{:?}", a)
     }
@@ -127,6 +129,10 @@ mod tests {
 
         let cfg = cfg.unwrap();
         assert!(!cfg.sites.is_empty());
-        assert_eq!("NOPE", cfg["someplace"].password);
+        let someplace = &cfg.sites["someplace"];
+        match someplace {
+            Site::Login { password, .. } => assert_eq!("NOPE", password),
+            _ => (),
+        }
     }
 }
