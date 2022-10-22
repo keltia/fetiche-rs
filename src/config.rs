@@ -93,21 +93,16 @@ pub fn get_config(fname: &Option<PathBuf>) -> Config {
     let cfg = match fname {
         // We have a configuration file
         //
-        Some(c) => Config::load(c).with_context(|| format!("No file {:?}", c)),
+        Some(cnf) => Config::load(cnf).expect(&format!("No file {:?}", cnf)),
         // Need to load our own
         //
         None => {
             let cnf = Config::default_file();
 
-            Config::load(&cnf).with_context(|| format!("No file {:?}", cnf))
+            Config::load(&cnf).expect(&format!("No default file {:?}", cnf))
         }
     };
-
-    // We must have a valid configuration, an error means no default one
-    match cfg {
-        Ok(c) => c,
-        Err(e) => panic!("Need a config file! {}", e),
-    }
+    cfg
 }
 #[cfg(test)]
 mod tests {
