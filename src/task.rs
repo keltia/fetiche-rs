@@ -1,16 +1,12 @@
 //! Task-related code
 //!
 
-use std::io::Read;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use csv::{Reader, ReaderBuilder};
+use csv::ReaderBuilder;
 use log::trace;
-use serde::de::DeserializeOwned;
 
-use crate::format::aeroscope::Aeroscope;
-use crate::format::safesky::Safesky;
 use crate::{Cat21, Site, Source};
 
 #[derive(Clone, Debug)]
@@ -57,8 +53,7 @@ impl Task {
         self.input = match &self.input {
             Input::File { path, .. } => {
                 let path = path.clone();
-                let inp = Input::File { format: fmt, path };
-                inp
+                Input::File { format: fmt, path }
             }
             _ => self.input.clone(),
         };

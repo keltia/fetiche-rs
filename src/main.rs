@@ -1,10 +1,13 @@
 //! This is the [Rust] version of `aeroscope.sh` write by Marc Gravis for the ACUTE Project.
+//! Now it tries to include features from `aeroscope-CDG.sh` and will support fetching from
+//! the Skysafe site as well.
 //!
-//! It can load from either the Aeroscope server or from a file (easier for offline tests). It uses
+//! It can load from either a server or from a file (easier for offline tests). It uses
 //! a configuration file  from `$HOME/.config/drone-gencsv` or `%LOCALAPPDATA%/drone-gencsv` on
 //! UNIX/Linux and Windows.
 //!
-//! The mapping from the Aeroscope CSV to the pseudo-Cat21 format is in `process.rs`.
+//! Our pseudo-Cat21 format is in `format/mod.rs`.
+//! The respective format for the other sources are in the files inside the `format` module.
 //!
 //! Author: Ollivier Robert <ollivier.robert@eurocontrol.int> for the EIH
 //! Copyright: (c) 2022 by Ollivier Robert
@@ -13,25 +16,25 @@
 //!
 mod cli;
 mod config;
-mod fetch;
-mod process;
+mod format;
+mod site;
+mod task;
 mod version;
 
 use crate::cli::Opts;
 use crate::config::{get_config, Config};
-use crate::fetch::fetch_csv;
-use crate::process::{prepare_csv, process_data, Cat21};
+use crate::format::{prepare_csv, Cat21, Source};
+use crate::site::Site;
+use crate::task::Task;
 use crate::version::version;
 
 use std::fs;
-use std::path::PathBuf;
 use std::time::Instant;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
-use csv::ReaderBuilder;
-use log::info;
+use log::{info, trace};
 use stderrlog::LogLevelNum::Trace;
 
 #[derive(Debug)]
@@ -40,46 +43,54 @@ pub struct Context {
     pub cfg: Config,
     /// We want to restrict ourselves to today's data
     pub today: bool,
+    /// Source to fetch data from
+    pub site: Option<String>,
     /// Begin date
     pub begin: Option<DateTime<Utc>>,
     /// Begin date
     pub end: Option<DateTime<Utc>>,
-    /// We want to reuse the HTTP client
-    pub client: reqwest::blocking::Client,
 }
 
 /// Get the input csv either from the given file or from the network
 ///
-fn get_from_source(ctx: &Context, what: Option<PathBuf>) -> Result<Vec<Cat21>> {
-    match what {
+fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
+    let fmt = match &opts.format {
+        Some(fmt) => Source::from_str(fmt),
+        _ => Source::None,
+    };
+
+    match &opts.input {
         Some(what) => {
             // Fetch from given file
             //
-            info!("Reading from {:?}", what.to_str().unwrap());
-            let mut rdr = ReaderBuilder::new().flexible(true).from_path(what)?;
-            process_data(&mut rdr)
+            info!("Reading from {:?}", what);
+
+            let fname = what.to_str().unwrap();
+
+            Task::new(fname).path(fname).format(fmt).run()
         }
         _ => {
             // Fetch from network
             //
-            info!("Fetching from {}", ctx.cfg.base_url);
-            let res = fetch_csv(ctx)?;
-            let mut rdr = ReaderBuilder::new()
-                .flexible(true)
-                .from_reader(res.as_bytes());
-            process_data(&mut rdr)
+            let name = opts.site.as_ref().unwrap();
+            let site = Site::new(cfg, name);
+
+            info!("Fetching from network site {}", name);
+
+            Task::new(name).with(site).run()
         }
     }
 }
 
+/// Currently unused
 fn new_context(opts: &Opts, cfg: Config) -> Context {
     // Create our context
     //
     let mut ctx = Context {
-        client: reqwest::blocking::Client::new(),
         today: false,
         begin: opts.begin,
         end: opts.end,
+        site: None,
         cfg,
     };
 
@@ -110,6 +121,22 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
+    // Check arguments.
+    //
+    if opts.input.is_some() && opts.site.is_some() {
+        return Err(anyhow!("Specify either a site or a filename, not both"));
+    }
+
+    if opts.input.is_none() && opts.site.is_none() {
+        return Err(anyhow!("Specify at least a site or a filename"));
+    }
+
+    if opts.input.is_some() && opts.format.is_none() {
+        return Err(anyhow!("Format must be specified for files"));
+    }
+
+    // Prepare logging.
+    //
     stderrlog::new()
         .module(module_path!())
         .verbosity(Trace)
@@ -118,20 +145,14 @@ fn main() -> Result<()> {
     // Load default config if nothing is specified
     //
     info!("Loading config…");
-    let mut cfg = get_config(&opts.config);
+    let cfg = get_config(&opts.config);
     trace!("{} sites loaded", cfg.sites.len());
-
-    let ctx = new_context(&opts, cfg);
-
-    // Load data from original csv or site
-    //
-    let what = opts.input;
 
     info!("Loading data…");
 
     let now = Instant::now();
 
-    let data = get_from_source(&ctx, what)?;
+    let data = get_from_source(&cfg, &opts)?;
     let len = data.len();
     let data = prepare_csv(data)?;
 

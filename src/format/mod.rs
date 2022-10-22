@@ -57,13 +57,11 @@ impl Source {
                 let mut line = match self {
                     Source::Aeroscope => {
                         let l: Aeroscope = rec.deserialize(None).unwrap();
-                        let c = Cat21::from(l);
-                        c
+                        Cat21::from(l)
                     }
                     Source::Safesky => {
                         let l: Safesky = rec.deserialize(None).unwrap();
-                        let c = Cat21::from(l);
-                        c
+                        Cat21::from(l)
                     }
                     _ => panic!("unknown format"),
                 };

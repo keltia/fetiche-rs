@@ -12,9 +12,6 @@ use anyhow::{anyhow, bail, Result};
 use log::{debug, error, info, trace};
 use serde::{Deserialize, Serialize};
 
-use std::fs;
-use std::path::PathBuf;
-
 use crate::format::Source;
 use crate::Config;
 
@@ -108,7 +105,7 @@ impl Site {
                 debug!("{:?}", res);
                 Ok(res.access_token)
             }
-            _ => return Err(anyhow!("no credential needed")),
+            _ => Err(anyhow!("no credential needed")),
         }
     }
 

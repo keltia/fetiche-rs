@@ -4,11 +4,10 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::crate_name;
 use serde::{Deserialize, Serialize};
 
-use crate::format::Source;
 use crate::site::Site;
 
 #[cfg(unix)]
@@ -90,19 +89,18 @@ impl Config {
 pub fn get_config(fname: &Option<PathBuf>) -> Config {
     // Load default config if nothing is specified
     //
-    let cfg = match fname {
+    match fname {
         // We have a configuration file
         //
-        Some(cnf) => Config::load(cnf).expect(&format!("No file {:?}", cnf)),
+        Some(cnf) => Config::load(cnf).unwrap_or_else(|_| panic!("No file {:?}", cnf)),
         // Need to load our own
         //
         None => {
             let cnf = Config::default_file();
 
-            Config::load(&cnf).expect(&format!("No default file {:?}", cnf))
+            Config::load(&cnf).unwrap_or_else(|_| panic!("No default file {:?}", cnf))
         }
-    };
-    cfg
+    }
 }
 
 #[cfg(test)]
