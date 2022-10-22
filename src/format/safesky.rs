@@ -9,9 +9,9 @@ use serde::Deserialize;
 use crate::format::{to_feet, to_knots, Cat21};
 
 #[derive(Debug, Deserialize)]
-#[serde(untagged)]
+#[serde(untagged, rename_all = "UPPERCASE")]
 pub enum Status {
-    AIRBORNE,
+    Airborne,
 }
 
 /// Our input structure from the csv file coming from Safesky file
