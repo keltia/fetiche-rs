@@ -21,6 +21,13 @@ The `format` crate/module is here to define the format of the input regardless o
    2.3. if input is network, format is in Config
 3. create task with parameters
 4. execute task
-   4.1. 
+   4.1. if task is fetching data from a file, use the format to deserialize
+   4.2. otherwise fetch data from the site (get an auth token if needed)
+   4.3. the format is specified in the config file for each site
+5. deserialization & transform
+   5.1. each format has a set of transformation associated (converting into feet or knots, etc.)
+6. after the conversion is done, output the final Cat21 CSV.
+
+
 
 
