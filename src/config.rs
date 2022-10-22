@@ -4,11 +4,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::crate_name;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-use crate::source::Source;
+use crate::site::Site;
 
 #[cfg(unix)]
 use home::home_dir;
@@ -20,10 +20,12 @@ const CONFIG: &str = "config.toml";
 const BASEDIR: &str = ".config";
 
 /// Main struct holding configurations
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct Config {
+    /// Default format
     pub default: String,
-    pub sites: HashMap<String, Source>,
+    /// Site map
+    pub sites: HashMap<String, Site>,
 }
 
 /// `Default` is for `unwrap_or_default()`.
@@ -36,9 +38,9 @@ impl Default for Config {
 impl Config {
     /// Returns an empty struct
     pub fn new() -> Config {
-        let mut h = HashMap::<String, Source>::new();
+        let h = HashMap::<String, Site>::new();
         Config {
-            default: "NONE".into(),
+            default: "none".to_string(),
             sites: h,
         }
     }
@@ -87,25 +89,20 @@ impl Config {
 pub fn get_config(fname: &Option<PathBuf>) -> Config {
     // Load default config if nothing is specified
     //
-    let cfg = match fname {
+    match fname {
         // We have a configuration file
         //
-        Some(c) => Config::load(c).with_context(|| format!("No file {:?}", c)),
+        Some(cnf) => Config::load(cnf).unwrap_or_else(|_| panic!("No file {:?}", cnf)),
         // Need to load our own
         //
         None => {
             let cnf = Config::default_file();
 
-            Config::load(&cnf).with_context(|| format!("No file {:?}", cnf))
+            Config::load(&cnf).unwrap_or_else(|_| panic!("No default file {:?}", cnf))
         }
-    };
-
-    // We must have a valid configuration, an error means no default one
-    match cfg {
-        Ok(c) => c,
-        Err(e) => panic!("Need a config file! {}", e),
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -113,7 +110,7 @@ mod tests {
     #[test]
     fn test_new() {
         let a = Config::new();
-        assert_eq!("NONE", a.default);
+        assert_eq!("none", a.default);
         assert!(a.sites.is_empty());
         println!("{:?}", a)
     }
@@ -121,11 +118,16 @@ mod tests {
     #[test]
     fn test_config_load() {
         let cn = PathBuf::from("src/config.toml");
+
         let cfg = Config::load(&cn);
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
         assert!(!cfg.sites.is_empty());
-        assert_eq!("NOPE", cfg["someplace"].password);
+        let someplace = &cfg.sites["someplace"];
+        match someplace {
+            Site::Login { password, .. } => assert_eq!("NOPE", password),
+            _ => (),
+        }
     }
 }

@@ -1,13 +1,25 @@
-default = "someplace"
+default = "none"
 
-[[sources.someplace]]
+[sites.someplace]
 
-base_url = "http://127.0.0.1:2400/"
+format = "aeroscope"
+base_url = "http://127.0.0.1:2400"
+token = "/login"
 login = "SOMETHING"
 password = "NOPE"
+get = "/drone/get"
 
-[[sources.else]]
+[sites.else]
 
-base_url = "http://192.70.89.240:2400/"
+format = "safesky"
+base_url = "http://example.net:2400"
+token = "/auth"
 login = "USER"
 password = "MAYBE"
+get = "/foo"
+
+[sites.nope]
+
+format = "safesky"
+base_url = "https://kansas.example.net:3000"
+get = "/somewhere/over/the/rainbow"
