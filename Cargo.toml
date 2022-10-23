@@ -1,6 +1,6 @@
 [package]
 name = "drone-gencsv"
-version = "0.2.1"
+version = "0.5.0"
 edition = "2021"
 authors = [ "Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "CLI utility to convert Aeroscope data into Cat21 CSV."
