@@ -9,6 +9,7 @@
 //!
 
 use anyhow::{anyhow, bail, Result};
+use clap::{crate_name, crate_version};
 use log::{debug, error, info, trace};
 use serde::{Deserialize, Serialize};
 
@@ -95,6 +96,10 @@ impl Site {
                 trace!("Fetching token through {}…", url);
                 let resp = client
                     .post(url)
+                    .header(
+                        "user-agent",
+                        format!("{}/{}", crate_name!(), crate_version!()),
+                    )
                     .header("content-type", "application/json")
                     .body(body)
                     .send();
@@ -126,6 +131,10 @@ impl Site {
                 let url = format!("{}{}", base_url, get);
                 client
                     .get(url)
+                    .header(
+                        "user-agent",
+                        format!("{}/{}", crate_name!(), crate_version!()),
+                    )
                     .header("content-type", "application/json")
                     .header("Authorization", format!("Bearer {}", token))
                     .send()
@@ -134,6 +143,10 @@ impl Site {
                 let url = format!("{}{}", base_url, get);
                 client
                     .get(url)
+                    .header(
+                        "user-agent",
+                        format!("{}/{}", crate_name!(), crate_version!()),
+                    )
                     .header("content-type", "application/json")
                     .send()
             }
