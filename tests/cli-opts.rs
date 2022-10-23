@@ -1,4 +1,5 @@
 use assert_cmd::Command;
+use std::env;
 
 const BIN: &str = "drone-gencsv";
 
@@ -44,8 +45,10 @@ fn test_file_without_format() {
 #[test]
 fn test_file_with_format() {
     let mut cmd = Command::cargo_bin(BIN).unwrap();
-    cmd.arg("-F aeroscope")
-        .arg("-c src\\config.toml")
+    cmd.arg("-F")
+        .arg("aeroscope")
+        .arg("-c")
+        .arg("src/config.toml")
         .arg("testdata/csv13-10-2022")
         .assert()
         .success();
