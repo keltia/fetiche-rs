@@ -32,6 +32,8 @@ pub struct Safesky {
 }
 
 impl From<Safesky> for Cat21 {
+    /// Minimal transformations for now.
+    ///
     fn from(line: Safesky) -> Self {
         let tod = line.last_update.timestamp();
         Cat21 {
