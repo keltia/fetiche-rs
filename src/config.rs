@@ -1,14 +1,18 @@
 //! Main configuration management and loading
 //!
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::crate_name;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+
+use crate::site::Site;
 
 #[cfg(unix)]
 use home::home_dir;
+use log::trace;
 
 /// Default configuration filename
 const CONFIG: &str = "config.toml";
@@ -17,14 +21,12 @@ const CONFIG: &str = "config.toml";
 const BASEDIR: &str = ".config";
 
 /// Main struct holding configurations
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct Config {
-    /// ASD address
-    pub base_url: String,
-    /// Login to ASD server
-    pub login: String,
-    /// Password to ASD server
-    pub password: String,
+    /// Default format
+    pub default: String,
+    /// Site map
+    pub sites: HashMap<String, Site>,
 }
 
 /// `Default` is for `unwrap_or_default()`.
@@ -37,18 +39,19 @@ impl Default for Config {
 impl Config {
     /// Returns an empty struct
     pub fn new() -> Config {
+        let h = HashMap::<String, Site>::new();
         Config {
-            base_url: "".into(),
-            login: "USERNAME".into(),
-            password: "NICETRY".into(),
+            default: "none".to_string(),
+            sites: h,
         }
     }
 
     /// Load the specified config file
     pub fn load(fname: &PathBuf) -> Result<Config> {
-        let content = fs::read_to_string(fname)?;
+        trace!("Reading {:?}", fname);
+        let content = fs::read_to_string(fname);
 
-        let s: Config = toml::from_str(&content)?;
+        let s: Config = toml::from_str(&content.unwrap())?;
         Ok(s)
     }
 
@@ -64,6 +67,7 @@ impl Config {
         ]
         .iter()
         .collect();
+        trace!("Default file: {:?}", def);
         def
     }
 
@@ -85,26 +89,25 @@ impl Config {
 
 /// Load configuration from either the specified file or the default one.
 ///
-pub fn get_config(fname: Option<PathBuf>) -> Config {
+pub fn get_config(fname: &Option<PathBuf>) -> Config {
     // Load default config if nothing is specified
     //
-    let cfg = match fname {
+    match fname {
         // We have a configuration file
         //
-        Some(c) => Config::load(&c).with_context(|| format!("No file {:?}", c)),
+        Some(cnf) => {
+            trace!("Loading from {:?}", cnf);
+
+            Config::load(cnf).unwrap_or_else(|_| panic!("No file {:?}", cnf))
+        }
         // Need to load our own
         //
         None => {
             let cnf = Config::default_file();
+            trace!("Loading from {:?}", cnf);
 
-            Config::load(&cnf).with_context(|| format!("No file {:?}", cnf))
+            Config::load(&cnf).unwrap_or_else(|_| panic!("No default file {:?}", cnf))
         }
-    };
-
-    // We must have a valid configuration, an error means no default one
-    match cfg {
-        Ok(c) => c,
-        Err(e) => panic!("Need a config file! {}", e),
     }
 }
 
@@ -115,25 +118,25 @@ mod tests {
     #[test]
     fn test_new() {
         let a = Config::new();
-        assert_eq!(
-            a,
-            Config {
-                base_url: "".into(),
-                login: "USERNAME".into(),
-                password: "NICETRY".into(),
-            }
-        );
+        assert_eq!("none", a.default);
+        assert!(a.sites.is_empty());
         println!("{:?}", a)
     }
 
     #[test]
     fn test_config_load() {
         let cn = PathBuf::from("src/config.toml");
+        assert!(cn.try_exists().is_ok());
+
         let cfg = Config::load(&cn);
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
-        assert!(!cfg.base_url.is_empty());
-        assert_eq!("NOPE", cfg.password);
+        assert!(!cfg.sites.is_empty());
+        let someplace = &cfg.sites["someplace"];
+        match someplace {
+            Site::Login { password, .. } => assert_eq!("NOPE", password),
+            _ => (),
+        }
     }
 }
