@@ -48,7 +48,7 @@ pub enum Site {
 
 /// Access token derived from username/password
 ///
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
 struct Token {
     /// Token (SHA-256 or -512 data I guess)
     access_token: String,
@@ -166,8 +166,8 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::Config;
+    use clap::{crate_name, crate_version};
     use std::path::PathBuf;
-    use toml::to_string;
 
     fn set_default() -> Config {
         let s = Site::Anon {
@@ -239,5 +239,42 @@ mod tests {
                 Site::Invalid => panic!("nope"),
             }
         }
+    }
+
+    use httpmock::prelude::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_get_token() {
+        let server = MockServer::start();
+        let token = Token {
+            access_token: "FOOBAR".to_string(),
+        };
+        let jtok = json!(token).to_string();
+        let m = server.mock(|when, then| {
+            when.method(POST)
+                .header(
+                    "user-agent",
+                    format!("{}/{}", crate_name!(), crate_version!()),
+                )
+                .header("content-type", "application/json")
+                .path("/login");
+            then.status(200).body(&jtok);
+        });
+
+        let client = reqwest::blocking::Client::new();
+        let site = Site::Login {
+            format: "aeroscope".to_string(),
+            login: "user".to_string(),
+            password: "pass".to_string(),
+            token: "/login".to_string(),
+            base_url: server.base_url().clone(),
+            get: "/get".to_string(),
+        };
+        let t = site.fetch_token(&client);
+
+        m.assert();
+        assert!(t.is_ok());
+        assert_eq!("FOOBAR", t.as_ref().unwrap());
     }
 }
