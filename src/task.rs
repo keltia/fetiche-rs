@@ -9,14 +9,14 @@ use log::trace;
 
 use crate::{Cat21, Site, Source};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Input {
     File { format: Source, path: PathBuf },
     Network { format: Source, site: Site },
     Nothing,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Task {
     pub name: String,
     pub input: Input,
@@ -91,5 +91,34 @@ impl Task {
             }
             Input::Nothing => Err(anyhow!("no format specified")),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_task_new() {
+        let t = Task::new("foo");
+
+        assert_eq!("foo", t.name);
+        assert_eq!(Input::Nothing, t.input);
+    }
+
+    #[test]
+    fn test_task_none() {
+        let mut t = Task::new("foo");
+
+        t.path("/nonexistent");
+
+        assert_eq!("foo", t.name);
+        assert_eq!(
+            Input::File {
+                format: Source::None,
+                path: PathBuf::from("/nonexistent"),
+            },
+            t.input
+        );
     }
 }
