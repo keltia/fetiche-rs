@@ -12,6 +12,7 @@ use crate::site::Site;
 
 #[cfg(unix)]
 use home::home_dir;
+use log::trace;
 
 /// Default configuration filename
 const CONFIG: &str = "config.toml";
@@ -47,9 +48,10 @@ impl Config {
 
     /// Load the specified config file
     pub fn load(fname: &PathBuf) -> Result<Config> {
-        let content = fs::read_to_string(fname)?;
+        trace!("Reading {:?}", fname);
+        let content = fs::read_to_string(fname);
 
-        let s: Config = toml::from_str(&content)?;
+        let s: Config = toml::from_str(&content.unwrap())?;
         Ok(s)
     }
 
@@ -65,6 +67,7 @@ impl Config {
         ]
         .iter()
         .collect();
+        trace!("Default file: {:?}", def);
         def
     }
 
@@ -92,11 +95,16 @@ pub fn get_config(fname: &Option<PathBuf>) -> Config {
     match fname {
         // We have a configuration file
         //
-        Some(cnf) => Config::load(cnf).unwrap_or_else(|_| panic!("No file {:?}", cnf)),
+        Some(cnf) => {
+            trace!("Loading from {:?}", cnf);
+
+            Config::load(cnf).unwrap_or_else(|_| panic!("No file {:?}", cnf))
+        }
         // Need to load our own
         //
         None => {
             let cnf = Config::default_file();
+            trace!("Loading from {:?}", cnf);
 
             Config::load(&cnf).unwrap_or_else(|_| panic!("No default file {:?}", cnf))
         }
@@ -118,6 +126,7 @@ mod tests {
     #[test]
     fn test_config_load() {
         let cn = PathBuf::from("src/config.toml");
+        assert!(cn.try_exists().is_ok());
 
         let cfg = Config::load(&cn);
         assert!(cfg.is_ok());
