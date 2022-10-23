@@ -8,12 +8,6 @@ use serde::Deserialize;
 
 use crate::format::{to_feet, to_knots, Cat21};
 
-#[derive(Debug, Deserialize)]
-#[serde(untagged, rename_all = "UPPERCASE")]
-pub enum Status {
-    Airborne,
-}
-
 /// Our input structure from the csv file coming from Safesky file
 ///
 #[derive(Debug, Deserialize)]
@@ -26,15 +20,15 @@ pub struct Safesky {
     pub latitude: f32,
     pub longitude: f32,
     pub altitude: u32,
-    pub vertical_rate: i8,
-    pub accuracy: u8,
-    pub altitude_accuracy: i8,
+    pub vertical_rate: i16,
+    pub accuracy: u16,
+    pub altitude_accuracy: i16,
     pub course: u16,
     pub ground_speed: u16,
-    pub status: Status,
+    pub status: String,
     pub turn_rate: Option<String>,
     pub call_sign: String,
-    pub ip: IpAddr,
+    pub ip: Option<IpAddr>,
 }
 
 impl From<Safesky> for Cat21 {
