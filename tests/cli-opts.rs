@@ -1,5 +1,4 @@
 use assert_cmd::Command;
-use std::env;
 
 const BIN: &str = "drone-gencsv";
 
