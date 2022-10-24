@@ -1,5 +1,11 @@
 //! Definition of a data format
 //!
+//! This module makes the link between the shared output format `Cat21` and the different
+//! input formats defined in the other modules.
+//!
+//! To add a new format, insert here the different hooks (`Source`, etc.) & names and a `FORMAT.rs`
+//! file which will define the input format and the transformations needed.
+//!
 
 pub mod aeroscope;
 pub mod asd;
