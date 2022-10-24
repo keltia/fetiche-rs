@@ -45,6 +45,7 @@ impl Task {
     /// Set the input path (for files)
     ///
     pub fn path(&mut self, name: &str) -> &mut Self {
+        trace!("Add path: {}", str);
         let fmt = match &self.input {
             Input::File { format, .. } | Input::Network { format, .. } => format,
             _ => &Source::None,
@@ -59,6 +60,7 @@ impl Task {
     /// Set the input format (from cmdline for files)
     ///
     pub fn format(&mut self, fmt: Source) -> &mut Self {
+        trace!("Add format {:?}", fmt);
         self.input = match &self.input {
             Input::File { path, .. } => {
                 let path = path.clone();
