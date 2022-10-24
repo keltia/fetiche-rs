@@ -78,11 +78,11 @@ impl Auth {
         }
     }
 
-    pub fn token(text: &str) -> String {
-        let t: Token = serde_json::from_str(text).unwrap();
+    pub fn token(text: &str) -> Result<String> {
+        let t: Token = serde_json::from_str(text)?;
         match t {
-            Token::Aeroscope { access_token } => access_token,
-            Token::Asd { token, .. } => token,
+            Token::Aeroscope { access_token } => Ok(access_token),
+            Token::Asd { token, .. } => Ok(token),
         }
     }
 }
@@ -147,6 +147,7 @@ impl Site {
             } => {
                 // Prepare our submission data
                 //
+                trace!("Submit as {}", auth);
                 let body = Auth::new(login, password).get(auth);
 
                 // fetch token
@@ -164,9 +165,7 @@ impl Site {
                     .send();
 
                 let resp = resp?.text()?;
-                dbg!(&resp);
-
-                let res = Auth::token(&resp);
+                let res = Auth::token(&resp)?;
                 debug!("{:?}", res);
                 Ok(res)
             }
@@ -184,6 +183,7 @@ impl Site {
             Site::Login { base_url, get, .. } => {
                 // First call to gen auth token
                 //
+                trace!("get token");
                 let token = &self.fetch_token(&client)?;
 
                 // Use the token to authenticate ourselves
@@ -201,6 +201,7 @@ impl Site {
             }
             Site::Anon { base_url, get, .. } => {
                 let url = format!("{}{}", base_url, get);
+                trace!("no login required for {}", url);
                 client
                     .get(url)
                     .header(
