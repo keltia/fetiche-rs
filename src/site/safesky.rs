@@ -24,6 +24,7 @@ pub struct Safesky {
     pub base_url: String,
     pub get: String,
     pub api_key: String,
+    pub client: Client,
 }
 
 impl Safesky {
@@ -33,6 +34,7 @@ impl Safesky {
             base_url: "".to_owned(),
             api_key: "".to_owned(),
             get: "".to_owned(),
+            client: Client::new(),
         }
     }
 
