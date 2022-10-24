@@ -8,7 +8,7 @@ use csv::ReaderBuilder;
 use log::trace;
 
 use crate::site::Fetchable;
-use crate::{Cat21, Site, Source};
+use crate::{Cat21, Source};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Input {
