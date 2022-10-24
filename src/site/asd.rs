@@ -21,7 +21,7 @@ use crate::site::aeroscope::Aeroscope;
 use crate::site::Fetchable;
 use crate::{Config, Site};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub struct Asd {
     /// Input format
     pub format: Source,

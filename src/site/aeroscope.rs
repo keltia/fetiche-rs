@@ -18,7 +18,7 @@ use crate::site::Fetchable;
 use crate::task::Input;
 use crate::{Config, Site};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub struct Aeroscope {
     /// Input format
     pub format: Source,

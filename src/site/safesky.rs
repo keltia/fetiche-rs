@@ -18,7 +18,7 @@ use crate::site::{Fetchable, Site};
 
 const NAME: &str = "safesky";
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub struct Safesky {
     pub format: Source,
     pub base_url: String,
