@@ -54,6 +54,7 @@ impl Source {
             .records()
             .map(|rec| {
                 let rec = rec.unwrap();
+                trace!("rec={:?}", rec);
                 let mut line = match self {
                     Source::Aeroscope => {
                         let l: Aeroscope = rec.deserialize(None).unwrap();
