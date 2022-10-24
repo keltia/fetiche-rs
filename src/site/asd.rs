@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::format::Source;
 use crate::site::aeroscope::Aeroscope;
-use crate::site::{auth, Fetchable};
+use crate::site::Fetchable;
 use crate::{Config, Site};
 
 #[derive(Debug, Deserialize, Serialize)]
