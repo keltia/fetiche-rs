@@ -139,6 +139,10 @@ impl Fetchable for Aeroscope {
     fn prefetch(&self, _token: &str) -> Result<String> {
         Err(format_err!("no prefetch action needed"))
     }
+
+    fn format(&self) -> Source {
+        Source::Aeroscope
+    }
 }
 
 /// Access token derived from username/password

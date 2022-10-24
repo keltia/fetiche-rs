@@ -149,6 +149,10 @@ impl Fetchable for Asd {
     fn prefetch(&self, _token: &str) -> Result<String> {
         Err(format_err!("prefetch not needed"))
     }
+
+    fn format(&self) -> Source {
+        Source::Asd
+    }
 }
 
 /// Access token derived from username/password

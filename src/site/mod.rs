@@ -12,9 +12,8 @@ pub mod aeroscope;
 pub mod asd;
 pub mod safesky;
 
-use anyhow::{anyhow, bail, format_err, Result};
-use clap::{crate_name, crate_version};
-use log::{debug, error, info, trace};
+use anyhow::{anyhow, Result};
+use log::trace;
 use serde::{Deserialize, Serialize};
 
 use crate::format::Source;
@@ -31,9 +30,7 @@ pub trait Fetchable {
     /// Setup pre-fetch stuff
     fn prefetch(&self, token: &str) -> Result<String>;
     /// Returns the input format
-    fn format(&self) -> Source {
-        self.format
-    }
+    fn format(&self) -> Source;
 }
 
 /// Describe what a site is and associated credentials.
@@ -87,16 +84,28 @@ pub enum Site {
 impl Site {
     /// Initialize a site by checking whether it is present in the configuration file
     ///
-    pub fn new(cfg: &Config, site: &str) -> Result<Box<dyn Fetchable>> {
-        let s = match cfg.sites.contains_key(site) {
-            None => Err(format_err!("{site} not found!")),
-            Some(site) => match site {
-                "aeroscope" => Box::new(Aeroscope::new().load(&cfg)),
-                "asd" => Box::new(Asd::new().load(&cfg)),
-                "safesky" => Box::new(Safesky::new().load(&cfg)),
-            },
-        }?;
-        s
+    pub fn new(cfg: &Config, name: &str) -> Result<Box<dyn Fetchable>> {
+        trace!("New site {}", name);
+        match cfg.sites.get(name) {
+            Some(s) => {
+                let site = match name {
+                    "aeroscope" => {
+                        let s = Aeroscope::new().load(&cfg);
+                        return Ok(Box::new(s.clone()));
+                    }
+                    "asd" => {
+                        let s = Asd::new().load(&cfg);
+                        return Ok(Box::new(s.clone()));
+                    }
+                    "safesky" => {
+                        let s = Safesky::new().load(&cfg);
+                        return Ok(Box::new(s.clone()));
+                    }
+                    _ => return Err(anyhow!("invalid site {name}")),
+                };
+            }
+            None => Err(anyhow!("no such site {name}")),
+        }
     }
 }
 
