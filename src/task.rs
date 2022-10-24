@@ -33,10 +33,10 @@ pub struct Task {
 impl Task {
     /// Initialize our environment
     ///
-    pub fn new(arg: &str) -> Self {
-        trace!("New task {}", arg);
+    pub fn new(name: &str) -> Self {
+        trace!("New task {}", name);
         Task {
-            name: arg.to_owned(),
+            name: name.to_owned(),
             input: Input::Nothing,
             args: None,
         }
