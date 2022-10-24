@@ -63,11 +63,11 @@ impl Fetchable for Safesky {
         todo!()
     }
 
-    fn fetch(&self, token: String) -> Result<String> {
+    fn fetch(&self, _token: &str) -> Result<String> {
         todo!()
     }
 
-    fn prefetch(&self, client: Client) -> Result<String> {
+    fn prefetch(&self, _token: &str) -> Result<String> {
         todo!()
     }
 }
