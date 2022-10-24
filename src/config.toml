@@ -3,6 +3,7 @@ default = "none"
 [sites.someplace]
 
 format = "aeroscope"
+auth = "aeroscope"
 base_url = "http://127.0.0.1:2400"
 token = "/login"
 login = "SOMETHING"
@@ -12,11 +13,12 @@ get = "/drone/get"
 [sites.else]
 
 format = "safesky"
+auth = "safesky"
 base_url = "http://example.net:2400"
-token = "/auth"
+token = "/api/security/login"
 login = "USER"
 password = "MAYBE"
-get = "/foo"
+get = "/api/journeys/csv"
 
 [sites.nope]
 
