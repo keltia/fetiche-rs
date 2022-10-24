@@ -146,7 +146,7 @@ impl Fetchable for Asd {
         Ok(res.token)
     }
 
-    fn prefetch(&self, token: &str) -> Result<String> {
+    fn prefetch(&self, _token: &str) -> Result<String> {
         Err(format_err!("prefetch not needed"))
     }
 }
