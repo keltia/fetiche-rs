@@ -7,12 +7,19 @@ use anyhow::{anyhow, Result};
 use csv::ReaderBuilder;
 use log::trace;
 
+use crate::site::Fetchable;
 use crate::{Cat21, Site, Source};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Input {
-    File { format: Source, path: PathBuf },
-    Network { format: Source, site: Site },
+    File {
+        format: Source,
+        path: PathBuf,
+    },
+    Network {
+        format: Source,
+        site: Box<dyn Fetchable>,
+    },
     Nothing,
 }
 
@@ -64,7 +71,8 @@ impl Task {
 
     /// Copy the site's data
     ///
-    pub fn site(&mut self, s: Site) -> &mut Self {
+    pub fn site(&mut self, s: Box<dyn Fetchable>) -> &mut Self {
+        trace!("Add site {:?}", s);
         self.input = Input::Network {
             format: s.format(),
             site: s,
