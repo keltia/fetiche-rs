@@ -26,6 +26,8 @@ pub enum Site {
         format: String,
         /// Base URL (to avoid repeating)
         base_url: String,
+        /// Auth submit format
+        auth: String,
         /// Token fetching URL (if present call this first)
         token: String,
         /// Data fetching URL
@@ -46,12 +48,71 @@ pub enum Site {
     Invalid,
 }
 
+/// How to submit for token
+///
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
+struct Auth {
+    login: String,
+    password: String,
+}
+
+impl Auth {
+    pub fn new(login: &str, password: &str) -> Self {
+        Auth {
+            login: login.to_owned(),
+            password: password.to_owned(),
+        }
+    }
+
+    pub fn get(&mut self, fmt: &str) -> String {
+        match fmt {
+            "aeroscope" => format!(
+                "{{\"username\": \"{}\", \"password\": \"{}\"}}",
+                self.login, self.password
+            ),
+            "asd" => format!(
+                "{{\"email\": \"{}\", \"password\": \"{}\"}}",
+                self.login, self.password
+            ),
+            _ => "".to_string(),
+        }
+    }
+
+    pub fn token(text: &str) -> String {
+        let t: Token = serde_json::from_str(text).unwrap();
+        match t {
+            Token::Aeroscope { access_token } => access_token,
+            Token::Asd { token, .. } => token,
+        }
+    }
+}
+
 /// Access token derived from username/password
 ///
 #[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
-struct Token {
-    /// Token (SHA-256 or -512 data I guess)
-    access_token: String,
+#[serde(untagged)]
+enum Token {
+    Aeroscope {
+        /// Token (SHA-256 or -512 data I guess)
+        access_token: String,
+    },
+    Asd {
+        /// The actual token
+        token: String,
+        /// Don't ask
+        gjrt: String,
+        #[serde(rename = "expiredAt")]
+        expired_at: i64,
+        roles: Vec<String>,
+        name: String,
+        supervision: Option<String>,
+        lang: String,
+        status: String,
+        email: String,
+        #[serde(rename = "airspaceAdmin")]
+        airspace_admin: Option<String>,
+        homepage: String,
+    },
 }
 
 impl Site {
@@ -81,14 +142,12 @@ impl Site {
                 login,
                 password,
                 token,
+                auth,
                 ..
             } => {
-                // Prepare our data
+                // Prepare our submission data
                 //
-                let body = format!(
-                    "{{\"username\": \"{}\", \"password\": \"{}\"}}",
-                    login, password
-                );
+                let body = Auth::new(login, password).get(auth);
 
                 // fetch token
                 //
@@ -105,10 +164,11 @@ impl Site {
                     .send();
 
                 let resp = resp?.text()?;
+                dbg!(&resp);
 
-                let res: Token = serde_json::from_str(&resp)?;
+                let res = Auth::token(&resp);
                 debug!("{:?}", res);
-                Ok(res.access_token)
+                Ok(res)
             }
             _ => Err(anyhow!("no credential needed")),
         }
@@ -266,6 +326,7 @@ mod tests {
         let site = Site::Login {
             format: "aeroscope".to_string(),
             login: "user".to_string(),
+            auth: "aeroscope".to_string(),
             password: "pass".to_string(),
             token: "/login".to_string(),
             base_url: server.base_url().clone(),
