@@ -20,6 +20,7 @@ pub enum Input {
 pub struct Task {
     pub name: String,
     pub input: Input,
+    pub args: Option<String>,
 }
 
 impl Task {
@@ -30,6 +31,7 @@ impl Task {
         Task {
             name: arg.to_owned(),
             input: Input::Nothing,
+            args: None,
         }
     }
 
@@ -62,11 +64,18 @@ impl Task {
 
     /// Copy the site's data
     ///
-    pub fn with(&mut self, s: Site) -> &mut Self {
+    pub fn site(&mut self, s: Site) -> &mut Self {
         self.input = Input::Network {
             format: s.format(),
             site: s,
         };
+        self
+    }
+
+    /// Copy arguments if needed
+    ///
+    pub fn with(&mut self, arg: &str) -> &mut Self {
+        self.args = Some(arg.to_owned());
         self
     }
 
