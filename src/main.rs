@@ -73,11 +73,11 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
             // Fetch from network
             //
             let name = opts.site.as_ref().unwrap();
-            let site = Site::new(cfg, name);
+            let site = Site::new(cfg, name)?;
 
             info!("Fetching from network site {}", name);
 
-            Task::new(name).with(site).run()
+            Task::new(name).site(Box::new(site)).run()
         }
     }
 }
