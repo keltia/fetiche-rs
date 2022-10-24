@@ -10,7 +10,7 @@ use log::trace;
 use crate::site::Fetchable;
 use crate::{Cat21, Site, Source};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Input {
     File {
         format: Source,
@@ -23,7 +23,7 @@ pub enum Input {
     Nothing,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Task {
     pub name: String,
     pub input: Input,
