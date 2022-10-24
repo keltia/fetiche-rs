@@ -25,8 +25,11 @@ pub enum Input {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Task {
+    /// name for the task
     pub name: String,
+    /// Input type, File or Network
     pub input: Input,
+    /// Optional arguments
     pub args: Option<String>,
 }
 
