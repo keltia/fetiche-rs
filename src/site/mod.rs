@@ -10,7 +10,6 @@
 
 pub mod aeroscope;
 pub mod asd;
-pub mod auth;
 pub mod safesky;
 
 use anyhow::{anyhow, bail, format_err, Result};
@@ -21,7 +20,6 @@ use serde::{Deserialize, Serialize};
 use crate::format::Source;
 use crate::site::aeroscope::Aeroscope;
 use crate::site::asd::Asd;
-use crate::site::auth::Auth;
 use crate::site::safesky::Safesky;
 use crate::Config;
 

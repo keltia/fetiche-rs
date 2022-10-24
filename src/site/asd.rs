@@ -18,7 +18,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::format::Source;
 use crate::site::aeroscope::Aeroscope;
-use crate::site::auth::Auth;
 use crate::site::{auth, Fetchable};
 use crate::{Config, Site};
 
@@ -26,9 +25,9 @@ use crate::{Config, Site};
 pub struct Asd {
     /// Input format
     pub format: Source,
-    /// Auth data, username
+    /// Username
     pub login: String,
-    /// Auth data, password
+    /// Password
     pub password: String,
     /// Base site url taken from config
     pub base_url: String,
@@ -41,8 +40,6 @@ pub struct Asd {
 }
 
 const NAME: &str = "asd";
-const TOKEN_SUBMIT: &str = "{{\"email\": \"{}\", \"password\": \"{}\"}}";
-const FETCH_SUBMIT: &str = r##"{"startTime": "'{}'","endTime": "'{}}'","sources": ["as","wi"]}"##;
 
 impl Asd {
     pub fn new() -> Self {

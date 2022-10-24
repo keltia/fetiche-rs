@@ -14,8 +14,7 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::format::Source;
-use crate::site::auth::Auth;
-use crate::site::{auth, Fetchable};
+use crate::site::Fetchable;
 use crate::task::Input;
 use crate::{Config, Site};
 
@@ -38,7 +37,6 @@ pub struct Aeroscope {
 }
 
 const NAME: &str = "aeroscope";
-const TOKEN_SUBMIT: &str = "{{\"username\": \"{}\", \"password\": \"{}\"}}";
 
 impl Aeroscope {
     pub fn new() -> Self {
