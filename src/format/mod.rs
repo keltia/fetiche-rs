@@ -1,23 +1,27 @@
 //! Definition of a data format
 //!
 
+pub mod aeroscope;
+pub mod asd;
+pub mod safesky;
+
 use crate::format::aeroscope::Aeroscope;
+use crate::format::asd::Asd;
 use crate::format::safesky::Safesky;
 
 use anyhow::Result;
 use csv::{Reader, WriterBuilder};
 use log::trace;
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 
-pub mod aeroscope;
-pub mod safesky;
+use std::io::Read;
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(untagged, rename_all = "lowercase")]
 pub enum Source {
     None,
     Aeroscope,
+    Asd,
     Safesky,
 }
 
@@ -39,6 +43,7 @@ impl Source {
     pub fn from_str(s: &str) -> Self {
         match s {
             "aeroscope" => Source::Aeroscope,
+            "asd" => Source::Asd,
             "safesky" => Source::Safesky,
             _ => Source::None,
         }
@@ -58,6 +63,10 @@ impl Source {
                 let mut line = match self {
                     Source::Aeroscope => {
                         let l: Aeroscope = rec.deserialize(None).unwrap();
+                        Cat21::from(l)
+                    }
+                    Source::Asd => {
+                        let l: Asd = rec.deserialize(None).unwrap();
                         Cat21::from(l)
                     }
                     Source::Safesky => {
