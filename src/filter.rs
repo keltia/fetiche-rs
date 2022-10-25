@@ -53,3 +53,22 @@ impl Filter {
         filter
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+
+    #[test]
+    fn test_filter_new() -> Result<()> {
+        let begin = "2022-11-11 12:34:56";
+        let end = "2022-11-30 12:34:56";
+
+        let begin = begin.parse::<DateTime<Local>>()?;
+        let end = end.parse::<DateTime<Local>>()?;
+
+        let f = Filter::from(begin, end);
+        assert_ne!(Filter::None, f);
+        Ok(())
+    }
+}
