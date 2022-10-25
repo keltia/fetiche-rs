@@ -3,7 +3,7 @@
 //! the Skysafe site as well.
 //!
 //! It can load from either a server or from a file (easier for offline tests). It uses
-//! a configuration file  from `$HOME/.config/drone-gencsv` or `%LOCALAPPDATA%/drone-gencsv` on
+//! a configuration file  from `$HOME/.config/drone-utils` or `%LOCALAPPDATA%/drone-utils` on
 //! UNIX/Linux and Windows.
 //!
 //! Our pseudo-Cat21 format is in `format/mod.rs`.
@@ -17,11 +17,11 @@
 mod cli;
 mod version;
 
-use drone_gencsv::config::{get_config, Config};
-use drone_gencsv::filter::Filter;
-use drone_gencsv::format::{prepare_csv, Cat21, Source};
-use drone_gencsv::site::Site;
-use drone_gencsv::task::Task;
+use drone_utils::config::{get_config, Config};
+use drone_utils::filter::Filter;
+use drone_utils::format::{prepare_csv, Cat21, Source};
+use drone_utils::site::Site;
+use drone_utils::task::Task;
 
 use crate::cli::Opts;
 use crate::version::version;
