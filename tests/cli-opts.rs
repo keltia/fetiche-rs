@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 
-const BIN: &str = "drone-gencsv";
+const BIN: &str = "cat21";
 
 #[test]
 fn test_empty_args() {
