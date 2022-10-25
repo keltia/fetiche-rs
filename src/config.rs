@@ -49,9 +49,9 @@ impl Config {
     /// Load the specified config file
     pub fn load(fname: &PathBuf) -> Result<Config> {
         trace!("Reading {:?}", fname);
-        let content = fs::read_to_string(fname);
+        let content = fs::read_to_string(fname)?;
 
-        let s: Config = toml::from_str(&content.unwrap())?;
+        let s: Config = toml::from_str(&content)?;
         Ok(s)
     }
 
