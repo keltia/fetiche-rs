@@ -17,15 +17,16 @@
 mod cli;
 mod config;
 mod filter;
-mod format;
-mod site;
-mod task;
 mod version;
+
+use drone_gencsv::format::{prepare_csv, Cat21, Source};
+use drone_gencsv::site::Site;
+use drone_gencsv::task::Task;
 
 use crate::cli::Opts;
 use crate::config::{get_config, Config};
 use crate::filter::Filter;
-use crate::format::{prepare_csv, Cat21, Source};
+
 use crate::site::Site;
 use crate::task::Task;
 use crate::version::version;
