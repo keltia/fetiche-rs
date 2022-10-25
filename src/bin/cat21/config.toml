@@ -8,7 +8,6 @@ token = "/login"
 login = "SOMETHING"
 password = "NOPE"
 get = "/drone/get"
-prefetch = false
 
 [sites.asd]
 
@@ -17,7 +16,6 @@ base_url = "https://eur.airspacedrone.com"
 login = "USERNAME"
 password = "GUESS"
 get = "/api/journeys/filteredlocations"
-prefetch = false
 
 [sites.safesky]
 
@@ -25,11 +23,9 @@ format = "safesky"
 base_url = "https://public-api.safesky.app"
 api_key = "foobar"
 get = "/beacons"
-prefetch = false
 
 [sites.nope]
 
 format = "aeroscope"
 base_url = "https://kansas.example.net:3000"
 get = "/somewhere/over/the/rainbow"
-prefetch = false
