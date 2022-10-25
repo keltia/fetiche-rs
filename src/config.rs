@@ -21,7 +21,7 @@ const CONFIG: &str = "config.toml";
 const BASEDIR: &str = ".config";
 
 /// Main struct holding configurations
-#[derive(Deserialize, PartialEq, Eq, Serialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct Config {
     /// Default format
     pub default: String,
