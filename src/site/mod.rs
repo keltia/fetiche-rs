@@ -15,6 +15,7 @@ pub mod safesky;
 use anyhow::{anyhow, Result};
 use log::trace;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
 use crate::format::Source;
 use crate::site::aeroscope::Aeroscope;
@@ -22,7 +23,7 @@ use crate::site::asd::Asd;
 use crate::site::safesky::Safesky;
 use crate::Config;
 
-pub trait Fetchable {
+pub trait Fetchable: Debug {
     /// If credentials are needed, get a token for subsequent operations
     fn authenticate(&self) -> Result<String>;
     /// Fetch actual data
@@ -33,7 +34,7 @@ pub trait Fetchable {
 
 /// Describe what a site is and associated credentials.
 ///
-#[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum Site {
     Login {
@@ -167,7 +168,7 @@ mod tests {
                     assert_eq!("safesky", format);
                 }
                 Site::Key { format, .. } => {
-                    assert!("none", format);
+                    assert_eq!("none", format);
                 }
                 Site::Login {
                     format,
