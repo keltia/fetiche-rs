@@ -176,16 +176,16 @@ mod tests {
         });
 
         let client = reqwest::blocking::Client::new();
-        let site = Site::Login {
-            format: "aeroscope".to_string(),
+        let site = Aeroscope {
+            format: Source::Aeroscope,
             login: "user".to_string(),
-            auth: "aeroscope".to_string(),
             password: "pass".to_string(),
             token: "/login".to_string(),
             base_url: server.base_url().clone(),
             get: "/get".to_string(),
+            client,
         };
-        let t = site.auth(&client);
+        let t = site.authenticate(&client);
 
         m.assert();
         assert!(t.is_ok());
