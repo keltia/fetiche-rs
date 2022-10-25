@@ -1,7 +1,7 @@
 //! submodule to manage date filters
 //!
 
-use chrono::{DateTime, Datelike, Local, TimeZone};
+use chrono::{DateTime, Local};
 
 /// If we specify -B/-E or --today, we need to pass these below
 ///
