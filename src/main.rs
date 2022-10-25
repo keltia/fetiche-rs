@@ -68,34 +68,35 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
     }
 }
 
-fn prepare_args(args: &str) -> String {
-    String::from_utf8(args)
-}
-
-/// Currently unused
-fn new_context(opts: &Opts, cfg: Config) -> Context {
-    // Create our context
+/// Check the presence and validity of some of the arguments
+///
+fn check_args(opts: &Opts) -> Result<()> {
+    // Check arguments.
     //
-    let mut ctx = Context {
-        today: false,
-        begin: opts.begin,
-        end: opts.end,
-        site: None,
-        cfg,
-    };
-
-    // Consistency check and update context
-    //
-    if opts.today {
-        let now: DateTime<Utc> = Utc::now();
-        let begin = Utc.ymd(now.year(), now.month(), now.day()).and_hms(0, 0, 0);
-        let end = Utc
-            .ymd(now.year(), now.month(), now.day())
-            .and_hms(23, 59, 59);
-        ctx.begin = Some(begin);
-        ctx.end = Some(end);
+    if opts.input.is_some() && opts.site.is_some() {
+        return Err(anyhow!("Specify either a site or a filename, not both"));
     }
-    ctx
+
+    if opts.input.is_none() && opts.site.is_none() {
+        return Err(anyhow!("Specify at least a site or a filename"));
+    }
+
+    if opts.input.is_some() && opts.format.is_none() {
+        return Err(anyhow!("Format must be specified for files"));
+    }
+
+    // Do we have options for filter
+
+    if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
+        return Err(anyhow!("Can not specify --today and -B/-E"));
+    }
+
+    if (opts.begin.is_some() && opts.end.is_none()) || (opts.begin.is_none() && opts.end.is_some())
+    {
+        return Err(anyhow!("We need both -B/-E or none"));
+    }
+
+    Ok(())
 }
 
 fn main() -> Result<()> {
@@ -111,18 +112,10 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Check arguments.
+    // Check arguments
     //
-    if opts.input.is_some() && opts.site.is_some() {
-        return Err(anyhow!("Specify either a site or a filename, not both"));
-    }
-
-    if opts.input.is_none() && opts.site.is_none() {
-        return Err(anyhow!("Specify at least a site or a filename"));
-    }
-
-    if opts.input.is_some() && opts.format.is_none() {
-        return Err(anyhow!("Format must be specified for files"));
+    if let Err(e) = check_args(&opts) {
+        return Err(e);
     }
 
     // Prepare logging.
