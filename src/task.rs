@@ -18,7 +18,7 @@ pub enum Input {
     },
     Network {
         format: Source,
-        site: Box<dyn Fetchable>,
+        site: Box<dyn Fetchable + 'static>,
     },
     Nothing,
 }
