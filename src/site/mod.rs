@@ -32,12 +32,6 @@ pub trait Fetchable {
     fn format(&self) -> Source;
 }
 
-impl Debug for &dyn Fetchable {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.fmt(f)
-    }
-}
-
 /// Describe what a site is and associated credentials.
 ///
 #[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
