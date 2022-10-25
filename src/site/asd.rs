@@ -34,7 +34,7 @@ pub struct Asd {
     pub token: String,
     /// Add this to `base_url` to fetch data
     pub get: String,
-    /// reqwest clocking client
+    /// reqwest blocking client
     pub client: Client,
 }
 
