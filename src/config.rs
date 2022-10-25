@@ -6,13 +6,13 @@ use std::{env, fs};
 
 use anyhow::Result;
 use clap::crate_name;
+use log::trace;
 use serde::{Deserialize, Serialize};
 
 use crate::site::Site;
 
 #[cfg(unix)]
 use home::home_dir;
-use log::trace;
 
 /// Default configuration filename
 const CONFIG: &str = "config.toml";
@@ -21,7 +21,7 @@ const CONFIG: &str = "config.toml";
 const BASEDIR: &str = ".config";
 
 /// Main struct holding configurations
-#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[derive(Deserialize, PartialEq, Eq, Serialize)]
 pub struct Config {
     /// Default format
     pub default: String,
@@ -120,7 +120,7 @@ mod tests {
         let a = Config::new();
         assert_eq!("none", a.default);
         assert!(a.sites.is_empty());
-        println!("{:?}", a)
+        dbg!(&a);
     }
 
     #[test]
