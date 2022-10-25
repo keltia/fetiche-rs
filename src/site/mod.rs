@@ -1,11 +1,9 @@
-//! Module to deal with different kind of input be it a file or a site with a, API
+//! Module to deal with different kind of sites we can connect to to fetch data.
 //!
-//! When no file is specified on the command-line, we look at the list of possible sites to fetch
-//! data from, each with a known format.  We also define here the URL and associated credentials
-//! (if any) needed.
+//! The different submodules deal with the differences between sites:
 //!
-//! If the `token` URL is present, we call this first with `POST`  to request an OAuth2 token.  
-//! We assume the output format to be the same with `{ access_token: String }`.
+//! - authentication (token, API)
+//! - fetching data (GET or POST, etc.).
 //!
 
 pub mod aeroscope;
@@ -23,6 +21,9 @@ use crate::site::aeroscope::Aeroscope;
 use crate::site::asd::Asd;
 use crate::site::safesky::Safesky;
 
+/// This trait enables us to manage different ways of connecting and fetching data under
+/// a single interface.
+///
 pub trait Fetchable: Debug {
     /// If credentials are needed, get a token for subsequent operations
     fn authenticate(&self) -> Result<String>;
