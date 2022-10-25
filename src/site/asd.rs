@@ -10,14 +10,13 @@
 //! Format is different from the csv obtained from the actual Aeroscope system
 //!
 
-use anyhow::{anyhow, format_err, Result};
+use anyhow::Result;
 use clap::{crate_name, crate_version};
 use log::{debug, error, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::format::Source;
-use crate::site::aeroscope::Aeroscope;
 use crate::site::Fetchable;
 use crate::{Config, Site};
 

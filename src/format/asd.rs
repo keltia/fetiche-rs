@@ -2,10 +2,9 @@
 //! CSV data Cat21-like
 //!
 
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Local};
 use serde::Deserialize;
 
-use crate::format::aeroscope::Aeroscope;
 use crate::format::{to_feet, to_knots, Cat21};
 
 /// Our input structure from the csv file coming out of the aeroscope

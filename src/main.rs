@@ -37,20 +37,6 @@ use clap::Parser;
 use log::{info, trace};
 use stderrlog::LogLevelNum::Trace;
 
-#[derive(Debug)]
-pub struct Context {
-    /// Config taken from `config.toml`, modified by flags.
-    pub cfg: Config,
-    /// We want to restrict ourselves to today's data
-    pub today: bool,
-    /// Source to fetch data from
-    pub site: Option<String>,
-    /// Begin date
-    pub begin: Option<DateTime<Utc>>,
-    /// Begin date
-    pub end: Option<DateTime<Utc>>,
-}
-
 /// Get the input csv either from the given file or from the network
 ///
 fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
@@ -77,10 +63,7 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
 
             info!("Fetching from network site {}", name);
 
-            let args: String = if let Some(args) = opts.args {
-                prepare_args(args)
-            };
-            Task::new(name).site(site).with(args).run()
+            Task::new(name).site(site).with(filter).run()
         }
     }
 }

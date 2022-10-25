@@ -15,7 +15,6 @@ pub mod safesky;
 use anyhow::{anyhow, Result};
 use log::trace;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Debug, Formatter, Pointer};
 
 use crate::format::Source;
 use crate::site::aeroscope::Aeroscope;
@@ -72,18 +71,6 @@ pub enum Site {
         get: String,
     },
     Invalid,
-}
-
-impl Debug for Site {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Site::Anon { .. } => {}
-            Site::Key { .. } => {}
-            Site::Login { .. } => {}
-            _ => {}
-        }
-        self.fmt(f)
-    }
 }
 
 impl Site {
