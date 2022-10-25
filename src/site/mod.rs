@@ -183,42 +183,4 @@ mod tests {
             }
         }
     }
-
-    use httpmock::prelude::*;
-    use serde_json::json;
-
-    #[test]
-    fn test_get_token() {
-        let server = MockServer::start();
-        let token = Token {
-            access_token: "FOOBAR".to_string(),
-        };
-        let jtok = json!(token).to_string();
-        let m = server.mock(|when, then| {
-            when.method(POST)
-                .header(
-                    "user-agent",
-                    format!("{}/{}", crate_name!(), crate_version!()),
-                )
-                .header("content-type", "application/json")
-                .path("/login");
-            then.status(200).body(&jtok);
-        });
-
-        let client = reqwest::blocking::Client::new();
-        let site = Site::Login {
-            format: "aeroscope".to_string(),
-            login: "user".to_string(),
-            auth: "aeroscope".to_string(),
-            password: "pass".to_string(),
-            token: "/login".to_string(),
-            base_url: server.base_url().clone(),
-            get: "/get".to_string(),
-        };
-        let t = site.fetch_token(&client);
-
-        m.assert();
-        assert!(t.is_ok());
-        assert_eq!("FOOBAR", t.as_ref().unwrap());
-    }
 }
