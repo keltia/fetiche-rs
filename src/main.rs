@@ -1,4 +1,4 @@
-//! This is the [Rust] version of `aeroscope.sh` write by Marc Gravis for the ACUTE Project.
+//! This is the [Rust] version of `aeroscope.sh` written by Marc Gravis for the ACUTE Project.
 //! Now it tries to include features from `aeroscope-CDG.sh` and will support fetching from
 //! the Skysafe site as well.
 //!
