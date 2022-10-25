@@ -16,6 +16,7 @@
 //!
 mod cli;
 mod config;
+mod filter;
 mod format;
 mod site;
 mod task;
@@ -23,6 +24,7 @@ mod version;
 
 use crate::cli::Opts;
 use crate::config::{get_config, Config};
+use crate::filter::Filter;
 use crate::format::{prepare_csv, Cat21, Source};
 use crate::site::Site;
 use crate::task::Task;
@@ -32,7 +34,6 @@ use std::fs;
 use std::time::Instant;
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use log::{info, trace};
 use stderrlog::LogLevelNum::Trace;
@@ -44,6 +45,10 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
         Some(fmt) => Source::from_str(fmt),
         _ => Source::None,
     };
+
+    // Build our filter if needed
+    //
+    let filter = Filter::from_opts(&opts);
 
     match &opts.input {
         Some(what) => {
