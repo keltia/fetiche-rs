@@ -17,11 +17,11 @@ use log::trace;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
+use crate::config::Config;
 use crate::format::Source;
 use crate::site::aeroscope::Aeroscope;
 use crate::site::asd::Asd;
 use crate::site::safesky::Safesky;
-use crate::Config;
 
 pub trait Fetchable: Debug {
     /// If credentials are needed, get a token for subsequent operations

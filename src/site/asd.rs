@@ -16,9 +16,9 @@ use log::{debug, error, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
+use crate::config::Config;
 use crate::format::Source;
-use crate::site::Fetchable;
-use crate::{Config, Site};
+use crate::site::{Fetchable, Site};
 
 #[derive(Clone, Debug)]
 pub struct Asd {

@@ -8,8 +8,9 @@ use anyhow::{anyhow, Result};
 use csv::ReaderBuilder;
 use log::trace;
 
+use crate::filter::Filter;
+use crate::format::{Cat21, Source};
 use crate::site::Fetchable;
-use crate::{Cat21, Filter, Source};
 
 #[derive(Debug)]
 pub enum Input {

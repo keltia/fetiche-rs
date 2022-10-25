@@ -15,29 +15,47 @@
 //! [Rust]: https://rust-lang.org/
 //!
 mod cli;
-mod config;
-mod filter;
 mod version;
 
+use drone_gencsv::config::{get_config, Config};
+use drone_gencsv::filter::Filter;
 use drone_gencsv::format::{prepare_csv, Cat21, Source};
 use drone_gencsv::site::Site;
 use drone_gencsv::task::Task;
 
 use crate::cli::Opts;
-use crate::config::{get_config, Config};
-use crate::filter::Filter;
-
-use crate::site::Site;
-use crate::task::Task;
 use crate::version::version;
 
 use std::fs;
 use std::time::Instant;
 
 use anyhow::{anyhow, Result};
+use chrono::{DateTime, Datelike, Local, TimeZone};
 use clap::Parser;
 use log::{info, trace};
 use stderrlog::LogLevelNum::Trace;
+
+/// From the CLI options
+///
+pub fn filter_from_opts(opts: &Opts) -> Filter {
+    let t: DateTime<Local> = Local::now();
+
+    let filter = if opts.today {
+        // Build our own begin, end
+        //
+        let begin = Local.ymd(t.year(), t.month(), t.day()).and_hms(0, 0, 0);
+        let end = Local.ymd(t.year(), t.month(), t.day()).and_hms(23, 59, 59);
+
+        Filter::from(begin, end)
+    } else if opts.begin.is_some() {
+        // Assume both are there, checked elsewhere
+        //
+        Filter::from(opts.begin.unwrap(), opts.end.unwrap())
+    } else {
+        Filter::default()
+    };
+    filter
+}
 
 /// Get the input csv either from the given file or from the network
 ///
@@ -49,7 +67,7 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
 
     // Build our filter if needed
     //
-    let filter = Filter::from_opts(&opts);
+    let filter = filter_from_opts(&opts);
 
     match &opts.input {
         Some(what) => {
