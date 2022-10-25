@@ -15,6 +15,7 @@ pub mod safesky;
 use anyhow::{anyhow, Result};
 use log::trace;
 use serde::{Deserialize, Serialize};
+use std::fmt::{Debug, Formatter, Pointer};
 
 use crate::format::Source;
 use crate::site::aeroscope::Aeroscope;
@@ -33,9 +34,15 @@ pub trait Fetchable {
     fn format(&self) -> Source;
 }
 
+impl Debug for &dyn Fetchable {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.fmt(f)
+    }
+}
+
 /// Describe what a site is and associated credentials.
 ///
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum Site {
     Login {
@@ -79,6 +86,18 @@ pub enum Site {
         prefetch: bool,
     },
     Invalid,
+}
+
+impl Debug for Site {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Site::Anon { .. } => {}
+            Site::Key { .. } => {}
+            Site::Login { .. } => {}
+            _ => {}
+        }
+        self.fmt(f)
+    }
 }
 
 impl Site {
