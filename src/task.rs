@@ -11,7 +11,6 @@ use log::trace;
 use crate::site::Fetchable;
 use crate::{Cat21, Filter, Source};
 
-#[derive(Debug, PartialEq, Eq)]
 pub enum Input {
     File {
         format: Source,
@@ -24,7 +23,6 @@ pub enum Input {
     Nothing,
 }
 
-#[derive(Debug, PartialEq, Eq)]
 pub struct Task {
     /// name for the task
     pub name: String,
