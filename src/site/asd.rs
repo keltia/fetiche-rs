@@ -146,10 +146,6 @@ impl Fetchable for Asd {
         Ok(res.token)
     }
 
-    fn prefetch(&self, _token: &str) -> Result<String> {
-        Err(format_err!("prefetch not needed"))
-    }
-
     fn format(&self) -> Source {
         Source::Asd
     }

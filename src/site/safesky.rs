@@ -69,10 +69,6 @@ impl Fetchable for Safesky {
         todo!()
     }
 
-    fn prefetch(&self, _token: &str) -> Result<String> {
-        todo!()
-    }
-
     fn format(&self) -> Source {
         Source::Safesky
     }

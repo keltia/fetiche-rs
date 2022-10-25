@@ -28,8 +28,6 @@ pub trait Fetchable {
     fn authenticate(&self) -> Result<String>;
     /// Fetch actual data
     fn fetch(&self, token: &str) -> Result<String>;
-    /// Setup pre-fetch stuff
-    fn prefetch(&self, token: &str) -> Result<String>;
     /// Returns the input format
     fn format(&self) -> Source;
 }
@@ -60,8 +58,6 @@ pub enum Site {
         login: String,
         /// Password if needed
         password: String,
-        /// If a prefetch action is needed, prefetch should be true
-        prefetch: bool,
     },
     Key {
         /// Type of input
@@ -72,8 +68,6 @@ pub enum Site {
         api_key: String,
         /// Data fetching URL
         get: String,
-        /// If a prefetch action is needed, prefetch should be true
-        prefetch: bool,
     },
     Anon {
         /// Type of input
@@ -82,8 +76,6 @@ pub enum Site {
         base_url: String,
         /// Data fetching URL
         get: String,
-        /// If a prefetch action is needed, prefetch should be true
-        prefetch: bool,
     },
     Invalid,
 }
@@ -142,7 +134,6 @@ mod tests {
             format: "aeroscope".to_string(),
             base_url: "http://example.net/".to_string(),
             get: "/get".to_string(),
-            prefetch: false,
         };
 
         let mut h: HashMap<String, Site> = HashMap::new();
@@ -241,7 +232,6 @@ mod tests {
             token: "/login".to_string(),
             base_url: server.base_url().clone(),
             get: "/get".to_string(),
-            prefetch: false,
         };
         let t = site.fetch_token(&client);
 
