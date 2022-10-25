@@ -1,23 +1,33 @@
 //! Definition of a data format
 //!
+//! This module makes the link between the shared output format `Cat21` and the different
+//! input formats defined in the other modules.
+//!
+//! To add a new format, insert here the different hooks (`Source`, etc.) & names and a `FORMAT.rs`
+//! file which will define the input format and the transformations needed.
+//!
+
+pub mod aeroscope;
+pub mod asd;
+pub mod safesky;
 
 use crate::format::aeroscope::Aeroscope;
+use crate::format::asd::Asd;
 use crate::format::safesky::Safesky;
 
 use anyhow::Result;
 use csv::{Reader, WriterBuilder};
 use log::trace;
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 
-pub mod aeroscope;
-pub mod safesky;
+use std::io::Read;
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(untagged, rename_all = "lowercase")]
 pub enum Source {
     None,
     Aeroscope,
+    Asd,
     Safesky,
 }
 
@@ -39,6 +49,7 @@ impl Source {
     pub fn from_str(s: &str) -> Self {
         match s {
             "aeroscope" => Source::Aeroscope,
+            "asd" => Source::Asd,
             "safesky" => Source::Safesky,
             _ => Source::None,
         }
@@ -54,9 +65,14 @@ impl Source {
             .records()
             .map(|rec| {
                 let rec = rec.unwrap();
+                trace!("rec={:?}", rec);
                 let mut line = match self {
                     Source::Aeroscope => {
                         let l: Aeroscope = rec.deserialize(None).unwrap();
+                        Cat21::from(l)
+                    }
+                    Source::Asd => {
+                        let l: Asd = rec.deserialize(None).unwrap();
                         Cat21::from(l)
                     }
                     Source::Safesky => {

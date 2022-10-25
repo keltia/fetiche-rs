@@ -1,6 +1,6 @@
 default = "none"
 
-[sites.someplace]
+[sites.eih]
 
 format = "aeroscope"
 base_url = "http://127.0.0.1:2400"
@@ -8,18 +8,28 @@ token = "/login"
 login = "SOMETHING"
 password = "NOPE"
 get = "/drone/get"
+prefetch = false
 
-[sites.else]
+[sites.asd]
+
+format = "asd"
+base_url = "https://eur.airspacedrone.com"
+login = "USERNAME"
+password = "GUESS"
+get = "/api/journeys/filteredlocations"
+prefetch = false
+
+[sites.safesky]
 
 format = "safesky"
-base_url = "http://example.net:2400"
-token = "/auth"
-login = "USER"
-password = "MAYBE"
-get = "/foo"
+base_url = "https://public-api.safesky.app"
+api_key = "foobar"
+get = "/beacons"
+prefetch = false
 
 [sites.nope]
 
-format = "safesky"
+format = "aeroscope"
 base_url = "https://kansas.example.net:3000"
 get = "/somewhere/over/the/rainbow"
+prefetch = false

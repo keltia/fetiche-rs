@@ -1,4 +1,4 @@
-//! This is the [Rust] version of `aeroscope.sh` write by Marc Gravis for the ACUTE Project.
+//! This is the [Rust] version of `aeroscope.sh` written by Marc Gravis for the ACUTE Project.
 //! Now it tries to include features from `aeroscope-CDG.sh` and will support fetching from
 //! the Skysafe site as well.
 //!
@@ -16,6 +16,7 @@
 //!
 mod cli;
 mod config;
+mod filter;
 mod format;
 mod site;
 mod task;
@@ -23,6 +24,7 @@ mod version;
 
 use crate::cli::Opts;
 use crate::config::{get_config, Config};
+use crate::filter::Filter;
 use crate::format::{prepare_csv, Cat21, Source};
 use crate::site::Site;
 use crate::task::Task;
@@ -32,24 +34,9 @@ use std::fs;
 use std::time::Instant;
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use log::{info, trace};
 use stderrlog::LogLevelNum::Trace;
-
-#[derive(Debug)]
-pub struct Context {
-    /// Config taken from `config.toml`, modified by flags.
-    pub cfg: Config,
-    /// We want to restrict ourselves to today's data
-    pub today: bool,
-    /// Source to fetch data from
-    pub site: Option<String>,
-    /// Begin date
-    pub begin: Option<DateTime<Utc>>,
-    /// Begin date
-    pub end: Option<DateTime<Utc>>,
-}
 
 /// Get the input csv either from the given file or from the network
 ///
@@ -58,6 +45,10 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
         Some(fmt) => Source::from_str(fmt),
         _ => Source::None,
     };
+
+    // Build our filter if needed
+    //
+    let filter = Filter::from_opts(&opts);
 
     match &opts.input {
         Some(what) => {
@@ -73,39 +64,44 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
             // Fetch from network
             //
             let name = opts.site.as_ref().unwrap();
-            let site = Site::new(cfg, name);
+            let site = Site::new(cfg, name)?;
 
             info!("Fetching from network site {}", name);
 
-            Task::new(name).with(site).run()
+            Task::new(name).site(site).with(filter).run()
         }
     }
 }
 
-/// Currently unused
-fn new_context(opts: &Opts, cfg: Config) -> Context {
-    // Create our context
+/// Check the presence and validity of some of the arguments
+///
+fn check_args(opts: &Opts) -> Result<()> {
+    // Check arguments.
     //
-    let mut ctx = Context {
-        today: false,
-        begin: opts.begin,
-        end: opts.end,
-        site: None,
-        cfg,
-    };
-
-    // Consistency check and update context
-    //
-    if opts.today {
-        let now: DateTime<Utc> = Utc::now();
-        let begin = Utc.ymd(now.year(), now.month(), now.day()).and_hms(0, 0, 0);
-        let end = Utc
-            .ymd(now.year(), now.month(), now.day())
-            .and_hms(23, 59, 59);
-        ctx.begin = Some(begin);
-        ctx.end = Some(end);
+    if opts.input.is_some() && opts.site.is_some() {
+        return Err(anyhow!("Specify either a site or a filename, not both"));
     }
-    ctx
+
+    if opts.input.is_none() && opts.site.is_none() {
+        return Err(anyhow!("Specify at least a site or a filename"));
+    }
+
+    if opts.input.is_some() && opts.format.is_none() {
+        return Err(anyhow!("Format must be specified for files"));
+    }
+
+    // Do we have options for filter
+
+    if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
+        return Err(anyhow!("Can not specify --today and -B/-E"));
+    }
+
+    if (opts.begin.is_some() && opts.end.is_none()) || (opts.begin.is_none() && opts.end.is_some())
+    {
+        return Err(anyhow!("We need both -B/-E or none"));
+    }
+
+    Ok(())
 }
 
 fn main() -> Result<()> {
@@ -121,18 +117,10 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Check arguments.
+    // Check arguments
     //
-    if opts.input.is_some() && opts.site.is_some() {
-        return Err(anyhow!("Specify either a site or a filename, not both"));
-    }
-
-    if opts.input.is_none() && opts.site.is_none() {
-        return Err(anyhow!("Specify at least a site or a filename"));
-    }
-
-    if opts.input.is_some() && opts.format.is_none() {
-        return Err(anyhow!("Format must be specified for files"));
+    if let Err(e) = check_args(&opts) {
+        return Err(e);
     }
 
     // Prepare logging.
@@ -154,6 +142,7 @@ fn main() -> Result<()> {
 
     let data = get_from_source(&cfg, &opts)?;
     let len = data.len();
+    trace!("{} bytes received", len);
     let data = prepare_csv(data)?;
 
     let now = now.elapsed().as_millis();

@@ -1,9 +1,9 @@
 [package]
 name = "drone-gencsv"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 authors = [ "Ollivier Robert <ollivier.robert@eurocontrol.int>"]
-description = "CLI utility to convert Aeroscope data into Cat21 CSV."
+description = "CLI utility to convert Aeronautical data into Cat21-like CSV."
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/keltia/drone-gencsv"
