@@ -77,9 +77,16 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
 
             info!("Fetching from network site {}", name);
 
-            Task::new(name).site(Box::new(site)).run()
+            let args: String = if let Some(args) = opts.args {
+                prepare_args(args)
+            };
+            Task::new(name).site(site).with(args).run()
         }
     }
+}
+
+fn prepare_args(args: &str) -> String {
+    String::from_utf8(args)
 }
 
 /// Currently unused
