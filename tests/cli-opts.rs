@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 
-const BIN: &str = "cat21";
+const BIN: &str = "cat21conv";
 
 #[test]
 fn test_empty_args() {
