@@ -60,10 +60,9 @@ impl Source {
         T: Read,
     {
         trace!("Reading & transforming…");
-        let mut cnt = 1;
         let res: Vec<Cat21> = rdr
             .records()
-            .map(|rec| {
+            .enumerate(|cnt, rec| {
                 let rec = rec.unwrap();
                 trace!("rec={:?}", rec);
                 let mut line = match self {
@@ -82,7 +81,6 @@ impl Source {
                     _ => panic!("unknown format"),
                 };
                 line.rec_num = cnt;
-                cnt += 1;
                 line
             })
             .collect();
