@@ -66,7 +66,7 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
 
     // Build our filter if needed
     //
-    let filter = filter_from_opts(&opts);
+    let filter = filter_from_opts(opts);
 
     match &opts.input {
         Some(what) => {
@@ -137,9 +137,7 @@ fn main() -> Result<()> {
 
     // Check arguments
     //
-    if let Err(e) = check_args(&opts) {
-        return Err(e);
-    }
+    check_args(&opts)?;
 
     // Prepare logging.
     //
