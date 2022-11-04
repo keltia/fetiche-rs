@@ -120,7 +120,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
-    use crate::Config;
+    use crate::makepath;
     use clap::{crate_name, crate_version};
     use std::path::PathBuf;
 
@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_site_loading() {
-        let cfn = PathBuf::from("src/config.toml");
+        let cfn: PathBuf = makepath!("src", "bin", "cat21conv", "config.toml");
         let cfg = Config::load(&cfn);
         assert!(cfg.is_ok());
 
