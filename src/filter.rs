@@ -1,7 +1,7 @@
 //! submodule to manage date filters
 //!
 
-use chrono::{Local, NaiveDateTime};
+use chrono::NaiveDateTime;
 
 /// If we specify -B/-E or --today, we need to pass these below
 ///
