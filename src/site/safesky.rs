@@ -16,8 +16,6 @@ use crate::config::Config;
 use crate::format::Source;
 use crate::site::{Fetchable, Site};
 
-const NAME: &str = "safesky";
-
 #[derive(Clone, Debug)]
 pub struct Safesky {
     pub format: Source,

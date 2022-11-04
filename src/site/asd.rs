@@ -38,8 +38,6 @@ pub struct Asd {
     pub client: Client,
 }
 
-const NAME: &str = "asd";
-
 impl Asd {
     pub fn new() -> Self {
         Asd {

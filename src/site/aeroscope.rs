@@ -35,8 +35,6 @@ pub struct Aeroscope {
     pub client: Client,
 }
 
-const NAME: &str = "aeroscope";
-
 impl Aeroscope {
     pub fn new() -> Self {
         Aeroscope {
