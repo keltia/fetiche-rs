@@ -40,7 +40,7 @@ use stderrlog::LogLevelNum::Trace;
 pub fn filter_from_opts(opts: &Opts) -> Filter {
     let t: DateTime<Utc> = Utc::now();
 
-    let filter = if opts.today {
+    if opts.today {
         // Build our own begin, end
         //
         let begin = NaiveDate::from_ymd(t.year(), t.month(), t.day()).and_hms(0, 0, 0);
@@ -53,8 +53,7 @@ pub fn filter_from_opts(opts: &Opts) -> Filter {
         Filter::from(opts.begin.unwrap(), opts.end.unwrap())
     } else {
         Filter::default()
-    };
-    filter
+    }
 }
 
 /// Get the input csv either from the given file or from the network
