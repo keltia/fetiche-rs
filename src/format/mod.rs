@@ -14,6 +14,7 @@ pub mod safesky;
 use crate::format::aeroscope::Aeroscope;
 use crate::format::asd::Asd;
 use crate::format::safesky::Safesky;
+use std::fmt::{Display, Formatter};
 
 use anyhow::Result;
 use csv::{Reader, WriterBuilder};
@@ -65,28 +66,6 @@ impl Source {
         Source::None
     }
 
-    /// Create a format from its name
-    ///
-    pub fn from_str(s: &str) -> Self {
-        match s {
-            "aeroscope" => Source::Aeroscope,
-            "asd" => Source::Asd,
-            "safesky" => Source::Safesky,
-            _ => Source::None,
-        }
-    }
-
-    /// Create a name from the type
-    ///
-    pub fn to_string(&self) -> String {
-        match self {
-            Source::Aeroscope => "aeroscope".into(),
-            Source::Asd => "asd".into(),
-            Source::Safesky => "safesky".into(),
-            Source::None => "none".into(),
-        }
-    }
-
     /// Process each record coming from the input source, apply `Cat::from()` onto it
     /// and return the list.
     ///
@@ -107,6 +86,31 @@ impl Source {
             })
             .collect();
         Ok(res)
+    }
+}
+
+impl From<&str> for Source {
+    /// Create a format from its name
+    ///
+    fn from(s: &str) -> Self {
+        match s {
+            "aeroscope" => Source::Aeroscope,
+            "asd" => Source::Asd,
+            "safesky" => Source::Safesky,
+            _ => Source::None,
+        }
+    }
+}
+
+impl Display for Source {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s: String = match self {
+            Source::Aeroscope => "aeroscope".into(),
+            Source::Asd => "asd".into(),
+            Source::Safesky => "safesky".into(),
+            Source::None => "none".into(),
+        };
+        write!(f, "{}", s)
     }
 }
 
