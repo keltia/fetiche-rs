@@ -182,7 +182,7 @@ mod tests {
             get: "/get".to_string(),
             client,
         };
-        let t = site.authenticate(&client);
+        let t = site.authenticate();
 
         m.assert();
         assert!(t.is_ok());
