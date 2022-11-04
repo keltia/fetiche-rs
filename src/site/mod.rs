@@ -74,10 +74,16 @@ pub enum Site {
 }
 
 impl Site {
-    /// Initialize a site by checking whether it is present in the configuration file
+    /// Initialize a site
     ///
-    pub fn new(cfg: &Config, name: &str) -> Result<Box<dyn Fetchable>> {
-        trace!("New site {}", name);
+    pub fn new() -> Self {
+        Site::Invalid
+    }
+
+    /// Load site by checking whether it is present in the configuration file
+    ///
+    pub fn load(&mut self, name: &str, cfg: &Config) -> Result<Box<dyn Fetchable>> {
+        trace!("Loading site {}", name);
         match cfg.sites.get(name) {
             Some(site) => {
                 dbg!(&site);
@@ -114,6 +120,12 @@ impl Site {
             }
             _ => Source::None,
         }
+    }
+}
+
+impl Default for Site {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
