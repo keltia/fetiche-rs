@@ -63,7 +63,7 @@ impl Asd {
                 get,
                 ..
             } => {
-                self.format = Source::from_str(format);
+                self.format = format.as_str().into();
                 self.base_url = base_url.to_owned();
                 self.token = token.to_owned();
                 self.get = get.to_owned();
