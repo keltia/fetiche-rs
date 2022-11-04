@@ -133,7 +133,7 @@ mod tests {
 
         let cfg = cfg.unwrap();
         assert!(!cfg.sites.is_empty());
-        let someplace = &cfg.sites["someplace"];
+        let someplace = &cfg.sites["eih"];
         match someplace {
             Site::Login { password, .. } => assert_eq!("NOPE", password),
             _ => (),
