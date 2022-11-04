@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use chrono::{DateTime, Local};
+use chrono::NaiveDateTime;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 
 /// CLI options
@@ -11,7 +11,7 @@ use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 pub struct Opts {
     /// Start the data at specified date (optional)
     #[clap(short = 'B', long)]
-    pub begin: Option<DateTime<Local>>,
+    pub begin: Option<NaiveDateTime>,
     /// configuration file.
     #[clap(short = 'c', long)]
     pub config: Option<PathBuf>,
@@ -20,7 +20,7 @@ pub struct Opts {
     pub debug: bool,
     /// End date (optional)
     #[clap(short = 'E', long)]
-    pub end: Option<DateTime<Local>>,
+    pub end: Option<NaiveDateTime>,
     /// Format must be specified if looking at a file.
     #[clap(short = 'F', long)]
     pub format: Option<String>,
