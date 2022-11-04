@@ -145,7 +145,6 @@ mod tests {
     #[test]
     fn test_site_new_good() {
         let cfg = set_default();
-        dbg!(toml::to_string(&cfg).unwrap());
 
         let s = Site::new(&cfg, "foo");
         assert!(s.is_ok());
@@ -154,7 +153,6 @@ mod tests {
     #[test]
     fn test_site_new_unknown() {
         let cfg = set_default();
-        dbg!(toml::to_string(&cfg).unwrap());
 
         let s = Site::new(&cfg, "bar");
         assert!(s.is_err());
@@ -167,20 +165,20 @@ mod tests {
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
-        let s = cfg.sites;
+        let s = cfg.sites.clone();
 
         assert_eq!("none", cfg.default);
         assert!(!s.is_empty());
-        assert_eq!(3, s.len());
+        assert_eq!(4, s.len());
         assert!(s.contains_key("nope"));
 
         for (_, s) in s.iter() {
             match s {
                 Site::Anon { format, .. } => {
-                    assert_eq!("safesky", format);
+                    assert_eq!("aeroscope", format);
                 }
                 Site::Key { format, .. } => {
-                    assert_eq!("none", format);
+                    assert_eq!("safesky", format);
                 }
                 Site::Login {
                     format,
