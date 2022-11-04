@@ -66,12 +66,9 @@ impl Task {
     ///
     pub fn format(&mut self, fmt: Source) -> &mut Self {
         trace!("Add format {:?}", fmt);
-        match &self.input {
-            Input::File { path, .. } => {
-                let path = path.clone();
-                self.input = Input::File { format: fmt, path }
-            }
-            _ => (),
+        if let Input::File { path, .. } = &self.input {
+            let path = path.clone();
+            self.input = Input::File { format: fmt, path }
         }
         self
     }
@@ -91,7 +88,7 @@ impl Task {
     ///
     pub fn with(&mut self, f: Filter) -> &mut Self {
         trace!("Add date filter {:?}", f);
-        self.args = f.to_owned();
+        self.args = f;
         self
     }
 
