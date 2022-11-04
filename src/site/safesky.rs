@@ -12,7 +12,6 @@ use log::error;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::config::Config;
 use crate::format::Source;
 use crate::site::{Fetchable, Site};
 
@@ -36,8 +35,8 @@ impl Safesky {
         }
     }
 
-    pub fn load(&mut self, cfg: &Config) -> &mut Self {
-        match &cfg.sites[NAME] {
+    pub fn load(&mut self, site: &Site) -> &mut Self {
+        match site {
             Site::Key {
                 format,
                 base_url,
@@ -51,7 +50,7 @@ impl Safesky {
                 self.get = get.to_owned();
             }
             _ => {
-                error!("Missing config data for {NAME}")
+                error!("Missing config data for {site:?}")
             }
         }
         self

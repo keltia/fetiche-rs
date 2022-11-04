@@ -16,7 +16,6 @@ use log::{debug, error, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::config::Config;
 use crate::format::Source;
 use crate::site::{Fetchable, Site};
 
@@ -53,8 +52,8 @@ impl Asd {
 
     /// Load some data from the configuration file
     ///
-    pub fn load(&mut self, cfg: &Config) -> &mut Self {
-        match &cfg.sites[NAME] {
+    pub fn load(&mut self, site: &Site) -> &mut Self {
+        match site {
             Site::Login {
                 format,
                 base_url,
@@ -72,7 +71,7 @@ impl Asd {
                 self.password = password.to_owned();
             }
             _ => {
-                error!("Missing config data for {NAME}")
+                error!("Missing config data for {site:?}")
             }
         }
         self
