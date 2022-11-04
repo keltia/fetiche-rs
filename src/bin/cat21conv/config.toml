@@ -13,6 +13,7 @@ get = "/drone/get"
 
 format = "asd"
 base_url = "https://eur.airspacedrone.com"
+token = "/api/security"
 login = "USERNAME"
 password = "GUESS"
 get = "/api/journeys/filteredlocations"
