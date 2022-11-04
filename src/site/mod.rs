@@ -43,8 +43,6 @@ pub enum Site {
         format: String,
         /// Base URL (to avoid repeating)
         base_url: String,
-        /// Auth submit format
-        auth: String,
         /// Token fetching URL (if present call this first)
         token: String,
         /// Data fetching URL
