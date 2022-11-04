@@ -153,12 +153,8 @@ struct Token {
 mod tests {
     use super::*;
 
-    use clap::{crate_name, crate_version};
     use httpmock::prelude::*;
-    use serde::{Deserialize, Serialize};
     use serde_json::json;
-
-    use crate::site::Site;
 
     #[test]
     fn test_get_aeroscope_token() {
