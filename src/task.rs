@@ -126,7 +126,10 @@ mod tests {
         let t = Task::new("foo");
 
         assert_eq!("foo", t.name);
-        assert_eq!(Input::Nothing, t.input);
+        match t.input {
+            Input::Nothing => (),
+            _ => panic!("bad type"),
+        }
     }
 
     #[test]
@@ -136,12 +139,12 @@ mod tests {
         t.path("/nonexistent");
 
         assert_eq!("foo", t.name);
-        assert_eq!(
-            Input::File {
-                format: Source::None,
-                path: PathBuf::from("/nonexistent"),
-            },
-            t.input
-        );
+        match t.input {
+            Input::File { path, format } => {
+                assert_eq!(Source::None, format);
+                assert_eq!(PathBuf::from("/nonexistent"), path);
+            }
+            _ => panic!("bad type"),
+        };
     }
 }
