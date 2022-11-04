@@ -36,6 +36,19 @@ impl Default for Config {
     }
 }
 
+/// Simple macro to generate PathBuf from a series of entries
+///
+#[macro_export]
+macro_rules! makepath {
+    ($($item:expr),+) => {
+        [
+        $(PathBuf::from($item),)+
+        ]
+        .iter()
+        .collect()
+    };
+}
+
 impl Config {
     /// Returns an empty struct
     pub fn new() -> Config {
@@ -59,14 +72,7 @@ impl Config {
     #[cfg(unix)]
     pub fn default_file() -> PathBuf {
         let homedir = home_dir().unwrap();
-        let def: PathBuf = [
-            homedir,
-            PathBuf::from(BASEDIR),
-            PathBuf::from(crate_name!()),
-            PathBuf::from(CONFIG),
-        ]
-        .iter()
-        .collect();
+        let def: PathBuf = makepath!(homedir, BASEDIR, crate_name!(), CONFIG);
         trace!("Default file: {:?}", def);
         def
     }
@@ -76,13 +82,7 @@ impl Config {
     pub fn default_file() -> PathBuf {
         let homedir = env::var("LOCALAPPDATA").unwrap();
 
-        let def: PathBuf = [
-            PathBuf::from(homedir),
-            PathBuf::from(crate_name!()),
-            PathBuf::from(CONFIG),
-        ]
-        .iter()
-        .collect();
+        let def: PathBuf = makepath!(homedir, crate_name!(), CONFIG);
         def
     }
 }
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_config_load() {
-        let cn = PathBuf::from("src/config.toml");
+        let cn: PathBuf = makepath!("src", "bin", "cat21conv", CONFIG);
         assert!(cn.try_exists().is_ok());
 
         let cfg = Config::load(&cn);
