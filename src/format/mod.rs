@@ -76,14 +76,29 @@ impl Source {
         }
     }
 
+    /// Create a name from the type
+    ///
+    pub fn to_string(&self) -> String {
+        match self {
+            Source::Aeroscope => "aeroscope".into(),
+            Source::Asd => "asd".into(),
+            Source::Safesky => "safesky".into(),
+            Source::None => "none".into(),
+        }
+    }
+
+    /// Process each record coming from the input source, apply `Cat::from()` onto it
+    /// and return the list.
+    ///
     pub fn process<T>(self, rdr: &mut Reader<T>) -> Result<Vec<Cat21>>
     where
         T: Read,
     {
         trace!("Reading & transforming…");
-        let res: Vec<Cat21> = rdr
+        let res: Vec<_> = rdr
             .records()
-            .enumerate(|cnt, rec| {
+            .enumerate()
+            .map(|(cnt, rec)| {
                 let rec = rec.unwrap();
                 trace!("rec={:?}", rec);
                 let mut line = into_cat21!(self, rec, Aeroscope, Asd, Safesky);
