@@ -132,11 +132,11 @@ impl Default for Site {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use std::collections::HashMap;
+    use std::path::PathBuf;
 
     use crate::makepath;
-    use clap::{crate_name, crate_version};
-    use std::path::PathBuf;
 
     fn set_default() -> Config {
         let s = Site::Anon {
@@ -160,7 +160,7 @@ mod tests {
     fn test_site_new_good() {
         let cfg = set_default();
 
-        let s = Site::new(&cfg, "foo");
+        let s = Site::new().load("foo", &cfg);
         assert!(s.is_ok());
     }
 
@@ -168,7 +168,7 @@ mod tests {
     fn test_site_new_unknown() {
         let cfg = set_default();
 
-        let s = Site::new(&cfg, "bar");
+        let s = Site::new().load("bar", &cfg);
         assert!(s.is_err());
     }
 
