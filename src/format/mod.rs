@@ -37,6 +37,27 @@ impl Default for Source {
     }
 }
 
+/// Macro to create the code which deserialize known types.
+///
+/// It takes three arguments:
+/// - from
+/// - object
+/// - list of types
+///
+macro_rules! into_cat21 {
+    ($from: ident, $rec:ident, $($name:ident),+) => {
+        match $from {
+        $(
+            Source::$name => {
+                let l: $name = $rec.deserialize(None).unwrap();
+                Cat21::from(l)
+            },
+        )+
+            _ => panic!("unknown format"),
+        }
+    };
+}
+
 impl Source {
     /// Create a new empty format
     ///
@@ -65,21 +86,7 @@ impl Source {
             .enumerate(|cnt, rec| {
                 let rec = rec.unwrap();
                 trace!("rec={:?}", rec);
-                let mut line = match self {
-                    Source::Aeroscope => {
-                        let l: Aeroscope = rec.deserialize(None).unwrap();
-                        Cat21::from(l)
-                    }
-                    Source::Asd => {
-                        let l: Asd = rec.deserialize(None).unwrap();
-                        Cat21::from(l)
-                    }
-                    Source::Safesky => {
-                        let l: Safesky = rec.deserialize(None).unwrap();
-                        Cat21::from(l)
-                    }
-                    _ => panic!("unknown format"),
-                };
+                let mut line = into_cat21!(self, rec, Aeroscope, Asd, Safesky);
                 line.rec_num = cnt;
                 line
             })
