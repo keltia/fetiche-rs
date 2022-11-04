@@ -2,7 +2,7 @@
 //! CSV data Cat21-like
 //!
 
-use chrono::{DateTime, Local};
+use chrono::NaiveDateTime;
 use serde::Deserialize;
 
 use crate::format::{to_feet, to_knots, Cat21};
@@ -22,7 +22,7 @@ pub struct Asd {
     // $5
     pub location: u32,
     // $6
-    pub timestamp: DateTime<Local>,
+    pub timestamp: NaiveDateTime,
     // $7
     pub latitude: f32,
     // $8
