@@ -75,6 +75,12 @@ impl Aeroscope {
     }
 }
 
+impl Default for Aeroscope {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Fetchable for Aeroscope {
     /// Authenticate to the site with login/password and return a token
     ///

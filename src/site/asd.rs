@@ -78,6 +78,12 @@ impl Asd {
     }
 }
 
+impl Default for Asd {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Fetchable for Asd {
     fn authenticate(&self) -> Result<String> {
         // Prepare our submission data

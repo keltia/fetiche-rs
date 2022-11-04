@@ -56,6 +56,12 @@ impl Safesky {
     }
 }
 
+impl Default for Safesky {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Fetchable for Safesky {
     fn authenticate(&self) -> Result<String> {
         todo!()
