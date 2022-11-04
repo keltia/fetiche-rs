@@ -102,6 +102,17 @@ impl Site {
             None => Err(anyhow!("no such site {name}")),
         }
     }
+
+    /// Return the site format
+    ///
+    pub fn format(&self) -> Source {
+        match self {
+            Site::Login { format, .. } | Site::Key { format, .. } | Site::Anon { format, .. } => {
+                format.as_str().into()
+            }
+            _ => Source::None,
+        }
+    }
 }
 
 #[cfg(test)]
