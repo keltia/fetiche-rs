@@ -10,7 +10,6 @@
 use anyhow::Result;
 use log::error;
 use reqwest::blocking::Client;
-use serde::{Deserialize, Serialize};
 
 use crate::format::Source;
 use crate::site::{Fetchable, Site};
