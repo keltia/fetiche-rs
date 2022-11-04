@@ -61,7 +61,7 @@ pub fn filter_from_opts(opts: &Opts) -> Filter {
 ///
 fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
     let fmt = match &opts.format {
-        Some(fmt) => fmt.into(),
+        Some(fmt) => fmt.as_str().into(),
         _ => Source::None,
     };
 
