@@ -81,24 +81,28 @@ impl Site {
     pub fn new(cfg: &Config, name: &str) -> Result<Box<dyn Fetchable>> {
         trace!("New site {}", name);
         match cfg.sites.get(name) {
-            Some(_) => match name {
-                "aeroscope" => {
-                    let s = Aeroscope::new().load(&cfg).clone();
+            Some(site) => {
+                dbg!(&site);
+                let fmt = site.format();
+                match fmt {
+                    Source::Aeroscope => {
+                        let s = Aeroscope::new().load(site).clone();
 
-                    Ok(Box::new(s))
-                }
-                "asd" => {
-                    let s = Asd::new().load(&cfg).clone();
+                        Ok(Box::new(s))
+                    }
+                    Source::Asd => {
+                        let s = Asd::new().load(site).clone();
 
-                    Ok(Box::new(s))
-                }
-                "safesky" => {
-                    let s = Safesky::new().load(&cfg).clone();
+                        Ok(Box::new(s))
+                    }
+                    Source::Safesky => {
+                        let s = Safesky::new().load(site).clone();
 
-                    Ok(Box::new(s))
+                        Ok(Box::new(s))
+                    }
+                    _ => Err(anyhow!("invalid site {name}")),
                 }
-                _ => Err(anyhow!("invalid site {name}")),
-            },
+            }
             None => Err(anyhow!("no such site {name}")),
         }
     }
