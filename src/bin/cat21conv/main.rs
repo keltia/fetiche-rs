@@ -30,7 +30,7 @@ use std::fs;
 use std::time::Instant;
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Datelike, Local, TimeZone};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use clap::Parser;
 use log::{info, trace};
 use stderrlog::LogLevelNum::Trace;
@@ -38,13 +38,13 @@ use stderrlog::LogLevelNum::Trace;
 /// From the CLI options
 ///
 pub fn filter_from_opts(opts: &Opts) -> Filter {
-    let t: DateTime<Local> = Local::now();
+    let t: DateTime<Utc> = Utc::now();
 
     let filter = if opts.today {
         // Build our own begin, end
         //
-        let begin = Local.ymd(t.year(), t.month(), t.day()).and_hms(0, 0, 0);
-        let end = Local.ymd(t.year(), t.month(), t.day()).and_hms(23, 59, 59);
+        let begin = NaiveDate::from_ymd(t.year(), t.month(), t.day()).and_hms(0, 0, 0);
+        let end = NaiveDate::from_ymd(t.year(), t.month(), t.day()).and_hms(23, 59, 59);
 
         Filter::from(begin, end)
     } else if opts.begin.is_some() {
