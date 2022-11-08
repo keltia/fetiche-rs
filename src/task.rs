@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use csv::ReaderBuilder;
-use log::trace;
+use log::debug;
 
 use crate::filter::Filter;
 use crate::format::{Cat21, Format};
@@ -39,7 +39,7 @@ impl Task {
     /// Initialize our environment
     ///
     pub fn new(name: &str) -> Self {
-        trace!("New task {}", name);
+        debug!("New task {}", name);
         Task {
             name: name.to_owned(),
             input: Input::Nothing,
@@ -50,7 +50,7 @@ impl Task {
     /// Set the input path (for files)
     ///
     pub fn path(&mut self, name: &str) -> &mut Self {
-        trace!("Add path: {}", name);
+        debug!("Add path: {}", name);
         let fmt = match &self.input {
             Input::File { format, .. } | Input::Network { format, .. } => format,
             _ => &Format::None,
@@ -65,7 +65,7 @@ impl Task {
     /// Set the input format (from cmdline for files)
     ///
     pub fn format(&mut self, fmt: Format) -> &mut Self {
-        trace!("Add format {:?}", fmt);
+        debug!("Add format {:?}", fmt);
         if let Input::File { path, .. } = &self.input {
             let path = path.clone();
             self.input = Input::File { format: fmt, path }
@@ -76,7 +76,7 @@ impl Task {
     /// Copy the site's data
     ///
     pub fn site(&mut self, s: Box<dyn Fetchable>) -> &mut Self {
-        trace!("Add site {:?}", self.name);
+        debug!("Add site {:?}", self.name);
         self.input = Input::Network {
             format: s.format(),
             site: s,
@@ -87,7 +87,7 @@ impl Task {
     /// Add a date filter if specified
     ///
     pub fn with(&mut self, f: Filter) -> &mut Self {
-        trace!("Add date filter {:?}", f);
+        debug!("Add date filter {:?}", f);
         self.args = f;
         self
     }
@@ -95,7 +95,7 @@ impl Task {
     /// The heart of the matter: fetch and process data
     ///
     pub fn run(&mut self) -> Result<Vec<Cat21>> {
-        trace!("…run()…");
+        debug!("…run()…");
         match &self.input {
             // Input::File is simple, we have the format
             //
