@@ -137,8 +137,31 @@ impl Fetchable for Aeroscope {
         Ok(resp)
     }
 
-    fn format(&self) -> Source {
-        Source::Aeroscope
+    /// Process data fetch in previous stage and render it as wanted
+    ///
+    fn process(&self, input: String) -> Result<Vec<Cat21>> {
+        debug!("Reading & transforming…");
+        debug!("IN={:?}", input);
+        let res: Vec<InputFormat> = serde_json::from_str(&input)?;
+
+        let res = res
+            .iter()
+            .inspect(|f| println!("res={:?}", f))
+            .enumerate()
+            .inspect(|(n, f)| println!("res={:?}-{:?}", n, f))
+            .map(|(cnt, rec)| {
+                debug!("rec={:?}", rec);
+                let mut line = Cat21::from(rec);
+                line.rec_num = cnt;
+                line
+            })
+            .collect();
+        debug!("res={:?}", res);
+        Ok(res)
+    }
+
+    fn format(&self) -> Format {
+        Format::Aeroscope
     }
 }
 

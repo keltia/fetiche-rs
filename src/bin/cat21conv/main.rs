@@ -23,7 +23,7 @@ use drone_utils::format::{prepare_csv, Cat21, Format};
 use drone_utils::site::Site;
 use drone_utils::task::Task;
 
-use crate::cli::Opts;
+use crate::cli::{check_args, Opts};
 use crate::version::version;
 
 use std::fs;
@@ -33,7 +33,7 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use clap::Parser;
 use log::{info, trace};
-use stderrlog::LogLevelNum::Trace;
+use stderrlog::LogLevelNum::{Debug, Info, Trace};
 
 /// From the CLI options
 ///
@@ -91,37 +91,6 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
     }
 }
 
-/// Check the presence and validity of some of the arguments
-///
-fn check_args(opts: &Opts) -> Result<()> {
-    // Check arguments.
-    //
-    if opts.input.is_some() && opts.site.is_some() {
-        return Err(anyhow!("Specify either a site or a filename, not both"));
-    }
-
-    if opts.input.is_none() && opts.site.is_none() {
-        return Err(anyhow!("Specify at least a site or a filename"));
-    }
-
-    if opts.input.is_some() && opts.format.is_none() {
-        return Err(anyhow!("Format must be specified for files"));
-    }
-
-    // Do we have options for filter
-
-    if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
-        return Err(anyhow!("Can not specify --today and -B/-E"));
-    }
-
-    if (opts.begin.is_some() && opts.end.is_none()) || (opts.begin.is_none() && opts.end.is_some())
-    {
-        return Err(anyhow!("We need both -B/-E or none"));
-    }
-
-    Ok(())
-}
-
 fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
@@ -139,11 +108,24 @@ fn main() -> Result<()> {
     //
     check_args(&opts)?;
 
+    // Check verbosity
+    //
+    let mut lvl = match opts.verbose {
+        0 => Info,
+        1 => Debug,
+        2 => Trace,
+        _ => Trace,
+    };
+
+    if opts.debug {
+        lvl = Trace;
+    }
+
     // Prepare logging.
     //
     stderrlog::new()
-        .module(module_path!())
-        .verbosity(Trace)
+        //.modules([module_path!(), "drone-utils", "format", "site"])
+        .verbosity(lvl)
         .init()?;
 
     // Load default config if nothing is specified

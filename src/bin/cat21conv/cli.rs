@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 
@@ -34,11 +35,42 @@ pub struct Opts {
     #[clap(long)]
     pub today: bool,
     /// Verbose mode.
-    #[clap(short = 'v', long)]
-    pub verbose: Option<usize>,
+    #[clap(short = 'v', long, action = clap::ArgAction::Count)]
+    pub verbose: u8,
     /// Display utility full version.
     #[clap(short = 'V', long)]
     pub version: bool,
     /// Input file.
     pub input: Option<PathBuf>,
+}
+
+/// Check the presence and validity of some of the arguments
+///
+pub fn check_args(opts: &Opts) -> Result<()> {
+    // Check arguments.
+    //
+    if opts.input.is_some() && opts.site.is_some() {
+        return Err(anyhow!("Specify either a site or a filename, not both"));
+    }
+
+    if opts.input.is_none() && opts.site.is_none() {
+        return Err(anyhow!("Specify at least a site or a filename"));
+    }
+
+    if opts.input.is_some() && opts.format.is_none() {
+        return Err(anyhow!("Format must be specified for files"));
+    }
+
+    // Do we have options for filter
+
+    if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
+        return Err(anyhow!("Can not specify --today and -B/-E"));
+    }
+
+    if (opts.begin.is_some() && opts.end.is_none()) || (opts.begin.is_none() && opts.end.is_some())
+    {
+        return Err(anyhow!("We need both -B/-E or none"));
+    }
+
+    Ok(())
 }

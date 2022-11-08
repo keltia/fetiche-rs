@@ -71,7 +71,11 @@ impl Fetchable for Safesky {
         todo!()
     }
 
-    fn format(&self) -> Source {
-        Source::Safesky
+    fn process(&self, input: String) -> Result<Vec<Cat21>> {
+        todo!()
+    }
+
+    fn format(&self) -> Format {
+        Format::Safesky
     }
 }

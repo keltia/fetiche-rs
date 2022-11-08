@@ -96,24 +96,29 @@ impl Task {
     ///
     pub fn run(&mut self) -> Result<Vec<Cat21>> {
         trace!("…run()…");
-        let (res, format) = match &self.input {
+        match &self.input {
+            // Input::File is simple, we have the format
+            //
             Input::File { format, path } => {
                 let res = fs::read_to_string(path)?;
-                (res, format)
+                let mut rdr = ReaderBuilder::new()
+                    .flexible(true)
+                    .from_reader(res.as_bytes());
+                format.process(&mut rdr)
             }
+            // Input::Network is more complicated and rely on the Site
+            //
             Input::Network { format, site } => {
                 // Fetch data as bytes
                 //
                 let token = site.authenticate()?;
-                let res = site.fetch(&token)?;
-                (res, format)
+                let data = site.fetch(&token)?;
+                let res = site.process(data)?;
+                debug!("{:?} as {}", res, format);
+                Ok(res)
             }
             Input::Nothing => return Err(anyhow!("no format specified")),
-        };
-        let mut rdr = ReaderBuilder::new()
-            .flexible(true)
-            .from_reader(res.as_bytes());
-        format.process(&mut rdr)
+        }
     }
 }
 

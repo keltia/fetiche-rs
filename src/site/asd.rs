@@ -12,6 +12,7 @@
 
 use anyhow::Result;
 use clap::{crate_name, crate_version};
+use csv::ReaderBuilder;
 use log::{debug, error, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
@@ -145,7 +146,27 @@ impl Fetchable for Asd {
         let resp = resp?.text()?;
         let res: Token = serde_json::from_str(&resp)?;
         debug!("{:?}", res);
-        Ok(res.token)
+        Ok(res.content)
+    }
+
+    fn process(&self, input: String) -> Result<Vec<Cat21>> {
+        let mut rdr = ReaderBuilder::new().flexible(true);
+        let res: Vec<_> = rdr
+            .records()
+            .inspect(|f| println!("res={:?}", f.as_ref().unwrap()))
+            .enumerate()
+            .inspect(|(n, f)| println!("res={:?}-{:?}", n, f))
+            .map(|(cnt, rec)| {
+                let rec = rec.unwrap();
+                debug!("rec={:?}", rec);
+                let line: Asd = rec.deserialize(None).unwrap();
+                let mut line = Cat21::from(line);
+                line.rec_num = cnt;
+                line
+            })
+            .collect();
+        debug!("res={:?}", res);
+        Ok(res)
     }
 
     fn format(&self) -> Format {
