@@ -25,16 +25,16 @@ use std::io::Read;
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(untagged, rename_all = "lowercase")]
-pub enum Source {
+pub enum Format {
     None,
     Aeroscope,
     Asd,
     Safesky,
 }
 
-impl Default for Source {
+impl Default for Format {
     fn default() -> Self {
-        Source::new()
+        Format::None
     }
 }
 
@@ -59,16 +59,10 @@ macro_rules! into_cat21 {
     };
 }
 
-impl Source {
-    /// Create a new empty format
-    ///
-    pub fn new() -> Self {
-        Source::None
-    }
-
-    /// Process each record coming from the input source, apply `Cat::from()` onto it
-    /// and return the list.
-    ///
+impl Format {
+    // Process each record coming from the input source, apply `Cat::from()` onto it
+    // and return the list.
+    //
     pub fn process<T>(self, rdr: &mut Reader<T>) -> Result<Vec<Cat21>>
     where
         T: Read,
@@ -89,26 +83,26 @@ impl Source {
     }
 }
 
-impl From<&str> for Source {
+impl From<&str> for Format {
     /// Create a format from its name
     ///
     fn from(s: &str) -> Self {
         match s {
-            "aeroscope" => Source::Aeroscope,
-            "asd" => Source::Asd,
-            "safesky" => Source::Safesky,
-            _ => Source::None,
+            "aeroscope" => Format::Aeroscope,
+            "asd" => Format::Asd,
+            "safesky" => Format::Safesky,
+            _ => Format::None,
         }
     }
 }
 
-impl Display for Source {
+impl Display for Format {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let s: String = match self {
-            Source::Aeroscope => "aeroscope".into(),
-            Source::Asd => "asd".into(),
-            Source::Safesky => "safesky".into(),
-            Source::None => "none".into(),
+            Format::Aeroscope => "aeroscope".into(),
+            Format::Asd => "asd".into(),
+            Format::Safesky => "safesky".into(),
+            Format::None => "none".into(),
         };
         write!(f, "{}", s)
     }
@@ -242,9 +236,9 @@ mod tests {
 
     #[test]
     fn test_source_default() {
-        let s = Source::new();
+        let s = Format::new();
 
-        assert_eq!(Source::None, s);
+        assert_eq!(Format::None, s);
     }
 
     #[test]

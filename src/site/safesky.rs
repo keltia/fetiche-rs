@@ -11,12 +11,12 @@ use anyhow::Result;
 use log::error;
 use reqwest::blocking::Client;
 
-use crate::format::Source;
+use crate::format::{Cat21, Format};
 use crate::site::{Fetchable, Site};
 
 #[derive(Clone, Debug)]
 pub struct Safesky {
-    pub format: Source,
+    pub format: Format,
     pub base_url: String,
     pub get: String,
     pub api_key: String,
@@ -26,7 +26,7 @@ pub struct Safesky {
 impl Safesky {
     pub fn new() -> Self {
         Safesky {
-            format: Source::None,
+            format: Format::None,
             base_url: "".to_owned(),
             api_key: "".to_owned(),
             get: "".to_owned(),

@@ -19,7 +19,7 @@ mod version;
 
 use drone_utils::config::{get_config, Config};
 use drone_utils::filter::Filter;
-use drone_utils::format::{prepare_csv, Cat21, Source};
+use drone_utils::format::{prepare_csv, Cat21, Format};
 use drone_utils::site::Site;
 use drone_utils::task::Task;
 
@@ -61,7 +61,7 @@ pub fn filter_from_opts(opts: &Opts) -> Filter {
 fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
     let fmt = match &opts.format {
         Some(fmt) => fmt.as_str().into(),
-        _ => Source::None,
+        _ => Format::None,
     };
 
     // Build our filter if needed

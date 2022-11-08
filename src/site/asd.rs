@@ -16,13 +16,13 @@ use log::{debug, error, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::format::Source;
+use crate::format::{Cat21, Format};
 use crate::site::{Fetchable, Site};
 
 #[derive(Clone, Debug)]
 pub struct Asd {
     /// Input format
-    pub format: Source,
+    pub format: Format,
     /// Username
     pub login: String,
     /// Password
@@ -40,7 +40,7 @@ pub struct Asd {
 impl Asd {
     pub fn new() -> Self {
         Asd {
-            format: Source::None,
+            format: Format::None,
             login: "".to_owned(),
             password: "".to_owned(),
             base_url: "".to_owned(),
@@ -148,8 +148,8 @@ impl Fetchable for Asd {
         Ok(res.token)
     }
 
-    fn format(&self) -> Source {
-        Source::Asd
+    fn format(&self) -> Format {
+        Format::Asd
     }
 }
 

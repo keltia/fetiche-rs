@@ -9,17 +9,17 @@ use csv::ReaderBuilder;
 use log::trace;
 
 use crate::filter::Filter;
-use crate::format::{Cat21, Source};
+use crate::format::{Cat21, Format};
 use crate::site::Fetchable;
 
 #[derive(Debug)]
 pub enum Input {
     File {
-        format: Source,
+        format: Format,
         path: PathBuf,
     },
     Network {
-        format: Source,
+        format: Format,
         site: Box<dyn Fetchable>,
     },
     Nothing,
@@ -53,7 +53,7 @@ impl Task {
         trace!("Add path: {}", name);
         let fmt = match &self.input {
             Input::File { format, .. } | Input::Network { format, .. } => format,
-            _ => &Source::None,
+            _ => &Format::None,
         };
         self.input = Input::File {
             path: PathBuf::from(name),
@@ -64,7 +64,7 @@ impl Task {
 
     /// Set the input format (from cmdline for files)
     ///
-    pub fn format(&mut self, fmt: Source) -> &mut Self {
+    pub fn format(&mut self, fmt: Format) -> &mut Self {
         trace!("Add format {:?}", fmt);
         if let Input::File { path, .. } = &self.input {
             let path = path.clone();
@@ -141,7 +141,7 @@ mod tests {
         assert_eq!("foo", t.name);
         match t.input {
             Input::File { path, format } => {
-                assert_eq!(Source::None, format);
+                assert_eq!(Format::None, format);
                 assert_eq!(PathBuf::from("/nonexistent"), path);
             }
             _ => panic!("bad type"),

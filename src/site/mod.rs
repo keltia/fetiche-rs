@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 use crate::config::Config;
-use crate::format::Source;
+use crate::format::{Cat21, Format};
 use crate::site::aeroscope::Aeroscope;
 use crate::site::asd::Asd;
 use crate::site::safesky::Safesky;
@@ -30,7 +30,7 @@ pub trait Fetchable: Debug {
     /// Fetch actual data
     fn fetch(&self, token: &str) -> Result<String>;
     /// Returns the input format
-    fn format(&self) -> Source;
+    fn format(&self) -> Format;
 }
 
 /// Describe what a site is and associated credentials.
@@ -89,17 +89,17 @@ impl Site {
                 dbg!(&site);
                 let fmt = site.format();
                 match fmt {
-                    Source::Aeroscope => {
+                    Format::Aeroscope => {
                         let s = Aeroscope::new().load(site).clone();
 
                         Ok(Box::new(s))
                     }
-                    Source::Asd => {
+                    Format::Asd => {
                         let s = Asd::new().load(site).clone();
 
                         Ok(Box::new(s))
                     }
-                    Source::Safesky => {
+                    Format::Safesky => {
                         let s = Safesky::new().load(site).clone();
 
                         Ok(Box::new(s))
@@ -113,12 +113,12 @@ impl Site {
 
     /// Return the site format
     ///
-    pub fn format(&self) -> Source {
+    pub fn format(&self) -> Format {
         match self {
             Site::Login { format, .. } | Site::Key { format, .. } | Site::Anon { format, .. } => {
                 format.as_str().into()
             }
-            _ => Source::None,
+            _ => Format::None,
         }
     }
 }

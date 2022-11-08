@@ -13,13 +13,14 @@ use log::{debug, error, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::format::Source;
+use crate::format::aeroscope::Aeroscope as InputFormat;
+use crate::format::{Cat21, Format};
 use crate::site::{Fetchable, Site};
 
 #[derive(Clone, Debug)]
 pub struct Aeroscope {
     /// Input format
-    pub format: Source,
+    pub format: Format,
     /// Auth data, username
     pub login: String,
     /// Auth data, password
@@ -37,7 +38,7 @@ pub struct Aeroscope {
 impl Aeroscope {
     pub fn new() -> Self {
         Aeroscope {
-            format: Source::None,
+            format: Format::None,
             login: "".to_owned(),
             password: "".to_owned(),
             base_url: "".to_owned(),
@@ -176,7 +177,7 @@ mod tests {
 
         let client = reqwest::blocking::Client::new();
         let site = Aeroscope {
-            format: Source::Aeroscope,
+            format: Format::Aeroscope,
             login: "user".to_string(),
             password: "pass".to_string(),
             token: "/login".to_string(),
