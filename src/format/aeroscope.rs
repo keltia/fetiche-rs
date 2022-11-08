@@ -3,6 +3,7 @@
 //!
 
 use chrono::{DateTime, Utc};
+use log::debug;
 use serde::Deserialize;
 
 use crate::format::{to_feet, to_knots, Cat21};
@@ -63,6 +64,7 @@ impl From<Aeroscope> for Cat21 {
     /// by Marc Gravis.
     ///
     fn from(line: Aeroscope) -> Self {
+        debug!("Converting from {:?}", line);
         let tod = line.receive_date.parse::<DateTime<Utc>>().unwrap();
         let tod = tod.timestamp();
         Cat21 {
