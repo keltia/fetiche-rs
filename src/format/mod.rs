@@ -49,7 +49,7 @@ macro_rules! into_cat21 {
     ($from: ident, $rec:ident, $($name:ident),+) => {
         match $from {
         $(
-            Source::$name => {
+            Format::$name => {
                 let l: $name = $rec.deserialize(None).unwrap();
                 Cat21::from(l)
             },
