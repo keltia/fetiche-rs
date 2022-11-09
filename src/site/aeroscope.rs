@@ -9,7 +9,7 @@
 
 use anyhow::Result;
 use clap::{crate_name, crate_version};
-use log::{debug, error, trace};
+use log::{debug, error};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
@@ -88,7 +88,7 @@ impl Fetchable for Aeroscope {
     fn authenticate(&self) -> Result<String> {
         // Prepare our submission data
         //
-        trace!("Submit auth as {:?}", &self.login);
+        debug!("Submit auth as {:?}", &self.login);
         let body = format!(
             "{{\"username\": \"{}\", \"password\": \"{}\"}}",
             self.login, self.password
@@ -97,7 +97,7 @@ impl Fetchable for Aeroscope {
         // fetch token
         //
         let url = format!("{}{}", self.base_url, self.token);
-        trace!("Fetching token through {}…", url);
+        debug!("Fetching token through {}…", url);
         let resp = self
             .client
             .clone()
@@ -119,6 +119,7 @@ impl Fetchable for Aeroscope {
     /// Fetch actual data from the site as a long String.
     ///
     fn fetch(&self, token: &str) -> Result<String> {
+        debug!("Now fetching data");
         // Use the token to authenticate ourselves
         //
         let url = format!("{}{}", self.base_url, self.get);
@@ -134,6 +135,7 @@ impl Fetchable for Aeroscope {
             .header("Authorization", format!("Bearer {}", token))
             .send()?
             .text()?;
+        debug!("{} bytes read. ", resp.len());
         Ok(resp)
     }
 

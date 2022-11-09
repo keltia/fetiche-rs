@@ -128,8 +128,8 @@ impl Fetchable for Asd {
 
         // use token
         //
-        let url = format!("{}{}", self.base_url, self.token);
-        trace!("Fetching token through {}…", url);
+        let url = format!("{}{}", self.base_url, self.get);
+        debug!("Fetching data through {}…", url);
         let resp = self
             .client
             .clone()
