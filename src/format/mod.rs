@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_source_default() {
-        let s = Format::new();
+        let s = Format::default();
 
         assert_eq!(Format::None, s);
     }
