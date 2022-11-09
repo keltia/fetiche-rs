@@ -1,4 +1,4 @@
-//! Module to handle Safesky data
+//! Module to handle Safesky data and map the input into our own Cat-21-like format.
 //!
 
 use std::net::IpAddr;
