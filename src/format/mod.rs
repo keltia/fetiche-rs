@@ -18,7 +18,7 @@ use std::fmt::{Display, Formatter};
 
 use anyhow::Result;
 use csv::{Reader, WriterBuilder};
-use log::trace;
+use log::debug;
 use serde::{Deserialize, Serialize};
 
 use std::io::Read;
@@ -67,13 +67,13 @@ impl Format {
     where
         T: Read,
     {
-        trace!("Reading & transforming…");
+        debug!("Reading & transforming…");
         let res: Vec<_> = rdr
             .records()
             .enumerate()
             .map(|(cnt, rec)| {
                 let rec = rec.unwrap();
-                trace!("rec={:?}", rec);
+                debug!("rec={:?}", rec);
                 let mut line = into_cat21!(self, rec, Aeroscope, Asd, Safesky);
                 line.rec_num = cnt;
                 line
@@ -196,7 +196,7 @@ pub struct Cat21 {
 /// Output the final csv file with a different delimiter 'now ":")
 ///
 pub fn prepare_csv(data: Vec<Cat21>) -> Result<String> {
-    trace!("Generating output…");
+    debug!("Generating output…");
     // Prepare the writer
     //
     let mut wtr = WriterBuilder::new()
