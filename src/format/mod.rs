@@ -51,7 +51,7 @@ macro_rules! into_cat21 {
         $(
             Format::$name => {
                 let l: $name = $rec.deserialize(None).unwrap();
-                Cat21::from(l)
+                Cat21::from(&l)
             },
         )+
             _ => panic!("unknown format"),

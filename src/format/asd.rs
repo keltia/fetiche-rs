@@ -53,13 +53,13 @@ pub struct Asd {
     pub station_lon: f32,
 }
 
-impl From<Asd> for Cat21 {
+impl From<&Asd> for Cat21 {
     /// Makes the loading and transformations
     ///
     /// The default values are arbitrary and taken from the original `aeroscope-CDG.sh` script
     /// by Marc Gravis.
     ///
-    fn from(line: Asd) -> Self {
+    fn from(line: &Asd) -> Self {
         let tod = line.timestamp.timestamp();
         Cat21 {
             sac: 8,

@@ -31,10 +31,10 @@ pub struct Safesky {
     pub ip: Option<IpAddr>,
 }
 
-impl From<Safesky> for Cat21 {
+impl From<&Safesky> for Cat21 {
     /// Minimal transformations for now.
     ///
-    fn from(line: Safesky) -> Self {
+    fn from(line: &Safesky) -> Self {
         let tod = line.last_update.timestamp();
         Cat21 {
             sac: 8,
