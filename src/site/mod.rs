@@ -88,7 +88,6 @@ impl Site {
         trace!("Loading site {}", name);
         match cfg.sites.get(name) {
             Some(site) => {
-                dbg!(&site);
                 let fmt = site.format();
                 match fmt {
                     Format::Aeroscope => {
