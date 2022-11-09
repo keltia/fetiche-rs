@@ -68,7 +68,7 @@ impl From<&Safesky> for Cat21 {
             report_type: 3,
             tod_calculated: "N".to_string(),
             // We do truncate the drone_id for privacy reasons
-            callsign: line.call_sign,
+            callsign: line.call_sign.to_owned(),
             groundspeed_kt: to_knots(line.ground_speed as f32),
             track_angle_deg: 0.0,
             rec_num: 1,
