@@ -17,7 +17,7 @@ use log::{debug, error, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::format::{Cat21, Format};
+use crate::format::{asd, Cat21, Format};
 use crate::site::{Fetchable, Site};
 
 #[derive(Clone, Debug)]
@@ -144,13 +144,16 @@ impl Fetchable for Asd {
             .send();
 
         let resp = resp?.text()?;
-        let res: Token = serde_json::from_str(&resp)?;
+        let res: Content = serde_json::from_str(&resp)?;
         debug!("{:?}", res);
         Ok(res.content)
     }
 
     fn process(&self, input: String) -> Result<Vec<Cat21>> {
-        let mut rdr = ReaderBuilder::new().flexible(true);
+        let mut rdr = ReaderBuilder::new()
+            .flexible(true)
+            .from_reader(input.as_bytes());
+
         let res: Vec<_> = rdr
             .records()
             .inspect(|f| println!("res={:?}", f.as_ref().unwrap()))
@@ -159,8 +162,8 @@ impl Fetchable for Asd {
             .map(|(cnt, rec)| {
                 let rec = rec.unwrap();
                 debug!("rec={:?}", rec);
-                let line: Asd = rec.deserialize(None).unwrap();
-                let mut line = Cat21::from(line);
+                let line: asd::Asd = rec.deserialize(None).unwrap();
+                let mut line = Cat21::from(&line);
                 line.rec_num = cnt;
                 line
             })
@@ -193,4 +196,15 @@ struct Token {
     #[serde(rename = "airspaceAdmin")]
     airspace_admin: Option<String>,
     homepage: String,
+}
+
+/// Actual data when getting filteredlocations, it is json with the filename but also
+/// the actual content so no need to fetch the named file.
+///
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
+struct Content {
+    /// Filename of the generated data file
+    file_name: String,
+    /// Actual CSV content
+    content: String,
 }
