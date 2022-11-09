@@ -71,7 +71,7 @@ impl Fetchable for Safesky {
         todo!()
     }
 
-    fn process(&self, input: String) -> Result<Vec<Cat21>> {
+    fn process(&self, _input: String) -> Result<Vec<Cat21>> {
         todo!()
     }
 
