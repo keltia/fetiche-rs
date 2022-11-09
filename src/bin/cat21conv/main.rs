@@ -29,7 +29,7 @@ use crate::version::version;
 use std::fs;
 use std::time::Instant;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use clap::Parser;
 use log::{info, trace};
