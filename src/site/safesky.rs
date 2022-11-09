@@ -10,17 +10,13 @@
 use anyhow::Result;
 use log::error;
 use reqwest::blocking::Client;
-use serde::{Deserialize, Serialize};
 
-use crate::config::Config;
-use crate::format::Source;
+use crate::format::{Cat21, Format};
 use crate::site::{Fetchable, Site};
-
-const NAME: &str = "safesky";
 
 #[derive(Clone, Debug)]
 pub struct Safesky {
-    pub format: Source,
+    pub format: Format,
     pub base_url: String,
     pub get: String,
     pub api_key: String,
@@ -30,7 +26,7 @@ pub struct Safesky {
 impl Safesky {
     pub fn new() -> Self {
         Safesky {
-            format: Source::None,
+            format: Format::None,
             base_url: "".to_owned(),
             api_key: "".to_owned(),
             get: "".to_owned(),
@@ -38,8 +34,8 @@ impl Safesky {
         }
     }
 
-    pub fn load(&mut self, cfg: &Config) -> &mut Self {
-        match &cfg.sites[NAME] {
+    pub fn load(&mut self, site: &Site) -> &mut Self {
+        match site {
             Site::Key {
                 format,
                 base_url,
@@ -47,16 +43,22 @@ impl Safesky {
                 get,
                 ..
             } => {
-                self.format = Source::from_str(format);
+                self.format = format.as_str().into();
                 self.base_url = base_url.to_owned();
                 self.api_key = api_key.to_owned();
                 self.get = get.to_owned();
             }
             _ => {
-                error!("Missing config data for {NAME}")
+                error!("Missing config data for {site:?}")
             }
         }
         self
+    }
+}
+
+impl Default for Safesky {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -69,7 +71,11 @@ impl Fetchable for Safesky {
         todo!()
     }
 
-    fn format(&self) -> Source {
-        Source::Safesky
+    fn process(&self, _input: String) -> Result<Vec<Cat21>> {
+        todo!()
+    }
+
+    fn format(&self) -> Format {
+        Format::Safesky
     }
 }

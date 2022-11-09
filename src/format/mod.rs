@@ -17,76 +17,94 @@ use crate::format::safesky::Safesky;
 
 use anyhow::Result;
 use csv::{Reader, WriterBuilder};
-use log::trace;
+use log::debug;
 use serde::{Deserialize, Serialize};
 
+use std::fmt::{Debug, Display, Formatter};
 use std::io::Read;
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(untagged, rename_all = "lowercase")]
-pub enum Source {
+pub enum Format {
     None,
     Aeroscope,
     Asd,
     Safesky,
 }
 
-impl Default for Source {
+impl Default for Format {
     fn default() -> Self {
-        Source::new()
+        Format::None
     }
 }
 
-impl Source {
-    /// Create a new empty format
-    ///
-    pub fn new() -> Self {
-        Source::None
-    }
-
-    /// Create a format from its name
-    ///
-    pub fn from_str(s: &str) -> Self {
-        match s {
-            "aeroscope" => Source::Aeroscope,
-            "asd" => Source::Asd,
-            "safesky" => Source::Safesky,
-            _ => Source::None,
+/// Macro to create the code which deserialize known types.
+///
+/// It takes three arguments:
+/// - from
+/// - object
+/// - list of types
+///
+macro_rules! into_cat21 {
+    ($from: ident, $rec:ident, $($name:ident),+) => {
+        match $from {
+        $(
+            Format::$name => {
+                let l: $name = $rec.deserialize(None).unwrap();
+                Cat21::from(&l)
+            },
+        )+
+            _ => panic!("unknown format"),
         }
-    }
+    };
+}
 
+impl Format {
+    // Process each record coming from the input source, apply `Cat::from()` onto it
+    // and return the list.
+    //
     pub fn process<T>(self, rdr: &mut Reader<T>) -> Result<Vec<Cat21>>
     where
         T: Read,
     {
-        trace!("Reading & transforming…");
-        let mut cnt = 1;
-        let res: Vec<Cat21> = rdr
+        debug!("Reading & transforming…");
+        let res: Vec<_> = rdr
             .records()
-            .map(|rec| {
+            .enumerate()
+            .map(|(cnt, rec)| {
                 let rec = rec.unwrap();
-                trace!("rec={:?}", rec);
-                let mut line = match self {
-                    Source::Aeroscope => {
-                        let l: Aeroscope = rec.deserialize(None).unwrap();
-                        Cat21::from(l)
-                    }
-                    Source::Asd => {
-                        let l: Asd = rec.deserialize(None).unwrap();
-                        Cat21::from(l)
-                    }
-                    Source::Safesky => {
-                        let l: Safesky = rec.deserialize(None).unwrap();
-                        Cat21::from(l)
-                    }
-                    _ => panic!("unknown format"),
-                };
+                debug!("rec={:?}", rec);
+                let mut line = into_cat21!(self, rec, Aeroscope, Asd, Safesky);
                 line.rec_num = cnt;
-                cnt += 1;
                 line
             })
             .collect();
         Ok(res)
+    }
+}
+
+impl From<&str> for Format {
+    /// Create a format from its name
+    ///
+    fn from(s: &str) -> Self {
+        match s {
+            "aeroscope" => Format::Aeroscope,
+            "asd" => Format::Asd,
+            "safesky" => Format::Safesky,
+            _ => Format::None,
+        }
+    }
+}
+
+impl Display for Format {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s: String = match self {
+            Format::Aeroscope => "aeroscope".into(),
+            Format::Asd => "asd".into(),
+            Format::Safesky => "safesky".into(),
+            Format::None => "none".into(),
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -178,7 +196,7 @@ pub struct Cat21 {
 /// Output the final csv file with a different delimiter 'now ":")
 ///
 pub fn prepare_csv(data: Vec<Cat21>) -> Result<String> {
-    trace!("Generating output…");
+    debug!("Generating output…");
     // Prepare the writer
     //
     let mut wtr = WriterBuilder::new()
@@ -218,9 +236,9 @@ mod tests {
 
     #[test]
     fn test_source_default() {
-        let s = Source::new();
+        let s = Format::default();
 
-        assert_eq!(Source::None, s);
+        assert_eq!(Format::None, s);
     }
 
     #[test]

@@ -3,7 +3,7 @@
 //! the Skysafe site as well.
 //!
 //! It can load from either a server or from a file (easier for offline tests). It uses
-//! a configuration file  from `$HOME/.config/drone-gencsv` or `%LOCALAPPDATA%/drone-gencsv` on
+//! a configuration file  from `$HOME/.config/drone-utils` or `%LOCALAPPDATA%/drone-utils` on
 //! UNIX/Linux and Windows.
 //!
 //! Our pseudo-Cat21 format is in `format/mod.rs`.
@@ -15,40 +15,58 @@
 //! [Rust]: https://rust-lang.org/
 //!
 mod cli;
-mod config;
-mod filter;
-mod format;
-mod site;
-mod task;
 mod version;
 
-use crate::cli::Opts;
-use crate::config::{get_config, Config};
-use crate::filter::Filter;
-use crate::format::{prepare_csv, Cat21, Source};
-use crate::site::Site;
-use crate::task::Task;
+use drone_utils::config::{get_config, Config};
+use drone_utils::filter::Filter;
+use drone_utils::format::{prepare_csv, Cat21, Format};
+use drone_utils::site::Site;
+use drone_utils::task::Task;
+
+use crate::cli::{check_args, Opts};
 use crate::version::version;
 
 use std::fs;
 use std::time::Instant;
 
 use anyhow::{anyhow, Result};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use clap::Parser;
 use log::{info, trace};
-use stderrlog::LogLevelNum::Trace;
+use stderrlog::LogLevelNum::{Debug, Info, Trace};
+
+/// From the CLI options
+///
+pub fn filter_from_opts(opts: &Opts) -> Filter {
+    let t: DateTime<Utc> = Utc::now();
+
+    if opts.today {
+        // Build our own begin, end
+        //
+        let begin = NaiveDate::from_ymd(t.year(), t.month(), t.day()).and_hms(0, 0, 0);
+        let end = NaiveDate::from_ymd(t.year(), t.month(), t.day()).and_hms(23, 59, 59);
+
+        Filter::from(begin, end)
+    } else if opts.begin.is_some() {
+        // Assume both are there, checked elsewhere
+        //
+        Filter::from(opts.begin.unwrap(), opts.end.unwrap())
+    } else {
+        Filter::default()
+    }
+}
 
 /// Get the input csv either from the given file or from the network
 ///
 fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
     let fmt = match &opts.format {
-        Some(fmt) => Source::from_str(fmt),
-        _ => Source::None,
+        Some(fmt) => fmt.as_str().into(),
+        _ => Format::None,
     };
 
     // Build our filter if needed
     //
-    let filter = Filter::from_opts(&opts);
+    let filter = filter_from_opts(opts);
 
     match &opts.input {
         Some(what) => {
@@ -64,44 +82,13 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
             // Fetch from network
             //
             let name = opts.site.as_ref().unwrap();
-            let site = Site::new(cfg, name)?;
+            let site = Site::new().load(name, cfg)?;
 
             info!("Fetching from network site {}", name);
 
             Task::new(name).site(site).with(filter).run()
         }
     }
-}
-
-/// Check the presence and validity of some of the arguments
-///
-fn check_args(opts: &Opts) -> Result<()> {
-    // Check arguments.
-    //
-    if opts.input.is_some() && opts.site.is_some() {
-        return Err(anyhow!("Specify either a site or a filename, not both"));
-    }
-
-    if opts.input.is_none() && opts.site.is_none() {
-        return Err(anyhow!("Specify at least a site or a filename"));
-    }
-
-    if opts.input.is_some() && opts.format.is_none() {
-        return Err(anyhow!("Format must be specified for files"));
-    }
-
-    // Do we have options for filter
-
-    if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
-        return Err(anyhow!("Can not specify --today and -B/-E"));
-    }
-
-    if (opts.begin.is_some() && opts.end.is_none()) || (opts.begin.is_none() && opts.end.is_some())
-    {
-        return Err(anyhow!("We need both -B/-E or none"));
-    }
-
-    Ok(())
 }
 
 fn main() -> Result<()> {
@@ -119,15 +106,26 @@ fn main() -> Result<()> {
 
     // Check arguments
     //
-    if let Err(e) = check_args(&opts) {
-        return Err(e);
+    check_args(&opts)?;
+
+    // Check verbosity
+    //
+    let mut lvl = match opts.verbose {
+        0 => Info,
+        1 => Debug,
+        2 => Trace,
+        _ => Trace,
+    };
+
+    if opts.debug {
+        lvl = Trace;
     }
 
     // Prepare logging.
     //
     stderrlog::new()
-        .module(module_path!())
-        .verbosity(Trace)
+        //.modules([module_path!(), "drone-utils", "format", "site"])
+        .verbosity(lvl)
         .init()?;
 
     // Load default config if nothing is specified

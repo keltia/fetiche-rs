@@ -36,6 +36,19 @@ impl Default for Config {
     }
 }
 
+/// Simple macro to generate PathBuf from a series of entries
+///
+#[macro_export]
+macro_rules! makepath {
+    ($($item:expr),+) => {
+        [
+        $(PathBuf::from($item),)+
+        ]
+        .iter()
+        .collect()
+    };
+}
+
 impl Config {
     /// Returns an empty struct
     pub fn new() -> Config {
@@ -49,9 +62,9 @@ impl Config {
     /// Load the specified config file
     pub fn load(fname: &PathBuf) -> Result<Config> {
         trace!("Reading {:?}", fname);
-        let content = fs::read_to_string(fname);
+        let content = fs::read_to_string(fname)?;
 
-        let s: Config = toml::from_str(&content.unwrap())?;
+        let s: Config = toml::from_str(&content)?;
         Ok(s)
     }
 
@@ -59,14 +72,7 @@ impl Config {
     #[cfg(unix)]
     pub fn default_file() -> PathBuf {
         let homedir = home_dir().unwrap();
-        let def: PathBuf = [
-            homedir,
-            PathBuf::from(BASEDIR),
-            PathBuf::from(crate_name!()),
-            PathBuf::from(CONFIG),
-        ]
-        .iter()
-        .collect();
+        let def: PathBuf = makepath!(homedir, BASEDIR, crate_name!(), CONFIG);
         trace!("Default file: {:?}", def);
         def
     }
@@ -76,13 +82,7 @@ impl Config {
     pub fn default_file() -> PathBuf {
         let homedir = env::var("LOCALAPPDATA").unwrap();
 
-        let def: PathBuf = [
-            PathBuf::from(homedir),
-            PathBuf::from(crate_name!()),
-            PathBuf::from(CONFIG),
-        ]
-        .iter()
-        .collect();
+        let def: PathBuf = makepath!(homedir, crate_name!(), CONFIG);
         def
     }
 }
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_config_load() {
-        let cn = PathBuf::from("src/config.toml");
+        let cn: PathBuf = makepath!("src", "bin", "cat21conv", CONFIG);
         assert!(cn.try_exists().is_ok());
 
         let cfg = Config::load(&cn);
@@ -133,7 +133,7 @@ mod tests {
 
         let cfg = cfg.unwrap();
         assert!(!cfg.sites.is_empty());
-        let someplace = &cfg.sites["someplace"];
+        let someplace = &cfg.sites["eih"];
         match someplace {
             Site::Login { password, .. } => assert_eq!("NOPE", password),
             _ => (),

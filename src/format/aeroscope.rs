@@ -3,6 +3,7 @@
 //!
 
 use chrono::{DateTime, Utc};
+use log::debug;
 use serde::Deserialize;
 
 use crate::format::{to_feet, to_knots, Cat21};
@@ -56,13 +57,14 @@ pub struct Aeroscope {
     pub speed: f32,
 }
 
-impl From<Aeroscope> for Cat21 {
+impl From<&Aeroscope> for Cat21 {
     /// Makes the loading and transformations
     ///
     /// The default values are arbitrary and taken from the original `aeroscope.sh` script
     /// by Marc Gravis.
     ///
-    fn from(line: Aeroscope) -> Self {
+    fn from(line: &Aeroscope) -> Self {
+        debug!("Converting from {:?}", line);
         let tod = line.receive_date.parse::<DateTime<Utc>>().unwrap();
         let tod = tod.timestamp();
         Cat21 {

@@ -2,7 +2,7 @@
 //! CSV data Cat21-like
 //!
 
-use chrono::{DateTime, Local};
+use chrono::NaiveDateTime;
 use serde::Deserialize;
 
 use crate::format::{to_feet, to_knots, Cat21};
@@ -22,7 +22,7 @@ pub struct Asd {
     // $5
     pub location: u32,
     // $6
-    pub timestamp: DateTime<Local>,
+    pub timestamp: NaiveDateTime,
     // $7
     pub latitude: f32,
     // $8
@@ -53,13 +53,13 @@ pub struct Asd {
     pub station_lon: f32,
 }
 
-impl From<Asd> for Cat21 {
+impl From<&Asd> for Cat21 {
     /// Makes the loading and transformations
     ///
     /// The default values are arbitrary and taken from the original `aeroscope-CDG.sh` script
     /// by Marc Gravis.
     ///
-    fn from(line: Asd) -> Self {
+    fn from(line: &Asd) -> Self {
         let tod = line.timestamp.timestamp();
         Cat21 {
             sac: 8,

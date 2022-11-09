@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 
-const BIN: &str = "drone-gencsv";
+const BIN: &str = "cat21conv";
 
 #[test]
 fn test_empty_args() {
@@ -47,7 +47,7 @@ fn test_file_with_format() {
     cmd.arg("-F")
         .arg("aeroscope")
         .arg("-c")
-        .arg("src/config.toml")
+        .arg("src/bin/cat21conv/config.toml")
         .arg("testdata/csv13-10-2022")
         .assert()
         .success();

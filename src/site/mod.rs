@@ -1,11 +1,9 @@
-//! Module to deal with different kind of input be it a file or a site with a, API
+//! Module to deal with different kind of sites we can connect to to fetch data.
 //!
-//! When no file is specified on the command-line, we look at the list of possible sites to fetch
-//! data from, each with a known format.  We also define here the URL and associated credentials
-//! (if any) needed.
+//! The different submodules deal with the differences between sites:
 //!
-//! If the `token` URL is present, we call this first with `POST`  to request an OAuth2 token.  
-//! We assume the output format to be the same with `{ access_token: String }`.
+//! - authentication (token, API)
+//! - fetching data (GET or POST, etc.).
 //!
 
 pub mod aeroscope;
@@ -17,19 +15,24 @@ use log::trace;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-use crate::format::Source;
+use crate::config::Config;
+use crate::format::{Cat21, Format};
 use crate::site::aeroscope::Aeroscope;
 use crate::site::asd::Asd;
 use crate::site::safesky::Safesky;
-use crate::Config;
 
+/// This trait enables us to manage different ways of connecting and fetching data under
+/// a single interface.
+///
 pub trait Fetchable: Debug {
     /// If credentials are needed, get a token for subsequent operations
     fn authenticate(&self) -> Result<String>;
     /// Fetch actual data
     fn fetch(&self, token: &str) -> Result<String>;
+    /// Transform fetched data into Cat21
+    fn process(&self, input: String) -> Result<Vec<Cat21>>;
     /// Returns the input format
-    fn format(&self) -> Source;
+    fn format(&self) -> Format;
 }
 
 /// Describe what a site is and associated credentials.
@@ -42,8 +45,6 @@ pub enum Site {
         format: String,
         /// Base URL (to avoid repeating)
         base_url: String,
-        /// Auth submit format
-        auth: String,
         /// Token fetching URL (if present call this first)
         token: String,
         /// Data fetching URL
@@ -75,42 +76,68 @@ pub enum Site {
 }
 
 impl Site {
-    /// Initialize a site by checking whether it is present in the configuration file
+    /// Initialize a site
     ///
-    pub fn new(cfg: &Config, name: &str) -> Result<Box<dyn Fetchable>> {
-        trace!("New site {}", name);
+    pub fn new() -> Self {
+        Site::Invalid
+    }
+
+    /// Load site by checking whether it is present in the configuration file
+    ///
+    pub fn load(&mut self, name: &str, cfg: &Config) -> Result<Box<dyn Fetchable>> {
+        trace!("Loading site {}", name);
         match cfg.sites.get(name) {
-            Some(_) => match name {
-                "aeroscope" => {
-                    let s = Aeroscope::new().load(&cfg).clone();
+            Some(site) => {
+                let fmt = site.format();
+                match fmt {
+                    Format::Aeroscope => {
+                        let s = Aeroscope::new().load(site).clone();
 
-                    Ok(Box::new(s))
-                }
-                "asd" => {
-                    let s = Asd::new().load(&cfg).clone();
+                        Ok(Box::new(s))
+                    }
+                    Format::Asd => {
+                        let s = Asd::new().load(site).clone();
 
-                    Ok(Box::new(s))
-                }
-                "safesky" => {
-                    let s = Safesky::new().load(&cfg).clone();
+                        Ok(Box::new(s))
+                    }
+                    Format::Safesky => {
+                        let s = Safesky::new().load(site).clone();
 
-                    Ok(Box::new(s))
+                        Ok(Box::new(s))
+                    }
+                    _ => Err(anyhow!("invalid site {name}")),
                 }
-                _ => Err(anyhow!("invalid site {name}")),
-            },
+            }
             None => Err(anyhow!("no such site {name}")),
         }
+    }
+
+    /// Return the site format
+    ///
+    pub fn format(&self) -> Format {
+        match self {
+            Site::Login { format, .. } | Site::Key { format, .. } | Site::Anon { format, .. } => {
+                format.as_str().into()
+            }
+            _ => Format::None,
+        }
+    }
+}
+
+impl Default for Site {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
 
-    use crate::Config;
-    use clap::{crate_name, crate_version};
+    use std::collections::HashMap;
     use std::path::PathBuf;
+
+    use crate::makepath;
 
     fn set_default() -> Config {
         let s = Site::Anon {
@@ -133,42 +160,40 @@ mod tests {
     #[test]
     fn test_site_new_good() {
         let cfg = set_default();
-        dbg!(toml::to_string(&cfg).unwrap());
 
-        let s = Site::new(&cfg, "foo");
+        let s = Site::new().load("foo", &cfg);
         assert!(s.is_ok());
     }
 
     #[test]
     fn test_site_new_unknown() {
         let cfg = set_default();
-        dbg!(toml::to_string(&cfg).unwrap());
 
-        let s = Site::new(&cfg, "bar");
+        let s = Site::new().load("bar", &cfg);
         assert!(s.is_err());
     }
 
     #[test]
     fn test_site_loading() {
-        let cfn = PathBuf::from("src/config.toml");
+        let cfn: PathBuf = makepath!("src", "bin", "cat21conv", "config.toml");
         let cfg = Config::load(&cfn);
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
-        let s = cfg.sites;
+        let s = cfg.sites.clone();
 
         assert_eq!("none", cfg.default);
         assert!(!s.is_empty());
-        assert_eq!(3, s.len());
+        assert_eq!(4, s.len());
         assert!(s.contains_key("nope"));
 
         for (_, s) in s.iter() {
             match s {
                 Site::Anon { format, .. } => {
-                    assert_eq!("safesky", format);
+                    assert_eq!("aeroscope", format);
                 }
                 Site::Key { format, .. } => {
-                    assert_eq!("none", format);
+                    assert_eq!("safesky", format);
                 }
                 Site::Login {
                     format,

@@ -1,4 +1,4 @@
-//! Module to handle Safesky data
+//! Module to handle Safesky data and map the input into our own Cat-21-like format.
 //!
 
 use std::net::IpAddr;
@@ -31,10 +31,10 @@ pub struct Safesky {
     pub ip: Option<IpAddr>,
 }
 
-impl From<Safesky> for Cat21 {
+impl From<&Safesky> for Cat21 {
     /// Minimal transformations for now.
     ///
-    fn from(line: Safesky) -> Self {
+    fn from(line: &Safesky) -> Self {
         let tod = line.last_update.timestamp();
         Cat21 {
             sac: 8,
@@ -68,7 +68,7 @@ impl From<Safesky> for Cat21 {
             report_type: 3,
             tod_calculated: "N".to_string(),
             // We do truncate the drone_id for privacy reasons
-            callsign: line.call_sign,
+            callsign: line.call_sign.to_owned(),
             groundspeed_kt: to_knots(line.ground_speed as f32),
             track_angle_deg: 0.0,
             rec_num: 1,

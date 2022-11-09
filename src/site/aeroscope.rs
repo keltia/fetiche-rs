@@ -9,18 +9,18 @@
 
 use anyhow::Result;
 use clap::{crate_name, crate_version};
-use log::{debug, error, trace};
+use log::{debug, error};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::format::Source;
-use crate::site::Fetchable;
-use crate::{Config, Site};
+use crate::format::aeroscope::Aeroscope as InputFormat;
+use crate::format::{Cat21, Format};
+use crate::site::{Fetchable, Site};
 
 #[derive(Clone, Debug)]
 pub struct Aeroscope {
     /// Input format
-    pub format: Source,
+    pub format: Format,
     /// Auth data, username
     pub login: String,
     /// Auth data, password
@@ -35,12 +35,10 @@ pub struct Aeroscope {
     pub client: Client,
 }
 
-const NAME: &str = "aeroscope";
-
 impl Aeroscope {
     pub fn new() -> Self {
         Aeroscope {
-            format: Source::None,
+            format: Format::None,
             login: "".to_owned(),
             password: "".to_owned(),
             base_url: "".to_owned(),
@@ -52,8 +50,8 @@ impl Aeroscope {
 
     /// Load some data from the configuration file
     ///
-    pub fn load(&mut self, cfg: &Config) -> &mut Self {
-        match &cfg.sites[NAME] {
+    pub fn load(&mut self, site: &Site) -> &mut Self {
+        match site {
             Site::Login {
                 format,
                 base_url,
@@ -63,7 +61,7 @@ impl Aeroscope {
                 get,
                 ..
             } => {
-                self.format = Source::from_str(format);
+                self.format = format.as_str().into();
                 self.base_url = base_url.to_owned();
                 self.get = get.to_owned();
                 self.token = token.to_owned();
@@ -71,10 +69,16 @@ impl Aeroscope {
                 self.password = password.to_owned();
             }
             _ => {
-                error!("Missing config data for {NAME}")
+                error!("Missing config data for {site:?}")
             }
         }
         self
+    }
+}
+
+impl Default for Aeroscope {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -84,7 +88,7 @@ impl Fetchable for Aeroscope {
     fn authenticate(&self) -> Result<String> {
         // Prepare our submission data
         //
-        trace!("Submit auth as {:?}", &self.login);
+        debug!("Submit auth as {:?}", &self.login);
         let body = format!(
             "{{\"username\": \"{}\", \"password\": \"{}\"}}",
             self.login, self.password
@@ -93,7 +97,7 @@ impl Fetchable for Aeroscope {
         // fetch token
         //
         let url = format!("{}{}", self.base_url, self.token);
-        trace!("Fetching token through {}…", url);
+        debug!("Fetching token through {}…", url);
         let resp = self
             .client
             .clone()
@@ -115,6 +119,7 @@ impl Fetchable for Aeroscope {
     /// Fetch actual data from the site as a long String.
     ///
     fn fetch(&self, token: &str) -> Result<String> {
+        debug!("Now fetching data");
         // Use the token to authenticate ourselves
         //
         let url = format!("{}{}", self.base_url, self.get);
@@ -130,11 +135,35 @@ impl Fetchable for Aeroscope {
             .header("Authorization", format!("Bearer {}", token))
             .send()?
             .text()?;
+        debug!("{} bytes read. ", resp.len());
         Ok(resp)
     }
 
-    fn format(&self) -> Source {
-        Source::Aeroscope
+    /// Process data fetch in previous stage and render it as wanted
+    ///
+    fn process(&self, input: String) -> Result<Vec<Cat21>> {
+        debug!("Reading & transforming…");
+        debug!("IN={:?}", input);
+        let res: Vec<InputFormat> = serde_json::from_str(&input)?;
+
+        let res = res
+            .iter()
+            .inspect(|f| println!("res={:?}", f))
+            .enumerate()
+            .inspect(|(n, f)| println!("res={:?}-{:?}", n, f))
+            .map(|(cnt, rec)| {
+                debug!("rec={:?}", rec);
+                let mut line = Cat21::from(rec);
+                line.rec_num = cnt;
+                line
+            })
+            .collect();
+        debug!("res={:?}", res);
+        Ok(res)
+    }
+
+    fn format(&self) -> Format {
+        Format::Aeroscope
     }
 }
 
@@ -150,12 +179,8 @@ struct Token {
 mod tests {
     use super::*;
 
-    use clap::{crate_name, crate_version};
     use httpmock::prelude::*;
-    use serde::{Deserialize, Serialize};
     use serde_json::json;
-
-    use crate::site::Site;
 
     #[test]
     fn test_get_aeroscope_token() {
@@ -177,7 +202,7 @@ mod tests {
 
         let client = reqwest::blocking::Client::new();
         let site = Aeroscope {
-            format: Source::Aeroscope,
+            format: Format::Aeroscope,
             login: "user".to_string(),
             password: "pass".to_string(),
             token: "/login".to_string(),
@@ -185,7 +210,7 @@ mod tests {
             get: "/get".to_string(),
             client,
         };
-        let t = site.authenticate(&client);
+        let t = site.authenticate();
 
         m.assert();
         assert!(t.is_ok());

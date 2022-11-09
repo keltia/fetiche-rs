@@ -12,18 +12,18 @@
 
 use anyhow::Result;
 use clap::{crate_name, crate_version};
+use csv::ReaderBuilder;
 use log::{debug, error, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::format::Source;
-use crate::site::Fetchable;
-use crate::{Config, Site};
+use crate::format::{asd, Cat21, Format};
+use crate::site::{Fetchable, Site};
 
 #[derive(Clone, Debug)]
 pub struct Asd {
     /// Input format
-    pub format: Source,
+    pub format: Format,
     /// Username
     pub login: String,
     /// Password
@@ -38,12 +38,10 @@ pub struct Asd {
     pub client: Client,
 }
 
-const NAME: &str = "asd";
-
 impl Asd {
     pub fn new() -> Self {
         Asd {
-            format: Source::None,
+            format: Format::None,
             login: "".to_owned(),
             password: "".to_owned(),
             base_url: "".to_owned(),
@@ -55,8 +53,8 @@ impl Asd {
 
     /// Load some data from the configuration file
     ///
-    pub fn load(&mut self, cfg: &Config) -> &mut Self {
-        match &cfg.sites[NAME] {
+    pub fn load(&mut self, site: &Site) -> &mut Self {
+        match site {
             Site::Login {
                 format,
                 base_url,
@@ -66,7 +64,7 @@ impl Asd {
                 get,
                 ..
             } => {
-                self.format = Source::from_str(format);
+                self.format = format.as_str().into();
                 self.base_url = base_url.to_owned();
                 self.token = token.to_owned();
                 self.get = get.to_owned();
@@ -74,10 +72,16 @@ impl Asd {
                 self.password = password.to_owned();
             }
             _ => {
-                error!("Missing config data for {NAME}")
+                error!("Missing config data for {site:?}")
             }
         }
         self
+    }
+}
+
+impl Default for Asd {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -124,8 +128,8 @@ impl Fetchable for Asd {
 
         // use token
         //
-        let url = format!("{}{}", self.base_url, self.token);
-        trace!("Fetching token through {}…", url);
+        let url = format!("{}{}", self.base_url, self.get);
+        debug!("Fetching data through {}…", url);
         let resp = self
             .client
             .clone()
@@ -140,13 +144,36 @@ impl Fetchable for Asd {
             .send();
 
         let resp = resp?.text()?;
-        let res: Token = serde_json::from_str(&resp)?;
+        let res: Content = serde_json::from_str(&resp)?;
         debug!("{:?}", res);
-        Ok(res.token)
+        Ok(res.content)
     }
 
-    fn format(&self) -> Source {
-        Source::Asd
+    fn process(&self, input: String) -> Result<Vec<Cat21>> {
+        let mut rdr = ReaderBuilder::new()
+            .flexible(true)
+            .from_reader(input.as_bytes());
+
+        let res: Vec<_> = rdr
+            .records()
+            .inspect(|f| println!("res={:?}", f.as_ref().unwrap()))
+            .enumerate()
+            .inspect(|(n, f)| println!("res={:?}-{:?}", n, f))
+            .map(|(cnt, rec)| {
+                let rec = rec.unwrap();
+                debug!("rec={:?}", rec);
+                let line: asd::Asd = rec.deserialize(None).unwrap();
+                let mut line = Cat21::from(&line);
+                line.rec_num = cnt;
+                line
+            })
+            .collect();
+        debug!("res={:?}", res);
+        Ok(res)
+    }
+
+    fn format(&self) -> Format {
+        Format::Asd
     }
 }
 
@@ -169,4 +196,15 @@ struct Token {
     #[serde(rename = "airspaceAdmin")]
     airspace_admin: Option<String>,
     homepage: String,
+}
+
+/// Actual data when getting filteredlocations, it is json with the filename but also
+/// the actual content so no need to fetch the named file.
+///
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
+struct Content {
+    /// Filename of the generated data file
+    file_name: String,
+    /// Actual CSV content
+    content: String,
 }
