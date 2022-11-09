@@ -14,13 +14,13 @@ pub mod safesky;
 use crate::format::aeroscope::Aeroscope;
 use crate::format::asd::Asd;
 use crate::format::safesky::Safesky;
-use std::fmt::{Display, Formatter};
 
 use anyhow::Result;
 use csv::{Reader, WriterBuilder};
 use log::debug;
 use serde::{Deserialize, Serialize};
 
+use std::fmt::{Debug, Display, Formatter};
 use std::io::Read;
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
