@@ -157,6 +157,8 @@ impl Fetchable for Aeroscope {
                 line.rec_num = cnt;
                 line
             })
+            // Skip if element doesn't have any position
+            .filter(|line| line.pos_lat_deg != 0.0 && line.pos_long_deg != 0.0)
             .collect();
         debug!("res={:?}", res);
         Ok(res)
