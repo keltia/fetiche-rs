@@ -13,7 +13,6 @@
 //!
 
 use anyhow::Result;
-use chrono::format::Numeric::Timestamp;
 use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
 use log::{debug, error, trace};
