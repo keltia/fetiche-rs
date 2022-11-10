@@ -48,7 +48,6 @@ impl From<&Aeroscope> for Cat21 {
     /// by Marc Gravis.
     ///
     fn from(line: &Aeroscope) -> Self {
-        debug!("Converting from {:?}", line);
         let tod = line.receive_date.parse::<DateTime<Utc>>().unwrap();
         let tod = tod.timestamp();
         let lid = if line.drone_id != "null" {
