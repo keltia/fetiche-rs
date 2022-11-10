@@ -152,6 +152,7 @@ impl Fetchable for Asd {
         //
         let url = format!("{}{}", self.base_url, self.get);
         debug!("Fetching data through {}…", url);
+
         let resp = self
             .client
             .clone()
