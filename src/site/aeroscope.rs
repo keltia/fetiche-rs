@@ -148,9 +148,11 @@ impl Fetchable for Aeroscope {
 
         let res = res
             .iter()
-            .inspect(|f| println!("res={:?}", f))
+            // Add "line number" for output
             .enumerate()
+            // Debug
             .inspect(|(n, f)| println!("res={:?}-{:?}", n, f))
+            // Convert
             .map(|(cnt, rec)| {
                 debug!("rec={:?}", rec);
                 let mut line = Cat21::from(rec);
