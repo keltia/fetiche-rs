@@ -3,7 +3,6 @@
 //!
 
 use chrono::{DateTime, Utc};
-use log::debug;
 use serde::Deserialize;
 
 use crate::format::{to_feet, to_knots, Cat21, Position};
