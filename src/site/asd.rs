@@ -142,8 +142,8 @@ impl Fetchable for Asd {
                 "user-agent",
                 format!("{}/{}", crate_name!(), crate_version!()),
             )
-            .header("authentication", format!("Bearer {}", token))
             .header("content-type", "application/json")
+            .bearer_auth(token)
             .body(data)
             .send();
 

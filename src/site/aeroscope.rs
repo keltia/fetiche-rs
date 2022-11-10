@@ -139,7 +139,7 @@ impl Fetchable for Aeroscope {
                 format!("{}/{}", crate_name!(), crate_version!()),
             )
             .header("content-type", "application/json")
-            .header("Authorization", format!("Bearer {}", token))
+            .bearer_auth(token)
             .send()?
             .text()?;
         debug!("{} bytes read. ", resp.len());
