@@ -7,10 +7,13 @@
 //!    the data twice as it is requesting the specific filename returned but the
 //!    data is already in the first call!
 //!
-//! Format is different from the csv obtained from the actual Aeroscope system
+//! Format is different from the json obtained from the actual Aeroscope system
+//!
+//! This implement the `Fetchable` trait described in `site/mod.rs`.
 //!
 
 use anyhow::Result;
+use chrono::format::Numeric::Timestamp;
 use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
 use log::{debug, error, trace};
@@ -20,6 +23,8 @@ use serde::{Deserialize, Serialize};
 use crate::format::{asd, Cat21, Format};
 use crate::site::{Fetchable, Site};
 
+/// Asd represent what is needed to connect & auth to and fetch data from the ASD main site.
+///
 #[derive(Clone, Debug)]
 pub struct Asd {
     /// Input format
@@ -198,6 +203,24 @@ struct Token {
     homepage: String,
 }
 
+impl Default for Token {
+    fn default() -> Self {
+        Token {
+            token: "".to_owned(),
+            gjrt: "".to_owned(),
+            expired_at: 0i64,
+            roles: vec![],
+            name: "John Doe".to_owned(),
+            supervision: None,
+            lang: "en".to_owned(),
+            status: "".to_owned(),
+            email: "john.doe@example.net".to_owned(),
+            airspace_admin: None,
+            homepage: "https://example.net".to_owned(),
+        }
+    }
+}
+
 /// Actual data when getting filteredlocations, it is json with the filename but also
 /// the actual content so no need to fetch the named file.
 ///
@@ -207,4 +230,48 @@ struct Content {
     file_name: String,
     /// Actual CSV content
     content: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use httpmock::prelude::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_get_asd_token() {
+        let server = MockServer::start();
+        let token = Token {
+            token: "FOOBAR".to_string(),
+            ..Default::default()
+        };
+        let jtok = json!(token).to_string();
+        let m = server.mock(|when, then| {
+            when.method(POST)
+                .header(
+                    "user-agent",
+                    format!("{}/{}", crate_name!(), crate_version!()),
+                )
+                .header("content-type", "application/json")
+                .path("/login");
+            then.status(200).body(&jtok);
+        });
+
+        let client = Client::new();
+        let site = Asd {
+            format: Format::Asd,
+            login: "user".to_string(),
+            password: "pass".to_string(),
+            token: "/login".to_string(),
+            base_url: server.base_url().clone(),
+            get: "/get".to_string(),
+            client,
+        };
+        let t = site.authenticate();
+
+        m.assert();
+        assert!(t.is_ok());
+        assert_eq!("FOOBAR", t.as_ref().unwrap());
+    }
 }
