@@ -202,6 +202,8 @@ impl Fetchable for Aeroscope {
 mod tests {
     use super::*;
 
+    use crate::format::aeroscope::Aeroscope as InputFormat;
+
     use httpmock::prelude::*;
     use serde_json::json;
 
@@ -238,5 +240,42 @@ mod tests {
         m.assert();
         assert!(t.is_ok());
         assert_eq!("FOOBAR", t.as_ref().unwrap());
+    }
+
+    #[test]
+    fn test_get_aeroscope_data() {
+        let server = MockServer::start();
+        let token = "FOOBAR".to_string();
+
+        let data = InputFormat {};
+        let jtok = json!(data);
+        let m = server.mock(|when, then| {
+            when.method(POST)
+                .header(
+                    "user-agent",
+                    format!("{}/{}", crate_name!(), crate_version!()),
+                )
+                .header("content-type", "application/json")
+                .bearer_auth(token)
+                .path("/get");
+            then.status(200).body(&jtok);
+        });
+
+        let client = Client::new();
+        let site = Aeroscope {
+            format: Format::Aeroscope,
+            login: "user".to_string(),
+            password: "pass".to_string(),
+            token: "/login".to_string(),
+            base_url: server.base_url().clone(),
+            get: "/get".to_string(),
+            client,
+        };
+        let data = site.fetch(&token);
+
+        m.assert();
+        assert!(data.is_ok());
+        let data = data.unwrap();
+        assert!();
     }
 }
