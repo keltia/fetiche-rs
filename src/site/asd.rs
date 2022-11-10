@@ -13,6 +13,7 @@
 //!
 
 use anyhow::Result;
+use chrono::NaiveDateTime;
 use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
 use log::{debug, error, trace};
@@ -89,15 +90,28 @@ impl Default for Asd {
     }
 }
 
+#[derive(Serialize)]
+struct Param {
+    start_time: NaiveDateTime,
+    end_time: NaiveDateTime,
+    sources: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct Credentials {
+    email: String,
+    password: String,
+}
+
 impl Fetchable for Asd {
     fn authenticate(&self) -> Result<String> {
         // Prepare our submission data
         //
         trace!("Submit auth as {:?}", &self.login);
-        let body = format!(
-            "{{\"email\": \"{}\", \"password\": \"{}\"}}",
-            self.login, self.password
-        );
+        let cred = Credentials {
+            email: self.login.clone(),
+            password: self.password.clone(),
+        };
 
         // fetch token
         //
@@ -112,7 +126,7 @@ impl Fetchable for Asd {
                 format!("{}/{}", crate_name!(), crate_version!()),
             )
             .header("content-type", "application/json")
-            .body(body)
+            .json(&cred)
             .send();
 
         let resp = resp?.text()?;
@@ -125,10 +139,14 @@ impl Fetchable for Asd {
     ///
     fn fetch(&self, token: &str) -> Result<String> {
         trace!("Submit parameters");
-        let data = format!(
-            "{{\"startTime\": \"'{}'\",\"endTime\": \"'{}}}'\",\"sources\": [\"as\",\"wi\"]}}",
-            "", ""
-        );
+
+        // XXX fix with arguments from `Task`
+        //
+        let data = Param {
+            start_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
+            end_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
+            sources: vec!["as".to_string(), "wi".to_string()],
+        };
 
         // use token
         //
@@ -144,7 +162,7 @@ impl Fetchable for Asd {
             )
             .header("content-type", "application/json")
             .bearer_auth(token)
-            .body(data)
+            .json(&data)
             .send();
 
         let resp = resp?.text()?;

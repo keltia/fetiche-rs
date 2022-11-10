@@ -89,6 +89,12 @@ impl Default for Aeroscope {
     }
 }
 
+#[derive(Serialize)]
+struct Credentials {
+    username: String,
+    password: String,
+}
+
 impl Fetchable for Aeroscope {
     /// Authenticate to the site with login/password and return a token
     ///
@@ -96,10 +102,10 @@ impl Fetchable for Aeroscope {
         // Prepare our submission data
         //
         debug!("Submit auth as {:?}", &self.login);
-        let body = format!(
-            "{{\"username\": \"{}\", \"password\": \"{}\"}}",
-            self.login, self.password
-        );
+        let cred = Credentials {
+            username: self.login.clone(),
+            password: self.password.clone(),
+        };
 
         // fetch token
         //
@@ -114,7 +120,7 @@ impl Fetchable for Aeroscope {
                 format!("{}/{}", crate_name!(), crate_version!()),
             )
             .header("content-type", "application/json")
-            .body(body)
+            .json(&cred)
             .send();
 
         let resp = resp?.text()?;
