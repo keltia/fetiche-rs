@@ -4,7 +4,10 @@
 //! 1. use the configured login & password to obtain a token
 //! 2. use the token to get the data
 //!
-//! Format is a CSV as Aeroscope
+//! Data fetched is json and not csv but our struct in `format/aeroscope.rs`  is compatible with
+//! both, even flattening the different lat/long structs in a sensible way.
+//!
+//! This implement the `Fetchable` trait described in `site/mod.rs`.
 //!
 
 use anyhow::Result;
@@ -17,6 +20,8 @@ use crate::format::aeroscope::Aeroscope as InputFormat;
 use crate::format::{Cat21, Format};
 use crate::site::{Fetchable, Site};
 
+/// This describe the Aeroscope "site" which is the PC we have here at the EIH
+/// ///
 #[derive(Clone, Debug)]
 pub struct Aeroscope {
     /// Input format
@@ -37,6 +42,8 @@ pub struct Aeroscope {
 
 impl Aeroscope {
     pub fn new() -> Self {
+        // Set some reasonable defaults
+        //
         Aeroscope {
             format: Format::None,
             login: "".to_owned(),
@@ -48,7 +55,7 @@ impl Aeroscope {
         }
     }
 
-    /// Load some data from the configuration file
+    /// Load our site details from what is in the confifguration file
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
         match site {
@@ -204,7 +211,7 @@ mod tests {
             then.status(200).body(&jtok);
         });
 
-        let client = reqwest::blocking::Client::new();
+        let client = Client::new();
         let site = Aeroscope {
             format: Format::Aeroscope,
             login: "user".to_string(),
