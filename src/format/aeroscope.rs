@@ -6,15 +6,7 @@ use chrono::{DateTime, Utc};
 use log::debug;
 use serde::Deserialize;
 
-use crate::format::{to_feet, to_knots, Cat21};
-
-#[derive(Debug, Deserialize)]
-pub struct Position {
-    // Latitude in degrees
-    pub latitude: f32,
-    /// Longitude in degrees
-    pub longitude: f32,
-}
+use crate::format::{to_feet, to_knots, Cat21, Position};
 
 /// Our input structure from the csv file coming out of the aeroscope as CSV
 ///

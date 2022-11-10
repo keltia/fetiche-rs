@@ -14,7 +14,7 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::format::aeroscope::Aeroscope as InputFormat;
-use crate::format::{Cat21, Format};
+use crate::format::{Cat21, Format, Position};
 use crate::site::{Fetchable, Site};
 
 #[derive(Clone, Debug)]
