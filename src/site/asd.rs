@@ -12,14 +12,17 @@
 //! This implement the `Fetchable` trait described in `site/mod.rs`.
 //!
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
 use log::{debug, error, trace};
 use reqwest::blocking::Client;
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
+use crate::filter::Filter;
 use crate::format::{asd, Cat21, Format};
 use crate::site::{Fetchable, Site};
 
