@@ -185,12 +185,21 @@ impl Fetchable for Asd {
     fn fetch(&self, token: &str, args: &str) -> Result<String> {
         trace!("Submit parameters");
 
-        // XXX fix with arguments from `Task`
+        let f: Filter = serde_json::from_str(args)?;
+
+        // If we have a filter defined, extract times
         //
-        let data = Param {
-            start_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
-            end_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
-            sources: vec!["as".to_string(), "wi".to_string()],
+        let data = match f {
+            Filter::Interval { begin, end } => Param {
+                start_time: begin,
+                end_time: end,
+                sources: vec![Source::As, Source::Wi],
+            },
+            Filter::None => Param {
+                start_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
+                end_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
+                sources: vec![Source::As, Source::Wi],
+            },
         };
 
         // use token
