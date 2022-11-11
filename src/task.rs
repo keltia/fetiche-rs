@@ -118,7 +118,7 @@ impl Task {
                 debug!("{:?} as {}", res, format);
                 Ok(res)
             }
-            Input::Nothing => return Err(anyhow!("no format specified")),
+            Input::Nothing => Err(anyhow!("no format specified")),
         }
     }
 }
