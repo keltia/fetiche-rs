@@ -179,7 +179,6 @@ impl Fetchable for Asd {
 
         let resp = resp?.text()?;
         let res: Token = serde_json::from_str(&resp)?;
-        debug!("{:?}", res);
         Ok(res.token)
     }
 
@@ -205,6 +204,9 @@ impl Fetchable for Asd {
             },
         };
 
+        debug!("param={:?}", data);
+        debug!("json={}", json!(&data));
+
         // use token
         //
         let url = format!("{}{}", self.base_url, self.get);
@@ -221,7 +223,9 @@ impl Fetchable for Asd {
             .header("content-type", "application/json")
             .bearer_auth(token)
             .json(&data)
-            .send();
+            .send()?;
+
+        debug!("{:?}", &resp);
 
         // Check status
         //
@@ -243,7 +247,7 @@ impl Fetchable for Asd {
         let resp = resp.text()?;
         debug!("{}", &resp);
         let res: Content = serde_json::from_str(&resp)?;
-        debug!("{:?}", res);
+        debug!("data={:?}", res);
         Ok(res.content)
     }
 
