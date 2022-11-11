@@ -633,6 +633,7 @@ dependencies = [
  "home",
  "httpmock",
  "log",
+ "percent-encoding",
  "reqwest",
  "serde",
  "serde_json",
