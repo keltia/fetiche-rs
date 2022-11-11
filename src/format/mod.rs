@@ -217,6 +217,59 @@ pub struct Cat21 {
     pub rec_num: usize,
 }
 
+impl Default for Cat21 {
+    /// Invalid default
+    ///
+    fn default() -> Self {
+        Cat21 {
+            sac: 0,
+            sic: 0,
+            alt_geo_ft: 0,
+            pos_lat_deg: 0.0,
+            pos_long_deg: 0.0,
+            alt_baro_ft: 0,
+            tod: 0,
+            rec_time_posix: 0,
+            rec_time_ms: 0,
+            emitter_category: 0,
+            differential_correction: "".to_string(),
+            ground_bit: "".to_string(),
+            simulated_target: "".to_string(),
+            test_target: "".to_string(),
+            from_ft: "".to_string(),
+            selected_alt_capability: "".to_string(),
+            spi: "".to_string(),
+            link_technology_cddi: "".to_string(),
+            link_technology_mds: "".to_string(),
+            link_technology_uat: "".to_string(),
+            link_technology_vdl: "".to_string(),
+            link_technology_other: "".to_string(),
+            descriptor_atp: 0,
+            alt_reporting_capability_ft: 0,
+            target_addr: 0,
+            cat: 0,
+            line_id: 0,
+            ds_id: 0,
+            report_type: 0,
+            tod_calculated: "".to_string(),
+            callsign: "".to_string(),
+            groundspeed_kt: 0.0,
+            track_angle_deg: 0.0,
+            rec_num: 0,
+        }
+    }
+}
+
+impl Cat21 {
+    pub fn error(e: &str) -> Self {
+        Cat21 {
+            rec_num: 0,
+            callsign: e.to_owned(),
+            ..Default::default()
+        }
+    }
+}
+
 /// Output the final csv file with a different delimiter 'now ":")
 ///
 pub fn prepare_csv(data: Vec<Cat21>) -> Result<String> {
