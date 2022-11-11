@@ -336,6 +336,19 @@ mod tests {
     use httpmock::prelude::*;
     use serde_json::json;
 
+    fn setup_asd(server: &MockServer) -> Asd {
+        let client = Client::new();
+        Asd {
+            format: Format::Asd,
+            login: "user".to_string(),
+            password: "pass".to_string(),
+            token: "/api/security/login".to_string(),
+            base_url: server.base_url().clone(),
+            get: "/api/journeys/filteredlocations".to_string(),
+            client: client.clone(),
+        }
+    }
+
     #[test]
     fn test_get_asd_token() {
         let server = MockServer::start();
@@ -355,16 +368,7 @@ mod tests {
             then.status(200).body(&jtok);
         });
 
-        let client = Client::new();
-        let site = Asd {
-            format: Format::Asd,
-            login: "user".to_string(),
-            password: "pass".to_string(),
-            token: "/login".to_string(),
-            base_url: server.base_url().clone(),
-            get: "/get".to_string(),
-            client,
-        };
+        let site = setup_asd(&server);
         let t = site.authenticate();
 
         m.assert();
