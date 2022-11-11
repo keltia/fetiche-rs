@@ -1,5 +1,8 @@
 //! submodule to manage date filters
 //!
+//! A Filter is either a set of begin/end time points or nothing.  This uis used to pass arguments to
+//! at least the `Asd` site but maybe be extended in the future.
+//!
 
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -35,6 +38,8 @@ impl Filter {
 }
 
 impl Display for Filter {
+    /// We want the formatting to ignore the `Interval` vs `None`, it is easier to pass data around
+    ///
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         #[derive(Debug, Serialize)]
         struct Minimal {

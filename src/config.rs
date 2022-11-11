@@ -21,6 +21,7 @@ const CONFIG: &str = "config.toml";
 const BASEDIR: &str = ".config";
 
 /// Main struct holding configurations
+///
 #[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct Config {
     /// Default format
@@ -30,6 +31,7 @@ pub struct Config {
 }
 
 /// `Default` is for `unwrap_or_default()`.
+///
 impl Default for Config {
     fn default() -> Self {
         Self::new()
@@ -51,6 +53,7 @@ macro_rules! makepath {
 
 impl Config {
     /// Returns an empty struct
+    ///
     pub fn new() -> Config {
         let h = HashMap::<String, Site>::new();
         Config {
@@ -60,6 +63,7 @@ impl Config {
     }
 
     /// Load the specified config file
+    ///
     pub fn load(fname: &PathBuf) -> Result<Config> {
         trace!("Reading {:?}", fname);
         let content = fs::read_to_string(fname)?;
@@ -69,6 +73,7 @@ impl Config {
     }
 
     /// Returns the path of the default config file
+    ///
     #[cfg(unix)]
     pub fn default_file() -> PathBuf {
         let homedir = home_dir().unwrap();
@@ -78,6 +83,7 @@ impl Config {
     }
 
     /// Returns the path of the default config file
+    ///
     #[cfg(windows)]
     pub fn default_file() -> PathBuf {
         let homedir = env::var("LOCALAPPDATA").unwrap();

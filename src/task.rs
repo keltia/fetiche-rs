@@ -1,4 +1,50 @@
-//! Task-related code
+//! Task-related code.
+//!
+//! A task is a job that we have to perform.  It can be either a file-based or a network-based one.
+//! We have a set of methods to add parameter and configure the task then we need to call `run()`
+//! to execute it.
+//!
+//! File-based example:
+//! ```rust
+//! # fn main() -> Result<(),()> {
+//! # use std::path::PathBuf;
+//! # use log::info;
+//!
+//! use drone_utils::format::Cat21;
+//! use drone_utils::task::Task;
+//!
+//! let what = PathBuf::from("foo.json")?;
+//!
+//! let res: Vec<Cat21> = Task::new("foo").path(what).format(fmt).run()?;
+//!
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Network-based example:
+//! ```rust
+//! # fn main() -> Result<(),()> {
+//! # use std::path::PathBuf;
+//! use drone_utils::config::Config;
+//! use drone_utils::filter::Filter;
+//! use drone_utils::format::Cat21;
+//!
+//! // Fetch from network
+//! //
+//! use drone_utils::site::Site;
+//! use drone_utils::task::Task;
+//!
+//! # let name = "eih";
+//! # let filter = Filter::None;
+//!
+//! let cfg = Config::load(&PathBuf::from("config.toml"))?;
+//!
+//! let site = Site::new().load(name, &cfg)?;
+//! let res: Vec<Cat21> = Task::new(name).site(site).with(filter).run()?;
+//!
+//! # Ok(())
+//! # }
+//! ```
 //!
 
 use std::fs;
@@ -12,26 +58,38 @@ use crate::filter::Filter;
 use crate::format::{Cat21, Format};
 use crate::site::Fetchable;
 
+/// Type of task we will need to do
+///
 #[derive(Debug)]
 pub enum Input {
+    /// File-based means we need the format beforehand and a pathname
+    ///
     File {
+        /// Input format
         format: Format,
+        /// Path of the input file
         path: PathBuf,
     },
+    /// Network-based means we need the site name (whose details are taken from the configuration
+    /// file.  The `site` is a `Fetchable` object generated from `Config`.
+    ///
     Network {
+        /// Input format
         format: Format,
+        /// Site itself
         site: Box<dyn Fetchable>,
     },
     Nothing,
 }
 
+/// The task itself
 #[derive(Debug)]
 pub struct Task {
     /// name for the task
     pub name: String,
     /// Input type, File or Network
     pub input: Input,
-    /// Optional arguments
+    /// Optional arguments (usually json-encoded string)
     pub args: String,
 }
 
