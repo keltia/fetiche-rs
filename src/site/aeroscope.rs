@@ -20,6 +20,24 @@ use crate::format::aeroscope::Aeroscope as InputFormat;
 use crate::format::{Cat21, Format};
 use crate::site::{Fetchable, Site};
 
+/// Data to send to authenticate ourselves and get a token
+///
+#[derive(Serialize)]
+struct Credentials {
+    /// Username
+    username: String,
+    /// Password
+    password: String,
+}
+
+/// Access token derived from username/password
+///
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
+struct Token {
+    /// Token (SHA-256 or -512 data I guess)
+    access_token: String,
+}
+
 /// This describe the Aeroscope "site" which is the PC we have here at the EIH
 /// ///
 #[derive(Clone, Debug)]
@@ -87,12 +105,6 @@ impl Default for Aeroscope {
     fn default() -> Self {
         Self::new()
     }
-}
-
-#[derive(Serialize)]
-struct Credentials {
-    username: String,
-    password: String,
 }
 
 impl Fetchable for Aeroscope {
@@ -179,17 +191,11 @@ impl Fetchable for Aeroscope {
         Ok(res)
     }
 
+    /// Returns the site's input format
+    ///
     fn format(&self) -> Format {
         Format::Aeroscope
     }
-}
-
-/// Access token derived from username/password
-///
-#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
-struct Token {
-    /// Token (SHA-256 or -512 data I guess)
-    access_token: String,
 }
 
 #[cfg(test)]

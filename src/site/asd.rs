@@ -7,7 +7,8 @@
 //!    the data twice as it is requesting the specific filename returned but the
 //!    data is already in the first call!
 //!
-//! Format is different from the json obtained from the actual Aeroscope system
+//! Format is different from the json obtained from the actual Aeroscope system but the `Asd` is
+//! compatible with both CSV and JSON output from the site.
 //!
 //! This implement the `Fetchable` trait described in `site/mod.rs`.
 //!
@@ -25,6 +26,64 @@ use crate::filter::Filter;
 use crate::format::asd::Asd as InputFormat;
 use crate::format::{Cat21, Format};
 use crate::site::{Fetchable, Site};
+
+/// Different types of source
+///
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged, into = "String")]
+enum Source {
+    /// ADS-B
+    Ab,
+    /// OGN
+    Og,
+    /// Wifi (signalement InfoDrone)
+    Wi,
+    /// Aeroscope
+    As,
+    /// ASD (tracers)
+    Ad,
+    /// ASD (mobile app)
+    Mo,
+}
+
+impl From<Source> for String {
+    /// For serialization into json
+    ///
+    fn from(s: Source) -> Self {
+        match s {
+            Source::Ab => "ab",
+            Source::Og => "og",
+            Source::Wi => "wi",
+            Source::As => "as",
+            Source::Ad => "ad",
+            Source::Mo => "mo",
+        }
+        .to_string()
+    }
+}
+
+/// Credentials to submit to the site to get the token
+///
+#[derive(Debug, Serialize)]
+struct Credentials {
+    /// Email as username
+    email: String,
+    /// Password
+    password: String,
+}
+
+/// Data to submit to get replay of journeys
+///
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Param {
+    /// Limit ourselves to this time interval beginning at
+    start_time: NaiveDateTime,
+    /// Limit ourselves to this time interval ending at
+    end_time: NaiveDateTime,
+    /// Source of data from ASD, see below `Source` enum.
+    sources: Vec<Source>,
+}
 
 /// Asd represent what is needed to connect & auth to and fetch data from the ASD main site.
 ///
@@ -93,65 +152,9 @@ impl Default for Asd {
     }
 }
 
-/// Data to submit to get replay of journeys
-///
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Param {
-    /// Limit ourselves to this time interval beginning at
-    start_time: NaiveDateTime,
-    /// Limit ourselves to this time interval ending at
-    end_time: NaiveDateTime,
-    /// Source of data from ASD, see below `Source` enum.
-    sources: Vec<Source>,
-}
-
-/// Different types of source
-///
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(untagged, into = "String")]
-enum Source {
-    /// ADS-B
-    Ab,
-    /// OGN
-    Og,
-    /// Wifi (signalement InfoDrone)
-    Wi,
-    /// Aeroscope
-    As,
-    /// ASD (tracers)
-    Ad,
-    /// ASD (mobile app)
-    Mo,
-}
-
-impl From<Source> for String {
-    /// For serialization into json
-    ///
-    fn from(s: Source) -> Self {
-        match s {
-            Source::Ab => "ab",
-            Source::Og => "og",
-            Source::Wi => "wi",
-            Source::As => "as",
-            Source::Ad => "ad",
-            Source::Mo => "mo",
-        }
-        .to_string()
-    }
-}
-
-/// Credentials to submit to the site to get the token
-///
-#[derive(Debug, Serialize)]
-struct Credentials {
-    /// Email as username
-    email: String,
-    /// Password
-    password: String,
-}
-
 impl Fetchable for Asd {
+    /// Authenticate to the site using the supplied credentials and get a token
+    ///
     fn authenticate(&self) -> Result<String> {
         // Prepare our submission data
         //
@@ -181,7 +184,7 @@ impl Fetchable for Asd {
         Ok(res.token)
     }
 
-    /// Fetch actual data
+    /// Fetch actual data using the aforementioned token
     ///
     fn fetch(&self, token: &str, args: &str) -> Result<String> {
         trace!("Submit parameters");
@@ -247,6 +250,8 @@ impl Fetchable for Asd {
         Ok(resp)
     }
 
+    /// Process every fetched data line and generate the `Cat21` result
+    ///
     fn process(&self, input: String) -> Result<Vec<Cat21>> {
         debug!("Reading & transforming…");
         debug!("IN={:?}", input);
@@ -268,6 +273,8 @@ impl Fetchable for Asd {
         Ok(res)
     }
 
+    /// Return the site's input format
+    ///
     fn format(&self) -> Format {
         Format::Asd
     }
@@ -276,12 +283,12 @@ impl Fetchable for Asd {
 /// Access token derived from username/password
 ///
 #[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Token {
     /// The actual token
     token: String,
     /// Don't ask
     gjrt: String,
-    #[serde(rename = "expiredAt")]
     expired_at: i64,
     roles: Vec<String>,
     name: String,
@@ -289,7 +296,6 @@ struct Token {
     lang: String,
     status: String,
     email: String,
-    #[serde(rename = "airspaceAdmin")]
     airspace_admin: Option<String>,
     homepage: String,
 }

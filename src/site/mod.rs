@@ -40,6 +40,8 @@ pub trait Fetchable: Debug {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum Site {
+    /// Site that needs to be supplied a username and password, often to get a token
+    ///
     Login {
         /// Type of input
         format: String,
@@ -54,6 +56,8 @@ pub enum Site {
         /// Password if needed
         password: String,
     },
+    /// Site using an API key, supplied in a header or in the URL
+    ///
     Key {
         /// Type of input
         format: String,
@@ -64,6 +68,8 @@ pub enum Site {
         /// Data fetching URL
         get: String,
     },
+    /// Plain anonymous public access
+    ///
     Anon {
         /// Type of input
         format: String,
