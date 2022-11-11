@@ -4,6 +4,7 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::fmt::{Display, Formatter};
 
 /// If we specify -B/-E or --today, we need to pass these below
 ///
@@ -31,17 +32,17 @@ impl Filter {
     pub fn from(begin: NaiveDateTime, end: NaiveDateTime) -> Self {
         Filter::Interval { begin, end }
     }
+}
 
-    /// Serialize into json to pass around as a String
-    ///
-    pub fn to_string(&self) -> String {
+impl Display for Filter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         #[derive(Debug, Serialize)]
         struct Minimal {
             begin: NaiveDateTime,
             end: NaiveDateTime,
         }
 
-        match self {
+        let s: String = match self {
             Filter::None => "{}".to_owned(),
             Filter::Interval { begin, end } => {
                 let m = Minimal {
@@ -50,7 +51,8 @@ impl Filter {
                 };
                 json!(m).to_string()
             }
-        }
+        };
+        write!(f, "{}", s)
     }
 }
 
