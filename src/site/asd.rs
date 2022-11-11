@@ -314,20 +314,10 @@ impl Default for Token {
     }
 }
 
-/// Actual data when getting filteredlocations, it is json with the filename but also
-/// the actual content so no need to fetch the named file.
-///
-#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
-struct Content {
-    /// Filename of the generated data file
-    file_name: String,
-    /// Actual CSV content
-    content: String,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use csv::StringRecord;
 
     use crate::filter::Filter;
     use httpmock::prelude::*;
