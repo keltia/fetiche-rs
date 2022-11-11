@@ -32,7 +32,7 @@ pub struct Task {
     /// Input type, File or Network
     pub input: Input,
     /// Optional arguments
-    pub args: Filter,
+    pub args: String,
 }
 
 impl Task {
@@ -43,7 +43,7 @@ impl Task {
         Task {
             name: name.to_owned(),
             input: Input::Nothing,
-            args: Filter::None,
+            args: "".to_string(),
         }
     }
 
@@ -88,7 +88,7 @@ impl Task {
     ///
     pub fn with(&mut self, f: Filter) -> &mut Self {
         debug!("Add date filter {:?}", f);
-        self.args = f;
+        self.args = f.to_string();
         self
     }
 
@@ -112,7 +112,8 @@ impl Task {
                 // Fetch data as bytes
                 //
                 let token = site.authenticate()?;
-                let data = site.fetch(&token)?;
+                let data = site.fetch(&token, &self.args)?;
+                debug!("{}", &data);
                 let res = site.process(data)?;
                 debug!("{:?} as {}", res, format);
                 Ok(res)
