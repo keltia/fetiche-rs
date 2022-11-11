@@ -2,10 +2,11 @@
 //!
 
 use chrono::NaiveDateTime;
+use serde::Serialize;
 
 /// If we specify -B/-E or --today, we need to pass these below
 ///
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum Filter {
     Interval {
         begin: NaiveDateTime,
