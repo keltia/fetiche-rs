@@ -22,23 +22,23 @@ pub struct Asd {
     // $5
     pub location: u32,
     // $6
-    pub timestamp: NaiveDateTime,
-    // $7
-    pub latitude: f32,
-    // $8
-    pub longitude: f32,
+    pub timestamp: String,
+    // $7 (actually f32)
+    pub latitude: String,
+    // $8 (actually f32)
+    pub longitude: String,
     // $9
     pub altitude: u16,
     // $10
-    pub elevation: Option<String>,
+    pub elevation: Option<u32>,
     // $11
-    pub gps: u32,
+    pub gps: Option<u32>,
     // $12
     pub rssi: Option<String>,
-    // $13
-    pub home_lat: Option<f32>,
-    // $14
-    pub home_lon: Option<f32>,
+    // $13 (actually f32)
+    pub home_lat: Option<String>,
+    // $14 (actually f32)
+    pub home_lon: Option<String>,
     // $15
     pub home_height: Option<f32>,
     // $16
@@ -47,10 +47,10 @@ pub struct Asd {
     pub heading: f32,
     // $18
     pub station_name: String,
-    // $19
-    pub station_lat: f32,
-    // $20
-    pub station_lon: f32,
+    // $19 (actually f32)
+    pub station_lat: Option<String>,
+    // $20 (actually f32)
+    pub station_lon: Option<String>,
 }
 
 impl From<&Asd> for Cat21 {
@@ -60,13 +60,15 @@ impl From<&Asd> for Cat21 {
     /// by Marc Gravis.
     ///
     fn from(line: &Asd) -> Self {
-        let tod = line.timestamp.timestamp();
+        let tod = NaiveDateTime::parse_from_str(&line.timestamp, "%Y-%m-%d %H:%M:%S")
+            .unwrap()
+            .timestamp();
         Cat21 {
             sac: 8,
             sic: 200,
             alt_geo_ft: to_feet(line.altitude as f32),
-            pos_lat_deg: line.latitude,
-            pos_long_deg: line.longitude,
+            pos_lat_deg: line.latitude.parse::<f32>().unwrap(),
+            pos_long_deg: line.longitude.parse::<f32>().unwrap(),
             alt_baro_ft: to_feet(line.altitude as f32),
             tod: 128 * (tod % 86400),
             rec_time_posix: tod,
