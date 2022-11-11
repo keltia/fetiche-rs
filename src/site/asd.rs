@@ -94,7 +94,42 @@ impl Default for Asd {
 struct Param {
     start_time: NaiveDateTime,
     end_time: NaiveDateTime,
-    sources: Vec<String>,
+    sources: Vec<Source>,
+}
+
+/// Different types of source
+///
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged, into = "String")]
+enum Source {
+    /// ADS-B
+    Ab,
+    /// OGN
+    Og,
+    /// Wifi (signalement InfoDrone)
+    Wi,
+    /// Aeroscope
+    As,
+    /// ASD (tracers)
+    Ad,
+    /// ASD (mobile app)
+    Mo,
+}
+
+impl From<Source> for String {
+    /// For serialization into json
+    ///
+    fn from(s: Source) -> Self {
+        match s {
+            Source::Ab => "ab",
+            Source::Og => "og",
+            Source::Wi => "wi",
+            Source::As => "as",
+            Source::Ad => "ad",
+            Source::Mo => "mo",
+        }
+        .to_string()
+    }
 }
 
 #[derive(Serialize)]
