@@ -182,7 +182,7 @@ impl Fetchable for Asd {
 
     /// Fetch actual data
     ///
-    fn fetch(&self, token: &str) -> Result<String> {
+    fn fetch(&self, token: &str, args: &str) -> Result<String> {
         trace!("Submit parameters");
 
         // XXX fix with arguments from `Task`
