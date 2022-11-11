@@ -329,6 +329,7 @@ struct Content {
 mod tests {
     use super::*;
 
+    use crate::filter::Filter;
     use httpmock::prelude::*;
     use serde_json::json;
 
@@ -370,5 +371,33 @@ mod tests {
         m.assert();
         assert!(t.is_ok());
         assert_eq!("FOOBAR", t.as_ref().unwrap());
+    }
+
+    #[test]
+    fn test_get_asd_fetch() {
+        let server = MockServer::start();
+        let filter = Filter::default();
+        let filter = json!(filter).to_string();
+        let token = "FOOBAR".to_string();
+        let m = server.mock(|when, then| {
+            when.method(POST)
+                .header(
+                    "user-agent",
+                    format!("{}/{}", crate_name!(), crate_version!()),
+                )
+                .header("content-type", "application/json")
+                .header("authorization", format!("Bearer {}", token))
+                .path("/api/journeys/filteredlocations");
+            then.status(200).body(&filter);
+        });
+
+        let site = setup_asd(&server);
+        dbg!(&site);
+
+        let t = "FOOBAR";
+        let d = site.fetch(&t, &Filter::default().to_string());
+
+        m.assert();
+        assert!(d.is_ok());
     }
 }
