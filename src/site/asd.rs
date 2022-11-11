@@ -315,7 +315,6 @@ impl Default for Token {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use csv::StringRecord;
 
     use crate::filter::Filter;
     use httpmock::prelude::*;
