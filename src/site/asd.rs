@@ -132,9 +132,13 @@ impl From<Source> for String {
     }
 }
 
-#[derive(Serialize)]
+/// Credentials to submit to the site to get the token
+///
+#[derive(Debug, Serialize)]
 struct Credentials {
+    /// Email as username
     email: String,
+    /// Password
     password: String,
 }
 
