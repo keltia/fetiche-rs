@@ -220,7 +220,25 @@ impl Fetchable for Asd {
             .json(&data)
             .send();
 
-        let resp = resp?.text()?;
+        // Check status
+        //
+        match resp.status() {
+            StatusCode::OK => {}
+            code => {
+                // This is highly ASD specific
+                //
+                use percent_encoding::percent_decode;
+
+                let h = &resp.headers();
+                let errtxt = percent_decode(&h["x-debug-exception"].as_bytes())
+                    .decode_utf8()
+                    .unwrap();
+                return Err(anyhow!("Error({}): {}", code, errtxt));
+            }
+        }
+
+        let resp = resp.text()?;
+        debug!("{}", &resp);
         let res: Content = serde_json::from_str(&resp)?;
         debug!("{:?}", res);
         Ok(res.content)
