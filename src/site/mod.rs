@@ -28,7 +28,7 @@ pub trait Fetchable: Debug {
     /// If credentials are needed, get a token for subsequent operations
     fn authenticate(&self) -> Result<String>;
     /// Fetch actual data
-    fn fetch(&self, token: &str) -> Result<String>;
+    fn fetch(&self, token: &str, args: &str) -> Result<String>;
     /// Transform fetched data into Cat21
     fn process(&self, input: String) -> Result<Vec<Cat21>>;
     /// Returns the input format

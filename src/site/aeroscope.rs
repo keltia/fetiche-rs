@@ -131,7 +131,7 @@ impl Fetchable for Aeroscope {
 
     /// Fetch actual data from the site as a long String.
     ///
-    fn fetch(&self, token: &str) -> Result<String> {
+    fn fetch(&self, token: &str, _args: &str) -> Result<String> {
         debug!("Now fetching data");
         // Use the token to authenticate ourselves
         //
