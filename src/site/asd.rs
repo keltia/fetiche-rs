@@ -90,10 +90,16 @@ impl Default for Asd {
     }
 }
 
-#[derive(Serialize)]
+/// Data to submit to get replay of journeys
+///
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Param {
+    /// Limit ourselves to this time interval beginning at
     start_time: NaiveDateTime,
+    /// Limit ourselves to this time interval ending at
     end_time: NaiveDateTime,
+    /// Source of data from ASD, see below `Source` enum.
     sources: Vec<Source>,
 }
 
