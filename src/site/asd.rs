@@ -351,7 +351,7 @@ mod tests {
                     format!("{}/{}", crate_name!(), crate_version!()),
                 )
                 .header("content-type", "application/json")
-                .path("/login");
+                .path("/api/security/login");
             then.status(200).body(&jtok);
         });
 
