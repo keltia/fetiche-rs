@@ -4,7 +4,10 @@
 //! 1. use the configured login & password to obtain a token
 //! 2. use the token to get the data
 //!
-//! Format is a CSV as Aeroscope
+//! Data fetched is json and not csv but our struct in `format/aeroscope.rs`  is compatible with
+//! both, even flattening the different lat/long structs in a sensible way.
+//!
+//! This implement the `Fetchable` trait described in `site/mod.rs`.
 //!
 
 use anyhow::Result;
@@ -17,6 +20,8 @@ use crate::format::aeroscope::Aeroscope as InputFormat;
 use crate::format::{Cat21, Format};
 use crate::site::{Fetchable, Site};
 
+/// This describe the Aeroscope "site" which is the PC we have here at the EIH
+/// ///
 #[derive(Clone, Debug)]
 pub struct Aeroscope {
     /// Input format
@@ -37,6 +42,8 @@ pub struct Aeroscope {
 
 impl Aeroscope {
     pub fn new() -> Self {
+        // Set some reasonable defaults
+        //
         Aeroscope {
             format: Format::None,
             login: "".to_owned(),
@@ -48,7 +55,7 @@ impl Aeroscope {
         }
     }
 
-    /// Load some data from the configuration file
+    /// Load our site details from what is in the confifguration file
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
         match site {
@@ -82,6 +89,12 @@ impl Default for Aeroscope {
     }
 }
 
+#[derive(Serialize)]
+struct Credentials {
+    username: String,
+    password: String,
+}
+
 impl Fetchable for Aeroscope {
     /// Authenticate to the site with login/password and return a token
     ///
@@ -89,10 +102,10 @@ impl Fetchable for Aeroscope {
         // Prepare our submission data
         //
         debug!("Submit auth as {:?}", &self.login);
-        let body = format!(
-            "{{\"username\": \"{}\", \"password\": \"{}\"}}",
-            self.login, self.password
-        );
+        let cred = Credentials {
+            username: self.login.clone(),
+            password: self.password.clone(),
+        };
 
         // fetch token
         //
@@ -107,7 +120,7 @@ impl Fetchable for Aeroscope {
                 format!("{}/{}", crate_name!(), crate_version!()),
             )
             .header("content-type", "application/json")
-            .body(body)
+            .json(&cred)
             .send();
 
         let resp = resp?.text()?;
@@ -132,7 +145,7 @@ impl Fetchable for Aeroscope {
                 format!("{}/{}", crate_name!(), crate_version!()),
             )
             .header("content-type", "application/json")
-            .header("Authorization", format!("Bearer {}", token))
+            .bearer_auth(token)
             .send()?
             .text()?;
         debug!("{} bytes read. ", resp.len());
@@ -148,15 +161,19 @@ impl Fetchable for Aeroscope {
 
         let res = res
             .iter()
-            .inspect(|f| println!("res={:?}", f))
+            // Add "line number" for output
             .enumerate()
+            // Debug
             .inspect(|(n, f)| println!("res={:?}-{:?}", n, f))
+            // Convert
             .map(|(cnt, rec)| {
                 debug!("rec={:?}", rec);
                 let mut line = Cat21::from(rec);
                 line.rec_num = cnt;
                 line
             })
+            // Skip if element doesn't have any position
+            .filter(|line| line.pos_lat_deg != 0.0 && line.pos_long_deg != 0.0)
             .collect();
         debug!("res={:?}", res);
         Ok(res)
@@ -200,7 +217,7 @@ mod tests {
             then.status(200).body(&jtok);
         });
 
-        let client = reqwest::blocking::Client::new();
+        let client = Client::new();
         let site = Aeroscope {
             format: Format::Aeroscope,
             login: "user".to_string(),

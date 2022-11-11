@@ -1,5 +1,10 @@
 //! Module to handle Safesky data and map the input into our own Cat-21-like format.
 //!
+//! Phases: (TBC)
+//! - use the API key configured in the configuration file to fetch data
+//!
+//! This implement the `Fetchable` trait described in `site/mod.rs`.
+//!
 
 use std::net::IpAddr;
 
@@ -12,6 +17,7 @@ use crate::format::{to_feet, to_knots, Cat21};
 ///
 #[derive(Debug, Deserialize)]
 pub struct Safesky {
+    /// Timestamp
     pub last_update: DateTime<Utc>,
     pub id: String,
     pub source: String,
@@ -32,7 +38,9 @@ pub struct Safesky {
 }
 
 impl From<&Safesky> for Cat21 {
-    /// Minimal transformations for now.
+    /// Generate a `Cat21` struct from Safesky..
+    ///
+    /// TODO: transformations to be confirmed
     ///
     fn from(line: &Safesky) -> Self {
         let tod = line.last_update.timestamp();

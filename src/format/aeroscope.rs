@@ -3,34 +3,25 @@
 //!
 
 use chrono::{DateTime, Utc};
-use log::debug;
 use serde::Deserialize;
 
-use crate::format::{to_feet, to_knots, Cat21};
+use crate::format::{to_feet, to_knots, Cat21, Position};
 
-/// Our input structure from the csv file coming out of the aeroscope
+/// Our input structure from the csv file coming out of the aeroscope as CSV
 ///
 #[derive(Debug, Deserialize)]
 pub struct Aeroscope {
     // $1
     #[serde(rename = "aeroscope_id")]
     pub id: String,
-    // $2
-    #[serde(rename = "aeroscope_position.latitude")]
-    pub aeroscope_latitude: f32,
-    // $3
-    #[serde(rename = "aeroscope_position.longitude")]
-    pub aeroscope_longitude: f32,
+    // $2 & $3
+    pub aeroscope_position: Position,
     // $4
     pub altitude: f32,
     // $5
     pub azimuth: f32,
-    // $6
-    #[serde(rename = "coordinate.latitude")]
-    pub coordinate_latitude: f32,
-    // $7
-    #[serde(rename = "coordinate.longitude")]
-    pub coordinate_longitude: f32,
+    // $6 & $7
+    pub coordinate: Position,
     // $8
     pub distance: f32,
     // $9
@@ -39,18 +30,10 @@ pub struct Aeroscope {
     pub drone_type: String,
     // $11
     pub flight_id: String,
-    // $12
-    #[serde(rename = "home_location.latitude")]
-    pub home_latitude: f32,
-    // $13
-    #[serde(rename = "home_location.longitude")]
-    pub home_longitude: f32,
-    // $14
-    #[serde(rename = "pilot_position.latitude")]
-    pub pilot_latitude: f32,
-    // $15
-    #[serde(rename = "pilot_position.longitude")]
-    pub pilot_longitude: f32,
+    // $12 & $13
+    pub home_location: Position,
+    // $14 & $15
+    pub pilot_position: Position,
     // $16
     pub receive_date: String,
     // $17
@@ -64,15 +47,19 @@ impl From<&Aeroscope> for Cat21 {
     /// by Marc Gravis.
     ///
     fn from(line: &Aeroscope) -> Self {
-        debug!("Converting from {:?}", line);
         let tod = line.receive_date.parse::<DateTime<Utc>>().unwrap();
         let tod = tod.timestamp();
+        let lid = if line.drone_id != "null" {
+            line.drone_id[2..10].to_owned()
+        } else {
+            "null".to_owned()
+        };
         Cat21 {
             sac: 8,
             sic: 200,
             alt_geo_ft: to_feet(line.altitude),
-            pos_lat_deg: line.coordinate_latitude,
-            pos_long_deg: line.coordinate_longitude,
+            pos_lat_deg: line.coordinate.latitude,
+            pos_long_deg: line.coordinate.longitude,
             alt_baro_ft: to_feet(line.altitude),
             tod: 128 * (tod % 86400),
             rec_time_posix: tod,
@@ -99,7 +86,7 @@ impl From<&Aeroscope> for Cat21 {
             report_type: 3,
             tod_calculated: "N".to_string(),
             // We do truncate the drone_id for privacy reasons
-            callsign: line.drone_id[2..10].to_owned(),
+            callsign: lid,
             groundspeed_kt: to_knots(line.speed),
             track_angle_deg: line.azimuth,
             rec_num: 1,

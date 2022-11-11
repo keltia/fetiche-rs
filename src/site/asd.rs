@@ -7,10 +7,13 @@
 //!    the data twice as it is requesting the specific filename returned but the
 //!    data is already in the first call!
 //!
-//! Format is different from the csv obtained from the actual Aeroscope system
+//! Format is different from the json obtained from the actual Aeroscope system
+//!
+//! This implement the `Fetchable` trait described in `site/mod.rs`.
 //!
 
 use anyhow::Result;
+use chrono::NaiveDateTime;
 use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
 use log::{debug, error, trace};
@@ -20,6 +23,8 @@ use serde::{Deserialize, Serialize};
 use crate::format::{asd, Cat21, Format};
 use crate::site::{Fetchable, Site};
 
+/// Asd represent what is needed to connect & auth to and fetch data from the ASD main site.
+///
 #[derive(Clone, Debug)]
 pub struct Asd {
     /// Input format
@@ -85,15 +90,28 @@ impl Default for Asd {
     }
 }
 
+#[derive(Serialize)]
+struct Param {
+    start_time: NaiveDateTime,
+    end_time: NaiveDateTime,
+    sources: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct Credentials {
+    email: String,
+    password: String,
+}
+
 impl Fetchable for Asd {
     fn authenticate(&self) -> Result<String> {
         // Prepare our submission data
         //
         trace!("Submit auth as {:?}", &self.login);
-        let body = format!(
-            "{{\"email\": \"{}\", \"password\": \"{}\"}}",
-            self.login, self.password
-        );
+        let cred = Credentials {
+            email: self.login.clone(),
+            password: self.password.clone(),
+        };
 
         // fetch token
         //
@@ -108,7 +126,7 @@ impl Fetchable for Asd {
                 format!("{}/{}", crate_name!(), crate_version!()),
             )
             .header("content-type", "application/json")
-            .body(body)
+            .json(&cred)
             .send();
 
         let resp = resp?.text()?;
@@ -121,15 +139,20 @@ impl Fetchable for Asd {
     ///
     fn fetch(&self, token: &str) -> Result<String> {
         trace!("Submit parameters");
-        let data = format!(
-            "{{\"startTime\": \"'{}'\",\"endTime\": \"'{}}}'\",\"sources\": [\"as\",\"wi\"]}}",
-            "", ""
-        );
+
+        // XXX fix with arguments from `Task`
+        //
+        let data = Param {
+            start_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
+            end_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
+            sources: vec!["as".to_string(), "wi".to_string()],
+        };
 
         // use token
         //
         let url = format!("{}{}", self.base_url, self.get);
         debug!("Fetching data through {}…", url);
+
         let resp = self
             .client
             .clone()
@@ -138,9 +161,9 @@ impl Fetchable for Asd {
                 "user-agent",
                 format!("{}/{}", crate_name!(), crate_version!()),
             )
-            .header("authentication", format!("Bearer {}", token))
             .header("content-type", "application/json")
-            .body(data)
+            .bearer_auth(token)
+            .json(&data)
             .send();
 
         let resp = resp?.text()?;
@@ -198,6 +221,24 @@ struct Token {
     homepage: String,
 }
 
+impl Default for Token {
+    fn default() -> Self {
+        Token {
+            token: "".to_owned(),
+            gjrt: "".to_owned(),
+            expired_at: 0i64,
+            roles: vec![],
+            name: "John Doe".to_owned(),
+            supervision: None,
+            lang: "en".to_owned(),
+            status: "".to_owned(),
+            email: "john.doe@example.net".to_owned(),
+            airspace_admin: None,
+            homepage: "https://example.net".to_owned(),
+        }
+    }
+}
+
 /// Actual data when getting filteredlocations, it is json with the filename but also
 /// the actual content so no need to fetch the named file.
 ///
@@ -207,4 +248,48 @@ struct Content {
     file_name: String,
     /// Actual CSV content
     content: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use httpmock::prelude::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_get_asd_token() {
+        let server = MockServer::start();
+        let token = Token {
+            token: "FOOBAR".to_string(),
+            ..Default::default()
+        };
+        let jtok = json!(token).to_string();
+        let m = server.mock(|when, then| {
+            when.method(POST)
+                .header(
+                    "user-agent",
+                    format!("{}/{}", crate_name!(), crate_version!()),
+                )
+                .header("content-type", "application/json")
+                .path("/login");
+            then.status(200).body(&jtok);
+        });
+
+        let client = Client::new();
+        let site = Asd {
+            format: Format::Asd,
+            login: "user".to_string(),
+            password: "pass".to_string(),
+            token: "/login".to_string(),
+            base_url: server.base_url().clone(),
+            get: "/get".to_string(),
+            client,
+        };
+        let t = site.authenticate();
+
+        m.assert();
+        assert!(t.is_ok());
+        assert_eq!("FOOBAR", t.as_ref().unwrap());
+    }
 }

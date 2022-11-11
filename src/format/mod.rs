@@ -108,6 +108,30 @@ impl Display for Format {
     }
 }
 
+/// This structure hold a general location object with lat/long.
+///
+/// In CSV files, the two fields are merged into this struct on deserialisation
+/// and used as-is when coming from JSON.
+///
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Position {
+    // Latitude in degrees
+    pub latitude: f32,
+    /// Longitude in degrees
+    pub longitude: f32,
+}
+
+impl Default for Position {
+    /// makes testing easier
+    #[inline]
+    fn default() -> Self {
+        Position {
+            latitude: 0.0,
+            longitude: 0.0,
+        }
+    }
+}
+
 /// Our pseudo cat21 csv output, we add the mapping from the awk script in comment
 ///
 /// SAC:SIC:ALT_GEO_FT:POS_LAT_DEG:POS_LONG_DEG:ALT_BARO_FT:TOD:REC_TIME_POSIX:REC_TIME_MS:
