@@ -67,7 +67,7 @@ impl Fetchable for Safesky {
         todo!()
     }
 
-    fn fetch(&self, _token: &str) -> Result<String> {
+    fn fetch(&self, _token: &str, _args: &str) -> Result<String> {
         todo!()
     }
 
