@@ -173,6 +173,8 @@ impl Fetchable for Aeroscope {
 
         let res = res
             .iter()
+            // Skip if element doesn't have any position
+            .filter(|line| line.coordinate.latitude != 0.0 && line.coordinate.longitude != 0.0)
             // Add "line number" for output
             .enumerate()
             // Debug
@@ -184,8 +186,6 @@ impl Fetchable for Aeroscope {
                 line.rec_num = cnt;
                 line
             })
-            // Skip if element doesn't have any position
-            .filter(|line| line.pos_lat_deg != 0.0 && line.pos_long_deg != 0.0)
             .collect();
         debug!("res={:?}", res);
         Ok(res)
