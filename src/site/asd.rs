@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::filter::Filter;
+use crate::format::asd::Asd as InputFormat;
 use crate::format::{asd, Cat21, Format};
 use crate::site::{Fetchable, Site};
 
@@ -245,27 +246,22 @@ impl Fetchable for Asd {
         }
 
         let resp = resp.text()?;
-        debug!("{}", &resp);
-        let res: Content = serde_json::from_str(&resp)?;
-        debug!("data={:?}", res);
-        Ok(res.content)
+        Ok(resp)
     }
 
     fn process(&self, input: String) -> Result<Vec<Cat21>> {
-        let mut rdr = ReaderBuilder::new()
-            .flexible(true)
-            .from_reader(input.as_bytes());
+        debug!("Reading & transforming…");
+        debug!("IN={:?}", input);
+        let res: Vec<InputFormat> = serde_json::from_str(&input)?;
 
-        let res: Vec<_> = rdr
-            .records()
-            .inspect(|f| println!("res={:?}", f.as_ref().unwrap()))
+        debug!("rec={:?}", res);
+        let res: Vec<_> = res
+            .iter()
             .enumerate()
-            .inspect(|(n, f)| println!("res={:?}-{:?}", n, f))
+            .inspect(|(n, f)| println!("f={:?}-{:?}", n, f))
             .map(|(cnt, rec)| {
-                let rec = rec.unwrap();
-                debug!("rec={:?}", rec);
-                let line: asd::Asd = rec.deserialize(None).unwrap();
-                let mut line = Cat21::from(&line);
+                debug!("cnt={}/rec={:?}", cnt, rec);
+                let mut line = Cat21::from(rec);
                 line.rec_num = cnt;
                 line
             })
@@ -344,7 +340,7 @@ mod tests {
             password: "pass".to_string(),
             token: "/api/security/login".to_string(),
             base_url: server.base_url().clone(),
-            get: "/api/journeys/filteredlocations".to_string(),
+            get: "/api/journeys/filteredlocations/json".to_string(),
             client: client.clone(),
         }
     }
