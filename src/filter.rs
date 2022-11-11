@@ -8,6 +8,7 @@ use serde_json::json;
 /// If we specify -B/-E or --today, we need to pass these below
 ///
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(untagged)]
 pub enum Filter {
     Interval {
         begin: NaiveDateTime,
