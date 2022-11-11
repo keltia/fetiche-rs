@@ -177,7 +177,6 @@ impl Fetchable for Asd {
             .header("content-type", "application/json")
             .json(&cred)
             .send();
-
         let resp = resp?.text()?;
         let res: Token = serde_json::from_str(&resp)?;
         Ok(res.token)
@@ -343,6 +342,7 @@ mod tests {
             token: "FOOBAR".to_string(),
             ..Default::default()
         };
+
         let jtok = json!(token).to_string();
         let m = server.mock(|when, then| {
             when.method(POST)
