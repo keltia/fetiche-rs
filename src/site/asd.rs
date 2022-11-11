@@ -15,7 +15,6 @@
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use clap::{crate_name, crate_version};
-use csv::ReaderBuilder;
 use log::{debug, error, trace};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
@@ -24,7 +23,7 @@ use serde_json::json;
 
 use crate::filter::Filter;
 use crate::format::asd::Asd as InputFormat;
-use crate::format::{asd, Cat21, Format};
+use crate::format::{Cat21, Format};
 use crate::site::{Fetchable, Site};
 
 /// Asd represent what is needed to connect & auth to and fetch data from the ASD main site.
@@ -257,7 +256,7 @@ impl Fetchable for Asd {
         let res: Vec<_> = res
             .iter()
             .enumerate()
-            .inspect(|(n, f)| println!("f={:?}-{:?}", n, f))
+            .inspect(|(n, f)| debug!("f={:?}-{:?}", n, f))
             .map(|(cnt, rec)| {
                 debug!("cnt={}/rec={:?}", cnt, rec);
                 let mut line = Cat21::from(rec);
