@@ -43,8 +43,14 @@ pub fn filter_from_opts(opts: &Opts) -> Filter {
     if opts.today {
         // Build our own begin, end
         //
-        let begin = NaiveDate::from_ymd(t.year(), t.month(), t.day()).and_hms(0, 0, 0);
-        let end = NaiveDate::from_ymd(t.year(), t.month(), t.day()).and_hms(23, 59, 59);
+        let begin = NaiveDate::from_ymd_opt(t.year(), t.month(), t.day())
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+        let end = NaiveDate::from_ymd_opt(t.year(), t.month(), t.day())
+            .unwrap()
+            .and_hms_opt(23, 59, 59)
+            .unwrap();
 
         Filter::from(begin, end)
     } else if opts.begin.is_some() {
