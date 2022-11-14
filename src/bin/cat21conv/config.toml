@@ -23,7 +23,7 @@ get = "/api/journeys/filteredlocations"
 format = "safesky"
 base_url = "https://public-api.safesky.app"
 api_key = "foobar"
-get = "/beacons"
+get = "/v1/beacons"
 
 [sites.nope]
 
