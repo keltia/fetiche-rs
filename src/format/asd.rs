@@ -1,55 +1,64 @@
 //! Module to load and process the data coming from the ASD site and generate
 //! CSV data Cat21-like
 //!
+//! Documentation is taken from `ASD_MAN_ManuelPositionnementAPI_v1.1.pdf`  as sent by ASD.
+//!
+//! JSON endpoint added later by ASD in Nov. 2022.
 
 use chrono::NaiveDateTime;
 use serde::Deserialize;
 
 use crate::format::{to_feet, to_knots, Cat21};
 
-/// Our input structure from the csv file coming out of the aeroscope
+/// Our input structure from the json file coming out of the main ASD site
+///
+/// Data can be obtained either in CSV or JSON format, we prefer the latter.
+///
+/// NOTE: Some fields are String and not the actual type (f32 for example) because there
+/// are apparently stored as DECIMAL in their database and not as FLOAT.  There are then
+/// exported as 6-digit floating strings.
 ///
 #[derive(Debug, Deserialize)]
 pub struct Asd {
-    // $1
+    // Each record is part of a drone journey with a specific ID
     pub journey: u32,
-    // $2
+    // Identifier for the drone
     pub ident: String,
-    // $3
+    // Model of the drone
     pub model: Option<String>,
-    // $4
+    // Source ([see src/site/asd.rs]) of the data
     pub source: String,
-    // $5
+    // Point/record ID
     pub location: u32,
-    // $6
+    // Date of event (in the non standard YYYY-MM-DD HH:MM:SS format)
     pub timestamp: String,
     // $7 (actually f32)
     pub latitude: String,
     // $8 (actually f32)
     pub longitude: String,
-    // $9
+    // Altitude, can be either null or negative (?)
     pub altitude: Option<i16>,
-    // $10
+    // Distance to ground (estimated every 15s)
     pub elevation: Option<u32>,
-    // $11
+    // Undocumented
     pub gps: Option<u32>,
-    // $12
+    // Signal level (in dB)
     pub rssi: Option<i32>,
     // $13 (actually f32)
     pub home_lat: Option<String>,
     // $14 (actually f32)
     pub home_lon: Option<String>,
-    // $15
+    // Altitude from takeoff point
     pub home_height: Option<f32>,
-    // $16
+    // Current speed
     pub speed: f32,
-    // $17
+    // True heading
     pub heading: f32,
-    // $18
+    // Name of detecting point
     pub station_name: Option<String>,
-    // $19 (actually f32)
+    // Latitude (actually f32)
     pub station_lat: Option<String>,
-    // $20 (actually f32)
+    // Longitude (actually f32)
     pub station_lon: Option<String>,
 }
 
