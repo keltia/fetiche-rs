@@ -63,10 +63,7 @@ impl From<&Asd> for Cat21 {
         let tod = NaiveDateTime::parse_from_str(&line.timestamp, "%Y-%m-%d %H:%M:%S")
             .unwrap()
             .timestamp();
-        let alt_geo_ft = match line.altitude {
-            Some(alt) => alt,
-            None => 0u16,
-        };
+        let alt_geo_ft = line.altitude.unwrap_or(0u16);
         let alt_geo_ft: f32 = alt_geo_ft.into();
         Cat21 {
             sac: 8,
