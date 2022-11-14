@@ -371,7 +371,7 @@ mod tests {
     fn test_get_asd_fetch() {
         let server = MockServer::start();
         let filter = Filter::default();
-        let filter = json!(filter).to_string();
+        let filter = "{}".to_string();
         let token = "FOOBAR".to_string();
         let m = server.mock(|when, then| {
             when.method(POST)
@@ -381,8 +381,9 @@ mod tests {
                 )
                 .header("content-type", "application/json")
                 .header("authorization", format!("Bearer {}", token))
-                .path("/api/journeys/filteredlocations");
-            then.status(200).body(&filter);
+                .path("/api/journeys/filteredlocations/json")
+                .body(&filter);
+            then.status(200).body("");
         });
 
         let site = setup_asd(&server);
