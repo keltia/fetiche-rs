@@ -39,7 +39,7 @@
 //!
 //! let cfg = Config::load(&PathBuf::from("config.toml"))?;
 //!
-//! let site = Site::new().load(name, &cfg)?;
+//! let site = Site::load(name, &cfg)?;
 //! let res: Vec<Cat21> = Task::new(name).site(site).with(filter).run()?;
 //!
 //! # Ok(())

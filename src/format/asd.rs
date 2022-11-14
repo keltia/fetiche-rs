@@ -1,56 +1,77 @@
 //! Module to load and process the data coming from the ASD site and generate
 //! CSV data Cat21-like
 //!
+//! Documentation is taken from `ASD_MAN_ManuelPositionnementAPI_v1.1.pdf`  as sent by ASD.
+//!
+//! JSON endpoint added later by ASD in Nov. 2022.
 
 use chrono::NaiveDateTime;
 use serde::Deserialize;
 
 use crate::format::{to_feet, to_knots, Cat21};
 
-/// Our input structure from the csv file coming out of the aeroscope
+/// Our input structure from the json file coming out of the main ASD site
+///
+/// Data can be obtained either in CSV or JSON format, we prefer the latter.
+///
+/// NOTE: Some fields are String and not the actual type (f32 for example) because there
+/// are apparently stored as DECIMAL in their database and not as FLOAT.  There are then
+/// exported as 6-digit floating strings.
 ///
 #[derive(Debug, Deserialize)]
 pub struct Asd {
-    // $1
+    // Each record is part of a drone journey with a specific ID
     pub journey: u32,
-    // $2
+    // Identifier for the drone
     pub ident: String,
-    // $3
-    pub model: String,
-    // $4
+    // Model of the drone
+    pub model: Option<String>,
+    // Source ([see src/site/asd.rs]) of the data
     pub source: String,
-    // $5
+    // Point/record ID
     pub location: u32,
-    // $6
+    // Date of event (in the non standard YYYY-MM-DD HH:MM:SS format)
     pub timestamp: String,
     // $7 (actually f32)
     pub latitude: String,
     // $8 (actually f32)
     pub longitude: String,
-    // $9
-    pub altitude: u16,
-    // $10
+    // Altitude, can be either null or negative (?)
+    pub altitude: Option<i16>,
+    // Distance to ground (estimated every 15s)
     pub elevation: Option<u32>,
-    // $11
+    // Undocumented
     pub gps: Option<u32>,
-    // $12
-    pub rssi: Option<String>,
+    // Signal level (in dB)
+    pub rssi: Option<i32>,
     // $13 (actually f32)
     pub home_lat: Option<String>,
     // $14 (actually f32)
     pub home_lon: Option<String>,
-    // $15
+    // Altitude from takeoff point
     pub home_height: Option<f32>,
-    // $16
+    // Current speed
     pub speed: f32,
-    // $17
+    // True heading
     pub heading: f32,
-    // $18
-    pub station_name: String,
-    // $19 (actually f32)
+    // Name of detecting point
+    pub station_name: Option<String>,
+    // Latitude (actually f32)
     pub station_lat: Option<String>,
-    // $20 (actually f32)
+    // Longitude (actually f32)
     pub station_lon: Option<String>,
+}
+
+/// For privacy reasons, we truncate the drone ID value to something not unique
+///
+#[cfg(feature = "privacy")]
+fn get_drone_id(id: &str) -> String {
+    id[2..10].to_owned()
+}
+
+#[cfg(not(feature = "privacy"))]
+fn get_drone_id(id: &str) -> String {
+    id.to_owned()
 }
 
 impl From<&Asd> for Cat21 {
@@ -63,13 +84,15 @@ impl From<&Asd> for Cat21 {
         let tod = NaiveDateTime::parse_from_str(&line.timestamp, "%Y-%m-%d %H:%M:%S")
             .unwrap()
             .timestamp();
+        let alt_geo_ft = line.altitude.unwrap_or(0i16);
+        let alt_geo_ft: f32 = alt_geo_ft.into();
         Cat21 {
             sac: 8,
             sic: 200,
-            alt_geo_ft: to_feet(line.altitude as f32),
+            alt_geo_ft: to_feet(alt_geo_ft),
             pos_lat_deg: line.latitude.parse::<f32>().unwrap(),
             pos_long_deg: line.longitude.parse::<f32>().unwrap(),
-            alt_baro_ft: to_feet(line.altitude as f32),
+            alt_baro_ft: to_feet(alt_geo_ft),
             tod: 128 * (tod % 86400),
             rec_time_posix: tod,
             rec_time_ms: 0,
@@ -95,7 +118,7 @@ impl From<&Asd> for Cat21 {
             report_type: 3,
             tod_calculated: "N".to_string(),
             // We do truncate the drone_id for privacy reasons
-            callsign: line.ident[2..10].to_owned(),
+            callsign: get_drone_id(&line.ident),
             groundspeed_kt: to_knots(line.speed),
             track_angle_deg: line.heading,
             rec_num: 1,

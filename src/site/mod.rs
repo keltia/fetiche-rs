@@ -82,15 +82,9 @@ pub enum Site {
 }
 
 impl Site {
-    /// Initialize a site
-    ///
-    pub fn new() -> Self {
-        Site::Invalid
-    }
-
     /// Load site by checking whether it is present in the configuration file
     ///
-    pub fn load(&mut self, name: &str, cfg: &Config) -> Result<Box<dyn Fetchable>> {
+    pub fn load(name: &str, cfg: &Config) -> Result<Box<dyn Fetchable>> {
         trace!("Loading site {}", name);
         match cfg.sites.get(name) {
             Some(site) => {
@@ -130,12 +124,6 @@ impl Site {
     }
 }
 
-impl Default for Site {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,7 +155,7 @@ mod tests {
     fn test_site_new_good() {
         let cfg = set_default();
 
-        let s = Site::new().load("foo", &cfg);
+        let s = Site::load("foo", &cfg);
         assert!(s.is_ok());
     }
 
@@ -175,7 +163,7 @@ mod tests {
     fn test_site_new_unknown() {
         let cfg = set_default();
 
-        let s = Site::new().load("bar", &cfg);
+        let s = Site::load("bar", &cfg);
         assert!(s.is_err());
     }
 

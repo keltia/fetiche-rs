@@ -37,6 +37,17 @@ network input and as well to support more input formats.
 
 ## Installation
 
+It might be available at some point as a crate on [Crates.io]  but for the moment just as a private repository on
+[GitHub]. Installation can be done either through a compiled binary for your platform or by cloning the repo and
+compiling.
+
+### Features
+
+There is one feature enabled by default, called `privacy`. This is for truncating the drone ID to a less-easily
+identifiable value. See `Cargo.toml` for this.
+
+This is intentionally *not* a run-time option but a compile-time one.
+
 ## Usage
 
 ```text
@@ -104,10 +115,12 @@ the input format with the `-F/--format` option.
 
 ## Formats
 
-The default format is the one used by the ASD Aeroscope, but it will soon support the format used by [Safesky] site.  
+The default format is the one used by the Aeroscope from ASD, but it will soon support the format used by [Safesky]
+site.  
 There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
 
-These are described in the `src/format/aeroscope.rs`, `src/format/asd.rs` and `src/format/safesky.rs` files. There are also
+These are described in the `src/format/aeroscope.rs`, `src/format/asd.rs` and `src/format/safesky.rs` files. There are
+also
 transformations in each case when converting into our CSV-based Cat21-like format.
 
 ### Cat21
@@ -117,7 +130,7 @@ everything is flat in a csv so enums are flattened as well). See `src/format/mod
 
 ## MSRV
 
-The Minimum Supported Rust Version is 1.56 due to the 2021 Edition.
+The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 
 ## Supported platforms
 
@@ -128,8 +141,11 @@ The Minimum Supported Rust Version is 1.56 due to the 2021 Edition.
 
 ## TODO
 
-- support more parameters (like dates, etc.)
+- ~~support more parameters (like dates, etc.)~~
+- ~~fetch and analyse from Aeroscope~~
+- ~~fetch and analyse from Asd~~
 - Add more tests & benchmarks.
+- support for Safesky
 
 ## Contributing
 
