@@ -28,7 +28,7 @@ pub struct Asd {
     // $8 (actually f32)
     pub longitude: String,
     // $9
-    pub altitude: Option<u16>,
+    pub altitude: Option<i16>,
     // $10
     pub elevation: Option<u32>,
     // $11
@@ -63,7 +63,7 @@ impl From<&Asd> for Cat21 {
         let tod = NaiveDateTime::parse_from_str(&line.timestamp, "%Y-%m-%d %H:%M:%S")
             .unwrap()
             .timestamp();
-        let alt_geo_ft = line.altitude.unwrap_or(0u16);
+        let alt_geo_ft = line.altitude.unwrap_or(0i16);
         let alt_geo_ft: f32 = alt_geo_ft.into();
         Cat21 {
             sac: 8,
