@@ -113,7 +113,7 @@ impl Display for Format {
 /// In CSV files, the two fields are merged into this struct on deserialisation
 /// and used as-is when coming from JSON.
 ///
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub struct Position {
     // Latitude in degrees
     pub latitude: f32,
