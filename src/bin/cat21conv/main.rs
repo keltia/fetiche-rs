@@ -30,7 +30,7 @@ use std::fs;
 use std::time::Instant;
 
 use anyhow::Result;
-use chrono::{DateTime, Datelike, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use clap::Parser;
 use log::{info, trace};
 use stderrlog::LogLevelNum::{Debug, Info, Trace};
@@ -50,7 +50,14 @@ pub fn filter_from_opts(opts: &Opts) -> Filter {
     } else if opts.begin.is_some() {
         // Assume both are there, checked elsewhere
         //
-        Filter::from(opts.begin.unwrap(), opts.end.unwrap())
+        // We have to parse both arguments ourselves because it uses its own format
+        //
+        let begin = opts.begin.as_ref().unwrap().to_owned();
+        let end = opts.end.as_ref().unwrap().to_owned();
+
+        let begin = NaiveDateTime::parse_from_str(&begin, "%Y-%m-%d %H:%M:%S").unwrap();
+        let end = NaiveDateTime::parse_from_str(&end, "%Y-%m-%d %H:%M:%S").unwrap();
+        Filter::from(begin, end)
     } else {
         Filter::default()
     }
