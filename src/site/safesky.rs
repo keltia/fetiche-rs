@@ -7,12 +7,39 @@
 //! Format is take from the CSV given as an example
 //!
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use log::error;
 use reqwest::blocking::Client;
+use serde::{Deserialize, Serialize};
 
-use crate::format::{Cat21, Format};
+use crate::format::{Cat21, Format, Position};
 use crate::site::{Fetchable, Site};
+
+/// Define the square inside which we want beacons information
+///
+#[derive(Debug, Deserialize, Serialize)]
+struct Viewport {
+    /// North-West corner
+    nw: Position,
+    /// South-East corner
+    se: Position,
+}
+
+/// Data to submit to get replay of journeys
+///
+#[derive(Debug, Serialize)]
+struct Param {
+    /// Limit ourselves to this time interval beginning at
+    altitude_min: Option<i32>,
+    /// Limit ourselves to this time interval ending at
+    altitude_max: Option<i32>,
+    /// Beacon types e.g. "UNKNOWN,GLIDER,PARA_GLIDER"
+    beacon_type: Option<String>,
+    /// Also show grounded beacons?
+    show_grounded: bool,
+    /// Mandatory:
+    viewport: Viewport,
+}
 
 #[derive(Clone, Debug)]
 pub struct Safesky {
@@ -63,8 +90,14 @@ impl Default for Safesky {
 }
 
 impl Fetchable for Safesky {
+    /// Safesky is using an API key you need to have for all transactions, there is no
+    /// real authentication.
+    ///
     fn authenticate(&self) -> Result<String> {
-        todo!()
+        if self.api_key.is_empty() {
+            return Err(anyhow!("No API key"));
+        }
+        Ok(self.api_key.clone())
     }
 
     fn fetch(&self, _token: &str, _args: &str) -> Result<String> {
@@ -77,5 +110,42 @@ impl Fetchable for Safesky {
 
     fn format(&self) -> Format {
         Format::Safesky
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use clap::{crate_name, crate_version};
+    use httpmock::Method::GET;
+    use httpmock::MockServer;
+
+    fn setup_safesky(server: &MockServer) -> Safesky {
+        let client = Client::new();
+        let sk = Safesky {
+            format: Format::Safesky,
+            base_url: "http://example.net".to_string(),
+            get: "/v1/beacons".to_string(),
+            api_key: "FOOBAR".to_string(),
+            client: client.clone(),
+        };
+    }
+
+    #[test]
+    fn test_safesky_load() {
+        let server = MockServer::start();
+        let m = server.mock(|when, then| {
+            when.method(GET)
+                .header(
+                    "user-agent",
+                    format!("{}/{}", crate_name!(), crate_version!()),
+                )
+                .header("content-type", "application/json")
+                .path("/api/security/login");
+            then.status(200);
+        });
+
+        let site = setup_safesky(&server);
     }
 }
