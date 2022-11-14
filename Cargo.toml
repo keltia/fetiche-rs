@@ -10,6 +10,10 @@ repository = "https://github.com/keltia/drone-gencsv"
 categories = ["command-line-utilities", "aerospace::drones"]
 keywords = ["cat21", "asterix", "drones", "aeronautical-data"]
 
+[features]
+default = ["privacy"]
+privacy = []
+
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]

@@ -37,6 +37,15 @@ network input and as well to support more input formats.
 
 ## Installation
 
+It might be available at some point as a crate on [Crates.io]  but for the moment just as a private repository on
+[GitHub]. Installation can be done either through a compiled binary for your platform or by cloning the repo and
+compiling.
+
+### Features
+
+There is one feature, enabled by default, called `privacy`. This is for truncating the drone ID to a less-easily
+identifiable value. See `Cargo.toml` for this.
+
 ## Usage
 
 ```text

@@ -62,6 +62,18 @@ pub struct Asd {
     pub station_lon: Option<String>,
 }
 
+/// For privacy reasons, we truncate the drone ID value to something not unique
+///
+#[cfg(feature = "privacy")]
+fn get_drone_id(id: &str) -> String {
+    id[2..10].to_owned()
+}
+
+#[cfg(not(feature = "privacy"))]
+fn get_drone_id(id: &str) -> String {
+    id.to_owned()
+}
+
 impl From<&Asd> for Cat21 {
     /// Makes the loading and transformations
     ///
@@ -106,7 +118,7 @@ impl From<&Asd> for Cat21 {
             report_type: 3,
             tod_calculated: "N".to_string(),
             // We do truncate the drone_id for privacy reasons
-            callsign: line.ident[2..10].to_owned(),
+            callsign: get_drone_id(&line.ident),
             groundspeed_kt: to_knots(line.speed),
             track_angle_deg: line.heading,
             rec_num: 1,
