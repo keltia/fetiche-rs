@@ -29,7 +29,7 @@ use crate::version::version;
 use std::fs;
 use std::time::Instant;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use clap::Parser;
 use log::{info, trace};
@@ -87,14 +87,17 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
             //
             info!("Reading from {:?}", what);
 
-            let fname = what.to_str()?;
+            let fname = what.to_str().ok_or(anyhow!("Bad file name {:?}", what))?;
 
             Task::new(fname).path(fname).format(fmt).run()
         }
         _ => {
             // Fetch from network
             //
-            let name = opts.site.as_ref()?;
+            let name = opts
+                .site
+                .as_ref()
+                .ok_or(anyhow!("Bad site name {:?}", opts.site))?;
             let site = Site::load(name, cfg)?;
 
             info!("Fetching from network site {}", name);
