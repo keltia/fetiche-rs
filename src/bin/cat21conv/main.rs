@@ -87,14 +87,14 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
             //
             info!("Reading from {:?}", what);
 
-            let fname = what.to_str().unwrap();
+            let fname = what.to_str()?;
 
             Task::new(fname).path(fname).format(fmt).run()
         }
         _ => {
             // Fetch from network
             //
-            let name = opts.site.as_ref().unwrap();
+            let name = opts.site.as_ref()?;
             let site = Site::load(name, cfg)?;
 
             info!("Fetching from network site {}", name);
