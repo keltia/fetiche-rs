@@ -43,8 +43,10 @@ compiling.
 
 ### Features
 
-There is one feature, enabled by default, called `privacy`. This is for truncating the drone ID to a less-easily
+There is one feature enabled by default, called `privacy`. This is for truncating the drone ID to a less-easily
 identifiable value. See `Cargo.toml` for this.
+
+This is intentionally *not* a run-time option but a compile-time one.
 
 ## Usage
 
