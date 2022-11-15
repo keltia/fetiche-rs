@@ -35,6 +35,58 @@ pub trait Fetchable: Debug {
     fn format(&self) -> Format;
 }
 
+/// This macro refactor the code to call the HTTP client
+///
+#[macro_export]
+macro_rules! http_call {
+    /// Get token by submitted credentials
+    ///
+    ($self:ident, $url:ident, $cred:expr) => {
+        $self
+            .client
+            .clone()
+            .post($url)
+            .header(
+                "user-agent",
+                format!("{}/{}", crate_name!(), crate_version!()),
+            )
+            .header("content-type", "application/json")
+            .json($cred)
+            .send()
+    };
+    /// Auth'd call with data submission
+    ///
+    ($self:ident, $url:ident, $token:ident, $data:expr) => {
+        $self
+            .client
+            .clone()
+            .post($url)
+            .header(
+                "user-agent",
+                format!("{}/{}", crate_name!(), crate_version!()),
+            )
+            .header("content-type", "application/json")
+            .bearer_auth($token)
+            .json($data)
+            .send()
+    };
+    /// Auth'd call without any data
+    ///
+    ($self:ident, $url:ident, $token:ident) => {
+        $self
+            .client
+            .clone()
+            .post($url)
+            .header(
+                "user-agent",
+                format!("{}/{}", crate_name!(), crate_version!()),
+            )
+            .header("content-type", "application/json")
+            .bearer_auth($token)
+            .send()
+    };
+}
+
 /// Describe what a site is and associated credentials.
 ///
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

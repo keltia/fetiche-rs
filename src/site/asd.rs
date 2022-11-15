@@ -25,6 +25,7 @@ use serde_json::json;
 use crate::filter::Filter;
 use crate::format::asd::Asd as InputFormat;
 use crate::format::{Cat21, Format};
+use crate::http_call;
 use crate::site::{Fetchable, Site};
 
 /// Different types of source
@@ -168,17 +169,7 @@ impl Fetchable for Asd {
         //
         let url = format!("{}{}", self.base_url, self.token);
         trace!("Fetching token through {}…", url);
-        let resp = self
-            .client
-            .clone()
-            .post(url)
-            .header(
-                "user-agent",
-                format!("{}/{}", crate_name!(), crate_version!()),
-            )
-            .header("content-type", "application/json")
-            .json(&cred)
-            .send();
+        let resp = http_call!(self, url, &cred);
         let resp = resp?.text()?;
         let res: Token = serde_json::from_str(&resp)?;
         Ok(res.token)
@@ -214,18 +205,7 @@ impl Fetchable for Asd {
         let url = format!("{}{}", self.base_url, self.get);
         debug!("Fetching data through {}…", url);
 
-        let resp = self
-            .client
-            .clone()
-            .post(url)
-            .header(
-                "user-agent",
-                format!("{}/{}", crate_name!(), crate_version!()),
-            )
-            .header("content-type", "application/json")
-            .bearer_auth(token)
-            .json(&data)
-            .send()?;
+        let resp = http_call!(self, url, token, &data)?;
 
         debug!("{:?}", &resp);
 
