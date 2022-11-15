@@ -169,8 +169,8 @@ impl Fetchable for Asd {
         //
         let url = format!("{}{}", self.base_url, self.token);
         trace!("Fetching token through {}…", url);
-        let resp = http_call!(self, url, &cred);
-        let resp = resp?.text()?;
+        let resp = http_call!(self, url, &cred)?;
+        let resp = resp.text()?;
         let res: Token = serde_json::from_str(&resp)?;
         Ok(res.token)
     }
