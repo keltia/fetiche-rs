@@ -18,8 +18,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::format::aeroscope::Aeroscope as InputFormat;
 use crate::format::{Cat21, Format};
-use crate::http_call;
 use crate::site::{Fetchable, Site};
+use crate::{http_get_auth, http_post, http_post_auth};
 
 /// Data to send to authenticate ourselves and get a token
 ///
@@ -125,11 +125,11 @@ impl Fetchable for Aeroscope {
         let url = format!("{}{}", self.base_url, self.token);
         debug!("Fetching token through {}…", url);
 
-        let resp = http_call!(self, url, &cred)?;
+        let resp = http_post!(self, url, &cred)?;
         let resp = resp.text()?;
         let res: Token = serde_json::from_str(&resp)?;
 
-        debug!("{:?}", res);
+        debug!("res={:?}", res);
         Ok(res.access_token)
     }
 
@@ -141,7 +141,7 @@ impl Fetchable for Aeroscope {
         // Use the token to authenticate ourselves
         //
         let url = format!("{}{}", self.base_url, self.get);
-        let resp = http_call!(self, url, token);
+        let resp = http_get_auth!(self, url, token);
         let resp = resp?.text()?;
 
         debug!("{} bytes read. ", resp.len());
