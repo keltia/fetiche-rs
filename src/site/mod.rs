@@ -35,12 +35,15 @@ pub trait Fetchable: Debug {
     fn format(&self) -> Format;
 }
 
-/// This macro refactor the code to call the HTTP client
+/// Call the HTTP client with the proper arguments
+///
+/// 3 different cases:
+/// - unauth call to fetch token by submitting credentials
+/// - auth'd call to fetch data by submitting argument in body
+/// - auth'd call to fetch data without any argument
 ///
 #[macro_export]
 macro_rules! http_call {
-    /// Get token by submitted credentials
-    ///
     ($self:ident, $url:ident, $cred:expr) => {
         $self
             .client
@@ -54,8 +57,6 @@ macro_rules! http_call {
             .json($cred)
             .send()
     };
-    /// Auth'd call with data submission
-    ///
     ($self:ident, $url:ident, $token:ident, $data:expr) => {
         $self
             .client
@@ -70,8 +71,6 @@ macro_rules! http_call {
             .json($data)
             .send()
     };
-    /// Auth'd call without any data
-    ///
     ($self:ident, $url:ident, $token:ident) => {
         $self
             .client
