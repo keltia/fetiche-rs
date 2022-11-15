@@ -23,7 +23,7 @@ use crate::site::{Fetchable, Site};
 
 /// Data to send to authenticate ourselves and get a token
 ///
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct Credentials {
     /// Username
     username: String,
