@@ -124,10 +124,11 @@ impl Fetchable for Aeroscope {
         //
         let url = format!("{}{}", self.base_url, self.token);
         debug!("Fetching token through {}…", url);
-        let resp = http_call!(self, url, &cred);
 
-        let resp = resp?.text()?;
+        let resp = http_call!(self, url, &cred)?;
+        let resp = resp.text()?;
         let res: Token = serde_json::from_str(&resp)?;
+
         debug!("{:?}", res);
         Ok(res.access_token)
     }
@@ -136,12 +137,13 @@ impl Fetchable for Aeroscope {
     ///
     fn fetch(&self, token: &str, _args: &str) -> Result<String> {
         debug!("Now fetching data");
+
         // Use the token to authenticate ourselves
         //
         let url = format!("{}{}", self.base_url, self.get);
         let resp = http_call!(self, url, token);
-
         let resp = resp?.text()?;
+
         debug!("{} bytes read. ", resp.len());
         Ok(resp)
     }
