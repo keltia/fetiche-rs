@@ -17,11 +17,13 @@
 mod cli;
 mod version;
 
-use drone_utils::config::{get_config, Config};
-use drone_utils::filter::Filter;
-use drone_utils::format::{prepare_csv, Cat21, Format};
-use drone_utils::site::Site;
-use drone_utils::task::Task;
+use drone_utils::{
+    config::{get_config, Config},
+    filter::Filter,
+    format::{prepare_csv, Cat21, Format},
+    site::Site,
+    task::Task,
+};
 
 use crate::cli::{check_args, Opts};
 use crate::version::version;
