@@ -9,10 +9,12 @@
 
 pub mod aeroscope;
 pub mod asd;
+pub mod opensky;
 pub mod safesky;
 
 use crate::format::aeroscope::Aeroscope;
 use crate::format::asd::Asd;
+use crate::format::opensky::Opensky;
 use crate::format::safesky::Safesky;
 
 use anyhow::Result;
@@ -29,6 +31,7 @@ pub enum Format {
     None,
     Aeroscope,
     Asd,
+    Opensky,
     Safesky,
 }
 
@@ -90,6 +93,7 @@ impl From<&str> for Format {
         match s {
             "aeroscope" => Format::Aeroscope,
             "asd" => Format::Asd,
+            "opensky" => Format::Opensky,
             "safesky" => Format::Safesky,
             _ => Format::None,
         }
@@ -102,6 +106,7 @@ impl Display for Format {
             Format::Aeroscope => "aeroscope".into(),
             Format::Asd => "asd".into(),
             Format::Safesky => "safesky".into(),
+            Format::Opensky => "opensky".into(),
             Format::None => "none".into(),
         };
         write!(f, "{}", s)

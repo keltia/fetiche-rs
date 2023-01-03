@@ -25,6 +25,14 @@ base_url = "https://public-api.safesky.app"
 api_key = "foobar"
 get = "/v1/beacons"
 
+[site.opensky]
+format = "opensky"
+base_url = "https://opensky-network.org/api"
+token = ""
+login = "dphu"
+password = ""
+get = "/state/own"
+
 [sites.nope]
 
 format = "aeroscope"

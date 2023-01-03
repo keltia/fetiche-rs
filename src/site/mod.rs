@@ -8,7 +8,11 @@
 
 pub mod aeroscope;
 pub mod asd;
+pub mod opensky;
 pub mod safesky;
+
+#[macro_use]
+mod macros;
 
 use anyhow::{anyhow, Result};
 use log::trace;
@@ -19,6 +23,7 @@ use crate::config::Config;
 use crate::format::{Cat21, Format};
 use crate::site::aeroscope::Aeroscope;
 use crate::site::asd::Asd;
+use crate::site::opensky::Opensky;
 use crate::site::safesky::Safesky;
 
 /// This trait enables us to manage different ways of connecting and fetching data under
@@ -33,84 +38,6 @@ pub trait Fetchable: Debug {
     fn process(&self, input: String) -> Result<Vec<Cat21>>;
     /// Returns the input format
     fn format(&self) -> Format;
-}
-
-/// Call the HTTP client with the proper arguments
-///
-/// - unauth call to fetch token by submitting credentials
-///
-#[macro_export]
-macro_rules! http_post {
-    ($self:ident, $url:ident, $cred:expr) => {
-        $self
-            .client
-            .clone()
-            .post($url)
-            .header(
-                "user-agent",
-                format!("{}/{}", crate_name!(), crate_version!()),
-            )
-            .header("content-type", "application/json")
-            .json($cred)
-            .send()
-    };
-}
-
-/// Call the HTTP client with the proper arguments
-///
-/// - auth call to fetch token
-///
-#[macro_export]
-macro_rules! http_get_auth {
-    ($self:ident, $url:ident, $token:ident) => {
-        $self
-            .client
-            .clone()
-            .get($url)
-            .header(
-                "user-agent",
-                format!("{}/{}", crate_name!(), crate_version!()),
-            )
-            .header("content-type", "application/json")
-            .bearer_auth($token)
-            .send()
-    };
-}
-
-/// Call the HTTP client with the proper arguments
-///
-/// - auth call to fetch data with submitting data
-/// - auth call to fetch data
-///
-#[macro_export]
-macro_rules! http_post_auth {
-    ($self:ident, $url:ident, $token:ident, $data:expr) => {
-        $self
-            .client
-            .clone()
-            .post($url)
-            .header(
-                "user-agent",
-                format!("{}/{}", crate_name!(), crate_version!()),
-            )
-            .header("content-type", "application/json")
-            .bearer_auth($token)
-            .json($data)
-            .send()
-    };
-    ($self:ident, $url:ident, $token:ident) => {
-        $self
-            .client
-            .clone()
-            .post($url)
-            .header(
-                "user-agent",
-                format!("{}/{}", crate_name!(), crate_version!()),
-            )
-            .header("content-type", "application/json")
-            .bearer_auth($token)
-            .send()
-    };
 }
 
 /// Describe what a site is and associated credentials.
@@ -175,6 +102,11 @@ impl Site {
                     }
                     Format::Asd => {
                         let s = Asd::new().load(site).clone();
+
+                        Ok(Box::new(s))
+                    }
+                    Format::Opensky => {
+                        let s = Opensky::new().load(site).clone();
 
                         Ok(Box::new(s))
                     }
