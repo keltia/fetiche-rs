@@ -84,9 +84,10 @@ pub struct StateVector {
     pub category: Category,
 }
 
-impl From<Opensky> for Cat21 {
-    fn from(line: Opensky) -> Self {
-        let tod = line.time_position.parse::<DateTime<Utc>>().unwrap();
+impl From<StateVector> for Cat21 {
+    fn from(line: StateVector) -> Self {
+        let tp = format!("{}", line.time_position.unwrap_or(0));
+        let tod = tp.parse::<DateTime<Utc>>().unwrap();
         let tod = tod.timestamp();
 
         Cat21 {
@@ -94,8 +95,8 @@ impl From<Opensky> for Cat21 {
             sic: 200,
             alt_geo_ft: to_feet(line.geo_altitude.unwrap_or(0.0)),
             pos_lat_deg: line.latitude.unwrap_or(0.0),
-            pos_long_deg: line.longitud.unwrap_or(0.0),
-            alt_baro_ft: to_feet(line.altitude.unwrap_or(0.0)),
+            pos_long_deg: line.longitude.unwrap_or(0.0),
+            alt_baro_ft: to_feet(line.baro_altitude.unwrap_or(0) as f32),
             tod: 128 * (tod % 86400),
             rec_time_posix: tod,
             rec_time_ms: 0,
@@ -121,9 +122,9 @@ impl From<Opensky> for Cat21 {
             report_type: 3,
             tod_calculated: "N".to_string(),
             // We do truncate the drone_id for privacy reasons
-            callsign: lid,
-            groundspeed_kt: to_knots(line.speed),
-            track_angle_deg: line.azimuth,
+            callsign: line.callsign.unwrap_or("".to_string()),
+            groundspeed_kt: to_knots(line.velocity.unwrap_or(0) as f32),
+            track_angle_deg: line.true_track.unwrap_or(0.0),
             rec_num: 1,
         }
     }
