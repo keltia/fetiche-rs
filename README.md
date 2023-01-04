@@ -146,6 +146,7 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - ~~fetch and analyse from Asd~~
 - Add more tests & benchmarks.
 - support for Safesky
+- Support for Opensky
 
 ## Contributing
 
