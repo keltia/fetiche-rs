@@ -1,11 +1,13 @@
 //! OpenSky (.org) specific data
 //!
 
-use log::error;
+use log::{error, trace};
 use reqwest::blocking::Client;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
-use crate::format::{Cat21, Format};
+use format_specs::{Cat21, Format};
+
 use crate::site::{Fetchable, Site};
 
 #[derive(Clone, Debug)]
@@ -90,18 +92,33 @@ impl Default for Opensky {
 
 impl Fetchable for Opensky {
     fn authenticate(&self) -> anyhow::Result<String> {
-        todo!()
+        trace!("fake token retrieval");
+        Ok(format!("{}:{}", self.login, self.password))
     }
 
     fn fetch(&self, token: &str, args: &str) -> anyhow::Result<String> {
-        todo!()
+        let (login, password) = token.split(':');
+        trace!("fetch(as {})", login);
+
+        let url = format!("{}{}", self.base_url, self.get);
+        trace!("Fetching token through {}…", url);
     }
 
     fn format(&self) -> Format {
-        todo!()
+        Format::Opensky
     }
 
     fn process(&self, input: String) -> anyhow::Result<Vec<Cat21>> {
         todo!()
     }
+}
+
+/// Represent the area we want to get all from
+///
+#[derive(Debug, Serialize, Deserialize)]
+struct Args {
+    lamin: f32,
+    lomin: f32,
+    lamax: f32,
+    lomax: f32,
 }

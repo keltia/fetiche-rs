@@ -10,7 +10,7 @@
 //! Format is different from the json obtained from the actual Aeroscope system but the `Asd` is
 //! compatible with both CSV and JSON output from the site.
 //!
-//! This implement the `Fetchable` trait described in `site/mod.rs`.
+//! This implement the `Fetchable` trait described in `site/lib`.
 //!
 
 use anyhow::{anyhow, Result};
@@ -22,9 +22,10 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+use format_specs::asd::Asd as InputFormat;
+use format_specs::{Cat21, Format};
+
 use crate::filter::Filter;
-use crate::format::asd::Asd as InputFormat;
-use crate::format::{Cat21, Format};
 use crate::site::{Fetchable, Site};
 use crate::{http_post, http_post_auth};
 

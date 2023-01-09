@@ -12,7 +12,8 @@ use log::error;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::format::{Cat21, Format, Position};
+use format_specs::{Cat21, Format, Position};
+
 use crate::site::{Fetchable, Site};
 
 /// Define the square inside which we want beacons information

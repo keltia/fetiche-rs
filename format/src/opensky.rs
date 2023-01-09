@@ -7,10 +7,11 @@
 //! Documentation is taken from [The Opensky site](https://opensky-network.github.io/opensky-api/rest.html)
 //!
 
-use crate::format::{to_feet, to_knots, Cat21};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::Deserialize_repr;
+
+use crate::{to_feet, to_knots, Cat21};
 
 /// Origin of state's position
 ///
@@ -121,7 +122,6 @@ impl From<StateVector> for Cat21 {
             ds_id: 18,
             report_type: 3,
             tod_calculated: "N".to_string(),
-            // We do truncate the drone_id for privacy reasons
             callsign: line.callsign.unwrap_or("".to_string()),
             groundspeed_kt: to_knots(line.velocity.unwrap_or(0) as f32),
             track_angle_deg: line.true_track.unwrap_or(0.0),

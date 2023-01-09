@@ -9,9 +9,8 @@
 //! # fn main() -> Result<(),()> {
 //! # use std::path::PathBuf;
 //! # use log::info;
-//!
-//! use drone_utils::format::Cat21;
-//! use drone_utils::task::Task;
+//! use cat21conv::task::Task;
+//! use format_specs::Cat21;
 //!
 //! let what = PathBuf::from("foo.json")?;
 //!
@@ -25,14 +24,16 @@
 //! ```rust
 //! # fn main() -> Result<(),()> {
 //! # use std::path::PathBuf;
-//! use drone_utils::config::Config;
-//! use drone_utils::filter::Filter;
-//! use drone_utils::format::Cat21;
+//! use cat21conv::config::Config;
+//! use cat21conv::filter::Filter;
+//! use cat21conv::site::Site;
+//! use cat21conv::task::Task;
 //!
 //! // Fetch from network
 //! //
 //! use drone_utils::site::Site;
 //! use drone_utils::task::Task;
+//! use format_specs::Cat21;
 //!
 //! # let name = "eih";
 //! # let filter = Filter::None;
@@ -54,8 +55,9 @@ use anyhow::{anyhow, Result};
 use csv::ReaderBuilder;
 use log::debug;
 
+use format_specs::{Cat21, Format};
+
 use crate::filter::Filter;
-use crate::format::{Cat21, Format};
 use crate::site::Fetchable;
 
 /// Type of task we will need to do

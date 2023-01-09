@@ -6,7 +6,7 @@
 //! a configuration file  from `$HOME/.config/drone-utils` or `%LOCALAPPDATA%/drone-utils` on
 //! UNIX/Linux and Windows.
 //!
-//! Our pseudo-Cat21 format is in `format/mod.rs`.
+//! Our pseudo-Cat21 format is in `format/lib`.
 //! The respective format for the other sources are in the files inside the `format` module.
 //!
 //! Author: Ollivier Robert <ollivier.robert@eurocontrol.int> for the EIH
@@ -20,7 +20,7 @@ mod version;
 use drone_utils::{
     config::{get_config, Config},
     filter::Filter,
-    format::{prepare_csv, Cat21, Format},
+    lib::{prepare_csv, Cat21, Format},
     site::Site,
     task::Task,
 };

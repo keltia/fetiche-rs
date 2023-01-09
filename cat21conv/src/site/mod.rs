@@ -19,8 +19,9 @@ use log::trace;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
+use format_specs::{Cat21, Format};
+
 use crate::config::Config;
-use crate::format::{Cat21, Format};
 use crate::site::aeroscope::Aeroscope;
 use crate::site::asd::Asd;
 use crate::site::opensky::Opensky;

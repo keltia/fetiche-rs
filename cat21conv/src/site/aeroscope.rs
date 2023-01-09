@@ -7,7 +7,7 @@
 //! Data fetched is json and not csv but our struct in `format/aeroscope.rs`  is compatible with
 //! both, even flattening the different lat/long structs in a sensible way.
 //!
-//! This implement the `Fetchable` trait described in `site/mod.rs`.
+//! This implement the `Fetchable` trait described in `site/lib`.
 //!
 
 use anyhow::Result;
@@ -16,8 +16,9 @@ use log::{debug, error};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::format::aeroscope::Aeroscope as InputFormat;
-use crate::format::{Cat21, Format};
+use format_specs::aeroscope::Aeroscope as InputFormat;
+use format_specs::{Cat21, Format};
+
 use crate::site::{Fetchable, Site};
 use crate::{http_get_auth, http_post, http_post_auth};
 
@@ -186,7 +187,7 @@ impl Fetchable for Aeroscope {
 mod tests {
     use super::*;
 
-    use crate::format::aeroscope::Aeroscope as InputFormat;
+    use crate::lib::aeroscope::Aeroscope as InputFormat;
 
     use httpmock::prelude::*;
     use serde_json::json;
@@ -231,7 +232,7 @@ mod tests {
         let server = MockServer::start();
         let token = "FOOBAR".to_string();
 
-        let data = InputFormat {};
+        //let data = InputFormat;
         let jtok = json!(data);
         let m = server.mock(|when, then| {
             when.method(POST)

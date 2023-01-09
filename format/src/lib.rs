@@ -12,10 +12,10 @@ pub mod asd;
 pub mod opensky;
 pub mod safesky;
 
-use crate::format::aeroscope::Aeroscope;
-use crate::format::asd::Asd;
-use crate::format::opensky::Opensky;
-use crate::format::safesky::Safesky;
+use crate::aeroscope::Aeroscope;
+use crate::asd::Asd;
+use crate::opensky::Opensky;
+use crate::safesky::Safesky;
 
 use anyhow::Result;
 use csv::{Reader, WriterBuilder};

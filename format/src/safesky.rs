@@ -6,7 +6,7 @@
 //! The file given to us as example is apparently from the `/v1/beacons`  endpoint as it contains
 //! only ADS-BI (see `Safesky.transponder_type`) data.
 //!
-//! This implement the `Fetchable` trait described in `site/mod.rs`.
+//! This implement the `Fetchable` trait described in `site/lib`.
 //!
 
 use std::net::IpAddr;
@@ -14,7 +14,7 @@ use std::net::IpAddr;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-use crate::format::{to_feet, to_knots, Cat21};
+use crate::{to_feet, to_knots, Cat21};
 
 /// Our input structure from the csv file coming from Safesky file
 ///

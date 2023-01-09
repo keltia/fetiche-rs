@@ -11,7 +11,6 @@ use clap::{crate_name, crate_version};
 
 pub mod config;
 pub mod filter;
-pub mod format;
 pub mod site;
 pub mod task;
 

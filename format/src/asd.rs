@@ -8,7 +8,7 @@
 use chrono::NaiveDateTime;
 use serde::Deserialize;
 
-use crate::format::{to_feet, to_knots, Cat21};
+use crate::{to_feet, to_knots, Cat21};
 
 /// Our input structure from the json file coming out of the main ASD site
 ///
