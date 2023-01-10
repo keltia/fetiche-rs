@@ -1,4 +1,5 @@
 <!-- omit in TOC -->
+
 # drone-utils
 
 > **Library to import/fetch/transform various aeronautical data into Cat21-like format**
@@ -31,13 +32,19 @@ Specifications. It uses `wget(1)` to fetch data and `jq(1)` and `awk(1)`  to tra
 It works fine, but it is a bit fragile, has some hardcoded paths & filenames. This is an attempt at rewriting it
 in [RUST], a fast and safe language defined in 2010 by [Mozilla] and currently evolving with 2 releases a year.
 
-This library supports different formats and access methods and include a command-line utility called `cat21conv` to
+This is now divided into 4 different crates with two libraries (`format-specs` and `sites`) shared by the two
+binary crates (`cat21conv`  and `import-adsb`).
+
+These libraries support different formats (`format-specs`) and access methods (`sites`).
+
+Binary crates include a command-line utility called `cat21conv` to
 perform import from a file, fetching data from different sites. This program has been enhanced to cover both file and
-network input and as well to support more input formats.
+network input and as well to support more input formats. The second binary CLI utility will be used to import ADS-B
+data into tables on a MySQL/MariaDB/Postgres DB.
 
 ## Installation
 
-It might be available at some point as a crate on [Crates.io]  but for the moment just as a private repository on
+It might be available at some point as crates on [Crates.io]  but for the moment just as a private repository on
 [GitHub]. Installation can be done either through a compiled binary for your platform or by cloning the repo and
 compiling.
 
@@ -162,10 +169,17 @@ I use Git Flow for this package so please use something similar or the usual Git
 6. Create a new Pull Request
 
 [ASD]: https://eur.airspacedrone.com/
+
 [ASTERIX]: https://www.eurocontrol.int/asterix/
+
 [Mozilla]: http://mozilla.org/
+
 [RUST]: https://www.rust-lang.org/
+
 [drone-utils: 1.56+]: https://img.shields.io/badge/Rust%20version-1.56%2B-lightgrey
+
 [Rust 1.56]: https://blog.rust-lang.org/2021/10/21/Rust-1.56.0.html
+
 [Safesky]: https://safesky.app/
+
 [TOML]: https://github.com/naoina/toml/
