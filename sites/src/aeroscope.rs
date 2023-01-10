@@ -19,8 +19,7 @@ use serde::{Deserialize, Serialize};
 use format_specs::aeroscope::Aeroscope as InputFormat;
 use format_specs::{Cat21, Format};
 
-use crate::site::{Fetchable, Site};
-use crate::{http_get_auth, http_post, http_post_auth};
+use crate::{http_get_auth, http_post, http_post_auth, Fetchable, Site};
 
 /// Data to send to authenticate ourselves and get a token
 ///

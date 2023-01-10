@@ -26,8 +26,7 @@ use format_specs::asd::Asd as InputFormat;
 use format_specs::{Cat21, Format};
 
 use crate::filter::Filter;
-use crate::site::{Fetchable, Site};
-use crate::{http_post, http_post_auth};
+use crate::{http_post, http_post_auth, Fetchable, Site};
 
 /// Different types of source
 ///

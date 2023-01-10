@@ -3,12 +3,11 @@
 
 use log::{error, trace};
 use reqwest::blocking::Client;
-use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
 use format_specs::{Cat21, Format};
 
-use crate::site::{Fetchable, Site};
+use crate::{Fetchable, Site};
 
 #[derive(Clone, Debug)]
 pub struct Opensky {
@@ -97,19 +96,21 @@ impl Fetchable for Opensky {
     }
 
     fn fetch(&self, token: &str, args: &str) -> anyhow::Result<String> {
-        let (login, password) = token.split(':');
+        let res: Vec<&str> = token.split(':').collect();
+        let (login, password) = (res[0], res[1]);
         trace!("fetch(as {})", login);
 
         let url = format!("{}{}", self.base_url, self.get);
         trace!("Fetching token through {}…", url);
-    }
-
-    fn format(&self) -> Format {
-        Format::Opensky
+        Ok("".to_string())
     }
 
     fn process(&self, input: String) -> anyhow::Result<Vec<Cat21>> {
         todo!()
+    }
+
+    fn format(&self) -> Format {
+        Format::Opensky
     }
 }
 

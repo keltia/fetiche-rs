@@ -8,12 +8,13 @@
 
 pub mod aeroscope;
 pub mod asd;
+pub mod config;
+pub mod filter;
 pub mod opensky;
 pub mod safesky;
 
 #[macro_use]
 mod macros;
-pub mod config;
 
 use anyhow::{anyhow, Result};
 use log::trace;
@@ -22,11 +23,11 @@ use std::fmt::Debug;
 
 use format_specs::{Cat21, Format};
 
+use crate::aeroscope::Aeroscope;
+use crate::asd::Asd;
 use crate::config::Config;
-use crate::site::aeroscope::Aeroscope;
-use crate::site::asd::Asd;
-use crate::site::opensky::Opensky;
-use crate::site::safesky::Safesky;
+use crate::opensky::Opensky;
+use crate::safesky::Safesky;
 
 /// This trait enables us to manage different ways of connecting and fetching data under
 /// a single interface.

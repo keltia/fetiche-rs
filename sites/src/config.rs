@@ -9,7 +9,7 @@ use clap::crate_name;
 use log::trace;
 use serde::{Deserialize, Serialize};
 
-use crate::site::Site;
+use crate::Site;
 
 #[cfg(unix)]
 use home::home_dir;
