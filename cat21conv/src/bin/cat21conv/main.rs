@@ -88,7 +88,9 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
             //
             info!("Reading from {:?}", what);
 
-            let fname = what.to_str().ok_or(anyhow!("Bad file name {:?}", what))?;
+            let fname = what
+                .to_str()
+                .ok_or_else(|| anyhow!("Bad file name {:?}", what))?;
 
             Task::new(fname).path(fname).format(fmt).run()
         }
@@ -98,7 +100,7 @@ fn get_from_source(cfg: &Config, opts: &Opts) -> Result<Vec<Cat21>> {
             let name = opts
                 .site
                 .as_ref()
-                .ok_or(anyhow!("Bad site name {:?}", opts.site))?;
+                .ok_or_else(|| anyhow!("Bad site name {:?}", opts.site))?;
             let site = Site::load(name, cfg)?;
 
             info!("Fetching from network site {}", name);
