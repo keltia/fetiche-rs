@@ -6,7 +6,7 @@
 //!
 //! The different formats are in the `format-specs` crate and the sites' parameters in the `site` crate.
 //!
-//! Task-related code.
+//! Include Task-related code.
 //!
 //! A task is a job that we have to perform.  It can be either a file-based or a network-based one.
 //! We have a set of methods to add parameter and configure the task then we need to call `run()`
@@ -14,8 +14,6 @@
 //!
 
 use clap::{crate_name, crate_version};
-
-pub mod task;
 
 pub(crate) const VERSION: &str = crate_version!();
 pub(crate) const NAME: &str = crate_name!();
@@ -31,7 +29,7 @@ pub fn version() -> String {
 /// # fn main() -> Result<(),()> {
 /// # use std::path::PathBuf;
 /// # use log::info;
-/// use cat21conv::task::Task;
+/// use cat21conv::Task;
 /// use format_specs::Cat21;
 ///
 /// let what = PathBuf::from("foo.json")?;
@@ -46,16 +44,16 @@ pub fn version() -> String {
 /// ```rust
 /// # fn main() -> Result<(),()> {
 /// # use std::path::PathBuf;
-/// use sites::config::Config;
-/// use cat21conv::filter::Filter;
-/// use cat21conv::site::Site;
-/// use cat21conv::task::Task;
+/// use cat21conv::Task;
 ///
 /// // Fetch from network
 /// //
 /// use drone_utils::site::Site;
 /// use drone_utils::task::Task;
 /// use format_specs::Cat21;
+/// use sites::config::Config;
+/// use sites::filter::Filter;
+/// use sites::Site;
 ///
 /// # let name = "eih";
 /// # let filter = Filter::None;
