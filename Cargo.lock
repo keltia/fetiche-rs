@@ -1040,6 +1040,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "import-adsb"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assert_cmd",
+ "chrono",
+ "clap",
+ "csv",
+ "format-specs",
+ "home",
+ "httpmock",
+ "log",
+ "percent-encoding",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "stderrlog",
+ "toml",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1847,6 +1869,22 @@ name = "siphasher"
 version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7bd3e3206899af3f8b12af284fafc038cc1dc2b41d1b89dd17297221c5d225de"
+
+[[package]]
+name = "sites"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "csv",
+ "log",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "stderrlog",
+ "toml",
+]
 
 [[package]]
 name = "slab"
