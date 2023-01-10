@@ -80,7 +80,9 @@ Options:
   -h, --help               Print help information
 ```
 
-The `cat21conv` utility uses a configuration file in the [TOML] file format.
+All the configuration side of things is handled by the `sites` crate.
+
+The utilities uses a configuration file in the [TOML] file format.
 
 On UNIX, it is located in `$HOME/.config/drone-utils/config.toml` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
 
@@ -120,20 +122,20 @@ As you can see, there are sites that require you to supply a login & password an
 The site name is supplied through the `-S/--site` option. If you are just giving the utility a file, you must specifiy
 the input format with the `-F/--format` option.
 
-## Formats
+## Formats (managed in the `format-specs`  crate)
 
-The default format is the one used by the Aeroscope from ASD, but it will soon support the format used by [Safesky]
-site.  
-There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
+The default input format is the one used by the Aeroscope from ASD, but it will soon support the format used
+by [Safesky]
+site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
 
 These are described in the `src/format/aeroscope.rs`, `src/format/asd.rs` and `src/format/safesky.rs` files. There are
-also
-transformations in each case when converting into our CSV-based Cat21-like format.
+also transformations in each case when converting into our CSV-based Cat21-like format.
 
 ### Cat21
 
 Our own Cat21-like format is named because it uses the field names coming from the [ASTERIX] specifications (although
-everything is flat in a csv so enums are flattened as well). See `src/format/mod.rs`  for the description.
+everything is flat in a csv so enums are flattened as well). See `src/format/mod.rs` in `format-specs` for the
+description.
 
 ## MSRV
 
@@ -151,9 +153,10 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - ~~support more parameters (like dates, etc.)~~
 - ~~fetch and analyse from Aeroscope~~
 - ~~fetch and analyse from Asd~~
+- ~~divide into crates for sharing more code.~~
 - Add more tests & benchmarks.
 - support for Safesky
-- Support for Opensky
+- Support for Opensky (WIP)
 
 ## Contributing
 
