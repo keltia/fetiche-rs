@@ -27,6 +27,7 @@ maintenance = { status = "actively-developed" }
 anyhow = "1.0.65"
 chrono = { version = "0.4.23", features = ["serde"] }
 csv = "1.1.6"
+format-specs = { version = "0.8.1", path = "../format-specs" }
 log = { version = "0.4.17", features = ["serde", "std"] }
 percent-encoding = "2.2.0"
 serde = { version = "1.0.145", features = [ "derive" ] }

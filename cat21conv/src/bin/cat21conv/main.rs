@@ -6,8 +6,8 @@
 //! a configuration file  from `$HOME/.config/drone-utils` or `%LOCALAPPDATA%/drone-utils` on
 //! UNIX/Linux and Windows.
 //!
-//! Our pseudo-Cat21 format is in `format/lib`.
-//! The respective format for the other sources are in the files inside the `format` module.
+//! Our pseudo-Cat21 format-specs is in `format-specs/lib`.
+//! The respective format-specs for the other sources are in the files inside the `format-specs` module.
 //!
 //! Author: Ollivier Robert <ollivier.robert@eurocontrol.int> for the EIH
 //! Copyright: (c) 2022 by Ollivier Robert
@@ -58,7 +58,7 @@ pub fn filter_from_opts(opts: &Opts) -> Filter {
     } else if opts.begin.is_some() {
         // Assume both are there, checked elsewhere
         //
-        // We have to parse both arguments ourselves because it uses its own format
+        // We have to parse both arguments ourselves because it uses its own format-specs
         //
         let begin = opts.begin.as_ref().unwrap().to_owned();
         let end = opts.end.as_ref().unwrap().to_owned();
@@ -142,7 +142,7 @@ fn main() -> Result<()> {
     // Prepare logging.
     //
     stderrlog::new()
-        //.modules([module_path!(), "drone-utils", "format", "site"])
+        //.modules([module_path!(), "drone-utils", "format-specs", "site"])
         .verbosity(lvl)
         .init()?;
 

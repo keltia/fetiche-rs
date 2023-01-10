@@ -12,7 +12,7 @@ use crate::site::{Fetchable, Site};
 
 #[derive(Clone, Debug)]
 pub struct Opensky {
-    /// Input format
+    /// Input format-specs
     pub format: Format,
     /// Username
     pub login: String,

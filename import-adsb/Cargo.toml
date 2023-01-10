@@ -24,7 +24,7 @@ anyhow = "1.0.65"
 chrono = { version = "0.4.23", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 csv = "1.1.6"
-format-specs = { version = "0.8.1", path = "../format" }
+format-specs = { version = "0.8.1", path = "../format-specs" }
 home = "0.5.4"
 log = { version = "0.4.17", features = ["serde", "std"] }
 percent-encoding = "2.2.0"

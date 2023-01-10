@@ -1,4 +1,4 @@
-//! Module to handle Safesky data and map the input into our own Cat-21-like format.
+//! Module to handle Safesky data and map the input into our own Cat-21-like format-specs.
 //!
 //! Phases: (TBC)
 //! - use the API key configured in the configuration file to fetch data

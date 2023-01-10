@@ -1,10 +1,10 @@
-//! Definition of a data format
+//! Definition of a data format-specs
 //!
-//! This module makes the link between the shared output format `Cat21` and the different
+//! This module makes the link between the shared output format-specs `Cat21` and the different
 //! input formats defined in the other modules.
 //!
-//! To add a new format, insert here the different hooks (`Source`, etc.) & names and a `FORMAT.rs`
-//! file which will define the input format and the transformations needed.
+//! To add a new format-specs, insert here the different hooks (`Source`, etc.) & names and a `FORMAT.rs`
+//! file which will define the input format-specs and the transformations needed.
 //!
 
 pub mod aeroscope;
@@ -57,7 +57,7 @@ macro_rules! into_cat21 {
                 Cat21::from(&l)
             },
         )+
-            _ => panic!("unknown format"),
+            _ => panic!("unknown format-specs"),
         }
     };
 }
@@ -87,7 +87,7 @@ impl Format {
 }
 
 impl From<&str> for Format {
-    /// Create a format from its name
+    /// Create a format-specs from its name
     ///
     fn from(s: &str) -> Self {
         match s {

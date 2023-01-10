@@ -24,7 +24,7 @@ const BASEDIR: &str = ".config";
 ///
 #[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct Config {
-    /// Default format
+    /// Default format-specs
     pub default: String,
     /// Site map
     pub sites: HashMap<String, Site>,

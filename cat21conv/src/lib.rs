@@ -4,12 +4,11 @@
 //! way of fetching data from different sites.  This is written because there are as many ways
 //! to authenticate and connect as there are sites more or less.
 //!
-//! The different formats are in the `format` crate and the sites' parameters in the `site` crate.
+//! The different formats are in the `format-specs` crate and the sites' parameters in the `site` crate.
 //!
 
 use clap::{crate_name, crate_version};
 
-pub mod config;
 pub mod filter;
 pub mod site;
 pub mod task;

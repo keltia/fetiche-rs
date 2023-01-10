@@ -91,7 +91,7 @@ struct Param {
 ///
 #[derive(Clone, Debug)]
 pub struct Asd {
-    /// Input format
+    /// Input format-specs
     pub format: Format,
     /// Username
     pub login: String,
@@ -254,7 +254,7 @@ impl Fetchable for Asd {
         Ok(res)
     }
 
-    /// Return the site's input format
+    /// Return the site's input format-specs
     ///
     fn format(&self) -> Format {
         Format::Asd

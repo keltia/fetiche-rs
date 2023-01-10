@@ -12,7 +12,7 @@ use crate::{to_feet, to_knots, Cat21};
 
 /// Our input structure from the json file coming out of the main ASD site
 ///
-/// Data can be obtained either in CSV or JSON format, we prefer the latter.
+/// Data can be obtained either in CSV or JSON format-specs, we prefer the latter.
 ///
 /// NOTE: Some fields are String and not the actual type (f32 for example) because there
 /// are apparently stored as DECIMAL in their database and not as FLOAT.  There are then
@@ -30,7 +30,7 @@ pub struct Asd {
     pub source: String,
     // Point/record ID
     pub location: u32,
-    // Date of event (in the non standard YYYY-MM-DD HH:MM:SS format)
+    // Date of event (in the non standard YYYY-MM-DD HH:MM:SS format-specs)
     pub timestamp: String,
     // $7 (actually f32)
     pub latitude: String,

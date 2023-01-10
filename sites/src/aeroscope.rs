@@ -4,7 +4,7 @@
 //! 1. use the configured login & password to obtain a token
 //! 2. use the token to get the data
 //!
-//! Data fetched is json and not csv but our struct in `format/aeroscope.rs`  is compatible with
+//! Data fetched is json and not csv but our struct in `format-specs/aeroscope.rs`  is compatible with
 //! both, even flattening the different lat/long structs in a sensible way.
 //!
 //! This implement the `Fetchable` trait described in `site/lib`.
@@ -44,7 +44,7 @@ struct Token {
 /// ///
 #[derive(Clone, Debug)]
 pub struct Aeroscope {
-    /// Input format
+    /// Input format-specs
     pub format: Format,
     /// Auth data, username
     pub login: String,
@@ -176,7 +176,7 @@ impl Fetchable for Aeroscope {
         Ok(res)
     }
 
-    /// Returns the site's input format
+    /// Returns the site's input format-specs
     ///
     fn format(&self) -> Format {
         Format::Aeroscope

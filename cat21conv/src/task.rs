@@ -24,7 +24,7 @@
 //! ```rust
 //! # fn main() -> Result<(),()> {
 //! # use std::path::PathBuf;
-//! use cat21conv::config::Config;
+//! use sites::config::Config;
 //! use cat21conv::filter::Filter;
 //! use cat21conv::site::Site;
 //! use cat21conv::task::Task;
@@ -64,10 +64,10 @@ use crate::site::Fetchable;
 ///
 #[derive(Debug)]
 pub enum Input {
-    /// File-based means we need the format beforehand and a pathname
+    /// File-based means we need the format-specs beforehand and a pathname
     ///
     File {
-        /// Input format
+        /// Input format-specs
         format: Format,
         /// Path of the input file
         path: PathBuf,
@@ -76,7 +76,7 @@ pub enum Input {
     /// file.  The `site` is a `Fetchable` object generated from `Config`.
     ///
     Network {
-        /// Input format
+        /// Input format-specs
         format: Format,
         /// Site itself
         site: Box<dyn Fetchable>,
@@ -122,10 +122,10 @@ impl Task {
         self
     }
 
-    /// Set the input format (from cmdline for files)
+    /// Set the input format-specs (from cmdline for files)
     ///
     pub fn format(&mut self, fmt: Format) -> &mut Self {
-        debug!("Add format {:?}", fmt);
+        debug!("Add format-specs {:?}", fmt);
         if let Input::File { path, .. } = &self.input {
             let path = path.clone();
             self.input = Input::File { format: fmt, path }
@@ -157,7 +157,7 @@ impl Task {
     pub fn run(&mut self) -> Result<Vec<Cat21>> {
         debug!("…run()…");
         match &self.input {
-            // Input::File is simple, we have the format
+            // Input::File is simple, we have the format-specs
             //
             Input::File { format, path } => {
                 let res = fs::read_to_string(path)?;
@@ -178,7 +178,7 @@ impl Task {
                 debug!("{:?} as {}", res, format);
                 Ok(res)
             }
-            Input::Nothing => Err(anyhow!("no format specified")),
+            Input::Nothing => Err(anyhow!("no format-specs specified")),
         }
     }
 }

@@ -13,6 +13,7 @@ pub mod safesky;
 
 #[macro_use]
 mod macros;
+pub mod config;
 
 use anyhow::{anyhow, Result};
 use log::trace;
@@ -37,7 +38,7 @@ pub trait Fetchable: Debug {
     fn fetch(&self, token: &str, args: &str) -> Result<String>;
     /// Transform fetched data into Cat21
     fn process(&self, input: String) -> Result<Vec<Cat21>>;
-    /// Returns the input format
+    /// Returns the input format-specs
     fn format(&self) -> Format;
 }
 
@@ -123,7 +124,7 @@ impl Site {
         }
     }
 
-    /// Return the site format
+    /// Return the site format-specs
     ///
     pub fn format(&self) -> Format {
         match self {
