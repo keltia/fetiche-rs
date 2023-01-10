@@ -186,7 +186,7 @@ impl Fetchable for Aeroscope {
 mod tests {
     use super::*;
 
-    use crate::lib::aeroscope::Aeroscope as InputFormat;
+    use crate::aeroscope::Aeroscope as InputFormat;
 
     use httpmock::prelude::*;
     use serde_json::json;
@@ -260,6 +260,5 @@ mod tests {
         m.assert();
         assert!(data.is_ok());
         let data = data.unwrap();
-        assert!();
     }
 }
