@@ -57,6 +57,9 @@ This is intentionally *not* a run-time option but a compile-time one.
 
 ## Usage
 
+For the moment, there is only one binary called `cat21conv` (with `.exe` on Windows). In the hear future, there will
+be `import-adsb` made to import Safesky and Opensky ADS-B data into a database.
+
 ```text
 $ cat21conv
 CLI utility to convert Aeroscope data into Cat21 CSV.
@@ -82,7 +85,8 @@ Options:
 
 All the configuration side of things is handled by the `sites` crate.
 
-The utilities uses a configuration file in the [TOML] file format.
+The utilities use a configuration file in the [TOML] file format. `import-adsb`  will also use another one called
+`db.toml`  located in the same directory.
 
 On UNIX, it is located in `$HOME/.config/drone-utils/config.toml` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
 
