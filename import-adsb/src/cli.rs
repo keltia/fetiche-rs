@@ -12,6 +12,9 @@ pub struct Opts {
     /// configuration file.
     #[clap(short = 'c', long)]
     pub config: Option<PathBuf>,
+    /// DB connection file
+    #[clap(short = 'd', long)]
+    pub dbfile: Option<PathBuf>,
     /// debug mode.
     #[clap(short = 'D', long = "debug")]
     pub debug: bool,
