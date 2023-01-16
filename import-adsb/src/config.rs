@@ -1,5 +1,7 @@
 //! Main configuration management and loading
 //!
+//! This is mainly the database connection string that is needed.
+//!
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{env, fs};
@@ -8,8 +10,6 @@ use anyhow::Result;
 use clap::crate_name;
 use log::trace;
 use serde::{Deserialize, Serialize};
-
-use crate::Site;
 
 #[cfg(unix)]
 use home::home_dir;
@@ -20,11 +20,14 @@ const CONFIG: &str = "dbfile.toml";
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
 
-#[derive(Debug, Deserialize)]
+/// `sqlx` support all these
+///
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum DB {
-    SQLite { name: String, path: PathBuf },
     MySQL { name: String, url: String },
+    Pgsql { name: String, url: String },
+    SQLite { name: String, path: PathBuf },
 }
 
 /// Main struct holding configurations
@@ -62,7 +65,7 @@ impl Config {
     /// Returns an empty struct
     ///
     pub fn new() -> Config {
-        let h = HashMap::<String, Site>::new();
+        let h = HashMap::<String, DB>::new();
         Config {
             default: "none".to_string(),
             sites: h,
