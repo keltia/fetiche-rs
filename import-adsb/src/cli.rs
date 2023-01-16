@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 
 /// CLI options
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 #[command(disable_version_flag = true)]
 #[clap(name = crate_name!(), about = crate_description!())]
 #[clap(version = crate_version!(), author = crate_authors!())]
@@ -30,26 +30,19 @@ pub struct Opts {
     /// Display utility full version.
     #[clap(short = 'V', long)]
     pub version: bool,
-    /// Input file.
-    pub input: Option<PathBuf>,
+    /// Sub-commands
+    #[clap(subcommand)]
+    pub subcmd: SubCommand,
 }
 
-/// Check the presence and validity of some of the arguments
-///
-pub fn check_args(opts: &Opts) -> Result<()> {
-    // Check arguments.
-    //
-    if opts.input.is_some() && opts.site.is_some() {
-        return Err(anyhow!("Specify either a site or a filename, not both"));
-    }
-
-    if opts.input.is_none() && opts.site.is_none() {
-        return Err(anyhow!("Specify at least a site or a filename"));
-    }
-
-    if opts.input.is_some() && opts.format.is_none() {
-        return Err(anyhow!("Format must be specified for files"));
-    }
-
-    Ok(())
+#[derive(Parser)]
+pub enum SubCommand {
+    CreateDb(CreateOpts),
+    Import(ImportOpts),
 }
+
+#[derive(Parser)]
+pub struct CreateOpts {}
+
+#[derive(Parser)]
+pub struct ImportOpts {}
