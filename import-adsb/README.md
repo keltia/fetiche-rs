@@ -13,6 +13,22 @@ This rate contains only the code for the different input file formats supported 
 - Opensky
 - Safesky
 
+## Configuration
+
+`import-adsb` use a configuration file along with the `config.toml`  from the `format-specs` library, `dbfile.toml`.
+
+```toml
+default = "none"
+
+[db.sqlite]
+name = "local"
+path = "./local.sqlite"
+
+[db.mysql]
+name = "drone"
+url = "mysql://example.net:3306/drones"
+```
+
 ## Formats
 
 The default format is the one used by the Aeroscope from ASD, but it will soon support the format used by [Safesky]
@@ -23,9 +39,30 @@ also transformations in each case when converting into our CSV-based Cat21-like 
 
 ## Usage
 
+```text
+CLI utility to import ADS-B data.
+
+Usage: import-adsb [OPTIONS] <COMMAND>
+
+Commands:
+  create-db
+  import
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+  -c, --config <CONFIG>  configuration file
+  -d, --dbfile <DBFILE>  DB connection file
+  -D, --debug            debug mode
+  -F, --format <FORMAT>  Format must be specified if looking at a file
+  -S, --site <SITE>      Site to fetch data from
+  -v, --verbose...       Verbose mode
+  -V, --version          Display utility full version
+  -h, --help             Print help information
+```
+
 ## MSRV
 
-The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
+The Minimum Supported [Rust] Version is *1.56* due to the 2021 Edition.
 
 ## Supported platforms
 
@@ -43,8 +80,6 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 [Mozilla]: http://mozilla.org/
 
 [RUST]: https://www.rust-lang.org/
-
-[drone-utils: 1.56+]: https://img.shields.io/badge/Rust%20version-1.56%2B-lightgrey
 
 [Rust 1.56]: https://blog.rust-lang.org/2021/10/21/Rust-1.56.0.html
 
