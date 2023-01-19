@@ -45,4 +45,9 @@ pub enum SubCommand {
 pub struct CreateOpts {}
 
 #[derive(Parser)]
-pub struct ImportOpts {}
+pub struct ImportOpts {
+    /// Optional path to a file
+    pub fname: Option<PathBuf>,
+    /// Optional site name
+    pub site: Option<String>,
+}

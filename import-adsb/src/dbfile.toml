@@ -1,0 +1,7 @@
+
+default = "local"
+
+[sites.local]
+name = "local"
+path = "testdata/adsb.sqlite"
+
