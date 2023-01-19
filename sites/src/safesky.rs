@@ -124,13 +124,13 @@ mod tests {
 
     fn setup_safesky(server: &MockServer) -> Safesky {
         let client = Client::new();
-        let sk = Safesky {
+        Safesky {
             format: Format::Safesky,
             base_url: "http://example.net".to_string(),
             get: "/v1/beacons".to_string(),
             api_key: "FOOBAR".to_string(),
             client: client.clone(),
-        };
+        }
     }
 
     #[test]
