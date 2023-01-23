@@ -15,7 +15,7 @@ use sites::Fetchable;
 ///
 #[derive(Debug)]
 pub enum Input {
-    /// File-based means we need the format-specs beforehand and a pathname
+    /// File-based means we need the format beforehand and a pathname
     ///
     File {
         /// Input format-specs
@@ -111,7 +111,7 @@ impl Task {
     {
         trace!("…run()…");
         let res = match &self.input {
-            // Input::File is simple, we have the format-specs
+            // Input::File is simple, we have the format
             //
             Input::File { format, path } => {
                 let res = fs::read_to_string(path)?;
