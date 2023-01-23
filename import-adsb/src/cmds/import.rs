@@ -105,14 +105,18 @@ impl Task {
 
     /// The heart of the matter: fetch and process data
     ///
-    pub fn run(&mut self) -> Result<Vec<Opensky>> {
-        debug!("…run()…");
-        match &self.input {
+    pub fn run<T>(&mut self) -> Result<Vec<T>>
+    where
+        T: de::DeserializeOwned,
+    {
+        trace!("…run()…");
+        let res = match &self.input {
             // Input::File is simple, we have the format-specs
             //
             Input::File { format, path } => {
                 let res = fs::read_to_string(path)?;
-                let res: Opensky = serde_json::from_str(&res)?;
+                let res: Vec<T> = serde_json::from_str(&res)?;
+                res
             }
             // Input::Network is more complicated and rely on the Site
             //
@@ -121,10 +125,13 @@ impl Task {
                 //
                 let token = site.authenticate()?;
                 let data = site.fetch(&token, &self.args)?;
-                debug!("{}", &data);
+                trace!("{}", &data);
+                let res: Vec<T> = serde_json::from_str(&data)?;
+                res
             }
-            Input::Nothing => Err(anyhow!("no format-specs specified")),
-        }
+            Input::Nothing => return Err(anyhow!("no format-specs specified")),
+        };
+        Ok(res)
     }
 }
 
