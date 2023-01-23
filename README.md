@@ -96,39 +96,13 @@ Options:
 
 All the configuration side of things is handled by the `sites` crate.
 
-The utilities use a configuration file in the [TOML] file format. `import-adsb`  will also use another one called
-`dbfile.toml`  located in the same directory.
-
-<details>
-<summary>import-adsb</summary>
-
-```text
-CLI utility to import ADS-B data.
-
-Usage: import-adsb [OPTIONS] <COMMAND>
-
-Commands:
-  create-db
-  import
-  help       Print this message or the help of the given subcommand(s)
-
-Options:
-  -c, --config <CONFIG>  configuration file
-  -d, --dbfile <DBFILE>  DB connection file
-  -D, --debug            debug mode
-  -F, --format <FORMAT>  Format must be specified if looking at a file
-  -S, --site <SITE>      Site to fetch data from
-  -v, --verbose...       Verbose mode
-  -V, --version          Display utility full version
-  -h, --help             Print help information
-```
-
-</details>
-
 On UNIX, it is located in `$HOME/.config/drone-utils/config.toml` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
 
 There are only a few parameters for now, the most important one being the credentials for authenticate against the
 network endpoint. You can specify the different network endpoints:
+
+The utilities use a configuration file called `config.toml` in the [TOML] file format. `import-adsb`  will also use
+another one called `dbfile.toml`  located in the same directory.
 
 <details>
 <summary>config.toml</summary>
@@ -165,6 +139,51 @@ As you can see, there are sites that require you to supply a login & password an
 
 The site name is supplied through the `-S/--site` option. If you are just giving the utility a file, you must specifiy
 the input format with the `-F/--format` option.
+</details>
+
+`import-adsb` is here to facilitate import of ADS-B data into a specific database:
+
+<details>
+<summary>import-adsb</summary>
+
+```text
+CLI utility to import ADS-B data.
+
+Usage: import-adsb [OPTIONS] <COMMAND>
+
+Commands:
+  create-db
+  import
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+  -c, --config <CONFIG>  configuration file
+  -d, --dbfile <DBFILE>  DB connection file
+  -D, --debug            debug mode
+  -F, --format <FORMAT>  Format must be specified if looking at a file
+  -S, --site <SITE>      Site to fetch data from
+  -v, --verbose...       Verbose mode
+  -V, --version          Display utility full version
+  -h, --help             Print help information
+```
+</details>
+
+Here is an example of `dbfile.toml`:
+
+<details>
+<summary>dbfile.toml</summary>
+
+```toml
+default = "sqlite"
+
+[db.sqlite]
+format = "adsb"
+url = "sqlite:///var/db/adsb.sqlite"
+
+[db.pgsql]
+format = "opensky"
+url = "pgsql://mydbserver:5432/adsb-data"
+```
 </details>
 
 ## Formats (managed in the `format-specs`  crate)
