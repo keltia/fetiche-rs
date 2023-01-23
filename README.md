@@ -16,6 +16,7 @@
 Licensed under the [MIT](LICENSE) license.
 
 1. [About](#about)
+2. [History](#history)
 2. [Installation](#installation)
 3. [Usage](#usage)
 4. [Supported formats](#formats)
@@ -25,12 +26,8 @@ Licensed under the [MIT](LICENSE) license.
 
 ## About
 
-For the **ACUTE** Project, Marc Gravis wrote the Shell script `aeroscope.sh` in 2021 to fetch data from the aeroscope
-server in EIH and transform it into a pseudo-Cat21 CSV file using the same field as the Category 21 from [ASTERIX]
-Specifications. It uses `wget(1)` to fetch data and `jq(1)` and `awk(1)`  to transform it.
-
-It works fine, but it is a bit fragile, has some hardcoded paths & filenames. This is an attempt at rewriting it
-in [RUST], a fast and safe language defined in 2010 by [Mozilla] and currently evolving with 2 releases a year.
+This is a set of libraries and utilities dealing with various data formats and import/conversion utilities for
+Aeronautical data about drones and aircraft.
 
 This is now divided into 4 different crates with two libraries (`format-specs` and `sites`) shared by the two
 binary crates (`cat21conv`  and `import-adsb`).
@@ -41,6 +38,15 @@ Binary crates include a command-line utility called `cat21conv` to
 perform import from a file, fetching data from different sites. This program has been enhanced to cover both file and
 network input and as well to support more input formats. The second binary CLI utility will be used to import ADS-B
 data into tables on a MySQL/MariaDB/Postgres DB.
+
+## History
+
+For the **ACUTE** Project, Marc Gravis wrote the Shell script `aeroscope.sh` in 2021 to fetch data from the aeroscope
+server in EIH and transform it into a pseudo-Cat21 CSV file using the same field as the Category 21 from [ASTERIX]
+Specifications. It uses `wget(1)` to fetch data and `jq(1)` and `awk(1)`  to transform it.
+
+It works fine, but it is a bit fragile, has some hardcoded paths & filenames. This is an attempt at rewriting it
+in [RUST], a fast and safe language defined in 2010 by [Mozilla] and currently evolving with 2 releases a year.
 
 ## Installation
 
@@ -59,6 +65,9 @@ This is intentionally *not* a run-time option but a compile-time one.
 
 For the moment, there is only one binary called `cat21conv` (with `.exe` on Windows). In the hear future, there will
 be `import-adsb` made to import Safesky and Opensky ADS-B data into a database.
+
+<details>
+<summary>cat21conv</summary>
 
 ```text
 $ cat21conv
@@ -83,10 +92,38 @@ Options:
   -h, --help               Print help information
 ```
 
+</details>
+
 All the configuration side of things is handled by the `sites` crate.
 
 The utilities use a configuration file in the [TOML] file format. `import-adsb`  will also use another one called
-`db.toml`  located in the same directory.
+`dbfile.toml`  located in the same directory.
+
+<details>
+<summary>import-adsb</summary>
+
+```text
+CLI utility to import ADS-B data.
+
+Usage: import-adsb [OPTIONS] <COMMAND>
+
+Commands:
+  create-db
+  import
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+  -c, --config <CONFIG>  configuration file
+  -d, --dbfile <DBFILE>  DB connection file
+  -D, --debug            debug mode
+  -F, --format <FORMAT>  Format must be specified if looking at a file
+  -S, --site <SITE>      Site to fetch data from
+  -v, --verbose...       Verbose mode
+  -V, --version          Display utility full version
+  -h, --help             Print help information
+```
+
+</details>
 
 On UNIX, it is located in `$HOME/.config/drone-utils/config.toml` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
 
