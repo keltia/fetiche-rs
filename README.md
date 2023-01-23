@@ -93,6 +93,9 @@ On UNIX, it is located in `$HOME/.config/drone-utils/config.toml` and in `%LOCAL
 There are only a few parameters for now, the most important one being the credentials for authenticate against the
 network endpoint. You can specify the different network endpoints:
 
+<details>
+<summary>config.toml</summary>
+
 ```toml
 default = "none"
 
@@ -125,6 +128,7 @@ As you can see, there are sites that require you to supply a login & password an
 
 The site name is supplied through the `-S/--site` option. If you are just giving the utility a file, you must specifiy
 the input format with the `-F/--format` option.
+</details>
 
 ## Formats (managed in the `format-specs`  crate)
 
