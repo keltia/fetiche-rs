@@ -1,10 +1,12 @@
 //! Main configuration management and loading
 //!
 use std::collections::HashMap;
+use std::fs::{create_dir_all, File};
+use std::io::Write;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::crate_name;
 use log::trace;
 use serde::{Deserialize, Serialize};
@@ -91,6 +93,22 @@ impl Config {
         let def: PathBuf = makepath!(homedir, crate_name!(), CONFIG);
         def
     }
+
+    /// Install default files
+    ///
+    pub fn install_defaults(dir: &PathBuf) -> std::io::Result<()> {
+        // Create config directory if needed
+        //
+        if !dir.exists() {
+            create_dir_all(&dir)?
+        }
+
+        // Copy content of `config.toml`  into place.
+        //
+        let fname: PathBuf = makepath!(&dir, CONFIG);
+        let content = include_str!("config.toml");
+        fs::write(fname, content)
+    }
 }
 
 /// Load configuration from either the specified file or the default one.
@@ -120,6 +138,8 @@ pub fn get_config(fname: &Option<PathBuf>) -> Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::bail;
+    use std::env::temp_dir;
 
     #[test]
     fn test_new() {
@@ -144,5 +164,20 @@ mod tests {
             Site::Login { password, .. } => assert_eq!("NOPE", password),
             _ => (),
         }
+    }
+
+    #[test]
+    fn test_install_files() -> Result<()> {
+        let tempdir = temp_dir();
+        dbg!(&tempdir);
+        let r = Config::install_defaults(&tempdir);
+        match r {
+            Ok(()) => {
+                let f: PathBuf = makepath!(tempdir, CONFIG);
+                assert!(f.exists());
+            }
+            _ => bail!("all failed"),
+        }
+        Ok(())
     }
 }
