@@ -3,7 +3,8 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use csv::ReaderBuilder;
-use log::debug;
+use log::trace;
+use serde::de;
 
 use format_specs::opensky::Opensky;
 use format_specs::{Cat21, Format};
@@ -49,7 +50,7 @@ impl Task {
     /// Initialize our environment
     ///
     pub fn new(name: &str) -> Self {
-        debug!("New task {}", name);
+        trace!("New task {}", name);
         Task {
             name: name.to_owned(),
             input: Input::Nothing,
@@ -60,7 +61,7 @@ impl Task {
     /// Set the input path (for files)
     ///
     pub fn path(&mut self, name: &str) -> &mut Self {
-        debug!("Add path: {}", name);
+        trace!("Add path: {}", name);
         let fmt = match &self.input {
             Input::File { format, .. } | Input::Network { format, .. } => format,
             _ => &Format::None,
@@ -75,7 +76,7 @@ impl Task {
     /// Set the input format-specs (from cmdline for files)
     ///
     pub fn format(&mut self, fmt: Format) -> &mut Self {
-        debug!("Add format-specs {:?}", fmt);
+        trace!("Add format-specs {:?}", fmt);
         if let Input::File { path, .. } = &self.input {
             let path = path.clone();
             self.input = Input::File { format: fmt, path }
@@ -86,7 +87,7 @@ impl Task {
     /// Copy the site's data
     ///
     pub fn site(&mut self, s: Box<dyn Fetchable>) -> &mut Self {
-        debug!("Add site {:?}", self.name);
+        trace!("Add site {:?}", self.name);
         self.input = Input::Network {
             format: s.format(),
             site: s,
@@ -97,7 +98,7 @@ impl Task {
     /// Add a date filter if specified
     ///
     pub fn with(&mut self, f: Filter) -> &mut Self {
-        debug!("Add date filter {:?}", f);
+        trace!("Add date filter {:?}", f);
         self.args = f.to_string();
         self
     }
