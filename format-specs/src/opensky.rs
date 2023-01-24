@@ -8,7 +8,7 @@
 //!
 
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
 use crate::{to_feet, to_knots, Cat21};
