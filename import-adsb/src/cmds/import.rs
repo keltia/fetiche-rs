@@ -129,7 +129,7 @@ impl Task {
                 let res: Vec<T> = serde_json::from_str(&data)?;
                 res
             }
-            Input::Nothing => return Err(anyhow!("no format-specs specified")),
+            Input::Nothing => return Err(anyhow!("no format specified")),
         };
         Ok(res)
     }

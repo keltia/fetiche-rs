@@ -57,7 +57,7 @@ macro_rules! into_cat21 {
                 Cat21::from(&l)
             },
         )+
-            _ => panic!("unknown format-specs"),
+            _ => panic!("unknown format"),
         }
     };
 }
