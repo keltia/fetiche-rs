@@ -183,7 +183,7 @@ impl Task {
                 let mut rdr = ReaderBuilder::new()
                     .flexible(true)
                     .from_reader(res.as_bytes());
-                format.process(&mut rdr)
+                format.from_csv(&mut rdr)
             }
             // Input::Network is more complicated and rely on the Site
             //

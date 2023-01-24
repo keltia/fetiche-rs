@@ -64,9 +64,9 @@ macro_rules! into_cat21 {
 
 impl Format {
     // Process each record coming from the input source, apply `Cat::from()` onto it
-    // and return the list.
+    // and return the list.  This is used when reading from the csv files.
     //
-    pub fn process<T>(self, rdr: &mut Reader<T>) -> Result<Vec<Cat21>>
+    pub fn from_csv<T>(self, rdr: &mut Reader<T>) -> Result<Vec<Cat21>>
     where
         T: Read,
     {
