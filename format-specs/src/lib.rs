@@ -115,7 +115,7 @@ impl Display for Format {
 
 /// This structure hold a general location object with lat/long.
 ///
-/// In CSV files, the two fields are merged into this struct on deserialisation
+/// In CSV files, the two fields are merged into this struct on deserialization
 /// and used as-is when coming from JSON.
 ///
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
