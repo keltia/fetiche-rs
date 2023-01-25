@@ -14,7 +14,6 @@ pub mod safesky;
 
 use crate::aeroscope::Aeroscope;
 use crate::asd::Asd;
-use crate::opensky::Opensky;
 use crate::safesky::Safesky;
 
 use anyhow::Result;
