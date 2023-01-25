@@ -4,6 +4,8 @@
 //! XXX they send out an array of arrays, each representing a specific state vector.
 //!     it sucks.
 //!
+//! XXX Due to this, I'm not sure converting these state vectors into our Cat21 makes any sense.
+//!
 //! Documentation is taken from [The Opensky site](https://opensky-network.github.io/opensky-api/rest.html)
 //!
 
@@ -63,11 +65,13 @@ pub struct Opensky {
 ///
 #[derive(Debug, Deserialize)]
 pub struct StateVector {
+    /// ICAO ID
     pub icao24: String,
     pub callsign: Option<String>,
     pub origin_country: String,
     pub time_position: Option<i32>,
     pub last_contact: i32,
+    /// Position
     pub longitude: Option<f32>,
     pub latitude: Option<f32>,
     pub baro_altitude: Option<u32>,
