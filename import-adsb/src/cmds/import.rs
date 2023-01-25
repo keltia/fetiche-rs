@@ -2,7 +2,6 @@ use std::fs;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use csv::ReaderBuilder;
 use log::trace;
 use serde::de;
 
