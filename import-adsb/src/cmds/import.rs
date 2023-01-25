@@ -75,7 +75,7 @@ impl Task {
     /// Set the input format-specs (from cmdline for files)
     ///
     pub fn format(&mut self, fmt: Format) -> &mut Self {
-        trace!("Add format-specs {:?}", fmt);
+        trace!("Add format {:?}", fmt);
         if let Input::File { path, .. } = &self.input {
             let path = path.clone();
             self.input = Input::File { format: fmt, path }
