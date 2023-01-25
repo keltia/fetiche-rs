@@ -61,6 +61,17 @@ pub struct Opensky {
     pub states: Option<Vec<StateVector>>,
 }
 
+impl Opensky {
+    /// Transform a given record into an array of Cat21 records
+    ///
+    pub fn to_cat21(&self) -> Vec<Cat21> {
+        match &self.states {
+            Some(v) => v.iter().map(|s| Cat21::from(s)).collect(),
+            None => vec![],
+        }
+    }
+}
+
 /// Definition of a state vector as generated
 ///
 #[derive(Debug, Deserialize)]
@@ -89,8 +100,8 @@ pub struct StateVector {
     pub category: Category,
 }
 
-impl From<StateVector> for Cat21 {
-    fn from(line: StateVector) -> Self {
+impl From<&StateVector> for Cat21 {
+    fn from(line: &StateVector) -> Self {
         let tp = format!("{}", line.time_position.unwrap_or(0));
         let tod = tp.parse::<DateTime<Utc>>().unwrap();
         let tod = tod.timestamp();
