@@ -1,12 +1,11 @@
 //! Main configuration management and loading
 //!
 use std::collections::HashMap;
-use std::fs::{create_dir_all, File};
-use std::io::Write;
+use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::crate_name;
 use log::trace;
 use serde::{Deserialize, Serialize};
