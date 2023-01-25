@@ -105,6 +105,7 @@ impl From<&StateVector> for Cat21 {
         let tp = format!("{}", line.time_position.unwrap_or(0));
         let tod = tp.parse::<DateTime<Utc>>().unwrap();
         let tod = tod.timestamp();
+        let callsign = line.callsign.clone().unwrap_or("".to_string());
 
         Cat21 {
             sac: 8,
@@ -137,7 +138,7 @@ impl From<&StateVector> for Cat21 {
             ds_id: 18,
             report_type: 3,
             tod_calculated: "N".to_string(),
-            callsign: line.callsign.unwrap_or("".to_string()),
+            callsign,
             groundspeed_kt: to_knots(line.velocity.unwrap_or(0) as f32),
             track_angle_deg: line.true_track.unwrap_or(0.0),
             rec_num: 1,
