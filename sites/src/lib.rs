@@ -144,6 +144,7 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
 
+    use crate::config::Sites;
     use crate::makepath;
 
     fn set_default() -> Sites {
@@ -182,8 +183,8 @@ mod tests {
 
     #[test]
     fn test_site_loading() {
-        let cfn: PathBuf = makepath!("src", "bin", "cat21conv", "config.toml");
-        let cfg = Sites::load(&cfn);
+        let cfn: PathBuf = makepath!("src", "sites", "src", "config.toml");
+        let cfg = Sites::load(&Some(cfn));
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
