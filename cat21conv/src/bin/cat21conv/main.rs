@@ -32,7 +32,7 @@ use stderrlog::LogLevelNum::{Debug, Info, Trace};
 use cat21conv::Task;
 
 use format_specs::{prepare_csv, Cat21, Format};
-use sites::config::{load, Sites};
+use sites::config::Sites;
 use sites::filter::Filter;
 use sites::Site;
 
@@ -150,7 +150,7 @@ fn main() -> Result<()> {
     // Load default config if nothing is specified
     //
     info!("Loading config…");
-    let cfg = Sites::load(&opts.config);
+    let cfg = Sites::load(&opts.config)?;
     trace!("{} sites loaded", cfg.sites.len());
 
     info!("Loading data…");

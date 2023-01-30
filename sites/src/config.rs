@@ -5,7 +5,7 @@ use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::crate_name;
 use log::trace;
 use serde::{Deserialize, Serialize};
@@ -65,7 +65,7 @@ impl Sites {
 
     /// Load the specified config file
     ///
-    pub fn load(fname: &PathBuf) -> Result<Sites> {
+    fn read_file(fname: &PathBuf) -> Result<Sites> {
         trace!("Reading {:?}", fname);
         let content = fs::read_to_string(fname)?;
 
@@ -108,28 +108,28 @@ impl Sites {
         let content = include_str!("config.toml");
         fs::write(fname, content)
     }
-}
 
-/// Load configuration from either the specified file or the default one.
-///
-pub fn load(fname: &Option<PathBuf>) -> Sites {
-    // Load default config if nothing is specified
-    //
-    match fname {
-        // We have a configuration file
+    /// Load configuration from either the specified file or the default one.
+    ///
+    pub fn load(fname: &Option<PathBuf>) -> Result<Sites> {
+        // Load default config if nothing is specified
         //
-        Some(cnf) => {
-            trace!("Loading from {:?}", cnf);
+        match fname {
+            // We have a configuration file
+            //
+            Some(cnf) => {
+                trace!("Loading from {:?}", cnf);
 
-            Sites::load(cnf).unwrap_or_else(|_| panic!("No file {:?}", cnf))
-        }
-        // Need to load our own
-        //
-        None => {
-            let cnf = Sites::default_file();
-            trace!("Loading from {:?}", cnf);
+                Sites::read_file(cnf)
+            }
+            // Need to load our own
+            //
+            _ => {
+                let cnf = Sites::default_file();
+                trace!("Loading from {:?}", cnf);
 
-            Sites::load(&cnf).unwrap_or_else(|_| panic!("No default file {:?}", cnf))
+                Sites::read_file(&cnf)
+            }
         }
     }
 }
@@ -153,7 +153,7 @@ mod tests {
         let cn: PathBuf = makepath!("src", "bin", "cat21conv", CONFIG);
         assert!(cn.try_exists().is_ok());
 
-        let cfg = Sites::load(&cn);
+        let cfg = Sites::read_file(&cn);
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
