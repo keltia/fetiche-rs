@@ -136,6 +136,22 @@ impl Default for Position {
     }
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum TodCalculated {
+    C,
+    L,
+    N,
+    R,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Bool {
+    Y,
+    N,
+}
+
 /// Our pseudo cat21 csv output, we add the mapping from the awk script in comment
 ///
 /// SAC:SIC:ALT_GEO_FT:POS_LAT_DEG:POS_LONG_DEG:ALT_BARO_FT:TOD:REC_TIME_POSIX:REC_TIME_MS:
@@ -172,19 +188,19 @@ pub struct Cat21 {
     // $e
     pub emitter_category: usize,
     // $f
-    pub differential_correction: String,
+    pub differential_correction: Bool,
     // $g
-    pub ground_bit: String,
+    pub ground_bit: Bool,
     // $h
-    pub simulated_target: String,
+    pub simulated_target: Bool,
     // $i
-    pub test_target: String,
+    pub test_target: Bool,
     // $j
-    pub from_ft: String,
+    pub from_ft: Bool,
     // $k
-    pub selected_alt_capability: String,
+    pub selected_alt_capability: Bool,
     // $l
-    pub spi: String,
+    pub spi: Bool,
     // $l1 (these ought to be an enum)
     pub link_technology_cddi: String,
     // $l2
@@ -210,7 +226,7 @@ pub struct Cat21 {
     // $s
     pub report_type: usize,
     // $t
-    pub tod_calculated: String,
+    pub tod_calculated: TodCalculated,
     // $u
     pub callsign: String,
     // $v
@@ -236,13 +252,13 @@ impl Default for Cat21 {
             rec_time_posix: 0,
             rec_time_ms: 0,
             emitter_category: 0,
-            differential_correction: "".to_string(),
-            ground_bit: "".to_string(),
-            simulated_target: "".to_string(),
-            test_target: "".to_string(),
-            from_ft: "".to_string(),
-            selected_alt_capability: "".to_string(),
-            spi: "".to_string(),
+            differential_correction: Bool::N,
+            ground_bit: Bool::N,
+            simulated_target: Bool::N,
+            test_target: Bool::N,
+            from_ft: Bool::N,
+            selected_alt_capability: Bool::N,
+            spi: Bool::N,
             link_technology_cddi: "".to_string(),
             link_technology_mds: "".to_string(),
             link_technology_uat: "".to_string(),
@@ -255,7 +271,7 @@ impl Default for Cat21 {
             line_id: 0,
             ds_id: 0,
             report_type: 0,
-            tod_calculated: "".to_string(),
+            tod_calculated: TodCalculated::N,
             callsign: "".to_string(),
             groundspeed_kt: 0.0,
             track_angle_deg: 0.0,
