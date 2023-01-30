@@ -78,7 +78,7 @@ impl Sites {
     #[cfg(unix)]
     pub fn default_file() -> PathBuf {
         let homedir = home_dir().unwrap();
-        let def: PathBuf = makepath!(homedir, BASEDIR, crate_name!(), CONFIG);
+        let def: PathBuf = makepath!(homedir, BASEDIR, "drone-utils", CONFIG);
         trace!("Default file: {:?}", def);
         def
     }
@@ -89,7 +89,7 @@ impl Sites {
     pub fn default_file() -> PathBuf {
         let homedir = env::var("LOCALAPPDATA").unwrap();
 
-        let def: PathBuf = makepath!(homedir, crate_name!(), CONFIG);
+        let def: PathBuf = makepath!(homedir, "drone-utils", CONFIG);
         def
     }
 
