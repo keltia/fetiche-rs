@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_config_load() {
-        let cn: PathBuf = makepath!(".", "import-adsb", "src", CONFIG);
+        let cn: PathBuf = makepath!("..", "import-adsb", "src", CONFIG);
         assert!(cn.try_exists().is_ok());
         dbg!(&cn);
 
