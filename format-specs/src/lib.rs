@@ -202,15 +202,15 @@ pub struct Cat21 {
     // $l
     pub spi: Bool,
     // $l1 (these ought to be an enum)
-    pub link_technology_cddi: String,
+    pub link_technology_cddi: Bool,
     // $l2
-    pub link_technology_mds: String,
+    pub link_technology_mds: Bool,
     // $l3
-    pub link_technology_uat: String,
+    pub link_technology_uat: Bool,
     // $l4
-    pub link_technology_vdl: String,
+    pub link_technology_vdl: Bool,
     // $l5
-    pub link_technology_other: String,
+    pub link_technology_other: Bool,
     // $m
     pub descriptor_atp: usize,
     // $n

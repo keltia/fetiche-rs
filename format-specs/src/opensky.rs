@@ -13,7 +13,7 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
-use crate::{to_feet, to_knots, Cat21};
+use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
 
 /// Origin of state's position
 ///
@@ -118,18 +118,18 @@ impl From<&StateVector> for Cat21 {
             rec_time_posix: tod,
             rec_time_ms: 0,
             emitter_category: 13,
-            differential_correction: "N".to_string(),
-            ground_bit: "N".to_string(),
-            simulated_target: "N".to_string(),
-            test_target: "N".to_string(),
-            from_ft: "N".to_string(),
-            selected_alt_capability: "N".to_string(),
-            spi: "N".to_string(),
-            link_technology_cddi: "N".to_string(),
-            link_technology_mds: "N".to_string(),
-            link_technology_uat: "N".to_string(),
-            link_technology_vdl: "N".to_string(),
-            link_technology_other: "N".to_string(),
+            differential_correction: Bool::N,
+            ground_bit: Bool::N,
+            simulated_target: Bool::N,
+            test_target: Bool::N,
+            from_ft: Bool::N,
+            selected_alt_capability: Bool::N,
+            spi: Bool::N,
+            link_technology_cddi: Bool::N,
+            link_technology_mds: Bool::N,
+            link_technology_uat: Bool::N,
+            link_technology_vdl: Bool::N,
+            link_technology_other: Bool::N,
             descriptor_atp: 1,
             alt_reporting_capability_ft: 0,
             target_addr: 623615,
@@ -137,7 +137,7 @@ impl From<&StateVector> for Cat21 {
             line_id: 1,
             ds_id: 18,
             report_type: 3,
-            tod_calculated: "N".to_string(),
+            tod_calculated: TodCalculated::N,
             callsign,
             groundspeed_kt: to_knots(line.velocity.unwrap_or(0) as f32),
             track_angle_deg: line.true_track.unwrap_or(0.0),
