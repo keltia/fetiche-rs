@@ -25,7 +25,7 @@ use format_specs::{Cat21, Format};
 
 use crate::aeroscope::Aeroscope;
 use crate::asd::Asd;
-use crate::config::Config;
+use crate::config::Sites;
 use crate::opensky::Opensky;
 use crate::safesky::Safesky;
 
@@ -92,7 +92,7 @@ pub enum Site {
 impl Site {
     /// Load site by checking whether it is present in the configuration file
     ///
-    pub fn load(name: &str, cfg: &Config) -> Result<Box<dyn Fetchable>> {
+    pub fn load(name: &str, cfg: &Sites) -> Result<Box<dyn Fetchable>> {
         trace!("Loading site {}", name);
         match cfg.sites.get(name) {
             Some(site) => {
@@ -146,7 +146,7 @@ mod tests {
 
     use crate::makepath;
 
-    fn set_default() -> Config {
+    fn set_default() -> Sites {
         let s = Site::Anon {
             format: "aeroscope".to_string(),
             base_url: "http://example.net/".to_string(),
@@ -156,7 +156,7 @@ mod tests {
         let mut h: HashMap<String, Site> = HashMap::new();
         h.insert("foo".to_string(), s);
 
-        let cfg = Config {
+        let cfg = Sites {
             default: "none".to_string(),
             sites: h,
         };
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn test_site_loading() {
         let cfn: PathBuf = makepath!("src", "bin", "cat21conv", "config.toml");
-        let cfg = Config::load(&cfn);
+        let cfg = Sites::load(&cfn);
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();

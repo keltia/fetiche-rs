@@ -51,14 +51,14 @@ pub fn version() -> String {
 /// use drone_utils::site::Site;
 /// use drone_utils::task::Task;
 /// use format_specs::Cat21;
-/// use sites::config::Config;
+/// use sites::config::Sites;
 /// use sites::filter::Filter;
 /// use sites::Site;
 ///
 /// # let name = "eih";
 /// # let filter = Filter::None;
 ///
-/// let cfg = Config::load(&PathBuf::from("config.toml"))?;
+/// let cfg = Sites::load(&PathBuf::from("config.toml"))?;
 ///
 /// let site = Site::load(name, &cfg)?;
 /// let res: Vec<Cat21> = Task::new(name).site(site).with(filter).run()?;

@@ -24,7 +24,7 @@ const BASEDIR: &str = ".config";
 /// Main struct holding configurations
 ///
 #[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
-pub struct Config {
+pub struct Sites {
     /// Default format-specs
     pub default: String,
     /// Site map
@@ -33,7 +33,7 @@ pub struct Config {
 
 /// `Default` is for `unwrap_or_default()`.
 ///
-impl Default for Config {
+impl Default for Sites {
     fn default() -> Self {
         Self::new()
     }
@@ -52,12 +52,12 @@ macro_rules! makepath {
     };
 }
 
-impl Config {
+impl Sites {
     /// Returns an empty struct
     ///
-    pub fn new() -> Config {
+    pub fn new() -> Sites {
         let h = HashMap::<String, Site>::new();
-        Config {
+        Sites {
             default: "none".to_string(),
             sites: h,
         }
@@ -65,11 +65,11 @@ impl Config {
 
     /// Load the specified config file
     ///
-    pub fn load(fname: &PathBuf) -> Result<Config> {
+    pub fn load(fname: &PathBuf) -> Result<Sites> {
         trace!("Reading {:?}", fname);
         let content = fs::read_to_string(fname)?;
 
-        let s: Config = toml::from_str(&content)?;
+        let s: Sites = toml::from_str(&content)?;
         Ok(s)
     }
 
@@ -112,7 +112,7 @@ impl Config {
 
 /// Load configuration from either the specified file or the default one.
 ///
-pub fn get_config(fname: &Option<PathBuf>) -> Config {
+pub fn load(fname: &Option<PathBuf>) -> Sites {
     // Load default config if nothing is specified
     //
     match fname {
@@ -121,15 +121,15 @@ pub fn get_config(fname: &Option<PathBuf>) -> Config {
         Some(cnf) => {
             trace!("Loading from {:?}", cnf);
 
-            Config::load(cnf).unwrap_or_else(|_| panic!("No file {:?}", cnf))
+            Sites::load(cnf).unwrap_or_else(|_| panic!("No file {:?}", cnf))
         }
         // Need to load our own
         //
         None => {
-            let cnf = Config::default_file();
+            let cnf = Sites::default_file();
             trace!("Loading from {:?}", cnf);
 
-            Config::load(&cnf).unwrap_or_else(|_| panic!("No default file {:?}", cnf))
+            Sites::load(&cnf).unwrap_or_else(|_| panic!("No default file {:?}", cnf))
         }
     }
 }
@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let a = Config::new();
+        let a = Sites::new();
         assert_eq!("none", a.default);
         assert!(a.sites.is_empty());
         dbg!(&a);
@@ -153,7 +153,7 @@ mod tests {
         let cn: PathBuf = makepath!("src", "bin", "cat21conv", CONFIG);
         assert!(cn.try_exists().is_ok());
 
-        let cfg = Config::load(&cn);
+        let cfg = Sites::load(&cn);
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
@@ -169,7 +169,7 @@ mod tests {
     fn test_install_files() -> Result<()> {
         let tempdir = temp_dir();
         dbg!(&tempdir);
-        let r = Config::install_defaults(&tempdir);
+        let r = Sites::install_defaults(&tempdir);
         match r {
             Ok(()) => {
                 let f: PathBuf = makepath!(tempdir, CONFIG);
