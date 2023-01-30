@@ -30,7 +30,7 @@ fn test_invalid_no_file() {
 fn test_both_flags() {
     let mut cmd = Command::cargo_bin(BIN).unwrap();
     cmd.arg("-S nope")
-        .arg("testdata/csv13-10-2022.csv")
+        .arg("../testdata/csv13-10-2022.csv")
         .assert()
         .failure();
 }
@@ -38,7 +38,7 @@ fn test_both_flags() {
 #[test]
 fn test_file_without_format() {
     let mut cmd = Command::cargo_bin(BIN).unwrap();
-    cmd.arg("testdata/csv13-10-2022.csv").assert().failure();
+    cmd.arg("../testdata/csv13-10-2022.csv").assert().failure();
 }
 
 #[test]
@@ -47,8 +47,8 @@ fn test_file_with_format() {
     cmd.arg("-F")
         .arg("aeroscope")
         .arg("-c")
-        .arg("src/sites/src/config.toml")
-        .arg("testdata/csv13-10-2022.csv")
+        .arg("../sites/src/config.toml")
+        .arg("../testdata/csv13-10-2022.csv")
         .assert()
         .success();
 }
