@@ -30,7 +30,7 @@ pub fn version() -> String {
 /// # use std::path::PathBuf;
 /// # use log::info;
 /// use cat21conv::Task;
-/// use format_specs::Cat21;
+/// use format_specs::output::Cat21;
 ///
 /// let what = PathBuf::from("foo.json")?;
 ///
@@ -50,7 +50,8 @@ pub fn version() -> String {
 /// //
 /// use drone_utils::site::Site;
 /// use drone_utils::task::Task;
-/// use format_specs::Cat21;
+/// use format_specs::output::Cat21;
+///
 /// use sites::config::Sites;
 /// use sites::filter::Filter;
 /// use sites::Site;
@@ -58,7 +59,7 @@ pub fn version() -> String {
 /// # let name = "eih";
 /// # let filter = Filter::None;
 ///
-/// let cfg = Sites::load(&PathBuf::from("config.toml"))?;
+/// let cfg = Sites::load(&Some(PathBuf::from("config.toml")))?;
 ///
 /// let site = Site::load(name, &cfg)?;
 /// let res: Vec<Cat21> = Task::new(name).site(site).with(filter).run()?;
@@ -74,7 +75,8 @@ use anyhow::{anyhow, Result};
 use csv::ReaderBuilder;
 use log::debug;
 
-use format_specs::{Cat21, Format};
+use format_specs::output::Cat21;
+use format_specs::Format;
 
 use sites::filter::Filter;
 use sites::Fetchable;

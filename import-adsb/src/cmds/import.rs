@@ -5,8 +5,7 @@ use anyhow::{anyhow, Result};
 use log::trace;
 use serde::de;
 
-use format_specs::opensky::Opensky;
-use format_specs::{Cat21, Format};
+use format_specs::Format;
 use sites::filter::Filter;
 use sites::Fetchable;
 

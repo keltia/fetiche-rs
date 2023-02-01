@@ -30,8 +30,9 @@ use log::{info, trace};
 use stderrlog::LogLevelNum::{Debug, Info, Trace};
 
 use cat21conv::Task;
+use format_specs::output::{prepare_csv, Cat21};
+use format_specs::Format;
 
-use format_specs::{prepare_csv, Cat21, Format};
 use sites::config::Sites;
 use sites::filter::Filter;
 use sites::Site;
