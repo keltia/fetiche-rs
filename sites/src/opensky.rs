@@ -5,7 +5,8 @@ use log::{error, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use format_specs::{Cat21, Format};
+use format_specs::output::Cat21;
+use format_specs::Format;
 
 use crate::{Fetchable, Site};
 

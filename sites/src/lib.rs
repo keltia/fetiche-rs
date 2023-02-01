@@ -21,7 +21,8 @@ use log::trace;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-use format_specs::{Cat21, Format};
+use format_specs::output::Cat21;
+use format_specs::Format;
 
 use crate::aeroscope::Aeroscope;
 use crate::asd::Asd;
