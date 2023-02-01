@@ -3,6 +3,7 @@
 pub mod aeroscope;
 pub mod asd;
 pub mod opensky;
+pub mod safesky;
 
 use anyhow::Result;
 use csv::WriterBuilder;
