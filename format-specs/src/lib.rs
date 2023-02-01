@@ -10,10 +10,10 @@
 pub mod input;
 pub mod output;
 
-use crate::aeroscope::Aeroscope;
-use crate::asd::Asd;
+use crate::input::aeroscope::Aeroscope;
+use crate::input::asd::Asd;
+use crate::input::safesky::Safesky;
 use crate::output::Cat21;
-use crate::safesky::Safesky;
 
 use anyhow::Result;
 use csv::{Reader, WriterBuilder};

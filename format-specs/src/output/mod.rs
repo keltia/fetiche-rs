@@ -1,11 +1,13 @@
-// pub mod aeroscope;
-// pub mod asd;
-// pub mod opensky;
 // pub mod safesky;
+
+pub mod aeroscope;
+pub mod asd;
+pub mod opensky;
 
 use anyhow::Result;
 use csv::WriterBuilder;
 use log::debug;
+use serde::Serialize;
 
 use crate::{Bool, TodCalculated};
 
