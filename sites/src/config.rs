@@ -5,8 +5,7 @@ use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use anyhow::{anyhow, Result};
-use clap::crate_name;
+use anyhow::Result;
 use log::trace;
 use serde::{Deserialize, Serialize};
 

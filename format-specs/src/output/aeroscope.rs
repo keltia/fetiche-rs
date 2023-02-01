@@ -4,10 +4,9 @@
 //! This is the output part
 
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
 
 use crate::input::aeroscope::Aeroscope;
-use crate::{to_feet, to_knots, Bool, Cat21, Position, TodCalculated};
+use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
 
 impl From<&Aeroscope> for Cat21 {
     /// Makes the loading and transformations

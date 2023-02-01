@@ -9,10 +9,7 @@
 //! Documentation is taken from [The Opensky site](https://opensky-network.github.io/opensky-api/rest.html)
 //!
 
-use anyhow::Result;
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
-use serde_repr::Deserialize_repr;
 
 use crate::input::opensky::StateVector;
 use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};

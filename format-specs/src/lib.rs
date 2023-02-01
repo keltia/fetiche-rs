@@ -16,7 +16,7 @@ use crate::input::safesky::Safesky;
 use crate::output::Cat21;
 
 use anyhow::Result;
-use csv::{Reader, WriterBuilder};
+use csv::Reader;
 use log::debug;
 use serde::{Deserialize, Serialize};
 

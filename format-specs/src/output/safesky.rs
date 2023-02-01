@@ -9,8 +9,6 @@
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
 
-use std::net::IpAddr;
-
 use crate::input::safesky::Safesky;
 use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
 

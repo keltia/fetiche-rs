@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 
 /// CLI options
