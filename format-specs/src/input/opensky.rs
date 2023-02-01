@@ -10,11 +10,10 @@
 //!
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
-use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
+use crate::Cat21;
 
 /// Origin of state's position
 ///

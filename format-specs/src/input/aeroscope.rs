@@ -2,10 +2,9 @@
 //! CSV data Cat21-like
 //!
 
-use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-use crate::{to_feet, to_knots, Bool, Cat21, Position, TodCalculated};
+use crate::Position;
 
 /// Our input structure from the csv file coming out of the aeroscope as CSV
 ///

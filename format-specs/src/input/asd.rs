@@ -5,10 +5,7 @@
 //!
 //! JSON endpoint added later by ASD in Nov. 2022.
 
-use chrono::NaiveDateTime;
 use serde::Deserialize;
-
-use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
 
 /// Our input structure from the json file coming out of the main ASD site
 ///
