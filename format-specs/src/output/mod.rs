@@ -1,5 +1,3 @@
-// pub mod safesky;
-
 pub mod aeroscope;
 pub mod asd;
 pub mod opensky;
