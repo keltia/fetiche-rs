@@ -87,7 +87,29 @@ pub enum Site {
         /// Data fetching URL
         get: String,
     },
+    HLogin {
+        /// Type of input
+        format: String,
+        /// Base URL (to avoid repeating)
+        base_url: String,
+        cmd: Cmd,
+        auth: Auth,
+    },
     Invalid,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum Cmd {
+    Auth { get: String, token: String },
+    Plain { get: String },
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum Auth {
+    Key { api_key: String },
+    Login { login: String, password: String },
 }
 
 impl Site {
@@ -215,6 +237,7 @@ mod tests {
                     assert!(!token.is_empty());
                 }
                 Site::Invalid => panic!("nope"),
+                _ => panic!("oopsie"),
             }
         }
     }
