@@ -189,6 +189,7 @@ mod tests {
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
+        dbg!(&cfg);
         assert!(!cfg.sites.is_empty());
         let someplace = &cfg.sites["eih"];
         match someplace {
