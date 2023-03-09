@@ -41,7 +41,7 @@ sites "opensky" {
 sites "safesky" {
   format = "safesky"
   base_url = "https://public-api.safesky.app"
-  auth {
+  auth = {
     api_key = "foobar"
   }
   cmd = {
