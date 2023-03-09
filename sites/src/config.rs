@@ -1,6 +1,7 @@
 //! Main configuration management and loading
 //!
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::{env, fs};
@@ -16,6 +17,7 @@ use home::home_dir;
 
 /// Default configuration filename
 const CONFIG: &str = "config.toml";
+const HCONFIG: &str = "config.hcl";
 
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
@@ -68,7 +70,19 @@ impl Sites {
         trace!("Reading {:?}", fname);
         let content = fs::read_to_string(fname)?;
 
-        let s: Sites = toml::from_str(&content)?;
+        // Check extension
+        //
+        let ext = match fname.extension() {
+            Some(ext) => ext,
+            _ => OsStr::new("hcl"),
+        };
+
+        dbg!(&ext);
+        let s: Sites = if ext == "hcl" {
+            hcl::from_str(&content)?
+        } else {
+            toml::from_str(&content)?
+        };
         Ok(s)
     }
 
@@ -149,10 +163,29 @@ mod tests {
 
     #[test]
     fn test_config_load() {
-        let cn: PathBuf = makepath!("src", "bin", "cat21conv", CONFIG);
+        let cn: PathBuf = makepath!("src", CONFIG);
         assert!(cn.try_exists().is_ok());
 
         let cfg = Sites::read_file(&cn);
+        dbg!(&cfg);
+        assert!(cfg.is_ok());
+
+        let cfg = cfg.unwrap();
+        assert!(!cfg.sites.is_empty());
+        let someplace = &cfg.sites["eih"];
+        match someplace {
+            Site::Login { password, .. } => assert_eq!("NOPE", password),
+            _ => (),
+        }
+    }
+
+    #[test]
+    fn test_config_load_hcl() {
+        let cn: PathBuf = makepath!("src", HCONFIG);
+        assert!(cn.try_exists().is_ok());
+
+        let cfg = Sites::read_file(&cn);
+        dbg!(&cfg);
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
