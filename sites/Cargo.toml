@@ -1,6 +1,6 @@
 [package]
 name = "sites"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Access methods to connect/fetch data from sites."
