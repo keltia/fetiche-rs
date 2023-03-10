@@ -145,6 +145,7 @@ impl Sites {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Auth;
     use anyhow::bail;
     use std::env::temp_dir;
 
@@ -169,9 +170,11 @@ mod tests {
         dbg!(&cfg);
         assert!(!cfg.sites.is_empty());
         let someplace = &cfg.sites["eih"];
-        match someplace {
-            Site::Login { password, .. } => assert_eq!("NOPE", password),
-            _ => (),
+        if let Some(auth) = someplace.auth.clone() {
+            match auth {
+                Auth::Login { password, .. } => assert_eq!("NOPE", password),
+                _ => (),
+            }
         }
     }
 

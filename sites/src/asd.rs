@@ -27,7 +27,7 @@ use format_specs::output::Cat21;
 use format_specs::Format;
 
 use crate::filter::Filter;
-use crate::{http_post, http_post_auth, Fetchable, Site};
+use crate::{http_post, http_post_auth, Auth, Fetchable, Site};
 
 /// Different types of source
 ///
@@ -123,27 +123,23 @@ impl Asd {
     /// Load some data from the configuration file
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
-        match site {
-            Site::Login {
-                format,
-                base_url,
-                login,
-                password,
-                token,
-                get,
-                ..
-            } => {
-                self.format = format.as_str().into();
-                self.base_url = base_url.to_owned();
-                self.token = token.to_owned();
-                self.get = get.to_owned();
-                self.login = login.to_owned();
-                self.password = password.to_owned();
-            }
-            _ => {
-                error!("Missing config data for {site:?}")
+        self.format = site.format.as_str().into();
+        self.base_url = site.base_url.to_owned();
+        if let Some(auth) = &site.auth {
+            match auth {
+                Auth::Token {
+                    url,
+                    login,
+                    password,
+                } => {
+                    self.token = url.to_owned();
+                    self.login = login.to_owned();
+                    self.password = password.to_owned();
+                }
+                _ => panic!("nope"),
             }
         }
+        self.get = site.cmd.get.to_owned();
         self
     }
 }

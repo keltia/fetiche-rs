@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use format_specs::output::Cat21;
 use format_specs::Format;
 
-use crate::{Fetchable, Site};
+use crate::{Auth, Fetchable, Site};
 
 #[derive(Clone, Debug)]
 pub struct Opensky {
@@ -61,25 +61,18 @@ impl Opensky {
     /// Load some data from the configuration file
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
-        match site {
-            Site::Login {
-                format,
-                base_url,
-                login,
-                password,
-                get,
-                ..
-            } => {
-                self.format = format.as_str().into();
-                self.base_url = base_url.to_owned();
-                self.get = get.to_owned();
-                self.login = login.to_owned();
-                self.password = password.to_owned();
-            }
-            _ => {
-                error!("Missing config data for {site:?}")
+        self.format = site.format.as_str().into();
+        self.base_url = site.base_url.to_owned();
+        if let Some(auth) = &site.auth {
+            match auth {
+                Auth::Login { login, password } => {
+                    self.login = login.to_owned();
+                    self.password = password.to_owned();
+                }
+                _ => panic!("nope"),
             }
         }
+        self.get = site.cmd.get.to_owned();
         self
     }
 }

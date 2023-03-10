@@ -47,69 +47,41 @@ pub trait Fetchable: Debug {
 /// Describe what a site is and associated credentials.
 ///
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(untagged)]
-pub enum Site {
-    /// Site that needs to be supplied a username and password, often to get a token
-    ///
-    Login {
-        /// Type of input
-        format: String,
-        /// Base URL (to avoid repeating)
-        base_url: String,
-        /// Token fetching URL (if present call this first)
-        token: String,
-        /// Data fetching URL
-        get: String,
-        /// Login (if needed)
-        login: String,
-        /// Password if needed
-        password: String,
-    },
-    /// Site using an API key, supplied in a header or in the URL
-    ///
-    Key {
-        /// Type of input
-        format: String,
-        /// Base URL
-        base_url: String,
-        /// API key as x-api-key:
-        api_key: String,
-        /// Data fetching URL
-        get: String,
-    },
-    /// Plain anonymous public access
-    ///
-    Anon {
-        /// Type of input
-        format: String,
-        /// Base URL (to avoid repeating)
-        base_url: String,
-        /// Data fetching URL
-        get: String,
-    },
-    HLogin {
-        /// Type of input
-        format: String,
-        /// Base URL (to avoid repeating)
-        base_url: String,
-        cmd: Cmd,
-        auth: Auth,
-    },
-    Invalid,
+pub struct Site {
+    /// Type of input
+    format: String,
+    /// Base URL (to avoid repeating)
+    base_url: String,
+    /// Different URLs available
+    cmd: Routes,
+    /// Credentials
+    auth: Option<Auth>,
 }
 
+/// Struct describing the available routes, only `get` to actually fetch data for now
+///
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(untagged)]
-pub enum Cmd {
-    Auth { get: String, token: String },
-    Plain { get: String },
+pub struct Routes {
+    get: String,
 }
 
+/// Describe the possible ways to authenticate oneself
+///
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum Auth {
+    /// Using an API key supplied through the URL or a header
     Key { api_key: String },
+    /// Using plain login/password
     Login { login: String, password: String },
+    /// Using a login/passwd to get a token
+    Token {
+        login: String,
+        password: String,
+        url: String,
+    },
+    /// Nothing special, no auth
+    Anon,
 }
 
 impl Site {
@@ -151,12 +123,7 @@ impl Site {
     /// Return the site format-specs
     ///
     pub fn format(&self) -> Format {
-        match self {
-            Site::Login { format, .. } | Site::Key { format, .. } | Site::Anon { format, .. } => {
-                format.as_str().into()
-            }
-            _ => Format::None,
-        }
+        self.format.as_str().into()
     }
 }
 
@@ -171,10 +138,17 @@ mod tests {
     use crate::makepath;
 
     fn set_default() -> Sites {
-        let s = Site::Anon {
+        let s = Site {
             format: "aeroscope".to_string(),
             base_url: "http://example.net/".to_string(),
-            get: "/get".to_string(),
+            cmd: Routes {
+                get: "/get".to_string(),
+            },
+            auth: Some(Auth::Token {
+                login: "LOGIN".to_string(),
+                password: "NOPE".to_string(),
+                url: "nope".to_string(),
+            }),
         };
 
         let mut h: HashMap<String, Site> = HashMap::new();
@@ -185,6 +159,7 @@ mod tests {
             sites: h,
         };
 
+        dbg!(&cfg);
         cfg
     }
 
@@ -206,8 +181,9 @@ mod tests {
 
     #[test]
     fn test_site_loading() {
-        let cfn: PathBuf = makepath!("src", "sites", "src", "config.hcl");
+        let cfn: PathBuf = makepath!("src", "config.hcl");
         let cfg = Sites::load(&Some(cfn));
+        dbg!(&cfg);
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
@@ -216,28 +192,22 @@ mod tests {
         assert_eq!("none", cfg.default);
         assert!(!s.is_empty());
         assert_eq!(4, s.len());
-        assert!(s.contains_key("nope"));
 
-        for (_, s) in s.iter() {
-            match s {
-                Site::Anon { format, .. } => {
-                    assert_eq!("aeroscope", format);
+        for (name, s) in s.iter() {
+            match name.as_str() {
+                "eih" => {
+                    assert_eq!("aeroscope", s.format);
+                    if let Some(auth) = s.auth.clone() {
+                        if let Auth::Token { url, login, .. } = auth {
+                            assert_eq!("SOMETHING", login);
+                            assert_eq!("http://127.0.0.1:2400", url);
+                        }
+                    }
                 }
-                Site::Key { format, .. } => {
-                    assert_eq!("safesky", format);
-                }
-                Site::Login {
-                    format,
-                    base_url,
-                    token,
-                    ..
-                } => {
-                    assert_ne!("none", format);
-                    assert!(!base_url.is_empty());
-                    assert!(!token.is_empty());
-                }
-                Site::Invalid => panic!("nope"),
-                _ => panic!("oopsie"),
+                "asd" => {}
+                "opensky" => {}
+                "safesky" => {}
+                _ => {}
             }
         }
     }

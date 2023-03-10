@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use format_specs::output::Cat21;
 use format_specs::{Format, Position};
 
-use crate::{Fetchable, Site};
+use crate::{Auth, Fetchable, Site};
 
 /// Define the square inside which we want beacons information
 ///
@@ -64,23 +64,17 @@ impl Safesky {
     }
 
     pub fn load(&mut self, site: &Site) -> &mut Self {
-        match site {
-            Site::Key {
-                format,
-                base_url,
-                api_key,
-                get,
-                ..
-            } => {
-                self.format = format.as_str().into();
-                self.base_url = base_url.to_owned();
-                self.api_key = api_key.to_owned();
-                self.get = get.to_owned();
-            }
-            _ => {
-                error!("Missing config data for {site:?}")
+        self.format = site.format.as_str().into();
+        self.base_url = site.base_url.to_owned();
+        if let Some(auth) = &site.auth {
+            match auth {
+                Auth::Key { api_key } => {
+                    self.api_key = api_key.to_owned();
+                }
+                _ => panic!("nope"),
             }
         }
+        self.get = site.cmd.get.to_owned();
         self
     }
 }
