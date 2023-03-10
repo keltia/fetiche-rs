@@ -4,11 +4,11 @@ sites "eih" {
   format = "aeroscope"
   base_url = "http://127.0.0.1:2400"
   auth = {
-    login = "SOMETHING"
+    login    = "SOMETHING"
     password = "NOPE"
+    token    = "/login"
   }
   cmd = {
-    token = "/login"
     get = "/drone/get"
   }
 }
@@ -17,12 +17,12 @@ sites "asd" {
   format = "asd"
   base_url = "https://eur.airspacedrone.com"
   auth = {
-    login = "USERNAME"
+    login    = "USERNAME"
     password = "GUESS"
+    token    = "/api/security"
   }
   cmd = {
-    token = "/api/security"
-    get = "/api/journeys/filteredlocations"
+    get = "/api/journeys/filteredlocations/json"
   }
 }
 
