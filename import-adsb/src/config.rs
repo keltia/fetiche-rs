@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use home::home_dir;
 
 /// Default configuration filename
-const CONFIG: &str = "dbfile.toml";
+const CONFIG: &str = "dbfile.hcl";
 
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
@@ -79,7 +79,7 @@ impl DBFile {
         dbg!(fname);
         let content = fs::read_to_string(fname);
         dbg!(&content);
-        let s: DBFile = toml::from_str(&content.unwrap())?;
+        let s: DBFile = hcl::from_str(&content.unwrap())?;
         dbg!(&s);
         Ok(s)
     }
