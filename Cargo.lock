@@ -1262,6 +1262,7 @@ dependencies = [
  "clap",
  "csv",
  "format-specs",
+ "hcl-rs",
  "home",
  "httpmock",
  "log",
@@ -1273,7 +1274,6 @@ dependencies = [
  "sites",
  "sqlx",
  "stderrlog",
- "toml",
 ]
 
 [[package]]
@@ -2338,7 +2338,7 @@ checksum = "7bd3e3206899af3f8b12af284fafc038cc1dc2b41d1b89dd17297221c5d225de"
 
 [[package]]
 name = "sites"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
