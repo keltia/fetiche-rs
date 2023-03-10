@@ -47,7 +47,7 @@ fn test_file_with_format() {
     cmd.arg("-F")
         .arg("aeroscope")
         .arg("-c")
-        .arg("../sites/src/config.toml")
+        .arg("../sites/src/config.hcl")
         .arg("../testdata/csv13-10-2022.csv")
         .assert()
         .success();

@@ -96,43 +96,68 @@ Options:
 
 All the configuration side of things is handled by the `sites` crate.
 
-On UNIX, it is located in `$HOME/.config/drone-utils/config.toml` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
+On UNIX, it is located in `$HOME/.config/drone-utils/config.hcl` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
 
 There are only a few parameters for now, the most important one being the credentials for authenticate against the
 network endpoint. You can specify the different network endpoints:
 
-The utilities use a configuration file called `config.toml` in the [TOML] file format. `import-adsb`  will also use
+The utilities use a configuration file called `config.hcl` in the [HCL] file format. `import-adsb`  will also use
 another one called `dbfile.toml`  located in the same directory.
 
 <details>
 <summary>config.toml</summary>
 
-```toml
-default = "none"
+```hcl
+default = "local"
 
-[sites.someplace]
+sites "local" {
+  format   = "aeroscope"
+  base_url = "http://127.0.0.1:2400"
+  auth     = {
+    login    = "SOMETHING"
+    password = "NOPE"
+    token    = "/login"
+  }
+  cmd = {
+    get = "/drone/get"
+  }
+}
 
-format = "aeroscope"
-base_url = "http://127.0.0.1:2400"
-token = "/login"
-login = "SOMETHING"
-password = "NOPE"
-get = "/drone/get"
+sites "big.site.aero" {
+  format   = "asd"
+  base_url = "https://api.site.aero"
+  auth     = {
+    login    = "USERNAME"
+    password = "GUESS"
+    token    = "/api/security"
+  }
+  cmd = {
+    get = "/api/journeys/filteredlocations"
+  }
+}
 
-[sites.else]
+sites "opensky" {
+  format   = "opensky"
+  base_url = "https://opensky-network.org/api"
+  auth     = {
+    login    = "anyone"
+    password = "NOPE"
+  }
+  cmd = {
+    get = "/state/own"
+  }
+}
 
-format = "safesky"
-base_url = "http://example.net:2400"
-token = "/auth"
-login = "USER"
-password = "MAYBE"
-get = "/foo"
-
-[sites.nope]
-
-format = "safesky"
-base_url = "https://kansas.example.net:3000"
-get = "/somewhere/over/the/rainbow"
+sites "safesky" {
+  format   = "safesky"
+  base_url = "https://public-api.safesky.app"
+  auth     = {
+    api_key = "foobar"
+  }
+  cmd = {
+    get = "/v1/beacons"
+  }
+}
 ```
 
 As you can see, there are sites that require you to supply a login & password and others which don't.
@@ -189,8 +214,7 @@ url = "pgsql://mydbserver:5432/adsb-data"
 ## Formats (managed in the `format-specs`  crate)
 
 The default input format is the one used by the Aeroscope from ASD, but it will soon support the format used
-by [Safesky]
-site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
+by [Safesky] site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
 
 These are described in the `src/format/aeroscope.rs`, `src/format/asd.rs` and `src/format/safesky.rs` files. There are
 also transformations in each case when converting into our CSV-based Cat21-like format.
@@ -249,4 +273,4 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [Safesky]: https://safesky.app/
 
-[TOML]: https://github.com/naoina/toml/
+[HCL]: https://developer.hashicorp.com/terraform/language

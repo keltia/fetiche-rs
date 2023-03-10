@@ -12,13 +12,13 @@ each rules/calculations are done to convert into the output format, always our o
 
 ## Configuration
 
-The `config.toml` file defines which sites are available, the parameters needed and the format used for input.
+The `config.hcl` file defines which sites are available, the parameters needed and the format used for input.
 
 ## Process
 
 1. read configuration file
 
-   1.1. there can be several sites defined in `config.toml`
+   1.1. there can be several sites defined in `config.hcl`
 
    1.2. source format is defined in Config or specified on CLI
 

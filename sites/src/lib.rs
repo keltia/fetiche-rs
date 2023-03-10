@@ -206,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_site_loading() {
-        let cfn: PathBuf = makepath!("src", "sites", "src", "config.toml");
+        let cfn: PathBuf = makepath!("src", "sites", "src", "config.hcl");
         let cfg = Sites::load(&Some(cfn));
         assert!(cfg.is_ok());
 

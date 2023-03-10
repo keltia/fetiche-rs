@@ -59,7 +59,7 @@ pub fn version() -> String {
 /// # let name = "eih";
 /// # let filter = Filter::None;
 ///
-/// let cfg = Sites::load(&Some(PathBuf::from("config.toml")))?;
+/// let cfg = Sites::load(&Some(PathBuf::from("config.hcl")))?;
 ///
 /// let site = Site::load(name, &cfg)?;
 /// let res: Vec<Cat21> = Task::new(name).site(site).with(filter).run()?;

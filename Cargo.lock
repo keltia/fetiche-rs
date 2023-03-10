@@ -392,6 +392,7 @@ dependencies = [
  "clap",
  "csv",
  "format-specs",
+ "hcl-rs",
  "home",
  "httpmock",
  "log",
@@ -402,7 +403,6 @@ dependencies = [
  "serde_repr",
  "sites",
  "stderrlog",
- "toml",
 ]
 
 [[package]]
@@ -1054,9 +1054,9 @@ dependencies = [
 
 [[package]]
 name = "hcl-rs"
-version = "0.13.1"
+version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b968ae5469c0af67ce0b5632cdf8dabe551817cfdd5e1c51c027017b99021d01"
+checksum = "927849a0084a69a2c094e7b1d3ab60be84f2c9b876cc0b0a0ca4ca48b8a2fddf"
 dependencies = [
  "indexmap",
  "itoa",
@@ -2355,7 +2355,6 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "stderrlog",
- "toml",
 ]
 
 [[package]]
