@@ -23,12 +23,10 @@ This is intentionally *not* a run-time option but a compile-time one.
 ## Formats
 
 The default format is the one used by the Aeroscope from ASD, but it will soon support the format used by [Safesky]
-site.  
-There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
+site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
 
 These are described in the `src/format/aeroscope.rs`, `src/format/asd.rs` and `src/format/safesky.rs` files. There are
-also
-transformations in each case when converting into our CSV-based Cat21-like format.
+also transformations in each case when converting into our CSV-based Cat21-like format.
 
 ### Cat21
 
