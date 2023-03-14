@@ -151,29 +151,7 @@ mod tests {
     use crate::makepath;
 
     fn set_default() -> Sites {
-        let s = Site {
-            format: "aeroscope".to_string(),
-            base_url: "http://example.net/".to_string(),
-            cmd: Routes {
-                get: "/get".to_string(),
-            },
-            auth: Some(Auth::Token {
-                login: "LOGIN".to_string(),
-                password: "NOPE".to_string(),
-                url: "nope".to_string(),
-            }),
-        };
-
-        let mut h: HashMap<String, Site> = HashMap::new();
-        h.insert("foo".to_string(), s);
-
-        let cfg = Sites {
-            default: "none".to_string(),
-            sites: h,
-        };
-
-        dbg!(&cfg);
-        cfg
+        hcl::from_str(include_str!("config.hcl")).unwrap()
     }
 
     #[test]
@@ -194,10 +172,7 @@ mod tests {
 
     #[test]
     fn test_site_loading() {
-        let cfn: PathBuf = makepath!("src", "config.hcl");
-        let cfg = Sites::load(&Some(cfn));
-        dbg!(&cfg);
-        assert!(cfg.is_ok());
+        let s = set_default();
 
         assert!(!s.is_empty());
         assert_eq!(4, s.len());
