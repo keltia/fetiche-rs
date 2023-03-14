@@ -1,8 +1,10 @@
 //! Main configuration management and loading
 //!
+use std::collections::hash_map::{IntoValues, Iter, Keys, Values, ValuesMut};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::create_dir_all;
+use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
 use std::{env, fs};
 
@@ -23,13 +25,8 @@ const BASEDIR: &str = ".config";
 
 /// Main struct holding configurations
 ///
-#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
-pub struct Sites {
-    /// Default format-specs
-    pub default: String,
-    /// Site map
-    pub sites: HashMap<String, Site>,
-}
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+pub struct Sites(HashMap<String, Site>);
 
 /// `Default` is for `unwrap_or_default()`.
 ///
@@ -55,12 +52,79 @@ macro_rules! makepath {
 impl Sites {
     /// Returns an empty struct
     ///
+    #[inline]
     pub fn new() -> Sites {
-        let h = HashMap::<String, Site>::new();
-        Sites {
-            default: "none".to_string(),
-            sites: h,
-        }
+        Sites(HashMap::<String, Site>::new())
+    }
+
+    /// Wrap `HashMap::get`
+    ///
+    #[inline]
+    pub fn get(&self, name: &str) -> Option<&Site> {
+        self.0.get(name)
+    }
+
+    /// Wrap `is_empty()`
+    ///
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Wrap `len()`
+    ///
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Wrap `keys()`
+    ///
+    #[inline]
+    pub fn keys(&self) -> Keys<'_, String, Site> {
+        self.0.keys()
+    }
+
+    /// Wrap `index_mut()`
+    ///
+    #[inline]
+    pub fn index_mut(&mut self, s: &str) -> Option<&Site> {
+        self.0.get(s)
+    }
+
+    /// Wrap `values()`
+    ///
+    #[inline]
+    pub fn values(&self) -> Values<'_, String, Site> {
+        self.0.values()
+    }
+
+    /// Wrap `values_mut()`
+    ///
+    #[inline]
+    pub fn values_mut(&mut self) -> ValuesMut<'_, String, Site> {
+        self.0.values_mut()
+    }
+
+    /// Wrap `into_values()`
+    ///
+    #[inline]
+    pub fn into_values(self) -> IntoValues<String, Site> {
+        self.0.into_values()
+    }
+
+    /// Wrap `contains_key()`
+    ///
+    #[inline]
+    pub fn contains_key(&self, s: &str) -> bool {
+        self.0.contains_key(s)
+    }
+
+    /// Wrap `contains_key()`
+    ///
+    #[inline]
+    pub fn iter(&self) -> Iter<'_, String, Site> {
+        self.0.iter()
     }
 
     /// Load the specified config file
@@ -76,7 +140,7 @@ impl Sites {
             _ => OsStr::new("hcl"),
         };
 
-        dbg!(&ext);
+        trace!("File is .{ext:?}");
         let s: Sites = hcl::from_str(&content)?;
         Ok(s)
     }
@@ -142,6 +206,42 @@ impl Sites {
     }
 }
 
+impl<'a> IntoIterator for &'a Sites {
+    type Item = (&'a String, &'a Site);
+    type IntoIter = Iter<'a, String, Site>;
+
+    /// We can now to `sites.iter()`
+    ///
+    fn into_iter(self) -> Iter<'a, String, Site> {
+        self.0.iter()
+    }
+}
+
+impl Index<&str> for Sites {
+    type Output = Site;
+
+    /// Wrap `index()`
+    ///
+    #[inline]
+    fn index(&self, s: &str) -> &Self::Output {
+        let me = self.0.get(s);
+        me.unwrap()
+    }
+}
+
+impl IndexMut<&str> for Sites {
+    /// Wrap `index_mut()`
+    ///
+    #[inline]
+    fn index_mut(&mut self, s: &str) -> &mut Self::Output {
+        let me = self.0.get_mut(s);
+        if me.is_none() {
+            self.0.insert(s.to_string(), Site::new());
+        }
+        self.0.get_mut(s).unwrap()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -152,8 +252,7 @@ mod tests {
     #[test]
     fn test_new() {
         let a = Sites::new();
-        assert_eq!("none", a.default);
-        assert!(a.sites.is_empty());
+        assert!(a.is_empty());
         dbg!(&a);
     }
 
@@ -168,11 +267,13 @@ mod tests {
 
         let cfg = cfg.unwrap();
         dbg!(&cfg);
-        assert!(!cfg.sites.is_empty());
-        let someplace = &cfg.sites["eih"];
-        if let Some(auth) = someplace.auth.clone() {
-            match auth {
-                Auth::Login { password, .. } => assert_eq!("NOPE", password),
+        assert!(!cfg.is_empty());
+        if let Some(site) = cfg.get("eih") {
+            match &site.auth {
+                Some(auth) => match auth {
+                    Auth::Login { password, .. } => assert_eq!("NOPE", password),
+                    _ => panic!("foo"),
+                },
                 _ => (),
             }
         }
