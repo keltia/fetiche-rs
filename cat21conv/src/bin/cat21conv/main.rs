@@ -144,7 +144,7 @@ fn main() -> Result<()> {
     // Prepare logging.
     //
     stderrlog::new()
-        //.modules([module_path!(), "drone-utils", "format-specs", "site"])
+        .modules(["cat21conv", "format-specs", "sites"])
         .verbosity(lvl)
         .init()?;
 
