@@ -85,6 +85,19 @@ pub enum Auth {
 }
 
 impl Site {
+    /// Basic `new()`
+    ///
+    pub fn new() -> Self {
+        Site {
+            format: "".to_string(),
+            base_url: "".to_string(),
+            auth: None,
+            cmd: Routes {
+                get: "".to_string(),
+            },
+        }
+    }
+
     /// Load site by checking whether it is present in the configuration file
     ///
     pub fn load(name: &str, cfg: &Sites) -> Result<Box<dyn Fetchable>> {
