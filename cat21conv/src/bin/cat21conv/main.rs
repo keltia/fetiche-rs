@@ -39,7 +39,7 @@ use sites::Site;
 
 /// From the CLI options
 ///
-pub fn filter_from_opts(opts: &Opts) -> Filter {
+pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
     let t: DateTime<Utc> = Utc::now();
 
     if opts.today {
@@ -54,20 +54,20 @@ pub fn filter_from_opts(opts: &Opts) -> Filter {
             .and_hms_opt(23, 59, 59)
             .unwrap();
 
-        Filter::from(begin, end)
+        Ok(Filter::from(begin, end))
     } else if opts.begin.is_some() {
         // Assume both are there, checked elsewhere
         //
         // We have to parse both arguments ourselves because it uses its own format-specs
         //
-        let begin = opts.begin.as_ref().unwrap().to_owned();
-        let end = opts.end.as_ref().unwrap().to_owned();
+        let begin = opts.begin.ok_or(anyhow!("bad -B parameter"))?;
+        let end = opts.end.ok_or(anyhow!("Bad -E parameter"))?;
 
-        let begin = NaiveDateTime::parse_from_str(&begin, "%Y-%m-%d %H:%M:%S").unwrap();
-        let end = NaiveDateTime::parse_from_str(&end, "%Y-%m-%d %H:%M:%S").unwrap();
-        Filter::from(begin, end)
+        let begin = NaiveDateTime::parse_from_str(&begin, "%Y-%m-%d %H:%M:%S")?;
+        let end = NaiveDateTime::parse_from_str(&end, "%Y-%m-%d %H:%M:%S")?;
+        Ok(Filter::from(begin, end))
     } else {
-        Filter::default()
+        Ok(Filter::default())
     }
 }
 
@@ -81,7 +81,7 @@ fn get_from_source(cfg: &Sites, opts: &Opts) -> Result<Vec<Cat21>> {
 
     // Build our filter if needed
     //
-    let filter = filter_from_opts(opts);
+    let filter = filter_from_opts(opts)?;
 
     match &opts.input {
         Some(what) => {
