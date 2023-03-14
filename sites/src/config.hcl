@@ -1,4 +1,3 @@
-default = "none"
 
 sites "eih" {
   format = "aeroscope"
