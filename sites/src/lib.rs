@@ -102,7 +102,7 @@ impl Site {
     ///
     pub fn load(name: &str, cfg: &Sites) -> Result<Box<dyn Fetchable>> {
         trace!("Loading site {}", name);
-        match cfg.sites.get(name) {
+        match cfg.get(name) {
             Some(site) => {
                 let fmt = site.format();
                 match fmt {
@@ -199,10 +199,6 @@ mod tests {
         dbg!(&cfg);
         assert!(cfg.is_ok());
 
-        let cfg = cfg.unwrap();
-        let s = cfg.sites.clone();
-
-        assert_eq!("none", cfg.default);
         assert!(!s.is_empty());
         assert_eq!(4, s.len());
 
