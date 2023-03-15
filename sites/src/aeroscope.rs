@@ -75,7 +75,7 @@ impl Aeroscope {
         }
     }
 
-    /// Load our site details from what is in the confifguration file
+    /// Load our site details from what is in the configuration file
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
         self.format = site.format.as_str().into();
