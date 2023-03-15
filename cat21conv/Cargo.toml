@@ -33,7 +33,7 @@ reqwest = { version = "0.11.12", features = ["blocking", "gzip", "json", "serde_
 serde = { version = "1.0.156", features = [ "derive" ] }
 serde_json = "1.0.86"
 serde_repr = "0.1.10"
-sites = { version = "0.2.0", path = "../sites" }
+sites = { version = "0.3.0", path = "../sites" }
 stderrlog = "0.5.4"
 
 [dev-dependencies]
