@@ -12,7 +12,7 @@
 
 use anyhow::Result;
 use clap::{crate_name, crate_version};
-use log::{debug, error};
+use log::{debug, error, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
@@ -78,6 +78,7 @@ impl Aeroscope {
     /// Load our site details from what is in the configuration file
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
+        trace!("Loading {site:?}");
         self.format = site.format.as_str().into();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
