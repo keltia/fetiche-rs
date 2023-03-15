@@ -156,7 +156,7 @@ fn main() -> Result<()> {
     //
     info!("Loading config…");
     let cfg = Sites::load(&opts.config)?;
-    trace!("{} sites loaded", cfg.sites.len());
+    trace!("{} sites loaded", cfg.len());
 
     info!("Loading data…");
 
