@@ -83,11 +83,11 @@ impl Aeroscope {
         if let Some(auth) = &site.auth {
             match auth {
                 Auth::Token {
-                    url,
+                    token,
                     login,
                     password,
                 } => {
-                    self.token = url.to_owned();
+                    self.token = token.to_owned();
                     self.login = login.to_owned();
                     self.password = password.to_owned();
                 }

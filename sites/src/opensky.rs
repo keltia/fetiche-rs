@@ -65,7 +65,10 @@ impl Opensky {
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
             match auth {
-                Auth::Login { login, password } => {
+                Auth::Login {
+                    username: login,
+                    password,
+                } => {
                     self.login = login.to_owned();
                     self.password = password.to_owned();
                 }

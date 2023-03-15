@@ -72,14 +72,14 @@ pub struct Routes {
 pub enum Auth {
     /// Using an API key supplied through the URL or a header
     Key { api_key: String },
-    /// Using plain login/password
-    Login { login: String, password: String },
     /// Using a login/passwd to get a token
     Token {
         login: String,
         password: String,
-        url: String,
+        token: String,
     },
+    /// Using plain login/password
+    Login { username: String, password: String },
     /// Nothing special, no auth
     Anon,
 }
@@ -182,9 +182,9 @@ mod tests {
                 "eih" => {
                     assert_eq!("aeroscope", s.format);
                     if let Some(auth) = s.auth.clone() {
-                        if let Auth::Token { url, login, .. } = auth {
+                        if let Auth::Token { token, login, .. } = auth {
                             assert_eq!("SOMETHING", login);
-                            assert_eq!("http://127.0.0.1:2400", url);
+                            assert_eq!("/login", token);
                         }
                     }
                 }

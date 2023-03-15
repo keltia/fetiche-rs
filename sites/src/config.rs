@@ -279,9 +279,15 @@ mod tests {
         dbg!(&cfg);
         assert!(!cfg.is_empty());
         if let Some(site) = cfg.get("eih") {
+            assert_eq!("http://127.0.0.1:2400", site.base_url);
             match &site.auth {
                 Some(auth) => match auth {
-                    Auth::Login { password, .. } => assert_eq!("NOPE", password),
+                    Auth::Token {
+                        password, token, ..
+                    } => {
+                        assert_eq!("NOPE", password);
+                        assert_eq!("/login", token);
+                    }
                     _ => panic!("foo"),
                 },
                 _ => (),
