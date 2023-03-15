@@ -60,11 +60,15 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
         //
         // We have to parse both arguments ourselves because it uses its own format-specs
         //
-        let begin = opts.begin.ok_or(anyhow!("bad -B parameter"))?;
-        let end = opts.end.ok_or(anyhow!("Bad -E parameter"))?;
+        let begin = match &opts.begin {
+            Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?,
+            None => return Err(anyhow!("bad -B parameter")),
+        };
+        let end = match &opts.end {
+            Some(end) => NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S")?,
+            None => return Err(anyhow!("Bad -E parameter")),
+        };
 
-        let begin = NaiveDateTime::parse_from_str(&begin, "%Y-%m-%d %H:%M:%S")?;
-        let end = NaiveDateTime::parse_from_str(&end, "%Y-%m-%d %H:%M:%S")?;
         Ok(Filter::from(begin, end))
     } else {
         Ok(Filter::default())
