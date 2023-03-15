@@ -1,8 +1,9 @@
+version = 1
 
-sites "eih" {
-  format = "aeroscope"
+site "eih" {
+  format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
-  auth = {
+  auth     = {
     login    = "SOMETHING"
     password = "NOPE"
     token    = "/login"
@@ -12,10 +13,10 @@ sites "eih" {
   }
 }
 
-sites "asd" {
-  format = "asd"
+site "asd" {
+  format   = "asd"
   base_url = "https://eur.airspacedrone.com"
-  auth = {
+  auth     = {
     login    = "USERNAME"
     password = "GUESS"
     token    = "/api/security"
@@ -25,11 +26,11 @@ sites "asd" {
   }
 }
 
-sites "opensky" {
-  format = "opensky"
+site "opensky" {
+  format   = "opensky"
   base_url = "https://opensky-network.org/api"
-  auth = {
-    login = "dphu"
+  auth     = {
+    login    = "dphu"
     password = "NOPE"
   }
   cmd = {
@@ -37,10 +38,10 @@ sites "opensky" {
   }
 }
 
-sites "safesky" {
-  format = "safesky"
+site "safesky" {
+  format   = "safesky"
   base_url = "https://public-api.safesky.app"
-  auth = {
+  auth     = {
     api_key = "foobar"
   }
   cmd = {

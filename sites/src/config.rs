@@ -19,6 +19,7 @@ use home::home_dir;
 
 /// Default configuration filename
 const CONFIG: &str = "config.hcl";
+const CVERSION: usize = 1;
 
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
@@ -26,7 +27,10 @@ const BASEDIR: &str = ".config";
 /// Main struct holding configurations
 ///
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
-pub struct Sites(HashMap<String, Site>);
+pub struct Sites {
+    version: usize,
+    site: HashMap<String, Site>,
+}
 
 /// `Default` is for `unwrap_or_default()`.
 ///
@@ -54,77 +58,80 @@ impl Sites {
     ///
     #[inline]
     pub fn new() -> Sites {
-        Sites(HashMap::<String, Site>::new())
+        Sites {
+            version: CVERSION,
+            site: HashMap::<String, Site>::new(),
+        }
     }
 
     /// Wrap `HashMap::get`
     ///
     #[inline]
     pub fn get(&self, name: &str) -> Option<&Site> {
-        self.0.get(name)
+        self.site.get(name)
     }
 
     /// Wrap `is_empty()`
     ///
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.site.is_empty()
     }
 
     /// Wrap `len()`
     ///
     #[inline]
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.site.len()
     }
 
     /// Wrap `keys()`
     ///
     #[inline]
     pub fn keys(&self) -> Keys<'_, String, Site> {
-        self.0.keys()
+        self.site.keys()
     }
 
     /// Wrap `index_mut()`
     ///
     #[inline]
     pub fn index_mut(&mut self, s: &str) -> Option<&Site> {
-        self.0.get(s)
+        self.site.get(s)
     }
 
     /// Wrap `values()`
     ///
     #[inline]
     pub fn values(&self) -> Values<'_, String, Site> {
-        self.0.values()
+        self.site.values()
     }
 
     /// Wrap `values_mut()`
     ///
     #[inline]
     pub fn values_mut(&mut self) -> ValuesMut<'_, String, Site> {
-        self.0.values_mut()
+        self.site.values_mut()
     }
 
     /// Wrap `into_values()`
     ///
     #[inline]
     pub fn into_values(self) -> IntoValues<String, Site> {
-        self.0.into_values()
+        self.site.into_values()
     }
 
     /// Wrap `contains_key()`
     ///
     #[inline]
     pub fn contains_key(&self, s: &str) -> bool {
-        self.0.contains_key(s)
+        self.site.contains_key(s)
     }
 
     /// Wrap `contains_key()`
     ///
     #[inline]
     pub fn iter(&self) -> Iter<'_, String, Site> {
-        self.0.iter()
+        self.site.iter()
     }
 
     /// Load the specified config file
@@ -142,6 +149,9 @@ impl Sites {
 
         trace!("File is .{ext:?}");
         let s: Sites = hcl::from_str(&content)?;
+        if s.version != CVERSION {
+            return Err(anyhow!("bad config version"));
+        }
         Ok(s)
     }
 
@@ -213,7 +223,7 @@ impl<'a> IntoIterator for &'a Sites {
     /// We can now to `sites.iter()`
     ///
     fn into_iter(self) -> Iter<'a, String, Site> {
-        self.0.iter()
+        self.site.iter()
     }
 }
 
@@ -224,7 +234,7 @@ impl Index<&str> for Sites {
     ///
     #[inline]
     fn index(&self, s: &str) -> &Self::Output {
-        let me = self.0.get(s);
+        let me = self.site.get(s);
         me.unwrap()
     }
 }
@@ -234,11 +244,11 @@ impl IndexMut<&str> for Sites {
     ///
     #[inline]
     fn index_mut(&mut self, s: &str) -> &mut Self::Output {
-        let me = self.0.get_mut(s);
+        let me = self.site.get_mut(s);
         if me.is_none() {
-            self.0.insert(s.to_string(), Site::new());
+            self.site.insert(s.to_string(), Site::new());
         }
-        self.0.get_mut(s).unwrap()
+        self.site.get_mut(s).unwrap()
     }
 }
 
