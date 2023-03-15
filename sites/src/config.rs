@@ -220,7 +220,7 @@ impl<'a> IntoIterator for &'a Sites {
     type Item = (&'a String, &'a Site);
     type IntoIter = Iter<'a, String, Site>;
 
-    /// We can now to `sites.iter()`
+    /// We can now do `sites.iter()`
     ///
     fn into_iter(self) -> Iter<'a, String, Site> {
         self.site.iter()
