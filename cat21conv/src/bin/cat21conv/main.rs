@@ -35,7 +35,7 @@ use format_specs::Format;
 
 use sites::config::Sites;
 use sites::filter::Filter;
-use sites::Site;
+use sites::site::Site;
 
 /// From the CLI options
 ///
