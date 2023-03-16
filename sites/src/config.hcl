@@ -30,7 +30,7 @@ site "opensky" {
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
   auth     = {
-    login    = "dphu"
+    username    = "dphu"
     password = "NOPE"
   }
   cmd = {
