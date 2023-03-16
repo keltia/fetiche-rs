@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 use format_specs::output::Cat21;
 use format_specs::Format;
 
-use crate::{Auth, Fetchable, Site};
+use crate::site::{Auth, Site};
+use crate::Fetchable;
 
 #[derive(Clone, Debug)]
 pub struct Opensky {

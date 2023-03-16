@@ -8,11 +8,11 @@ use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
 use std::{env, fs};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use log::trace;
 use serde::{Deserialize, Serialize};
 
-use crate::Site;
+use crate::site::Site;
 
 #[cfg(unix)]
 use home::home_dir;
@@ -255,7 +255,7 @@ impl IndexMut<&str> for Sites {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Auth;
+    use crate::site::Auth;
     use anyhow::bail;
     use std::env::temp_dir;
 

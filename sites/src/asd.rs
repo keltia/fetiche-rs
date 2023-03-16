@@ -27,7 +27,8 @@ use format_specs::output::Cat21;
 use format_specs::Format;
 
 use crate::filter::Filter;
-use crate::{http_post, http_post_auth, Auth, Fetchable, Site};
+use crate::site::{Auth, Site};
+use crate::{http_post, http_post_auth, Fetchable};
 
 /// Different types of source
 ///

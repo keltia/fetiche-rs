@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 use format_specs::output::Cat21;
 use format_specs::{Format, Position};
 
-use crate::{Auth, Fetchable, Site};
+use crate::site::{Auth, Site};
+use crate::Fetchable;
 
 /// Define the square inside which we want beacons information
 ///

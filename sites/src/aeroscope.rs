@@ -20,7 +20,8 @@ use format_specs::input::aeroscope::Aeroscope as InputFormat;
 use format_specs::output::Cat21;
 use format_specs::Format;
 
-use crate::{http_get_auth, http_post, Auth, Fetchable, Site};
+use crate::site::{Auth, Site};
+use crate::{http_get_auth, http_post, Fetchable};
 
 /// Data to send to authenticate ourselves and get a token
 ///
