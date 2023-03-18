@@ -1,13 +1,14 @@
 default = "local"
+version = 1
 
-sites "local" {
-  name = "local"
-  path = "testdata/adsb.sqlite"
+db "local" {
+    path = "testdata/adsb.sqlite"
 }
 
-sites "mysql" {
-  host     = "mysql.db.local"
-  user     = "something"
-  password = "nope"
-  tls      = true
+db "mysql" {
+    host     = "mysql.db.local"
+    user     = "root"
+    url      = "mysql://foo.example.net"
+    password = "nope"
+    tls      = true
 }

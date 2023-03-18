@@ -16,6 +16,7 @@ use home::home_dir;
 
 /// Default configuration filename
 const CONFIG: &str = "dbfile.hcl";
+const DVERSION: usize = 1;
 
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
@@ -25,19 +26,30 @@ const BASEDIR: &str = ".config";
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum DB {
-    MySQL { name: String, url: String },
-    Pgsql { name: String, url: String },
-    SQLite { name: String, path: String },
+    MySQL {
+        host: String,
+        user: String,
+        url: String,
+        tls: bool,
+    },
+    Pgsql {
+        url: String,
+    },
+    SQLite {
+        path: String,
+    },
 }
 
 /// Main struct holding configurations
 ///
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct DBFile {
+    /// Config file versioning
+    pub version: usize,
     /// Default format-specs
     pub default: String,
     /// Site map
-    pub sites: HashMap<String, DB>,
+    pub db: HashMap<String, DB>,
 }
 
 /// `Default` is for `unwrap_or_default()`.
@@ -67,8 +79,9 @@ impl DBFile {
     pub fn new() -> DBFile {
         let h = HashMap::<String, DB>::new();
         DBFile {
+            version: DVERSION,
             default: "none".to_string(),
-            sites: h,
+            db: h,
         }
     }
 
@@ -76,10 +89,9 @@ impl DBFile {
     ///
     pub fn load(fname: &PathBuf) -> Result<DBFile> {
         trace!("Reading {:?}", fname);
-        dbg!(fname);
-        let content = fs::read_to_string(fname);
-        dbg!(&content);
-        let s: DBFile = hcl::from_str(&content.unwrap())?;
+        let content = fs::read_to_string(fname)?;
+        trace!("{content}");
+        let s: DBFile = hcl::from_str(&content)?;
         dbg!(&s);
         Ok(s)
     }
@@ -137,7 +149,7 @@ mod tests {
     fn test_new() {
         let a = DBFile::new();
         assert_eq!("none", a.default);
-        assert!(a.sites.is_empty());
+        assert!(a.db.is_empty());
         dbg!(&a);
     }
 
@@ -152,11 +164,41 @@ mod tests {
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
-        assert!(!cfg.sites.is_empty());
-        let someplace = &cfg.sites["local"];
+        assert!(!cfg.db.is_empty());
+        let someplace = &cfg.db["local"];
+        assert_eq!(DVERSION, cfg.version);
         match someplace {
             DB::SQLite { path, .. } => assert_eq!("testdata/adsb.sqlite", path),
             _ => (),
         }
+    }
+
+    #[test]
+    fn test_serialize_db() {
+        let dbfile = DBFile {
+            version: 1,
+            default: "foo".to_string(),
+            db: HashMap::<String, DB>::from([
+                (
+                    "foo".to_string(),
+                    DB::MySQL {
+                        user: "root".to_string(),
+                        host: "mysql.db.local".to_string(),
+                        tls: true,
+                        url: "mysql://foo.example.net".to_string(),
+                    },
+                ),
+                (
+                    "local".to_string(),
+                    DB::SQLite {
+                        path: "testdata/adsb.sqlite".to_string(),
+                    },
+                ),
+            ]),
+        };
+
+        let db2 = include_str!("dbfile.hcl");
+        dbg!(&dbfile);
+        println!("{}", hcl::to_string(&dbfile).unwrap());
     }
 }
