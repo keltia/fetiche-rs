@@ -90,7 +90,6 @@ impl DBFile {
     pub fn load(fname: &PathBuf) -> Result<DBFile> {
         trace!("Reading {:?}", fname);
         let content = fs::read_to_string(fname)?;
-        trace!("{content}");
         let s: DBFile = hcl::from_str(&content)?;
         dbg!(&s);
         Ok(s)
@@ -196,9 +195,12 @@ mod tests {
                 ),
             ]),
         };
-
-        let db2 = include_str!("dbfile.hcl");
-        dbg!(&dbfile);
-        println!("{}", hcl::to_string(&dbfile).unwrap());
+        let local = &dbfile.db["local"];
+        assert_eq!(
+            &DB::SQLite {
+                path: "testdata/adsb.sqlite".to_string(),
+            },
+            local
+        );
     }
 }
