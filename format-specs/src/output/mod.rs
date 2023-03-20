@@ -193,8 +193,8 @@ pub struct Cat129 {
 
 /// Output the final csv file with a different delimiter 'now ":")
 ///
-pub fn prepare_csv(data: Vec<Cat21>) -> Result<String> {
-    debug!("Generating output…");
+pub fn prepare_csv<T>(data: Vec<T>) -> Result<String> {
+    trace!("Generating output…");
     // Prepare the writer
     //
     let mut wtr = WriterBuilder::new()
