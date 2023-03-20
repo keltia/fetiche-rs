@@ -4,11 +4,12 @@ pub mod opensky;
 pub mod safesky;
 
 use anyhow::Result;
+use chrono::NaiveDateTime;
 use csv::WriterBuilder;
-use log::debug;
+use log::{debug, trace};
 use serde::Serialize;
 
-use crate::{Bool, TodCalculated};
+use crate::{Bool, Position, TodCalculated};
 
 /// Our pseudo cat21 csv output, we add the mapping from the awk script in comment
 ///
@@ -21,6 +22,10 @@ use crate::{Bool, TodCalculated};
 ///
 /// Time calculations are done in `i64` to avoid the upcoming 2037 bug with 32-bit time_t.
 /// Most systems are using `i64` now.
+///
+/// XXX most of the data is fictive in order to fill all the fields.  Data generated from UAS
+/// records are not as complete as Cat21 data from ADS-B or MODE-S sources can be.
+/// See Cat129 below for UAS specific format.
 ///
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
@@ -146,6 +151,44 @@ impl Cat21 {
             ..Default::default()
         }
     }
+}
+
+/// Cat129 is a special UAS-specific category defined in 2019.
+///
+/// See: https://www.eurocontrol.int/sites/default/files/2019-06/cat129p29ed12_0.pdf
+///
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub struct Cat129 {
+    /// Source Identification
+    sac: usize,
+    sic: usize,
+    /// Destination Identification (more or less the operator?)
+    dac: usize,
+    dic: usize,
+    /// Manufacturer Identification
+    uas_manufacturer_id: String,
+    uas_model_id: String,
+    uas_serial: String,
+    uas_reg_country: String,
+    /// Aeronautical data
+    /// tod is number of 1/128s since Midnight
+    /// Example:
+    /// ```
+    /// # use chrono::NaiveDateTime;
+    ///
+    /// let tod = NaiveDateTime::parse_from_str(&line.timestamp, "%Y-%m-%d %H:%M:%S")
+    ///            .unwrap()
+    ///            .timestamp();
+    /// let tod = 128 * (tod % 86400);
+    /// ```
+    tod: i64,
+    position: Position,
+    alt_sea_lvl: f32,
+    alt_gnd_lvl: f32,
+    gnss_acc: f32,
+    ground_speed: f32,
+    vert_speed: f32,
 }
 
 /// Output the final csv file with a different delimiter 'now ":")
