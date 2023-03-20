@@ -3,7 +3,6 @@ use log::trace;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-use format_specs::output::Cat21;
 use format_specs::Format;
 
 use crate::aeroscope::Aeroscope;
@@ -53,6 +52,21 @@ pub enum Auth {
     Anon,
 }
 
+#[macro_export]
+macro_rules! insert_format {
+    ($name:ident, $fmt:ident, $site:ident, $($list:ident),+)  => {
+        match $fmt {
+        $(
+            Format::$list => {
+                let s = $list::new().load($site).clone();
+                Ok(Box::new(s))
+            },
+        )+
+            _ => Err(anyhow!("invalid site {}", $name)),
+        }
+    }
+}
+
 impl Site {
     /// Basic `new()`
     ///
@@ -74,29 +88,7 @@ impl Site {
         match cfg.get(name) {
             Some(site) => {
                 let fmt = site.format();
-                match fmt {
-                    Format::Aeroscope => {
-                        let s = Aeroscope::new().load(site).clone();
-
-                        Ok(Box::new(s))
-                    }
-                    Format::Asd => {
-                        let s = Asd::new().load(site).clone();
-
-                        Ok(Box::new(s))
-                    }
-                    Format::Opensky => {
-                        let s = Opensky::new().load(site).clone();
-
-                        Ok(Box::new(s))
-                    }
-                    Format::Safesky => {
-                        let s = Safesky::new().load(site).clone();
-
-                        Ok(Box::new(s))
-                    }
-                    _ => Err(anyhow!("invalid site {name}")),
-                }
+                insert_format!(name, fmt, site, Asd, Aeroscope, Safesky, Opensky)
             }
             None => Err(anyhow!("no such site {name}")),
         }
