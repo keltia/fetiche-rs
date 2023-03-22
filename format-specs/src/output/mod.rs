@@ -193,7 +193,10 @@ pub struct Cat129 {
 
 /// Output the final csv file with a different delimiter 'now ":")
 ///
-pub fn prepare_csv<T>(data: Vec<T>) -> Result<String> {
+pub fn prepare_csv<T>(data: Vec<T>) -> Result<String>
+where
+    T: Serialize,
+{
     trace!("Generating output…");
     // Prepare the writer
     //
