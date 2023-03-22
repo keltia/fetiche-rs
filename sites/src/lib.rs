@@ -6,12 +6,9 @@
 //! - fetching data (GET or POST, etc.).
 //!
 
-pub mod aeroscope;
-pub mod asd;
 pub mod config;
 pub mod filter;
-pub mod opensky;
-pub mod safesky;
+pub mod s;
 pub mod site;
 
 #[macro_use]

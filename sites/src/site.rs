@@ -5,11 +5,8 @@ use std::fmt::Debug;
 
 use format_specs::Format;
 
-use crate::aeroscope::Aeroscope;
-use crate::asd::Asd;
 use crate::config::Sites;
-use crate::opensky::Opensky;
-use crate::safesky::Safesky;
+use crate::s::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky};
 use crate::Fetchable;
 
 /// Describe what a site is and associated credentials.
