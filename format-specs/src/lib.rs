@@ -122,7 +122,7 @@ const DEF_SIC: usize = 200;
 /// In CSV files, the two fields are merged into this struct on deserialization
 /// and used as-is when coming from JSON.
 ///
-#[derive(Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Position {
     // Latitude in degrees
     pub latitude: f32,
