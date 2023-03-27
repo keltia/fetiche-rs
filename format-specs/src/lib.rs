@@ -112,6 +112,11 @@ impl Display for Format {
     }
 }
 
+/// Default SAC: France
+const DEF_SAC: usize = 8;
+/// Default SIC
+const DEF_SIC: usize = 200;
+
 /// This structure hold a general location object with lat/long.
 ///
 /// In CSV files, the two fields are merged into this struct on deserialization
