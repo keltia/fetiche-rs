@@ -25,41 +25,42 @@ pub fn version() -> String {
 }
 
 /// File-based example:
-/// ```rust
-/// # fn main() -> Result<(),()> {
+/// ```no_run
+/// # use anyhow::Result;
 /// # use std::path::PathBuf;
 /// # use log::info;
+/// # fn main() -> Result<()> {
 /// use cat21conv::Task;
-/// use format_specs::Cat21;
+/// use format_specs::{Cat21, Format};
 ///
-/// let what = PathBuf::from("foo.json")?;
+/// let what = "foo.json";
+/// let format = Format::None;
 ///
-/// let res: Vec<Cat21> = Task::new("foo").path(what).format(fmt).run()?;
+/// let res: Vec<Cat21> = Task::new("foo").path(what).format(format).run().unwrap();
 ///
 /// # Ok(())
 /// # }
 /// ```
 ///
 /// Network-based example:
-/// ```rust
-/// # fn main() -> Result<(),()> {
+/// ```no_run
+/// # use anyhow::Result;
 /// # use std::path::PathBuf;
 /// use cat21conv::Task;
 ///
 /// // Fetch from network
 /// //
-/// use drone_utils::site::Site;
-/// use drone_utils::task::Task;
 /// use format_specs::Cat21;
 ///
 /// use sources::config::Sites;
 /// use sources::filter::Filter;
 /// use sources::site::Site;
 ///
+/// # fn main() -> Result<()> {
 /// # let name = "eih";
 /// # let filter = Filter::None;
 ///
-/// let cfg = Sites::load(&Some(PathBuf::from("config.hcl")))?;
+/// let cfg = Sites::load(&Some(PathBuf::from("config.hcl"))).unwrap();
 ///
 /// let site = Site::load(name, &cfg)?;
 /// let res: Vec<Cat21> = Task::new(name).site(site).with(filter).run()?;
