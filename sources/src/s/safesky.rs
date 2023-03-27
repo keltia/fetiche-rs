@@ -12,7 +12,7 @@ use log::error;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use format_specs::output::Cat21;
+use format_specs::Cat21;
 use format_specs::{Format, Position};
 
 use crate::site::{Auth, Site};

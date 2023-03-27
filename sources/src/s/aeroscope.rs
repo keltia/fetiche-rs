@@ -16,8 +16,8 @@ use log::{debug, error, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use format_specs::input::aeroscope::Aeroscope as InputFormat;
-use format_specs::output::Cat21;
+use format_specs::aeroscope::Aeroscope as InputFormat;
+use format_specs::Cat21;
 use format_specs::Format;
 
 use crate::site::{Auth, Site};

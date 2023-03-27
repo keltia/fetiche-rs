@@ -18,8 +18,7 @@ use std::fmt::Debug;
 
 use anyhow::Result;
 
-use format_specs::output::Cat21;
-use format_specs::Format;
+use format_specs::{Cat21, Format};
 
 /// This trait enables us to manage different ways of connecting and fetching data under
 /// a single interface.
