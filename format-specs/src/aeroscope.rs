@@ -55,8 +55,8 @@ impl From<&Aeroscope> for Cat21 {
             "null".to_owned()
         };
         Cat21 {
-            sac: 8,
-            sic: 200,
+            sac: DEF_SAC,
+            sic: DEF_SIC,
             alt_geo_ft: to_feet(line.altitude),
             pos_lat_deg: line.coordinate.latitude,
             pos_long_deg: line.coordinate.longitude,
