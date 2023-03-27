@@ -8,8 +8,13 @@
 
 pub mod config;
 pub mod filter;
-pub mod s;
 pub mod site;
+
+mod s;
+
+// Re-export these modules for a shorted import path.
+//
+pub use s::{aeroscope, asd, opensky, safesky};
 
 #[macro_use]
 mod macros;
