@@ -59,7 +59,7 @@ If we take HCL, we could have something like this:
 
 ```hcl
 task "weekly/asd" {
-  site     = "asd"            // cf. sites/src input format is implied e.g. json or csv
+  site     = "asd"            // cf. sources/src input format is implied e.g. json or csv
   fetch    = "cmd.get"
   schedule = "Sun@01:00"  // ?? is it needed?  How do we schedule in practice?  cron is the ideal candidate
   into     = "cat21"          // cf. format-specs/output, maybe `output =  FORMAT`

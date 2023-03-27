@@ -6,8 +6,8 @@ use log::trace;
 use serde::de;
 
 use format_specs::Format;
-use sites::filter::Filter;
-use sites::Fetchable;
+use sources::filter::Filter;
+use sources::Fetchable;
 
 /// Type of task we will need to do
 ///

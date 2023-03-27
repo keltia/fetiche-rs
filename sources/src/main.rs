@@ -4,7 +4,7 @@ use anyhow::Result;
 use log::LevelFilter::{Debug, Trace};
 use log::{info, trace};
 
-use sites::config::Sites;
+use sources::config::Sites;
 
 fn main() -> Result<()> {
     stderrlog::new().verbosity(Trace).init()?;

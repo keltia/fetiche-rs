@@ -33,9 +33,7 @@ use cat21conv::Task;
 use format_specs::output::{prepare_csv, Cat21};
 use format_specs::Format;
 
-use sites::config::Sites;
-use sites::filter::Filter;
-use sites::site::Site;
+use sources::{config::Sites, filter::Filter, site::Site};
 
 /// From the CLI options
 ///
@@ -148,7 +146,7 @@ fn main() -> Result<()> {
     // Prepare logging.
     //
     stderrlog::new()
-        .modules(["cat21conv", "format-specs", "sites"])
+        .modules(["cat21conv", "format-specs", "sources"])
         .verbosity(lvl)
         .init()?;
 
@@ -156,7 +154,7 @@ fn main() -> Result<()> {
     //
     info!("Loading config…");
     let cfg = Sites::load(&opts.config)?;
-    trace!("{} sites loaded", cfg.len());
+    trace!("{} sources loaded", cfg.len());
 
     info!("Loading data…");
 

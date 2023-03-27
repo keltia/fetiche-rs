@@ -1,6 +1,6 @@
-//! Module to deal with different kind of sites we can connect to to fetch data.
+//! Module to deal with different kind of sources we can connect to to fetch data.
 //!
-//! The different submodules deal with the differences between sites:
+//! The different submodules deal with the differences between sources:
 //!
 //! - authentication (token, API)
 //! - fetching data (GET or POST, etc.).

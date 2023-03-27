@@ -31,11 +31,11 @@ home = "0.5.4"
 log = { version = "0.4.17", features = ["serde", "std"] }
 percent-encoding = "2.2.0"
 reqwest = { version = "0.11.12", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
-serde = { version = "1.0.157", features = [ "derive" ] }
+serde = { version = "1.0.157", features = ["derive"] }
 serde_json = "1.0.86"
 serde_repr = "0.1.12"
-sites = { version = "0", path = "../sites" }
-sqlx = { version = "0.6.2", features = ["json", "ipnetwork", "mysql", "tls", "chrono", "macros", "runtime-async-std-native-tls"] }
+sources = { version = "0", path = "../sources" }
+sqlx = { version = "0.6.3", features = ["json", "ipnetwork", "mysql", "tls", "chrono", "macros", "runtime-async-std-native-tls"] }
 stderrlog = "0.5.4"
 
 [dev-dependencies]

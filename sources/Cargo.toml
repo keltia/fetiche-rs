@@ -1,5 +1,5 @@
 [package]
-name = "sites"
+name = "sources"
 version = "0.3.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]

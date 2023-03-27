@@ -1,10 +1,10 @@
 //! Library part of the Cat21 converter
 //!
 //! This library include the code for the different file formats used as input and the different
-//! way of fetching data from different sites.  This is written because there are as many ways
-//! to authenticate and connect as there are sites more or less.
+//! way of fetching data from different sources.  This is written because there are as many ways
+//! to authenticate and connect as there are sources more or less.
 //!
-//! The different formats are in the `format-specs` crate and the sites' parameters in the `site` crate.
+//! The different formats are in the `format-specs` crate and the sources' parameters in the `site` crate.
 //!
 //! Include Task-related code.
 //!
@@ -52,9 +52,9 @@ pub fn version() -> String {
 /// use drone_utils::task::Task;
 /// use format_specs::output::Cat21;
 ///
-/// use sites::config::Sites;
-/// use sites::filter::Filter;
-/// use sites::Site;
+/// use sources::config::Sites;
+/// use sources::filter::Filter;
+/// use sources::site::Site;
 ///
 /// # let name = "eih";
 /// # let filter = Filter::None;
@@ -78,8 +78,7 @@ use log::debug;
 use format_specs::output::Cat21;
 use format_specs::Format;
 
-use sites::filter::Filter;
-use sites::Fetchable;
+use sources::{filter::Filter, Fetchable};
 
 /// Type of task we will need to do
 ///

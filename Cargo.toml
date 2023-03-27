@@ -1,2 +1,2 @@
 [workspace]
-members = ["format-specs", "cat21conv", "import-adsb", "sites"]
+members = ["format-specs", "cat21conv", "import-adsb", "sources"]
