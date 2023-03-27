@@ -7,17 +7,18 @@
 //! file which will define the input format-specs and the transformations needed.
 //!
 
-pub mod input;
-pub mod output;
+pub mod aeroscope;
+pub mod asd;
+pub mod opensky;
+pub mod safesky;
 
-use crate::input::aeroscope::Aeroscope;
-use crate::input::asd::Asd;
-use crate::input::safesky::Safesky;
-use crate::output::Cat21;
+use crate::aeroscope::Aeroscope;
+use crate::asd::Asd;
+use crate::safesky::Safesky;
 
 use anyhow::Result;
-use csv::Reader;
-use log::debug;
+use csv::{Reader, WriterBuilder};
+use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 
 use std::fmt::{Debug, Display, Formatter};
