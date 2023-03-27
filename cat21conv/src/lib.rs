@@ -30,7 +30,7 @@ pub fn version() -> String {
 /// # use std::path::PathBuf;
 /// # use log::info;
 /// use cat21conv::Task;
-/// use format_specs::output::Cat21;
+/// use format_specs::Cat21;
 ///
 /// let what = PathBuf::from("foo.json")?;
 ///
@@ -50,7 +50,7 @@ pub fn version() -> String {
 /// //
 /// use drone_utils::site::Site;
 /// use drone_utils::task::Task;
-/// use format_specs::output::Cat21;
+/// use format_specs::Cat21;
 ///
 /// use sources::config::Sites;
 /// use sources::filter::Filter;
@@ -75,8 +75,7 @@ use anyhow::{anyhow, Result};
 use csv::ReaderBuilder;
 use log::debug;
 
-use format_specs::output::Cat21;
-use format_specs::Format;
+use format_specs::{Cat21, Format};
 
 use sources::{filter::Filter, Fetchable};
 
