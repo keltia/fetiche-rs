@@ -5,7 +5,7 @@
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-use crate::{to_feet, to_knots, Bool, Cat21, Position, TodCalculated};
+use crate::{to_feet, to_knots, Bool, Cat129, Cat21, Position, TodCalculated, DEF_SAC, DEF_SIC};
 
 /// Our input structure from the csv file coming out of the aeroscope as CSV
 ///
@@ -90,6 +90,38 @@ impl From<&Aeroscope> for Cat21 {
             groundspeed_kt: to_knots(line.speed),
             track_angle_deg: line.azimuth,
             rec_num: 1,
+        }
+    }
+}
+
+impl From<&Aeroscope> for Cat129 {
+    /// Load and transform into Cat129
+    ///
+    fn from(line: &Aeroscope) -> Self {
+        let tod = line.receive_date.parse::<DateTime<Utc>>().unwrap();
+        let tod = tod.timestamp();
+        let lid = if line.drone_id != "null" {
+            line.drone_id[2..10].to_owned()
+        } else {
+            "null".to_owned()
+        };
+        Cat129 {
+            // XXX This is obviously wrong
+            sac: DEF_SAC,
+            sic: DEF_SIC,
+            dac: DEF_SAC,
+            dic: DEF_SIC,
+            uas_manufacturer_id: "DJI".to_string(),
+            uas_model_id: line.drone_type.to_owned(),
+            uas_serial: lid,
+            uas_reg_country: "fr".to_string(),
+            tod,
+            position: line.coordinate,
+            alt_sea_lvl: line.altitude,
+            alt_gnd_lvl: line.altitude,
+            gnss_acc: 1.0,
+            ground_speed: to_knots(line.speed),
+            vert_speed: 1.0,
         }
     }
 }
