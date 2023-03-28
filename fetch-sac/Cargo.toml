@@ -1,0 +1,29 @@
+[package]
+name = "fetch-sac"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "Fetch the official list of SAC codes from ASTERIX site."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/drone-gencsv"
+categories = ["aerospace::drones"]
+keywords = ["sac", "asterix", "aeronautical-data"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.65"
+clap = { version = "4", features = ["cargo", "derive"] }
+log = { version = "0.4.17", features = ["serde", "std"] }
+reqwest = { version = "0.11", features = ["blocking"] }
+scraper = "0"
+serde = { version = "1.0.157", features = ["derive"] }
+stderrlog = "0.5.4"

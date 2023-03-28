@@ -9,6 +9,7 @@ use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use log::debug;
 use reqwest::blocking::get;
+use scraper::element_ref::Text;
 use scraper::{Element, Html, Selector};
 use serde::Deserialize;
 use stderrlog::LogLevelNum::{Debug, Info, Trace};
@@ -50,6 +51,43 @@ pub fn version() -> String {
     format!("{}/{} by {}\n{}", NAME, VERSION, AUTHORS, ABOUT,)
 }
 
+/// Given a table as string extracted by `scraper`, extract what is relevant
+///
+fn parse_table(input: &str) -> String {
+    debug!("{input}");
+    let doc = Html::parse_fragment(input);
+    dbg!(&doc);
+
+    // We want <tr> because sometimes there are 3 <td> and sometimes 2.
+    //
+    let sel = Selector::parse("tr").unwrap();
+    let doc = doc.select(&sel).into_iter();
+
+    dbg!(&doc);
+    debug!("-----");
+
+    doc.step_by(1)
+        .inspect(|e| debug!("{:?}", e.text().collect::<String>()))
+        .map(|e| {
+            // For each line
+            //
+            let a1 = e.text().collect::<String>();
+
+            // Get what we want
+            //
+            let a: Vec<_> = a1.split("\n\t\t").collect();
+            let (num, label) = (a[0], a[1]);
+
+            // Sanitise
+            //
+            let label = label.trim();
+
+            format!("num={} label={}", num, label)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
@@ -84,37 +122,51 @@ fn main() -> Result<()> {
     //
     let doc = get(PAGE)?.text()?;
 
-    // We want <tr> because sometimes there are 3 <td> and sometimes 2.
+    // We want <table> because sometimes there are 3 <td> and sometimes 2 inside a <tr>.
     //
-    let sel = Selector::parse("tr").unwrap();
+    let sel = Selector::parse("table").unwrap();
 
     // Parse the page
     //
     let doc = Html::parse_document(&doc);
 
-    // Get all <tr>
+    // Get all <table>
     //
-    let doc = doc.select(&sel).into_iter();
+    let tables = doc.select(&sel).into_iter();
     println!("-----");
 
-    doc.step_by(1)
-        .inspect(|e| debug!("{:?}", e.text().collect::<String>()))
-        .for_each(|e| {
-            // For each line
-            //
-            let a1 = e.text().collect::<String>();
+    // Now look into every table.
+    //
+    // XXX The 6 tables do not have the same number of cols (aka `<td>`)
+    //
+    tables.for_each(|e| {
+        // For each line
+        //
+        let frag = Html::parse_document(&e.html());
+        debug!("frag={:?}", frag.html());
 
-            // Get what we want
-            //
-            let a: Vec<_> = a1.split("\n\t\t").collect();
-            let (num, label) = (a[0], a[1]);
+        // Now we want each <td>
+        //
+        let sel = Selector::parse("td").unwrap();
+        let iter = frag.select(&sel).into_iter();
 
-            // Sanitise
-            //
-            let num: usize = num.into();
-            let label = label.trim();
+        let (lower, _upper) = iter.size_hint();
+        match lower {
+            // 2nd table, US/Canada Region
+            2 => iter.map(),
+            // All other tables
+            3 => {}
+            _ => panic!("oopsie"),
+        }
+        let res: Vec<_> = iter
+            .inspect(|e| debug!("td={e:?}"))
+            .map(|e| {
+                println!("frag_html={}", e.html());
+                e.html()
+            })
+            .collect();
 
-            println!("num={} label={}", num, label);
-        });
+        debug!("res={:?}", res);
+    });
     Ok(())
 }
