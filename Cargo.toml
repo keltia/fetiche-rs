@@ -1,2 +1,2 @@
 [workspace]
-members = ["format-specs", "cat21conv", "import-adsb", "sources"]
+members = ["fetch-sac", "format-specs", "cat21conv", "import-adsb", "sources"]
