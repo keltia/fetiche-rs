@@ -315,6 +315,9 @@ impl Cat21 {
 
 /// Cat129 is a special UAS-specific category defined in 2019.
 ///
+/// As the number implies (> 127), it is created to describe a special Civil/Military category,
+/// specialised for drones.
+///
 /// See: https://www.eurocontrol.int/sites/default/files/2019-06/cat129p29ed12_0.pdf
 ///
 #[derive(Debug, Serialize)]
