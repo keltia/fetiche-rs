@@ -3,53 +3,20 @@
 //!
 //! XXX The fact that I even have to do this is an utter failure on the Agency side.
 
-use std::path::PathBuf;
+mod cli;
+mod version;
 
 use anyhow::Result;
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use clap::Parser;
 use log::debug;
 use reqwest::blocking::get;
-use scraper::element_ref::Text;
-use scraper::{Element, Html, Selector};
-use serde::Deserialize;
+use scraper::{Html, Selector};
 use stderrlog::LogLevelNum::{Debug, Info, Trace};
 
-const ABOUT: &str = "Fetch the latest SAC codes data from ECTL.";
+use crate::cli::Opts;
+use crate::version::version;
+
 const PAGE: &str = "https://www.eurocontrol.int/asterix";
-
-/// Binary name, using a different binary name
-pub(crate) const NAME: &str = env!("CARGO_BIN_NAME");
-/// Binary version
-pub(crate) const VERSION: &str = crate_version!();
-/// Authors
-pub(crate) const AUTHORS: &str = crate_authors!();
-
-/// CLI options
-#[derive(Parser, Debug)]
-#[command(disable_version_flag = true)]
-#[clap(name = crate_name ! (), about = ABOUT)]
-#[clap(version = crate_version ! (), author = crate_authors ! ())]
-pub struct Opts {
-    /// debug mode.
-    #[clap(short = 'D', long = "debug")]
-    pub debug: bool,
-    /// Output file.
-    #[clap(short = 'o', long)]
-    pub output: Option<PathBuf>,
-    /// Verbose mode.
-    #[clap(short = 'v', long, action = clap::ArgAction::Count)]
-    pub verbose: u8,
-    /// Display utility full version.
-    #[clap(short = 'V', long)]
-    pub version: bool,
-}
-
-/// Display our version banner
-///
-#[inline]
-pub fn version() -> String {
-    format!("{}/{} by {}\n{}", NAME, VERSION, AUTHORS, ABOUT,)
-}
 
 /// Given a table as string extracted by `scraper`, extract what is relevant
 ///
