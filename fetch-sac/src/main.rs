@@ -4,56 +4,22 @@
 //! XXX The fact that I even have to do this is an utter failure on the Agency side.
 
 mod cli;
+mod parse;
 mod version;
 
 use anyhow::Result;
 use clap::Parser;
 use log::debug;
+use regex::Regex;
 use reqwest::blocking::get;
 use scraper::{Html, Selector};
 use stderrlog::LogLevelNum::{Debug, Info, Trace};
 
 use crate::cli::Opts;
+use crate::parse::parse_tr;
 use crate::version::version;
 
 const PAGE: &str = "https://www.eurocontrol.int/asterix";
-
-/// Given a table as string extracted by `scraper`, extract what is relevant
-///
-fn parse_table(input: &str) -> String {
-    debug!("{input}");
-    let doc = Html::parse_fragment(input);
-    dbg!(&doc);
-
-    // We want <tr> because sometimes there are 3 <td> and sometimes 2.
-    //
-    let sel = Selector::parse("tr").unwrap();
-    let doc = doc.select(&sel).into_iter();
-
-    dbg!(&doc);
-    debug!("-----");
-
-    doc.step_by(1)
-        .inspect(|e| debug!("{:?}", e.text().collect::<String>()))
-        .map(|e| {
-            // For each line
-            //
-            let a1 = e.text().collect::<String>();
-
-            // Get what we want
-            //
-            let a: Vec<_> = a1.split("\n\t\t").collect();
-            let (num, label) = (a[0], a[1]);
-
-            // Sanitise
-            //
-            let label = label.trim();
-
-            format!("num={} label={}", num, label)
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-}
 
 fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
@@ -69,7 +35,7 @@ fn main() -> Result<()> {
     }
     // Check verbosity
     //
-    let mut lvl = match opts.verbose {
+    let lvl = match opts.verbose {
         0 => Info,
         1 => Debug,
         2 => Trace,
@@ -99,6 +65,10 @@ fn main() -> Result<()> {
     let tables = doc.select(&sel).into_iter();
     println!("-----");
 
+    // Define a regex to sanitize some data
+    //
+    let re = Regex::new(r##"<br>"##).unwrap();
+
     // Now look into every table.
     //
     // XXX The 6 tables do not have the same number of cols (aka `<td>`)
@@ -106,31 +76,31 @@ fn main() -> Result<()> {
     tables.for_each(|e| {
         // For each line
         //
-        let frag = Html::parse_document(&e.html());
-        debug!("frag={:?}", frag.html());
+        debug!("frag={:?}", e.html());
 
-        // Now we want each <td>
+        // Now we want each <tr>
         //
-        let sel = Selector::parse("td").unwrap();
-        let iter = frag.select(&sel).into_iter();
+        let sel = Selector::parse("tr").unwrap();
+        let iter = e.select(&sel).into_iter();
 
-        let (lower, _upper) = iter.size_hint();
-        match lower {
-            // 2nd table, US/Canada Region
-            2 => iter.map(),
-            // All other tables
-            3 => {}
-            _ => panic!("oopsie"),
-        }
         let res: Vec<_> = iter
             .inspect(|e| debug!("td={e:?}"))
             .map(|e| {
-                println!("frag_html={}", e.html());
-                e.html()
+                let frag = e.html().to_owned();
+                //println!("frag_html={}", frag);
+
+                // Filter
+                //
+                let frag = re.replace_all(&frag, "");
+
+                let (_, (a, b)) = parse_tr(&frag).unwrap();
+                //dbg!(a, b);
+                format!("num={} tag={}", a, b)
             })
             .collect();
 
-        debug!("res={:?}", res);
+        println!("---");
+        println!("res={:?}", res);
     });
     Ok(())
 }
