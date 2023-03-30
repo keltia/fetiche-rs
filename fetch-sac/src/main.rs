@@ -76,9 +76,6 @@ fn main() -> Result<()> {
         _ => Trace,
     };
 
-    if opts.debug {
-        lvl = Trace;
-    }
     // Prepare logging.
     stderrlog::new()
         .modules(["fetch-sac"])
