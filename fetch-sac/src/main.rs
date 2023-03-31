@@ -44,9 +44,12 @@ fn main() -> Result<()> {
 
     // Prepare logging.
     stderrlog::new()
-        .modules(["fetch-sac"])
+        .modules([module_path!()])
+        .quiet(opts.quiet)
         .verbosity(lvl)
         .init()?;
+
+    debug!("Debug mode engaged");
 
     // Fetch the official page
     //
@@ -63,7 +66,6 @@ fn main() -> Result<()> {
     // Get all <table>
     //
     let tables = doc.select(&sel).into_iter();
-    println!("-----");
 
     // Define a regex to sanitize some data
     //
@@ -100,7 +102,7 @@ fn main() -> Result<()> {
             .collect();
 
         println!("---");
-        println!("res={:?}", res);
+        println!("res={:?}\n", res);
     });
     Ok(())
 }
