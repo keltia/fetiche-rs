@@ -20,6 +20,9 @@ pub struct Opts {
     /// Output file.
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
+    /// Quiet mode
+    #[clap(short = 'q', long)]
+    pub quiet: bool,
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
     pub verbose: u8,
