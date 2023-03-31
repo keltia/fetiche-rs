@@ -15,3 +15,15 @@ pub(crate) const AUTHORS: &str = crate_authors!();
 pub fn version() -> String {
     format!("{}/{} by {}\n{}", NAME, VERSION, AUTHORS, ABOUT)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_version() {
+        let v = version();
+
+        assert!(v.starts_with(&format!("{NAME}/{VERSION}")));
+    }
+}
