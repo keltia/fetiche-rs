@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use clap::{crate_authors, crate_name, crate_version, Parser};
 
-pub const ABOUT: &str = "Fetch the latest SAC codes data from ECTL.";
+pub const ABOUT: &str = "Fetch the latest SAC codes data from ECTL.\n\
+Source: https://www.eurocontrol.int/asterix/";
 
 /// CLI options
 #[derive(Parser, Debug)]
