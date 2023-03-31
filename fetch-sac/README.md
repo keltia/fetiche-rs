@@ -9,7 +9,7 @@
 [![Docs](https://img.shields.io/docsrs/dmarc-rs)](https://docs.rs/drone-utils)
 [![GitHub release](https://img.shields.io/github/release/keltia/dmarc-rs.svg)](https://github.com/keltia/fetch-sac/releases/)
 [![GitHub issues](https://img.shields.io/github/issues/keltia/fetch-sac.svg)](https://github.com/keltia/fetch-sac/issues)
-[![drone-utils: 1.56+]][Rust 1.56]
+[![fetch-sac: 1.56+]][Rust 1.56]
 [![SemVer](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/spec/v2.0.0.html)
 [![License](https://img.shields.io/crates/l/mit)](https://opensource.org/licenses/MIT)
 
@@ -45,8 +45,20 @@ compiling.
 
 ## Usage
 
-For the moment, there is only one binary called `fetchsac` (with `.exe` on Windows). It scrapes the official website,
+For the moment, there is only one binary called `fetch-sac` (with `.exe` on Windows). It scrapes the official website,
 remove all the HTML and outputs the result into usable formats.
+
+```text
+Fetch the latest SAC codes data from ECTL.
+
+Usage: fetch-sac [OPTIONS]
+
+Options:
+  -o, --output <OUTPUT>  Output file
+  -v, --verbose...       Verbose mode
+  -V, --version          Display utility full version
+  -h, --help             Print help
+```
 
 ## MSRV
 
@@ -73,6 +85,12 @@ I use Git Flow for this package so please use something similar or the usual Git
 6. Create a new Pull Request
 
 [Asterix]: https://www.eurocontrol.int/asterix/
+
+[Crates.io]: https://crates.io/
+
+[GitHub]: https://github.com/keltia/fetch-sac
+
+[SAC codes]: https://en.wikipedia.org/wiki/System_area_code
 
 [RUST]: https://www.rust-lang.org/
 
