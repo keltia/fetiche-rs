@@ -62,6 +62,16 @@ Options:
   -h, --help             Print help
 ```
 
+## NOTE
+
+As this utility is scraping the web page directly, looking for what interests it, it may of course break from time
+to time as the page get updated (not very often though). The format of the various tabs in the table is different
+between
+all of them which makes it more complicated. There is also the matter of the `<br>`  inserted at some points breaking
+the parsing, it tries to compensate for this.
+
+This way of doing things is so '90 and broken, you don't want to hear my full comment.
+
 ## MSRV
 
 The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
