@@ -34,7 +34,7 @@ This is a small CLI utility to fetch the official list of [SAC codes] from the [
 These are used in Surveillance work in the Aeronautical world to represent a given (and large) zone from which a given
 surveillance record has been issued when using the [Asterix] specifications.
 
-This thing is, this list of **not** available in any usable format and you are supposed to just read the web page. This
+This thing is, this list of **not** available in any usable format, and you are supposed to just read the web page. This
 is for me clearly unacceptable in 2023 and getting the list in various formats like [JSON] or even [CSV]  is desirable.
 
 ## Installation
@@ -54,6 +54,8 @@ Fetch the latest SAC codes data from ECTL.
 Usage: fetch-sac [OPTIONS]
 
 Options:
+  -C, --csv              CSV
+  -J, --json             JSON
   -o, --output <OUTPUT>  Output file
   -v, --verbose...       Verbose mode
   -V, --version          Display utility full version
