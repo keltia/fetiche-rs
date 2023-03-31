@@ -10,6 +10,12 @@ pub const ABOUT: &str = "Fetch the latest SAC codes data from ECTL.";
 #[clap(name = crate_name ! (), about = ABOUT)]
 #[clap(version = crate_version ! (), author = crate_authors ! ())]
 pub struct Opts {
+    /// CSV
+    #[clap(short = 'C', long)]
+    pub csv: bool,
+    /// JSON
+    #[clap(short = 'J', long)]
+    pub json: bool,
     /// Output file.
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
