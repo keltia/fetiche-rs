@@ -14,7 +14,7 @@ use log::{debug, info};
 use regex::Regex;
 use reqwest::blocking::get;
 use scraper::{Html, Selector};
-use stderrlog::LogLevelNum::{Debug, Info, Trace};
+use stderrlog::LogLevelNum::{Debug, Error, Info, Trace};
 
 use crate::cli::Opts;
 use crate::parse::parse_tr;
@@ -25,10 +25,6 @@ const PAGE: &str = "https://www.eurocontrol.int/asterix";
 fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
-    // Add banner
-    //
-    println!("{}\n", version());
-
     // Exit if needed
     //
     if opts.version {
@@ -37,9 +33,10 @@ fn main() -> Result<()> {
     // Check verbosity
     //
     let lvl = match opts.verbose {
-        0 => Info,
-        1 => Debug,
-        2 => Trace,
+        0 => Error,
+        1 => Info,
+        2 => Debug,
+        3 => Trace,
         _ => Trace,
     };
 
@@ -49,6 +46,10 @@ fn main() -> Result<()> {
         .quiet(opts.quiet)
         .verbosity(lvl)
         .init()?;
+
+    // Add banner
+    //
+    info!("{}\n", version());
 
     debug!("Debug mode engaged");
 
@@ -91,19 +92,18 @@ fn main() -> Result<()> {
             .inspect(|e| debug!("td={e:?}"))
             .map(|e| {
                 let frag = e.html().to_owned();
-                //println!("frag_html={}", frag);
 
                 // Filter
                 //
                 let frag = re.replace_all(&frag, "");
 
+                // Get what we want
+                //
                 let (_, (a, b)) = parse_tr(&frag).unwrap();
-                //dbg!(a, b);
                 format!("num={} tag={}", a, b)
             })
             .collect();
 
-        println!("---");
         println!("res={:?}\n", res);
     });
     info!("Information retrieved on: {}", today);
