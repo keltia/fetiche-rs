@@ -1,13 +1,10 @@
-use log::debug;
-use nom::branch::alt;
-use nom::bytes::complete::{tag_no_case, take_until};
-use nom::character::complete::{alphanumeric0, anychar, multispace0, space0};
-use nom::combinator::{map, recognize};
-use nom::multi::{many0, many0_count};
-use nom::sequence::{delimited, terminated, tuple};
-use nom::IResult;
-use regex::Regex;
-use scraper::{Html, Selector};
+use nom::{
+    branch::alt,
+    bytes::complete::{tag_no_case, take_until},
+    character::complete::multispace0,
+    sequence::{delimited, terminated, tuple},
+    IResult,
+};
 
 fn parse_content(input: &str) -> IResult<&str, &str> {
     alt((parse_strong, take_until("<")))(input)
@@ -37,10 +34,6 @@ fn parse_two(input: &str) -> IResult<&str, (&str, &str)> {
 
 fn parse_three(input: &str) -> IResult<&str, (&str, &str)> {
     terminated(tuple((parse_td, parse_td)), parse_td)(input)
-}
-
-fn parse_alt(input: &str) -> IResult<&str, (&str, &str)> {
-    alt((parse_three, parse_two))(input)
 }
 
 pub fn parse_tr(input: &str) -> IResult<&str, (&str, &str)> {
@@ -97,46 +90,6 @@ mod tests {
         let input = "<td>foo</td><td>bar</td><td>non</TD>";
 
         let (_, (a, b)) = parse_three(input).unwrap();
-        assert_eq!("foo", a);
-        assert_eq!("bar", b);
-    }
-
-    #[test]
-    fn test_parse_alt() {
-        let input = "<td>foo</td><td>bar</td><td>non</td>";
-
-        let r = parse_alt(input);
-        dbg!(&r);
-        assert!(r.is_ok());
-
-        let (_, (a, b)) = r.unwrap();
-        assert_eq!("foo", a);
-        assert_eq!("bar", b);
-    }
-
-    #[test]
-    fn test_parse_alt1() {
-        let input = "<td>foo</td><td>bar</td>";
-
-        let r = parse_alt(input);
-        dbg!(&r);
-        assert!(r.is_ok());
-
-        let (_, (a, b)) = r.unwrap();
-        assert_eq!("foo", a);
-        assert_eq!("bar", b);
-    }
-
-    #[test]
-    fn test_parse_alt11() {
-        let input = "<td>foo</td>\n\
-        <td>bar</td>";
-
-        let r = parse_alt(input);
-        dbg!(&r);
-        assert!(r.is_ok());
-
-        let (_, (a, b)) = r.unwrap();
         assert_eq!("foo", a);
         assert_eq!("bar", b);
     }
