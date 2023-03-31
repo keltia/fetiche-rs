@@ -8,8 +8,9 @@ mod parse;
 mod version;
 
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use clap::Parser;
-use log::debug;
+use log::{debug, info};
 use regex::Regex;
 use reqwest::blocking::get;
 use scraper::{Html, Selector};
@@ -54,6 +55,7 @@ fn main() -> Result<()> {
     // Fetch the official page
     //
     let doc = get(PAGE)?.text()?;
+    let today: DateTime<Utc> = Utc::now();
 
     // We want <table> because sometimes there are 3 <td> and sometimes 2 inside a <tr>.
     //
@@ -104,5 +106,6 @@ fn main() -> Result<()> {
         println!("---");
         println!("res={:?}\n", res);
     });
+    info!("Information retrieved on: {}", today);
     Ok(())
 }
