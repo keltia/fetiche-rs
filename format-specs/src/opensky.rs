@@ -67,7 +67,7 @@ impl Opensky {
     ///
     pub fn to_cat21(&self) -> Vec<Cat21> {
         match &self.states {
-            Some(v) => v.iter().map(|s| Cat21::from(s)).collect(),
+            Some(v) => v.iter().map(Cat21::from).collect(),
             None => vec![],
         }
     }
