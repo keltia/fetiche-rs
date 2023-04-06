@@ -52,9 +52,9 @@ pub fn version() -> String {
 /// //
 /// use format_specs::Cat21;
 ///
-/// use sources::config::Sites;
-/// use sources::filter::Filter;
-/// use sources::site::Site;
+/// use sources::Sites;
+/// use sources::Filter;
+/// use sources::Site;
 ///
 /// # fn main() -> Result<()> {
 /// # let name = "eih";
@@ -78,7 +78,7 @@ use log::debug;
 
 use format_specs::{Cat21, Format};
 
-use sources::{filter::Filter, Fetchable};
+use sources::{Fetchable, Filter};
 
 /// Type of task we will need to do
 ///
