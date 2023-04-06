@@ -1,15 +1,15 @@
 //! OpenSky (.org) specific data
 //!
 
-use log::{error, trace};
+use log::trace;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
 use format_specs::Cat21;
 use format_specs::Format;
 
-use crate::site::{Auth, Site};
 use crate::Fetchable;
+use crate::{Auth, Site};
 
 #[derive(Clone, Debug)]
 pub struct Opensky {

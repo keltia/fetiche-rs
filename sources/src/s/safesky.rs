@@ -8,7 +8,6 @@
 //!
 
 use anyhow::{anyhow, Result};
-use log::error;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 

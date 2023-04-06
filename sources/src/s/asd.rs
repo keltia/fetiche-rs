@@ -16,7 +16,7 @@
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use clap::{crate_name, crate_version};
-use log::{debug, error, trace};
+use log::{debug, trace};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
