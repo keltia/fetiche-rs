@@ -168,7 +168,7 @@ impl Sites {
     ///
     #[cfg(windows)]
     pub fn default_file() -> PathBuf {
-        let homedir = env::var("LOCALAPPDATA").unwrap();
+        let homedir = env!("LOCALAPPDATA");
 
         let def: PathBuf = makepath!(homedir, "drone-utils", CONFIG);
         def
