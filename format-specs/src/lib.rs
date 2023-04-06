@@ -7,14 +7,17 @@
 //! file which will define the input format-specs and the transformations needed.
 //!
 
-pub mod aeroscope;
-pub mod asd;
-pub mod opensky;
-pub mod safesky;
+mod aeroscope;
+mod asd;
+mod opensky;
+mod safesky;
 
-use crate::aeroscope::Aeroscope;
-use crate::asd::Asd;
-use crate::safesky::Safesky;
+// Re-export for convenience
+//
+pub use aeroscope::*;
+pub use asd::*;
+pub use opensky::*;
+pub use safesky::*;
 
 use anyhow::Result;
 use csv::{Reader, WriterBuilder};
