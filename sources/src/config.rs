@@ -180,7 +180,7 @@ impl Sites {
         // Create config directory if needed
         //
         if !dir.exists() {
-            create_dir_all(&dir)?
+            create_dir_all(dir)?
         }
 
         // Copy content of `config.hcl`  into place.
