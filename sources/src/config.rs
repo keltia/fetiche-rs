@@ -195,23 +195,22 @@ impl Sites {
     pub fn load(fname: &Option<PathBuf>) -> Result<Sites> {
         // Load default config if nothing is specified
         //
-        match fname {
+        let cnf = match fname {
             // We have a configuration file
             //
             Some(cnf) => {
                 trace!("Loading from {:?}", cnf);
-
-                Sites::read_file(cnf)
+                cnf.into()
             }
             // Need to load our own
             //
             _ => {
                 let cnf = Sites::default_file();
                 trace!("Loading from {:?}", cnf);
-
-                Sites::read_file(&cnf)
+                cnf
             }
-        }
+        };
+        Self::read_file(&cnf)
     }
 }
 
@@ -233,8 +232,7 @@ impl Index<&str> for Sites {
     ///
     #[inline]
     fn index(&self, s: &str) -> &Self::Output {
-        let me = self.site.get(s);
-        me.unwrap()
+        self.site.get(s).unwrap()
     }
 }
 
