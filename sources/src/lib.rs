@@ -10,11 +10,12 @@ use std::fmt::Debug;
 
 use anyhow::Result;
 
+use format_specs::{Cat21, Format};
+
 // Re-export these modules for a shorted import path.
 //
 pub use config::*;
 pub use filter::*;
-use format_specs::{Cat21, Format};
 pub use s::*;
 pub use site::*;
 
