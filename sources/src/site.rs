@@ -99,6 +99,12 @@ impl Site {
     }
 }
 
+impl Default for Site {
+    fn default() -> Self {
+        Site::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
