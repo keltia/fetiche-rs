@@ -22,9 +22,8 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use format_specs::asd::Asd as InputFormat;
-use format_specs::Cat21;
-use format_specs::Format;
+use format_specs::Asd as InputFormat;
+use format_specs::{Cat21, Format};
 
 use crate::filter::Filter;
 use crate::site::{Auth, Site};
