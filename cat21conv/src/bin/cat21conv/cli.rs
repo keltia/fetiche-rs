@@ -27,6 +27,9 @@ pub struct Opts {
     /// Output file.
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
+    /// quiet mode.
+    #[clap(short = 'q', long = "quiet")]
+    pub quiet: bool,
     /// Site to fetch data from
     #[clap(short = 'S', long)]
     pub site: Option<String>,

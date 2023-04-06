@@ -27,7 +27,7 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use clap::Parser;
 use log::{info, trace};
-use stderrlog::LogLevelNum::{Debug, Info, Trace};
+use stderrlog::LogLevelNum::{Debug, Error, Info, Trace};
 
 use cat21conv::Task;
 use format_specs::{prepare_csv, Cat21, Format};
@@ -133,13 +133,14 @@ fn main() -> Result<()> {
     //
     let mut lvl = match opts.verbose {
         0 => Info,
-        1 => Debug,
-        2 => Trace,
+        1 => Error,
+        2 => Debug,
+        3 => Trace,
         _ => Trace,
     };
 
     if opts.debug {
-        lvl = Trace;
+        lvl = Debug;
     }
 
     // Prepare logging.
@@ -147,6 +148,7 @@ fn main() -> Result<()> {
     stderrlog::new()
         .modules(["cat21conv", "format-specs", "sources"])
         .verbosity(lvl)
+        .quiet(opts.quiet)
         .init()?;
 
     // Load default config if nothing is specified
