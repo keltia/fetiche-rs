@@ -3,19 +3,18 @@
 use std::collections::hash_map::{IntoValues, Iter, Keys, Values, ValuesMut};
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::fs;
 use std::fs::create_dir_all;
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
-use std::{env, fs};
 
 use anyhow::{anyhow, Result};
+#[cfg(unix)]
+use home::home_dir;
 use log::trace;
 use serde::{Deserialize, Serialize};
 
-use crate::site::Site;
-
-#[cfg(unix)]
-use home::home_dir;
+use crate::Site;
 
 /// Default configuration filename
 const CONFIG: &str = "config.hcl";
@@ -254,10 +253,13 @@ impl IndexMut<&str> for Sites {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::site::Auth;
-    use anyhow::bail;
     use std::env::temp_dir;
+
+    use anyhow::bail;
+
+    use crate::site::Auth;
+
+    use super::*;
 
     #[test]
     fn test_new() {

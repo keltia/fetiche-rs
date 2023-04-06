@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use log::LevelFilter::{Debug, Trace};
+use log::LevelFilter::Trace;
 use log::{info, trace};
 
-use sources::config::Sites;
+use sources::Sites;
 
 fn main() -> Result<()> {
     stderrlog::new().verbosity(Trace).init()?;

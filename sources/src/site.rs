@@ -1,13 +1,14 @@
+use std::fmt::Debug;
+
 use anyhow::{anyhow, Result};
 use log::trace;
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
 
 use format_specs::Format;
 
 use crate::config::Sites;
-use crate::s::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky};
 use crate::Fetchable;
+use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky};
 
 /// Describe what a site is and associated credentials.
 ///
@@ -100,13 +101,13 @@ impl Site {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use std::collections::HashMap;
     use std::path::PathBuf;
 
     use crate::config::Sites;
     use crate::makepath;
+
+    use super::*;
 
     fn set_default() -> Sites {
         hcl::from_str(include_str!("config.hcl")).unwrap()

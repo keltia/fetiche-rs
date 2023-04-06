@@ -6,24 +6,25 @@
 //! - fetching data (GET or POST, etc.).
 //!
 
-pub mod config;
-pub mod filter;
-pub mod site;
-
-mod s;
-
-// Re-export these modules for a shorted import path.
-//
-pub use s::{aeroscope, asd, opensky, safesky};
-
-#[macro_use]
-mod macros;
-
 use std::fmt::Debug;
 
 use anyhow::Result;
 
+// Re-export these modules for a shorted import path.
+//
+pub use config::*;
+pub use filter::*;
 use format_specs::{Cat21, Format};
+pub use s::*;
+pub use site::*;
+
+mod config;
+mod filter;
+mod s;
+mod site;
+
+#[macro_use]
+mod macros;
 
 /// This trait enables us to manage different ways of connecting and fetching data under
 /// a single interface.
