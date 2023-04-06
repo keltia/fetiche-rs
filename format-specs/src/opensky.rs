@@ -14,7 +14,7 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
-use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
+use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
 
 /// Origin of state's position
 ///
@@ -116,8 +116,8 @@ impl From<&StateVector> for Cat21 {
         let callsign = line.callsign.clone().unwrap_or("".to_string());
 
         Cat21 {
-            sac: 8,
-            sic: 200,
+            sac: DEF_SAC,
+            sic: DEF_SIC,
             alt_geo_ft: to_feet(line.geo_altitude.unwrap_or(0.0)),
             pos_lat_deg: line.latitude.unwrap_or(0.0),
             pos_long_deg: line.longitude.unwrap_or(0.0),
