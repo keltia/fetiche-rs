@@ -24,20 +24,15 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display, Formatter};
 use std::io::Read;
 
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(untagged, rename_all = "lowercase")]
 pub enum Format {
+    #[default]
     None,
     Aeroscope,
     Asd,
     Opensky,
     Safesky,
-}
-
-impl Default for Format {
-    fn default() -> Self {
-        Format::None
-    }
 }
 
 /// Macro to create the code which deserialize known types.
