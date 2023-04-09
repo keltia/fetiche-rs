@@ -139,19 +139,21 @@ impl Default for Position {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum TodCalculated {
     C,
     L,
+    #[default]
     N,
     R,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum Bool {
     Y,
+    #[default]
     N,
 }
 
@@ -273,18 +275,18 @@ impl Default for Cat21 {
             rec_time_posix: 0,
             rec_time_ms: 0,
             emitter_category: 0,
-            differential_correction: Bool::N,
-            ground_bit: Bool::N,
-            simulated_target: Bool::N,
-            test_target: Bool::N,
-            from_ft: Bool::N,
-            selected_alt_capability: Bool::N,
-            spi: Bool::N,
-            link_technology_cddi: Bool::N,
-            link_technology_mds: Bool::N,
-            link_technology_uat: Bool::N,
-            link_technology_vdl: Bool::N,
-            link_technology_other: Bool::N,
+            differential_correction: Bool::default(),
+            ground_bit: Bool::default(),
+            simulated_target: Bool::default(),
+            test_target: Bool::default(),
+            from_ft: Bool::default(),
+            selected_alt_capability: Bool::default(),
+            spi: Bool::default(),
+            link_technology_cddi: Bool::default(),
+            link_technology_mds: Bool::default(),
+            link_technology_uat: Bool::default(),
+            link_technology_vdl: Bool::default(),
+            link_technology_other: Bool::default(),
             descriptor_atp: 0,
             alt_reporting_capability_ft: 0,
             target_addr: 0,
@@ -292,7 +294,7 @@ impl Default for Cat21 {
             line_id: 0,
             ds_id: 0,
             report_type: 0,
-            tod_calculated: TodCalculated::N,
+            tod_calculated: TodCalculated::default(),
             callsign: "".to_string(),
             groundspeed_kt: 0.0,
             track_angle_deg: 0.0,
