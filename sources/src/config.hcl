@@ -1,3 +1,5 @@
+// Safety check
+//
 version = 1
 
 site "eih" {
@@ -30,7 +32,7 @@ site "opensky" {
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
   auth     = {
-    username    = "dphu"
+    username = "dphu"
     password = "NOPE"
   }
   cmd = {
