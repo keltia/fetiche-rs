@@ -31,7 +31,6 @@ use stderrlog::LogLevelNum::{Debug, Error, Info, Trace};
 
 use cat21conv::Task;
 use format_specs::{prepare_csv, Cat21, Format};
-
 use sources::{Filter, Site, Sites};
 
 /// From the CLI options

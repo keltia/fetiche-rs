@@ -52,9 +52,7 @@ pub fn version() -> String {
 /// //
 /// use format_specs::Cat21;
 ///
-/// use sources::Sites;
-/// use sources::Filter;
-/// use sources::Site;
+/// use sources::{Sites,Filter,Site};
 ///
 /// # fn main() -> Result<()> {
 /// # let name = "eih";
