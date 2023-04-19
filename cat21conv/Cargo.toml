@@ -27,7 +27,7 @@ csv = "1.1"
 format-specs = { version = "0.9", path = "../format-specs" }
 hcl-rs = "0.14"
 home = "0.5"
-log = { version = "0.4.17", features = ["serde", "std"] }
+log = { version = "0.4", features = ["serde", "std"] }
 percent-encoding = "2"
 reqwest = { version = "0", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
 serde = { version = "1.0", features = ["derive"] }
