@@ -231,14 +231,13 @@ mod tests {
     #[test]
     fn test_task_none() {
         let mut t = Task::new("foo");
-
         t.path("/nonexistent");
 
         assert_eq!("foo", t.name);
-        match t.input {
+        match &t.input {
             Input::File { path, format } => {
-                assert_eq!(Format::None, format);
-                assert_eq!(PathBuf::from("/nonexistent"), path);
+                assert_eq!(Format::None, *format);
+                assert_eq!(PathBuf::from("/nonexistent"), path.clone());
             }
             _ => panic!("bad type"),
         };
