@@ -102,6 +102,12 @@ pub enum Input {
     Nothing,
 }
 
+impl Default for Input {
+    fn default() -> Self {
+        Input::Nothing
+    }
+}
+
 /// The task itself
 #[derive(Debug)]
 pub struct Task {
@@ -198,6 +204,12 @@ impl Task {
             }
             Input::Nothing => Err(anyhow!("no format-specs specified")),
         }
+    }
+}
+
+impl Default for Task {
+    fn default() -> Self {
+        Task::new("default")
     }
 }
 
