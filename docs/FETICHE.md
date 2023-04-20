@@ -16,7 +16,7 @@ a all-purpose gather/transform/publish engine for surveillance data.
 
 Preliminary list of possible modules.
 
-[SURV Engine](file:SURV%20Engine.mmap) as a MindManager file.
+[SURV Engine](file:Fetiche%20Engine.mmap) as a MindManager file.
 
 ### Modules
 
@@ -68,7 +68,18 @@ We could use the [`hashicorp_vault`][Vault] crate to fetch credentials though.
 
 With this we obtain a `HashMap` with the site name as key (e.g. `eih`) and the rest as a `Site` struct.
 
-## Task definition
+# Extension Language
+
+To minimize the amount of modifications necessary during the life of the product, it is intended for many parts to be
+written in an embedded language.  This could be something homegrown with a specific grammar and a `nom`  parser 
+(or equivalent).  This also could be a language easy to embed like Lua or Typescript.
+
+Said language would have access to the various Rust data structures and methods which means generating bindings unless
+we use our own system.
+
+Possible example to follow could be [aurae] which use Typescript inside its own [auraescript].
+
+## Choices
 
 The goal is to describe what needs to be done, where to fetch and possibly the transformations we need to apply to data
 before converting. Or the transformations are implied by the task. If the former, we would have to define a more precise
@@ -77,6 +88,8 @@ language, a symbol table, etc. In the latter case, like in `format-specs`.
 Either we have a file per task, or we define everything in a single file and use naming to select one or the other.
 
 There are several possibilities to define tasks, filters and such.  Either we have our own language, but it could get complicated depending on how far we want to go, or we embed a language like Typescript or Lua.
+
+### Homegrown
 
 ### HCL
 
@@ -96,7 +109,7 @@ task "weekly/asd" {
 
 [Deno] is a nice TS engine/runtime implemented in Rust.
 
-````typescript
+```typescript
 // @ts-ignore
 import {Task, TaskRequest, SchedulerClient} from "../lib/runtime.ts";
 
@@ -109,15 +122,21 @@ sched.new(<TaskRequest>{
 }).then(r => {
     console.log("done")
 });
-````
+```
 
 Typescript opens more opportunities to interact with the engine core. Filters, transformations could be written in
 Typescript as well.  There are binding generators to tia the Rust API and use it in TS.
+
+NOTE: It is yet not clear where the boundaries of Rust and Typescript lie.  Even the source crate or the format-specs one
+could be seen in [TS] as well.  Having a proper definition of what is available to [TS] is essential.
 
 ### Lua
 
 [Lua] is also a viable extension language, already used by many projects (including [FreeBSD]).  The [mlua] crate does
 provide access to Lua.  Main issues I see with Lua is incompatibility between the different versions.
+
+I'm not sure how much of a support we have to access Rust data from Lua.  Main advantage over [TS]  would be 
+the size of the implementation although Rust binaries tend to be rather big anyway.
 
 ## Schedule ?
 
@@ -129,7 +148,7 @@ cf. above.
 
 [Vault]: https://crates.io/hashicorp_vault
 
-[Typescript]: https://en.wikipedia.org/wiki/TypeScript 
+[TS]: https://en.wikipedia.org/wiki/TypeScript 
 
 [deno]: https://deno.land/
 
@@ -140,3 +159,7 @@ cf. above.
 [Lua]: https://www.lua.org/
 
 [Kirikou]: https://en.wikipedia.org/wiki/Kirikou_and_the_Sorceress
+
+[aurae]: https://github.com/aurae-runtime/aurae
+
+[auraescript]: https://github.com/aurae-runtime/aurae/tree/main/auraescript
