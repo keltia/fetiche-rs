@@ -3,6 +3,7 @@
 //! This is mainly the database connection string that is needed.
 //!
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::{env, fs};
 
@@ -20,7 +21,8 @@ const DVERSION: usize = 1;
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
 
-/// `sqlx` support all these
+/// `sqlx` support all these except for Influx which is a different beast
+/// Pgsql has a time-series extension as well so we might also use that instead.
 ///
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
@@ -38,10 +40,35 @@ pub enum DB {
     },
     Pgsql {
         url: String,
+        tls: bool,
     },
     SQLite {
         path: String,
     },
+}
+
+impl Display for DB {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DB::MySQL {
+                host,
+                user,
+                url,
+                tls,
+            } => {
+                write!(f, "MySQL(host={host} user={user} url={url} tls={tls})")
+            }
+            DB::Influx { host, org, .. } => {
+                write!(f, "InfluxDB(host={host} org={org} token=<MASKED>)")
+            }
+            DB::SQLite { path } => {
+                write!(f, "SQLite(path={path})")
+            }
+            DB::Pgsql { url, tls } => {
+                write!(f, "Pgsql(url={url} tls={tls})")
+            }
+        }
+    }
 }
 
 /// Main struct holding configurations
