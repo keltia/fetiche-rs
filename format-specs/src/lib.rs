@@ -7,27 +7,29 @@
 //! file which will define the input format-specs and the transformations needed.
 //!
 
-mod aeroscope;
-mod asd;
-mod asterix;
-mod opensky;
-mod safesky;
-
-// Re-export for convenience
-//
-pub use aeroscope::*;
-pub use asd::*;
-pub use asterix::*;
-pub use opensky::*;
-pub use safesky::*;
+use std::fmt::{Debug, Display, Formatter};
+use std::io::Read;
 
 use anyhow::Result;
 use csv::{Reader, WriterBuilder};
 use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 
-use std::fmt::{Debug, Display, Formatter};
-use std::io::Read;
+// Re-export for convenience
+//
+pub use aeroscope::*;
+pub use asd::*;
+pub use asterix::*;
+pub use influx::*;
+pub use opensky::*;
+pub use safesky::*;
+
+mod aeroscope;
+mod asd;
+mod asterix;
+mod influx;
+mod opensky;
+mod safesky;
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(untagged, rename_all = "lowercase")]
