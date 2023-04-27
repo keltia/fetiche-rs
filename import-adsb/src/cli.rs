@@ -38,6 +38,7 @@ pub struct Opts {
 pub enum SubCommand {
     CreateDb(CreateOpts),
     Import(ImportOpts),
+    ListDb,
 }
 
 #[derive(Parser)]

@@ -1,3 +1,8 @@
+//! Conv2cat21
+//!
+//! Application based on the [Abscissa] framework.
+//!
+//! [Abscissa]: https://github.com/iqlusioninc/abscissa
 //! This is the [Rust] version of `aeroscope.sh` written by Marc Gravis for the ACUTE Project.
 //! Now it tries to include features from `aeroscope-CDG.sh` and will support fetching from
 //! the Skysafe site as well.
@@ -14,6 +19,25 @@
 //!
 //! [Rust]: https://rust-lang.org/
 //!
+
+// Tip: Deny warnings with `RUSTFLAGS="-D warnings"` environment variable in CI
+
+#![forbid(unsafe_code)]
+#![warn(
+    missing_docs,
+    rust_2018_idioms,
+    trivial_casts,
+    unused_lifetimes,
+    unused_qualifications
+)]
+
+pub mod application;
+pub mod commands;
+pub mod config;
+pub mod error;
+pub mod prelude;
+pub mod task;
+
 use std::fs;
 use std::time::Instant;
 
@@ -21,16 +45,12 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use clap::Parser;
 use log::{info, trace};
+use stderrlog::LogLevelNum::{Debug, Error, Info, Trace};
 
-use cat21conv::Task;
+use crate::commands::EntryPoint;
+use crate::task::Task;
 use format_specs::{prepare_csv, Cat21, Format};
 use sources::{Filter, Site, Sites};
-
-use crate::cli::{check_args, Opts};
-use crate::version::version;
-
-mod cli;
-mod version;
 
 /// From the CLI options
 ///
@@ -110,9 +130,38 @@ fn get_from_source(cfg: &Sites, opts: &Opts) -> Result<Vec<Cat21>> {
     }
 }
 
-fn main() -> Result<()> {
-    let opts: Opts = Opts::parse();
+/// Check the presence and validity of some of the arguments
+///
+pub fn check_args(opts: &Opts) -> Result<()> {
+    // Check arguments.
+    //
+    if opts.input.is_some() && opts.site.is_some() {
+        return Err(anyhow!("Specify either a site or a filename, not both"));
+    }
 
+    if opts.input.is_none() && opts.site.is_none() {
+        return Err(anyhow!("Specify at least a site or a filename"));
+    }
+
+    if opts.input.is_some() && opts.format.is_none() {
+        return Err(anyhow!("Format must be specified for files"));
+    }
+
+    // Do we have options for filter
+
+    if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
+        return Err(anyhow!("Can not specify --today and -B/-E"));
+    }
+
+    if (opts.begin.is_some() && opts.end.is_none()) || (opts.begin.is_none() && opts.end.is_some())
+    {
+        return Err(anyhow!("We need both -B/-E or none"));
+    }
+
+    Ok(())
+}
+
+fn realmain(opts: &EntryPoint) -> Result<()> {
     // Add banner
     //
     println!("{}\n", version());
@@ -125,11 +174,10 @@ fn main() -> Result<()> {
 
     // Check arguments
     //
-    check_args(&opts)?;
+    check_args(opts)?;
 
-    // Prepare logging.
+    // Check verbosity
     //
-    env_logger::init();
 
     // Load default config if nothing is specified
     //

@@ -167,8 +167,10 @@ impl Fetchable for Asd {
         let url = format!("{}{}", self.base_url, self.token);
         trace!("Fetching token through {}…", url);
         let resp = http_post!(self, url, &cred)?;
+        trace!("resp={:?}", resp);
         let resp = resp.text()?;
         let res: Token = serde_json::from_str(&resp)?;
+        trace!("token={}", res.token);
         Ok(res.token)
     }
 
@@ -214,7 +216,7 @@ impl Fetchable for Asd {
                 // This is highly ASD specific
                 //
                 use percent_encoding::percent_decode;
-
+                trace!("error resp={:?}", resp);
                 let h = &resp.headers();
                 let errtxt = percent_decode(h["x-debug-exception"].as_bytes())
                     .decode_utf8()
@@ -297,11 +299,12 @@ impl Default for Token {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use crate::filter::Filter;
     use httpmock::prelude::*;
     use serde_json::json;
+
+    use crate::filter::Filter;
+
+    use super::*;
 
     fn setup_asd(server: &MockServer) -> Asd {
         let client = Client::new();

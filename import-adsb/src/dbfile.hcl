@@ -12,3 +12,9 @@ db "mysql" {
     password = "nope"
     tls      = true
 }
+
+db "influx" {
+    host  = "http://127.0.0.1:8086"
+    org   = "NMD/INF/CNS"
+    token = "<TOKEN>"
+}

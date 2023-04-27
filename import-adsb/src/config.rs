@@ -3,16 +3,16 @@
 //! This is mainly the database connection string that is needed.
 //!
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::{env, fs};
 
 use anyhow::Result;
 use clap::crate_name;
-use log::trace;
-use serde::{Deserialize, Serialize};
-
 #[cfg(unix)]
 use home::home_dir;
+use log::{debug, trace};
+use serde::{Deserialize, Serialize};
 
 /// Default configuration filename
 const CONFIG: &str = "dbfile.hcl";
@@ -21,7 +21,8 @@ const DVERSION: usize = 1;
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
 
-/// `sqlx` support all these
+/// `sqlx` support all these except for Influx which is a different beast
+/// Pgsql has a time-series extension as well so we might also use that instead.
 ///
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
@@ -32,12 +33,42 @@ pub enum DB {
         url: String,
         tls: bool,
     },
+    Influx {
+        host: String,
+        org: String,
+        token: String,
+    },
     Pgsql {
         url: String,
+        tls: bool,
     },
     SQLite {
         path: String,
     },
+}
+
+impl Display for DB {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DB::MySQL {
+                host,
+                user,
+                url,
+                tls,
+            } => {
+                write!(f, "MySQL(host={host} user={user} url={url} tls={tls})")
+            }
+            DB::Influx { host, org, .. } => {
+                write!(f, "InfluxDB(host={host} org={org} token=<MASKED>)")
+            }
+            DB::SQLite { path } => {
+                write!(f, "SQLite(path={path})")
+            }
+            DB::Pgsql { url, tls } => {
+                write!(f, "Pgsql(url={url} tls={tls})")
+            }
+        }
+    }
 }
 
 /// Main struct holding configurations
@@ -91,7 +122,7 @@ impl DBFile {
         trace!("Reading {:?}", fname);
         let content = fs::read_to_string(fname)?;
         let s: DBFile = hcl::from_str(&content)?;
-        dbg!(&s);
+        debug!("{:?}", s);
         Ok(s)
     }
 

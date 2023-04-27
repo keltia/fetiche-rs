@@ -102,6 +102,12 @@ pub enum Input {
     Nothing,
 }
 
+impl Default for Input {
+    fn default() -> Self {
+        Input::Nothing
+    }
+}
+
 /// The task itself
 #[derive(Debug)]
 pub struct Task {
@@ -201,6 +207,12 @@ impl Task {
     }
 }
 
+impl Default for Task {
+    fn default() -> Self {
+        Task::new("default")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -219,14 +231,13 @@ mod tests {
     #[test]
     fn test_task_none() {
         let mut t = Task::new("foo");
-
         t.path("/nonexistent");
 
         assert_eq!("foo", t.name);
-        match t.input {
+        match &t.input {
             Input::File { path, format } => {
-                assert_eq!(Format::None, format);
-                assert_eq!(PathBuf::from("/nonexistent"), path);
+                assert_eq!(Format::None, *format);
+                assert_eq!(PathBuf::from("/nonexistent"), path.clone());
             }
             _ => panic!("bad type"),
         };
