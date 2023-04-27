@@ -17,19 +17,7 @@ fn main() -> Result<()> {
 
     println!("{}", version());
 
-    //
-    let mut lvl = match opts.verbose {
-        0 => Info,
-        1 => Debug,
-        2 => Trace,
-        _ => Trace,
-    };
-
-    if opts.debug {
-        lvl = Trace;
-    }
-
-    stderrlog::new().verbosity(lvl).init()?;
+    env_logger::init();
 
     // Load default config if nothing is specified
     //
