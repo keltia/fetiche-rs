@@ -8,11 +8,10 @@ use std::{env, fs};
 
 use anyhow::Result;
 use clap::crate_name;
-use log::trace;
-use serde::{Deserialize, Serialize};
-
 #[cfg(unix)]
 use home::home_dir;
+use log::{debug, trace};
+use serde::{Deserialize, Serialize};
 
 /// Default configuration filename
 const CONFIG: &str = "dbfile.hcl";
@@ -31,6 +30,11 @@ pub enum DB {
         user: String,
         url: String,
         tls: bool,
+    },
+    Influx {
+        host: String,
+        org: String,
+        token: String,
     },
     Pgsql {
         url: String,
@@ -91,7 +95,7 @@ impl DBFile {
         trace!("Reading {:?}", fname);
         let content = fs::read_to_string(fname)?;
         let s: DBFile = hcl::from_str(&content)?;
-        dbg!(&s);
+        debug!("{:?}", s);
         Ok(s)
     }
 
