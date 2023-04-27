@@ -29,23 +29,7 @@ fn main() -> Result<()> {
     match subcmd {
         SubCommand::Import(opts) => todo!(),
         SubCommand::CreateDb(opts) => todo!(),
-        SubCommand::ListDb => cfg.db.iter().for_each(|(name, db)| match db {
-            DB::MySQL {
-                host,
-                user,
-                url,
-                tls,
-            } => {
-                println!("MySQL(host={host} user={user} url={url} tls={tls})")
-            }
-            DB::Influx { host, org, .. } => {
-                println!("InfluxDB(host={host} org={org} token=<MASKED>)")
-            }
-            DB::SQLite { path } => {
-                println!("SQLite(path={path})")
-            }
-            _ => todo!(),
-        }),
+        SubCommand::ListDb => cfg.db.iter().for_each(|(name, db)| println!("{db}")),
     }
     Ok(())
 }
