@@ -14,12 +14,6 @@
 //!
 //! [Rust]: https://rust-lang.org/
 //!
-mod cli;
-mod version;
-
-use crate::cli::{check_args, Opts};
-use crate::version::version;
-
 use std::fs;
 use std::time::Instant;
 
@@ -27,11 +21,16 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use clap::Parser;
 use log::{info, trace};
-use stderrlog::LogLevelNum::{Debug, Error, Info, Trace};
 
 use cat21conv::Task;
 use format_specs::{prepare_csv, Cat21, Format};
 use sources::{Filter, Site, Sites};
+
+use crate::cli::{check_args, Opts};
+use crate::version::version;
+
+mod cli;
+mod version;
 
 /// From the CLI options
 ///
@@ -128,27 +127,9 @@ fn main() -> Result<()> {
     //
     check_args(&opts)?;
 
-    // Check verbosity
-    //
-    let mut lvl = match opts.verbose {
-        0 => Info,
-        1 => Error,
-        2 => Debug,
-        3 => Trace,
-        _ => Trace,
-    };
-
-    if opts.debug {
-        lvl = Debug;
-    }
-
     // Prepare logging.
     //
-    stderrlog::new()
-        .modules(["cat21conv", "format-specs", "sources"])
-        .verbosity(lvl)
-        .quiet(opts.quiet)
-        .init()?;
+    env_logger::init();
 
     // Load default config if nothing is specified
     //
