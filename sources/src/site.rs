@@ -110,7 +110,7 @@ impl Display for Site {
         // Hide passwords & API keys
         //
         let mut site = self.clone();
-        if let auth = site.auth {
+        if let Some(auth) = site.auth {
             let auth = match auth {
                 Auth::Key { .. } => Auth::Key {
                     api_key: "HIDDEN".to_string(),
