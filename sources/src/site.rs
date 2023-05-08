@@ -33,9 +33,12 @@ pub struct Routes {
 
 /// Describe the possible ways to authenticate oneself
 ///
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum Auth {
+    /// Nothing special, no auth
+    #[default]
+    Anon,
     /// Using an API key supplied through the URL or a header
     Key { api_key: String },
     /// Using a login/passwd to get a token
@@ -46,8 +49,32 @@ pub enum Auth {
     },
     /// Using plain login/password
     Login { username: String, password: String },
-    /// Nothing special, no auth
-    Anon,
+}
+
+impl Display for Auth {
+    /// Obfuscate the passwords & keys
+    ///
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // Hide passwords & API keys
+        //
+        let mut auth = self.clone();
+        let auth = match auth {
+            Auth::Key { .. } => Auth::Key {
+                api_key: "HIDDEN".to_string(),
+            },
+            Auth::Login { username, .. } => Auth::Login {
+                username,
+                password: "HIDDEN".to_string(),
+            },
+            Auth::Token { login, token, .. } => Auth::Token {
+                login,
+                token,
+                password: "HIDDEN".to_string(),
+            },
+            _ => Auth::Anon,
+        };
+        write!(f, "{:?}", auth)
+    }
 }
 
 #[macro_export]
@@ -107,28 +134,16 @@ impl Default for Site {
 
 impl Display for Site {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        // Hide passwords & API keys
-        //
         let mut site = self.clone();
-        if let Some(auth) = site.auth {
-            let auth = match auth {
-                Auth::Key { .. } => Auth::Key {
-                    api_key: "HIDDEN".to_string(),
-                },
-                Auth::Login { username, .. } => Auth::Login {
-                    username,
-                    password: "HIDDEN".to_string(),
-                },
-                Auth::Token { login, token, .. } => Auth::Token {
-                    login,
-                    token,
-                    password: "HIDDEN".to_string(),
-                },
-                _ => Auth::Anon,
-            };
-            site.auth = Some(auth.clone());
-        }
-        write!(f, "{:?}", site)
+        let auth = match site.auth {
+            Some(auth) => auth,
+            None => Auth::Anon,
+        };
+        write!(
+            f,
+            "{{ format={} url={} auth={} cmd={:?} }}",
+            site.format, site.base_url, auth, site.cmd
+        )
     }
 }
 
