@@ -14,6 +14,9 @@ pub struct Opts {
     /// debug mode.
     #[clap(short = 'D', long = "debug")]
     pub debug: bool,
+    /// Output file.
+    #[clap(short = 'o', long)]
+    pub output: Option<PathBuf>,
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
     pub verbose: u8,
@@ -25,16 +28,28 @@ pub struct Opts {
     pub subcmd: SubCommand,
 }
 
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 pub enum SubCommand {
     /// list-db displays possible sources
     Fetch(FetchOpts),
     /// fetch data from specified site
-    ListDb,
+    List,
 }
 
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 pub struct FetchOpts {
-    /// Optional site name
+    /// Start the data at specified date (optional)
+    #[clap(short = 'B', long)]
+    pub begin: Option<String>,
+    /// End date (optional)
+    #[clap(short = 'E', long)]
+    pub end: Option<String>,
+    /// Output file.
+    #[clap(short = 'o', long)]
+    pub output: Option<PathBuf>,
+    /// We want today only
+    #[clap(long)]
+    pub today: bool,
+    /// site name
     pub site: String,
 }
