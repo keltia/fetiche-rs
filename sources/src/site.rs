@@ -110,26 +110,23 @@ impl Display for Site {
         // Hide passwords & API keys
         //
         let mut site = self.clone();
-        match site.auth {
-            Some(auth) => {
-                let auth = match auth {
-                    Auth::Key { .. } => Auth::Key {
-                        api_key: "HIDDEN".to_string(),
-                    },
-                    Auth::Login { username, .. } => Auth::Login {
-                        username,
-                        password: "HIDDEN".to_string(),
-                    },
-                    Auth::Token { login, token, .. } => Auth::Token {
-                        login,
-                        token,
-                        password: "HIDDEN".to_string(),
-                    },
-                    _ => Auth::Anon,
-                };
-                site.auth = Some(auth.clone());
-            }
-            None => (),
+        if let auth = site.auth {
+            let auth = match auth {
+                Auth::Key { .. } => Auth::Key {
+                    api_key: "HIDDEN".to_string(),
+                },
+                Auth::Login { username, .. } => Auth::Login {
+                    username,
+                    password: "HIDDEN".to_string(),
+                },
+                Auth::Token { login, token, .. } => Auth::Token {
+                    login,
+                    token,
+                    password: "HIDDEN".to_string(),
+                },
+                _ => Auth::Anon,
+            };
+            site.auth = Some(auth.clone());
         }
         write!(f, "{:?}", site)
     }
