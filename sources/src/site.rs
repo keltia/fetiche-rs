@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 
 use anyhow::{anyhow, Result};
 use log::trace;
@@ -102,6 +102,36 @@ impl Site {
 impl Default for Site {
     fn default() -> Self {
         Site::new()
+    }
+}
+
+impl Display for Site {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // Hide passwords & API keys
+        //
+        let mut site = self.clone();
+        match site.auth {
+            Some(auth) => {
+                let auth = match auth {
+                    Auth::Key { .. } => Auth::Key {
+                        api_key: "HIDDEN".to_string(),
+                    },
+                    Auth::Login { username, .. } => Auth::Login {
+                        username,
+                        password: "HIDDEN".to_string(),
+                    },
+                    Auth::Token { login, token, .. } => Auth::Token {
+                        login,
+                        token,
+                        password: "HIDDEN".to_string(),
+                    },
+                    _ => Auth::Anon,
+                };
+                site.auth = Some(auth.clone());
+            }
+            None => (),
+        }
+        write!(f, "{:?}", site)
     }
 }
 
