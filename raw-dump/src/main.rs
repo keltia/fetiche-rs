@@ -48,7 +48,7 @@ fn main() -> Result<()> {
             //
             trace!("fetch({:?}", fopts);
 
-            let _ = check_args(&fopts)?;
+            check_args(&fopts)?;
 
             let name = &fopts.site;
             let site = Site::load(name, &cfg)?;
@@ -56,7 +56,7 @@ fn main() -> Result<()> {
 
             info!("Fetching from network site {}", name);
 
-            let data = Task::new(&name).site(site).with(filter).run()?;
+            let data = Task::new(name).site(site).with(filter).run()?;
             trace!("{}", data);
 
             match fopts.output {

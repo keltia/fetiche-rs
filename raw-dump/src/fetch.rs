@@ -1,14 +1,15 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
-use log::{info, trace};
-use sources::{Filter, Site};
+use log::trace;
+use sources::Filter;
 
 use crate::cli::FetchOpts;
-use crate::Task;
 
 /// From the CLI options
 ///
 pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
+    trace!("filter_from_opts");
+
     let t: DateTime<Utc> = Utc::now();
 
     if opts.today {
@@ -47,8 +48,10 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
 /// Check the presence and validity of some of the arguments
 ///
 pub fn check_args(opts: &FetchOpts) -> Result<()> {
-    // Do we have options for filter
+    trace!("check_args");
 
+    // Do we have options for filter
+    //
     if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
         return Err(anyhow!("Can not specify --today and -B/-E"));
     }

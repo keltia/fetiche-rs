@@ -2,7 +2,6 @@ use anyhow::{anyhow, Result};
 use format_specs::Format;
 use log::{debug, error};
 use sources::Fetchable;
-use std::path::PathBuf;
 
 use crate::{Filter, Input};
 
@@ -31,7 +30,7 @@ impl Task {
 
     /// Set the input path (for files)
     ///
-    pub fn path(&mut self, name: &str) -> &mut Self {
+    pub fn path(&mut self, _name: &str) -> &mut Self {
         error!("path not supported");
         self
     }
@@ -73,7 +72,7 @@ impl Task {
         match &self.input {
             // Input::Network is more complicated and rely on the Site
             //
-            Input::Network { format, site } => {
+            Input::Network { site, .. } => {
                 // Fetch data as bytes
                 //
                 let token = site.authenticate()?;

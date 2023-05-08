@@ -17,14 +17,9 @@ mod cli;
 mod fetch;
 mod task;
 
-use std::fs;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
-use log::debug;
-
-use format_specs::{Cat21, Format};
-
+use format_specs::Format;
 use sources::{Fetchable, Filter};
 
 /// Re-export
