@@ -735,6 +735,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "curves"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assert_cmd",
+ "clap",
+ "csv",
+ "env_logger",
+ "flo_curves",
+ "format-specs",
+ "hcl-rs",
+ "home",
+ "log",
+ "percent-encoding",
+ "reqwest",
+ "serde",
+ "sources",
+]
+
+[[package]]
 name = "cxx"
 version = "1.0.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -953,6 +973,17 @@ checksum = "a8a2db397cb1c8772f31494cb8917e48cd1e64f0fa7efac59fbd741a0a8ce841"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
+]
+
+[[package]]
+name = "flo_curves"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6586b01a3f7402193156b4f480563bef2195ab8237b6e553776e0b5288a1206f"
+dependencies = [
+ "itertools",
+ "roots",
+ "smallvec",
 ]
 
 [[package]]
@@ -2401,6 +2432,12 @@ dependencies = [
  "web-sys",
  "winreg",
 ]
+
+[[package]]
+name = "roots"
+version = "0.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "082f11ffa03bbef6c2c6ea6bea1acafaade2fd9050ae0234ab44a2153742b058"
 
 [[package]]
 name = "rsa"
