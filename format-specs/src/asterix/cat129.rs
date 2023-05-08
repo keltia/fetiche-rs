@@ -1,6 +1,6 @@
-use crate::Position;
+use serde::{Deserialize, Serialize};
 
-use serde::Serialize;
+use crate::{Position, DEF_SAC, DEF_SIC};
 
 /// Cat129 is a special UAS-specific category defined in 2019.
 ///
@@ -9,7 +9,7 @@ use serde::Serialize;
 ///
 /// See: https://www.eurocontrol.int/sites/default/files/2019-06/cat129p29ed12_0.pdf
 ///
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct Cat129 {
     /// Source Identification
@@ -24,16 +24,6 @@ pub struct Cat129 {
     pub uas_serial: String,
     pub uas_reg_country: String,
     /// Aeronautical data
-    /// tod is number of 1/128s since Midnight
-    /// Example:
-    /// ```
-    /// # use chrono::NaiveDateTime;
-    ///
-    /// let tod = NaiveDateTime::parse_from_str(&line.timestamp, "%Y-%m-%d %H:%M:%S")
-    ///            .unwrap()
-    ///            .timestamp();
-    /// let tod = 128 * (tod % 86400);
-    /// ```
     pub tod: i64,
     pub position: Position,
     pub alt_sea_lvl: f32,
@@ -41,4 +31,26 @@ pub struct Cat129 {
     pub gnss_acc: f32,
     pub ground_speed: f32,
     pub vert_speed: f32,
+}
+
+impl Default for Cat129 {
+    fn default() -> Self {
+        Cat129 {
+            sac: DEF_SAC,
+            sic: DEF_SIC,
+            dac: DEF_SAC,
+            dic: DEF_SIC,
+            uas_manufacturer_id: "".to_string(),
+            uas_model_id: "".to_string(),
+            uas_serial: "".to_string(),
+            uas_reg_country: "".to_string(),
+            tod: 0i64,
+            position: Position::default(),
+            alt_sea_lvl: 0.0,
+            alt_gnd_lvl: 0.0,
+            gnss_acc: 0.0,
+            ground_speed: 0.0,
+            vert_speed: 0.0,
+        }
+    }
 }
