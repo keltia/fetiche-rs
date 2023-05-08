@@ -34,7 +34,7 @@ reqwest = { version = "0", features = ["blocking", "gzip", "json", "serde_json",
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_repr = "0.1"
-sources = { version = "0.3", path = "../sources" }
+sources = { version = "0.4", path = "../sources" }
 
 [dev-dependencies]
 assert_cmd = "2.0"
