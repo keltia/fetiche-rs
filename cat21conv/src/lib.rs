@@ -13,17 +13,6 @@
 //! to execute it.
 //!
 
-use clap::{crate_name, crate_version};
-
-pub(crate) const VERSION: &str = crate_version!();
-pub(crate) const NAME: &str = crate_name!();
-
-/// Returns the library version
-///
-pub fn version() -> String {
-    format!("{}/{}", NAME, VERSION)
-}
-
 /// File-based example:
 /// ```no_run
 /// # use anyhow::Result;
@@ -71,16 +60,25 @@ use std::fs;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
+use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
 use log::debug;
 
 use format_specs::{Cat21, Format};
-
 use sources::{Fetchable, Filter};
+
+pub(crate) const VERSION: &str = crate_version!();
+pub(crate) const NAME: &str = crate_name!();
+
+/// Returns the library version
+///
+pub fn version() -> String {
+    format!("{}/{}", NAME, VERSION)
+}
 
 /// Type of task we will need to do
 ///
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum Input {
     /// File-based means we need the format-specs beforehand and a pathname
     ///
@@ -99,13 +97,8 @@ pub enum Input {
         /// Site itself
         site: Box<dyn Fetchable>,
     },
+    #[default]
     Nothing,
-}
-
-impl Default for Input {
-    fn default() -> Self {
-        Input::Nothing
-    }
 }
 
 /// The task itself
