@@ -13,3 +13,6 @@ target/
 
 # JB files
 .idea
+
+# Rest
+*.json
