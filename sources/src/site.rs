@@ -57,8 +57,8 @@ impl Display for Auth {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // Hide passwords & API keys
         //
-        let mut auth = self.clone();
-        let auth = match auth {
+        //let auth = self.clone();
+        let auth = match self.clone() {
             Auth::Key { .. } => Auth::Key {
                 api_key: "HIDDEN".to_string(),
             },
@@ -134,15 +134,14 @@ impl Default for Site {
 
 impl Display for Site {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let mut site = self.clone();
-        let auth = match site.auth {
+        let auth = match self.auth.clone() {
             Some(auth) => auth,
             None => Auth::Anon,
         };
         write!(
             f,
             "{{ format={} url={} auth={} cmd={:?} }}",
-            site.format, site.base_url, auth, site.cmd
+            self.format, self.base_url, auth, self.cmd
         )
     }
 }
