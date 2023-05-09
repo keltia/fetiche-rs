@@ -2362,7 +2362,6 @@ dependencies = [
  "home",
  "httpmock",
  "influxdb",
- "influxdb2",
  "log",
  "percent-encoding",
  "reqwest",
