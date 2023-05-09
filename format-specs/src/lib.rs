@@ -27,6 +27,7 @@ pub use safesky::*;
 mod aeroscope;
 mod asd;
 mod asterix;
+mod drone;
 mod influx;
 mod opensky;
 mod safesky;
