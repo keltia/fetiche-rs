@@ -1,3 +1,4 @@
+use std::collections::btree_map::BTreeMap;
 use std::fs;
 
 use anyhow::Result;
@@ -7,6 +8,7 @@ use log::{info, trace};
 use raw_dump::{check_args, filter_from_opts, Task};
 use raw_dump::{Opts, SubCommand};
 
+use format_specs::{Asd, DronePoint};
 use sources::{Site, Sites};
 
 /// Binary name, using a different binary name
@@ -56,6 +58,8 @@ fn main() -> Result<()> {
 
             info!("Fetching from network site {}", name);
 
+            // Full json array with all point
+            //
             let data = Task::new(name).site(site).with(filter).run()?;
             trace!("{}", data);
 
