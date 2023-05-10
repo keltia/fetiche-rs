@@ -30,7 +30,7 @@ pub struct Opts {
 
 #[derive(Debug, Parser)]
 pub enum SubCommand {
-    /// list-db displays possible sources
+    /// Fetch data from specified site
     Fetch(FetchOpts),
     /// Import into InfluxDB
     Import(ImportOpts),
