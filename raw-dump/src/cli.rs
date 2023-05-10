@@ -32,7 +32,9 @@ pub struct Opts {
 pub enum SubCommand {
     /// list-db displays possible sources
     Fetch(FetchOpts),
-    /// fetch data from specified site
+    /// Import into InfluxDB
+    Import(ImportOpts),
+    /// Display possible sources
     List,
 }
 
@@ -52,4 +54,23 @@ pub struct FetchOpts {
     pub today: bool,
     /// site name
     pub site: String,
+}
+
+#[derive(Debug, Parser)]
+pub struct ImportOpts {
+    /// Start the data at specified date (optional)
+    #[clap(short = 'B', long)]
+    pub begin: Option<String>,
+    /// End date (optional)
+    #[clap(short = 'E', long)]
+    pub end: Option<String>,
+    /// We want today only
+    #[clap(long)]
+    pub today: bool,
+    /// site name
+    #[clap(short = 'S', long)]
+    pub site: String,
+    /// File name (json expected
+    #[clap(short = 'F', long)]
+    pub file: PathBuf,
 }

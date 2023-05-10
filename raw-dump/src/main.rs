@@ -62,10 +62,36 @@ fn main() -> Result<()> {
             match fopts.output {
                 Some(output) => {
                     info!("Writing into {:?}", output);
-                    fs::write(output, data)?
+                    fs::write(output, format!("{:?}", data))?
                 }
-                _ => println!("{}", data),
+                _ => println!("{:?}", data),
             }
+        }
+        SubCommand::Import(opts) => {
+            let mut journeys = BTreeMap::<u32, Vec<DronePoint>>::new();
+
+            // Transform into our `Drone` struct and sort it by "journey"
+            //
+            let data: Vec<Asd> = serde_json::from_str(&data)?;
+            let data: Vec<(u32, DronePoint)> = data
+                .iter()
+                .map(|e| {
+                    let d = DronePoint::from(e);
+                    (d.journey, d.clone())
+                })
+                .map(|(j, d)| {
+                    let list = match journeys.get_mut(&j) {
+                        Some(list) => {
+                            list.push(d);
+                            list
+                        }
+                        _ => vec![d],
+                    };
+                    journeys.update(j, list)
+                })
+                .collect();
+
+            info!("{} journey points found.", data.len());
         }
         SubCommand::List => {
             info!("Listing all sources:");
