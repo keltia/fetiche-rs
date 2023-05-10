@@ -1023,7 +1023,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "csv",
- "influxdb2",
+ "influxdb",
  "log",
  "percent-encoding",
  "reqwest",
