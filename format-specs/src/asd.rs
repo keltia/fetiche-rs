@@ -5,10 +5,11 @@
 //!
 //! JSON endpoint added later by ASD in Nov. 2022.
 
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::Deserialize;
 
-use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
+use crate::drone::DronePoint;
+use crate::{to_feet, to_knots, Bool, Cat21, Position, TodCalculated};
 
 /// Our input structure from the json file coming out of the main ASD site
 ///
@@ -122,6 +123,43 @@ impl From<&Asd> for Cat21 {
             groundspeed_kt: to_knots(line.speed),
             track_angle_deg: line.heading,
             rec_num: 1,
+        }
+    }
+}
+
+fn safe_coord(s: Option<String>) -> Option<f32> {
+    match s {
+        Some(s) => Some(s.parse::<f32>().unwrap()),
+        None => Some(0.0),
+    }
+}
+
+impl From<&Asd> for DronePoint {
+    fn from(value: &Asd) -> Self {
+        // Transform the string into proper datetime
+        //
+        let tod = NaiveDateTime::parse_from_str(&value.timestamp, "%Y-%m-%d %H:%M:%S").unwrap();
+        let tod = DateTime::<Utc>::from_utc(tod, Utc);
+
+        DronePoint {
+            time: tod,
+            journey: value.journey,
+            drone_id: get_drone_id(&value.ident),
+            model: value.model.clone(),
+            source: value.source.clone(),
+            location: value.location,
+            latitude: value.latitude.parse::<f32>().unwrap(),
+            longitude: value.longitude.parse::<f32>().unwrap(),
+            altitude: value.altitude,
+            elevation: value.elevation,
+            home_lat: safe_coord(value.home_lat.clone()),
+            home_lon: safe_coord(value.home_lon.clone()),
+            home_height: value.home_height,
+            speed: value.speed,
+            heading: value.heading,
+            station_name: value.station_name.clone(),
+            station_lat: safe_coord(value.station_lat.clone()),
+            station_lon: safe_coord(value.station_lat.clone()),
         }
     }
 }

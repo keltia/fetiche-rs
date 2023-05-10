@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 pub use aeroscope::*;
 pub use asd::*;
 pub use asterix::*;
+pub use drone::*;
 pub use influx::*;
 pub use opensky::*;
 pub use safesky::*;
@@ -32,6 +33,8 @@ mod influx;
 mod opensky;
 mod safesky;
 
+/// This struct holds the different data formats that we support.
+///
 #[derive(Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(untagged, rename_all = "lowercase")]
 pub enum Format {

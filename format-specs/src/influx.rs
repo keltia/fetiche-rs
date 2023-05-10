@@ -2,4 +2,4 @@
 //! We need to change a few types as not all of them are supported.
 //!
 
-use influxdb2::Client;
+use influxdb::Client;

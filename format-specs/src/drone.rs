@@ -1,71 +1,76 @@
+use anyhow::Result;
 use chrono::{DateTime, Utc};
+use influxdb::InfluxDbWriteable;
+use serde::{Deserialize, Serialize};
 
-use crate::Asd;
-
-#[derive(Debug, Deserialize, InfluxDbWriteable, Serialize)]
-pub struct Drone {
+/// This is derived from the Asd structure for convenience.
+///
+/// We fix the obvious issues with timestamp being in a non-standard format and
+/// geolocation being strings instead of floats, time being a proper type instead
+/// of a string, etc.
+///
+/// We do not have to convert to Asterix specificities like non standard altitude
+/// and non-metric units.
+///
+/// `time` is a DateTime to help insertion in a time-series db like InfluxDB.
+///
+#[derive(Clone, Debug, Deserialize, InfluxDbWriteable, Serialize)]
+pub struct DronePoint {
     pub time: DateTime<Utc>,
-    // Each record is part of a drone journey with a specific ID
+    /// Each record is part of a drone journey with a specific ID
     #[influxdb(tag)]
     pub journey: u32,
-    // Identifier for the drone
-    pub ident: String,
-    // Model of the drone
+    /// Identifier for the drone
+    pub drone_id: String,
+    /// Model of the drone
     pub model: Option<String>,
-    // Source ([see src/site/asd.rs]) of the data
+    /// Source ([see src/site/asd.rs]) of the data
+    #[influxdb(tag)]
     pub source: String,
-    // Point/record ID
+    /// Point/record ID
     pub location: u32,
-    // $7 (actually f32)
+    /// Actual position (lat)
     pub latitude: f32,
-    // $8 (actually f32)
+    /// Actual position (lat)
     pub longitude: f32,
-    // Altitude, can be either null or negative (?)
+    /// Altitude, can be either null or negative (?)
     pub altitude: Option<i16>,
-    // Distance to ground (estimated every 15s)
+    /// Distance to ground (estimated every 15s)
     pub elevation: Option<u32>,
-    // $13 (actually f32)
+    /// $13 (actually f32)
     pub home_lat: Option<f32>,
-    // $14 (actually f32)
+    /// $13 (actually f32)
     pub home_lon: Option<f32>,
-    // Altitude from takeoff point
+    /// Altitude from takeoff point
     pub home_height: Option<f32>,
-    // Current speed
+    /// Current speed
     pub speed: f32,
-    // True heading
+    /// True heading
     pub heading: f32,
-    // Name of detecting point
+    /// Name of detecting point
     #[influxdb(tag)]
     pub station_name: Option<String>,
-    // Latitude (actually f32)
+    /// Station location
     pub station_lat: Option<f32>,
-    // Longitude (actually f32)
+    /// Station location
     pub station_lon: Option<f32>,
 }
 
-impl From<Asd> for Drone {
-    fn from(value: Asd) -> Self {
-        let tod = DateTime::<Utc>::(&value.timestamp, "%Y-%m-%d %H:%M:%S");
+/// A journey is a state vectors: a vector of the measured 3D points with a timestamp.
+///
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Journey {
+    /// Journey ID
+    pub id: u32,
+    /// All the points
+    pub points: Vec<DronePoint>,
+}
 
-        Drone {
-            time: tod,
-            journey: value.journey,
-            ident: value.ident.clone(),
-            model: value.model.clone(),
-            source: value.source.clone(),
-            location: value.location,
-            latitude: value.latitude.parse::<f32>().unwrap(),
-            longitude: value.longitude.parse::<f32>().unwrap(),
-            altitude: value.altitude,
-            elevation: value.elevation,
-            home_lat: Some(value.home_lat.unwrap().parse::<f32>().unwrap()),
-            home_lon: Some(value.home_lon.unwrap().parse::<f32>().unwrap()),
-            home_height: Some(value.home_height.unwrap()),
-            speed: value.speed,
-            heading: value.heading,
-            station_name: Some(value.station_name.unwrap()),
-            station_lat: Some(value.station_lat.unwrap().parse::<f32>().unwrap()),
-            station_lon: Some(value.station_lon.unwrap().parse::<f32>().unwrap()),
-        }
+impl Journey {
+    /// Write a journey into a specific query/table
+    ///
+    pub async fn write(&self, client: &influxdb::Client) -> Result<String, influxdb::Error> {
+        let payload = self.points.iter().map(|p| p.into_query(self.id));
+        client.query(payload).await
     }
 }
