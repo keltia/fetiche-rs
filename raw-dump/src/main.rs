@@ -96,7 +96,7 @@ fn main() -> Result<()> {
         SubCommand::List => {
             info!("Listing all sources:");
             cfg.iter()
-                .for_each(|(name, site)| println!("{name} = {site}"))
+                .for_each(|(name, site)| println!("{} = {}", name, site))
         }
     }
     Ok(())
