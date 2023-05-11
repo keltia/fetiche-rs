@@ -1,8 +1,14 @@
+//! Bare-bone task engine
+//!
+//! Add a simple API to specify both network and file based input.  Only fetch data, no processing
+//! like in `cat21conv`.
+//!
+
 use std::fs;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use log::{debug, error};
+use log::{debug, error, trace};
 
 use format_specs::Format;
 use sources::Fetchable;
