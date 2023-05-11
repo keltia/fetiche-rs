@@ -67,10 +67,10 @@ pub struct Journey {
 }
 
 impl Journey {
-    /// Write a journey into a specific query/table
-    ///
-    pub async fn write(&self, client: &influxdb::Client) -> Result<String, influxdb::Error> {
-        let payload = self.points.iter().map(|p| p.into_query(self.id));
-        client.query(payload).await
-    }
+    // Write a journey into a specific query/table
+    //
+    // pub async fn write(&self, client: &influxdb::Client) -> Result<String, influxdb::Error> {
+    //     let payload = self.points.iter().map(|p| p.into_query(self.id));
+    //     client.query(payload).await
+    // }
 }
