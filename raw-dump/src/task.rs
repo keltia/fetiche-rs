@@ -1,6 +1,10 @@
+use std::fs;
+use std::path::PathBuf;
+
 use anyhow::{anyhow, Result};
-use format_specs::Format;
 use log::{debug, error};
+
+use format_specs::Format;
 use sources::Fetchable;
 
 use crate::{Filter, Input};
@@ -30,8 +34,16 @@ impl Task {
 
     /// Set the input path (for files)
     ///
-    pub fn path(&mut self, _name: &str) -> &mut Self {
-        error!("path not supported");
+    pub fn path(&mut self, name: &str) -> &mut Self {
+        debug!("Add path: {}", name);
+        let fmt = match &self.input {
+            Input::File { format, .. } | Input::Network { format, .. } => format,
+            _ => &Format::None,
+        };
+        self.input = Input::File {
+            path: PathBuf::from(name),
+            format: fmt.to_owned(),
+        };
         self
     }
 
@@ -65,7 +77,7 @@ impl Task {
         self
     }
 
-    /// The heart of the matter: fetch and process data
+    /// The heart of the matter: fetch data
     ///
     pub fn run(&mut self) -> Result<String> {
         debug!("…run()…");
@@ -80,7 +92,7 @@ impl Task {
                 debug!("{}", &data);
                 Ok(data)
             }
-            Input::File { .. } => Err(anyhow!("Input::File not supported!")),
+            Input::File { path, .. } => fs::read_to_string(path)?,
             Input::Nothing => Err(anyhow!("no format-specs specified")),
         }
     }
