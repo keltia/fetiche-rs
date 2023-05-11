@@ -28,6 +28,9 @@ pub struct Opts {
     pub subcmd: SubCommand,
 }
 
+/// fetch
+/// import
+/// list
 #[derive(Debug, Parser)]
 pub enum SubCommand {
     /// Fetch data from specified site
@@ -36,6 +39,21 @@ pub enum SubCommand {
     Import(ImportOpts),
     /// Display possible sources
     List,
+}
+
+#[derive(Debug, Parser)]
+pub struct ImportOpts {
+    /// Sub-commands
+    #[clap(subcommand)]
+    pub subcmd: ImportSubCommand,
+}
+
+/// import file
+/// import site
+#[derive(Debug, Parser)]
+pub enum ImportSubCommand {
+    ImportFileOpts,
+    ImportSiteOpts,
 }
 
 #[derive(Debug, Parser)]
@@ -57,7 +75,16 @@ pub struct FetchOpts {
 }
 
 #[derive(Debug, Parser)]
-pub struct ImportOpts {
+pub struct ImportFileOpts {
+    /// Format must be specified if looking at a file.
+    #[clap(short = 'F', long)]
+    pub format: Option<String>,
+    /// File name (json expected)
+    pub file: PathBuf,
+}
+
+#[derive(Debug, Parser)]
+pub struct ImportSiteOpts {
     /// Start the data at specified date (optional)
     #[clap(short = 'B', long)]
     pub begin: Option<String>,
@@ -68,9 +95,5 @@ pub struct ImportOpts {
     #[clap(long)]
     pub today: bool,
     /// site name
-    #[clap(short = 'S', long)]
     pub site: String,
-    /// File name (json expected
-    #[clap(short = 'F', long)]
-    pub file: PathBuf,
 }
