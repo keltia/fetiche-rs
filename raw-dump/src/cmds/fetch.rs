@@ -1,9 +1,30 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
-use log::trace;
-use sources::Filter;
+use log::{info, trace};
 
-use crate::cli::FetchOpts;
+use sources::{Filter, Site, Sites};
+
+use crate::{FetchOpts, Task};
+
+/// Actual fetching of data from a given site
+///
+pub fn fetch_from_site(cfg: &Sites, fopts: &FetchOpts) -> Result<String> {
+    trace!("fetch_from_site({:?})", fopts.site);
+
+    check_args(&fopts)?;
+
+    let name = &fopts.site;
+    let site = Site::load(name, cfg)?;
+    let filter = filter_from_opts(&fopts)?;
+
+    info!("Fetching from network site {}", name);
+
+    // Full json array with all point
+    //
+    let data = Task::new(name).site(site).with(filter).run()?;
+    trace!("data={}", data);
+    Ok(data)
+}
 
 /// From the CLI options
 ///
@@ -47,7 +68,7 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
 
 /// Check the presence and validity of some of the arguments
 ///
-pub fn check_args(opts: &FetchOpts) -> Result<()> {
+fn check_args(opts: &FetchOpts) -> Result<()> {
     trace!("check_args");
 
     // Do we have options for filter

@@ -13,20 +13,19 @@
 //! to execute it.
 //!
 
-mod cli;
-mod fetch;
-mod task;
-
 use std::path::PathBuf;
-
-use format_specs::Format;
-use sources::{Fetchable, Filter};
 
 /// Re-export
 ///
 pub use cli::*;
-pub use fetch::*;
+pub use cmds::*;
+use format_specs::Format;
+use sources::{Fetchable, Filter};
 pub use task::*;
+
+mod cli;
+mod cmds;
+mod task;
 
 /// Type of task we will need to do
 ///

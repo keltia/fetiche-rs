@@ -1,6 +1,31 @@
+//! Module describing all possible commands and sub-commands to the `acutectl` main driver
+//!
+//!We have three main commands:
+//!
+//! - `adsb`
+//! - `drone`
+//! - `list`
+//!
+//! Both `adsb` and `drone` accept the sub-commands `fetch` & `import`, the main difference is
+//! what is done with the data itself.  Every drone source is converted into state vectors of `DronePoint`
+//! with a timestamp suitable for import into a time-series DB.  ADS-B data will use a different
+//! format with more fields related to planes.
+//!
+//! `fetch` retrieve the raw data (whether it is CSV, JSON or something else is not important) and dumps it
+//! into a file or `stdout`.
+//!
+//! `import` convert data into a data format suitable for importing into a time-series database
+//! ([InfluxDB] at the moment).
+//!
+//! A `Site` is a `Fetchable` object with the corresponding trait methods (`authenticate()` & `fetch()`)
+//! from the `sources` crate.  File formats are from the `format-specs` crate.
+//!
+//! [InfluxDB]: https://www.influxdata.com/
+//!
+
 use std::path::PathBuf;
 
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use clap::{crate_authors, crate_description, crate_name, crate_version, Parser, Subcommand};
 
 /// CLI options
 #[derive(Parser)]
@@ -23,24 +48,75 @@ pub struct Opts {
     /// Display utility full version.
     #[clap(short = 'V', long)]
     pub version: bool,
-    /// Sub-commands
+    /// Sub-commands (see below).
     #[clap(subcommand)]
     pub subcmd: SubCommand,
 }
 
-/// fetch
-/// import
-/// list
+// ------
+
+/// All sub-commands:
+///
+/// `adsb (fetch \ import)`
+/// `drone (fetch | import)`
+/// `list`
+///
 #[derive(Debug, Parser)]
 pub enum SubCommand {
-    /// Fetch data from specified site
-    Fetch(FetchOpts),
-    /// Import into InfluxDB
-    Import(ImportOpts),
+    /// Handle ADS-B data
+    Adsb(AdsbOpts),
+    /// Handle drone data
+    Drone(DroneOpts),
     /// Display possible sources
     List,
 }
 
+// ------
+
+/// All `drone`subcommands:
+///
+/// `drone fetch [-B date] [-E date] [--today] [-o FILE] site`
+/// `drone import (file|site)`
+///
+#[derive(Debug, Parser)]
+pub struct DroneOpts {
+    #[clap(subcommand)]
+    pub subcmd: DroneSubCommand,
+}
+
+#[derive(Debug, Parser)]
+pub enum DroneSubCommand {
+    /// Fetch data from specified site
+    Fetch(FetchOpts),
+    /// Import into InfluxDB
+    Import(ImportOpts),
+}
+
+// ------
+
+/// All `adsb`subcommands:
+///
+/// `adsb fetch [-B date] [-E date] [--today] [-o FILE] site`
+/// `adsb import (file|site)`
+///
+#[derive(Debug, Parser)]
+pub struct AdsbOpts {
+    #[clap(subcommand)]
+    pub subcmd: AdsbSubCommand,
+}
+
+#[derive(Debug, Parser)]
+pub enum AdsbSubCommand {
+    /// Fetch data from specified site
+    Fetch(FetchOpts),
+    /// Import into InfluxDB
+    Import(ImportOpts),
+}
+
+// ------
+
+/// This contain only the `import` sub-commands.
+///
 #[derive(Debug, Parser)]
 pub struct ImportOpts {
     /// Sub-commands
@@ -48,30 +124,19 @@ pub struct ImportOpts {
     pub subcmd: ImportSubCommand,
 }
 
-/// import file
-/// import site
+// ------
+
+/// All `import` sub-commands:
+///
+/// `import file {-F format] path`
+/// `import site [-B date] [-E date] [--today] site`
+///
 #[derive(Debug, Parser)]
 pub enum ImportSubCommand {
-    ImportFileOpts,
-    ImportSiteOpts,
-}
-
-#[derive(Debug, Parser)]
-pub struct FetchOpts {
-    /// Start the data at specified date (optional)
-    #[clap(short = 'B', long)]
-    pub begin: Option<String>,
-    /// End date (optional)
-    #[clap(short = 'E', long)]
-    pub end: Option<String>,
-    /// Output file.
-    #[clap(short = 'o', long)]
-    pub output: Option<PathBuf>,
-    /// We want today only
-    #[clap(long)]
-    pub today: bool,
-    /// site name
-    pub site: String,
+    /// Import from file
+    ImportFile(ImportFileOpts),
+    /// Import from site, using options as fetch
+    ImportSite(FetchOpts),
 }
 
 #[derive(Debug, Parser)]
@@ -83,14 +148,21 @@ pub struct ImportFileOpts {
     pub file: PathBuf,
 }
 
+// ------
+
+/// Shared options for fetching data with basic filtering and an optional output file.
+///
 #[derive(Debug, Parser)]
-pub struct ImportSiteOpts {
+pub struct FetchOpts {
     /// Start the data at specified date (optional)
     #[clap(short = 'B', long)]
     pub begin: Option<String>,
     /// End date (optional)
     #[clap(short = 'E', long)]
     pub end: Option<String>,
+    /// Output file.
+    #[clap(short = 'o', long)]
+    pub output: Option<PathBuf>,
     /// We want today only
     #[clap(long)]
     pub today: bool,

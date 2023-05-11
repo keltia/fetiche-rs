@@ -1,14 +1,13 @@
 use std::collections::btree_map::BTreeMap;
 use std::fs;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::{crate_authors, crate_description, crate_version, Parser};
 use log::{info, trace};
 
-use raw_dump::{check_args, filter_from_opts, Task};
-use raw_dump::{Opts, SubCommand};
-
-use format_specs::{Asd, DronePoint};
+use format_specs::{Asd, DronePoint, Format};
+use raw_dump::{fetch_from_site, filter_from_opts, import_data, DroneSubCommand, Task};
+use raw_dump::{ImportFileOpts, ImportSubCommand, Opts, SubCommand};
 use sources::{Site, Sites};
 
 /// Binary name, using a different binary name
@@ -45,57 +44,45 @@ fn main() -> Result<()> {
 
     let subcmd = opts.subcmd;
     match subcmd {
-        SubCommand::Fetch(fopts) => {
-            // Fetch data
-            //
-            trace!("fetch({:?}", fopts);
-
-            check_args(&fopts)?;
-
-            let name = &fopts.site;
-            let site = Site::load(name, &cfg)?;
-            let filter = filter_from_opts(&fopts)?;
-
-            info!("Fetching from network site {}", name);
-
-            // Full json array with all point
-            //
-            let data = Task::new(name).site(site).with(filter).run()?;
-            trace!("{}", data);
-
-            match fopts.output {
-                Some(output) => {
-                    info!("Writing into {:?}", output);
-                    fs::write(output, format!("{:?}", data))?
-                }
-                _ => println!("{:?}", data),
-            }
+        // Handle `fetch`
+        //
+        SubCommand::Adsb(aopts) => {
+            unimplemented!()
         }
-        SubCommand::Import(opts) => {
-            let mut journeys = BTreeMap::<u32, Vec<DronePoint>>::new();
+        SubCommand::Drone(dopts) => {
+            match dopts.subcmd {
+                DroneSubCommand::Fetch(fopts) => {
+                    let data = fetch_from_site(&cfg, &fopts)?;
 
-            // Transform into our `Drone` struct and sort it by "journey"
-            //
-            let data: Vec<Asd> = serde_json::from_str(&data)?;
-            let data: Vec<(u32, DronePoint)> = data
-                .iter()
-                .map(|e| {
-                    let d = DronePoint::from(e);
-                    (d.journey, d.clone())
-                })
-                .map(|(j, d)| {
-                    let list = match journeys.get_mut(&j) {
-                        Some(list) => {
-                            list.push(d);
-                            list
+                    match &fopts.output {
+                        Some(output) => {
+                            info!("Writing into {:?}", output);
+                            fs::write(output, format!("{:?}", data))?
                         }
-                        _ => vec![d],
-                    };
-                    journeys.update(j, list)
-                })
-                .collect();
+                        /// stdout otherwise
+                        ///
+                        _ => println!("{:?}", data),
+                    }
+                }
+                // Handle `import site`  and `import file`
+                //
+                DroneSubCommand::Import(opts) => match opts.subcmd {
+                    ImportSubCommand::ImportSite(fopts) => {
+                        let fmt = Site::load(&fopts.site, &cfg)?;
+                        let fmt = fmt.format();
 
-            info!("{} journey points found.", data.len());
+                        let data = fetch_from_site(&cfg, &fopts)?;
+
+                        import_data(&cfg, &data, fmt)?;
+                    }
+                    ImportSubCommand::ImportFile(if_opts) => {
+                        let data = fs::read_to_string(if_opts.file)?;
+                        let fmt = Format::from(if_opts.format.unwrap().as_str());
+
+                        import_data(&cfg, &data, fmt)?;
+                    }
+                },
+            }
         }
         SubCommand::List => {
             info!("Listing all sources:");
