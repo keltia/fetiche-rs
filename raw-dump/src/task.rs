@@ -98,7 +98,7 @@ impl Task {
                 debug!("{}", &data);
                 Ok(data)
             }
-            Input::File { path, .. } => fs::read_to_string(path)?,
+            Input::File { path, .. } => Ok(fs::read_to_string(path)?),
             Input::Nothing => Err(anyhow!("no format-specs specified")),
         }
     }
