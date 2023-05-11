@@ -1,2 +1,2 @@
 [workspace]
-members = ["format-specs", "cat21conv", "curves", "import-adsb", "raw-dump", "sources"]
+members = ["acutectl", "cat21conv", "curves", "format-specs", "import-adsb", "sources"]
