@@ -78,3 +78,39 @@ macro_rules! http_post_auth {
             .send()
     };
 }
+
+/// Call the HTTP client with the proper arguments for BASIC authentication
+///
+/// - auth call to fetch data with submitting data
+/// - auth call to fetch data
+///
+#[macro_export]
+macro_rules! http_get_basic {
+    ($self:ident, $url:ident, $user:ident, $pwd:ident, $data:expr) => {
+        $self
+            .client
+            .clone()
+            .get($url)
+            .basic_auth($user, Some($pwd))
+            .header(
+                "user-agent",
+                format!("{}/{}", crate_name!(), crate_version!()),
+            )
+            .header("content-type", "application/json")
+            .json($data)
+            .send()
+    };
+    ($self:ident, $url:ident, $user:ident, $pwd:ident) => {
+        $self
+            .client
+            .clone()
+            .get($url)
+            .basic_auth($user, Some($pwd))
+            .header(
+                "user-agent",
+                format!("{}/{}", crate_name!(), crate_version!()),
+            )
+            .header("content-type", "application/json")
+            .send()
+    };
+}
