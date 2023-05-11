@@ -1,14 +1,17 @@
 //! OpenSky (.org) specific data
 //!
 
-use log::trace;
+use anyhow::anyhow;
+use clap::{crate_name, crate_version};
+use log::{debug, trace};
 use reqwest::blocking::Client;
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
 use format_specs::Cat21;
 use format_specs::Format;
 
-use crate::Fetchable;
+use crate::{http_get_basic, Fetchable};
 use crate::{Auth, Site};
 
 #[derive(Clone, Debug)]
@@ -96,11 +99,29 @@ impl Fetchable for Opensky {
     fn fetch(&self, token: &str, args: &str) -> anyhow::Result<String> {
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
-        trace!("fetch(as {})", login);
+        trace!("fetch(as {}:{})", login, password);
 
         let url = format!("{}{}", self.base_url, self.get);
-        trace!("Fetching token through {}…", url);
-        Ok("".to_string())
+        trace!("Fetching data from {}…", url);
+
+        let resp = http_get_basic!(self, url, login, password)?;
+
+        debug!("{:?}", &resp);
+
+        // Check status
+        //
+        match resp.status() {
+            StatusCode::OK => {
+                trace!("OK");
+            }
+            code => {
+                let h = &resp.headers();
+                return Err(anyhow!("Error({}): {:?}", code, h));
+            }
+        }
+
+        let resp = resp.text()?;
+        Ok(resp)
     }
 
     fn process(&self, input: String) -> anyhow::Result<Vec<Cat21>> {
