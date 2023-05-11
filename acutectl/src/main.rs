@@ -57,7 +57,7 @@ fn main() -> Result<()> {
                     match &fopts.output {
                         Some(output) => {
                             info!("Writing into {:?}", output);
-                            fs::write(output, format!("{:?}", data))?
+                            fs::write(output, data)?
                         }
                         /// stdout otherwise
                         ///
