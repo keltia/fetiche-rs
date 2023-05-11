@@ -1,6 +1,6 @@
 [package]
-name = "raw-dump"
-version = "0.1.0"
+name = "acutectl"
+version = "0.2.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "CLI utility to fetch data."
