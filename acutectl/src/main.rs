@@ -48,11 +48,16 @@ fn main() -> Result<()> {
         // Handle `fetch`
         //
         SubCommand::Adsb(aopts) => {
+            trace!("adsb");
+
             unimplemented!()
         }
         SubCommand::Drone(dopts) => {
-            match dopts.subcmd {
+            trace!("drone");
+
+            match &dopts.subcmd {
                 DroneSubCommand::Fetch(fopts) => {
+                    trace!("drone fetch");
                     let data = fetch_from_site(&cfg, &fopts)?;
 
                     match &fopts.output {
@@ -78,11 +83,13 @@ fn main() -> Result<()> {
 
                         let data = fetch_from_site(&cfg, &fopts)?;
 
-                        import_data(&cfg, &data, fmt)?;
-                    }
-                    ImportSubCommand::ImportFile(if_opts) => {
-                        let data = fs::read_to_string(if_opts.file)?;
-                        let fmt = Format::from(if_opts.format.unwrap().as_str());
+                            import_data(&cfg, &data, fmt)?;
+                        }
+                        ImportSubCommand::ImportFile(if_opts) => {
+                            trace!("drone import file");
+
+                            let data = fs::read_to_string(&if_opts.file)?;
+                            let fmt = Format::from(if_opts.format.clone().unwrap().as_str());
 
                             import_data(&cfg, &data, fmt)?;
                         }
