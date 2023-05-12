@@ -36,7 +36,7 @@ fn main() -> Result<()> {
 
     // Banner
     //
-    writeln!(io::stdout(), "{}", version())?;
+    writeln!(io::stderr(), "{}", version())?;
 
     // Load default config if nothing is specified
     //
