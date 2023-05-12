@@ -28,7 +28,7 @@ anyhow = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo"] }
 csv = "1.1.6"
-format-specs = { version = "0.9", path = "../format-specs" }
+format-specs = { version = "0", path = "../format-specs" }
 hcl-rs = "0.14"
 home = "0.5"
 httpmock = { version = "0.6", features = ["colored", "color", "clap"] }

@@ -6,21 +6,22 @@ version = 3
 name = "acutectl"
 version = "0.2.0"
 dependencies = [
- "anyhow",
- "assert_cmd",
- "async-std",
- "chrono",
- "clap",
- "csv",
- "env_logger",
- "format-specs",
- "hcl-rs",
- "home",
- "httpmock",
- "influxdb",
- "log",
- "percent-encoding",
- "reqwest",
+    "anyhow",
+    "assert_cmd",
+    "async-std",
+    "chrono",
+    "clap",
+    "clap_complete",
+    "csv",
+    "env_logger",
+    "format-specs",
+    "hcl-rs",
+    "home",
+    "httpmock",
+    "influxdb",
+    "log",
+    "percent-encoding",
+    "reqwest",
  "serde",
  "serde_json",
  "serde_repr",
@@ -537,12 +538,21 @@ version = "4.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "84080e799e54cff944f4b4a4b0e71630b0e0443b25b985175c7dddc1a859b749"
 dependencies = [
- "anstream",
- "anstyle",
- "bitflags",
- "clap_lex",
- "once_cell",
- "strsim",
+    "anstream",
+    "anstyle",
+    "bitflags",
+    "clap_lex",
+    "once_cell",
+    "strsim",
+]
+
+[[package]]
+name = "clap_complete"
+version = "4.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36774babb166352bb4f7b9cb16f781ffa3439d2a8f12cd31bea85a38c888fea3"
+dependencies = [
+    "clap",
 ]
 
 [[package]]
@@ -551,9 +561,9 @@ version = "4.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9644cd56d6b87dbe899ef8b053e331c0637664e9e21a33dfcdc36093f5c5c4"
 dependencies = [
- "heck",
- "proc-macro2",
- "quote",
+    "heck",
+    "proc-macro2",
+    "quote",
  "syn 2.0.15",
 ]
 
@@ -1045,19 +1055,20 @@ dependencies = [
 
 [[package]]
 name = "format-specs"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
- "anyhow",
- "chrono",
- "csv",
- "influxdb",
- "log",
- "percent-encoding",
- "reqwest",
- "serde",
- "serde_json",
- "serde_repr",
- "stderrlog",
+    "anyhow",
+    "chrono",
+    "csv",
+    "hcl-rs",
+    "influxdb",
+    "log",
+    "percent-encoding",
+    "reqwest",
+    "serde",
+    "serde_json",
+    "serde_repr",
+    "stderrlog",
 ]
 
 [[package]]
@@ -1253,30 +1264,30 @@ dependencies = [
 
 [[package]]
 name = "hcl-primitives"
-version = "0.0.3"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8307878d3109f6972d7ad3bfc1f10aab86bed76cc734a283bed85da813fccc57"
+checksum = "f6b293c5397cb844292c1205a91899ab0e65cb2bed7a7794ee95038945059a74"
 dependencies = [
- "itoa",
- "kstring",
- "ryu",
- "serde",
- "unicode-ident",
+    "itoa",
+    "kstring",
+    "ryu",
+    "serde",
+    "unicode-ident",
 ]
 
 [[package]]
 name = "hcl-rs"
-version = "0.14.1"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6feb00a502b5caa84101f28d8c52310456ba2916cfedc5ade757906c4349b32b"
+checksum = "cd33f7c4bdc89b0d4193395eb9a5147619c697beb2336b5faf04d910ad42620e"
 dependencies = [
- "hcl-primitives",
- "indexmap",
- "itoa",
- "pest",
- "pest_derive",
- "serde",
- "vecmap-rs",
+    "hcl-primitives",
+    "indexmap",
+    "itoa",
+    "pest",
+    "pest_derive",
+    "serde",
+    "vecmap-rs",
 ]
 
 [[package]]
@@ -2818,23 +2829,22 @@ dependencies = [
 
 [[package]]
 name = "sources"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "csv",
- "format-specs",
- "hcl-rs",
- "home",
- "httpmock",
- "log",
+    "anyhow",
+    "chrono",
+    "clap",
+    "csv",
+    "format-specs",
+    "hcl-rs",
+    "home",
+    "httpmock",
+    "log",
  "percent-encoding",
  "reqwest",
  "serde",
  "serde_json",
  "serde_repr",
- "stderrlog",
 ]
 
 [[package]]

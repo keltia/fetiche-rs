@@ -26,7 +26,7 @@ chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 csv = "1.1.6"
 env_logger = "0.10.0"
-format-specs = { version = "0.9.0", path = "../format-specs" }
+format-specs = { version = "0", path = "../format-specs" }
 hcl-rs = "0.14"
 home = "0.5.4"
 influxdb2 = "0.4.0"
