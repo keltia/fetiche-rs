@@ -1,5 +1,6 @@
 use std::fs;
 use std::io;
+use std::io::Write;
 
 use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
@@ -35,7 +36,7 @@ fn main() -> Result<()> {
 
     // Banner
     //
-    println!("{}", version());
+    writeln!(io::stdout(), "{}", version())?;
 
     // Load default config if nothing is specified
     //
