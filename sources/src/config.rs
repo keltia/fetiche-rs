@@ -17,8 +17,8 @@ use serde::{Deserialize, Serialize};
 use crate::Site;
 
 /// Default configuration filename
-const CONFIG: &str = "config.hcl";
-const CVERSION: usize = 1;
+const CONFIG: &str = "sources.hcl";
+const CVERSION: usize = 2;
 
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
