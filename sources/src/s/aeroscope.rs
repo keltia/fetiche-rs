@@ -95,7 +95,7 @@ impl Aeroscope {
                 _ => panic!("nope"),
             }
         }
-        self.get = site.cmd.get.to_owned();
+        self.get = site.route("get").unwrap().to_owned();
         self
     }
 }
