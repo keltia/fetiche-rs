@@ -25,7 +25,9 @@
 
 use std::path::PathBuf;
 
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser, Subcommand};
+use clap::{
+    crate_authors, crate_description, crate_name, crate_version, Parser, Subcommand, ValueEnum,
+};
 
 /// CLI options
 #[derive(Parser)]

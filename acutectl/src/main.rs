@@ -7,8 +7,10 @@ use clap::{crate_authors, crate_description, crate_version, CommandFactory, Pars
 use clap_complete::generate;
 use log::{info, trace};
 
-use acutectl::{fetch_from_site, import_data, DroneSubCommand};
-use acutectl::{ImportSubCommand, Opts, SubCommand};
+use acutectl::{
+    fetch_from_site, import_data, list_formats, list_sources, DroneSubCommand, ImportSubCommand,
+    ListSubCommand, Opts, SubCommand,
+};
 use format_specs::Format;
 use sources::{Site, Sites};
 
