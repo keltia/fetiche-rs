@@ -7,6 +7,7 @@
 //! file which will define the input format-specs and the transformations needed.
 //!
 
+use std::collections::BTreeMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::Read;
 
@@ -32,6 +33,30 @@ mod drone;
 mod influx;
 mod opensky;
 mod safesky;
+
+// -----
+
+/// For each format, we define a set of key attributes that will get displayed.
+///
+#[derive(Debug, Deserialize)]
+pub struct FormatDescr {
+    /// Free text description
+    pub description: String,
+    /// Source
+    pub source: String,
+    /// URL to the site where this is defined
+    pub url: String,
+}
+
+/// >Struct to be read from an HCL file at compile-time
+///
+#[derive(Debug, Deserialize)]
+pub struct FormatFile {
+    /// Version
+    pub version: usize,
+    /// Ordered list of format metadata
+    pub format: BTreeMap<String, FormatDescr>,
+}
 
 /// This struct holds the different data formats that we support.
 ///
@@ -68,9 +93,9 @@ macro_rules! into_cat21 {
 }
 
 impl Format {
-    // Process each record coming from the input source, apply `Cat::from()` onto it
-    // and return the list.  This is used when reading from the csv files.
-    //
+    /// Process each record coming from the input source, apply `Cat::from()` onto it
+    /// and return the list.  This is used when reading from the csv files.
+    ///
     pub fn from_csv<T>(self, rdr: &mut Reader<T>) -> Result<Vec<Cat21>>
     where
         T: Read,
@@ -88,6 +113,26 @@ impl Format {
             })
             .collect();
         Ok(res)
+    }
+
+    /// List all supported formats into a string
+    ///
+    pub fn list() -> Result<String> {
+        let descr = include_str!("formats.hcl");
+        let fstr: FormatFile = hcl::from_str(descr)?;
+        let allf = fstr
+            .format
+            .iter()
+            .map(|(name, entry)| {
+                format!(
+                    "{:12}{}\n{:12}Source: {} -- URL: {}",
+                    name, entry.description, "", entry.source, entry.url
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        let str = format!("List all formats:\n\n{allf}");
+        Ok(str)
     }
 }
 

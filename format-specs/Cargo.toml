@@ -1,6 +1,6 @@
 [package]
 name = "format-specs"
-version = "0.9.0"
+version = "0.10.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Various input file formats for drone utilities."
@@ -27,6 +27,7 @@ maintenance = { status = "actively-developed" }
 anyhow = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 csv = "1.1"
+hcl-rs = "0.14"
 influxdb = { version = "0.6", features = ["derive"] }
 log = { version = "0.4", features = ["serde", "std"] }
 percent-encoding = "2.2"
