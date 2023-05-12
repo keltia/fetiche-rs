@@ -43,7 +43,7 @@ fn main() -> Result<()> {
     let cfg = Sites::load(&Some(cfn))?;
     info!("{:?} sources loaded", cfg.len());
 
-    let subcmd = opts.subcmd;
+    let subcmd = &opts.subcmd;
     match subcmd {
         // Handle `fetch`
         //
@@ -67,10 +67,14 @@ fn main() -> Result<()> {
                 }
                 // Handle `import site`  and `import file`
                 //
-                DroneSubCommand::Import(opts) => match opts.subcmd {
-                    ImportSubCommand::ImportSite(fopts) => {
-                        let fmt = Site::load(&fopts.site, &cfg)?;
-                        let fmt = fmt.format();
+                DroneSubCommand::Import(opts) => {
+                    trace!("drone import");
+
+                    match &opts.subcmd {
+                        ImportSubCommand::ImportSite(fopts) => {
+                            trace!("drone import site");
+
+                            let fmt = Site::load(&fopts.site, &cfg)?.format();
 
                         let data = fetch_from_site(&cfg, &fopts)?;
 
