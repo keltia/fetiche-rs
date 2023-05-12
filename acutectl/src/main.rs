@@ -45,13 +45,15 @@ fn main() -> Result<()> {
 
     let subcmd = &opts.subcmd;
     match subcmd {
-        // Handle `fetch`
+        // Handle `adsb` commands
         //
         SubCommand::Adsb(aopts) => {
             trace!("adsb");
 
             unimplemented!()
         }
+        // Handle `drone` commands
+        //
         SubCommand::Drone(dopts) => {
             trace!("drone");
 
@@ -65,8 +67,8 @@ fn main() -> Result<()> {
                             info!("Writing into {:?}", output);
                             fs::write(output, data)?
                         }
-                        /// stdout otherwise
-                        ///
+                        // stdout otherwise
+                        //
                         _ => println!("{:?}", data),
                     }
                 }
@@ -81,7 +83,7 @@ fn main() -> Result<()> {
 
                             let fmt = Site::load(&fopts.site, &cfg)?.format();
 
-                        let data = fetch_from_site(&cfg, &fopts)?;
+                            let data = fetch_from_site(&cfg, &fopts)?;
 
                             import_data(&cfg, &data, fmt)?;
                         }
