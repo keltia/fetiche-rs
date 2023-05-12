@@ -70,7 +70,7 @@ pub enum SubCommand {
     /// Handle drone data
     Drone(DroneOpts),
     /// Display possible sources
-    List,
+    List(ListOpts),
 }
 
 // ------
@@ -163,6 +163,27 @@ pub struct ComplOpts {
 }
 
 // ------
+
+/// All  list` sub-commands:
+///
+/// `list formats`
+/// `list sources`
+///
+#[derive(Debug, Parser)]
+pub struct ListOpts {
+    #[clap(value_parser)]
+    pub cmd: ListSubCommand,
+}
+
+/// These are the sub-commands for `list
+///
+#[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq, ValueEnum)]
+pub enum ListSubCommand {
+    /// List all formats in `format-specs`
+    Formats,
+    /// List all sources from `sources.hcl`
+    Sources,
+}
 
 /// Shared options for fetching data with basic filtering and an optional output file.
 ///

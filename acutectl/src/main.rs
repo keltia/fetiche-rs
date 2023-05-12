@@ -111,11 +111,20 @@ fn main() -> Result<()> {
         }
         // Standalone `list` command
         //
-        SubCommand::List => {
-            info!("Listing all sources:");
-            cfg.iter()
-                .for_each(|(name, site)| println!("{} = {}", name, site))
-        }
+        SubCommand::List(lopts) => match lopts.cmd {
+            ListSubCommand::Sources => {
+                info!("Listing all sources:");
+
+                let str = list_sources(&cfg)?;
+                writeln!(io::stderr(), "{}", str)?;
+            }
+            ListSubCommand::Formats => {
+                info!("Listing all formats!");
+
+                let str = list_formats()?;
+                writeln!(io::stderr(), "{}", str)?;
+            }
+        },
     }
     Ok(())
 }
