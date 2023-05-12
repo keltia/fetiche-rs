@@ -183,10 +183,10 @@ impl Sites {
             create_dir_all(dir)?
         }
 
-        // Copy content of `config.hcl`  into place.
+        // Copy content of `sources.hcl`  into place.
         //
         let fname: PathBuf = makepath!(&dir, CONFIG);
-        let content = include_str!("config.hcl");
+        let content = include_str!("sources.hcl");
         fs::write(fname, content)
     }
 
