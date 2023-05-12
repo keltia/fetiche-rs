@@ -2,7 +2,7 @@
 
 # drone-utils
 
-> **Library to import/fetch/transform various aeronautical data into Cat21-like format**
+> **Library to import/fetch/transform various aeronautical data**
 
 [![Build status](https://github.com/keltia/drone-gencsv/actions/workflows/rust.yml/badge.svg)](https://github.com/keltia/drone-gencsv/actions/workflows/rust.yml)
 [![Buildstatus (develop)](https://github.com/keltia/drone-gencsv/actions/workflows/develop.yml/badge.svg)](https://github.com/keltia/drone-gencsv/actions/workflows/develop.yml)
@@ -29,15 +29,17 @@ Licensed under the [MIT](LICENSE) license.
 This is a set of libraries and utilities dealing with various data formats and import/conversion utilities for
 Aeronautical data about drones and aircraft.
 
-This is now divided into 4 different crates with two libraries (`format-specs` and `sites`) shared by the two
-binary crates (`cat21conv`  and `import-adsb`).
+This is now divided into 4 different crates with two libraries (`format-specs` and `sources`) shared by the two
+binary crates (`acutectl`  and `import-adsb`).
 
-These libraries support different formats (`format-specs`) and access methods (`sites`).
+These libraries support different formats (`format-specs`) and access methods (`sources`).
 
-Binary crates include a command-line utility called `cat21conv` to
-perform import from a file, fetching data from different sites. This program has been enhanced to cover both file and
-network input and as well to support more input formats. The second binary CLI utility will be used to import ADS-B
-data into tables on a MySQL/MariaDB/Postgres DB.
+Binary crate include a command-line utility called `acutectl` to
+perform import from a file or fetching data from different sites. This program has been enhanced to cover both file and
+network input and as well to support more input formats.
+
+In a second phase, `acutectl` will be used to import ADS-B data into tables on a MySQL/MariaDB/Postgres/InfluxDB
+database.
 
 ## History
 
@@ -54,7 +56,7 @@ It might be available at some point as crates on [Crates.io]  but for the moment
 [GitHub]. Installation can be done either through a compiled binary for your platform or by cloning the repo and
 compiling.
 
-### Features
+### Cargo Features
 
 There is one feature enabled by default, called `privacy`. This is for truncating the drone ID to a less-easily
 identifiable value. See `Cargo.toml` for this.
@@ -63,52 +65,57 @@ This is intentionally *not* a run-time option but a compile-time one.
 
 ## Usage
 
-For the moment, there is only one binary called `cat21conv` (with `.exe` on Windows). In the hear future, there will
-be `import-adsb` made to import Safesky and Opensky ADS-B data into a database.
+For the moment, there is only one binary called `acutectl` (with `.exe` on Windows). It can be used to fetch data into
+their native format (csv, json) or import said data into a database.
 
 <details>
-<summary>cat21conv</summary>
+<summary>acutectl</summary>
 
 ```text
-$ cat21conv
-CLI utility to convert Aeroscope data into Cat21 CSV.
+$ acutectl
+CLI utility to fetch data.
 
-Usage: cat21conv [OPTIONS] [INPUT]
+Usage: acutectl [OPTIONS] <COMMAND>
 
-Arguments:
-  [INPUT]  Input file
+Commands:
+  adsb        Handle ADS-B data
+  completion  Generate Completion stuff
+  drone       Handle drone data
+  list        Display possible sources
+  help        Print this message or the help of the given subcommand(s)
 
 Options:
-  -B, --begin <BEGIN>      Start the data at specified date (optional)
-  -c, --config <CONFIG>    configuration file
-  -D, --debug              debug mode
-  -E, --end <END>          End date (optional)
-  -F, --format <FORMAT>    Format must be specified if looking at a file
-  -o, --output <OUTPUT>    Output file
-  -S, --site <SITE>        Site to fetch data from
-      --today              We want today only
-  -v, --verbose <VERBOSE>  Verbose mode
-  -V, --version            Display utility full version
-  -h, --help               Print help information
+  -c, --config <CONFIG>  configuration file
+  -D, --debug            debug mode
+  -o, --output <OUTPUT>  Output file
+  -v, --verbose...       Verbose mode
+  -V, --version          Display utility full version
+  -h, --help             Print help
 ```
 
 </details>
 
-All the configuration side of things is handled by the `sites` crate.
+As seen, there are different sub-commands. You can use `acutectl help <sub-command>`  to get description of the
+different
+parameters.
 
-On UNIX, it is located in `$HOME/.config/drone-utils/config.hcl` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
+The configuration for the different sources of data is handled by the `source` crate in [HCL] file format.
+
+On UNIX, it is located in `$HOME/.config/drone-utils/source.hcl` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
 
 There are only a few parameters for now, the most important one being the credentials for authenticate against the
-network endpoint. You can specify the different network endpoints:
+network endpoint. You can specify the different network endpoints. The current config file version is 2 as the `cmd`
+field was renamed into `routes`.
 
-The utilities use a configuration file called `config.hcl` in the [HCL] file format. `import-adsb`  will also use
-another one called `dbfile.toml`  located in the same directory.
+The `completion`  keyword can be used to generate completion sciprts for various shells incl `zsh` and `powershell`.
+
+`acutectl <key> import`  will also use another one called `dbfile.hcl`  located in the same directory.
 
 <details>
 <summary>config.toml</summary>
 
 ```hcl
-default = "local"
+version = 2
 
 sites "local" {
   format   = "aeroscope"
@@ -118,7 +125,7 @@ sites "local" {
     password = "NOPE"
     token    = "/login"
   }
-  cmd = {
+  routes = {
     get = "/drone/get"
   }
 }
@@ -131,7 +138,7 @@ sites "big.site.aero" {
     password = "GUESS"
     token    = "/api/security"
   }
-  cmd = {
+  routes = {
     get = "/api/journeys/filteredlocations"
   }
 }
@@ -143,7 +150,7 @@ sites "opensky" {
     login    = "anyone"
     password = "NOPE"
   }
-  cmd = {
+  routes = {
     get = "/state/own"
   }
 }
@@ -154,7 +161,7 @@ sites "safesky" {
   auth     = {
     api_key = "foobar"
   }
-  cmd = {
+  routes = {
     get = "/v1/beacons"
   }
 }
@@ -162,52 +169,34 @@ sites "safesky" {
 
 As you can see, there are sites that require you to supply a login & password and others which don't.
 
-The site name is supplied through the `-S/--site` option. If you are just giving the utility a file, you must specifiy
-the input format with the `-F/--format` option.
+If you are just giving the utility a file, you must specifiy the input format with the `-F/--format` option.
 </details>
 
-`import-adsb` is here to facilitate import of ADS-B data into a specific database:
+Here is an example of `dbfile.hcl`:
 
 <details>
-<summary>import-adsb</summary>
+<summary>dbfile.hcl</summary>
 
-```text
-CLI utility to import ADS-B data.
+```hcl
+version = "1"
 
-Usage: import-adsb [OPTIONS] <COMMAND>
+db "local" {
+  type   = sqlite
+  format = "dronepoint"
+  file   = "sqlite:///var/db/adsb.sqlite"
+}
 
-Commands:
-  create-db
-  import
-  help       Print this message or the help of the given subcommand(s)
+db "next" {
+  type   = pgsql
+  format = "opensky"
+  url    = "pgsql://mydbserver:5432/adsb-data"
+}
 
-Options:
-  -c, --config <CONFIG>  configuration file
-  -d, --dbfile <DBFILE>  DB connection file
-  -D, --debug            debug mode
-  -F, --format <FORMAT>  Format must be specified if looking at a file
-  -S, --site <SITE>      Site to fetch data from
-  -v, --verbose...       Verbose mode
-  -V, --version          Display utility full version
-  -h, --help             Print help information
-```
-</details>
-
-Here is an example of `dbfile.toml`:
-
-<details>
-<summary>dbfile.toml</summary>
-
-```toml
-default = "sqlite"
-
-[db.sqlite]
-format = "adsb"
-url = "sqlite:///var/db/adsb.sqlite"
-
-[db.pgsql]
-format = "opensky"
-url = "pgsql://mydbserver:5432/adsb-data"
+db "time" {
+  type  = influxdb
+  url   = "http://localhost:8600"
+  token = "NOT DISCLOSED HERE"
+}
 ```
 </details>
 
@@ -216,14 +205,14 @@ url = "pgsql://mydbserver:5432/adsb-data"
 The default input format is the one used by the Aeroscope from ASD, but it will soon support the format used
 by [Safesky] site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
 
-These are described in the `src/format/aeroscope.rs`, `src/format/asd.rs` and `src/format/safesky.rs` files. There are
-also transformations in each case when converting into our CSV-based Cat21-like format.
+These are described in the `format-specs/src/s/aeroscope.rs`, `format-specs/src/s/asd.rs`
+and `format-specs/src/s/safesky.rs`
+files. There are also transformations in each case when converting into our CSV-based Cat21-like format.
 
-### Cat21
+### DronePoint
 
-Our own Cat21-like format is named because it uses the field names coming from the [ASTERIX] specifications (although
-everything is flat in a csv so enums are flattened as well). See `src/format/mod.rs` in `format-specs` for the
-description.
+`DronePoint` is a common data model extracted from the data sent by [ASD] with some fields with different types (like
+actual `f32` instead of the string format) and real timestamp.
 
 ## MSRV
 
@@ -242,6 +231,7 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - ~~fetch and analyse from Aeroscope~~
 - ~~fetch and analyse from Asd~~
 - ~~divide into crates for sharing more code.~~
+- ~~use a common data model for drone data~~
 - Add more tests & benchmarks.
 - support for Safesky
 - Support for Opensky (WIP)
