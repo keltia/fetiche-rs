@@ -32,7 +32,7 @@ log = { version = "0.4", features = ["serde", "std"] }
 percent-encoding = "2"
 reqwest = { version = "0", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
 serde = { version = "1.0", features = ["derive"] }
-sources = { version = "0.4", path = "../sources" }
+sources = { version = "0", path = "../sources" }
 
 [dev-dependencies]
 assert_cmd = "2.0"
