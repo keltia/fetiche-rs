@@ -1,6 +1,6 @@
 // Safety check
 //
-version = 1
+version = 2
 
 site "eih" {
   format   = "aeroscope"
@@ -10,21 +10,35 @@ site "eih" {
     password = "NOPE"
     token    = "/login"
   }
-  cmd = {
+  routes = {
     get = "/drone/get"
   }
 }
 
 site "asd" {
   format   = "asd"
-  base_url = "https://eur.airspacedrone.com"
+  base_url = "https://eur.airspacedrone.com/api"
   auth     = {
     login    = "USERNAME"
     password = "GUESS"
-    token    = "/api/security"
+    token    = "/security/login"
   }
-  cmd = {
-    get = "/api/journeys/filteredlocations/json"
+  routes = {
+    get = "/journeys/filteredlocations/json"
+  }
+}
+
+site "lux" {
+  format   = "asd"
+  base_url = "https://eur.airspacedrone.com/api"
+  auth     = {
+    login    = "USERNAME"
+    password = "GUESS"
+    token    = "/security/login"
+  }
+  routes = {
+    list = "/journeys"
+    get  = "/journeys/$1"
   }
 }
 
@@ -46,7 +60,7 @@ site "safesky" {
   auth     = {
     api_key = "foobar"
   }
-  cmd = {
+  routes = {
     get = "/v1/beacons"
   }
 }
