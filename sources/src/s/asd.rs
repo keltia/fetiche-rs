@@ -139,7 +139,7 @@ impl Asd {
                 _ => panic!("nope"),
             }
         }
-        self.get = site.routes.get.to_owned();
+        self.get = site.route("get").unwrap().to_owned();
         self
     }
 }
