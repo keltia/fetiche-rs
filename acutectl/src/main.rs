@@ -99,11 +99,15 @@ fn main() -> Result<()> {
                 }
             }
         }
+        // Standalone completion generation
+        //
+        // NOTE: you can generate UNIX shells completion on Windows and vice-versa.  Not worth
+        //       trying to limit depending on the OS.
+        //
         SubCommand::Completion(copts) => {
             let generator = copts.shell;
             generate(generator, &mut Opts::command(), NAME, &mut io::stdout());
         }
-
         // Standalone `list` command
         //
         SubCommand::List => {
