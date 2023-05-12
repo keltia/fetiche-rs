@@ -14,6 +14,8 @@ pub fn list_formats() -> Result<String> {
 
 /// Fetch all the different sources available.
 ///
+/// TODO: we need a Sites::list() like for formats-specs above.
+///
 pub fn list_sources(cfg: &Sites) -> Result<String> {
     let str = cfg
         .iter()
