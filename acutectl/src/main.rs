@@ -1,13 +1,14 @@
-use std::collections::btree_map::BTreeMap;
 use std::fs;
+use std::io;
 
-use anyhow::{bail, Result};
-use clap::{crate_authors, crate_description, crate_version, Parser};
+use anyhow::Result;
+use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
+use clap_complete::generate;
 use log::{info, trace};
 
-use acutectl::{fetch_from_site, filter_from_opts, import_data, DroneSubCommand, Task};
-use acutectl::{ImportFileOpts, ImportSubCommand, Opts, SubCommand};
-use format_specs::{Asd, DronePoint, Format};
+use acutectl::{fetch_from_site, import_data, DroneSubCommand};
+use acutectl::{ImportSubCommand, Opts, SubCommand};
+use format_specs::Format;
 use sources::{Site, Sites};
 
 /// Binary name, using a different binary name
@@ -79,11 +80,19 @@ fn main() -> Result<()> {
                         let data = fs::read_to_string(if_opts.file)?;
                         let fmt = Format::from(if_opts.format.unwrap().as_str());
 
-                        import_data(&cfg, &data, fmt)?;
+                            import_data(&cfg, &data, fmt)?;
+                        }
                     }
-                },
+                }
             }
         }
+        SubCommand::Completion(copts) => {
+            let generator = copts.shell;
+            generate(generator, &mut Opts::command(), NAME, &mut io::stdout());
+        }
+
+        // Standalone `list` command
+        //
         SubCommand::List => {
             info!("Listing all sources:");
             cfg.iter()

@@ -65,6 +65,8 @@ pub struct Opts {
 pub enum SubCommand {
     /// Handle ADS-B data
     Adsb(AdsbOpts),
+    /// Generate Completion stuff
+    Completion(ComplOpts),
     /// Handle drone data
     Drone(DroneOpts),
     /// Display possible sources
@@ -146,6 +148,18 @@ pub struct ImportFileOpts {
     pub format: Option<String>,
     /// File name (json expected)
     pub file: PathBuf,
+}
+
+// ------
+
+use clap_complete::shells::Shell;
+
+/// Options to generate completion files at runtime
+///
+#[derive(Debug, Parser)]
+pub struct ComplOpts {
+    #[clap(value_parser)]
+    pub shell: Shell,
 }
 
 // ------
