@@ -1,3 +1,15 @@
+//!  Module that defines what is a site (website, API endpoint, etc.)
+//!
+//! This is used to configure the list of possible sources through `sources.hcl`.
+//!
+//! Sites can have different ways to authenticate (or not) the request, some require to
+//! fetch a token first, some use an API key directly.
+//!
+//! You can define a set of possible routes for a site depending on how the API/site is
+//! designed.
+//!
+
+use std::collections::BTreeMap;
 use std::fmt::{Debug, Display, Formatter};
 
 use anyhow::{anyhow, Result};
@@ -96,14 +108,7 @@ impl Site {
     /// Basic `new()`
     ///
     pub fn new() -> Self {
-        Site {
-            format: "".to_string(),
-            base_url: "".to_string(),
-            auth: None,
-            cmd: Routes {
-                get: "".to_string(),
-            },
-        }
+        Site::default()
     }
 
     /// Load site by checking whether it is present in the configuration file
