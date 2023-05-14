@@ -82,7 +82,6 @@ impl Display for Auth {
     }
 }
 
-#[macro_export]
 macro_rules! insert_format {
     ($name:ident, $fmt:ident, $site:ident, $($list:ident),+)  => {
         match $fmt {
@@ -176,7 +175,7 @@ mod tests {
     use super::*;
 
     fn set_default() -> Sites {
-        hcl::from_str(include_str!("config.hcl")).unwrap()
+        hcl::from_str(include_str!("sources.hcl")).unwrap()
     }
 
     #[test]
@@ -200,7 +199,7 @@ mod tests {
         let s = set_default();
 
         assert!(!s.is_empty());
-        assert_eq!(4, s.len());
+        assert_eq!(5, s.len());
 
         for (name, s) in s.iter() {
             match name.as_str() {
