@@ -29,17 +29,17 @@ Licensed under the [MIT](LICENSE) license.
 This is a set of libraries and utilities dealing with various data formats and import/conversion utilities for
 Aeronautical data about drones and aircraft.
 
-This is now divided into 4 different crates with two libraries (`format-specs` and `sources`) shared by the two
-binary crates (`acutectl`  and `import-adsb`).
+This is now divided into 4 different crates with two libraries (`format-specs` and `sources`) shared by the binary
+crates (`acutectl`, `cat21conv` and `import-adsb`).
 
 These libraries support different formats (`format-specs`) and access methods (`sources`).
 
-Binary crate include a command-line utility called `acutectl` to
-perform import from a file or fetching data from different sites. This program has been enhanced to cover both file and
-network input and as well to support more input formats.
+Binary crate include a command-line utility called `acutectl` to perform import from a file or fetching data from
+different sites. This program has been enhanced to cover both file and network input and as well to support more
+input formats.
 
 In a second phase, `acutectl` will be used to import ADS-B data into tables on a MySQL/MariaDB/Postgres/InfluxDB
-database.
+database, replace `cat21conv` and `import-adsb`.
 
 ## History
 
@@ -48,7 +48,8 @@ server in EIH and transform it into a pseudo-Cat21 CSV file using the same field
 Specifications. It uses `wget(1)` to fetch data and `jq(1)` and `awk(1)`  to transform it.
 
 It works fine, but it is a bit fragile, has some hardcoded paths & filenames. This is an attempt at rewriting it
-in [RUST], a fast and safe language defined in 2010 by [Mozilla] and currently evolving with 2 releases a year.
+in [RUST], a fast and safe language defined in 2010 by [Mozilla] and currently evolving with 2 releases a year. It
+has been since evolved into a set of libraries and binaries.
 
 ## Installation
 
@@ -78,7 +79,7 @@ CLI utility to fetch data.
 Usage: acutectl [OPTIONS] <COMMAND>
 
 Commands:
-  adsb        Handle ADS-B data
+  adsb        Handle ADS-B data (INCOMPLETE)
   completion  Generate Completion stuff
   drone       Handle drone data
   list        Display possible sources
@@ -96,8 +97,7 @@ Options:
 </details>
 
 As seen, there are different sub-commands. You can use `acutectl help <sub-command>`  to get description of the
-different
-parameters.
+different parameters.
 
 The configuration for the different sources of data is handled by the `source` crate in [HCL] file format.
 
@@ -109,10 +109,10 @@ field was renamed into `routes`.
 
 The `completion`  keyword can be used to generate completion sciprts for various shells incl `zsh` and `powershell`.
 
-`acutectl <key> import`  will also use another one called `dbfile.hcl`  located in the same directory.
+The `acutectl <key> import` sub-commands will also use another one called `dbfile.hcl`  located in the same directory.
 
 <details>
-<summary>config.toml</summary>
+<summary>sources.hcl</summary>
 
 ```hcl
 version = 2
@@ -206,13 +206,14 @@ The default input format is the one used by the Aeroscope from ASD, but it will 
 by [Safesky] site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
 
 These are described in the `format-specs/src/s/aeroscope.rs`, `format-specs/src/s/asd.rs`
-and `format-specs/src/s/safesky.rs`
-files. There are also transformations in each case when converting into our CSV-based Cat21-like format.
+and `format-specs/src/s/safesky.rs` files. There are also transformations in each case when converting into our
+CSV-based Cat21-like format (DEPRECATED).
 
-### DronePoint
+### DronePoint & Journey
 
 `DronePoint` is a common data model extracted from the data sent by [ASD] with some fields with different types (like
-actual `f32` instead of the string format) and real timestamp.
+actual `f32` instead of the string format) and real timestamp. These can be grouped into a `Journey` type which is a
+state vector with all the points in the trajectory.
 
 ## MSRV
 
@@ -223,7 +224,7 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 * Unix (tested on FreeBSD, Linux and macOS)
 * Windows
   * cmd.exe
-  * Powershell
+  * Powershell (preferred)
 
 ## TODO
 
@@ -232,9 +233,10 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - ~~fetch and analyse from Asd~~
 - ~~divide into crates for sharing more code.~~
 - ~~use a common data model for drone data~~
+- merge `import-adsb` and `cat21conv` into `acutectl`.
 - Add more tests & benchmarks.
-- support for Safesky
-- Support for Opensky (WIP)
+- support for Safesky for ADS-B data
+- Support for Opensky (same)
 
 ## Contributing
 
