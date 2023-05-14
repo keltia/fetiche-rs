@@ -30,17 +30,10 @@ pub struct Site {
     pub format: String,
     /// Base URL (to avoid repeating)
     pub base_url: String,
-    /// Different URLs available
-    pub cmd: Routes,
     /// Credentials
     pub auth: Option<Auth>,
-}
-
-/// Struct describing the available routes, only `get` to actually fetch data for now
-///
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Routes {
-    pub get: String,
+    /// Different URLs available
+    pub routes: Option<BTreeMap<String, String>>,
 }
 
 /// Describe the possible ways to authenticate oneself
@@ -129,11 +122,32 @@ impl Site {
     pub fn format(&self) -> Format {
         self.format.as_str().into()
     }
-}
 
-impl Default for Site {
-    fn default() -> Self {
-        Site::new()
+    /// Return the list of routes
+    ///
+    pub fn list(&self) -> Vec<&String> {
+        match &self.routes {
+            Some(routes) => routes.keys().collect::<Vec<_>>(),
+            _ => vec![],
+        }
+    }
+
+    /// Check whether site has the mentioned route
+    ///
+    pub fn has(&self, meth: &str) -> bool {
+        match &self.routes {
+            Some(routes) => routes.contains_key(meth),
+            _ => false,
+        }
+    }
+
+    /// Retrieve a route
+    ///
+    pub fn route(&self, key: &str) -> Option<&String> {
+        match &self.routes {
+            Some(routes) => routes.get(key),
+            _ => None,
+        }
     }
 }
 
@@ -141,12 +155,12 @@ impl Display for Site {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let auth = match self.auth.clone() {
             Some(auth) => auth,
-            None => Auth::Anon,
+            _ => Auth::Anon,
         };
         write!(
             f,
-            "{{ format={} url={} auth={} cmd={:?} }}",
-            self.format, self.base_url, auth, self.cmd
+            "{{ format={} url={} auth={} routes={:?} }}",
+            self.format, self.base_url, auth, self.routes
         )
     }
 }
@@ -205,5 +219,42 @@ mod tests {
                 _ => {}
             }
         }
+    }
+
+    #[test]
+    fn test_site_list() {
+        let s = set_default();
+
+        let s = s.get("lux");
+        assert!(s.is_some());
+        let s = s.unwrap();
+        let list = s.list();
+        assert_eq!(vec!["get", "list"], list);
+    }
+
+    #[test]
+    fn test_site_route() {
+        let s = set_default();
+
+        let s = s.get("lux");
+        assert!(s.is_some());
+
+        let s = s.unwrap();
+        let r = s.route("get");
+        assert!(r.is_some());
+
+        let r = r.unwrap();
+        assert_eq!("/journeys/$1", r);
+    }
+
+    #[test]
+    fn test_site_has() {
+        let s = set_default();
+
+        let s = s.get("lux");
+        assert!(s.is_some());
+
+        let s = s.unwrap();
+        assert!(s.has("get"));
     }
 }
