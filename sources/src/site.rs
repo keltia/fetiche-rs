@@ -24,7 +24,7 @@ use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky};
 
 /// Describe what a site is and associated credentials.
 ///
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Site {
     /// Type of input
     pub format: String,
