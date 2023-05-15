@@ -157,7 +157,11 @@ impl Default for Asd {
 impl Fetchable for Asd {
     /// Authenticate to the site using the supplied credentials and get a token
     ///
+    /// TODO: check whether $config/tokens/<source>.token exists and if yes, check
+    ///       expiration date and possibly re-use it.
+    ///
     fn authenticate(&self) -> Result<String> {
+        //let curr_tok =
         // Prepare our submission data
         //
         trace!("Submit auth as {:?}", &self.login);
