@@ -39,7 +39,7 @@ different sites. This program has been enhanced to cover both file and network i
 input formats.
 
 In a second phase, `acutectl` will be used to import ADS-B data into tables on a MySQL/MariaDB/Postgres/InfluxDB
-database, replace `cat21conv` and `import-adsb`.
+database, and replace both `cat21conv` and `import-adsb`.
 
 ## History
 
