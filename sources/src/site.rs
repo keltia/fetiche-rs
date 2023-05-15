@@ -27,6 +27,9 @@ use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky};
 ///
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Site {
+    /// Which data are we getting (drone or plain ads-b)
+    #[serde(rename = "type")]
+    pub dtype: DataType,
     /// Name of the site
     pub name: Option<String>,
     /// Type of input
@@ -83,6 +86,18 @@ impl Display for Auth {
         };
         write!(f, "{:?}", auth)
     }
+}
+
+/// Define the kind of data the source is managing
+///
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum DataType {
+    /// Plain ADS-B traffic
+    #[default]
+    Adsb,
+    /// Drone specific traffic
+    Drone,
 }
 
 macro_rules! insert_format {
