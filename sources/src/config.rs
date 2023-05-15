@@ -1,10 +1,5 @@
 //! Main configuration management and loading
 //!
-use anyhow::{anyhow, Result};
-#[cfg(unix)]
-use home::home_dir;
-use log::trace;
-use serde::{Deserialize, Serialize};
 use std::collections::btree_map::{IntoValues, Iter, Keys, Values, ValuesMut};
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
@@ -12,6 +7,12 @@ use std::fs;
 use std::fs::create_dir_all;
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
+
+use anyhow::{anyhow, Result};
+#[cfg(unix)]
+use home::home_dir;
+use log::trace;
+use serde::{Deserialize, Serialize};
 
 use crate::{makepath, Site};
 
@@ -296,14 +297,13 @@ impl Sites {
             .keys()
             .map(|n| {
                 let site = s.site.get(n).unwrap();
-                let site = Site {
+                Site {
                     name: Some(n.clone()),
                     format: site.format.clone(),
                     auth: site.auth.clone(),
                     base_url: site.base_url.clone(),
                     routes: site.routes.clone(),
-                };
-                site
+                }
             })
             .collect();
 
@@ -313,8 +313,9 @@ impl Sites {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::bail;
     use std::env::temp_dir;
+
+    use anyhow::bail;
 
     use crate::site::Auth;
 
