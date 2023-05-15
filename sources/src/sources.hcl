@@ -1,8 +1,9 @@
 // Safety check
 //
-version = 2
+version = 3
 
 site "eih" {
+  type     = drone
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
   auth     = {
@@ -16,6 +17,7 @@ site "eih" {
 }
 
 site "asd" {
+  type     = drone
   format   = "asd"
   base_url = "https://eur.airspacedrone.com/api"
   auth     = {
@@ -29,6 +31,7 @@ site "asd" {
 }
 
 site "lux" {
+  type     = drone
   format   = "asd"
   base_url = "https://eur.airspacedrone.com/api"
   auth     = {
@@ -43,6 +46,7 @@ site "lux" {
 }
 
 site "opensky" {
+  type     = adsb
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
   auth     = {
@@ -55,6 +59,7 @@ site "opensky" {
 }
 
 site "safesky" {
+  type     = adsb
   format   = "safesky"
   base_url = "https://public-api.safesky.app"
   auth     = {
