@@ -50,7 +50,7 @@ site "opensky" {
     password = "NOPE"
   }
   cmd = {
-    get = "/state/own"
+    get = "/states/own"
   }
 }
 
