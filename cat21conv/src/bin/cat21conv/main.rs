@@ -24,7 +24,7 @@ use log::{info, trace};
 
 use cat21conv::Task;
 use format_specs::{prepare_csv, Cat21, Format};
-use sources::{Filter, Site, Sites};
+use sources::{Filter, Site, Sources};
 
 use crate::cli::{check_args, Opts};
 use crate::version::version;
@@ -72,7 +72,7 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
 
 /// Get the input csv either from the given file or from the network
 ///
-fn get_from_source(cfg: &Sites, opts: &Opts) -> Result<Vec<Cat21>> {
+fn get_from_source(cfg: &Sources, opts: &Opts) -> Result<Vec<Cat21>> {
     let fmt = match &opts.format {
         Some(fmt) => fmt.as_str().into(),
         _ => Format::None,
@@ -134,7 +134,7 @@ fn main() -> Result<()> {
     // Load default config if nothing is specified
     //
     info!("Loading config…");
-    let cfg = Sites::load(&opts.config)?;
+    let cfg = Sources::load(&opts.config)?;
     trace!("{} sources loaded", cfg.len());
 
     info!("Loading data…");
