@@ -1,7 +1,7 @@
 //! Main configuration management and loading
 //!
-use std::collections::hash_map::{IntoValues, Iter, Keys, Values, ValuesMut};
-use std::collections::HashMap;
+use std::collections::btree_map::{IntoValues, Iter, Keys, Values, ValuesMut};
+use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::fs::create_dir_all;
@@ -14,7 +14,7 @@ use home::home_dir;
 use log::trace;
 use serde::{Deserialize, Serialize};
 
-use crate::Site;
+use crate::{makepath, Site};
 
 /// Default configuration filename
 const CONFIG: &str = "sources.hcl";
@@ -23,137 +23,11 @@ const CVERSION: usize = 2;
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
 
-/// Main struct holding configurations
+/// List of sources, this is the only exposed struct from here.
 ///
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
-pub struct Sites {
-    version: usize,
-    site: HashMap<String, Site>,
-}
+pub struct Sources(BTreeMap<String, Site>);
 
-/// `Default` is for `unwrap_or_default()`.
-///
-impl Default for Sites {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Simple macro to generate PathBuf from a series of entries
-///
-#[macro_export]
-macro_rules! makepath {
-    ($($item:expr),+) => {
-        [
-        $(PathBuf::from($item),)+
-        ]
-        .iter()
-        .collect()
-    };
-}
-
-impl Sites {
-    /// Returns an empty struct
-    ///
-    #[inline]
-    pub fn new() -> Sites {
-        Sites {
-            version: CVERSION,
-            site: HashMap::<String, Site>::new(),
-        }
-    }
-
-    /// Wrap `HashMap::get`
-    ///
-    #[inline]
-    pub fn get(&self, name: &str) -> Option<&Site> {
-        self.site.get(name)
-    }
-
-    /// Wrap `is_empty()`
-    ///
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.site.is_empty()
-    }
-
-    /// Wrap `len()`
-    ///
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.site.len()
-    }
-
-    /// Wrap `keys()`
-    ///
-    #[inline]
-    pub fn keys(&self) -> Keys<'_, String, Site> {
-        self.site.keys()
-    }
-
-    /// Wrap `index_mut()`
-    ///
-    #[inline]
-    pub fn index_mut(&mut self, s: &str) -> Option<&Site> {
-        self.site.get(s)
-    }
-
-    /// Wrap `values()`
-    ///
-    #[inline]
-    pub fn values(&self) -> Values<'_, String, Site> {
-        self.site.values()
-    }
-
-    /// Wrap `values_mut()`
-    ///
-    #[inline]
-    pub fn values_mut(&mut self) -> ValuesMut<'_, String, Site> {
-        self.site.values_mut()
-    }
-
-    /// Wrap `into_values()`
-    ///
-    #[inline]
-    pub fn into_values(self) -> IntoValues<String, Site> {
-        self.site.into_values()
-    }
-
-    /// Wrap `contains_key()`
-    ///
-    #[inline]
-    pub fn contains_key(&self, s: &str) -> bool {
-        self.site.contains_key(s)
-    }
-
-    /// Wrap `contains_key()`
-    ///
-    #[inline]
-    pub fn iter(&self) -> Iter<'_, String, Site> {
-        self.site.iter()
-    }
-
-    /// Load the specified config file
-    ///
-    fn read_file(fname: &PathBuf) -> Result<Sites> {
-        trace!("Reading {:?}", fname);
-        let content = fs::read_to_string(fname)?;
-
-        // Check extension
-        //
-        let ext = match fname.extension() {
-            Some(ext) => ext,
-            _ => OsStr::new("hcl"),
-        };
-
-        trace!("File is .{ext:?}");
-        let s: Sites = hcl::from_str(&content)?;
-        if s.version != CVERSION {
-            return Err(anyhow!("bad config version"));
-        }
-        Ok(s)
-    }
-
+impl Sources {
     /// Returns the path of the default config file
     ///
     #[cfg(unix)]
@@ -192,7 +66,7 @@ impl Sites {
 
     /// Load configuration from either the specified file or the default one.
     ///
-    pub fn load(fname: &Option<PathBuf>) -> Result<Sites> {
+    pub fn load(fname: &Option<PathBuf>) -> Result<Sources> {
         // Load default config if nothing is specified
         //
         let cnf = match fname {
@@ -205,47 +79,249 @@ impl Sites {
             // Need to load our own
             //
             _ => {
-                let cnf = Sites::default_file();
+                let cnf = Sources::default_file();
                 trace!("Loading from {:?}", cnf);
                 cnf
             }
         };
-        Self::read_file(&cnf)
+        let s = Sites::read_file(&cnf)?;
+        let mut sources: BTreeMap<String, Site> = BTreeMap::new();
+
+        s.iter().for_each(|s| {
+            let key = s.name.clone();
+
+            sources.insert(key, s.clone());
+        });
+        Ok(Sources(sources))
     }
-}
 
-impl<'a> IntoIterator for &'a Sites {
-    type Item = (&'a String, &'a Site);
-    type IntoIter = Iter<'a, String, Site>;
-
-    /// We can now do `sources.iter()`
+    /// Wrap `get`
     ///
-    fn into_iter(self) -> Iter<'a, String, Site> {
-        self.site.iter()
+    #[inline]
+    pub fn get(&self, name: &str) -> Option<&Site> {
+        self.0.get(name)
+    }
+
+    /// Wrap `get_mut`
+    ///
+    #[inline]
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut Site> {
+        self.0.get_mut(name)
+    }
+
+    /// Wrap `is_empty()`
+    ///
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Wrap `len()`
+    ///
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Wrap `keys()`
+    ///
+    #[inline]
+    pub fn keys(&self) -> Keys<'_, String, Site> {
+        self.0.keys()
+    }
+
+    /// Wrap `index()`
+    ///
+    #[inline]
+    pub fn index(&self, s: &str) -> Option<&Site> {
+        self.0.get(s)
+    }
+
+    /// Wrap `index_mut()`
+    ///
+    #[inline]
+    pub fn index_mut(&mut self, s: &str) -> Option<&Site> {
+        self.0.get(s)
+    }
+
+    /// Wrap `values()`
+    ///
+    #[inline]
+    pub fn values(&self) -> Values<'_, String, Site> {
+        self.0.values()
+    }
+
+    /// Wrap `values_mut()`
+    ///
+    #[inline]
+    pub fn values_mut(&mut self) -> ValuesMut<'_, String, Site> {
+        self.0.values_mut()
+    }
+
+    /// Wrap `into_values()`
+    ///
+    #[inline]
+    pub fn into_values(self) -> IntoValues<String, Site> {
+        self.0.into_values()
+    }
+
+    /// Wrap `contains_key()`
+    ///
+    #[inline]
+    pub fn contains_key(&self, s: &str) -> bool {
+        self.0.contains_key(s)
+    }
+
+    /// Wrap `contains_key()`
+    ///
+    #[inline]
+    pub fn iter(&self) -> Iter<'_, String, Site> {
+        self.0.iter()
     }
 }
 
-impl Index<&str> for Sites {
+impl Index<&str> for Sources {
     type Output = Site;
 
     /// Wrap `index()`
     ///
     #[inline]
     fn index(&self, s: &str) -> &Self::Output {
-        self.site.get(s).unwrap()
+        self.0.get(s).unwrap()
     }
 }
 
-impl IndexMut<&str> for Sites {
+impl Index<String> for Sources {
+    type Output = Site;
+
+    /// Wrap `index()`
+    ///
+    #[inline]
+    fn index(&self, s: String) -> &Self::Output {
+        self.0.get(&s).unwrap()
+    }
+}
+
+impl IndexMut<&str> for Sources {
     /// Wrap `index_mut()`
     ///
     #[inline]
     fn index_mut(&mut self, s: &str) -> &mut Self::Output {
-        let me = self.site.get_mut(s);
+        let me = self.0.get_mut(s);
         if me.is_none() {
-            self.site.insert(s.to_string(), Site::new());
+            self.0.insert(s.to_string(), Site::new());
         }
-        self.site.get_mut(s).unwrap()
+        self.0.get_mut(s).unwrap()
+    }
+}
+
+impl IndexMut<String> for Sources {
+    /// Wrap `index_mut()`
+    ///
+    #[inline]
+    fn index_mut(&mut self, s: String) -> &mut Self::Output {
+        let me = self.0.get_mut(&s);
+        if me.is_none() {
+            self.0.insert(s.to_string(), Site::new());
+        }
+        self.0.get_mut(&s).unwrap()
+    }
+}
+
+impl<'a> IntoIterator for &'a Sources {
+    type Item = (&'a String, &'a Site);
+    type IntoIter = Iter<'a, String, Site>;
+
+    /// We can now do `sources.iter()`
+    ///
+    fn into_iter(self) -> Iter<'a, String, Site> {
+        self.0.iter()
+    }
+}
+
+// -----
+
+/// Main struct holding configurations internally
+///
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+struct Sites {
+    version: usize,
+    site: BTreeMap<String, Site>,
+}
+
+/// `Default` is for `unwrap_or_default()`.
+///
+impl Default for Sites {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Simple macro to generate PathBuf from a series of entries
+///
+#[macro_export]
+macro_rules! makepath {
+    ($($item:expr),+) => {
+        [
+        $(PathBuf::from($item),)+
+        ]
+        .iter()
+        .collect()
+    };
+}
+
+impl Sites {
+    /// Returns an empty struct
+    ///
+    #[inline]
+    pub fn new() -> Sites {
+        Sites {
+            version: CVERSION,
+            site: BTreeMap::<String, Site>::new(),
+        }
+    }
+
+    /// Load the specified config file
+    ///
+    fn read_file(fname: &PathBuf) -> Result<Vec<Site>> {
+        trace!("Reading {:?}", fname);
+        let content = fs::read_to_string(fname)?;
+
+        // Check extension
+        //
+        let ext = match fname.extension() {
+            Some(ext) => ext,
+            _ => OsStr::new("hcl"),
+        };
+
+        trace!("File is .{ext:?}");
+        let s: Sites = hcl::from_str(&content)?;
+
+        // First check
+        //
+        if s.version != CVERSION {
+            return Err(anyhow!("bad config version"));
+        }
+
+        // Fetch the site name and insert it into each Site
+        //
+        let s: Vec<_> = s
+            .site
+            .keys()
+            .map(|n| {
+                let site = s.site.get(n).unwrap();
+                let site = Site {
+                    name: n.clone(),
+                    format: site.format.clone(),
+                    auth: site.auth.clone(),
+                    base_url: site.base_url.clone(),
+                    routes: site.routes.clone(),
+                };
+                site
+            })
+            .collect();
+
+        Ok(s)
     }
 }
 
