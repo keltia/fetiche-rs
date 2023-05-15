@@ -8,13 +8,16 @@
 //! You can define a set of possible routes for a site depending on how the API/site is
 //! designed.
 //!
+//! History:
 
-use anyhow::{anyhow, Result};
-use format_specs::Format;
-use log::trace;
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Display, Formatter};
+
+use anyhow::{anyhow, Result};
+use log::trace;
+use serde::{Deserialize, Serialize};
+
+use format_specs::Format;
 
 use crate::config::Sources;
 use crate::Fetchable;
@@ -174,7 +177,7 @@ mod tests {
     use super::*;
 
     fn set_default() -> Sources {
-        let cn: PathBuf = makepath!("src", CONFIG);
+        let cn: PathBuf = makepath!("src", "sources.hcl");
         assert!(cn.try_exists().is_ok());
 
         let cfg = Sources::load(&Some(cn));
