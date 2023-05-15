@@ -8,7 +8,7 @@ readme = "README.md"
 license = "MIT"
 repository = "https://github.com/keltia/drone-gencsv"
 categories = ["aerospace::drones"]
-keywords = ["cat21", "asterix", "drones", "aeronautical-data"]
+keywords = ["asterix", "drones", "aeronautical-data", "ads-b"]
 
 [features]
 default = ["privacy"]
