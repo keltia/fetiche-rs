@@ -9,7 +9,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::Deserialize;
 
 use crate::drone::DronePoint;
-use crate::{to_feet, to_knots, Bool, Cat21, Position, TodCalculated};
+use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
 
 /// Our input structure from the json file coming out of the main ASD site
 ///
