@@ -11,6 +11,7 @@
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use log::trace;
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
@@ -18,7 +19,7 @@ use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
 
 /// Origin of state's position
 ///
-#[derive(Debug, Deserialize_repr, PartialEq)]
+#[derive(Clone, Debug, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum Source {
     AdsB = 0,
@@ -29,7 +30,7 @@ pub enum Source {
 
 /// Aircraft category
 ///
-#[derive(Debug, Deserialize_repr, PartialEq)]
+#[derive(Clone, Debug, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum Category {
     NoInfo = 0,
