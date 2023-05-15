@@ -1,18 +1,16 @@
-use std::fs;
-use std::io;
-use std::io::Write;
-
-use anyhow::Result;
-use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
-use clap_complete::generate;
-use log::{error, info, trace};
-
 use acutectl::{
     fetch_from_site, import_data, list_formats, list_sources, DroneSubCommand, ImportSubCommand,
     ListSubCommand, Opts, SubCommand,
 };
+use anyhow::Result;
+use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
+use clap_complete::generate;
 use format_specs::Format;
-use sources::{Site, Sites};
+use log::{error, info, trace};
+use sources::{Site, Sources};
+use std::fs;
+use std::io;
+use std::io::Write;
 
 /// Binary name, using a different binary name
 pub(crate) const NAME: &str = env!("CARGO_BIN_NAME");
@@ -33,7 +31,7 @@ fn main() -> Result<()> {
     //
     let cfn = match cfn {
         Some(cfn) => cfn,
-        None => Sites::default_file(),
+        None => Sources::default_file(),
     };
 
     // Banner
@@ -43,7 +41,7 @@ fn main() -> Result<()> {
     // Load default config if nothing is specified
     //
     info!("Loading config from {}…", cfn.to_string_lossy());
-    let cfg = Sites::load(&Some(cfn));
+    let cfg = Sources::load(&Some(cfn));
     let cfg = match cfg {
         Ok(cfg) => cfg,
         Err(e) => {

@@ -1,9 +1,7 @@
-use std::path::PathBuf;
-
 use anyhow::Result;
 use format_specs::Format;
-
-use sources::Sites;
+use sources::Sources;
+use std::path::PathBuf;
 
 /// Fetch the list of supported formats and their description.
 ///
@@ -16,7 +14,7 @@ pub fn list_formats() -> Result<String> {
 ///
 /// TODO: we need a Sites::list() like for formats-specs above.
 ///
-pub fn list_sources(cfg: &Sites) -> Result<String> {
+pub fn list_sources(cfg: &Sources) -> Result<String> {
     let str = cfg
         .iter()
         .map(|(name, site)| format!("{} = {}", name, site))

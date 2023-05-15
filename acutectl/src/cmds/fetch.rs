@@ -1,14 +1,13 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use log::{info, trace};
-
-use sources::{Filter, Site, Sites};
+use sources::{Filter, Site, Sources};
 
 use crate::{FetchOpts, Task};
 
 /// Actual fetching of data from a given site
 ///
-pub fn fetch_from_site(cfg: &Sites, fopts: &FetchOpts) -> Result<String> {
+pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<String> {
     trace!("fetch_from_site({:?})", fopts.site);
 
     check_args(&fopts)?;

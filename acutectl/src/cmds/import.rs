@@ -1,15 +1,13 @@
-use std::collections::BTreeMap;
-
 use anyhow::{bail, Result};
-use log::{info, trace};
-
 use format_specs::{Asd, DronePoint, Format};
-use sources::{Site, Sites};
+use log::{info, trace};
+use sources::{Site, Sources};
+use std::collections::BTreeMap;
 
 use crate::cmds::filter_from_opts;
 use crate::{ImportOpts, Input, Task};
 
-pub fn import_data(cfg: &Sites, data: &str, fmt: Format) -> Result<()> {
+pub fn import_data(cfg: &Sources, data: &str, fmt: Format) -> Result<()> {
     trace!("import_data");
 
     // Transform into our `Drone` struct and sort it by "journey"
