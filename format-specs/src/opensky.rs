@@ -190,6 +190,10 @@ pub struct StateVector {
 }
 
 impl From<&StateVector> for Cat21 {
+    /// Generate a `Cat21` struct from `StateList`
+    ///
+    /// DEPRECATED
+    ///
     fn from(line: &StateVector) -> Self {
         let tp = format!("{}", line.time_position.unwrap_or(0));
         let tod = tp.parse::<DateTime<Utc>>().unwrap();
@@ -202,7 +206,7 @@ impl From<&StateVector> for Cat21 {
             alt_geo_ft: to_feet(line.geo_altitude.unwrap_or(0.0)),
             pos_lat_deg: line.latitude.unwrap_or(0.0),
             pos_long_deg: line.longitude.unwrap_or(0.0),
-            alt_baro_ft: to_feet(line.baro_altitude.unwrap_or(0) as f32),
+            alt_baro_ft: to_feet(line.baro_altitude.unwrap_or(0.0) as f32),
             tod: 128 * (tod % 86400),
             rec_time_posix: tod,
             rec_time_ms: 0,
@@ -228,7 +232,7 @@ impl From<&StateVector> for Cat21 {
             report_type: 3,
             tod_calculated: TodCalculated::N,
             callsign,
-            groundspeed_kt: to_knots(line.velocity.unwrap_or(0) as f32),
+            groundspeed_kt: to_knots(line.velocity.unwrap_or(0.0) as f32),
             track_angle_deg: line.true_track.unwrap_or(0.0),
             rec_num: 1,
         }
