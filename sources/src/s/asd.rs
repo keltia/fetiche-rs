@@ -91,6 +91,8 @@ struct Param {
 ///
 #[derive(Clone, Debug)]
 pub struct Asd {
+    /// Name of the site (site "foo" may use the same interface)
+    pub site: String,
     /// Input format-specs
     pub format: Format,
     /// Username
@@ -110,6 +112,7 @@ pub struct Asd {
 impl Asd {
     pub fn new() -> Self {
         Asd {
+            site: "NONE".to_string(),
             format: Format::None,
             login: "".to_owned(),
             password: "".to_owned(),
@@ -123,6 +126,7 @@ impl Asd {
     /// Load some data from the configuration file
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
+        self.site = site.name.clone();
         self.format = site.format.as_str().into();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {

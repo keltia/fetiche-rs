@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use format_specs::Format;
 
-use crate::config::Sites;
+use crate::config::Sources;
 use crate::Fetchable;
 use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky};
 
@@ -26,6 +26,8 @@ use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky};
 ///
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Site {
+    /// Name of the site
+    pub name: String,
     /// Type of input
     pub format: String,
     /// Base URL (to avoid repeating)
@@ -105,7 +107,7 @@ impl Site {
 
     /// Load site by checking whether it is present in the configuration file
     ///
-    pub fn load(name: &str, cfg: &Sites) -> Result<Box<dyn Fetchable>> {
+    pub fn load(name: &str, cfg: &Sources) -> Result<Box<dyn Fetchable>> {
         trace!("Loading site {}", name);
         match cfg.get(name) {
             Some(site) => {
