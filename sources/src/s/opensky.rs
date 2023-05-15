@@ -8,8 +8,7 @@ use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use format_specs::Cat21;
-use format_specs::Format;
+use format_specs::{Cat21, Format};
 
 use crate::{http_get_basic, Fetchable};
 use crate::{Auth, Site};
@@ -99,7 +98,7 @@ impl Fetchable for Opensky {
     fn fetch(&self, token: &str, args: &str) -> anyhow::Result<String> {
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
-        trace!("fetch(as {}:{})", login, password);
+        trace!("opensky::fetch(as {}:{})", login, password);
 
         let url = format!("{}{}", self.base_url, self.get);
         trace!("Fetching data from {}…", url);
@@ -120,7 +119,9 @@ impl Fetchable for Opensky {
             }
         }
 
+        trace!("Fetching raw data");
         let resp = resp.text()?;
+
         Ok(resp)
     }
 
