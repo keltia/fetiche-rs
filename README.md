@@ -244,7 +244,7 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 
 ## Configuration History
 
-The `sources.hcl` configuration file is versioned to avoid incompatibilies.
+The `sources.hcl` configuration file is versioned to avoid incompatibilities.
 
 - v1 was the original version with the `Sites` struct
 - In v2 `Sites`  was renamed into `Sources` to reflect evolution
