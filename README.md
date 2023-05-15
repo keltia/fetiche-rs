@@ -236,7 +236,7 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - merge `import-adsb` and `cat21conv` into `acutectl`.
 - Add more tests & benchmarks.
 - support for Safesky for ADS-B data
-- Support for Opensky (same)
+- ~~Support for Opensky (same)~~
 
 ## Contributing
 
