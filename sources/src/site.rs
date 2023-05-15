@@ -9,14 +9,12 @@
 //! designed.
 //!
 
-use std::collections::BTreeMap;
-use std::fmt::{Debug, Display, Formatter};
-
 use anyhow::{anyhow, Result};
+use format_specs::Format;
 use log::trace;
 use serde::{Deserialize, Serialize};
-
-use format_specs::Format;
+use std::collections::BTreeMap;
+use std::fmt::{Debug, Display, Formatter};
 
 use crate::config::Sources;
 use crate::Fetchable;
@@ -27,7 +25,7 @@ use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky};
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Site {
     /// Name of the site
-    pub name: String,
+    pub name: Option<String>,
     /// Type of input
     pub format: String,
     /// Base URL (to avoid repeating)

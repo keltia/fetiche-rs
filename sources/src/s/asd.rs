@@ -16,14 +16,13 @@
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use clap::{crate_name, crate_version};
+use format_specs::Asd as InputFormat;
+use format_specs::{Cat21, Format};
 use log::{debug, trace};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-
-use format_specs::Asd as InputFormat;
-use format_specs::{Cat21, Format};
 
 use crate::filter::Filter;
 use crate::site::{Auth, Site};
@@ -126,7 +125,7 @@ impl Asd {
     /// Load some data from the configuration file
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
-        self.site = site.name.clone();
+        self.site = site.name.clone().unwrap();
         self.format = site.format.as_str().into();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {

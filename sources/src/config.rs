@@ -1,5 +1,10 @@
 //! Main configuration management and loading
 //!
+use anyhow::{anyhow, Result};
+#[cfg(unix)]
+use home::home_dir;
+use log::trace;
+use serde::{Deserialize, Serialize};
 use std::collections::btree_map::{IntoValues, Iter, Keys, Values, ValuesMut};
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
@@ -7,12 +12,6 @@ use std::fs;
 use std::fs::create_dir_all;
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
-
-use anyhow::{anyhow, Result};
-#[cfg(unix)]
-use home::home_dir;
-use log::trace;
-use serde::{Deserialize, Serialize};
 
 use crate::{makepath, Site};
 
@@ -88,7 +87,7 @@ impl Sources {
         let mut sources: BTreeMap<String, Site> = BTreeMap::new();
 
         s.iter().for_each(|s| {
-            let key = s.name.clone();
+            let key = s.name.clone().unwrap();
 
             sources.insert(key, s.clone());
         });
@@ -298,7 +297,7 @@ impl Sites {
             .map(|n| {
                 let site = s.site.get(n).unwrap();
                 let site = Site {
-                    name: n.clone(),
+                    name: Some(n.clone()),
                     format: site.format.clone(),
                     auth: site.auth.clone(),
                     base_url: site.base_url.clone(),
@@ -314,9 +313,8 @@ impl Sites {
 
 #[cfg(test)]
 mod tests {
-    use std::env::temp_dir;
-
     use anyhow::bail;
+    use std::env::temp_dir;
 
     use crate::site::Auth;
 
