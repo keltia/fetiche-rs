@@ -55,7 +55,7 @@ pub struct FormatDescr {
     pub url: String,
 }
 
-/// >Struct to be read from an HCL file at compile-time
+/// Struct to be read from an HCL file at compile-time
 ///
 #[derive(Debug, Deserialize)]
 pub struct FormatFile {
