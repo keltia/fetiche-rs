@@ -19,7 +19,7 @@ use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
 
 /// Origin of state's position
 ///
-#[derive(Clone, Debug, Deserialize_repr, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum Source {
     AdsB = 0,
@@ -30,7 +30,7 @@ pub enum Source {
 
 /// Aircraft category
 ///
-#[derive(Clone, Debug, Deserialize_repr, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum Category {
     NoInfo = 0,
@@ -54,47 +54,6 @@ pub enum Category {
     ClusterObstacle,
     LineObstacle,
 }
-
-// Private structs
-
-/// Struct returned by the Opensky API
-///
-#[derive(Debug, Deserialize)]
-struct PDU {
-    /// UNIX timestamp
-    pub time: i32,
-    /// State vectors
-    pub states: Vec<Rawdata>,
-}
-
-/// Opensky sends out tuples we need to match with real field names.
-/// cf. [StateVector]
-///
-/// XXX This is a terrible way to return named data
-///
-/// [StateVector]: https://openskynetwork.github.io/opensky-api/rest.html#own-states
-///
-#[derive(Debug, Deserialize)]
-struct Rawdata(
-    String,
-    String,
-    String,
-    i32,
-    i32,
-    f32,
-    f32,
-    f32,
-    bool,
-    f32,
-    f32,
-    f32,
-    Vec<u32>,
-    f32,
-    String,
-    bool,
-    Source,
-    Category,
-);
 
 // Public structs
 
@@ -130,21 +89,21 @@ impl StateList {
                 icao24: r.0.clone(),
                 callsign: Some(r.1.clone()),
                 origin_country: r.2.clone(),
-                time_position: Some(r.3.into()),
-                last_contact: r.4.into(),
-                longitude: Some(r.5.into()),
-                latitude: Some(r.6.into()),
-                baro_altitude: Some(r.7.into()),
+                time_position: Some(r.3),
+                last_contact: r.4,
+                longitude: Some(r.5),
+                latitude: Some(r.6),
+                baro_altitude: Some(r.7),
                 on_ground: r.8,
-                velocity: Some(r.9.into()),
+                velocity: Some(r.9),
                 true_track: Some(r.10),
-                vertical_rate: Some(r.11.into()),
+                vertical_rate: Some(r.11),
                 sensors: Some(r.12.clone()),
-                geo_altitude: Some(r.13.into()),
+                geo_altitude: Some(r.13),
                 squawk: Some(r.14.clone()),
                 spi: r.15,
-                position_source: Source::from(r.16.clone()),
-                category: Category::from(r.17.clone()),
+                position_source: r.16,
+                category: r.17,
             })
             .collect();
 
@@ -188,6 +147,47 @@ pub struct StateVector {
     /// Aircraft category
     pub category: Category,
 }
+
+// Private structs
+
+/// Struct returned by the Opensky API
+///
+#[derive(Debug, Deserialize)]
+struct PDU {
+    /// UNIX timestamp
+    pub time: i32,
+    /// State vectors
+    pub states: Vec<Rawdata>,
+}
+
+/// Opensky sends out tuples we need to match with real field names.
+/// cf. [StateVector]
+///
+/// XXX This is a terrible way to return named data
+///
+/// [StateVector]: https://openskynetwork.github.io/opensky-api/rest.html#own-states
+///
+#[derive(Debug, Deserialize)]
+struct Rawdata(
+    String,
+    String,
+    String,
+    i32,
+    i32,
+    f32,
+    f32,
+    f32,
+    bool,
+    f32,
+    f32,
+    f32,
+    Vec<u32>,
+    f32,
+    String,
+    bool,
+    Source,
+    Category,
+);
 
 impl From<&StateVector> for Cat21 {
     /// Generate a `Cat21` struct from `StateList`
