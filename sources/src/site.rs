@@ -169,13 +169,22 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
 
-    use crate::config::Sites;
     use crate::makepath;
 
     use super::*;
 
-    fn set_default() -> Sites {
-        hcl::from_str(include_str!("sources.hcl")).unwrap()
+    fn set_default() -> Sources {
+        let cn: PathBuf = makepath!("src", CONFIG);
+        assert!(cn.try_exists().is_ok());
+
+        let cfg = Sources::load(&Some(cn));
+        dbg!(&cfg);
+        assert!(cfg.is_ok());
+
+        let cfg = cfg.unwrap();
+        dbg!(&cfg);
+        assert!(!cfg.is_empty());
+        cfg
     }
 
     #[test]

@@ -25,6 +25,7 @@ const BASEDIR: &str = ".config";
 
 /// List of sources, this is the only exposed struct from here.
 ///
+#[derive(Debug)]
 pub struct Sources(BTreeMap<String, Site>);
 
 impl Sources {
@@ -322,24 +323,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new() {
-        let a = Sites::new();
-        assert!(a.is_empty());
-        dbg!(&a);
-    }
-
-    #[test]
-    fn test_config_load_hcl() {
+    fn test_sites_load_hcl() {
         let cn: PathBuf = makepath!("src", CONFIG);
         assert!(cn.try_exists().is_ok());
 
-        let cfg = Sites::read_file(&cn);
+        let cfg = Sources::load(&Some(cn));
         dbg!(&cfg);
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
         dbg!(&cfg);
         assert!(!cfg.is_empty());
+
         if let Some(site) = cfg.get("eih") {
             assert_eq!("http://127.0.0.1:2400", site.base_url);
             match &site.auth {
@@ -361,7 +356,7 @@ mod tests {
     fn test_install_files() -> Result<()> {
         let tempdir = temp_dir();
         dbg!(&tempdir);
-        let r = Sites::install_defaults(&tempdir);
+        let r = Sources::install_defaults(&tempdir);
         match r {
             Ok(()) => {
                 let f: PathBuf = makepath!(tempdir, CONFIG);
