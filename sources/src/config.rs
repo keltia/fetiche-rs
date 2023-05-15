@@ -11,14 +11,14 @@ use std::path::PathBuf;
 use anyhow::{anyhow, Result};
 #[cfg(unix)]
 use home::home_dir;
-use log::trace;
+use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 
 use crate::{makepath, Site};
 
 /// Default configuration filename
 const CONFIG: &str = "sources.hcl";
-const CVERSION: usize = 2;
+const CVERSION: usize = 3;
 
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
@@ -282,7 +282,7 @@ impl Sites {
             _ => OsStr::new("hcl"),
         };
 
-        trace!("File is .{ext:?}");
+        debug!("File is .{ext:?}");
         let s: Sites = hcl::from_str(&content)?;
 
         // First check
@@ -299,6 +299,7 @@ impl Sites {
             .map(|n| {
                 let site = s.site.get(n).unwrap();
                 Site {
+                    dtype: site.dtype,
                     name: Some(n.clone()),
                     format: site.format.clone(),
                     auth: site.auth.clone(),
@@ -316,6 +317,7 @@ impl Sites {
 mod tests {
     use std::env::temp_dir;
 
+    use crate::DataType;
     use anyhow::bail;
 
     use crate::site::Auth;
@@ -324,19 +326,21 @@ mod tests {
 
     #[test]
     fn test_sites_load_hcl() {
-        let cn: PathBuf = makepath!("src", CONFIG);
+        let cn: PathBuf = makepath!("src", "sources.hcl");
         assert!(cn.try_exists().is_ok());
 
         let cfg = Sources::load(&Some(cn));
-        dbg!(&cfg);
         assert!(cfg.is_ok());
 
         let cfg = cfg.unwrap();
-        dbg!(&cfg);
         assert!(!cfg.is_empty());
+        assert_eq!(5, cfg.len());
 
+        // Check one
+        //
         if let Some(site) = cfg.get("eih") {
             assert_eq!("http://127.0.0.1:2400", site.base_url);
+            assert_eq!(DataType::Drone, site.dtype);
             match &site.auth {
                 Some(auth) => match auth {
                     Auth::Token {
@@ -345,7 +349,26 @@ mod tests {
                         assert_eq!("NOPE", password);
                         assert_eq!("/login", token);
                     }
-                    _ => panic!("foo"),
+                    _ => panic!("bad auth"),
+                },
+                _ => (),
+            }
+        }
+
+        // Check another one
+        //
+        if let Some(site) = cfg.get("opensky") {
+            assert_eq!("https://opensky-network.org/api", site.base_url);
+            assert_eq!(DataType::Adsb, site.dtype);
+            match &site.auth {
+                Some(auth) => match auth {
+                    Auth::Login {
+                        username, password, ..
+                    } => {
+                        assert_eq!("dphu", username);
+                        assert_eq!("NOPE", password);
+                    }
+                    _ => panic!("bad auth"),
                 },
                 _ => (),
             }
@@ -355,9 +378,9 @@ mod tests {
     #[test]
     fn test_install_files() -> Result<()> {
         let tempdir = temp_dir();
-        dbg!(&tempdir);
-        let r = Sources::install_defaults(&tempdir);
-        match r {
+        debug!("{:?}", tempdir);
+
+        match Sources::install_defaults(&tempdir) {
             Ok(()) => {
                 let f: PathBuf = makepath!(tempdir, CONFIG);
                 assert!(f.exists());
