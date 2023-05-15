@@ -34,12 +34,19 @@ mod influx;
 mod opensky;
 mod safesky;
 
+/// Current formats.hcl version
+///
+const FVERSION: usize = 2;
+
 // -----
 
 /// For each format, we define a set of key attributes that will get displayed.
 ///
 #[derive(Debug, Deserialize)]
 pub struct FormatDescr {
+    /// Type of data each format refers to
+    #[serde(rename = "type")]
+    pub dtype: String,
     /// Free text description
     pub description: String,
     /// Source
@@ -120,13 +127,14 @@ impl Format {
     pub fn list() -> Result<String> {
         let descr = include_str!("formats.hcl");
         let fstr: FormatFile = hcl::from_str(descr)?;
+        assert_eq!(fstr.version, FVERSION);
         let allf = fstr
             .format
             .iter()
             .map(|(name, entry)| {
                 format!(
-                    "{:12}{}\n{:12}Source: {} -- URL: {}",
-                    name, entry.description, "", entry.source, entry.url
+                    "{:10}{:6}{}\n{:16}Source: {} -- URL: {}",
+                    name, entry.dtype, entry.description, "", entry.source, entry.url
                 )
             })
             .collect::<Vec<_>>()
