@@ -5,7 +5,7 @@ use std::io::Write;
 use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
 use clap_complete::generate;
-use log::{info, trace};
+use log::{error, info, trace};
 
 use acutectl::{
     fetch_from_site, import_data, list_formats, list_sources, DroneSubCommand, ImportSubCommand,
@@ -42,8 +42,15 @@ fn main() -> Result<()> {
 
     // Load default config if nothing is specified
     //
-    info!("Loading config…");
-    let cfg = Sites::load(&Some(cfn))?;
+    info!("Loading config from {}…", cfn.to_string_lossy());
+    let cfg = Sites::load(&Some(cfn));
+    let cfg = match cfg {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            error!("Error: {}", e);
+            return Err(e);
+        }
+    };
     info!("{:?} sources loaded", cfg.len());
 
     let subcmd = &opts.subcmd;
