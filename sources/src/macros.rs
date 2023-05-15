@@ -1,6 +1,19 @@
 //! Define our own macro to simplify the code
 //!
 
+/// Simple macro to generate PathBuf from a series of entries
+///
+#[macro_export]
+macro_rules! makepath {
+    ($($item:expr),+) => {
+        [
+        $(PathBuf::from($item),)+
+        ]
+        .iter()
+        .collect()
+    };
+}
+
 /// Call the HTTP client with the proper arguments
 ///
 /// - unauth call to fetch token by submitting credentials
