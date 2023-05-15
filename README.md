@@ -117,7 +117,7 @@ The `acutectl <key> import` sub-commands will also use another one called `dbfil
 ```hcl
 version = 2
 
-sites "local" {
+site "local" {
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
   auth     = {
@@ -130,7 +130,7 @@ sites "local" {
   }
 }
 
-sites "big.site.aero" {
+site "big.site.aero" {
   format   = "asd"
   base_url = "https://api.site.aero"
   auth     = {
@@ -143,7 +143,7 @@ sites "big.site.aero" {
   }
 }
 
-sites "opensky" {
+site "opensky" {
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
   auth     = {
@@ -155,7 +155,7 @@ sites "opensky" {
   }
 }
 
-sites "safesky" {
+site "safesky" {
   format   = "safesky"
   base_url = "https://public-api.safesky.app"
   auth     = {
