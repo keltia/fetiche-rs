@@ -104,8 +104,8 @@ The configuration for the different sources of data is handled by the `source` c
 On UNIX, it is located in `$HOME/.config/drone-utils/source.hcl` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
 
 There are only a few parameters for now, the most important one being the credentials for authenticate against the
-network endpoint. You can specify the different network endpoints. The current config file version is 2 as the `cmd`
-field was renamed into `routes`.
+network endpoint. You can specify the different network endpoints. The current config file version is 3 as the `type`
+entry was added to the `Site`  struct.
 
 The `completion`  keyword can be used to generate completion sciprts for various shells incl `zsh` and `powershell`.
 
@@ -115,9 +115,10 @@ The `acutectl <key> import` sub-commands will also use another one called `dbfil
 <summary>sources.hcl</summary>
 
 ```hcl
-version = 2
+version = 3
 
 site "local" {
+  type     = "drone"
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
   auth     = {
@@ -131,6 +132,7 @@ site "local" {
 }
 
 site "big.site.aero" {
+  type     = "drone"
   format   = "asd"
   base_url = "https://api.site.aero"
   auth     = {
@@ -144,6 +146,7 @@ site "big.site.aero" {
 }
 
 site "opensky" {
+  type     = "adsb"
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
   auth     = {
@@ -156,6 +159,7 @@ site "opensky" {
 }
 
 site "safesky" {
+  type     = "adsb"
   format   = "safesky"
   base_url = "https://public-api.safesky.app"
   auth     = {
@@ -237,6 +241,14 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - Add more tests & benchmarks.
 - support for Safesky for ADS-B data
 - ~~Support for Opensky (same)~~
+
+## Configuration History
+
+The `sources.hcl` configuration file is versioned to avoid incompatibilies.
+
+- v1 was the original version with the `Sites` struct
+- In v2 `Sites`  was renamed into `Sources` to reflect evolution
+- In v3 the `type`  keyword was added to the `Site` definition
 
 ## Contributing
 
