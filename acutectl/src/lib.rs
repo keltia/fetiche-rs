@@ -4,7 +4,8 @@
 //! way of fetching data from different sources.  This is written because there are as many ways
 //! to authenticate and connect as there are sources more or less.
 //!
-//! The different formats are in the `format-specs` crate and the sources' parameters in the `site` crate.
+//! The different formats are in the `format-specs` crate and the sources' parameters in the
+//! `sources` crate.
 //!
 //! Include Task-related code.
 //!
