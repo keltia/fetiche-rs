@@ -214,6 +214,33 @@ These are described in the `format-specs/src/s/aeroscope.rs`, `format-specs/src/
 and `format-specs/src/s/safesky.rs` files. There are also transformations in each case when converting into our
 CSV-based Cat21-like format (DEPRECATED).
 
+To displayed currently supported formats, use `acutectl list formats`:
+
+```text
+acutectl/0.2.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
+CLI utility to fetch data.
+
+List all formats:
+
+aeroscope drone Data extracted from the DJI Aeroscope antenna.
+                Source: ASD -- URL: https://airspacedrone.com/
+
+asd       drone Data gathered & consolidated by ASD.
+                Source: ASD -- URL: https://airspacedrone.com/
+
+cat129    drone Flattened ASTERIX Cat129 data for Drone data.
+                Source: ECTL -- URL: https://www.eurocontrol.int/asterix/
+
+cat21     adsb  Flattened ASTERIX Cat21 data for ADS-B.
+                Source: ECTL -- URL: https://www.eurocontrol.int/asterix/
+
+opensky   adsb  Data coming from the Opensky site, mostly ADS-B.
+                Source: Opensky -- URL: https://opensky-network.org/
+
+safesky   adsb  Data coming from the Safesky site, mostly ADS-B.
+                Source: Safesky -- URL: https://www.safesky.app/
+```
+
 ### DronePoint & Journey
 
 `DronePoint` is a common data model extracted from the data sent by [ASD] with some fields with different types (like
