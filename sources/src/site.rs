@@ -166,6 +166,12 @@ impl Site {
             _ => None,
         }
     }
+
+    /// Getter for dtype
+    ///
+    pub fn data(self) -> DataType {
+        self.dtype
+    }
 }
 
 impl Display for Site {
