@@ -1,4 +1,4 @@
-//! Library part of the `raw-dump` utility.
+//! Library part of the `acutectl` utility.
 //!
 //! This library include the code for the different file formats used as input and the different
 //! way of fetching data from different sources.  This is written because there are as many ways
