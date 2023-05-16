@@ -155,7 +155,7 @@ site "opensky" {
     password = "NOPE"
   }
   routes = {
-    get = "/state/own"
+    get = "/states/own"
   }
 }
 
