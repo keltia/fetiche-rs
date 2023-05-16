@@ -67,7 +67,8 @@ This is intentionally *not* a run-time option but a compile-time one.
 ## Usage
 
 For the moment, there is only one binary called `acutectl` (with `.exe` on Windows). It can be used to fetch data into
-their native format (csv, json) or import said data into a database.
+their native format (csv, json) or import said data into a database. It can import both drone and ADS-B data depending
+on the source's declared type in `sources.hcl`.
 
 <details>
 <summary>acutectl</summary>
@@ -79,10 +80,10 @@ CLI utility to fetch data.
 Usage: acutectl [OPTIONS] <COMMAND>
 
 Commands:
-  adsb        Handle ADS-B data (INCOMPLETE)
   completion  Generate Completion stuff
-  drone       Handle drone data
-  list        Display possible sources
+  fetch       Fetch data from specified site
+  import      Import into InfluxDB
+  list        Handle drone data
   help        Print this message or the help of the given subcommand(s)
 
 Options:
@@ -105,11 +106,11 @@ On UNIX, it is located in `$HOME/.config/drone-utils/source.hcl` and in `%LOCALA
 
 There are only a few parameters for now, the most important one being the credentials for authenticate against the
 network endpoint. You can specify the different network endpoints. The current config file version is 3 as the `type`
-entry was added to the `Site`  struct.
+entry was added to the `Site` struct.
 
-The `completion`  keyword can be used to generate completion sciprts for various shells incl `zsh` and `powershell`.
+The `completion` keyword can be used to generate completion sciprts for various shells incl `zsh` and `powershell`.
 
-The `acutectl <key> import` sub-commands will also use another one called `dbfile.hcl`  located in the same directory.
+The `acutectl import` sub-command will also use another one called `dbfile.hcl`  located in the same directory.
 
 <details>
 <summary>sources.hcl</summary>
@@ -249,6 +250,11 @@ The `sources.hcl` configuration file is versioned to avoid incompatibilities.
 - v1 was the original version with the `Sites` struct
 - In v2 `Sites`  was renamed into `Sources` to reflect evolution
 - In v3 the `type`  keyword was added to the `Site` definition
+
+The `formats.hcl` add metadata about all supported formats.
+
+- v1 was generic
+- v2 added the datatype for each format
 
 ## Contributing
 

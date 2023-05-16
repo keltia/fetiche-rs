@@ -8,8 +8,8 @@ use clap_complete::generate;
 use log::{info, trace};
 
 use acutectl::{
-    fetch_from_site, import_data, list_formats, list_sources, DroneSubCommand, ImportSubCommand,
-    ListSubCommand, Opts, SubCommand,
+    fetch_from_site, import_data, list_formats, list_sources, ImportSubCommand, ListSubCommand,
+    Opts, SubCommand,
 };
 use format_specs::Format;
 use sources::{Site, Sources};
@@ -57,60 +57,47 @@ fn main() -> Result<()> {
 
     let subcmd = &opts.subcmd;
     match subcmd {
-        // Handle `adsb` commands
-        //
-        SubCommand::Adsb(aopts) => {
-            trace!("adsb");
+        SubCommand::Fetch(fopts) => {
+            trace!("fetch");
+            let data = fetch_from_site(&cfg, &fopts)?;
 
-            unimplemented!()
+            match &fopts.output {
+                Some(output) => {
+                    info!("Writing into {:?}", output);
+                    fs::write(output, data)?
+                }
+                // stdout otherwise
+                //
+                _ => println!("{:?}", data),
+            }
         }
-        // Handle `drone` commands
-        //
-        SubCommand::Drone(dopts) => {
-            trace!("drone");
 
-            match &dopts.subcmd {
-                DroneSubCommand::Fetch(fopts) => {
-                    trace!("drone fetch");
+        // Handle `import site`  and `import file`
+        //
+        SubCommand::Import(opts) => {
+            trace!("import");
+
+            match &opts.subcmd {
+                ImportSubCommand::ImportSite(fopts) => {
+                    trace!("drone import site");
+
+                    let fmt = Site::load(&fopts.site, &cfg)?.format();
+
                     let data = fetch_from_site(&cfg, &fopts)?;
 
-                    match &fopts.output {
-                        Some(output) => {
-                            info!("Writing into {:?}", output);
-                            fs::write(output, data)?
-                        }
-                        // stdout otherwise
-                        //
-                        _ => println!("{:?}", data),
-                    }
+                    import_data(&cfg, &data, fmt)?;
                 }
-                // Handle `import site`  and `import file`
-                //
-                DroneSubCommand::Import(opts) => {
-                    trace!("drone import");
+                ImportSubCommand::ImportFile(if_opts) => {
+                    trace!("drone import file");
 
-                    match &opts.subcmd {
-                        ImportSubCommand::ImportSite(fopts) => {
-                            trace!("drone import site");
+                    let data = fs::read_to_string(&if_opts.file)?;
+                    let fmt = Format::from(if_opts.format.clone().unwrap().as_str());
 
-                            let fmt = Site::load(&fopts.site, &cfg)?.format();
-
-                            let data = fetch_from_site(&cfg, &fopts)?;
-
-                            import_data(&cfg, &data, fmt)?;
-                        }
-                        ImportSubCommand::ImportFile(if_opts) => {
-                            trace!("drone import file");
-
-                            let data = fs::read_to_string(&if_opts.file)?;
-                            let fmt = Format::from(if_opts.format.clone().unwrap().as_str());
-
-                            import_data(&cfg, &data, fmt)?;
-                        }
-                    }
+                    import_data(&cfg, &data, fmt)?;
                 }
             }
         }
+
         // Standalone completion generation
         //
         // NOTE: you can generate UNIX shells completion on Windows and vice-versa.  Not worth

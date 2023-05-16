@@ -2,20 +2,24 @@
 //!
 //!We have three main commands:
 //!
-//! - `adsb`
-//! - `drone`
+//! - `fetch`
+//! - `import`
 //! - `list`
-//!
-//! Both `adsb` and `drone` accept the sub-commands `fetch` & `import`, the main difference is
-//! what is done with the data itself.  Every drone source is converted into state vectors of `DronePoint`
-//! with a timestamp suitable for import into a time-series DB.  ADS-B data will use a different
-//! format with more fields related to planes.
 //!
 //! `fetch` retrieve the raw data (whether it is CSV, JSON or something else is not important) and dumps it
 //! into a file or `stdout`.
 //!
-//! `import` convert data into a data format suitable for importing into a time-series database
+//! Depending on the datatype for each source during `import`, `acutectl` does different processes.
+//! We have a common format for drone data:
+//!
+//! Every drone source is converted into state vectors of `DronePoint` with a timestamp suitable for
+//! import into a time-series DB.  ADS-B data will use a different format with more fields related
+//! to planes.
+//!
+//! `import` convert data into a data format suitable for importing into a database
 //! ([InfluxDB] at the moment).
+//!
+//! `completion` is here just to configure the various shells completion system.
 //!
 //! A `Site` is a `Fetchable` object with the corresponding trait methods (`authenticate()` & `fetch()`)
 //! from the `sources` crate.  File formats are from the `format-specs` crate.
@@ -28,6 +32,7 @@ use std::path::PathBuf;
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, Parser, Subcommand, ValueEnum,
 };
+use clap_complete::shells::Shell;
 
 /// CLI options
 #[derive(Parser)]
@@ -59,62 +64,43 @@ pub struct Opts {
 
 /// All sub-commands:
 ///
-/// `adsb (fetch \ import)`
-/// `drone (fetch | import)`
+/// `completion SHELL`
+/// `fetch [-B date] [-E date] [--today] [-o FILE] site`
+/// `import (file|site) OPTS`
 /// `list`
 ///
 #[derive(Debug, Parser)]
 pub enum SubCommand {
-    /// Handle ADS-B data
-    Adsb(AdsbOpts),
     /// Generate Completion stuff
     Completion(ComplOpts),
+    /// Fetch data from specified site
+    Fetch(FetchOpts),
+    /// Import into InfluxDB
+    Import(ImportOpts),
     /// Handle drone data
-    Drone(DroneOpts),
-    /// Display possible sources
     List(ListOpts),
 }
 
 // ------
 
-/// All `drone`subcommands:
-///
-/// `drone fetch [-B date] [-E date] [--today] [-o FILE] site`
-/// `drone import (file|site)`
+/// Options for fetching data with basic filtering and an optional output file.
 ///
 #[derive(Debug, Parser)]
-pub struct DroneOpts {
-    #[clap(subcommand)]
-    pub subcmd: DroneSubCommand,
-}
-
-#[derive(Debug, Parser)]
-pub enum DroneSubCommand {
-    /// Fetch data from specified site
-    Fetch(FetchOpts),
-    /// Import into InfluxDB
-    Import(ImportOpts),
-}
-
-// ------
-
-/// All `adsb`subcommands:
-///
-/// `adsb fetch [-B date] [-E date] [--today] [-o FILE] site`
-/// `adsb import (file|site)`
-///
-#[derive(Debug, Parser)]
-pub struct AdsbOpts {
-    #[clap(subcommand)]
-    pub subcmd: AdsbSubCommand,
-}
-
-#[derive(Debug, Parser)]
-pub enum AdsbSubCommand {
-    /// Fetch data from specified site
-    Fetch(FetchOpts),
-    /// Import into InfluxDB
-    Import(ImportOpts),
+pub struct FetchOpts {
+    /// Start the data at specified date (optional)
+    #[clap(short = 'B', long)]
+    pub begin: Option<String>,
+    /// End date (optional)
+    #[clap(short = 'E', long)]
+    pub end: Option<String>,
+    /// Output file.
+    #[clap(short = 'o', long)]
+    pub output: Option<PathBuf>,
+    /// We want today only
+    #[clap(long)]
+    pub today: bool,
+    /// site name
+    pub site: String,
 }
 
 // ------
@@ -154,8 +140,6 @@ pub struct ImportFileOpts {
 
 // ------
 
-use clap_complete::shells::Shell;
-
 /// Options to generate completion files at runtime
 ///
 #[derive(Debug, Parser)]
@@ -185,24 +169,4 @@ pub enum ListSubCommand {
     Formats,
     /// List all sources from `sources.hcl`
     Sources,
-}
-
-/// Shared options for fetching data with basic filtering and an optional output file.
-///
-#[derive(Debug, Parser)]
-pub struct FetchOpts {
-    /// Start the data at specified date (optional)
-    #[clap(short = 'B', long)]
-    pub begin: Option<String>,
-    /// End date (optional)
-    #[clap(short = 'E', long)]
-    pub end: Option<String>,
-    /// Output file.
-    #[clap(short = 'o', long)]
-    pub output: Option<PathBuf>,
-    /// We want today only
-    #[clap(long)]
-    pub today: bool,
-    /// site name
-    pub site: String,
 }
