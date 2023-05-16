@@ -1,0 +1,38 @@
+[package]
+name = "curves"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = ""
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/drone-gencsv"
+categories = ["command-line-utilities", "aerospace::drones"]
+keywords = ["cat21", "asterix", "drones", "aeronautical-data"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4", features = ["cargo", "derive"] }
+csv = "1.1"
+env_logger = "0.10.0"
+flo_curves = "0.7.1"
+format-specs = { version = "0", path = "../format-specs" }
+hcl-rs = "0.14"
+home = "0.5"
+log = { version = "0.4", features = ["serde", "std"] }
+percent-encoding = "2"
+reqwest = { version = "0", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
+serde = { version = "1.0", features = ["derive"] }
+sources = { version = "0", path = "../sources" }
+
+[dev-dependencies]
+assert_cmd = "2.0"

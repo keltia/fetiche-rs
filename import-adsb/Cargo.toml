@@ -1,0 +1,45 @@
+[package]
+name = "import-adsb"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "CLI utility to import ADS-B data."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/drone-gencsv"
+categories = ["command-line-utilities", "aerospace::drones"]
+keywords = ["cat21", "asterix", "ads-b", "aeronautical-data"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.65"
+async-std = "1.12.0"
+chrono = { version = "0.4.24", features = ["serde"] }
+clap = { version = "4", features = ["cargo", "derive"] }
+csv = "1.1.6"
+env_logger = "0.10.0"
+format-specs = { version = "0", path = "../format-specs" }
+hcl-rs = "0.14"
+home = "0.5.4"
+influxdb2 = "0.4.0"
+log = { version = "0.4.17", features = ["serde", "std"] }
+percent-encoding = "2.2.0"
+reqwest = { version = "0.11.12", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
+serde = { version = "1.0.157", features = ["derive"] }
+serde_json = "1.0.86"
+serde_repr = "0.1.12"
+sources = { version = "0", path = "../sources" }
+sqlx = { version = "0.6.3", features = ["json", "ipnetwork", "mysql", "tls", "chrono", "macros", "runtime-async-std-native-tls"] }
+stderrlog = "0.5.4"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+httpmock = "0.6"
