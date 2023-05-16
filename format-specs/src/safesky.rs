@@ -6,8 +6,6 @@
 //! The file given to us as example is apparently from the `/v1/beacons`  endpoint as it contains
 //! only ADS-BI (see `Safesky.transponder_type`) data.
 //!
-//! This implement the `Fetchable` trait described in `site/lib`.
-//!
 
 use std::net::IpAddr;
 
