@@ -16,12 +16,13 @@
 
 use std::path::PathBuf;
 
+use format_specs::Format;
+use sources::{Fetchable, Filter};
+
 /// Re-export
 ///
 pub use cli::*;
 pub use cmds::*;
-use format_specs::Format;
-use sources::{Fetchable, Filter};
 pub use task::*;
 
 mod cli;
