@@ -174,7 +174,7 @@ site "safesky" {
 
 As you can see, there are sites that require you to supply a login & password and others which don't.
 
-If you are just giving the utility a file, you must specifiy the input format with the `-F/--format` option.
+If you are just giving the utility a file, you must specify the input format with the `-F/--format` option.
 </details>
 
 Here is an example of `dbfile.hcl`:
@@ -203,6 +203,7 @@ db "time" {
   token = "NOT DISCLOSED HERE"
 }
 ```
+
 </details>
 
 ## Formats (managed in the `format-specs`  crate)
