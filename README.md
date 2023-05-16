@@ -217,6 +217,9 @@ CSV-based Cat21-like format (DEPRECATED).
 
 To displayed currently supported formats, use `acutectl list formats`:
 
+<details>
+<summary>acute list formats</summary>
+
 ```text
 acutectl/0.2.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
 CLI utility to fetch data.
@@ -241,6 +244,8 @@ opensky   adsb  Data coming from the Opensky site, mostly ADS-B.
 safesky   adsb  Data coming from the Safesky site, mostly ADS-B.
                 Source: Safesky -- URL: https://www.safesky.app/
 ```
+
+</details>
 
 ### DronePoint & Journey
 
