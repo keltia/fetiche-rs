@@ -283,7 +283,11 @@ impl Sites {
         };
 
         debug!("File is .{ext:?}");
-        let s: Sites = hcl::from_str(&content)?;
+        let s: hcl::error::Result<Sites> = hcl::from_str(&content);
+        let s = match s {
+            Ok(s) => s,
+            Err(e) => return Err(anyhow!("syntax error or wrong version: {}", e)),
+        };
 
         // First check
         //
@@ -317,10 +321,10 @@ impl Sites {
 mod tests {
     use std::env::temp_dir;
 
-    use crate::DataType;
     use anyhow::bail;
 
     use crate::site::Auth;
+    use crate::DataType;
 
     use super::*;
 
