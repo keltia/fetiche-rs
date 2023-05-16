@@ -238,10 +238,15 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - ~~fetch and analyse from Asd~~
 - ~~divide into crates for sharing more code.~~
 - ~~use a common data model for drone data~~
+- ~~Support for Opensky (same)~~
 - merge `import-adsb` and `cat21conv` into `acutectl`.
+- link to HashiCorp Vault for storing credentials and tokens
+- alternatively caching tokens (like ASD ones) locally
 - Add more tests & benchmarks.
 - support for Safesky for ADS-B data
-- ~~Support for Opensky (same)~~
+- Support for Sherlock formats and access methods
+- Data formats conversion framework
+- Multicast output?
 
 ## Configuration History
 
