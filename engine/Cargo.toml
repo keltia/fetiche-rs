@@ -1,6 +1,6 @@
 [package]
-name = "engine"
-version = "0.11.0"
+name = "fetiche-engine"
+version = "0.1.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Engine component of Fetiche."
@@ -24,12 +24,12 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
-chrono = { version = "0.4", features = ["serde"] }
-hcl-rs = "0.14"
-log = { version = "0.4", features = ["serde", "std"] }
+anyhow.workspace = true
+clap.workspace = true
+chrono.workspace = true
+env_logger.workspace = true
+hcl-rs.workspace = true
+log.workspace = true
+
 nom8 = "0"
 reqwest = { version = "0.11", features = ["blocking"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-serde_repr = "0.1"
