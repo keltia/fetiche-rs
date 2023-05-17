@@ -899,21 +899,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "engine"
-version = "0.11.0"
-dependencies = [
- "anyhow",
- "chrono",
- "hcl-rs",
- "log",
- "nom8",
- "reqwest",
- "serde",
- "serde_json",
- "serde_repr",
-]
-
-[[package]]
 name = "env_logger"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -966,6 +951,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e51093e27b0797c359783294ca4f0a911c270184cb10f85783b118614a1501be"
 dependencies = [
  "instant",
+]
+
+[[package]]
+name = "fetiche-engine"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "env_logger",
+ "hcl-rs",
+ "log",
+ "nom8",
+ "reqwest",
 ]
 
 [[package]]
