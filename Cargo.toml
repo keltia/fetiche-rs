@@ -1,2 +1,27 @@
+[package]
+name = "Fetiche"
+version = "0.1.0"
+description = "Fetiche is a data gathering/conversion framework for Aeronautical data."
+edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/drone-gencsv"
+
+[[bin]]
+name = "acutectl"
+path = "acutectl/src"
+
+[[bin]]
+name = "cat21conv"
+path = "cat21conv/src/bin/cat21conv"
+
+[[bin]]
+name = "import-adsb"
+path = "import-adsb/src"
+
+[badges]
+maintenance = { status = "actively-developed" }
+
 [workspace]
-members = ["acutectl", "cat21conv", "curves", "format-specs", "import-adsb", "sources"]
+members = ["acutectl", "cat21conv", "curves", "engine", "format-specs", "import-adsb", "sources"]
