@@ -33,7 +33,7 @@ home.workspace = true
 influxdb2 = "0.4.0"
 log.workspace = true
 percent-encoding = "2.2.0"
-reqwest = { version = "0.11.12", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_repr = "0.1.12"

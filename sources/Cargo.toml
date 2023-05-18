@@ -33,7 +33,7 @@ hcl-rs.workspace = true
 home.workspace = true
 log.workspace = true
 percent-encoding = "2.2"
-reqwest = { version = "0.11", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_repr = "0.1"
