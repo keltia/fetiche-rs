@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
+use fetiche_formats::Format;
 use fetiche_sources::Sources;
-use format_specs::Format;
 
 /// Fetch the list of supported formats and their description.
 ///

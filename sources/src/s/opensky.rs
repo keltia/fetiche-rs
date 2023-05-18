@@ -8,7 +8,7 @@ use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use format_specs::{Cat21, Format};
+use fetiche_formats::{Cat21, Format};
 
 use crate::{http_get_basic, Fetchable};
 use crate::{Auth, Site};

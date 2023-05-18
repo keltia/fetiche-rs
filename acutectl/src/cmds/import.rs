@@ -2,8 +2,8 @@ use anyhow::{bail, Result};
 use log::{info, trace};
 use std::collections::BTreeMap;
 
+use fetiche_formats::{Asd, DronePoint, Format};
 use fetiche_sources::Sources;
-use format_specs::{Asd, DronePoint, Format};
 
 use crate::cmds::filter_from_opts;
 use crate::{ImportOpts, Input, Task};

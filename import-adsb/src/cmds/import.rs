@@ -5,8 +5,8 @@ use anyhow::{anyhow, Result};
 use log::trace;
 use serde::de;
 
+use fetiche_formats::Format;
 use fetiche_sources::{Fetchable, Filter};
-use format_specs::Format;
 
 /// Type of task we will need to do
 ///

@@ -16,8 +16,8 @@
 
 use std::path::PathBuf;
 
+use fetiche_formats::Format;
 use fetiche_sources::Fetchable;
-use format_specs::Format;
 
 /// Re-export
 ///

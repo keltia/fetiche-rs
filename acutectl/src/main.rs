@@ -11,8 +11,8 @@ use acutectl::{
     fetch_from_site, import_data, list_formats, list_sources, ImportSubCommand, ListSubCommand,
     Opts, SubCommand,
 };
+use fetiche_formats::Format;
 use fetiche_sources::{Site, Sources};
-use format_specs::Format;
 
 /// Binary name, using a different binary name
 pub(crate) const NAME: &str = env!("CARGO_BIN_NAME");

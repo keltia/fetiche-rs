@@ -10,7 +10,7 @@ use std::fmt::Debug;
 
 use anyhow::Result;
 
-use format_specs::{Cat21, Format};
+use fetiche_formats::{Cat21, Format};
 
 // Re-export these modules for a shorted import path.
 //

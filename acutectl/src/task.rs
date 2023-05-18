@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use anyhow::{anyhow, Result};
 use log::{debug, error, trace};
 
+use fetiche_formats::Format;
 use fetiche_sources::{Fetchable, Filter};
-use format_specs::Format;
 
 use crate::Input;
 

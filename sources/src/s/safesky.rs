@@ -11,8 +11,8 @@ use anyhow::{anyhow, Result};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use format_specs::Cat21;
-use format_specs::{Format, Position};
+use fetiche_formats::Cat21;
+use fetiche_formats::{Format, Position};
 
 use crate::site::{Auth, Site};
 use crate::Fetchable;

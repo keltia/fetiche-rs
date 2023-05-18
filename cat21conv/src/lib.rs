@@ -20,7 +20,7 @@
 /// # use log::info;
 /// # fn main() -> Result<()> {
 /// use cat21conv::Task;
-/// use format_specs::{Cat21, Format};
+/// use fetiche_formats::{Cat21, Format};
 ///
 /// let what = "foo.json";
 /// let format = Format::None;
@@ -39,7 +39,7 @@
 ///
 /// // Fetch from network
 /// //
-/// use format_specs::Cat21;
+/// use fetiche_formats::Cat21;
 ///
 /// use fetiche_sources::{Sites,Filter,Site};
 ///
@@ -64,8 +64,8 @@ use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
 use log::debug;
 
+use fetiche_formats::{Cat21, Format};
 use fetiche_sources::{Fetchable, Filter};
-use format_specs::{Cat21, Format};
 
 pub(crate) const VERSION: &str = crate_version!();
 pub(crate) const NAME: &str = crate_name!();

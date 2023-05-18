@@ -17,7 +17,7 @@ use anyhow::{anyhow, Result};
 use log::trace;
 use serde::{Deserialize, Serialize};
 
-use format_specs::Format;
+use fetiche_formats::Format;
 
 use crate::config::Sources;
 use crate::Fetchable;
