@@ -1,8 +1,8 @@
 <!-- omit in TOC -->
 
-# drone-utils
+# fetiche
 
-> **Library to import/fetch/transform various aeronautical data**
+> **FETICHE: Framework to import/fetch/transform various aeronautical data**
 
 [![Build status](https://github.com/keltia/drone-gencsv/actions/workflows/rust.yml/badge.svg)](https://github.com/keltia/drone-gencsv/actions/workflows/rust.yml)
 [![Buildstatus (develop)](https://github.com/keltia/drone-gencsv/actions/workflows/develop.yml/badge.svg)](https://github.com/keltia/drone-gencsv/actions/workflows/develop.yml)
@@ -26,13 +26,13 @@ Licensed under the [MIT](LICENSE) license.
 
 ## About
 
-This is a set of libraries and utilities dealing with various data formats and import/conversion utilities for
-Aeronautical data about drones and aircraft.
+Fetiche is a framework with a set of libraries and utilities dealing with various data formats and import/conversion
+utilities for Aeronautical data about drones and aircrafts.
 
-This is now divided into 4 different crates with two libraries (`format-specs` and `sources`) shared by the binary
-crates (`acutectl`, `cat21conv` and `import-adsb`).
+This is now divided into 4 different crates with two libraries (`fetiche-formats` and `fetiche-sources`) shared by the
+binary crates (`acutectl`, `cat21conv` and `import-adsb`).
 
-These libraries support different formats (`format-specs`) and access methods (`sources`).
+These libraries support different formats (`fetiche-formats`) and access methods (`fetiche-sources`).
 
 Binary crate include a command-line utility called `acutectl` to perform import from a file or fetching data from
 different sites. This program has been enhanced to cover both file and network input and as well to support more
@@ -51,6 +51,8 @@ It works fine, but it is a bit fragile, has some hardcoded paths & filenames. Th
 in [RUST], a fast and safe language defined in 2010 by [Mozilla] and currently evolving with 2 releases a year. It
 has been since evolved into a set of libraries and binaries.
 
+It is now known as the "Fetiche" framework.
+
 ## Installation
 
 It might be available at some point as crates on [Crates.io]  but for the moment just as a private repository on
@@ -68,7 +70,7 @@ This is intentionally *not* a run-time option but a compile-time one.
 
 For the moment, there is only one binary called `acutectl` (with `.exe` on Windows). It can be used to fetch data into
 their native format (csv, json) or import said data into a database. It can import both drone and ADS-B data depending
-on the source's declared type in `sources.hcl`.
+on the source's declared type in `fetiche-sources.hcl`.
 
 <details>
 <summary>acutectl</summary>
@@ -100,7 +102,8 @@ Options:
 As seen, there are different sub-commands. You can use `acutectl help <sub-command>`  to get description of the
 different parameters.
 
-The configuration for the different sources of data is handled by the `source` crate in [HCL] file format.
+The configuration for the different fetiche-sources of data is handled by the `fetiche-source` crate in [HCL] file
+format.
 
 On UNIX, it is located in `$HOME/.config/drone-utils/source.hcl` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
 
@@ -206,13 +209,13 @@ db "time" {
 
 </details>
 
-## Formats (managed in the `format-specs`  crate)
+## Formats (managed in the `fetiche-formats`  crate)
 
 The default input format is the one used by the Aeroscope from ASD, but it will soon support the format used
 by [Safesky] site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
 
-These are described in the `format-specs/src/s/aeroscope.rs`, `format-specs/src/s/asd.rs`
-and `format-specs/src/s/safesky.rs` files. There are also transformations in each case when converting into our
+These are described in the `fetiche-formats/src/s/aeroscope.rs`, `fetiche-formats/src/s/asd.rs`
+and `fetiche-formats/src/s/safesky.rs` files. There are also transformations in each case when converting into our
 CSV-based Cat21-like format (DEPRECATED).
 
 To displayed currently supported formats, use `acutectl list formats`:
@@ -247,11 +250,13 @@ safesky   adsb  Data coming from the Safesky site, mostly ADS-B.
 
 </details>
 
-### DronePoint & Journey
+### Data Model
 
-`DronePoint` is a common data model extracted from the data sent by [ASD] with some fields with different types (like
-actual `f32` instead of the string format) and real timestamp. These can be grouped into a `Journey` type which is a
-state vector with all the points in the trajectory.
+Each source has its own data model which complicates things, apart from [ASTERIX] with Cat129 for drone data, each
+company/service provider use their own data model. To ease managing drone data, I have defined `DronePoint` as a common
+data model (extracted from the data sent by [ASD] with some fields with different types -- like actual `f32` instead of
+the string format) and real timestamp. These can be grouped into a `Journey` type which is a state vector with all the
+points in the trajectory.
 
 ## MSRV
 
@@ -272,6 +277,7 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - ~~divide into crates for sharing more code.~~
 - ~~use a common data model for drone data~~
 - ~~Support for Opensky (same)~~
+- rename `drone-utils` into the more proper `fetiche`.
 - merge `import-adsb` and `cat21conv` into `acutectl`.
 - link to HashiCorp Vault for storing credentials and tokens
 - alternatively caching tokens (like ASD ones) locally
