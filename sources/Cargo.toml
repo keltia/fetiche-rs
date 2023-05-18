@@ -1,14 +1,14 @@
 [package]
-name = "sources"
+name = "fetiche-sources"
 version = "0.5.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
-description = "Access methods to connect/fetch data from sites."
+description = "Fetiche component for access methods to connect/fetch data."
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/keltia/drone-gencsv"
 categories = ["aerospace::drones"]
-keywords = ["cat21", "asterix", "drones", "aeronautical-data", "hcl"]
+keywords = ["cat21", "asterix", "drones", "aeronautical-data", "hcl", "fetiche"]
 
 [features]
 default = ["privacy"]

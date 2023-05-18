@@ -14,6 +14,7 @@ dependencies = [
  "clap_complete",
  "csv",
  "env_logger",
+ "fetiche-sources",
  "format-specs",
  "hcl-rs",
  "home",
@@ -25,7 +26,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
- "sources",
  "sqlx",
  "stderrlog",
 ]
@@ -491,6 +491,7 @@ dependencies = [
  "clap",
  "csv",
  "env_logger",
+ "fetiche-sources",
  "format-specs",
  "hcl-rs",
  "home",
@@ -501,7 +502,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
- "sources",
 ]
 
 [[package]]
@@ -781,6 +781,7 @@ dependencies = [
  "clap",
  "csv",
  "env_logger",
+ "fetiche-sources",
  "flo_curves",
  "format-specs",
  "hcl-rs",
@@ -789,7 +790,6 @@ dependencies = [
  "percent-encoding",
  "reqwest",
  "serde",
- "sources",
 ]
 
 [[package]]
@@ -965,6 +965,26 @@ dependencies = [
  "log",
  "nom8",
  "reqwest",
+]
+
+[[package]]
+name = "fetiche-sources"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "csv",
+ "format-specs",
+ "hcl-rs",
+ "home",
+ "httpmock",
+ "log",
+ "percent-encoding",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_repr",
 ]
 
 [[package]]
@@ -1479,6 +1499,7 @@ dependencies = [
  "clap",
  "csv",
  "env_logger",
+ "fetiche-sources",
  "format-specs",
  "hcl-rs",
  "home",
@@ -1490,7 +1511,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
- "sources",
  "sqlx",
  "stderrlog",
 ]
@@ -2788,26 +2808,6 @@ checksum = "64a4a911eed85daf18834cfaa86a79b7d266ff93ff5ba14005426219480ed662"
 dependencies = [
  "libc",
  "winapi",
-]
-
-[[package]]
-name = "sources"
-version = "0.5.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "csv",
- "format-specs",
- "hcl-rs",
- "home",
- "httpmock",
- "log",
- "percent-encoding",
- "reqwest",
- "serde",
- "serde_json",
- "serde_repr",
 ]
 
 [[package]]

@@ -25,6 +25,7 @@ clap = { version = "4", features = ["cargo", "derive"] }
 csv = "1.1"
 env_logger = "0.10.0"
 flo_curves = "0.7.1"
+fetiche-sources = { version = "0", path = "../sources" }
 format-specs = { version = "0", path = "../format-specs" }
 hcl-rs = "0.14"
 home = "0.5"
@@ -32,7 +33,6 @@ log = { version = "0.4", features = ["serde", "std"] }
 percent-encoding = "2"
 reqwest = { version = "0", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
 serde = { version = "1.0", features = ["derive"] }
-sources = { version = "0", path = "../sources" }
 
 [dev-dependencies]
 assert_cmd = "2.0"

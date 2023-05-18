@@ -27,6 +27,7 @@ clap = { version = "4", features = ["cargo", "derive"] }
 clap_complete = "4.2.2"
 csv = "1.1"
 env_logger = "0.10"
+fetiche-sources = { version = "0", path = "../sources" }
 format-specs = { version = "0", path = "../format-specs" }
 hcl-rs = "0.14"
 home = "0.5"
@@ -37,7 +38,6 @@ reqwest = { version = "0.11", features = ["blocking", "gzip", "json", "serde_jso
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_repr = "0.1"
-sources = { version = "0", path = "../sources" }
 sqlx = { version = "0.6", features = ["json", "ipnetwork", "mysql", "tls", "chrono", "macros", "runtime-async-std-native-tls"] }
 stderrlog = "0.5.4"
 
