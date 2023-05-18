@@ -1,10 +1,9 @@
 use anyhow::Result;
 use clap::Parser;
-use log::LevelFilter::{Debug, Info, Trace};
 use log::{info, trace};
 
 use crate::cli::{Opts, SubCommand};
-use crate::config::{get_config, DB};
+use crate::config::get_config;
 use crate::version::version;
 
 mod cli;

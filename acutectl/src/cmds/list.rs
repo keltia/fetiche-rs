@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use anyhow::Result;
 
 use fetiche_formats::Format;

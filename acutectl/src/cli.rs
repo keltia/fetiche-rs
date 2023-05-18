@@ -29,9 +29,7 @@
 
 use std::path::PathBuf;
 
-use clap::{
-    crate_authors, crate_description, crate_name, crate_version, Parser, Subcommand, ValueEnum,
-};
+use clap::{crate_authors, crate_description, crate_name, crate_version, Parser, ValueEnum};
 use clap_complete::shells::Shell;
 
 /// CLI options

@@ -8,7 +8,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use log::{debug, error, trace};
+use log::{debug, trace};
 
 use fetiche_formats::Format;
 use fetiche_sources::{Fetchable, Filter};

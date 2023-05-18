@@ -1,12 +1,9 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use log::{info, trace};
 use std::collections::BTreeMap;
 
 use fetiche_formats::{Asd, DronePoint, Format};
 use fetiche_sources::Sources;
-
-use crate::cmds::filter_from_opts;
-use crate::{ImportOpts, Input, Task};
 
 pub fn import_data(cfg: &Sources, data: &str, fmt: Format) -> Result<()> {
     trace!("import_data");
