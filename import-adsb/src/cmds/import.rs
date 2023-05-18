@@ -110,14 +110,14 @@ impl Task {
         let res = match &self.input {
             // Input::File is simple, we have the format
             //
-            Input::File { format, path } => {
+            Input::File { path, .. } => {
                 let res = fs::read_to_string(path)?;
                 let res: Vec<T> = serde_json::from_str(&res)?;
                 res
             }
             // Input::Network is more complicated and rely on the Site
             //
-            Input::Network { format, site } => {
+            Input::Network { site, .. } => {
                 // Fetch data as bytes
                 //
                 let token = site.authenticate()?;
