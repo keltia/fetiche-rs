@@ -1,9 +1,9 @@
 [package]
-name = "format-specs"
+name = "fetiche-formats"
 version = "0.11.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
-description = "Various input file formats for drone utilities."
+description = "Various input file formats for the Fetiche framework."
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/keltia/drone-gencsv"

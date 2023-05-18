@@ -1,10 +1,10 @@
-//! Definition of a data format-specs
+//! Definition of a data formats
 //!
-//! This module makes the link between the shared output format-specs `Cat21` and the different
+//! This module makes the link between the shared output formats `Cat21` and the different
 //! input formats defined in the other modules.
 //!
-//! To add a new format-specs, insert here the different hooks (`Source`, etc.) & names and a `FORMAT.rs`
-//! file which will define the input format-specs and the transformations needed.
+//! To add a new formats, insert here the different hooks (`Source`, etc.) & names and a `FORMAT.rs`
+//! file which will define the input formats and the transformations needed.
 //!
 
 use std::collections::BTreeMap;
@@ -145,7 +145,7 @@ impl Format {
 }
 
 impl From<&str> for Format {
-    /// Create a format-specs from its name
+    /// Create a formats from its name
     ///
     fn from(s: &str) -> Self {
         match s {
