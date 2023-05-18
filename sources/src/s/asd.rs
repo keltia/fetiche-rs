@@ -14,13 +14,14 @@
 //!
 
 use anyhow::{anyhow, Result};
-use chrono::NaiveDateTime;
+use chrono::{Duration, NaiveDateTime};
 use clap::{crate_name, crate_version};
 use log::{debug, trace};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::ops::Add;
 
 use fetiche_formats::Asd as InputFormat;
 use fetiche_formats::{Cat21, Format};
@@ -192,6 +193,11 @@ impl Fetchable for Asd {
         // If we have a filter defined, extract times
         //
         let data = match f {
+            Filter::Duration(d) => Param {
+                start_time: NaiveDateTime::default(),
+                end_time: NaiveDateTime::default().add(Duration::seconds(d as i64)),
+                sources: vec![Source::As, Source::Wi],
+            },
             Filter::Interval { begin, end } => Param {
                 start_time: begin,
                 end_time: end,
