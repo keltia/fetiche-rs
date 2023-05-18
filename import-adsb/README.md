@@ -17,6 +17,9 @@ This rate contains only the code for the different input file formats supported 
 
 `import-adsb` use a configuration file along with the `config.toml`  from the `format-specs` library, `dbfile.toml`.
 
+<details>
+<summary>dbfile.toml</summary>
+
 ```toml
 default = "none"
 
@@ -29,13 +32,15 @@ name = "drone"
 url = "mysql://example.net:3306/drones"
 ```
 
+</details>
+
 ## Formats
 
 The default format is the one used by the Aeroscope from ASD, but it will soon support the format used by [Safesky]
 site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
 
-These are described in the `src/format/aeroscope.rs`, `src/format/asd.rs` and `src/format/safesky.rs` files. There are
-also transformations in each case when converting into our CSV-based Cat21-like format.
+These are described in the `fetiche-formats` crate. There are also transformations in each case when converting into our
+CSV-based Cat21-like format.
 
 ## Usage
 
