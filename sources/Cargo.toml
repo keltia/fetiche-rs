@@ -24,17 +24,19 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
-chrono = { version = "0.4", features = ["serde"] }
-clap = { version = "4", features = ["cargo"] }
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
 csv = "1.1.6"
-format-specs = { version = "0", path = "../format-specs" }
-hcl-rs = "0.14"
-home = "0.5"
-httpmock = { version = "0.6", features = ["colored", "color", "clap"] }
-log = { version = "0.4", features = ["serde", "std"] }
+fetiche-formats.workspace = true
+hcl-rs.workspace = true
+home.workspace = true
+log.workspace = true
 percent-encoding = "2.2"
 reqwest = { version = "0.11", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde.workspace = true
+serde_json.workspace = true
 serde_repr = "0.1"
+
+[dev-dependencies]
+httpmock = { version = "0.6", features = ["colored", "color", "clap"] }

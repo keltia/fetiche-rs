@@ -49,7 +49,7 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
     } else if opts.begin.is_some() {
         // Assume both are there, checked elsewhere
         //
-        // We have to parse both arguments ourselves because it uses its own format-specs
+        // We have to parse both arguments ourselves because it uses its own formats
         //
         let begin = match &opts.begin {
             Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?,

@@ -15,7 +15,7 @@ use crate::{Auth, Site};
 
 #[derive(Clone, Debug)]
 pub struct Opensky {
-    /// Input format-specs
+    /// Input formats
     pub format: Format,
     /// Username
     pub login: String,

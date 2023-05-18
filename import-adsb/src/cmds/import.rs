@@ -15,7 +15,7 @@ pub enum Input {
     /// File-based means we need the format beforehand and a pathname
     ///
     File {
-        /// Input format-specs
+        /// Input formats
         format: Format,
         /// Path of the input file
         path: PathBuf,
@@ -24,7 +24,7 @@ pub enum Input {
     /// file.  The `site` is a `Fetchable` object generated from `Config`.
     ///
     Network {
-        /// Input format-specs
+        /// Input formats
         format: Format,
         /// Site itself
         site: Box<dyn Fetchable>,
@@ -70,7 +70,7 @@ impl Task {
         self
     }
 
-    /// Set the input format-specs (from cmdline for files)
+    /// Set the input formats (from cmdline for files)
     ///
     pub fn format(&mut self, fmt: Format) -> &mut Self {
         trace!("Add format {:?}", fmt);

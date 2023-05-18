@@ -93,7 +93,7 @@ struct Param {
 pub struct Asd {
     /// Name of the site (site "foo" may use the same interface)
     pub site: String,
-    /// Input format-specs
+    /// Input formats
     pub format: Format,
     /// Username
     pub login: String,
@@ -260,7 +260,7 @@ impl Fetchable for Asd {
         Ok(res)
     }
 
-    /// Return the site's input format-specs
+    /// Return the site's input formats
     ///
     fn format(&self) -> Format {
         Format::Asd

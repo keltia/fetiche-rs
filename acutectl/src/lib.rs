@@ -4,7 +4,7 @@
 //! way of fetching data from different sources.  This is written because there are as many ways
 //! to authenticate and connect as there are sources more or less.
 //!
-//! The different formats are in the `format-specs` crate and the sources' parameters in the
+//! The different formats are in the `formats` crate and the sources' parameters in the
 //! `sources` crate.
 //!
 //! Include Task-related code.
@@ -33,10 +33,10 @@ mod task;
 ///
 #[derive(Debug, Default)]
 pub enum Input {
-    /// File-based means we need the format-specs beforehand and a pathname
+    /// File-based means we need the formats beforehand and a pathname
     ///
     File {
-        /// Input format-specs
+        /// Input formats
         format: Format,
         /// Path of the input file
         path: PathBuf,
@@ -45,7 +45,7 @@ pub enum Input {
     /// file.  The `site` is a `Fetchable` object generated from `Config`.
     ///
     Network {
-        /// Input format-specs
+        /// Input formats
         format: Format,
         /// Site itself
         site: Box<dyn Fetchable>,

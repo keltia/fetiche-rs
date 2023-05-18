@@ -27,8 +27,8 @@ clap = { version = "4", features = ["cargo", "derive"] }
 clap_complete = "4.2.2"
 csv = "1.1"
 env_logger = "0.10"
-fetiche-sources = { version = "0", path = "../sources" }
-format-specs = { version = "0", path = "../format-specs" }
+fetiche-sources.workspace = true
+fetiche-formats.workspace = true
 hcl-rs = "0.14"
 home = "0.5"
 influxdb = { version = "0.6.0", features = ["derive"] }

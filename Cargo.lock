@@ -14,8 +14,8 @@ dependencies = [
  "clap_complete",
  "csv",
  "env_logger",
+ "fetiche-formats",
  "fetiche-sources",
- "format-specs",
  "hcl-rs",
  "home",
  "httpmock",
@@ -491,8 +491,8 @@ dependencies = [
  "clap",
  "csv",
  "env_logger",
+ "fetiche-formats",
  "fetiche-sources",
- "format-specs",
  "hcl-rs",
  "home",
  "httpmock",
@@ -781,9 +781,9 @@ dependencies = [
  "clap",
  "csv",
  "env_logger",
+ "fetiche-formats",
  "fetiche-sources",
  "flo_curves",
- "format-specs",
  "hcl-rs",
  "home",
  "log",
@@ -968,6 +968,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "fetiche-formats"
+version = "0.11.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "csv",
+ "hcl-rs",
+ "influxdb",
+ "log",
+ "percent-encoding",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_repr",
+]
+
+[[package]]
 name = "fetiche-sources"
 version = "0.5.0"
 dependencies = [
@@ -975,7 +992,7 @@ dependencies = [
  "chrono",
  "clap",
  "csv",
- "format-specs",
+ "fetiche-formats",
  "hcl-rs",
  "home",
  "httpmock",
@@ -1042,24 +1059,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9c384f161156f5260c24a097c56119f9be8c798586aecc13afbcbe7b7e26bf8"
 dependencies = [
  "percent-encoding",
-]
-
-[[package]]
-name = "format-specs"
-version = "0.11.0"
-dependencies = [
- "anyhow",
- "chrono",
- "csv",
- "hcl-rs",
- "influxdb",
- "log",
- "percent-encoding",
- "reqwest",
- "serde",
- "serde_json",
- "serde_repr",
- "stderrlog",
 ]
 
 [[package]]
@@ -1499,8 +1498,8 @@ dependencies = [
  "clap",
  "csv",
  "env_logger",
+ "fetiche-formats",
  "fetiche-sources",
- "format-specs",
  "hcl-rs",
  "home",
  "httpmock",
@@ -1512,7 +1511,6 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "sqlx",
- "stderrlog",
 ]
 
 [[package]]

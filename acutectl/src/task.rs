@@ -53,10 +53,10 @@ impl Task {
         self
     }
 
-    /// Set the input format-specs (from cmdline for files)
+    /// Set the input formats (from cmdline for files)
     ///
     pub fn format(&mut self, fmt: Format) -> &mut Self {
-        trace!("Add format-specs {:?}", fmt);
+        trace!("Add formats {:?}", fmt);
         if let Input::File { path, .. } = &self.input {
             let path = path.clone();
             self.input = Input::File { format: fmt, path }
@@ -99,7 +99,7 @@ impl Task {
                 Ok(data)
             }
             Input::File { path, .. } => Ok(fs::read_to_string(path)?),
-            Input::Nothing => Err(anyhow!("no format-specs specified")),
+            Input::Nothing => Err(anyhow!("no formats specified")),
         }
     }
 }

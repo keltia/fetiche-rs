@@ -134,7 +134,7 @@ impl Site {
         }
     }
 
-    /// Return the site format-specs
+    /// Return the site formats
     ///
     pub fn format(&self) -> Format {
         self.format.as_str().into()

@@ -22,7 +22,7 @@
 //! `completion` is here just to configure the various shells completion system.
 //!
 //! A `Site` is a `Fetchable` object with the corresponding trait methods (`authenticate()` & `fetch()`)
-//! from the `sources` crate.  File formats are from the `format-specs` crate.
+//! from the `sources` crate.  File formats are from the `formats` crate.
 //!
 //! [InfluxDB]: https://www.influxdata.com/
 //!
@@ -165,7 +165,7 @@ pub struct ListOpts {
 ///
 #[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq, ValueEnum)]
 pub enum ListSubCommand {
-    /// List all formats in `format-specs`
+    /// List all formats in `formats`
     Formats,
     /// List all sources from `sources.hcl`
     Sources,

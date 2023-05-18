@@ -4,7 +4,7 @@
 //! way of fetching data from different sources.  This is written because there are as many ways
 //! to authenticate and connect as there are sources more or less.
 //!
-//! The different formats are in the `format-specs` crate and the sources' parameters in the `site` crate.
+//! The different formats are in the `formats` crate and the sources' parameters in the `site` crate.
 //!
 //! Include Task-related code.
 //!
@@ -80,10 +80,10 @@ pub fn version() -> String {
 ///
 #[derive(Debug, Default)]
 pub enum Input {
-    /// File-based means we need the format-specs beforehand and a pathname
+    /// File-based means we need the formats beforehand and a pathname
     ///
     File {
-        /// Input format-specs
+        /// Input formats
         format: Format,
         /// Path of the input file
         path: PathBuf,
@@ -92,7 +92,7 @@ pub enum Input {
     /// file.  The `site` is a `Fetchable` object generated from `Config`.
     ///
     Network {
-        /// Input format-specs
+        /// Input formats
         format: Format,
         /// Site itself
         site: Box<dyn Fetchable>,
@@ -139,10 +139,10 @@ impl Task {
         self
     }
 
-    /// Set the input format-specs (from cmdline for files)
+    /// Set the input formats (from cmdline for files)
     ///
     pub fn format(&mut self, fmt: Format) -> &mut Self {
-        debug!("Add format-specs {:?}", fmt);
+        debug!("Add formats {:?}", fmt);
         if let Input::File { path, .. } = &self.input {
             let path = path.clone();
             self.input = Input::File { format: fmt, path }
@@ -174,7 +174,7 @@ impl Task {
     pub fn run(&mut self) -> Result<Vec<Cat21>> {
         debug!("…run()…");
         match &self.input {
-            // Input::File is simple, we have the format-specs
+            // Input::File is simple, we have the formats
             //
             Input::File { format, path } => {
                 let res = fs::read_to_string(path)?;
@@ -195,7 +195,7 @@ impl Task {
                 debug!("{:?} as {}", res, format);
                 Ok(res)
             }
-            Input::Nothing => Err(anyhow!("no format-specs specified")),
+            Input::Nothing => Err(anyhow!("no formats specified")),
         }
     }
 }

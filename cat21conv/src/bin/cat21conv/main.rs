@@ -6,8 +6,8 @@
 //! a configuration file  from `$HOME/.config/drone-utils` or `%LOCALAPPDATA%/drone-utils` on
 //! UNIX/Linux and Windows.
 //!
-//! Our pseudo-Cat21 format-specs is in `format-specs/lib`.
-//! The respective format-specs for the other sources are in the files inside the `format-specs` module.
+//! Our pseudo-Cat21 formats is in `formats/lib`.
+//! The respective formats for the other sources are in the files inside the `formats` module.
 //!
 //! Author: Ollivier Robert <ollivier.robert@eurocontrol.int> for the EIH
 //! Copyright: (c) 2022 by Ollivier Robert
@@ -53,7 +53,7 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
     } else if opts.begin.is_some() {
         // Assume both are there, checked elsewhere
         //
-        // We have to parse both arguments ourselves because it uses its own format-specs
+        // We have to parse both arguments ourselves because it uses its own formats
         //
         let begin = match &opts.begin {
             Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?,

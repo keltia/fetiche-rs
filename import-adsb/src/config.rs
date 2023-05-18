@@ -77,7 +77,7 @@ impl Display for DB {
 pub struct DBFile {
     /// Config file versioning
     pub version: usize,
-    /// Default format-specs
+    /// Default formats
     pub default: String,
     /// Site map
     pub db: HashMap<String, DB>,
