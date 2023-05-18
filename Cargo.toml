@@ -1,15 +1,15 @@
 [workspace]
-members = ["acutectl", "cat21conv", "curves", "engine", "format-specs", "import-adsb", "sources"]
+members = ["acutectl", "cat21conv", "curves", "engine", "formats", "import-adsb", "sources"]
 
 [workspace.dependencies]
 anyhow = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 env_logger = "0.10"
-format-specs = { version = "0", path = "../format-specs" }
+fetiche-formats = { version = "0", path = "formats" }
+fetiche-sources = { version = "0", path = "sources" }
 hcl-rs = "0.14"
 home = "0.5"
 log = { version = "0.4", features = ["serde", "std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sources = { version = "0", path = "../sources" }
