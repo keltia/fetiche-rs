@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use log::{info, trace};
 
-use fetiche_sources::{Filter, Sources};
+use fetiche_sources::{Filter, Site, Sources};
 
 use crate::{FetchOpts, Task};
 

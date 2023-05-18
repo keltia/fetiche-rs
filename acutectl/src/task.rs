@@ -10,10 +10,10 @@ use std::path::PathBuf;
 use anyhow::{anyhow, Result};
 use log::{debug, error, trace};
 
-use fetiche_sources::Fetchable;
+use fetiche_sources::{Fetchable, Filter};
 use format_specs::Format;
 
-use crate::{Filter, Input};
+use crate::Input;
 
 /// The task itself
 #[derive(Debug)]
