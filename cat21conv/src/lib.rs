@@ -191,7 +191,7 @@ impl Task {
                 let token = site.authenticate()?;
                 let data = site.fetch(&token, &self.args)?;
                 debug!("{}", &data);
-                let res = site.process(data)?;
+                let res = site.to_cat21(data)?;
                 debug!("{:?} as {}", res, format);
                 Ok(res)
             }

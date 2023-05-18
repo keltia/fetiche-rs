@@ -245,7 +245,7 @@ impl Fetchable for Asd {
 
     /// Process every fetched data line and generate the `Cat21` result
     ///
-    fn process(&self, input: String) -> Result<Vec<Cat21>> {
+    fn to_cat21(&self, input: String) -> Result<Vec<Cat21>> {
         debug!("Reading & transforming…");
         debug!("IN={:?}", input);
         let res: Vec<InputFormat> = serde_json::from_str(&input)?;

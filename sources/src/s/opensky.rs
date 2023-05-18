@@ -125,7 +125,7 @@ impl Fetchable for Opensky {
         Ok(resp)
     }
 
-    fn process(&self, input: String) -> anyhow::Result<Vec<Cat21>> {
+    fn to_cat21(&self, input: String) -> anyhow::Result<Vec<Cat21>> {
         todo!()
     }
 
