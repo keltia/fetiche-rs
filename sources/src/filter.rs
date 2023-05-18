@@ -1,32 +1,29 @@
-//! submodule to manage date filters
+//! sub-module to manage date (maybe geo ones in the future) filters
 //!
-//! A Filter is either a set of begin/end time points or nothing.  This uis used to pass arguments to
-//! at least the `Asd` site but maybe be extended in the future.
+//! A Filter is either a set of begin/end time points, a duration or nothing.  This is used to pass
+//! arguments to sources but maybe be extended in the future.  This is different from an argument or
+//! a set of arguments.
 //!
 
-use chrono::NaiveDateTime;
+use chrono::{Duration, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::{Display, Formatter};
 
 /// If we specify -B/-E or --today, we need to pass these below
 ///
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum Filter {
+    /// Date-based interval as "%Y-%m-%d %H:%M:%S"
     Interval {
         begin: NaiveDateTime,
         end: NaiveDateTime,
     },
+    /// Duration as length of time in seconds
+    Duration(i32),
+    #[default]
     None,
-}
-
-impl Default for Filter {
-    /// Defaults to nothing
-    ///
-    fn default() -> Self {
-        Filter::None
-    }
 }
 
 impl Filter {
@@ -56,6 +53,7 @@ impl Display for Filter {
                 };
                 json!(m).to_string()
             }
+            Filter::Duration(d) => json!(d).to_string(),
         };
         write!(f, "{}", s)
     }
@@ -67,7 +65,12 @@ mod tests {
     use anyhow::Result;
 
     #[test]
-    fn test_filter_new() -> Result<()> {
+    fn test_filter_new() {
+        assert_eq!(Filter::None, Filter::default())
+    }
+
+    #[test]
+    fn test_filter_interval_new() -> Result<()> {
         let begin = "2022-11-11 12:34:56";
         let end = "2022-11-30 12:34:56";
 
@@ -82,7 +85,7 @@ mod tests {
     }
 
     #[test]
-    fn test_filter_to_string() {
+    fn test_filter_interval_to_string() {
         let begin = "2022-11-11 12:34:56";
         let end = "2022-11-30 12:34:56";
 
