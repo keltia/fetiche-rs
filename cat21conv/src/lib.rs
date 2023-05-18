@@ -41,7 +41,7 @@
 /// //
 /// use format_specs::Cat21;
 ///
-/// use sources::{Sites,Filter,Site};
+/// use fetiche_sources::{Sites,Filter,Site};
 ///
 /// # fn main() -> Result<()> {
 /// # let name = "eih";
@@ -64,8 +64,8 @@ use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
 use log::debug;
 
+use fetiche_sources::{Fetchable, Filter};
 use format_specs::{Cat21, Format};
-use sources::{Fetchable, Filter};
 
 pub(crate) const VERSION: &str = crate_version!();
 pub(crate) const NAME: &str = crate_name!();

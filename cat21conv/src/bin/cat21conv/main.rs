@@ -23,8 +23,8 @@ use clap::Parser;
 use log::{info, trace};
 
 use cat21conv::Task;
+use fetiche_sources::{Filter, Site, Sources};
 use format_specs::{prepare_csv, Cat21, Format};
-use sources::{Filter, Site, Sources};
 
 use crate::cli::{check_args, Opts};
 use crate::version::version;
