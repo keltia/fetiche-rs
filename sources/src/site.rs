@@ -94,10 +94,23 @@ impl Display for Auth {
 #[serde(rename_all = "lowercase")]
 pub enum DataType {
     /// Plain ADS-B traffic
-    #[default]
     Adsb,
     /// Drone specific traffic
     Drone,
+    /// Invalid datatype
+    #[default]
+    Invalid,
+}
+
+impl From<&str> for DataType {
+    fn from(value: &str) -> Self {
+        let value = value.to_lowercase();
+        match value.as_str() {
+            "adsb" => DataType::Adsb,
+            "drone" => DataType::Drone,
+            _ => DataType::Invalid,
+        }
+    }
 }
 
 macro_rules! insert_format {
@@ -196,6 +209,7 @@ mod tests {
     use crate::makepath;
 
     use super::*;
+    use rstest::rstest;
 
     fn set_default() -> Sources {
         let cn: PathBuf = makepath!("src", "sources.hcl");
@@ -288,5 +302,15 @@ mod tests {
 
         let s = s.unwrap();
         assert!(s.has("get"));
+    }
+
+    #[rstest]
+    #[case("adsb", DataType::Adsb)]
+    #[case("ads-b", DataType::Invalid)]
+    #[case("drone", DataType::Drone)]
+    #[case("drones", DataType::Invalid)]
+    #[case("foobar", DataType::Invalid)]
+    fn test_datatype_from(#[case] s: &str, #[case] dt: DataType) {
+        assert_eq!(dt, s.into());
     }
 }
