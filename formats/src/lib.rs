@@ -22,7 +22,6 @@ pub use aeroscope::*;
 pub use asd::*;
 pub use asterix::*;
 pub use drone::*;
-pub use influx::*;
 pub use opensky::*;
 pub use safesky::*;
 
@@ -30,7 +29,6 @@ mod aeroscope;
 mod asd;
 mod asterix;
 mod drone;
-mod influx;
 mod opensky;
 mod safesky;
 
