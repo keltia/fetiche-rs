@@ -922,7 +922,7 @@ dependencies = [
 
 [[package]]
 name = "fetiche-engine"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1462,24 +1462,24 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
-    "async-std",
-    "chrono",
-    "clap",
-    "csv",
-    "env_logger",
-    "fetiche-formats",
-    "fetiche-sources",
-    "hcl-rs",
-    "home",
-    "httpmock",
-    "influxdb",
-    "log",
-    "percent-encoding",
-    "reqwest",
-    "serde",
-    "serde_json",
-    "serde_repr",
-    "sqlx",
+ "async-std",
+ "chrono",
+ "clap",
+ "csv",
+ "env_logger",
+ "fetiche-formats",
+ "fetiche-sources",
+ "hcl-rs",
+ "home",
+ "httpmock",
+ "influxdb",
+ "log",
+ "percent-encoding",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "sqlx",
 ]
 
 [[package]]
