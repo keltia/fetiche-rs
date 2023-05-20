@@ -6,6 +6,7 @@ anyhow = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 env_logger = "0.10"
+fetiche-engine = { version = "0", path = "engine" }
 fetiche-formats = { version = "0", path = "formats" }
 fetiche-sources = { version = "0", path = "sources" }
 hcl-rs = "0.14"
