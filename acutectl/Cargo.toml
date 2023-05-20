@@ -27,8 +27,9 @@ clap.workspace = true
 clap_complete = "4.2.2"
 csv = "1.1"
 env_logger.workspace = true
-fetiche-sources.workspace = true
+fetiche-engine.workspace = true
 fetiche-formats.workspace = true
+fetiche-sources.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
 influxdb = { version = "0.6.0", features = ["derive"] }
