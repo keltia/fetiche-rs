@@ -21,23 +21,24 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 anyhow.workspace = true
-async-std = "1.12"
 chrono.workspace = true
 clap.workspace = true
-clap_complete = "4.2.2"
-csv = "1.1"
 env_logger.workspace = true
 fetiche-engine.workspace = true
 fetiche-formats.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
-influxdb = { version = "0.6.0", features = ["derive"] }
 log.workspace = true
-percent-encoding = "2.2"
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+async-std = "1.12"
+clap_complete = "4.2"
+csv = "1.1"
+influxdb = { version = "0.6", features = ["derive"] }
+percent-encoding = "2.2"
 serde_repr = "0.1"
 sqlx = { version = "0.6", features = ["json", "ipnetwork", "mysql", "tls", "chrono", "macros", "runtime-async-std-native-tls"] }
 

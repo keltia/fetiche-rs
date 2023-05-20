@@ -22,17 +22,16 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
-csv = "1.1"
 env_logger.workspace = true
-flo_curves = "0.7.1"
 fetiche-sources.workspace = true
 fetiche-formats.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
 log.workspace = true
-percent-encoding = "2"
 reqwest.workspace = true
 serde.workspace = true
+
+flo_curves = "0.7"
 
 [dev-dependencies]
 assert_cmd = "2.0"

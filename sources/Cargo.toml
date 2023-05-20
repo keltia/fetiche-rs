@@ -27,15 +27,16 @@ maintenance = { status = "actively-developed" }
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
-csv = "1.1.6"
 fetiche-formats.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
 log.workspace = true
-percent-encoding = "2.2"
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+csv = "1.1"
+percent-encoding = "2.2"
 serde_repr = "0.1"
 
 [dev-dependencies]
