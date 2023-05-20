@@ -2,9 +2,10 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use log::{info, trace};
 
+use fetiche_engine::{Fetch, Job};
 use fetiche_sources::{Filter, Site, Sources};
 
-use crate::{FetchOpts, Task};
+use crate::FetchOpts;
 
 /// Actual fetching of data from a given site
 ///
@@ -21,7 +22,12 @@ pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<String> {
 
     // Full json array with all point
     //
-    let data = Task::new(name).site(site).with(filter).run()?;
+    let mut task = Fetch::new(name);
+
+    task.site(site).with(filter);
+
+    let data = Job::new("fetch_from_site").add(Box::new(task)).run()?;
+
     trace!("data={}", data);
     Ok(data)
 }
