@@ -73,9 +73,9 @@ pub enum SubCommand {
     Completion(ComplOpts),
     /// Fetch data from specified site
     Fetch(FetchOpts),
-    /// Import into InfluxDB
+    /// Import into InfluxDB (WIP)
     Import(ImportOpts),
-    /// Handle drone data
+    /// List information about formats and sources
     List(ListOpts),
 }
 
