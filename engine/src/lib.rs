@@ -6,13 +6,13 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
+mod common;
 mod fetch;
 mod job;
-mod task;
 
+pub use common::*;
 pub use fetch::*;
 pub use job::*;
-pub use task::*;
 
 use fetiche_formats::Format;
 use fetiche_sources::Fetchable;
