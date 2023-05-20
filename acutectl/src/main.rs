@@ -117,7 +117,7 @@ fn main() -> Result<()> {
                 writeln!(io::stderr(), "{}", str)?;
             }
             ListSubCommand::Formats => {
-                info!("Listing all formats!");
+                info!("Listing all formats:");
 
                 let str = list_formats()?;
                 writeln!(io::stderr(), "{}", str)?;
