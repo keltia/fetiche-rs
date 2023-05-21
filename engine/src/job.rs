@@ -72,16 +72,14 @@ mod tests {
     #[test]
     fn test_job_run() {
         let t1 = Box::new(Nothing {});
-        let t2 = Box::new(Message {
-            msg: "hello world".to_string(),
-        });
+        let t2 = Box::new(Message::new("hello world"));
 
         let mut j = Job::new("test");
         j.add(t1);
         j.add(t2);
 
-        dbg!(&j);
         let res = j.run();
-        dbg!(&res);
+        assert!(res.is_ok());
+        assert_eq!("NOPhello world", res.unwrap())
     }
 }
