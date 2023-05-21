@@ -5,14 +5,14 @@ use std::collections::BTreeMap;
 use fetiche_formats::{Asd, DronePoint, Format};
 use fetiche_sources::Sources;
 
-pub fn import_data(cfg: &Sources, data: &str, fmt: Format) -> Result<()> {
+pub fn import_data(_cfg: &Sources, data: &str, _fmt: Format) -> Result<()> {
     trace!("import_data");
 
     // Transform into our `Drone` struct and sort it by "journey"
     //
     let data: Vec<Asd> = serde_json::from_str(data)?;
 
-    let mut journeys = BTreeMap::<u32, Vec<DronePoint>>::new();
+    let _journeys = BTreeMap::<u32, Vec<DronePoint>>::new();
 
     // Convert everything into list of `DronePoint` and insert by journey
     //
