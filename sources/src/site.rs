@@ -19,9 +19,8 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::Format;
 
-use crate::config::Sources;
-use crate::Fetchable;
 use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky};
+use crate::{Fetchable, Sources};
 
 /// Describe what a site is and associated credentials.
 ///
