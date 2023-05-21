@@ -17,6 +17,11 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use log::{debug, trace};
+use serde::{Deserialize, Serialize};
+use tabled::{
+    builder::Builder,
+    settings::{object::Rows, Alignment, Modify, Style},
+};
 
 use fetiche_formats::{Cat21, Format};
 
@@ -209,6 +214,45 @@ impl Sources {
     #[inline]
     pub fn iter(&self) -> Iter<'_, String, Site> {
         self.0.iter()
+    }
+
+    /// List of currently known sources into a nicely formatted string.
+    ///
+    pub fn list(&self) -> Result<String> {
+        let header = vec!["Name", "Type", "Format", "URL", "Auth"];
+
+        let mut builder = Builder::default();
+        builder.set_header(header);
+
+        self.0.iter().for_each(|(n, s)| {
+            let mut row = vec![];
+
+            let dtype = s.dtype.clone().to_string();
+            let format = s.format.clone();
+            let base_url = s.base_url.clone();
+            row.push(n);
+            row.push(&dtype);
+            row.push(&format);
+            row.push(&base_url);
+            let auth = if let Some(auth) = &s.auth {
+                match auth {
+                    Auth::Login { .. } => "login",
+                    Auth::Token { .. } => "token",
+                    Auth::Anon => "open",
+                    Auth::Key { .. } => "API key",
+                }
+                .to_string()
+            } else {
+                "anon".to_owned()
+            };
+            let auth = &auth.clone().to_string();
+            row.push(auth);
+            builder.push_record(row);
+        });
+
+        let table = builder.build().with(Style::rounded()).to_string();
+        let table = format!("Listing all sources:\n\n{table}");
+        Ok(table)
     }
 }
 
