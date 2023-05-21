@@ -95,7 +95,7 @@ impl Fetchable for Opensky {
         Ok(format!("{}:{}", self.login, self.password))
     }
 
-    fn fetch(&self, token: &str, args: &str) -> anyhow::Result<String> {
+    fn fetch(&self, token: &str, _args: &str) -> anyhow::Result<String> {
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
         trace!("opensky::fetch(as {}:{})", login, password);
@@ -125,7 +125,7 @@ impl Fetchable for Opensky {
         Ok(resp)
     }
 
-    fn to_cat21(&self, input: String) -> anyhow::Result<Vec<Cat21>> {
+    fn to_cat21(&self, _input: String) -> anyhow::Result<Vec<Cat21>> {
         todo!()
     }
 
