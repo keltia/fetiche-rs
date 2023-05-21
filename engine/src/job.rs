@@ -24,6 +24,7 @@ impl Job {
     ///
     /// NOTE: No //EOJ
     ///
+    #[inline]
     pub fn new(name: &str) -> Self {
         trace!("Job::new");
         Job {
@@ -34,6 +35,7 @@ impl Job {
 
     /// Add a task to the queue
     ///
+    #[inline]
     pub fn add(&mut self, t: Box<dyn Runnable>) -> &mut Self {
         trace!("Job::add({t:?}");
         let _ = &self.list.push_back(t);
