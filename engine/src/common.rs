@@ -1,17 +1,15 @@
 //! Implementation of some basic `Runnable` tasks.
 //!
+//! These are here for future enhancements like having a DSL describing a task and this would
+//! be some of the "words" the DSL would compile into.
+//!
 
 use std::fmt::Debug;
 use std::fs;
-use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
-use log::{debug, trace};
+use anyhow::Result;
 
-use fetiche_formats::Format;
-use fetiche_sources::{Fetchable, Filter};
-
-use crate::{Input, Runnable};
+use crate::Runnable;
 
 // -----
 
@@ -19,12 +17,6 @@ use crate::{Input, Runnable};
 ///
 #[derive(Clone, Debug)]
 pub struct Nothing {}
-
-impl Nothing {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
 
 impl Runnable for Nothing {
     fn run(&self) -> Result<String> {
@@ -38,10 +30,12 @@ impl Runnable for Nothing {
 ///
 #[derive(Clone, Debug)]
 pub struct Message {
-    pub msg: String,
+    /// What to display
+    msg: String,
 }
 
 impl Message {
+    #[inline]
     pub fn new(s: &str) -> Self {
         Message { msg: s.to_owned() }
     }
@@ -65,5 +59,14 @@ mod tests {
         assert!(r.is_ok());
         let r = r.unwrap();
         assert_eq!("NOP", r);
+    }
+
+    #[test]
+    fn test_message_run() {
+        let m = Message::new("the brown fox");
+        let s = m.run();
+        assert!(s.is_ok());
+        let s = s.unwrap();
+        assert_eq!("the brown fox", s);
     }
 }
