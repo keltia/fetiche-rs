@@ -113,6 +113,20 @@ impl From<&str> for DataType {
     }
 }
 
+impl Display for DataType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                DataType::Adsb => "adsb",
+                DataType::Drone => "drone",
+                DataType::Invalid => "none",
+            }
+        )
+    }
+}
+
 macro_rules! insert_format {
     ($name:ident, $fmt:ident, $site:ident, $($list:ident),+)  => {
         match $fmt {
