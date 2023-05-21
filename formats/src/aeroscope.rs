@@ -128,7 +128,7 @@ impl From<&Aeroscope> for Cat129 {
 }
 
 impl From<&Aeroscope> for DronePoint {
-    fn from(value: &Aeroscope) -> Self {
+    fn from(_value: &Aeroscope) -> Self {
         todo!()
     }
 }
