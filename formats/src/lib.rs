@@ -15,6 +15,7 @@ use anyhow::Result;
 use csv::{Reader, WriterBuilder};
 use log::{debug, trace};
 use serde::{Deserialize, Serialize};
+use tabled::{builder::Builder, settings::Style};
 
 // Re-export for convenience
 //
@@ -120,9 +121,44 @@ impl Format {
         Ok(res)
     }
 
-    /// List all supported formats into a string
+    /// List all supported formats into a string using `tabled`.
     ///
     pub fn list() -> Result<String> {
+        let descr = include_str!("formats.hcl");
+        let fstr: FormatFile = hcl::from_str(descr)?;
+
+        // Safety checks
+        //
+        assert_eq!(fstr.version, FVERSION);
+
+        let header = vec!["Name", "Type", "Description"];
+
+        let mut builder = Builder::default();
+        builder.set_header(header);
+
+        fstr.format.iter().for_each(|(name, entry)| {
+            let mut row = vec![];
+
+            let name = name.clone();
+            let dtype = entry.dtype.clone();
+            let description = entry.description.clone();
+            let source = entry.source.clone();
+            let url = entry.url.clone();
+
+            let row_text = format!("{}\nSource: {} -- URL: {}", description, source, url);
+            row.push(&name);
+            row.push(&dtype);
+            row.push(&row_text);
+            builder.push_record(row);
+        });
+        let allf = builder.build().with(Style::modern()).to_string();
+        let str = format!("List all formats:\n\n{allf}");
+        Ok(str)
+    }
+
+    /// List all supported formats into a string
+    ///
+    pub fn list_plain() -> Result<String> {
         let descr = include_str!("formats.hcl");
         let fstr: FormatFile = hcl::from_str(descr)?;
         assert_eq!(fstr.version, FVERSION);

@@ -202,6 +202,24 @@ As you can see, there are sites that require you to supply a login & password an
 If you are just giving the utility a file, you must specify the input format with the `-F/--format` option.
 
 You can get the list of supported sources by using the `acutectl list sources` command.
+
+```text
+acutectl/0.9.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
+CLI utility to fetch data.
+
+Listing all sources:
+
+╭─────────┬───────┬───────────┬─────────────────────────────────┬─────────╮
+│ Name    │ Type  │ Format    │ URL                             │ Auth    │
+├─────────┼───────┼───────────┼─────────────────────────────────┼─────────┤
+│ eih     │ drone │ aeroscope │ http://127.0.0.1:2400           │ token   │
+│ lux     │ drone │ asd       │ https://eur.airspacedrone.com   │ token   │
+│ lux-me  │ drone │ asd       │ https://eur.airspacedrone.com   │ token   │
+│ opensky │ adsb  │ opensky   │ https://opensky-network.org/api │ login   │
+│ safesky │ adsb  │ safesky   │ https://public-api.safesky.app  │ API key │
+╰─────────┴───────┴───────────┴─────────────────────────────────┴─────────╯
+```
+
 </details>
 
 The `acutectl import` sub-command will also use another one called `dbfile.hcl`  located in the same directory.
@@ -248,28 +266,32 @@ To displayed currently supported formats, use `acutectl list formats`:
 <summary>acute list formats</summary>
 
 ```text
-acutectl/0.2.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
+acutectl/0.9.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
 CLI utility to fetch data.
 
 List all formats:
 
-aeroscope drone Data extracted from the DJI Aeroscope antenna.
-                Source: ASD -- URL: https://airspacedrone.com/
-
-asd       drone Data gathered & consolidated by ASD.
-                Source: ASD -- URL: https://airspacedrone.com/
-
-cat129    drone Flattened ASTERIX Cat129 data for Drone data.
-                Source: ECTL -- URL: https://www.eurocontrol.int/asterix/
-
-cat21     adsb  Flattened ASTERIX Cat21 data for ADS-B.
-                Source: ECTL -- URL: https://www.eurocontrol.int/asterix/
-
-opensky   adsb  Data coming from the Opensky site, mostly ADS-B.
-                Source: Opensky -- URL: https://opensky-network.org/
-
-safesky   adsb  Data coming from the Safesky site, mostly ADS-B.
-                Source: Safesky -- URL: https://www.safesky.app/
+┌───────────┬───────┬───────────────────────────────────────────────────────────┐
+│ Name      │ Type  │ Description                                               │
+├───────────┼───────┼───────────────────────────────────────────────────────────┤
+│ aeroscope │ drone │ Data extracted from the DJI Aeroscope antenna.            │
+│           │       │ Source: ASD -- URL: https://airspacedrone.com/            │
+├───────────┼───────┼───────────────────────────────────────────────────────────┤
+│ asd       │ drone │ Data gathered & consolidated by ASD.                      │
+│           │       │ Source: ASD -- URL: https://airspacedrone.com/            │
+├───────────┼───────┼───────────────────────────────────────────────────────────┤
+│ cat129    │ drone │ Flattened ASTERIX Cat129 data for Drone data.             │
+│           │       │ Source: ECTL -- URL: https://www.eurocontrol.int/asterix/ │
+├───────────┼───────┼───────────────────────────────────────────────────────────┤
+│ cat21     │ adsb  │ Flattened ASTERIX Cat21 data for ADS-B.                   │
+│           │       │ Source: ECTL -- URL: https://www.eurocontrol.int/asterix/ │
+├───────────┼───────┼───────────────────────────────────────────────────────────┤
+│ opensky   │ adsb  │ Data coming from the Opensky site, mostly ADS-B.          │
+│           │       │ Source: Opensky -- URL: https://opensky-network.org/      │
+├───────────┼───────┼───────────────────────────────────────────────────────────┤
+│ safesky   │ adsb  │ Data coming from the Safesky site, mostly ADS-B.          │
+│           │       │ Source: Safesky -- URL: https://www.safesky.app/          │
+└───────────┴───────┴───────────────────────────────────────────────────────────┘
 ```
 
 The reason for the different categories is to give the engine a hint on how to process the data. Drone data will be
