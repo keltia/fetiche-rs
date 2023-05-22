@@ -13,6 +13,8 @@
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
 
+use std::ops::Add;
+
 use anyhow::{anyhow, Result};
 use chrono::{Duration, NaiveDateTime};
 use clap::{crate_name, crate_version};
@@ -21,7 +23,6 @@ use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::ops::Add;
 
 use fetiche_formats::Asd as InputFormat;
 use fetiche_formats::{Cat21, Format};

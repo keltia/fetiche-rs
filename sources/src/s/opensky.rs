@@ -2,6 +2,7 @@
 //!
 
 use anyhow::anyhow;
+use chrono::Utc;
 use clap::{crate_name, crate_version};
 use log::{debug, trace};
 use reqwest::blocking::Client;
@@ -10,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::{Cat21, Format};
 
-use crate::{http_get_basic, Fetchable};
+use crate::{http_get_basic, Fetchable, Filter};
 use crate::{Auth, Site};
 
 #[derive(Clone, Debug)]
@@ -95,13 +96,33 @@ impl Fetchable for Opensky {
         Ok(format!("{}:{}", self.login, self.password))
     }
 
-    fn fetch(&self, token: &str, _args: &str) -> anyhow::Result<String> {
+    fn fetch(&self, token: &str, args: &str) -> anyhow::Result<String> {
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
         trace!("opensky::fetch(as {}:{})", login, password);
 
         let url = format!("{}{}", self.base_url, self.get);
         trace!("Fetching data from {}…", url);
+
+        let args: Filter = args.into();
+        let tm = match args {
+            Filter::Interval { begin, .. } => {
+                let now = begin.timestamp() as i32;
+                Some(format!("time={}", now))
+            }
+            Filter::Duration(d) => {
+                let now = Utc::now().timestamp() as i32;
+                Some(format!("time={}", now - d))
+            }
+            Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
+            Filter::None => None,
+        };
+
+        let url = match tm {
+            Some(tm) => format!("{}&{}", url, tm),
+            _ => url,
+        };
+        trace!("{}", url);
 
         let resp = http_get_basic!(self, url, login, password)?;
 
