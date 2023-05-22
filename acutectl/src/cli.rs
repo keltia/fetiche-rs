@@ -91,6 +91,9 @@ pub struct FetchOpts {
     /// End date (optional)
     #[clap(short = 'E', long)]
     pub end: Option<String>,
+    /// Keyword filter: `--keyword icao24:foobar`
+    #[clap(short = 'K', long)]
+    pub keyword: Option<String>,
     /// Output file.
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,

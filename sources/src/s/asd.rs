@@ -204,7 +204,7 @@ impl Fetchable for Asd {
                 end_time: end,
                 sources: vec![Source::As, Source::Wi],
             },
-            Filter::None => Param {
+            _ => Param {
                 start_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
                 end_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
                 sources: vec![Source::As, Source::Wi],

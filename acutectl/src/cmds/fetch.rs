@@ -51,7 +51,7 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
             .and_hms_opt(23, 59, 59)
             .unwrap();
 
-        Ok(Filter::from(begin, end))
+        Ok(Filter::interval(begin, end))
     } else if opts.begin.is_some() {
         // Assume both are there, checked elsewhere
         //
@@ -66,7 +66,16 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
             None => return Err(anyhow!("Bad -E parameter")),
         };
 
-        Ok(Filter::from(begin, end))
+        Ok(Filter::interval(begin, end))
+    } else if opts.keyword.is_some() {
+        let keyword = opts.keyword.clone().unwrap();
+
+        let v: Vec<_> = keyword.split(':').collect();
+        let (k, v) = (v[0], v[1]);
+        Ok(Filter::Keyword {
+            name: k.to_string(),
+            value: v.to_string(),
+        })
     } else {
         Ok(Filter::default())
     }
