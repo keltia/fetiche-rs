@@ -5,7 +5,7 @@
 //! a set of arguments.
 //!
 
-use chrono::{Duration, NaiveDateTime};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::{Display, Formatter};
@@ -31,6 +31,12 @@ impl Filter {
     ///
     pub fn from(begin: NaiveDateTime, end: NaiveDateTime) -> Self {
         Filter::Interval { begin, end }
+    }
+
+    /// From a period of time
+    ///
+    pub fn since(d: i32) -> Self {
+        Filter::Duration(d)
     }
 }
 
