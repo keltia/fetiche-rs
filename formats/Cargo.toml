@@ -36,3 +36,4 @@ hcl-rs.workspace = true
 influxdb = { version = "0.6", features = ["derive"] }
 percent-encoding = "2.2"
 serde_repr = "0.1"
+tabled = "0.12"
