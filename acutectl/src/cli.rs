@@ -85,22 +85,25 @@ pub enum SubCommand {
 ///
 #[derive(Debug, Parser)]
 pub struct FetchOpts {
-    /// Start the data at specified date (optional)
-    #[clap(short = 'B', long)]
-    pub begin: Option<String>,
-    /// End date (optional)
-    #[clap(short = 'E', long)]
-    pub end: Option<String>,
-    /// Keyword filter: `--keyword icao24:foobar`
-    #[clap(short = 'K', long)]
-    pub keyword: Option<String>,
-    /// Output file.
-    #[clap(short = 'o', long)]
-    pub output: Option<PathBuf>,
     /// We want today only
     #[clap(long)]
     pub today: bool,
-    /// site name
+    /// Start date - YYYY-MM-DD HH:MM:SS -- optional
+    #[clap(short = 'B', long)]
+    pub begin: Option<String>,
+    /// End date - YYYY-MM-DD HH:MM:SS -- optional
+    #[clap(short = 'E', long)]
+    pub end: Option<String>,
+    /// Duration in seconds (negative = back in time) -- optional
+    #[clap(short = 'D', long)]
+    pub since: Option<i32>,
+    /// Keyword filter: e.g. "--keyword icao24:foobar" -- optional
+    #[clap(short = 'K', long)]
+    pub keyword: Option<String>,
+    /// Output file -- default is stdout
+    #[clap(short = 'o', long)]
+    pub output: Option<PathBuf>,
+    /// Source name -- (see "list sources")
     pub site: String,
 }
 
