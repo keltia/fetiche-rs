@@ -4,6 +4,9 @@
 //! This is used to pass arguments to sources but maybe be extended in the future.  This is different
 //! from an argument or a set of arguments.
 //!
+//! XXX It might be useful to simplify all this, maybe at some point a nom-based parser?  We have
+//!     to define a syntax first.
+//!
 
 use std::fmt::{Display, Formatter};
 
@@ -23,7 +26,7 @@ pub enum Filter {
     },
     /// Special parameter with name=value
     Keyword { name: String, value: String },
-    /// Duration as length of time in seconds
+    /// Duration as length of time in seconds (can be negative to go in the past for N seconds)
     Duration(i32),
     #[default]
     None,
