@@ -1,5 +1,5 @@
 [workspace]
-members = ["acutectl", "cat21conv", "curves", "engine", "formats", "import-adsb", "sources"]
+members = ["acutectl", "cat21conv", "curves", "engine", "formats", "sources"]
 
 [workspace.dependencies]
 anyhow = "1.0"
