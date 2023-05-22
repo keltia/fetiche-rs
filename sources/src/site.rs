@@ -216,7 +216,6 @@ impl Display for Site {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::path::PathBuf;
 
     use crate::makepath;

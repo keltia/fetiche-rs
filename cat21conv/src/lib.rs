@@ -41,13 +41,13 @@
 /// //
 /// use fetiche_formats::Cat21;
 ///
-/// use fetiche_sources::{Sites,Filter,Site};
+/// use fetiche_sources::{Sources,Filter,Site};
 ///
 /// # fn main() -> Result<()> {
 /// # let name = "eih";
 /// # let filter = Filter::None;
 ///
-/// let cfg = Sites::load(&Some(PathBuf::from("config.hcl")))?;
+/// let cfg = Sources::load(&Some(PathBuf::from("config.hcl")))?;
 ///
 /// let site = Site::load(name, &cfg)?;
 /// let res: Vec<Cat21> = Task::new(name).site(site).with(filter).run()?;

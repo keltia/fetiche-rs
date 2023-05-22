@@ -316,8 +316,6 @@ mod tests {
     use httpmock::prelude::*;
     use serde_json::json;
 
-    use crate::filter::Filter;
-
     use super::*;
 
     fn setup_asd(server: &MockServer) -> Asd {

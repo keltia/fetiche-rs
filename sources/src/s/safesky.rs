@@ -117,7 +117,7 @@ mod tests {
     use httpmock::Method::GET;
     use httpmock::MockServer;
 
-    fn setup_safesky(server: &MockServer) -> Safesky {
+    fn setup_safesky(_server: &MockServer) -> Safesky {
         let client = Client::new();
         Safesky {
             format: Format::Safesky,
@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn test_safesky_load() {
         let server = MockServer::start();
-        let m = server.mock(|when, then| {
+        let _m = server.mock(|when, then| {
             when.method(GET)
                 .header(
                     "user-agent",
@@ -142,6 +142,6 @@ mod tests {
             then.status(200);
         });
 
-        let site = setup_safesky(&server);
+        let _site = setup_safesky(&server);
     }
 }
