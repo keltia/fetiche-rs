@@ -80,7 +80,7 @@ impl StateList {
     pub fn from_json(input: &str) -> Result<Self> {
         trace!("statelist::from_json");
 
-        let data: PDU = serde_json::from_str(input)?;
+        let data: Payload = serde_json::from_str(input)?;
 
         let states: Vec<StateVector> = data
             .states
@@ -153,7 +153,7 @@ pub struct StateVector {
 /// Struct returned by the Opensky API
 ///
 #[derive(Debug, Deserialize)]
-struct PDU {
+struct Payload {
     /// UNIX timestamp
     pub time: i32,
     /// State vectors
