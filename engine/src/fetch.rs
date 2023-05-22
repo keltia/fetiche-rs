@@ -76,7 +76,7 @@ impl Fetch {
     /// Add a date filter if specified
     ///
     pub fn with(&mut self, f: Filter) -> &mut Self {
-        trace!("Add date filter {:?}", f);
+        trace!("Add filter {}", f);
         self.args = f.to_string();
         self
     }
