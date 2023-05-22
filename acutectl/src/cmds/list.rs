@@ -1,10 +1,11 @@
 use anyhow::Result;
 
 use fetiche_formats::Format;
-use fetiche_sources::{Auth, Sources};
+use fetiche_sources::Sources;
 
 /// Fetch the list of supported formats and their description.
 ///
+#[inline]
 pub fn list_formats() -> Result<String> {
     let str = Format::list()?;
     Ok(str)
@@ -14,6 +15,7 @@ pub fn list_formats() -> Result<String> {
 ///
 /// TODO: we need a Sites::list() like for formats-specs above.
 ///
+#[inline]
 pub fn list_sources(cfg: &Sources) -> Result<String> {
     let str = cfg.list()?;
     Ok(str)
