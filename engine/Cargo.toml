@@ -33,4 +33,4 @@ hcl-rs.workspace = true
 log.workspace = true
 reqwest.workspace = true
 
-nom8 = "0"
+nom = "7"
