@@ -9,19 +9,29 @@ use anyhow::Result;
 mod common;
 mod fetch;
 mod job;
+mod parse;
 
 pub use common::*;
 pub use fetch::*;
 pub use job::*;
+pub use parse::*;
 
 use fetiche_formats::Format;
-use fetiche_sources::Fetchable;
+use fetiche_sources::{Fetchable, Sources};
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const EVERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn version() -> String {
     format!("{}/{}", NAME, EVERSION)
+}
+
+/// Main `Engine` struct that hold the sources and everything needed to perform
+///
+#[derive(Debug)]
+pub struct Engine {
+    /// Sources
+    pub sources: Sources,
 }
 
 /// Type of task we will need to do
