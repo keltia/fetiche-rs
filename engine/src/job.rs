@@ -47,7 +47,7 @@ impl Job {
     pub fn run(&self) -> Result<String> {
         trace!("Job::run({})", self.name);
 
-        // Gather result for all tasks into a single string using `Iterator::reduce`
+        // Gather result for all tasks into a single string using `Iterator::fold`
         //
         let res: String = self.list.iter().fold(String::new(), |res, t| {
             let r = t.run();
@@ -66,8 +66,9 @@ impl Job {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{Message, Nothing};
+
+    use super::*;
 
     #[test]
     fn test_job_run() {
