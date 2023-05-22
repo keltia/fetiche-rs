@@ -18,10 +18,7 @@ use std::path::PathBuf;
 use anyhow::{anyhow, Result};
 use log::{debug, trace};
 use serde::{Deserialize, Serialize};
-use tabled::{
-    builder::Builder,
-    settings::{object::Rows, Alignment, Modify, Style},
-};
+use tabled::{builder::Builder, settings::Style};
 
 use fetiche_formats::{Cat21, Format};
 
