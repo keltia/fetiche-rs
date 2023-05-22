@@ -242,8 +242,7 @@ impl Sources {
             } else {
                 "anon".to_owned()
             };
-            let auth = &auth.clone().to_string();
-            row.push(auth);
+            row.push(&auth);
             builder.push_record(row);
         });
 

@@ -12,11 +12,11 @@ use crate::FetchOpts;
 pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<String> {
     trace!("fetch_from_site({:?})", fopts.site);
 
-    check_args(&fopts)?;
+    check_args(fopts)?;
 
     let name = &fopts.site;
     let site = Site::load(name, cfg)?;
-    let filter = filter_from_opts(&fopts)?;
+    let filter = filter_from_opts(fopts)?;
 
     info!("Fetching from network site {}", name);
 

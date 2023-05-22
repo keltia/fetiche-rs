@@ -59,7 +59,7 @@ fn main() -> Result<()> {
     match subcmd {
         SubCommand::Fetch(fopts) => {
             trace!("fetch");
-            let data = fetch_from_site(&cfg, &fopts)?;
+            let data = fetch_from_site(&cfg, fopts)?;
 
             match &fopts.output {
                 Some(output) => {
@@ -83,7 +83,7 @@ fn main() -> Result<()> {
 
                     let fmt = Site::load(&fopts.site, &cfg)?.format();
 
-                    let data = fetch_from_site(&cfg, &fopts)?;
+                    let data = fetch_from_site(&cfg, fopts)?;
 
                     import_data(&cfg, &data, fmt)?;
                 }
