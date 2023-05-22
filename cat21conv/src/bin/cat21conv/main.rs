@@ -49,7 +49,7 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
             .and_hms_opt(23, 59, 59)
             .unwrap();
 
-        Ok(Filter::from(begin, end))
+        Ok(Filter::interval(begin, end))
     } else if opts.begin.is_some() {
         // Assume both are there, checked elsewhere
         //
@@ -64,7 +64,7 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
             None => return Err(anyhow!("Bad -E parameter")),
         };
 
-        Ok(Filter::from(begin, end))
+        Ok(Filter::interval(begin, end))
     } else {
         Ok(Filter::default())
     }
@@ -105,7 +105,7 @@ fn get_from_source(cfg: &Sources, opts: &Opts) -> Result<Vec<Cat21>> {
 
             info!("Fetching from network site {}", name);
 
-            Task::new(name).site(site).with(filter).run()
+            Task::new(name).site(site).when(filter).run()
         }
     }
 }

@@ -50,7 +50,7 @@
 /// let cfg = Sources::load(&Some(PathBuf::from("config.hcl")))?;
 ///
 /// let site = Site::load(name, &cfg)?;
-/// let res: Vec<Cat21> = Task::new(name).site(site).with(filter).run()?;
+/// let res: Vec<Cat21> = Task::new(name).site(site).when(filter).run()?;
 ///
 /// # Ok(())
 /// # }
@@ -163,9 +163,17 @@ impl Task {
 
     /// Add a date filter if specified
     ///
-    pub fn with(&mut self, f: Filter) -> &mut Self {
+    pub fn when(&mut self, f: Filter) -> &mut Self {
         debug!("Add date filter {:?}", f);
         self.args = f.to_string();
+        self
+    }
+
+    /// Add an optional argument
+    ///
+    pub fn args(&mut self, s: &str) -> &mut Self {
+        debug!("Add argument {}", s);
+        self.args = s.to_string();
         self
     }
 
