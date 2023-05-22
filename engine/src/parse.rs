@@ -11,13 +11,23 @@
 //!     
 //!     message "Beginning"
 //!
-//!     res = fetch("opensky")
+//!     fetch("opensky")
 //!     
-//!     message "transform"
+//!     message "Transform into Cat21"
 //!     
-//!     res = transform(Cat21)
+//!     transform(Cat21)
 //!     
 //!     output("aeroscope.csv")
 //! end
 //! ```
 //!
+
+use nom::{complete::tag, IResult};
+
+fn parse_message(input: &str) -> IResult<&str, &str> {}
+
+struct Schedule {}
+
+fn parse_schedule(input: &str) -> IResult<&str, Schedule> {}
+
+fn parse_fetch(input: &str) -> IResult<&str, &str> {}
