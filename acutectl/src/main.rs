@@ -68,7 +68,7 @@ fn main() -> Result<()> {
                 }
                 // stdout otherwise
                 //
-                _ => println!("{:?}", data),
+                _ => println!("{}", data),
             }
         }
 
