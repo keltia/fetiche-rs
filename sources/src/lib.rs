@@ -20,6 +20,9 @@ use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 use tabled::{builder::Builder, settings::Style};
 
+#[cfg(unix)]
+use home::home_dir;
+
 use fetiche_formats::{Cat21, Format};
 
 // Re-export these modules for a shorted import path.
