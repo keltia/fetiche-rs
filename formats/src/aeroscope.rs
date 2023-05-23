@@ -47,6 +47,9 @@ impl From<&Aeroscope> for Cat21 {
     /// The default values are arbitrary and taken from the original `aeroscope.sh` script
     /// by Marc Gravis.
     ///
+    /// The following fields are lost:
+    /// - aeroscope_id
+    ///
     fn from(line: &Aeroscope) -> Self {
         let tod = line.receive_date.parse::<DateTime<Utc>>().unwrap();
         let tod = tod.timestamp();

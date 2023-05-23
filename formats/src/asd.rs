@@ -81,6 +81,18 @@ impl From<&Asd> for Cat21 {
     /// The default values are arbitrary and taken from the original `aeroscope-CDG.sh` script
     /// by Marc Gravis.
     ///
+    /// The following fields are lost:
+    /// - journey
+    /// - location
+    /// - station_lat/lon
+    /// - station_name
+    /// - heading
+    /// - home_lat/lon
+    /// - home_height
+    /// - model
+    /// - gps
+    /// - rssi
+    ///
     fn from(line: &Asd) -> Self {
         let tod = NaiveDateTime::parse_from_str(&line.timestamp, "%Y-%m-%d %H:%M:%S")
             .unwrap()
