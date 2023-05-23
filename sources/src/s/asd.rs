@@ -16,9 +16,9 @@
 use std::ops::Add;
 
 use anyhow::{anyhow, Result};
-use chrono::{Duration, NaiveDateTime};
+use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use clap::{crate_name, crate_version};
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -29,7 +29,10 @@ use fetiche_formats::{Cat21, Format};
 
 use crate::filter::Filter;
 use crate::site::{Auth, Site};
-use crate::{http_post, http_post_auth, Fetchable};
+use crate::{http_post, http_post_auth, Fetchable, Sources};
+
+/// Default token
+const DEF_TOKEN: &str = "asd_default_token";
 
 /// Different types of source
 ///
@@ -159,29 +162,58 @@ impl Default for Asd {
 impl Fetchable for Asd {
     /// Authenticate to the site using the supplied credentials and get a token
     ///
-    /// TODO: check whether $config/tokens/<source>.token exists and if yes, check
-    ///       expiration date and possibly re-use it.
+    /// TODO: add "-<email>" at the end of the token's name
     ///
     fn authenticate(&self) -> Result<String> {
-        //let curr_tok =
+        trace!("authenticate as ({:?})", &self.login);
         // Prepare our submission data
         //
-        trace!("Submit auth as {:?}", &self.login);
         let cred = Credentials {
             email: self.login.clone(),
             password: self.password.clone(),
         };
 
-        // fetch token
+        // Retrieve token from storage
         //
-        let url = format!("{}{}", self.base_url, self.token);
-        trace!("Fetching token through {}…", url);
-        let resp = http_post!(self, url, &cred)?;
-        trace!("resp={:?}", resp);
-        let resp = resp.text()?;
-        let res: Token = serde_json::from_str(&resp)?;
-        trace!("token={}", res.token);
-        Ok(res.token)
+        let res = if let Ok(token) = Sources::get_token(DEF_TOKEN) {
+            // Load potential token data
+            //
+            trace!("load stored token");
+            let token: Token = match serde_json::from_str(&token) {
+                Ok(token) => token,
+                Err(_) => return Err(anyhow!("Invalid/no token in {:?}", token)),
+            };
+
+            // Check stored token expiration date
+            //
+            let now: DateTime<Utc> = Utc::now();
+            let tok_time: DateTime<Utc> = Utc.timestamp_opt(token.expired_at, 0).unwrap();
+            if now > tok_time {
+                warn!("Stored token in {:?} has expired!", DEF_TOKEN);
+            }
+            trace!("token is valid");
+            token.token
+        } else {
+            trace!("no token");
+            // fetch token from site
+            //
+            let url = format!("{}{}", self.base_url, self.token);
+            trace!("Fetching token through {}…", url);
+            let resp = http_post!(self, url, &cred)?;
+            trace!("resp={:?}", resp);
+            let resp = resp.text()?;
+            let res: Token = serde_json::from_str(&resp)?;
+            trace!("token={}", res.token);
+
+            // Write fetched token in `tokens`
+            //
+            Sources::store_token(DEF_TOKEN, &resp)?;
+            res.token
+        };
+
+        // Return final token
+        //
+        Ok(res)
     }
 
     /// Fetch actual data using the aforementioned token
@@ -211,7 +243,6 @@ impl Fetchable for Asd {
             },
         };
 
-        debug!("param={:?}", data);
         debug!("json={}", json!(&data));
 
         // use token
@@ -283,8 +314,10 @@ struct Token {
     token: String,
     /// Don't ask
     gjrt: String,
+    /// Expiration date
     expired_at: i64,
     roles: Vec<String>,
+    /// Fullname
     name: String,
     supervision: Option<String>,
     lang: String,
@@ -314,12 +347,18 @@ impl Default for Token {
 
 #[cfg(test)]
 mod tests {
+    use env_logger;
     use httpmock::prelude::*;
     use serde_json::json;
 
     use super::*;
 
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
     fn setup_asd(server: &MockServer) -> Asd {
+        init();
         let client = Client::new();
         Asd {
             site: "NONE".to_string(),
@@ -336,8 +375,10 @@ mod tests {
     #[test]
     fn test_get_asd_token() {
         let server = MockServer::start();
+        let now = Utc::now().timestamp() + 3600i64;
         let token = Token {
             token: "FOOBAR".to_string(),
+            expired_at: now,
             ..Default::default()
         };
 
@@ -355,7 +396,7 @@ mod tests {
 
         let site = setup_asd(&server);
         let t = site.authenticate();
-
+        dbg!(&t);
         m.assert();
         assert!(t.is_ok());
         assert_eq!("FOOBAR", t.as_ref().unwrap());
