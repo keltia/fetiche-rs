@@ -13,7 +13,7 @@ use std::fmt::Debug;
 use std::fs;
 use std::fs::create_dir_all;
 use std::ops::{Index, IndexMut};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 #[cfg(unix)]
@@ -121,7 +121,7 @@ impl Sources {
             //
             trace!("create token store: {p:?}");
 
-            Ok(fs::create_dir_all(p)?)
+            fs::create_dir_all(p)?
         }
         let t = Self::token_path().join(name);
         trace!("store_token: {t:?}");
