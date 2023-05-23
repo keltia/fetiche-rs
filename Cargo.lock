@@ -967,6 +967,7 @@ dependencies = [
  "chrono",
  "clap",
  "csv",
+ "env_logger",
  "fetiche-formats",
  "hcl-rs",
  "home",

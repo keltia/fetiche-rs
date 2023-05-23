@@ -27,6 +27,7 @@ maintenance = { status = "actively-developed" }
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
+env_logger.workspace = true
 fetiche-formats.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
