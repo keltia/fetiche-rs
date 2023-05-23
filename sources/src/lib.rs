@@ -13,18 +13,16 @@ use std::fmt::Debug;
 use std::fs;
 use std::fs::create_dir_all;
 use std::ops::{Index, IndexMut};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
+#[cfg(unix)]
+use home::home_dir;
 use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 use tabled::{builder::Builder, settings::Style};
 
-#[cfg(unix)]
-use home::home_dir;
-
 use fetiche_formats::{Cat21, Format};
-
 // Re-export these modules for a shorted import path.
 //
 pub use filter::*;
@@ -59,30 +57,75 @@ const CVERSION: usize = 3;
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
 
+/// Relative path to `BASEDIR` for storing auth tokens
+const TOKEN_BASE: &str = "tokens";
+
 /// List of sources, this is the only exposed struct from here.
 ///
 #[derive(Debug)]
 pub struct Sources(BTreeMap<String, Site>);
 
 impl Sources {
-    /// Returns the path of the default config file
+    /// Returns the path of the default config directory
     ///
     #[cfg(unix)]
-    pub fn default_file() -> PathBuf {
+    pub fn config_path() -> PathBuf {
         let homedir = home_dir().unwrap();
-        let def: PathBuf = makepath!(homedir, BASEDIR, "drone-utils", CONFIG);
-        trace!("Default file: {:?}", def);
+        let def: PathBuf = makepath!(homedir, BASEDIR, "drone-utils");
+        def
+    }
+
+    /// Returns the path of the default config directory
+    ///
+    #[cfg(windows)]
+    pub fn config_path() -> PathBuf {
+        let homedir = env!("LOCALAPPDATA");
+
+        let def: PathBuf = makepath!(homedir, "drone-utils");
         def
     }
 
     /// Returns the path of the default config file
     ///
-    #[cfg(windows)]
     pub fn default_file() -> PathBuf {
-        let homedir = env!("LOCALAPPDATA");
+        Self::config_path().join(CONFIG)
+    }
 
-        let def: PathBuf = makepath!(homedir, "drone-utils", CONFIG);
-        def
+    /// Returns the path of the directory storing tokens
+    ///
+    pub fn token_path() -> PathBuf {
+        Self::config_path().join(TOKEN_BASE)
+    }
+
+    /// Return the content of named token
+    ///
+    pub fn get_token(name: &str) -> Result<String> {
+        let t = Self::token_path().join(name);
+        trace!("get_token: {t:?}");
+        if t.exists() {
+            Ok(fs::read_to_string(t)?)
+        } else {
+            Err(anyhow!("{:?}: No such file", t))
+        }
+    }
+
+    /// Store (overwrite) named token
+    ///
+    pub fn store_token(name: &str, data: &str) -> Result<()> {
+        let p = Self::token_path();
+
+        // Check token cache
+        //
+        if !p.exists() {
+            // Create it
+            //
+            trace!("create token store: {p:?}");
+
+            Ok(fs::create_dir_all(p)?)
+        }
+        let t = Self::token_path().join(name);
+        trace!("store_token: {t:?}");
+        Ok(fs::write(t, data)?)
     }
 
     /// Install default files
@@ -467,5 +510,30 @@ mod tests {
             _ => bail!("all failed"),
         }
         Ok(())
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_basedir() {
+        let p = Sources::config_path();
+        let ep: PathBuf = makepath!(env!("HOME"), BASEDIR, "drone-utils");
+        assert_eq!(ep, p);
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_basedir() {
+        let p = Sources::config_path();
+        let ep: PathBuf = makepath!(env!("LOCALAPPDATA"), "drone-utils");
+        assert_eq!(ep, p);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_token_path() {
+        let p = Sources::token_path();
+        let ep: PathBuf = makepath!(env!("HOME"), BASEDIR, "drone-utils", "tokens");
+        dbg!(Sources::config_path());
+        assert_eq!(ep, p);
     }
 }
