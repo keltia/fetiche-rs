@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 #[cfg(unix)]
 use home::home_dir;
 use log::{debug, trace};
