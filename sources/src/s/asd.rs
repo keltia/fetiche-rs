@@ -192,7 +192,13 @@ impl Fetchable for Asd {
             let now: DateTime<Utc> = Utc::now();
             let tok_time: DateTime<Utc> = Utc.timestamp_opt(token.expired_at, 0).unwrap();
             if now > tok_time {
-                warn!("Stored token in {:?} has expired!", fname);
+                // Should we delete it?
+                //
+                warn!("Stored token in {:?} has expired, deleting!", fname);
+                return match Sources::purge_token(&fname) {
+                    Ok(()) => Ok("done".to_string()),
+                    Err(e) => Err(e),
+                };
             }
             trace!("token is valid");
             token.token
