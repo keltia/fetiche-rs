@@ -175,7 +175,10 @@ impl Fetchable for Asd {
 
         // Retrieve token from storage
         //
-        let res = if let Ok(token) = Sources::get_token(DEF_TOKEN) {
+        // Use `<token>-<email>` to allow identity-based tokens
+        //
+        let fname = format!("{}-{}", DEF_TOKEN, self.login);
+        let res = if let Ok(token) = Sources::get_token(&fname) {
             // Load potential token data
             //
             trace!("load stored token");
@@ -189,7 +192,7 @@ impl Fetchable for Asd {
             let now: DateTime<Utc> = Utc::now();
             let tok_time: DateTime<Utc> = Utc.timestamp_opt(token.expired_at, 0).unwrap();
             if now > tok_time {
-                warn!("Stored token in {:?} has expired!", DEF_TOKEN);
+                warn!("Stored token in {:?} has expired!", fname);
             }
             trace!("token is valid");
             token.token
@@ -207,7 +210,7 @@ impl Fetchable for Asd {
 
             // Write fetched token in `tokens`
             //
-            Sources::store_token(DEF_TOKEN, &resp)?;
+            Sources::store_token(&fname, &resp)?;
             res.token
         };
 
