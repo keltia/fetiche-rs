@@ -20,3 +20,12 @@ pub fn list_sources(cfg: &Sources) -> Result<String> {
     let str = cfg.list()?;
     Ok(str)
 }
+
+/// List token currently stored
+///
+/// <source_dependent_token_name>-<email>
+///
+pub fn list_tokens() -> Result<String> {
+    let str = Sources::list_tokens()?;
+    Ok(str)
+}

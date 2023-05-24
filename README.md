@@ -332,7 +332,7 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - rename `drone-utils` into the more proper `fetiche`.
 - merge `import-adsb` and `cat21conv` into `acutectl`.
 - link to HashiCorp Vault for storing credentials and tokens
-- alternatively caching tokens (like ASD ones) locally
+- ~~alternatively caching tokens (like ASD ones) locally~~
 - Add more tests & benchmarks.
 - support for Safesky for ADS-B data
 - Support for Sherlock formats and access methods

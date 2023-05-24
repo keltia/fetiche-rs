@@ -14,8 +14,10 @@ use std::fs;
 use std::fs::create_dir_all;
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
+use std::time::UNIX_EPOCH;
 
 use anyhow::{anyhow, Result};
+use chrono::{DateTime, TimeZone, Utc};
 #[cfg(unix)]
 use home::home_dir;
 use log::{debug, trace};
@@ -173,90 +175,6 @@ impl Sources {
             sources.insert(key, s.clone());
         });
         Ok(Sources(sources))
-    }
-
-    /// Wrap `get`
-    ///
-    #[inline]
-    pub fn get(&self, name: &str) -> Option<&Site> {
-        self.0.get(name)
-    }
-
-    /// Wrap `get_mut`
-    ///
-    #[inline]
-    pub fn get_mut(&mut self, name: &str) -> Option<&mut Site> {
-        self.0.get_mut(name)
-    }
-
-    /// Wrap `is_empty()`
-    ///
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    /// Wrap `len()`
-    ///
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Wrap `keys()`
-    ///
-    #[inline]
-    pub fn keys(&self) -> Keys<'_, String, Site> {
-        self.0.keys()
-    }
-
-    /// Wrap `index()`
-    ///
-    #[inline]
-    pub fn index(&self, s: &str) -> Option<&Site> {
-        self.0.get(s)
-    }
-
-    /// Wrap `index_mut()`
-    ///
-    #[inline]
-    pub fn index_mut(&mut self, s: &str) -> Option<&Site> {
-        self.0.get(s)
-    }
-
-    /// Wrap `values()`
-    ///
-    #[inline]
-    pub fn values(&self) -> Values<'_, String, Site> {
-        self.0.values()
-    }
-
-    /// Wrap `values_mut()`
-    ///
-    #[inline]
-    pub fn values_mut(&mut self) -> ValuesMut<'_, String, Site> {
-        self.0.values_mut()
-    }
-
-    /// Wrap `into_values()`
-    ///
-    #[inline]
-    pub fn into_values(self) -> IntoValues<String, Site> {
-        self.0.into_values()
-    }
-
-    /// Wrap `contains_key()`
-    ///
-    #[inline]
-    pub fn contains_key(&self, s: &str) -> bool {
-        self.0.contains_key(s)
-    }
-
-    /// Wrap `contains_key()`
-    ///
-    #[inline]
-    pub fn iter(&self) -> Iter<'_, String, Site> {
-        self.0.iter()
     }
 
     /// List of currently known sources into a nicely formatted string.

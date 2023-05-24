@@ -8,8 +8,8 @@ use clap_complete::generate;
 use log::{info, trace};
 
 use acutectl::{
-    fetch_from_site, import_data, list_formats, list_sources, ImportSubCommand, ListSubCommand,
-    Opts, SubCommand,
+    fetch_from_site, import_data, list_formats, list_sources, list_tokens, ImportSubCommand,
+    ListSubCommand, Opts, SubCommand,
 };
 use fetiche_formats::Format;
 use fetiche_sources::{Site, Sources};
@@ -107,6 +107,7 @@ fn main() -> Result<()> {
             let generator = copts.shell;
             generate(generator, &mut Opts::command(), NAME, &mut io::stdout());
         }
+
         // Standalone `list` command
         //
         SubCommand::List(lopts) => match lopts.cmd {
@@ -120,6 +121,12 @@ fn main() -> Result<()> {
                 info!("Listing all formats:");
 
                 let str = list_formats()?;
+                writeln!(io::stderr(), "{}", str)?;
+            }
+            ListSubCommand::Tokens => {
+                info!("Listing all tokens:");
+
+                let str = list_tokens()?;
                 writeln!(io::stderr(), "{}", str)?;
             }
         },

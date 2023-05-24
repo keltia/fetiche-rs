@@ -173,4 +173,6 @@ pub enum ListSubCommand {
     Formats,
     /// List all sources from `sources.hcl`
     Sources,
+    /// List all currently stored tokens
+    Tokens,
 }
