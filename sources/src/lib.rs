@@ -11,7 +11,6 @@ use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::fs;
-use std::fs::create_dir_all;
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
@@ -99,7 +98,7 @@ impl Sources {
         // Create config directory if needed
         //
         if !dir.exists() {
-            create_dir_all(dir)?
+            fs::create_dir_all(dir)?
         }
 
         // Copy content of `sources.hcl`  into place.
