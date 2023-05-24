@@ -93,43 +93,6 @@ impl Sources {
         Self::config_path().join(CONFIG)
     }
 
-    /// Returns the path of the directory storing tokens
-    ///
-    pub fn token_path() -> PathBuf {
-        Self::config_path().join(TOKEN_BASE)
-    }
-
-    /// Return the content of named token
-    ///
-    pub fn get_token(name: &str) -> Result<String> {
-        let t = Self::token_path().join(name);
-        trace!("get_token: {t:?}");
-        if t.exists() {
-            Ok(fs::read_to_string(t)?)
-        } else {
-            Err(anyhow!("{:?}: No such file", t))
-        }
-    }
-
-    /// Store (overwrite) named token
-    ///
-    pub fn store_token(name: &str, data: &str) -> Result<()> {
-        let p = Self::token_path();
-
-        // Check token cache
-        //
-        if !p.exists() {
-            // Create it
-            //
-            trace!("create token store: {p:?}");
-
-            fs::create_dir_all(p)?
-        }
-        let t = Self::token_path().join(name);
-        trace!("store_token: {t:?}");
-        Ok(fs::write(t, data)?)
-    }
-
     /// Install default files
     ///
     pub fn install_defaults(dir: &PathBuf) -> std::io::Result<()> {
@@ -213,6 +176,183 @@ impl Sources {
         let table = builder.build().with(Style::rounded()).to_string();
         let table = format!("Listing all sources:\n\n{table}");
         Ok(table)
+    }
+}
+
+// Token management
+//
+impl Sources {
+    /// Returns the path of the directory storing tokens
+    ///
+    pub fn token_path() -> PathBuf {
+        Self::config_path().join(TOKEN_BASE)
+    }
+
+    /// Return the content of named token
+    ///
+    pub fn get_token(name: &str) -> Result<String> {
+        let t = Self::token_path().join(name);
+        trace!("get_token: {t:?}");
+        if t.exists() {
+            Ok(fs::read_to_string(t)?)
+        } else {
+            Err(anyhow!("{:?}: No such file", t))
+        }
+    }
+
+    /// Store (overwrite) named token
+    ///
+    pub fn store_token(name: &str, data: &str) -> Result<()> {
+        let p = Self::token_path();
+
+        // Check token cache
+        //
+        if !p.exists() {
+            // Create it
+            //
+            trace!("create token store: {p:?}");
+
+            fs::create_dir_all(p)?
+        }
+        let t = Self::token_path().join(name);
+        trace!("store_token: {t:?}");
+        Ok(fs::write(t, data)?)
+    }
+
+    /// Purge expired token
+    ///
+    pub fn purge_token(name: &str) -> Result<()> {
+        trace!("purge expired token");
+        let p = Self::token_path().join(name);
+        Ok(fs::remove_file(p)?)
+    }
+
+    /// List tokens
+    ///
+    pub fn list_tokens() -> Result<String> {
+        trace!("listing tokens");
+
+        let header = vec!["Path", "Created at"];
+
+        let mut builder = Builder::default();
+        builder.set_header(header);
+
+        let p = Self::token_path();
+        if let Ok(dir) = fs::read_dir(p) {
+            for fname in dir {
+                let mut row = vec![];
+
+                if let Ok(fname) = fname {
+                    // Using strings is easier
+                    //
+                    let name = format!("{}", fname.file_name().to_string_lossy());
+                    row.push(name.clone());
+
+                    let st = fname.metadata().unwrap();
+                    let modified = DateTime::<Utc>::from(st.modified().unwrap());
+                    let modified = format!("{}", modified);
+                    row.push(modified);
+                } else {
+                    row.push("INVALID".to_string());
+                    let origin = format!("{}", DateTime::<Utc>::from(UNIX_EPOCH));
+                    row.push(origin);
+                }
+                builder.push_record(row);
+            }
+        }
+        let table = builder.build().with(Style::rounded()).to_string();
+        let table = format!("Listing all tokens:\n{}", table);
+        Ok(table)
+    }
+}
+
+// -----
+
+/// Helper methods
+///
+impl Sources {
+    /// Wrap `get`
+    ///
+    #[inline]
+    pub fn get(&self, name: &str) -> Option<&Site> {
+        self.0.get(name)
+    }
+
+    /// Wrap `get_mut`
+    ///
+    #[inline]
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut Site> {
+        self.0.get_mut(name)
+    }
+
+    /// Wrap `is_empty()`
+    ///
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Wrap `len()`
+    ///
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Wrap `keys()`
+    ///
+    #[inline]
+    pub fn keys(&self) -> Keys<'_, String, Site> {
+        self.0.keys()
+    }
+
+    /// Wrap `index()`
+    ///
+    #[inline]
+    pub fn index(&self, s: &str) -> Option<&Site> {
+        self.0.get(s)
+    }
+
+    /// Wrap `index_mut()`
+    ///
+    #[inline]
+    pub fn index_mut(&mut self, s: &str) -> Option<&Site> {
+        self.0.get(s)
+    }
+
+    /// Wrap `values()`
+    ///
+    #[inline]
+    pub fn values(&self) -> Values<'_, String, Site> {
+        self.0.values()
+    }
+
+    /// Wrap `values_mut()`
+    ///
+    #[inline]
+    pub fn values_mut(&mut self) -> ValuesMut<'_, String, Site> {
+        self.0.values_mut()
+    }
+
+    /// Wrap `into_values()`
+    ///
+    #[inline]
+    pub fn into_values(self) -> IntoValues<String, Site> {
+        self.0.into_values()
+    }
+
+    /// Wrap `contains_key()`
+    ///
+    #[inline]
+    pub fn contains_key(&self, s: &str) -> bool {
+        self.0.contains_key(s)
+    }
+
+    /// Wrap `contains_key()`
+    ///
+    #[inline]
+    pub fn iter(&self) -> Iter<'_, String, Site> {
+        self.0.iter()
     }
 }
 
