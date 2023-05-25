@@ -15,15 +15,18 @@ pub struct Opts {
     /// configuration file.
     #[clap(short = 'c', long)]
     pub config: Option<PathBuf>,
-    /// debug mode.
-    #[clap(short = 'D', long = "debug")]
-    pub debug: bool,
+    /// Duration in seconds (negative = back in time) -- optional
+    #[clap(short = 'D', long)]
+    pub since: Option<i32>,
     /// End date (optional)
     #[clap(short = 'E', long)]
     pub end: Option<String>,
     /// Format must be specified if looking at a file.
     #[clap(short = 'F', long)]
     pub format: Option<String>,
+    /// Keyword filter: e.g. "--keyword icao24:foobar" -- optional
+    #[clap(short = 'K', long)]
+    pub keyword: Option<String>,
     /// Output file.
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
