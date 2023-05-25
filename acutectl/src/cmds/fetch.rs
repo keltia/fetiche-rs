@@ -76,6 +76,10 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
             name: k.to_string(),
             value: v.to_string(),
         })
+    } else if opts.since.is_some() {
+        let d = opts.since.unwrap();
+
+        Ok(Filter::Duration(d))
     } else {
         Ok(Filter::default())
     }
