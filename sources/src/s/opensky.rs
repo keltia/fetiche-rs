@@ -104,6 +104,8 @@ impl Fetchable for Opensky {
         let url = format!("{}{}", self.base_url, self.get);
         trace!("Fetching data from {}…", url);
 
+        // FIXME: we can have only one argument
+        //
         let args: Filter = args.into();
         let tm = match args {
             Filter::Interval { begin, .. } => {
@@ -119,7 +121,7 @@ impl Fetchable for Opensky {
         };
 
         let url = match tm {
-            Some(tm) => format!("{}&{}", url, tm),
+            Some(tm) => format!("{}?{}", url, tm),
             _ => url,
         };
         trace!("{}", url);
