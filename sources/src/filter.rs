@@ -17,7 +17,6 @@ use serde_json::json;
 /// If we specify -B/-E or --today, we need to pass these below
 ///
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(untagged)]
 pub enum Filter {
     /// Date-based interval as "%Y-%m-%d %H:%M:%S"
     Interval {
@@ -28,6 +27,8 @@ pub enum Filter {
     Keyword { name: String, value: String },
     /// Duration as length of time in seconds (can be negative to go in the past for N seconds)
     Duration(i32),
+    /// Special interval for stream: do we go back slightly in time?  For how long?
+    Stream { from: i32, duration: i32 },
     #[default]
     None,
 }
@@ -53,6 +54,12 @@ impl Filter {
             value: value.to_string(),
         }
     }
+
+    /// For a stream
+    ///
+    pub fn stream(from: i32, duration: i32) -> Self {
+        Filter::Stream { from, duration }
+    }
 }
 
 impl Display for Filter {
@@ -71,6 +78,12 @@ impl Display for Filter {
             value: String,
         }
 
+        #[derive(Debug, Serialize)]
+        struct Stream {
+            from: i32,
+            duration: i32,
+        }
+
         let s: String = match self {
             Filter::None => "{}".to_owned(),
             Filter::Interval { begin, end } => {
@@ -87,6 +100,13 @@ impl Display for Filter {
                     value: value.to_string(),
                 };
                 json!(k).to_string()
+            }
+            Filter::Stream { from, duration } => {
+                let s = Stream {
+                    from: *from,
+                    duration: *duration,
+                };
+                json!(s).to_string()
             }
         };
         write!(f, "{}", s)

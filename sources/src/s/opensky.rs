@@ -1,6 +1,13 @@
 //! OpenSky (.org) specific data
 //!
 
+use std::io::Write;
+use std::ops::Deref;
+use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::{io, thread, time};
+
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
@@ -8,10 +15,12 @@ use log::{debug, trace};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use signal_hook::consts::TERM_SIGNALS;
+use signal_hook::flag;
 
 use fetiche_formats::{Cat21, Format, StateList};
 
-use crate::{http_get_basic, Fetchable, Filter};
+use crate::{http_get_basic, Fetchable, Filter, Streamable};
 use crate::{Auth, Site};
 
 #[derive(Clone, Debug)]
@@ -28,6 +37,8 @@ pub struct Opensky {
     pub get: String,
     /// reqwest blocking client
     pub client: Client,
+    /// Running time (for streams)
+    pub duration: i32,
 }
 
 #[derive(Debug, Serialize)]
@@ -59,6 +70,7 @@ impl Opensky {
             base_url: "".to_owned(),
             get: "".to_owned(),
             client: Client::new(),
+            duration: 0,
         }
     }
 
@@ -117,14 +129,14 @@ impl Fetchable for Opensky {
                 Some(format!("time={}", now - d))
             }
             Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
-            Filter::None => None,
+            Filter::Stream { .. } | Filter::None => None,
         };
 
         let url = match tm {
             Some(tm) => format!("{}?{}", url, tm),
             _ => url,
         };
-        trace!("{}", url);
+        trace!("FetchURL: {}", url);
 
         let resp = http_get_basic!(self, url, login, password)?;
 
@@ -173,6 +185,119 @@ impl Fetchable for Opensky {
 
     fn format(&self) -> Format {
         Format::Opensky
+    }
+}
+
+impl Streamable for Opensky {
+    fn authenticate(&self) -> anyhow::Result<String> {
+        trace!("fake token retrieval");
+        Ok(format!("{}:{}", self.login, self.password))
+    }
+
+    fn stream(
+        &mut self,
+        out: &mut Box<dyn Write + Send + Sync + 'static>,
+        token: &str,
+        args: &str,
+    ) -> Result<()> {
+        let res: Vec<&str> = token.split(':').collect();
+        let (login, password) = (res[0].to_owned(), res[1].to_owned());
+        trace!("opensky::stream(as {}:{})", login, password);
+
+        let url = format!("{}{}", self.base_url, self.get);
+        trace!("Streaming data from {}…", url);
+
+        // FIXME: we can have only one argument
+        //
+        let args: Filter = args.into();
+        let tm = match args {
+            Filter::Stream { from, duration } => {
+                let now = Utc::now().timestamp() as i32;
+                self.duration = duration;
+                Some(format!("time={}", now))
+            }
+            Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
+            _ => None,
+        };
+
+        let url = match tm {
+            Some(tm) => format!("{}?{}", url, tm),
+            _ => url,
+        };
+        trace!("StreamURL: {} for {} secs", url, self.duration);
+
+        // Infinite loop until we get cancelled or timeout expire
+        // self.duration is 0 -> infinite
+        // self.duration is N -> run for N secs
+        //
+        let term = Arc::new(AtomicBool::new(false));
+
+        // Setup signals
+        //
+        for sig in TERM_SIGNALS {
+            flag::register_conditional_shutdown(*sig, 1, Arc::clone(&term))?;
+            flag::register(*sig, Arc::clone(&term))?;
+        }
+
+        // Launch it!
+        //
+        while !term.load(Ordering::Relaxed) {
+            trace!("Starting stream loop");
+
+            let url = url.clone();
+            let login = login.clone();
+            let password = password.clone();
+            let mut site = self.clone();
+            let mut handle = Box::new(&mut *out);
+            let th =
+                thread::spawn(move || fetch_data(&mut site, &mut handle, &url, &login, &password));
+
+            // Now wait for Ctrl-C or timer expire
+            //
+            if self.duration == 0 {
+                let _ = th.join();
+            } else {
+                // Timer set
+                //
+                thread::sleep(time::Duration::from_secs(self.duration as u64));
+            }
+        }
+        Ok(())
+    }
+
+    fn format(&self) -> Format {
+        Format::Opensky
+    }
+}
+
+fn fetch_data(
+    site: &mut Opensky,
+    output: &mut Box<dyn Write + Send + Sync + 'static>,
+    url: &str,
+    login: &str,
+    password: &str,
+) -> Result<()> {
+    loop {
+        write!(io::stderr(), ".")?;
+
+        let resp = http_get_basic!(site, url, login, password)?;
+
+        debug!("{:?}", &resp);
+
+        // Check status
+        //
+        match resp.status() {
+            StatusCode::OK => {
+                trace!("OK");
+            }
+            code => {
+                let h = &resp.headers();
+                return Err(anyhow!("Error({}): {:?}", code, h));
+            }
+        }
+        let resp = resp.text()?;
+        write!(output, "{}", resp)?;
+        output.flush();
     }
 }
 
