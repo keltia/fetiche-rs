@@ -15,6 +15,7 @@
 //! [Rust]: https://rust-lang.org/
 //!
 use std::fs;
+use std::io::{stderr, Write};
 use std::time::Instant;
 
 use anyhow::{anyhow, Result};
@@ -128,7 +129,7 @@ fn main() -> Result<()> {
 
     // Add banner
     //
-    println!("{}\n", version());
+    writeln!(stderr(), "{}\n", version())?;
 
     // Exit if needed
     //
