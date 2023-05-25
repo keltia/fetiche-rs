@@ -1,7 +1,7 @@
 //! OpenSky (.org) specific data
 //!
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
 use log::{debug, trace};
@@ -9,7 +9,7 @@ use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use fetiche_formats::{Cat21, Format};
+use fetiche_formats::{Cat21, Format, StateList};
 
 use crate::{http_get_basic, Fetchable, Filter};
 use crate::{Auth, Site};
@@ -146,8 +146,27 @@ impl Fetchable for Opensky {
         Ok(resp)
     }
 
-    fn to_cat21(&self, _input: String) -> anyhow::Result<Vec<Cat21>> {
-        todo!()
+    fn to_cat21(&self, input: String) -> Result<Vec<Cat21>> {
+        let sl: StateList = serde_json::from_str(&input)?;
+        let res = if let Some(res) = &sl.states {
+            debug!("res={:?}", res);
+            let res: Vec<_> = res
+                .iter()
+                .enumerate()
+                .inspect(|(n, f)| debug!("f={:?}-{:?}", n, f))
+                .map(|(cnt, rec)| {
+                    debug!("cnt={}/rec={:?}", cnt, rec);
+                    let mut line = Cat21::from(rec);
+                    line.rec_num = cnt;
+                    line
+                })
+                .collect();
+            res
+        } else {
+            vec![]
+        };
+        debug!("res={:?}", res);
+        Ok(res)
     }
 
     fn format(&self) -> Format {
