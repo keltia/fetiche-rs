@@ -40,6 +40,7 @@ csv = "1.1"
 percent-encoding = "2.2"
 serde_repr = "0.1"
 tabled = "0.12"
+signal-hook = "0.3"
 
 [dev-dependencies]
 httpmock = { version = "0.6", features = ["colored", "color", "clap"] }
