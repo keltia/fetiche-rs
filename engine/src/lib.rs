@@ -2,22 +2,24 @@
 //!
 
 use std::fmt::Debug;
+use std::io::Write;
 use std::path::PathBuf;
 
 use anyhow::Result;
+
+pub use common::*;
+pub use fetch::*;
+use fetiche_formats::Format;
+use fetiche_sources::{Fetchable, Sources};
+pub use job::*;
+pub use parse::*;
+pub use stream::*;
 
 mod common;
 mod fetch;
 mod job;
 mod parse;
-
-pub use common::*;
-pub use fetch::*;
-pub use job::*;
-pub use parse::*;
-
-use fetiche_formats::Format;
-use fetiche_sources::{Fetchable, Sources};
+mod stream;
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const EVERSION: &str = env!("CARGO_PKG_VERSION");
