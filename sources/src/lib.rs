@@ -14,7 +14,6 @@ use std::fs;
 use std::io::Write;
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 
 use anyhow::{anyhow, Result};
@@ -57,16 +56,14 @@ pub trait Fetchable: Debug {
 /// a single interface.  The object can connect to a TCP stream or create one by repeatedly calling
 /// some API (cf. Opensky).
 ///
-pub trait Streamable: Debug {
+pub trait Streamable<T>: Debug
+where
+    T: Write,
+{
     /// If credentials are needed, get a token for subsequent operations
     fn authenticate(&self) -> Result<String>;
     /// Stream actual data
-    fn stream(
-        &mut self,
-        out: &mut Box<dyn Write + Send + Sync + 'static>,
-        token: &str,
-        args: &str,
-    ) -> Result<()>;
+    fn stream(&mut self, out: T, token: &str, args: &str) -> Result<()>;
     /// Returns the input formats
     fn format(&self) -> Format;
 }

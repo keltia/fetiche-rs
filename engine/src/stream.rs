@@ -1,32 +1,44 @@
 //! `Stream` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
-use std::fs;
-use std::path::PathBuf;
+use std::fmt::{Debug, Formatter, Pointer};
+use std::io::Write;
+use std::sync::mpsc::Sender;
+use std::{fs, io};
 
 use anyhow::{anyhow, Result};
 use log::{debug, trace};
+use nom::combinator::into;
 
-use fetiche_formats::Format;
 use fetiche_sources::{Fetchable, Filter};
 
 use crate::{Input, Runnable};
 
 /// The Stream task
 ///
-#[derive(Debug)]
-pub struct Stream {
+pub struct Stream<T> {
     /// name for the task
     pub name: String,
     /// Input type, File or Network
-    pub input: Input,
+    pub input: Input<T>,
     /// Interval in secs
     pub every: usize,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
 }
 
-impl Stream {
+impl Debug for Stream<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Stream")
+            .field("name", &self.name)
+            .field("input", &self.input)
+            .field("every", &self.every)
+            .field("args", &self.args)
+            .finish()
+    }
+}
+
+impl<T> Stream<T> {
     /// Initialize our environment
     ///
     pub fn new(name: &str) -> Self {
@@ -67,26 +79,23 @@ impl Stream {
     }
 }
 
-impl Runnable for Stream {
+impl<T> Runnable for Stream<T> {
     /// The heart of the matter: fetch data
     ///
-    fn run(&self) -> Result<String> {
+    fn run(&self, tx: Sender<T>) -> Result<()> {
         trace!("Stream::run()");
+        let out = self.output.as_mut().unwrap();
         match &self.input {
-            // Input::Network is more complicated and rely on the Site
+            // Streaming is only supported for Input::Network
             //
-            Input::Network { site, .. } => {
+            Input::Stream { ref mut site, .. } => {
                 // Stream data as bytes
                 //
                 let token = site.authenticate()?;
-                loop {
-                    let data = site.fetch(&token, &self.args)?;
-                    debug!("{}", &data);
-                }
-                Ok(data)
+
+                site.stream(tx, &token, &self.args)?
             }
-            Input::File { path, .. } => Ok(fs::read_to_string(path)?),
-            Input::Nothing => Err(anyhow!("no formats specified")),
+            _ => Err(anyhow!("Streaming not supported")),
         }
     }
 }

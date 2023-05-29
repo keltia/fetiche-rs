@@ -3,6 +3,7 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::mpsc::Sender;
 
 use anyhow::{anyhow, Result};
 use log::{debug, trace};
@@ -19,7 +20,7 @@ pub struct Fetch {
     /// name for the task
     pub name: String,
     /// Input type, File or Network
-    pub input: Input,
+    pub input: Input<T>,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
 }
@@ -82,10 +83,10 @@ impl Fetch {
     }
 }
 
-impl Runnable for Fetch {
+impl<T> Runnable<T> for Fetch {
     /// The heart of the matter: fetch data
     ///
-    fn run(&self) -> Result<String> {
+    fn run(&self, out: T) -> Result<()> {
         trace!("Fetch::run()");
         match &self.input {
             // Input::Network is more complicated and rely on the Site
@@ -96,9 +97,13 @@ impl Runnable for Fetch {
                 let token = site.authenticate()?;
                 let data = site.fetch(&token, &self.args)?;
                 debug!("{}", &data);
-                Ok(data)
+                write!(out, "{}", data)
             }
-            Input::File { path, .. } => Ok(fs::read_to_string(path)?),
+            Input::File { path, .. } => {
+                let r = fs::read_to_string(path)?;
+                write!(out, "{}", r)
+            }
+            Input::Stream { .. } => Err(anyhow!("streaming not supported, use Streamable")),
             Input::Nothing => Err(anyhow!("no formats specified")),
         }
     }

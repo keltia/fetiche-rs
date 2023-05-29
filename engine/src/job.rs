@@ -12,14 +12,14 @@ use crate::Runnable;
 /// The engine is processing jobs, made of runnable tasks
 ///
 #[derive(Debug)]
-pub struct Job {
+pub struct Job<T> {
     /// Name of the job
     pub name: String,
     /// FIFO list of tasks
-    pub list: VecDeque<Box<dyn Runnable>>,
+    pub list: VecDeque<Box<dyn Runnable<T>>>,
 }
 
-impl Job {
+impl<T> Job<T> {
     /// New job
     ///
     /// NOTE: No //EOJ
@@ -36,7 +36,7 @@ impl Job {
     /// Add a task to the queue
     ///
     #[inline]
-    pub fn add(&mut self, t: Box<dyn Runnable>) -> &mut Self {
+    pub fn add(&mut self, t: Box<dyn Runnable<T>>) -> &mut Self {
         trace!("Job::add({t:?}");
         let _ = &self.list.push_back(t);
         self
@@ -75,7 +75,7 @@ mod tests {
         let t1 = Box::new(Nothing {});
         let t2 = Box::new(Message::new("hello world"));
 
-        let mut j = Job::new("test");
+        let mut j: Job<String> = Job::new("test");
         j.add(t1);
         j.add(t2);
 
