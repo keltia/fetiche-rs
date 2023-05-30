@@ -1,12 +1,11 @@
 use std::fs::File;
-use std::io::{stdout, BufWriter};
-use std::net::Shutdown::Write;
+use std::io::stdout;
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use log::{info, trace};
 
-use fetiche_engine::{Fetch, Job, Stream};
+use fetiche_engine::{Job, Stream};
 use fetiche_sources::{Filter, Flow, Site, Sources};
 
 use crate::StreamOpts;
@@ -54,7 +53,7 @@ pub fn stream_from_site(cfg: &Sources, sopts: &StreamOpts) -> Result<()> {
 pub fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
     trace!("filter_from_opts");
 
-    let t: DateTime<Utc> = Utc::now();
+    let _t: DateTime<Utc> = Utc::now();
 
     if opts.keyword.is_some() {
         let keyword = opts.keyword.clone().unwrap();

@@ -4,10 +4,9 @@
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::mpsc::Sender;
 
 use anyhow::{anyhow, Result};
-use log::{debug, trace};
+use log::trace;
 
 use fetiche_formats::Format;
 use fetiche_sources::{Fetchable, Filter};

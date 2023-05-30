@@ -4,7 +4,6 @@
 use std::fmt::Debug;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::mpsc::Sender;
 
 use anyhow::Result;
 

@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 use std::io::Write;
 
 use anyhow::Result;
-use log::{debug, error, trace};
+use log::{error, trace};
 
 use crate::Runnable;
 

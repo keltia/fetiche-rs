@@ -1,14 +1,11 @@
 //! `Stream` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
-use std::fmt::{Debug, Formatter, Pointer};
+use std::fmt::{Debug, Formatter};
 use std::io::Write;
-use std::sync::mpsc::Sender;
-use std::{fs, io};
 
 use anyhow::{anyhow, Result};
-use log::{debug, trace};
-use nom::combinator::into;
+use log::trace;
 
 use fetiche_sources::{Filter, Streamable};
 

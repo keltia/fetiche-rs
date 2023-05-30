@@ -1,6 +1,3 @@
-use std::fs::File;
-use std::io::{stdout, BufWriter};
-
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use log::{info, trace};

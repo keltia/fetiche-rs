@@ -6,7 +6,6 @@
 
 use std::fmt::Debug;
 use std::io::Write;
-use std::sync::mpsc::Sender;
 
 use anyhow::Result;
 
@@ -44,7 +43,7 @@ impl Message {
 
 impl Runnable for Message {
     fn run(&mut self, out: &mut dyn Write) -> Result<()> {
-        Ok(write!(out, "{}", self.msg.to_string())?)
+        Ok(write!(out, "{}", self.msg)?)
     }
 }
 

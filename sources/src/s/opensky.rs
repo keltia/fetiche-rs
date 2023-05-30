@@ -4,7 +4,6 @@
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use std::{io, thread, time};
 
 use anyhow::{anyhow, Result};
@@ -207,7 +206,7 @@ impl Streamable for Opensky {
         //
         let args: Filter = args.into();
         let tm = match args {
-            Filter::Stream { from, duration } => {
+            Filter::Stream { duration, .. } => {
                 let now = Utc::now().timestamp() as i32;
                 stream_duration = duration;
                 Some(format!("time={}", now))
@@ -242,13 +241,11 @@ impl Streamable for Opensky {
 
             // Now wait for Ctrl-C or timer expire
             //
-            if self.duration != 0 {
+            if stream_duration != 0 {
                 // Timer set
                 //
-                let duration = self.duration;
-                let t = thread::spawn(move || {
-                    thread::sleep(time::Duration::from_secs(stream_duration as u64))
-                });
+                let d = stream_duration;
+                let t = thread::spawn(move || thread::sleep(time::Duration::from_secs(d as u64)));
                 trace!("end of sleep");
                 t.join().unwrap();
                 return Ok(());

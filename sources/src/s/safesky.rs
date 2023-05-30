@@ -98,7 +98,7 @@ impl Fetchable for Safesky {
         Ok(self.api_key.clone())
     }
 
-    fn fetch(&self, out: &mut dyn Write, _token: &str, _args: &str) -> Result<()> {
+    fn fetch(&self, _out: &mut dyn Write, _token: &str, _args: &str) -> Result<()> {
         todo!()
     }
 
