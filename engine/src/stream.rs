@@ -10,7 +10,7 @@ use anyhow::{anyhow, Result};
 use log::{debug, trace};
 use nom::combinator::into;
 
-use fetiche_sources::{Fetchable, Filter};
+use fetiche_sources::{Filter, Streamable};
 
 use crate::{Input, Runnable};
 
@@ -53,10 +53,10 @@ impl Stream {
 
     /// Copy the site's data
     ///
-    pub fn site(&mut self, s: Box<dyn Fetchable>) -> &mut Self {
+    pub fn site(&mut self, s: Box<dyn Streamable>) -> &mut Self {
         trace!("Add site {:?}", self.name);
-        self.input = Input::Network {
-            format: s.format(),
+        self.input = Input::Stream {
+            stream: s.format(),
             site: s,
         };
         self

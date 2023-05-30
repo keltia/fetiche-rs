@@ -60,7 +60,7 @@ pub enum Input {
     },
     Stream {
         /// Input formats
-        format: Format,
+        stream: Format,
         /// Site itself
         site: Box<dyn Streamable>,
     },
