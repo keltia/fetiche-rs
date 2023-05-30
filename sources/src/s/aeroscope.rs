@@ -10,6 +10,8 @@
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
 
+use std::io::Write;
+
 use anyhow::Result;
 use clap::{crate_name, crate_version};
 use log::{debug, trace};
@@ -133,7 +135,7 @@ impl Fetchable for Aeroscope {
 
     /// Fetch actual data from the site as a long String.
     ///
-    fn fetch(&self, token: &str, _args: &str) -> Result<String> {
+    fn fetch(&self, out: &mut dyn Write, token: &str, _args: &str) -> Result<()> {
         debug!("Now fetching data");
 
         // Use the token to authenticate ourselves
@@ -143,7 +145,9 @@ impl Fetchable for Aeroscope {
         let resp = resp?.text()?;
 
         debug!("{} bytes read. ", resp.len());
-        Ok(resp)
+        write!(out, "{}", resp)?;
+        out.flush()?;
+        Ok(())
     }
 
     /// Process data fetch in previous stage and render it as wanted
@@ -182,10 +186,10 @@ impl Fetchable for Aeroscope {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use httpmock::prelude::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_get_aeroscope_token() {

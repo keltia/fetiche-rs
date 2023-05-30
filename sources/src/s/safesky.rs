@@ -7,6 +7,8 @@
 //! Format is take from the CSV given as an example
 //!
 
+use std::io::Write;
+
 use anyhow::{anyhow, Result};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
@@ -96,7 +98,7 @@ impl Fetchable for Safesky {
         Ok(self.api_key.clone())
     }
 
-    fn fetch(&self, _token: &str, _args: &str) -> Result<String> {
+    fn fetch(&self, out: &mut dyn Write, _token: &str, _args: &str) -> Result<()> {
         todo!()
     }
 
@@ -111,11 +113,11 @@ impl Fetchable for Safesky {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use clap::{crate_name, crate_version};
     use httpmock::Method::GET;
     use httpmock::MockServer;
+
+    use super::*;
 
     fn setup_safesky(_server: &MockServer) -> Safesky {
         let client = Client::new();

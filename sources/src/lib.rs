@@ -45,7 +45,7 @@ pub trait Fetchable: Debug {
     /// If credentials are needed, get a token for subsequent operations
     fn authenticate(&self) -> Result<String>;
     /// Fetch actual data
-    fn fetch(&self, token: &str, args: &str) -> Result<String>;
+    fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()>;
     /// Transform fetched data into Cat21
     fn to_cat21(&self, input: String) -> Result<Vec<Cat21>>;
     /// Returns the input formats
@@ -56,14 +56,11 @@ pub trait Fetchable: Debug {
 /// a single interface.  The object can connect to a TCP stream or create one by repeatedly calling
 /// some API (cf. Opensky).
 ///
-pub trait Streamable<T>: Debug
-where
-    T: Write,
-{
+pub trait Streamable: Debug {
     /// If credentials are needed, get a token for subsequent operations
     fn authenticate(&self) -> Result<String>;
     /// Stream actual data
-    fn stream(&mut self, out: T, token: &str, args: &str) -> Result<()>;
+    fn stream(&mut self, out: &mut dyn Write, token: &str, args: &str) -> Result<()>;
     /// Returns the input formats
     fn format(&self) -> Format;
 }

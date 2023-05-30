@@ -3,7 +3,6 @@
 
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::{io, thread, time};
 
@@ -107,7 +106,7 @@ impl Fetchable for Opensky {
         Ok(format!("{}:{}", self.login, self.password))
     }
 
-    fn fetch(&self, token: &str, args: &str) -> anyhow::Result<String> {
+    fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
         trace!("opensky::fetch(as {}:{})", login, password);
@@ -155,8 +154,8 @@ impl Fetchable for Opensky {
 
         trace!("Fetching raw data");
         let resp = resp.text()?;
-
-        Ok(resp)
+        write!(out, "{}", resp)?;
+        Ok(())
     }
 
     fn to_cat21(&self, input: String) -> Result<Vec<Cat21>> {
@@ -187,16 +186,13 @@ impl Fetchable for Opensky {
     }
 }
 
-impl<T> Streamable<T> for Opensky
-where
-    T: Write,
-{
+impl Streamable for Opensky {
     fn authenticate(&self) -> anyhow::Result<String> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
     }
 
-    fn stream(&mut self, mut out: T, token: &str, args: &str) -> Result<()> {
+    fn stream(&mut self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
         trace!("opensky::stream(as {}:{})", login, password);
@@ -277,7 +273,8 @@ where
                     }
                 }
                 let resp = resp.text()?;
-                write!(out, "{}", resp);
+                write!(out, "{}", resp)?;
+                out.flush()?;
             }
         }
         Ok(())

@@ -13,6 +13,7 @@
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
 
+use std::io::Write;
 use std::ops::Add;
 
 use anyhow::{anyhow, Result};
@@ -227,7 +228,7 @@ impl Fetchable for Asd {
 
     /// Fetch actual data using the aforementioned token
     ///
-    fn fetch(&self, token: &str, args: &str) -> Result<String> {
+    fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
         trace!("Submit parameters");
 
         let f: Filter = serde_json::from_str(args)?;
@@ -281,7 +282,9 @@ impl Fetchable for Asd {
         }
 
         let resp = resp.text()?;
-        Ok(resp)
+        write!(out, "{}", resp)?;
+        out.flush()?;
+        Ok(())
     }
 
     /// Process every fetched data line and generate the `Cat21` result
