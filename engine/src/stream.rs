@@ -108,6 +108,10 @@ impl Default for Stream {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
+    use fetiche_formats::Format;
+
     use super::*;
 
     #[test]
