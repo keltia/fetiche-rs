@@ -4,6 +4,7 @@
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use std::{io, thread, time};
 
 use anyhow::{anyhow, Result};
@@ -89,7 +90,7 @@ impl Opensky {
                 _ => panic!("nope"),
             }
         }
-        self.get = site.route("get").unwrap().to_owned();
+        self.get = site.route("stream").unwrap().to_owned();
         self
     }
 }
@@ -254,8 +255,6 @@ impl Streamable for Opensky {
             // Go!
             //
             loop {
-                write!(io::stderr(), ".")?;
-
                 let url = &url.clone();
                 let login = &self.login.clone();
                 let password = &self.password.clone();
@@ -275,8 +274,21 @@ impl Streamable for Opensky {
                     }
                 }
                 let resp = resp.text()?;
-                write!(out, "{}", resp)?;
-                out.flush()?;
+                let sl: StateList = serde_json::from_str(&resp)?;
+
+                // Check whether data was returned
+                //
+                if sl.states.is_some() {
+                    write!(io::stderr(), "D")?;
+                    write!(out, "{}", resp)?;
+                    out.flush()?;
+                } else {
+                    write!(io::stderr(), ".")?;
+                }
+
+                // Whatever happened, sleep for 1s to avoid CPU/network
+                // overload
+                thread::sleep(Duration::from_secs(1));
             }
         }
         Ok(())
