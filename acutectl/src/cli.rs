@@ -102,9 +102,6 @@ pub struct FetchOpts {
     /// Keyword filter: e.g. "--keyword icao24:foobar" -- optional
     #[clap(short = 'K', long)]
     pub keyword: Option<String>,
-    /// Continuous mode every <usize> seconds (optional)
-    #[clap(short = 'C', long)]
-    pub continuous: Option<usize>,
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
