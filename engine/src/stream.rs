@@ -16,18 +16,18 @@ use crate::{Input, Runnable};
 
 /// The Stream task
 ///
-pub struct Stream<T> {
+pub struct Stream {
     /// name for the task
     pub name: String,
     /// Input type, File or Network
-    pub input: Input<T>,
+    pub input: Input,
     /// Interval in secs
     pub every: usize,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
 }
 
-impl Debug for Stream<T> {
+impl Debug for Stream {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Stream")
             .field("name", &self.name)
@@ -38,7 +38,7 @@ impl Debug for Stream<T> {
     }
 }
 
-impl<T> Stream<T> {
+impl Stream {
     /// Initialize our environment
     ///
     pub fn new(name: &str) -> Self {
@@ -79,23 +79,23 @@ impl<T> Stream<T> {
     }
 }
 
-impl<T> Runnable for Stream<T> {
+impl Runnable for Stream {
     /// The heart of the matter: fetch data
     ///
-    fn run(&self, tx: Sender<T>) -> Result<()> {
+    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
         trace!("Stream::run()");
-        let out = self.output.as_mut().unwrap();
+
         match &self.input {
             // Streaming is only supported for Input::Network
             //
-            Input::Stream { ref mut site, .. } => {
+            Input::Stream { site, .. } => {
                 // Stream data as bytes
                 //
                 let token = site.authenticate()?;
 
-                site.stream(tx, &token, &self.args)?
+                Ok(site.stream(out, &token, &self.args)?)
             }
-            _ => Err(anyhow!("Streaming not supported")),
+            _ => Err(anyhow!("Only network support streaming")),
         }
     }
 }

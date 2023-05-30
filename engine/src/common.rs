@@ -5,6 +5,7 @@
 //!
 
 use std::fmt::Debug;
+use std::io::Write;
 use std::sync::mpsc::Sender;
 
 use anyhow::Result;
@@ -18,9 +19,9 @@ use crate::Runnable;
 #[derive(Clone, Debug)]
 pub struct Nothing {}
 
-impl<T> Runnable<T> for Nothing {
-    fn run(&self, tx: Sender<T>) -> Result<()> {
-        tx.send("NOP".to_string())
+impl Runnable for Nothing {
+    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
+        Ok(write!(out, "NOP")?)
     }
 }
 
@@ -41,9 +42,9 @@ impl Message {
     }
 }
 
-impl<T> Runnable<T> for Message {
-    fn run(&self, tx: Sender<T>) -> Result<()> {
-        tx.send(self.msg.to_string())
+impl Runnable for Message {
+    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
+        Ok(write!(out, "{}", self.msg.to_string())?)
     }
 }
 

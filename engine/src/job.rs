@@ -3,6 +3,7 @@
 //! A `Job` consists of one or several tasks, all of which MUST be `Runnable`.
 //!
 use std::collections::VecDeque;
+use std::io::Write;
 
 use anyhow::Result;
 use log::{debug, error, trace};
@@ -12,14 +13,14 @@ use crate::Runnable;
 /// The engine is processing jobs, made of runnable tasks
 ///
 #[derive(Debug)]
-pub struct Job<T> {
+pub struct Job {
     /// Name of the job
     pub name: String,
     /// FIFO list of tasks
-    pub list: VecDeque<Box<dyn Runnable<T>>>,
+    pub list: VecDeque<Box<dyn Runnable>>,
 }
 
-impl<T> Job<T> {
+impl Job {
     /// New job
     ///
     /// NOTE: No //EOJ
@@ -36,31 +37,26 @@ impl<T> Job<T> {
     /// Add a task to the queue
     ///
     #[inline]
-    pub fn add(&mut self, t: Box<dyn Runnable<T>>) -> &mut Self {
+    pub fn add(&mut self, t: Box<dyn Runnable>) -> &mut Self {
         trace!("Job::add({t:?}");
         let _ = &self.list.push_back(t);
         self
     }
 
-    /// Run all tasks and accumulate results into a single string
+    /// Run all tasks and accumulate results into a single stream
     ///
-    pub fn run(&self) -> Result<String> {
+    pub fn run(&mut self, out: &mut dyn Write) -> Result<()> {
         trace!("Job::run({})", self.name);
 
         // Gather result for all tasks into a single string using `Iterator::fold`
         //
-        let res: String = self.list.iter().fold(String::new(), |res, t| {
-            let r = t.run();
-            match r {
-                Ok(str) => res + str.as_str(),
-                Err(e) => {
-                    error!("task {:?}: {}", t, e.to_string());
-                    res + ""
-                }
+        self.list.iter_mut().for_each(|t| match t.run(out) {
+            Ok(_) => (),
+            Err(e) => {
+                error!("task {:?}: {}", t, e.to_string());
             }
         });
-        debug!("{:?}", res);
-        Ok(res)
+        Ok(())
     }
 }
 
