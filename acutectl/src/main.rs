@@ -72,6 +72,12 @@ fn main() -> Result<()> {
             }
         }
 
+        // Handle `stream site`
+        //
+        SubCommand::Stream(sopts) => {
+            unimplemented!()
+        }
+
         // Handle `import site`  and `import file`
         //
         SubCommand::Import(opts) => {

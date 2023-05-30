@@ -77,6 +77,8 @@ pub enum SubCommand {
     Import(ImportOpts),
     /// List information about formats and sources
     List(ListOpts),
+    /// Stream from a source
+    Stream(StreamOpts),
 }
 
 // ------
@@ -178,4 +180,35 @@ pub enum ListSubCommand {
     Sources,
     /// List all currently stored tokens
     Tokens,
+}
+
+// -----
+
+/// Options for fetching data with basic filtering and an optional output file.
+///
+#[derive(Debug, Parser)]
+pub struct StreamOpts {
+    /// We want today only
+    #[clap(long)]
+    pub today: bool,
+    /// Start date - YYYY-MM-DD HH:MM:SS -- optional
+    #[clap(short = 'B', long)]
+    pub begin: Option<String>,
+    /// End date - YYYY-MM-DD HH:MM:SS -- optional
+    #[clap(short = 'E', long)]
+    pub end: Option<String>,
+    /// Duration in seconds (negative = back in time) -- optional
+    #[clap(short = 'D', long)]
+    pub since: Option<i32>,
+    /// Keyword filter: e.g. "--keyword icao24:foobar" -- optional
+    #[clap(short = 'K', long)]
+    pub keyword: Option<String>,
+    /// Continuous mode every <usize> seconds (optional)
+    #[clap(short = 'C', long)]
+    pub continuous: Option<usize>,
+    /// Output file -- default is stdout
+    #[clap(short = 'o', long)]
+    pub output: Option<PathBuf>,
+    /// Source name -- (see "list sources")
+    pub site: String,
 }
