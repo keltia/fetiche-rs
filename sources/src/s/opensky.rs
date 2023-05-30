@@ -249,8 +249,9 @@ impl Streamable for Opensky {
                 let t = thread::spawn(move || {
                     thread::sleep(time::Duration::from_secs(stream_duration as u64))
                 });
+                trace!("end of sleep");
                 t.join().unwrap();
-                break;
+                return Ok(());
             }
             // Go!
             //
@@ -273,7 +274,11 @@ impl Streamable for Opensky {
                         return Err(anyhow!("Error({}): {:?}", code, h));
                     }
                 }
+
                 let resp = resp.text()?;
+
+                // Retrieve answer and look into it, if answer was empty this should be rather fast
+                //
                 let sl: StateList = serde_json::from_str(&resp)?;
 
                 // Check whether data was returned
@@ -288,7 +293,7 @@ impl Streamable for Opensky {
 
                 // Whatever happened, sleep for 1s to avoid CPU/network
                 // overload
-                thread::sleep(Duration::from_secs(1));
+                //thread::sleep(Duration::from_secs(1));
             }
         }
         Ok(())
