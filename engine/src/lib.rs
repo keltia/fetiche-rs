@@ -12,12 +12,14 @@ pub use common::*;
 pub use fetch::*;
 use fetiche_formats::Format;
 use fetiche_sources::{Fetchable, Sources, Streamable};
+pub use into::*;
 pub use job::*;
 pub use parse::*;
 pub use stream::*;
 
 mod common;
 mod fetch;
+mod into;
 mod job;
 mod parse;
 mod stream;
