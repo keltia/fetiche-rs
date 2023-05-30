@@ -40,7 +40,7 @@ pub struct Engine {
 /// Type of task we will need to do
 ///
 #[derive(Debug, Default)]
-pub enum Input<T> {
+pub enum Input {
     /// File-based means we need the formats beforehand and a pathname
     ///
     File {
@@ -62,7 +62,7 @@ pub enum Input<T> {
         /// Input formats
         format: Format,
         /// Site itself
-        site: Box<dyn Streamable<T>>,
+        site: Box<dyn Streamable>,
     },
     #[default]
     Nothing,
@@ -70,9 +70,6 @@ pub enum Input<T> {
 
 /// Anything that can be `run()` is runnable.
 ///
-pub trait Runnable<T>: Debug
-where
-    T: Write,
-{
-    fn run(&self, out: T) -> Result<()>;
+pub trait Runnable: Debug {
+    fn run(&mut self, out: &mut dyn Write) -> Result<()>;
 }
