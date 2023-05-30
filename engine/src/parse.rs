@@ -15,7 +15,7 @@
 //!     
 //!     message "Transform into Cat21"
 //!     
-//!     transform(Cat21)
+//!     into(Cat21)
 //!     
 //!     output("aeroscope.csv")
 //! end
