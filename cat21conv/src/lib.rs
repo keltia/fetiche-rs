@@ -18,9 +18,12 @@
 /// # use anyhow::Result;
 /// # use std::path::PathBuf;
 /// # use log::info;
-/// # fn main() -> Result<()> {
+/// use anyhow::anyhow;
 /// use cat21conv::Task;
 /// use fetiche_formats::{Cat21, Format};
+/// use fetiche_sources::Flow;
+///
+/// # fn main() -> Result<()> {
 ///
 /// let what = "foo.json";
 /// let format = Format::None;
@@ -44,12 +47,18 @@
 /// use fetiche_sources::{Sources,Filter,Site};
 ///
 /// # fn main() -> Result<()> {
-/// # let name = "eih";
+/// # use anyhow::anyhow;
+/// # use fetiche_sources::Flow;
+/// let name = "eih";
 /// # let filter = Filter::None;
 ///
 /// let cfg = Sources::load(&Some(PathBuf::from("config.hcl")))?;
 ///
 /// let site = Site::load(name, &cfg)?;
+/// let site = match site {
+///     Flow::Fetchable(s) => s,
+///     _ => return Err(anyhow!("this is not streamable"))
+/// };
 /// let res: Vec<Cat21> = Task::new(name).site(site).when(filter).run()?;
 ///
 /// # Ok(())
