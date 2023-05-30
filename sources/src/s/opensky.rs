@@ -192,7 +192,9 @@ impl Streamable for Opensky {
         Ok(format!("{}:{}", self.login, self.password))
     }
 
-    fn stream(&mut self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
+    fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
+        let mut stream_duration = 0;
+
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
         trace!("opensky::stream(as {}:{})", login, password);
@@ -206,7 +208,7 @@ impl Streamable for Opensky {
         let tm = match args {
             Filter::Stream { from, duration } => {
                 let now = Utc::now().timestamp() as i32;
-                self.duration = duration;
+                stream_duration = duration;
                 Some(format!("time={}", now))
             }
             Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
@@ -244,7 +246,7 @@ impl Streamable for Opensky {
                 //
                 let duration = self.duration;
                 let t = thread::spawn(move || {
-                    thread::sleep(time::Duration::from_secs(duration as u64))
+                    thread::sleep(time::Duration::from_secs(stream_duration as u64))
                 });
                 t.join().unwrap();
                 break;

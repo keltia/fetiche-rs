@@ -60,7 +60,7 @@ pub trait Streamable: Debug {
     /// If credentials are needed, get a token for subsequent operations
     fn authenticate(&self) -> Result<String>;
     /// Stream actual data
-    fn stream(&mut self, out: &mut dyn Write, token: &str, args: &str) -> Result<()>;
+    fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()>;
     /// Returns the input formats
     fn format(&self) -> Format;
 }
