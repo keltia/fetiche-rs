@@ -25,7 +25,7 @@ use log::{info, trace};
 
 use cat21conv::Task;
 use fetiche_formats::{prepare_csv, Cat21, Format};
-use fetiche_sources::{Filter, Site, Sources};
+use fetiche_sources::{Filter, Flow, Site, Sources};
 
 use crate::cli::{check_args, Opts};
 use crate::version::version;
@@ -115,7 +115,10 @@ fn get_from_source(cfg: &Sources, opts: &Opts) -> Result<Vec<Cat21>> {
                 .site
                 .as_ref()
                 .ok_or_else(|| anyhow!("Bad site name {:?}", opts.site))?;
-            let site = Site::load(name, cfg)?;
+            let site = match Site::load(name, cfg)? {
+                Flow::Fetchable(s) => s,
+                _ => return Err(anyhow!("this site is not fetchable")),
+            };
 
             info!("Fetching from network site {}", name);
 

@@ -2,17 +2,17 @@ use std::fs;
 use std::io;
 use std::io::Write;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
 use clap_complete::generate;
 use log::{info, trace};
 
 use acutectl::{
-    fetch_from_site, import_data, list_formats, list_sources, list_tokens, ImportSubCommand,
-    ListSubCommand, Opts, SubCommand,
+    fetch_from_site, import_data, list_formats, list_sources, list_tokens, stream_from_site,
+    ImportSubCommand, ListSubCommand, Opts, SubCommand,
 };
 use fetiche_formats::Format;
-use fetiche_sources::{Site, Sources};
+use fetiche_sources::{Flow, Site, Sources};
 
 /// Binary name, using a different binary name
 pub(crate) const NAME: &str = env!("CARGO_BIN_NAME");
@@ -75,7 +75,9 @@ fn main() -> Result<()> {
         // Handle `stream site`
         //
         SubCommand::Stream(sopts) => {
-            unimplemented!()
+            trace!("stream");
+
+            stream_from_site(&cfg, sopts)?;
         }
 
         // Handle `import site`  and `import file`
@@ -87,8 +89,11 @@ fn main() -> Result<()> {
                 ImportSubCommand::ImportSite(fopts) => {
                     trace!("drone import site");
 
-                    let fmt = Site::load(&fopts.site, &cfg)?.format();
-
+                    let site = match Site::load(&fopts.site, &cfg)? {
+                        Flow::Fetchable(s) => s,
+                        _ => return Err(anyhow!("this site is not fetchable")),
+                    };
+                    let fmt = site.format();
                     let data = fetch_from_site(&cfg, fopts)?;
 
                     import_data(&cfg, &data, fmt)?;
