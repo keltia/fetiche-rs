@@ -71,11 +71,15 @@ mod tests {
         let t1 = Box::new(Nothing {});
         let t2 = Box::new(Message::new("hello world"));
 
-        let mut j: Job<String> = Job::new("test");
+        let mut j: Job = Job::new("test");
         j.add(t1);
         j.add(t2);
 
-        let res = j.run();
+        let mut data = vec![];
+
+        let res = j.run(&mut data);
+
+        let res = String::from_utf8(data);
         assert!(res.is_ok());
         assert_eq!("NOPhello world", res.unwrap())
     }

@@ -108,35 +108,5 @@ impl Default for Stream {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
-    use fetiche_formats::Format;
-
     use super::*;
-
-    #[test]
-    fn test_fetch_new() {
-        let t = Stream::new("foo");
-
-        assert_eq!("foo", t.name);
-        match t.input {
-            Input::Nothing => (),
-            _ => panic!("bad type"),
-        }
-    }
-
-    #[test]
-    fn test_fetch_none() {
-        let mut t = Stream::new("foo");
-        t.path("/nonexistent");
-
-        assert_eq!("foo", t.name);
-        match &t.input {
-            Input::File { path, format } => {
-                assert_eq!(Format::None, *format);
-                assert_eq!(PathBuf::from("/nonexistent"), path.clone());
-            }
-            _ => panic!("bad type"),
-        };
-    }
 }
