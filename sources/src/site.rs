@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::Format;
 
-use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky};
+use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky, Streamable};
 use crate::{Fetchable, Sources};
 
 /// Describe what a site is and associated credentials.
@@ -126,18 +126,12 @@ impl Display for DataType {
     }
 }
 
-macro_rules! insert_format {
-    ($name:ident, $fmt:ident, $site:ident, $($list:ident),+)  => {
-        match $fmt {
-        $(
-            Format::$list => {
-                let s = $list::new().load($site).clone();
-                Ok(Box::new(s))
-            },
-        )+
-            _ => Err(anyhow!("invalid site {}", $name)),
-        }
-    }
+/// We have two different traits now
+///
+#[derive(Debug)]
+pub enum Flow {
+    Fetchable(Box<dyn Fetchable>),
+    Streamable(Box<dyn Streamable>),
 }
 
 impl Site {
@@ -149,12 +143,40 @@ impl Site {
 
     /// Load site by checking whether it is present in the configuration file
     ///
-    pub fn load(name: &str, cfg: &Sources) -> Result<Box<dyn Fetchable>> {
+    pub fn load(name: &str, cfg: &Sources) -> Result<Flow> {
         trace!("Loading site {}", name);
         match cfg.get(name) {
             Some(site) => {
                 let fmt = site.format();
-                insert_format!(name, fmt, site, Asd, Aeroscope, Safesky, Opensky)
+
+                // We have to explicitly list all supported formats as we return
+                // an enum whether the site will be streamable or not
+                //
+                match fmt {
+                    Format::Asd => {
+                        let s = Asd::new().load(site).clone();
+                        Ok(Flow::Fetchable(Box::new(s)))
+                    }
+                    Format::Aeroscope => {
+                        let s = Aeroscope::new().load(site).clone();
+                        Ok(Flow::Fetchable(Box::new(s)))
+                    }
+                    Format::Safesky => {
+                        let s = Safesky::new().load(site).clone();
+                        Ok(Flow::Fetchable(Box::new(s)))
+                    }
+                    // For now, only Opensky support streaming
+                    //
+                    Format::Opensky => {
+                        let s = Opensky::new().load(site).clone();
+                        if site.has("stream") {
+                            Ok(Flow::Streamable(Box::new(s)))
+                        } else {
+                            Ok(Flow::Fetchable(Box::new(s)))
+                        }
+                    }
+                    _ => Err(anyhow!("invalid site {}", name)),
+                }
             }
             None => Err(anyhow!("no such site {name}")),
         }
@@ -218,10 +240,11 @@ impl Display for Site {
 mod tests {
     use std::path::PathBuf;
 
+    use rstest::rstest;
+
     use crate::makepath;
 
     use super::*;
-    use rstest::rstest;
 
     fn set_default() -> Sources {
         let cn: PathBuf = makepath!("src", "sources.hcl");

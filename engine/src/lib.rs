@@ -4,13 +4,14 @@
 use std::fmt::Debug;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::mpsc::Sender;
 
 use anyhow::Result;
 
 pub use common::*;
 pub use fetch::*;
 use fetiche_formats::Format;
-use fetiche_sources::{Fetchable, Sources};
+use fetiche_sources::{Fetchable, Sources, Streamable};
 pub use job::*;
 pub use parse::*;
 pub use stream::*;
@@ -57,6 +58,12 @@ pub enum Input {
         /// Site itself
         site: Box<dyn Fetchable>,
     },
+    Stream {
+        /// Input formats
+        stream: Format,
+        /// Site itself
+        site: Box<dyn Streamable>,
+    },
     #[default]
     Nothing,
 }
@@ -64,5 +71,5 @@ pub enum Input {
 /// Anything that can be `run()` is runnable.
 ///
 pub trait Runnable: Debug {
-    fn run(&self) -> Result<String>;
+    fn run(&mut self, out: &mut dyn Write) -> Result<()>;
 }

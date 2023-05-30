@@ -3,6 +3,7 @@
 //! A `Job` consists of one or several tasks, all of which MUST be `Runnable`.
 //!
 use std::collections::VecDeque;
+use std::io::Write;
 
 use anyhow::Result;
 use log::{debug, error, trace};
@@ -42,25 +43,20 @@ impl Job {
         self
     }
 
-    /// Run all tasks and accumulate results into a single string
+    /// Run all tasks and accumulate results into a single stream
     ///
-    pub fn run(&self) -> Result<String> {
+    pub fn run(&mut self, out: &mut dyn Write) -> Result<()> {
         trace!("Job::run({})", self.name);
 
         // Gather result for all tasks into a single string using `Iterator::fold`
         //
-        let res: String = self.list.iter().fold(String::new(), |res, t| {
-            let r = t.run();
-            match r {
-                Ok(str) => res + str.as_str(),
-                Err(e) => {
-                    error!("task {:?}: {}", t, e.to_string());
-                    res + ""
-                }
+        self.list.iter_mut().for_each(|t| match t.run(out) {
+            Ok(_) => (),
+            Err(e) => {
+                error!("task {:?}: {}", t, e.to_string());
             }
         });
-        debug!("{:?}", res);
-        Ok(res)
+        Ok(())
     }
 }
 
@@ -75,11 +71,15 @@ mod tests {
         let t1 = Box::new(Nothing {});
         let t2 = Box::new(Message::new("hello world"));
 
-        let mut j = Job::new("test");
+        let mut j: Job = Job::new("test");
         j.add(t1);
         j.add(t2);
 
-        let res = j.run();
+        let mut data = vec![];
+
+        let res = j.run(&mut data);
+
+        let res = String::from_utf8(data);
         assert!(res.is_ok());
         assert_eq!("NOPhello world", res.unwrap())
     }

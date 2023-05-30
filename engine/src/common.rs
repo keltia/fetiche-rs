@@ -5,6 +5,8 @@
 //!
 
 use std::fmt::Debug;
+use std::io::Write;
+use std::sync::mpsc::Sender;
 
 use anyhow::Result;
 
@@ -18,8 +20,8 @@ use crate::Runnable;
 pub struct Nothing {}
 
 impl Runnable for Nothing {
-    fn run(&self) -> Result<String> {
-        Ok("NOP".to_string())
+    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
+        Ok(write!(out, "NOP")?)
     }
 }
 
@@ -41,8 +43,8 @@ impl Message {
 }
 
 impl Runnable for Message {
-    fn run(&self) -> Result<String> {
-        Ok(self.msg.to_string())
+    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
+        Ok(write!(out, "{}", self.msg.to_string())?)
     }
 }
 
@@ -52,9 +54,12 @@ mod tests {
 
     #[test]
     fn test_nothing_run() {
-        let t = Nothing {};
+        let mut t = Nothing {};
 
-        let r = t.run();
+        let mut data = vec![];
+        let r = t.run(&mut data);
+
+        let r = String::from_utf8(data);
         assert!(r.is_ok());
         let r = r.unwrap();
         assert_eq!("NOP", r);
@@ -62,8 +67,13 @@ mod tests {
 
     #[test]
     fn test_message_run() {
-        let m = Message::new("the brown fox");
-        let s = m.run();
+        let mut m = Message::new("the brown fox");
+
+        let mut data = vec![];
+
+        let s = m.run(&mut data);
+        let s = String::from_utf8(data);
+
         assert!(s.is_ok());
         let s = s.unwrap();
         assert_eq!("the brown fox", s);

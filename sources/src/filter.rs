@@ -17,6 +17,7 @@ use serde_json::json;
 /// If we specify -B/-E or --today, we need to pass these below
 ///
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(untagged)]
 pub enum Filter {
     /// Date-based interval as "%Y-%m-%d %H:%M:%S"
     Interval {

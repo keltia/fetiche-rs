@@ -2,10 +2,9 @@
 //!
 
 use std::io::Write;
-use std::ops::Deref;
-use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use std::{io, thread, time};
 
 use anyhow::{anyhow, Result};
@@ -91,7 +90,7 @@ impl Opensky {
                 _ => panic!("nope"),
             }
         }
-        self.get = site.route("get").unwrap().to_owned();
+        self.get = site.route("stream").unwrap().to_owned();
         self
     }
 }
@@ -108,7 +107,7 @@ impl Fetchable for Opensky {
         Ok(format!("{}:{}", self.login, self.password))
     }
 
-    fn fetch(&self, token: &str, args: &str) -> anyhow::Result<String> {
+    fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
         trace!("opensky::fetch(as {}:{})", login, password);
@@ -156,8 +155,8 @@ impl Fetchable for Opensky {
 
         trace!("Fetching raw data");
         let resp = resp.text()?;
-
-        Ok(resp)
+        write!(out, "{}", resp)?;
+        Ok(())
     }
 
     fn to_cat21(&self, input: String) -> Result<Vec<Cat21>> {
@@ -194,14 +193,11 @@ impl Streamable for Opensky {
         Ok(format!("{}:{}", self.login, self.password))
     }
 
-    fn stream(
-        &mut self,
-        out: &mut Box<dyn Write + Send + Sync + 'static>,
-        token: &str,
-        args: &str,
-    ) -> Result<()> {
+    fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
+        let mut stream_duration = 0;
+
         let res: Vec<&str> = token.split(':').collect();
-        let (login, password) = (res[0].to_owned(), res[1].to_owned());
+        let (login, password) = (res[0], res[1]);
         trace!("opensky::stream(as {}:{})", login, password);
 
         let url = format!("{}{}", self.base_url, self.get);
@@ -213,7 +209,7 @@ impl Streamable for Opensky {
         let tm = match args {
             Filter::Stream { from, duration } => {
                 let now = Utc::now().timestamp() as i32;
-                self.duration = duration;
+                stream_duration = duration;
                 Some(format!("time={}", now))
             }
             Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
@@ -244,22 +240,55 @@ impl Streamable for Opensky {
         while !term.load(Ordering::Relaxed) {
             trace!("Starting stream loop");
 
-            let url = url.clone();
-            let login = login.clone();
-            let password = password.clone();
-            let mut site = self.clone();
-            let mut handle = Box::new(&mut *out);
-            let th =
-                thread::spawn(move || fetch_data(&mut site, &mut handle, &url, &login, &password));
-
             // Now wait for Ctrl-C or timer expire
             //
-            if self.duration == 0 {
-                let _ = th.join();
-            } else {
+            if self.duration != 0 {
                 // Timer set
                 //
-                thread::sleep(time::Duration::from_secs(self.duration as u64));
+                let duration = self.duration;
+                let t = thread::spawn(move || {
+                    thread::sleep(time::Duration::from_secs(stream_duration as u64))
+                });
+                t.join().unwrap();
+                break;
+            }
+            // Go!
+            //
+            loop {
+                let url = &url.clone();
+                let login = &self.login.clone();
+                let password = &self.password.clone();
+                let resp = http_get_basic!(self, url, login, password)?;
+
+                debug!("{:?}", &resp);
+
+                // Check status
+                //
+                match resp.status() {
+                    StatusCode::OK => {
+                        trace!("OK");
+                    }
+                    code => {
+                        let h = &resp.headers();
+                        return Err(anyhow!("Error({}): {:?}", code, h));
+                    }
+                }
+                let resp = resp.text()?;
+                let sl: StateList = serde_json::from_str(&resp)?;
+
+                // Check whether data was returned
+                //
+                if sl.states.is_some() {
+                    write!(io::stderr(), "D")?;
+                    write!(out, "{}", resp)?;
+                    out.flush()?;
+                } else {
+                    write!(io::stderr(), ".")?;
+                }
+
+                // Whatever happened, sleep for 1s to avoid CPU/network
+                // overload
+                thread::sleep(Duration::from_secs(1));
             }
         }
         Ok(())
@@ -267,37 +296,6 @@ impl Streamable for Opensky {
 
     fn format(&self) -> Format {
         Format::Opensky
-    }
-}
-
-fn fetch_data(
-    site: &mut Opensky,
-    output: &mut Box<dyn Write + Send + Sync + 'static>,
-    url: &str,
-    login: &str,
-    password: &str,
-) -> Result<()> {
-    loop {
-        write!(io::stderr(), ".")?;
-
-        let resp = http_get_basic!(site, url, login, password)?;
-
-        debug!("{:?}", &resp);
-
-        // Check status
-        //
-        match resp.status() {
-            StatusCode::OK => {
-                trace!("OK");
-            }
-            code => {
-                let h = &resp.headers();
-                return Err(anyhow!("Error({}): {:?}", code, h));
-            }
-        }
-        let resp = resp.text()?;
-        write!(output, "{}", resp)?;
-        output.flush();
     }
 }
 

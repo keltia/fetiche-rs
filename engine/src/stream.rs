@@ -1,20 +1,21 @@
 //! `Stream` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
-use std::fs;
-use std::path::PathBuf;
+use std::fmt::{Debug, Formatter, Pointer};
+use std::io::Write;
+use std::sync::mpsc::Sender;
+use std::{fs, io};
 
 use anyhow::{anyhow, Result};
 use log::{debug, trace};
+use nom::combinator::into;
 
-use fetiche_formats::Format;
-use fetiche_sources::{Fetchable, Filter};
+use fetiche_sources::{Filter, Streamable};
 
 use crate::{Input, Runnable};
 
 /// The Stream task
 ///
-#[derive(Debug)]
 pub struct Stream {
     /// name for the task
     pub name: String,
@@ -24,6 +25,17 @@ pub struct Stream {
     pub every: usize,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
+}
+
+impl Debug for Stream {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Stream")
+            .field("name", &self.name)
+            .field("input", &self.input)
+            .field("every", &self.every)
+            .field("args", &self.args)
+            .finish()
+    }
 }
 
 impl Stream {
@@ -41,10 +53,10 @@ impl Stream {
 
     /// Copy the site's data
     ///
-    pub fn site(&mut self, s: Box<dyn Fetchable>) -> &mut Self {
+    pub fn site(&mut self, s: Box<dyn Streamable>) -> &mut Self {
         trace!("Add site {:?}", self.name);
-        self.input = Input::Network {
-            format: s.format(),
+        self.input = Input::Stream {
+            stream: s.format(),
             site: s,
         };
         self
@@ -70,23 +82,20 @@ impl Stream {
 impl Runnable for Stream {
     /// The heart of the matter: fetch data
     ///
-    fn run(&self) -> Result<String> {
+    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
         trace!("Stream::run()");
+
         match &self.input {
-            // Input::Network is more complicated and rely on the Site
+            // Streaming is only supported for Input::Network
             //
-            Input::Network { site, .. } => {
+            Input::Stream { site, .. } => {
                 // Stream data as bytes
                 //
                 let token = site.authenticate()?;
-                loop {
-                    let data = site.fetch(&token, &self.args)?;
-                    debug!("{}", &data);
-                }
-                Ok(data)
+
+                Ok(site.stream(out, &token, &self.args)?)
             }
-            Input::File { path, .. } => Ok(fs::read_to_string(path)?),
-            Input::Nothing => Err(anyhow!("no formats specified")),
+            _ => Err(anyhow!("Only network support streaming")),
         }
     }
 }
@@ -100,30 +109,4 @@ impl Default for Stream {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_fetch_new() {
-        let t = Stream::new("foo");
-
-        assert_eq!("foo", t.name);
-        match t.input {
-            Input::Nothing => (),
-            _ => panic!("bad type"),
-        }
-    }
-
-    #[test]
-    fn test_fetch_none() {
-        let mut t = Stream::new("foo");
-        t.path("/nonexistent");
-
-        assert_eq!("foo", t.name);
-        match &t.input {
-            Input::File { path, format } => {
-                assert_eq!(Format::None, *format);
-                assert_eq!(PathBuf::from("/nonexistent"), path.clone());
-            }
-            _ => panic!("bad type"),
-        };
-    }
 }

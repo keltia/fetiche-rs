@@ -1,9 +1,12 @@
+use std::fs::File;
+use std::io::{stdout, BufWriter};
+
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use log::{info, trace};
 
 use fetiche_engine::{Fetch, Job};
-use fetiche_sources::{Filter, Site, Sources};
+use fetiche_sources::{Filter, Flow, Site, Sources};
 
 use crate::FetchOpts;
 
@@ -15,7 +18,10 @@ pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<String> {
     check_args(fopts)?;
 
     let name = &fopts.site;
-    let site = Site::load(name, cfg)?;
+    let site = match Site::load(name, cfg)? {
+        Flow::Fetchable(s) => s,
+        _ => return Err(anyhow!("this site is not fetchable")),
+    };
     let filter = filter_from_opts(fopts)?;
 
     info!("Fetching from network site {}", name);
@@ -26,9 +32,12 @@ pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<String> {
 
     task.site(site).with(filter);
 
-    let data = Job::new("fetch_from_site").add(Box::new(task)).run()?;
+    let mut data = vec![];
 
-    trace!("data={}", data);
+    Job::new("fetch_from_site")
+        .add(Box::new(task))
+        .run(&mut data)?;
+    let data = String::from_utf8(data)?;
     Ok(data)
 }
 

@@ -197,8 +197,11 @@ impl Task {
                 // Fetch data as bytes
                 //
                 let token = site.authenticate()?;
-                let data = site.fetch(&token, &self.args)?;
-                debug!("{}", &data);
+
+                let mut data = vec![];
+                site.fetch(&mut data, &token, &self.args)?;
+                let data = String::from_utf8(data)?;
+                debug!("{}", data);
                 let res = site.to_cat21(data)?;
                 debug!("{:?} as {}", res, format);
                 Ok(res)
