@@ -11,10 +11,10 @@ use std::io::Write;
 
 use anyhow::Result;
 
-use fetiche_formats::{Cat21, Format};
 // Re-export these modules for a shorted import path.
 //
 pub use access::*;
+use fetiche_formats::Format;
 pub use filter::*;
 pub use site::*;
 pub use sources::*;
@@ -35,8 +35,6 @@ pub trait Fetchable: Debug {
     fn authenticate(&self) -> Result<String>;
     /// Fetch actual data
     fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()>;
-    /// Transform fetched data into Cat21
-    fn to_cat21(&self, input: String) -> Result<Vec<Cat21>>;
     /// Returns the input formats
     fn format(&self) -> Format;
 }
