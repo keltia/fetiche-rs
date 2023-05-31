@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::stdout;
+use std::io::{stderr, stdout, Write};
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
@@ -24,7 +24,6 @@ pub fn stream_from_site(cfg: &Sources, sopts: &StreamOpts) -> Result<()> {
     };
 
     let filter = filter_from_opts(sopts)?;
-
     info!("Streaming from network site {}", name);
 
     // Full json array with all point
@@ -32,7 +31,6 @@ pub fn stream_from_site(cfg: &Sources, sopts: &StreamOpts) -> Result<()> {
     let mut task = Stream::new(name);
 
     task.site(site).with(filter);
-
     if let Some(out) = &sopts.output {
         let mut out = File::create(out)?;
 
@@ -64,6 +62,11 @@ pub fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
             name: k.to_string(),
             value: v.to_string(),
         })
+    } else if opts.continuous.is_some() {
+        let delay = opts.continuous.unwrap_or(0);
+        let duration = opts.since.unwrap_or(0);
+
+        Ok(Filter::stream(0, duration, Some(delay)))
     } else if opts.since.is_some() {
         let d = opts.since.unwrap();
 
