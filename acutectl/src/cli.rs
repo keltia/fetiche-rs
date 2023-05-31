@@ -185,6 +185,8 @@ pub enum ListSubCommand {
 ///
 #[derive(Debug, Parser)]
 pub struct StreamOpts {
+    // ASD
+    //
     /// We want today only
     #[clap(long)]
     pub today: bool,
@@ -194,15 +196,24 @@ pub struct StreamOpts {
     /// End date - YYYY-MM-DD HH:MM:SS -- optional
     #[clap(short = 'E', long)]
     pub end: Option<String>,
-    /// Duration in seconds (negative = back in time) -- optional
-    #[clap(short = 'D', long)]
-    pub since: Option<i32>,
+
+    // Opensky
+    //
+    /// Start the stream at EPOCH + `start`
+    #[clap(short = 'S', long)]
+    pub start: Option<i64>,
+    /// Duration in seconds (negative = back in time) -- default to 0 (do not stop)
+    #[clap(short = 'D', long, default_value = "0")]
+    pub duration: u32,
     /// Keyword filter: e.g. "--keyword icao24:foobar" -- optional
     #[clap(short = 'K', long)]
     pub keyword: Option<String>,
-    /// Continuous mode every <usize> seconds (optional)
-    #[clap(short = 'C', long)]
-    pub continuous: Option<u32>,
+    /// Insert a slight delay between calls in ms, default is 1000
+    #[clap(long, default_value = "1000")]
+    pub delay: u32,
+
+    // General options
+    //
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
