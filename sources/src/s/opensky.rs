@@ -251,6 +251,8 @@ impl Streamable for Opensky {
 
         // Setup signals
         //
+        // NOTE: SIGINT must be issued twice to immediately stop, not sure is it needed.
+        //
         for sig in TERM_SIGNALS {
             flag::register_conditional_shutdown(*sig, 1, Arc::clone(&term))?;
             flag::register(*sig, Arc::clone(&term))?;
@@ -264,7 +266,7 @@ impl Streamable for Opensky {
             // Now wait for Ctrl-C or timer expire
             //
             if stream_duration != 0 {
-                // Timer set
+                // Timer set?
                 //
                 let d = stream_duration;
                 let t = thread::spawn(move || thread::sleep(time::Duration::from_secs(d as u64)));
