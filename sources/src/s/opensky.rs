@@ -269,10 +269,13 @@ impl Streamable for Opensky {
                 // Timer set?
                 //
                 let d = stream_duration;
-                let t = thread::spawn(move || thread::sleep(time::Duration::from_secs(d as u64)));
+                thread::spawn(move || {
+                    if d != 0 {
+                        thread::sleep(time::Duration::from_secs(d as u64));
+                        std::process::exit(0);
+                    }
+                });
                 trace!("end of sleep");
-                t.join().unwrap();
-                std::process::exit(0);
             }
             // Go!
             //
