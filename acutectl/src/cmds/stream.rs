@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{stderr, stdout, Write};
+use std::io::stdout;
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
@@ -51,7 +51,7 @@ pub fn stream_from_site(cfg: &Sources, sopts: &StreamOpts) -> Result<()> {
 pub fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
     trace!("filter_from_opts");
 
-    let _t: DateTime<Utc> = Utc::now();
+    let t: DateTime<Utc> = Utc::now();
 
     if opts.keyword.is_some() {
         let keyword = opts.keyword.clone().unwrap();
@@ -65,8 +65,9 @@ pub fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
     } else if opts.continuous.is_some() {
         let delay = opts.continuous.unwrap_or(0);
         let duration = opts.since.unwrap_or(0);
+        let from = t.timestamp() as i32;
 
-        Ok(Filter::stream(0, duration, Some(delay)))
+        Ok(Filter::stream(from, duration, Some(delay)))
     } else if opts.since.is_some() {
         let d = opts.since.unwrap();
 
