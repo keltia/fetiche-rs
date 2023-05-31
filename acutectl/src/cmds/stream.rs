@@ -51,8 +51,6 @@ pub fn stream_from_site(cfg: &Sources, sopts: &StreamOpts) -> Result<()> {
 pub fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
     trace!("filter_from_opts");
 
-    let t: DateTime<Utc> = Utc::now();
-
     // FIXME: only one argument
     //
     if opts.keyword.is_some() {
