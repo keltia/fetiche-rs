@@ -1,9 +1,10 @@
 //! OpenSky (.org) specific data
 //!
 
-use std::io::Write;
+use std::io::{stderr, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use std::{io, thread, time};
 
 use anyhow::{anyhow, Result};
@@ -194,6 +195,7 @@ impl Streamable for Opensky {
 
     fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
         let mut stream_duration = 0;
+        let mut stream_delay = 0;
 
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
@@ -204,11 +206,15 @@ impl Streamable for Opensky {
 
         // FIXME: we can have only one argument
         //
-        let args: Filter = args.into();
+        let args = Filter::from(args);
+        dbg!(&args);
         let tm = match args {
-            Filter::Stream { duration, .. } => {
+            Filter::Stream {
+                duration, delay, ..
+            } => {
                 let now = Utc::now().timestamp() as i32;
                 stream_duration = duration;
+                stream_delay = delay.unwrap_or_default();
                 Some(format!("time={}", now))
             }
             Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
@@ -219,7 +225,12 @@ impl Streamable for Opensky {
             Some(tm) => format!("{}?{}", url, tm),
             _ => url,
         };
-        trace!("StreamURL: {} for {} secs", url, self.duration);
+        trace!(
+            "StreamURL: {} for {}s with {}ms delay",
+            url,
+            stream_duration,
+            stream_delay
+        );
 
         // Infinite loop until we get cancelled or timeout expire
         // self.duration is 0 -> infinite
@@ -248,7 +259,7 @@ impl Streamable for Opensky {
                 let t = thread::spawn(move || thread::sleep(time::Duration::from_secs(d as u64)));
                 trace!("end of sleep");
                 t.join().unwrap();
-                return Ok(());
+                std::process::exit(0);
             }
             // Go!
             //
@@ -290,7 +301,9 @@ impl Streamable for Opensky {
 
                 // Whatever happened, sleep for 1s to avoid CPU/network
                 // overload
-                //thread::sleep(Duration::from_secs(1));
+                if stream_delay != 0 {
+                    thread::sleep(Duration::from_millis(stream_delay as u64));
+                }
             }
         }
         Ok(())
