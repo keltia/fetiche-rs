@@ -100,7 +100,7 @@ impl Task {
         self
     }
 
-    /// The heart of the matter: fetch and process data
+    /// The heart of the matter: fetch and process data                                                                    
     ///
     pub fn run<T>(&mut self) -> Result<Vec<T>>
     where

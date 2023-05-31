@@ -14,13 +14,13 @@ use anyhow::Result;
 use fetiche_formats::{Cat21, Format};
 // Re-export these modules for a shorted import path.
 //
+pub use access::*;
 pub use filter::*;
-pub use s::*;
 pub use site::*;
 pub use sources::*;
 
+mod access;
 mod filter;
-mod s;
 mod site;
 mod sources;
 
