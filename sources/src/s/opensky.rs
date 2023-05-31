@@ -22,6 +22,9 @@ use fetiche_formats::{Cat21, Format, StateList};
 use crate::{http_get_basic, Fetchable, Filter, Streamable};
 use crate::{Auth, Site};
 
+/// We can go back only 1h in Opensky API
+const MAX_INTERVAL: i32 = 3600;
+
 #[derive(Clone, Debug)]
 pub struct Opensky {
     /// Input formats
@@ -207,15 +210,23 @@ impl Streamable for Opensky {
         // FIXME: we can have only one argument
         //
         let args = Filter::from(args);
-        dbg!(&args);
         let tm = match args {
             Filter::Stream {
-                duration, delay, ..
+                duration,
+                delay,
+                from,
             } => {
-                let now = Utc::now().timestamp() as i32;
+                let mut now = Utc::now().timestamp() as i32;
+
+                let start = if now - from > MAX_INTERVAL {
+                    now - MAX_INTERVAL
+                } else {
+                    from
+                };
+
                 stream_duration = duration;
                 stream_delay = delay.unwrap_or_default();
-                Some(format!("time={}", now))
+                Some(format!("time={}", start))
             }
             Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
             _ => None,
