@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::stdout;
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
 use log::{info, trace};
 
 use fetiche_engine::{Job, Stream};
