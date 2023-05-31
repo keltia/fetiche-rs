@@ -18,8 +18,7 @@ use log::{debug, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use fetiche_formats::Aeroscope as InputFormat;
-use fetiche_formats::{Cat21, Format};
+use fetiche_formats::Format;
 
 use crate::site::{Auth, Site};
 use crate::{http_get_auth, http_post, Fetchable};
@@ -148,33 +147,6 @@ impl Fetchable for Aeroscope {
         write!(out, "{}", resp)?;
         out.flush()?;
         Ok(())
-    }
-
-    /// Process data fetch in previous stage and render it as wanted
-    ///
-    fn to_cat21(&self, input: String) -> Result<Vec<Cat21>> {
-        debug!("Reading & transforming…");
-        debug!("IN={:?}", input);
-        let res: Vec<InputFormat> = serde_json::from_str(&input)?;
-
-        let res = res
-            .iter()
-            // Skip if element doesn't have any position
-            .filter(|line| line.coordinate.latitude != 0.0 && line.coordinate.longitude != 0.0)
-            // Add "line number" for output
-            .enumerate()
-            // Debug
-            .inspect(|(n, f)| println!("res={:?}-{:?}", n, f))
-            // Convert
-            .map(|(cnt, rec)| {
-                debug!("rec={:?}", rec);
-                let mut line = Cat21::from(rec);
-                line.rec_num = cnt;
-                line
-            })
-            .collect();
-        debug!("res={:?}", res);
-        Ok(res)
     }
 
     /// Returns the site's input formats

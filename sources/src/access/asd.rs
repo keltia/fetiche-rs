@@ -25,8 +25,7 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use fetiche_formats::Asd as InputFormat;
-use fetiche_formats::{Cat21, Format};
+use fetiche_formats::Format;
 
 use crate::filter::Filter;
 use crate::site::{Auth, Site};
@@ -285,29 +284,6 @@ impl Fetchable for Asd {
         write!(out, "{}", resp)?;
         out.flush()?;
         Ok(())
-    }
-
-    /// Process every fetched data line and generate the `Cat21` result
-    ///
-    fn to_cat21(&self, input: String) -> Result<Vec<Cat21>> {
-        debug!("Reading & transforming…");
-        debug!("IN={:?}", input);
-        let res: Vec<InputFormat> = serde_json::from_str(&input)?;
-
-        debug!("rec={:?}", res);
-        let res: Vec<_> = res
-            .iter()
-            .enumerate()
-            .inspect(|(n, f)| debug!("f={:?}-{:?}", n, f))
-            .map(|(cnt, rec)| {
-                debug!("cnt={}/rec={:?}", cnt, rec);
-                let mut line = Cat21::from(rec);
-                line.rec_num = cnt;
-                line
-            })
-            .collect();
-        debug!("res={:?}", res);
-        Ok(res)
     }
 
     /// Return the site's input formats

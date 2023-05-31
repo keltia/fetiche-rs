@@ -13,7 +13,6 @@ use anyhow::{anyhow, Result};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use fetiche_formats::Cat21;
 use fetiche_formats::{Format, Position};
 
 use crate::site::{Auth, Site};
@@ -99,10 +98,6 @@ impl Fetchable for Safesky {
     }
 
     fn fetch(&self, _out: &mut dyn Write, _token: &str, _args: &str) -> Result<()> {
-        todo!()
-    }
-
-    fn to_cat21(&self, _input: String) -> Result<Vec<Cat21>> {
         todo!()
     }
 
