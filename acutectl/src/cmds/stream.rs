@@ -53,6 +53,8 @@ pub fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
 
     let t: DateTime<Utc> = Utc::now();
 
+    // FIXME: only one argument
+    //
     if opts.keyword.is_some() {
         let keyword = opts.keyword.clone().unwrap();
 
@@ -62,18 +64,12 @@ pub fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
             name: k.to_string(),
             value: v.to_string(),
         })
-    } else if opts.continuous.is_some() {
-        let delay = opts.continuous.unwrap_or(0);
-        let duration = opts.since.unwrap_or(0);
-        let from = t.timestamp() as i32;
-
-        Ok(Filter::stream(from, duration, Some(delay)))
-    } else if opts.since.is_some() {
-        let d = opts.since.unwrap();
-
-        Ok(Filter::Duration(d))
     } else {
-        Ok(Filter::default())
+        let duration = opts.duration;
+        let delay = opts.delay;
+        let from = opts.start.unwrap_or(0);
+
+        Ok(Filter::stream(from, duration, delay))
     }
 }
 
