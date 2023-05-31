@@ -31,9 +31,9 @@ pub enum Filter {
     /// Special interval for stream: do we go back slightly in time?  For how long?  Do we have a
     /// delay between calls?
     Stream {
-        from: i32,
-        duration: i32,
-        delay: Option<u32>,
+        from: i64,
+        duration: u32,
+        delay: u32,
     },
     #[default]
     None,
@@ -63,7 +63,7 @@ impl Filter {
 
     /// For a stream
     ///
-    pub fn stream(from: i32, duration: i32, delay: Option<u32>) -> Self {
+    pub fn stream(from: i64, duration: u32, delay: u32) -> Self {
         Filter::Stream {
             from,
             duration,
@@ -91,9 +91,9 @@ impl Display for Filter {
 
         #[derive(Debug, Serialize)]
         struct Stream {
-            from: i32,
-            duration: i32,
-            delay: Option<u32>,
+            from: i64,
+            duration: u32,
+            delay: u32,
         }
 
         let s: String = match self {
