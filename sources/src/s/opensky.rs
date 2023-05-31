@@ -66,7 +66,7 @@ struct Credentials {
 impl Opensky {
     pub fn new() -> Self {
         Opensky {
-            format: Format::None,
+            format: Format::Opensky,
             login: "".to_owned(),
             password: "".to_owned(),
             base_url: "".to_owned(),
