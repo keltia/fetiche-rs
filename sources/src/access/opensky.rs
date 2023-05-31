@@ -1,7 +1,14 @@
 //! OpenSky (.org) specific data
 //!
+//! The `/states/own` endpoint can be polled several times and it always return a specific
+//! `StateList` for which `time` is both timestamp and index.
+//!
+//! if two `StateList`s have the same `time`, there are the same.
+//!
+//! So now we cache them.
+//!
 
-use std::io::Write;
+use std::io::{stderr, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -11,6 +18,7 @@ use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
 use log::{debug, trace};
+use mini_moka::sync::Cache;
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -23,7 +31,14 @@ use crate::{http_get_basic, Fetchable, Filter, Streamable};
 use crate::{Auth, Site};
 
 /// We can go back only 1h in Opensky API
-const MAX_INTERVAL: i32 = 3600;
+const MAX_INTERVAL: i64 = 3600;
+
+/// Expiration after insert/get
+const CACHE_IDLE: Duration = Duration::from_secs(20);
+/// Expiration after insert
+const CACHE_MAX: Duration = Duration::from_secs(60);
+/// Cache max entries
+const CACHE_SIZE: u64 = 20;
 
 #[derive(Clone, Debug)]
 pub struct Opensky {
@@ -197,10 +212,18 @@ impl Streamable for Opensky {
     }
 
     fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
+        trace!("opensky::stream");
+
         let mut stream_duration = 0;
         let mut stream_delay = 0;
 
-        let now = Utc::now().timestamp() as i32;
+        let cache = Cache::builder()
+            .max_capacity(CACHE_SIZE)
+            .time_to_idle(CACHE_IDLE)
+            .time_to_live(CACHE_MAX)
+            .build();
+
+        let now = Utc::now().timestamp();
 
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
@@ -218,15 +241,25 @@ impl Streamable for Opensky {
                 delay,
                 from,
             } => {
-                let start = if now - from > MAX_INTERVAL {
-                    now - MAX_INTERVAL
-                } else {
-                    from
-                };
-
+                // default is 0
                 stream_duration = duration;
-                stream_delay = delay.unwrap_or_default();
-                Some(format!("time={}", start))
+                // default is 1000ms
+                stream_delay = delay;
+
+                if from == 0 {
+                    None
+                } else {
+                    let start = if now - from > MAX_INTERVAL {
+                        now - MAX_INTERVAL
+                    } else {
+                        from
+                    };
+
+                    // API takes 32-bit timestamp
+                    //
+                    let start: i32 = start.try_into().unwrap();
+                    Some(format!("time={}", start))
+                }
             }
             Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
             _ => None,
@@ -236,12 +269,16 @@ impl Streamable for Opensky {
             Some(tm) => format!("{}?{}", url, tm),
             _ => url,
         };
-        trace!(
-            "StreamURL: {} for {}s with {}ms delay",
+
+        writeln!(
+            stderr(),
+            "StreamURL: {}\nDuration {}s with {}ms delay and {}/{}s cache",
             url,
             stream_duration,
-            stream_delay
-        );
+            stream_delay,
+            CACHE_SIZE,
+            CACHE_IDLE.as_secs(),
+        )?;
 
         // Infinite loop until we get cancelled or timeout expire
         // self.duration is 0 -> infinite
@@ -308,15 +345,30 @@ impl Streamable for Opensky {
                 // Check whether data was returned
                 //
                 if sl.states.is_some() {
-                    write!(io::stderr(), "D")?;
-                    write!(out, "{}", resp)?;
-                    out.flush()?;
+                    // Check whether we've seen it before
+                    //
+                    match cache.get(&sl.time) {
+                        // We have seen it, loop
+                        //
+                        Some(_time) => {
+                            write!(io::stderr(), "*")?;
+                            continue;
+                        }
+
+                        // No, write it and cache its `time`
+                        //
+                        _ => {
+                            write!(io::stderr(), "{},", sl.time)?;
+                            write!(out, "{}", resp)?;
+                            out.flush()?;
+                            cache.insert(sl.time, true);
+                        }
+                    }
                 } else {
                     write!(io::stderr(), ".")?;
                 }
 
-                // Whatever happened, sleep for 1s to avoid CPU/network
-                // overload
+                // Whatever happened, sleep for to avoid CPU/network overload
                 if stream_delay != 0 {
                     thread::sleep(Duration::from_millis(stream_delay as u64));
                 }
