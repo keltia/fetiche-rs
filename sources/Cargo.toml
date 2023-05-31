@@ -37,6 +37,7 @@ serde.workspace = true
 serde_json.workspace = true
 
 csv = "1.1"
+mini-moka = "0.10"
 percent-encoding = "2.2"
 serde_repr = "0.1"
 tabled = "0.12"
