@@ -28,8 +28,13 @@ pub enum Filter {
     Keyword { name: String, value: String },
     /// Duration as length of time in seconds (can be negative to go in the past for N seconds)
     Duration(i32),
-    /// Special interval for stream: do we go back slightly in time?  For how long?
-    Stream { from: i32, duration: i32 },
+    /// Special interval for stream: do we go back slightly in time?  For how long?  Do we have a
+    /// delay between calls?
+    Stream {
+        from: i32,
+        duration: i32,
+        delay: Option<u32>,
+    },
     #[default]
     None,
 }
@@ -58,13 +63,18 @@ impl Filter {
 
     /// For a stream
     ///
-    pub fn stream(from: i32, duration: i32) -> Self {
-        Filter::Stream { from, duration }
+    pub fn stream(from: i32, duration: i32, delay: Option<u32>) -> Self {
+        Filter::Stream {
+            from,
+            duration,
+            delay,
+        }
     }
 }
 
 impl Display for Filter {
     /// We want the formatting to ignore the `Interval` vs `None`, it is easier to pass data around
+    /// BTW this gives us `to_string()` as well.
     ///
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         #[derive(Debug, Serialize)]
@@ -83,6 +93,7 @@ impl Display for Filter {
         struct Stream {
             from: i32,
             duration: i32,
+            delay: Option<u32>,
         }
 
         let s: String = match self {
@@ -102,10 +113,15 @@ impl Display for Filter {
                 };
                 json!(k).to_string()
             }
-            Filter::Stream { from, duration } => {
+            Filter::Stream {
+                from,
+                duration,
+                delay,
+            } => {
                 let s = Stream {
                     from: *from,
                     duration: *duration,
+                    delay: *delay,
                 };
                 json!(s).to_string()
             }
@@ -121,7 +137,10 @@ impl From<&str> for Filter {
         let filter: Result<Filter, serde_json::Error> = serde_json::from_str(value);
         match filter {
             Ok(f) => match f {
-                Filter::Duration(_) | Filter::Interval { .. } | Filter::Keyword { .. } => f,
+                Filter::Duration(_)
+                | Filter::Interval { .. }
+                | Filter::Keyword { .. }
+                | Filter::Stream { .. } => f,
                 _ => Filter::None,
             },
             _ => Filter::None,
