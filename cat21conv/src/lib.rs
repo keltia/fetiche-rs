@@ -211,7 +211,12 @@ impl Task {
                 site.fetch(&mut data, &token, &self.args)?;
                 let data = String::from_utf8(data)?;
                 debug!("{}", data);
-                let res = site.to_cat21(data)?;
+
+                let fmt = site.format();
+                let res: Vec<Cat21> = match fmt {
+                    Format::Asd => Cat21::from_asd(&data)?,
+                    _ => unimplemented!(),
+                };
                 debug!("{:?} as {}", res, format);
                 Ok(res)
             }
