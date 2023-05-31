@@ -5,11 +5,13 @@
 //!
 //! JSON endpoint added later by ASD in Nov. 2022.
 
+use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
+use log::debug;
 use serde::Deserialize;
 
 use crate::drone::DronePoint;
-use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
+use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated};
 
 /// Our input structure from the json file coming out of the main ASD site
 ///
@@ -62,6 +64,9 @@ pub struct Asd {
     // Longitude (actually f32)
     pub station_lon: Option<String>,
 }
+
+convert_to!(from_asd, Asd, Cat21);
+convert_to!(from_asd, Asd, DronePoint);
 
 /// For privacy reasons, we truncate the drone ID value to something not unique
 ///

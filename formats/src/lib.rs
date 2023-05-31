@@ -98,13 +98,45 @@ macro_rules! into_cat21 {
     };
 }
 
+// Generate a converter called `$name` which takes `&str` and
+// output a `Vec<$to>`.  `input` is deserialized from JSON as
+// `$from`.
+//
+// Uses `$to::from()` for each format.
+//
+#[macro_export]
+macro_rules! convert_to {
+    ($name:ident, $from:ident, $to:ident) => {
+        impl $to {
+            #[doc = concat!("This is ", stringify!($name), " which convert a string into a ", stringify!($to), "object")]
+            ///
+            pub fn $name(input: &str) -> Result<Vec<$to>> {
+                debug!("IN={:?}", input);
+                let res: Vec<$from> = serde_json::from_str(&input)?;
+                debug!("rec={:?}", res);
+                let res: Vec<_> = res
+                    .iter()
+                    .enumerate()
+                    .inspect(|(n, f)| debug!("f={:?}-{:?}", n, f))
+                    .map(|(cnt, rec)| {
+                        debug!("cnt={}/rec={:?}", cnt, rec);
+                        $to::from(rec)
+                    })
+                    .collect();
+                debug!("res={:?}", res);
+                Ok(res)
+            }
+        }
+    };
+}
+
 impl Format {
     /// Process each record coming from the input source, apply `Cat::from()` onto it
     /// and return the list.  This is used when reading from the csv files.
     ///
-    pub fn from_csv<T>(self, rdr: &mut Reader<T>) -> Result<Vec<Cat21>>
+    pub fn from_csv<R>(self, rdr: &mut Reader<R>) -> Result<Vec<Cat21>>
     where
-        T: Read,
+        R: Read,
     {
         debug!("Reading & transforming…");
         let res: Vec<_> = rdr
@@ -120,7 +152,9 @@ impl Format {
             .collect();
         Ok(res)
     }
+}
 
+impl Format {
     /// List all supported formats into a string using `tabled`.
     ///
     pub fn list() -> Result<String> {
