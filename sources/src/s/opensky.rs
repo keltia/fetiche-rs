@@ -1,7 +1,7 @@
 //! OpenSky (.org) specific data
 //!
 
-use std::io::{stderr, Write};
+use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -200,6 +200,8 @@ impl Streamable for Opensky {
         let mut stream_duration = 0;
         let mut stream_delay = 0;
 
+        let now = Utc::now().timestamp() as i32;
+
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
         trace!("opensky::stream(as {}:{})", login, password);
@@ -216,8 +218,6 @@ impl Streamable for Opensky {
                 delay,
                 from,
             } => {
-                let mut now = Utc::now().timestamp() as i32;
-
                 let start = if now - from > MAX_INTERVAL {
                     now - MAX_INTERVAL
                 } else {
