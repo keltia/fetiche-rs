@@ -202,7 +202,7 @@ pub struct StreamOpts {
     pub keyword: Option<String>,
     /// Continuous mode every <usize> seconds (optional)
     #[clap(short = 'C', long)]
-    pub continuous: Option<usize>,
+    pub continuous: Option<u32>,
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
