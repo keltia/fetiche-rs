@@ -21,7 +21,7 @@ use std::{io, thread, time};
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
-use log::{debug, info, trace};
+use log::{debug, trace};
 use mini_moka::sync::Cache;
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
@@ -119,8 +119,8 @@ impl Opensky {
                 _ => panic!("nope"),
             }
         }
-        /// FIXME
-        ///
+        // FIXME: should get the entire set of routes
+        //
         self.get = site.route("stream").unwrap().to_owned();
         self
     }
@@ -217,6 +217,9 @@ impl Streamable for Opensky {
     /// We may need to add a "retry until death or timeout" in order to keep trying (with a
     /// backoff timer I guess?) when encountering an API error.
     ///
+    /// FIXME: should we have a thread for the timeout or the worker?  In the latter case, as soon
+    ///        as the timer expire, we cancel the thread.  Now, we exit() from the thread.
+    ///
     fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
 
@@ -281,8 +284,8 @@ impl Streamable for Opensky {
             r##"
 StreamURL: {}
 Duration {}s with {}ms delay and cache with {} entries for {}s
-<number>: data packet / ".": no traffic / "*": cache hit
 
+<number>: data packet / ".": no traffic / "*": cache hit
         "##,
             url,
             stream_duration,
@@ -320,6 +323,10 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                 thread::spawn(move || {
                     if d != 0 {
                         thread::sleep(time::Duration::from_secs(d as u64));
+
+                        // FIXME: This is a library, libraries should never quit a process like
+                        //        we do now.  We should return a `FINISHED` state.
+                        //
                         std::process::exit(0);
                     }
                 });
@@ -363,21 +370,28 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         // We have seen it, loop
                         //
                         Some(_time) => {
-                            write!(io::stderr(), "*")?;
+                            write!(stderr(), "*")?;
                             continue;
                         }
 
                         // No, write it and cache its `time`
                         //
                         _ => {
-                            write!(io::stderr(), "{},", sl.time)?;
+                            write!(stderr(), "{},", sl.time)?;
                             write!(out, "{}", resp)?;
                             out.flush()?;
                             cache.insert(sl.time, true);
                         }
                     }
                 } else {
-                    write!(io::stderr(), ".")?;
+                    // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
+                    //
+                    if cache.entry_count() == 0 {
+                        write!(stderr(), "No traffic, waiting for 2s.");
+                        thread::sleep(Duration::from_secs(2_u64));
+                    } else {
+                        write!(stderr(), ".")?;
+                    }
                 }
 
                 // Whatever happened, sleep for to avoid CPU/network overload
