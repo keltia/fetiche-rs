@@ -1,4 +1,8 @@
-//! OpenSky (.org) specific data
+//! OpenSky (.org) specific code
+//!
+//! There are two trait implementations:
+//! - `Fetchable`
+//! - `Streamable`
 //!
 //! The `/states/own` endpoint can be polled several times and it always return a specific
 //! `StateList` for which `time` is both timestamp and index.
@@ -17,7 +21,7 @@ use std::{io, thread, time};
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
-use log::{debug, trace};
+use log::{debug, info, trace};
 use mini_moka::sync::Cache;
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
@@ -40,6 +44,11 @@ const CACHE_MAX: Duration = Duration::from_secs(60);
 /// Cache max entries
 const CACHE_SIZE: u64 = 20;
 
+/// This si the Opensky client/source struct.
+///
+/// FIXME: this had only the "get" route (which will be "stream" for the streamable part.
+///        this is confusing and incorrect.
+///
 #[derive(Clone, Debug)]
 pub struct Opensky {
     /// Input formats
@@ -58,6 +67,8 @@ pub struct Opensky {
     pub duration: i32,
 }
 
+/// This is the struct holding potential parameters to the API
+///
 #[derive(Debug, Serialize)]
 struct Param {
     /// timestamp of the state vectors to be retrieved
@@ -91,7 +102,7 @@ impl Opensky {
         }
     }
 
-    /// Load some data from the configuration file
+    /// Load some data from in-memory loaded config
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
         self.format = site.format.as_str().into();
@@ -108,6 +119,8 @@ impl Opensky {
                 _ => panic!("nope"),
             }
         }
+        /// FIXME
+        ///
         self.get = site.route("stream").unwrap().to_owned();
         self
     }
@@ -120,11 +133,15 @@ impl Default for Opensky {
 }
 
 impl Fetchable for Opensky {
+    /// All credentials are passed every time we call the API so return a fake token
+    ///
     fn authenticate(&self) -> anyhow::Result<String> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
     }
 
+    /// Single call API
+    ///
     fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
@@ -183,11 +200,23 @@ impl Fetchable for Opensky {
 }
 
 impl Streamable for Opensky {
-    fn authenticate(&self) -> anyhow::Result<String> {
+    /// All credentials are passed every time we call the API so return a fake token
+    ///
+    fn authenticate(&self) -> Result<String> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
     }
 
+    /// The main stream function
+    ///
+    /// The cache might be overkill but:
+    /// - it is easy to code and use
+    /// - it can't hurt
+    ///
+    /// Right now it runs until killed by Ctrl+C, the timer expire (if set) or an API error.
+    /// We may need to add a "retry until death or timeout" in order to keep trying (with a
+    /// backoff timer I guess?) when encountering an API error.
+    ///
     fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
 
@@ -249,7 +278,12 @@ impl Streamable for Opensky {
 
         writeln!(
             stderr(),
-            "StreamURL: {}\nDuration {}s with {}ms delay and {}/{}s cache",
+            r##"
+StreamURL: {}
+Duration {}s with {}ms delay and cache with {} entries for {}s
+<number>: data packet / ".": no traffic / "*": cache hit
+
+        "##,
             url,
             stream_duration,
             stream_delay,
@@ -293,10 +327,11 @@ impl Streamable for Opensky {
             }
             // Go!
             //
+            let url = &url.clone();
+            let login = &self.login.clone();
+            let password = &self.password.clone();
+
             loop {
-                let url = &url.clone();
-                let login = &self.login.clone();
-                let password = &self.password.clone();
                 let resp = http_get_basic!(self, url, login, password)?;
 
                 debug!("{:?}", &resp);
@@ -360,6 +395,8 @@ impl Streamable for Opensky {
 }
 
 /// Represent the area we want to get all from
+///
+/// FIXME: this is not handled
 ///
 #[derive(Debug, Serialize, Deserialize)]
 struct Args {
