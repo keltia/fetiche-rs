@@ -22,7 +22,7 @@ use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
 use log::{debug, trace};
-use mini_moka::sync::Cache;
+use mini_moka::sync::{Cache, ConcurrentCacheExt};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -386,8 +386,11 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                 } else {
                     // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
                     //
+                    use mini_moka::sync::ConcurrentCacheExt;
+
+                    cache.sync();
                     if cache.entry_count() == 0 {
-                        write!(stderr(), "No traffic, waiting for 2s.");
+                        write!(stderr(), "No traffic, waiting for 2s.")?;
                         thread::sleep(Duration::from_secs(2_u64));
                     } else {
                         write!(stderr(), ".")?;
