@@ -187,6 +187,9 @@ impl Sources {
 
     /// List tokens
     ///
+    /// NOTE: we do not show data from each token (like expiration, etc.) because at this point
+    ///       we do not know which kind of token each one is.
+    ///
     pub fn list_tokens() -> Result<String> {
         trace!("listing tokens");
 
@@ -549,7 +552,6 @@ mod tests {
     fn test_token_path() {
         let p = Sources::token_path();
         let ep: PathBuf = makepath!(env!("HOME"), BASEDIR, "drone-utils", "tokens");
-        dbg!(Sources::config_path());
         assert_eq!(ep, p);
     }
 }
