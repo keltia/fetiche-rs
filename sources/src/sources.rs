@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use tabled::builder::Builder;
 use tabled::settings::Style;
 
-use crate::{makepath, Auth, Site, CONFIG, CVERSION, TOKEN_BASE};
+use crate::{makepath, Auth, Site, BASEDIR, CONFIG, CVERSION, TOKEN_BASE};
 
 /// List of sources, this is the only exposed struct from here.
 ///
