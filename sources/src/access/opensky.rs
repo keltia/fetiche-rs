@@ -16,7 +16,7 @@ use std::io::{stderr, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use std::{io, thread, time};
+use std::{thread, time};
 
 use anyhow::{anyhow, Result};
 use chrono::Utc;
@@ -334,7 +334,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             }
             // Go!
             //
-            let url = &url.clone();
+            let url = &url;
             let login = &self.login.clone();
             let password = &self.password.clone();
 
@@ -386,8 +386,6 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                 } else {
                     // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
                     //
-                    use mini_moka::sync::ConcurrentCacheExt;
-
                     cache.sync();
                     if cache.entry_count() == 0 {
                         write!(stderr(), "No traffic, waiting for 2s.")?;
