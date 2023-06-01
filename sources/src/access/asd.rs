@@ -162,8 +162,6 @@ impl Default for Asd {
 impl Fetchable for Asd {
     /// Authenticate to the site using the supplied credentials and get a token
     ///
-    /// TODO: add "-<email>" at the end of the token's name
-    ///
     fn authenticate(&self) -> Result<String> {
         trace!("authenticate as ({:?})", &self.login);
         // Prepare our submission data
