@@ -212,9 +212,11 @@ impl Fetchable for Asd {
             let res: Token = serde_json::from_str(&resp)?;
             trace!("token={}", res.token);
 
-            // Write fetched token in `tokens`
+            // Write fetched token in `tokens` (unless it is during tests)
             //
+            #[cfg(not(test))]
             Sources::store_token(&fname, &resp)?;
+
             res.token
         };
 
@@ -369,6 +371,11 @@ mod tests {
         };
 
         let jtok = json!(token).to_string();
+        let cred = Credentials {
+            email: "user".to_string(),
+            password: "pass".to_string(),
+        };
+        let cred = json!(cred).to_string();
         let m = server.mock(|when, then| {
             when.method(POST)
                 .header(
@@ -376,6 +383,7 @@ mod tests {
                     format!("{}/{}", crate_name!(), crate_version!()),
                 )
                 .header("content-type", "application/json")
+                .body(&cred)
                 .path("/api/security/login");
             then.status(200).body(&jtok);
         });
