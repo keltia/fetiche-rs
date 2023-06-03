@@ -6,8 +6,8 @@
 
 [![Build status](https://github.com/keltia/drone-gencsv/actions/workflows/rust.yml/badge.svg)](https://github.com/keltia/drone-gencsv/actions/workflows/rust.yml)
 [![Buildstatus (develop)](https://github.com/keltia/drone-gencsv/actions/workflows/develop.yml/badge.svg)](https://github.com/keltia/drone-gencsv/actions/workflows/develop.yml)
-[![Docs](https://img.shields.io/docsrs/dmarc-rs)](https://docs.rs/drone-utils)
-[![GitHub release](https://img.shields.io/github/release/keltia/dmarc-rs.svg)](https://github.com/keltia/drone-gencsv/releases/)
+[![Docs](https://img.shields.io/docsrs/drone-gencsv)](https://docs.rs/drone-utils)
+[![GitHub release](https://img.shields.io/github/release/keltia/drone-gencsv.svg)](https://github.com/keltia/drone-gencsv/releases/)
 [![GitHub issues](https://img.shields.io/github/issues/keltia/drone-gencsv.svg)](https://github.com/keltia/drone-gencsv/issues)
 [![drone-utils: 1.56+]][Rust 1.56]
 [![SemVer](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/spec/v2.0.0.html)
