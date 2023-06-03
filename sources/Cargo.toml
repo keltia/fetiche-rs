@@ -35,12 +35,12 @@ log.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+serde_repr.workspace = true
+tabled.workspace = true
 
 csv = "1.1"
 mini-moka = "0.10"
 percent-encoding = "2.2"
-serde_repr = "0.1"
-tabled = "0.12"
 signal-hook = "0.3"
 tokio = { version = "1.28", features = ["full"] }
 

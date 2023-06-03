@@ -33,13 +33,13 @@ log.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+serde_repr.workspace = true
 
 async-std = "1.12"
 clap_complete = "4.2"
 csv = "1.1"
 influxdb = { version = "0.6", features = ["derive"] }
 percent-encoding = "2.2"
-serde_repr = "0.1"
 sqlx = { version = "0.6", features = ["json", "ipnetwork", "mysql", "tls", "chrono", "macros", "runtime-async-std-native-tls"] }
 
 [dev-dependencies]
