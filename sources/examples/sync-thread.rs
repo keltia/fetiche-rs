@@ -33,51 +33,46 @@ fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
 
     // Launch it!
     //
-    while !term.load(Ordering::Relaxed) {
-        // Launch it!
-        //
-        writeln!(stderr(), "Starting stream loop")?;
-        // For data & alarm
-        let (tx, mut rx) = mpsc::channel();
+    writeln!(stderr(), "Starting stream loop")?;
+    // For data & alarm
+    let (tx, mut rx) = mpsc::channel();
 
-        if d != 0 {
-            // setup alarm
-            //
-            let tx1 = tx.clone();
-            writeln!(stderr(), "setup alarm")?;
-            thread::spawn(move || {
-                thread::sleep(Duration::from_secs(SLEEP));
-                tx1.send("bing!");
-                return;
-            });
-        }
-
-        // start working
+    if d != 0 {
+        // setup alarm
         //
-        writeln!(stderr(), "working...");
-        thread::spawn(move || loop {
-            thread::sleep(Duration::from_secs(2_u64));
-            tx.send(".");
+        let tx1 = tx.clone();
+        writeln!(stderr(), "setup alarm")?;
+        thread::spawn(move || {
+            thread::sleep(Duration::from_secs(SLEEP));
+            tx1.send("bing!");
+            return;
         });
+    }
 
-        let mut output = String::new();
+    // start working
+    //
+    writeln!(stderr(), "working...");
+    thread::spawn(move || loop {
+        thread::sleep(Duration::from_secs(2_u64));
+        tx.send(".");
+    });
 
-        writeln!(stderr(), "get data thread")?;
-        loop {
-            match rx.recv() {
-                Ok(msg) => match msg {
-                    "bing!" => {
-                        writeln!(stderr(), "alarm, out!")?;
-                        break;
-                    }
-                    _ => output.push_str(msg),
-                },
-                _ => continue,
-            }
-            writeln!(out, "{}", output)?;
-            out.flush();
+    let mut output = String::new();
+
+    writeln!(stderr(), "get data thread")?;
+    loop {
+        match rx.recv() {
+            Ok(msg) => match msg {
+                "bing!" => {
+                    writeln!(stderr(), "alarm, out!")?;
+                    break;
+                }
+                _ => output.push_str(msg),
+            },
+            _ => continue,
         }
-        return Ok(());
+        writeln!(out, "{}", output)?;
+        out.flush();
     }
     Ok(())
 }
