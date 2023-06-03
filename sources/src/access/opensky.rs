@@ -12,8 +12,9 @@
 //! So now we cache them.
 //!
 
-use std::io::{stderr, Write};
+use std::io::{copy, stderr, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{thread, time};
@@ -172,7 +173,8 @@ impl Fetchable for Opensky {
         };
         trace!("FetchURL: {}", url);
 
-        let resp = http_get_basic!(self, url, login, password)?;
+        let client = self.client.clone();
+        let resp = http_get_basic!(client, url, login, password)?;
 
         debug!("{:?}", &resp);
 
@@ -216,9 +218,6 @@ impl Streamable for Opensky {
     /// Right now it runs until killed by Ctrl+C, the timer expire (if set) or an API error.
     /// We may need to add a "retry until death or timeout" in order to keep trying (with a
     /// backoff timer I guess?) when encountering an API error.
-    ///
-    /// FIXME: should we have a thread for the timeout or the worker?  In the latter case, as soon
-    ///        as the timer expire, we cancel the thread.  Now, we exit() from the thread.
     ///
     fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
@@ -309,97 +308,143 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             flag::register(*sig, Arc::clone(&term))?;
         }
 
+        // out as a `dyn Write` is not `Send` so we can not use it within a thread.  Use channels
+        // to work around this.
+        //
+        let (tx, rx) = channel::<String>();
+
         // Launch it!
         //
         while !term.load(Ordering::Relaxed) {
-            trace!("Starting stream loop");
-
-            // Now wait for Ctrl-C or timer expire
+            // Timer set?  If yes, launch a sleeper thread
             //
             if stream_duration != 0 {
-                // Timer set?
-                //
+                trace!("setup wakeup alarm");
+
                 let d = stream_duration;
+                let tx1 = tx.clone();
                 thread::spawn(move || {
                     if d != 0 {
                         thread::sleep(time::Duration::from_secs(d as u64));
-
-                        // FIXME: This is a library, libraries should never quit a process like
-                        //        we do now.  We should return a `FINISHED` state.
-                        //
-                        std::process::exit(0);
                     }
+                    tx1.send("TIMEOUT".to_string());
                 });
                 trace!("end of sleep");
             }
-            // Go!
+
+            // reqwest::blocking::Client
             //
-            let url = &url;
-            let login = &self.login.clone();
-            let password = &self.password.clone();
+            let client = self.client.clone();
 
-            loop {
-                let resp = http_get_basic!(self, url, login, password)?;
+            let url = url.clone();
+            let login = self.login.clone();
+            let password = self.password.clone();
 
-                debug!("{:?}", &resp);
+            let wt_cache = cache.clone();
 
-                // Check status
-                //
-                match resp.status() {
-                    StatusCode::OK => {
-                        trace!("OK");
+            // Worker thread
+            //
+            thread::spawn(move || {
+                trace!("Starting worker thread");
+                let tx1 = tx.clone();
+                loop {
+                    let resp = client
+                        .get(&url)
+                        .basic_auth(&login, Some(&password))
+                        .header(
+                            "user-agent",
+                            format!("{}/{}", crate_name!(), crate_version!()),
+                        )
+                        .header("content-type", "application/json")
+                        .send()
+                        .expect("can not call the server");
+
+                    debug!("{:?}", &resp);
+
+                    // Check status
+                    //
+                    match resp.status() {
+                        StatusCode::OK => {
+                            trace!("OK");
+                        }
+                        code => {
+                            let h = &resp.headers();
+                            writeln!(stderr(), "Error({}): {:?},", code, h);
+                            thread::sleep(Duration::from_millis(stream_delay as u64));
+                        }
                     }
-                    code => {
-                        let h = &resp.headers();
-                        return Err(anyhow!("Error({}): {:?}", code, h));
+
+                    let mut buf = resp.text().unwrap();
+                    //copy(&mut buf, &mut data);
+
+                    // Retrieve answer and look into it, if answer was empty this should be rather fast
+                    //
+                    let sl: StateList = serde_json::from_str(buf.as_str()).expect("broken data");
+
+                    // Check whether data was returned
+                    //
+                    if sl.states.is_some() {
+                        // Check whether we've seen it before
+                        //
+                        match wt_cache.get(&sl.time) {
+                            // We have seen it, loop
+                            //
+                            Some(_time) => {
+                                write!(stderr(), "*");
+                                continue;
+                            }
+                            // No, write it and cache its `time`
+                            //
+                            _ => {
+                                write!(stderr(), "{},", sl.time);
+                                tx1.send(buf).expect("send");
+                                wt_cache.insert(sl.time, true);
+                            }
+                        }
+                    } else {
+                        // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
+                        //
+                        wt_cache.sync();
+                        if wt_cache.entry_count() == 0 {
+                            writeln!(stderr(), "No traffic, waiting for 2s.");
+                            thread::sleep(Duration::from_secs(2_u64));
+                        } else {
+                            write!(stderr(), ".");
+                        }
+                    }
+
+                    // Whatever happened, sleep for to avoid CPU/network overload
+                    if stream_delay != 0 {
+                        thread::sleep(Duration::from_millis(stream_delay as u64));
                     }
                 }
+            });
 
-                let resp = resp.text()?;
-
-                // Retrieve answer and look into it, if answer was empty this should be rather fast
-                //
-                let sl: StateList = serde_json::from_str(&resp)?;
-
-                // Check whether data was returned
-                //
-                if sl.states.is_some() {
-                    // Check whether we've seen it before
-                    //
-                    match cache.get(&sl.time) {
-                        // We have seen it, loop
+            // Now data gathering loop
+            //
+            loop {
+                match rx.recv() {
+                    Ok(msg) => match msg.as_str() {
+                        // Timer expired
                         //
-                        Some(_time) => {
-                            write!(stderr(), "*")?;
-                            continue;
+                        "TIMEOUT" => {
+                            trace!("End of scheduled run.");
+                            break;
                         }
-
-                        // No, write it and cache its `time`
+                        // Anything else is sent
                         //
                         _ => {
-                            write!(stderr(), "{},", sl.time)?;
-                            write!(out, "{}", resp)?;
+                            write!(out, "{}", msg)?;
                             out.flush()?;
-                            cache.insert(sl.time, true);
                         }
-                    }
-                } else {
-                    // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
-                    //
-                    cache.sync();
-                    if cache.entry_count() == 0 {
-                        write!(stderr(), "No traffic, waiting for 2s.")?;
-                        thread::sleep(Duration::from_secs(2_u64));
-                    } else {
-                        write!(stderr(), ".")?;
-                    }
-                }
-
-                // Whatever happened, sleep for to avoid CPU/network overload
-                if stream_delay != 0 {
-                    thread::sleep(Duration::from_millis(stream_delay as u64));
+                    },
+                    _ => continue,
                 }
             }
+            // sync; sync; sync
+            //
+            out.flush()?;
+            return Ok(());
         }
         Ok(())
     }
