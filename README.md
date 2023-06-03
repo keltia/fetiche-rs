@@ -77,7 +77,8 @@ This library implement some methods of conversion between some of these formats.
 
 - `fetiche-sources`
 
-Each data source has its own set of access, authentication and data retrieval methods
+Each data source has its own set of access, authentication and data retrieval methods. Both fetching and streaming are
+supported, depending on the source.
 
 - `fetiche-engine`
 
@@ -92,7 +93,11 @@ The other crates are for the binaries that rely on `Fetiche` like `acutectl`.
 
 For the moment, there is only one binary called `acutectl` (with `.exe` on Windows). It can be used to fetch data into
 their native format (csv, json) or import said data into a database. It can import both drone and ADS-B data depending
-on the source's declared type in `sources.hcl`.
+on the source's declared type in `sources.hcl`. Right now, `acutectl` use blocking HTTP calls and is not using any
+`async` features.
+
+However, while working on streaming support for Opensky, I have been experimenting with [tokio] for async support and
+`acutectl` might soon become fully-async. It does help for some stuff including signal (read ^C) support.
 
 <details>
 <summary>acutectl</summary>
@@ -106,8 +111,10 @@ Usage: acutectl [OPTIONS] <COMMAND>
 Commands:
   completion  Generate Completion stuff
   fetch       Fetch data from specified site
-  import      Import into InfluxDB
+  import      Import into InfluxDB (WIP)
   list        List information about formats and sources
+  stream      Stream from a source
+  version     List all package versions
   help        Print this message or the help of the given subcommand(s)
 
 Options:
@@ -115,8 +122,7 @@ Options:
   -D, --debug            debug mode
   -o, --output <OUTPUT>  Output file
   -v, --verbose...       Verbose mode
-  -V, --version          Display utility full version
-  -h, --help             Print help
+  -h, --help             Print help```
 ```
 
 </details>
@@ -125,8 +131,8 @@ As seen, there are different sub-commands. You can use `acutectl help <sub-comma
 different parameters.
 
 The configuration for the different sources of data is handled by the `fetiche-source` crate in [HCL] file
-format. Note that it is mainly used to avoid hard-coding some parameters like username and API URLs.  Adding an entry
-in that file does not mean support except if it is a variation on a known sources.
+format. Note that it is mainly used to avoid hard-coding some parameters like username and API URLs. Adding an entry
+in that file does not mean support except if it is a variation on a known source.
 
 On UNIX systems, it is located in `$HOME/.config/drone-utils/sources.hcl` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
 
@@ -263,7 +269,7 @@ by [Opensky] site. There is also the [ASD] site which gives you data aggregated 
 To displayed currently supported formats, use `acutectl list formats`:
 
 <details>
-<summary>acute list formats</summary>
+<summary>acutectl list formats</summary>
 
 ```text
 acutectl/0.9.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
@@ -299,6 +305,29 @@ transformed into our `DronePoint` and `Journey` types for post-processing.
 
 </details>
 
+### Token management
+
+The `fetiche-sources`  crate has some support for token caching to avoid getting a fresh token for each call.  
+The `list tokens` sub-command will show you the available tokens. These are per-identity tokens.
+
+<details>
+<summary>acutectl list tokens</summary>
+
+```text
+acutectl/0.9.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
+CLI utility to fetch data.
+
+Listing all tokens:
+╭───────────────────────────────────────────────────┬───────────────────────────────────╮
+│ Path                                              │ Created at                        │
+├───────────────────────────────────────────────────┼───────────────────────────────────┤
+│ asd_default_token-some.user@eurocontrol.int       │ 2023-05-31 20:31:43.027646800 UTC │
+│ asd_default_token-ollivier.robert@eurocontrol.int │ 2023-05-24 09:17:44.891997300 UTC │
+╰───────────────────────────────────────────────────┴───────────────────────────────────╯
+```
+
+</details>
+
 ### Data Model
 
 Each source has its own data model which complicates things, apart from [ASTERIX] with Cat129 for drone data, each
@@ -317,10 +346,12 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 
 * Unix (tested on FreeBSD, Linux and macOS)
 * Windows
-    * cmd.exe
-    * Powershell (preferred)
+  * cmd.exe
+  * Powershell (preferred)
 
 ## TODO
+
+Here are some of the things I've been working on. Some of these are registered as issues on [GitHub issues].
 
 - ~~support more parameters (like dates, etc.)~~
 - ~~fetch and analyse from Aeroscope~~
@@ -329,6 +360,7 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - ~~use a common data model for drone data~~
 - ~~Support for Opensky (same)~~
 - ~~make `acutectl` use `fetiche-engine` instead of its own `task.rs`~~.
+- ~~add streaming support for sources like opensky~~.
 - rename `drone-utils` into the more proper `fetiche`.
 - merge `import-adsb` and `cat21conv` into `acutectl`.
 - link to HashiCorp Vault for storing credentials and tokens
@@ -375,7 +407,7 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [drone-utils: 1.56+]: https://img.shields.io/badge/Rust%20version-1.56%2B-lightgrey
 
-[Mozilla]: http://mozilla.org/
+[Mozilla]: https://mozilla.org/
 
 [Opensky]: https://www.opensky-network.org/
 
@@ -386,3 +418,7 @@ I use Git Flow for this package so please use something similar or the usual Git
 [Safesky]: https://safesky.app/
 
 [HCL]: https://developer.hashicorp.com/terraform/language
+
+[GitHub issues]: https://github.com/keltia/drone-gencsv/issues
+
+[tokio]: https://crates.io/crates/tokio
