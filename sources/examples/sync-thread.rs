@@ -1,13 +1,12 @@
 // Normal sync-based worker/alarm threads
 //
 
-use std::env::Args;
 use std::io::{stderr, Write};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::sync::mpsc;
 use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
-use std::{env, thread, time};
 
 use anyhow::Result;
 use signal_hook::consts::TERM_SIGNALS;
@@ -33,38 +32,37 @@ fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
 
     // Launch it!
     //
-    writeln!(stderr(), "Starting stream loop")?;
+    eprintln!("Starting stream loop");
     // For data & alarm
-    let (tx, mut rx) = mpsc::channel();
+    let (tx, rx) = mpsc::channel();
 
     if d != 0 {
         // setup alarm
         //
         let tx1 = tx.clone();
-        writeln!(stderr(), "setup alarm")?;
+        eprintln!("setup alarm");
         thread::spawn(move || {
             thread::sleep(Duration::from_secs(SLEEP));
-            tx1.send("bing!");
-            return;
+            tx1.send("bing!").unwrap();
         });
     }
 
     // start working
     //
-    writeln!(stderr(), "working...");
+    eprint!("working...");
     thread::spawn(move || loop {
         thread::sleep(Duration::from_secs(2_u64));
-        tx.send(".");
+        tx.send(".").unwrap();
     });
 
     let mut output = String::new();
 
-    writeln!(stderr(), "get data thread")?;
+    eprintln!("get data thread");
     loop {
         match rx.recv() {
             Ok(msg) => match msg {
                 "bing!" => {
-                    writeln!(stderr(), "alarm, out!")?;
+                    eprintln!("alarm, out!");
                     break;
                 }
                 _ => output.push_str(msg),
@@ -72,7 +70,7 @@ fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
             _ => continue,
         }
         writeln!(out, "{}", output)?;
-        out.flush();
+        out.flush()?;
     }
     Ok(())
 }
@@ -80,8 +78,6 @@ fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut out = stderr();
-
-    let args = env::args();
 
     worker_thread(&mut out, SLEEP)?;
 

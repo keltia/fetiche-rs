@@ -3,15 +3,11 @@
 // We may be going full async, hang on Baby, we're for a ride!
 //
 
-use std::env::Args;
 use std::io::{stderr, Write};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
-use std::{env, thread, time};
 
 use anyhow::Result;
-use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 #[cfg(unix)]
 use tokio::signal::ctrl_c;
 #[cfg(windows)]
@@ -25,7 +21,7 @@ const SLEEP: u64 = 20;
 async fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
     // Launch it!
     //
-    writeln!(stderr(), "Starting stream loop")?;
+    eprintln!("Starting stream loop");
     // For data
     let (tx, mut rx) = mpsc::channel(20);
     // For alarm
@@ -34,11 +30,10 @@ async fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
     if d != 0 {
         // setup alarm
         //
-        writeln!(stderr(), "setup alarm")?;
+        eprintln!("setup alarm");
         tokio::spawn(async move {
             thread::sleep(Duration::from_secs(SLEEP));
-            tx1.send("bing!").await;
-            return;
+            tx1.send("bing!").await.unwrap();
         });
     }
 
@@ -48,17 +43,17 @@ async fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
 
     // start working
     //
-    writeln!(stderr(), "working...");
+    eprintln!("working...");
     tokio::spawn(async move {
         loop {
-            thread::sleep(Duration::from_secs(2 as u64));
-            tx.send(".").await;
+            thread::sleep(Duration::from_secs(2_u64));
+            tx.send(".").await.unwrap();
         }
     });
 
     let mut output = String::new();
 
-    writeln!(stderr(), "get data thread")?;
+    eprintln!("get data thread");
     loop {
         tokio::select! {
             Some(msg) = rx.recv() => output.push_str(msg),
@@ -67,23 +62,20 @@ async fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
                 break;
             },
             _ = sig.recv() => {
-                writeln!(stderr(), "out!")?;
+                eprintln!("out!");
                 break;
             }
         }
         writeln!(out, "{}", output)?;
-        out.flush();
+        out.flush()?;
     }
     writeln!(out, "{}", output)?;
-    out.flush();
-    Ok(())
+    Ok(out.flush()?)
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut out = stderr();
-
-    let args = env::args();
 
     worker_thread(&mut out, SLEEP).await?;
 
