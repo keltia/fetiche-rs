@@ -38,7 +38,7 @@ fn main() -> Result<()> {
 
     // Banner
     //
-    writeln!(io::stderr(), "{}", version())?;
+    banner()?;
 
     // Load default config if nothing is specified
     //
@@ -141,33 +141,42 @@ fn main() -> Result<()> {
                 writeln!(io::stderr(), "{}", str)?;
             }
         },
-        SubCommand::Version => writeln!(stderr(), "{}", version())?,
+
+        // Standalone `version` command
+        //
+        SubCommand::Version => {
+            write!(stderr(), "Modules: ").unwrap();
+            [
+                fetiche_engine::version(),
+                fetiche_formats::version(),
+                fetiche_sources::version(),
+            ]
+            .iter()
+            .for_each(|s| write!(stderr(), "{s} ").unwrap());
+        }
     }
     Ok(())
 }
 
-/// Display our version banner
+/// Return our version number
 ///
 #[inline]
 pub fn version() -> String {
-    format!(
-        "{}/{} {} by {}\n{}\n",
-        NAME,
-        VERSION,
-        fetiche_sources::version(),
-        AUTHORS,
-        crate_description!()
-    )
+    format!("{}/{}", NAME, VERSION)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_version() {
-        assert!(version().contains(NAME));
-        assert!(version().contains(VERSION));
-        assert!(version().contains(AUTHORS))
-    }
+/// Display banner
+///
+fn banner() -> Result<()> {
+    Ok(writeln!(
+        stderr(),
+        r##"
+{}/{} by {}
+{}
+"##,
+        NAME,
+        VERSION,
+        AUTHORS,
+        crate_description!()
+    )?)
 }
