@@ -101,8 +101,6 @@ macro_rules! http_post_auth {
 macro_rules! http_get_basic {
     ($self:ident, $url:ident, $user:ident, $pwd:ident, $data:expr) => {
         $self
-            .client
-            .clone()
             .get($url)
             .basic_auth($user, Some($pwd))
             .header(
@@ -115,8 +113,6 @@ macro_rules! http_get_basic {
     };
     ($self:ident, $url:ident, $user:ident, $pwd:ident) => {
         $self
-            .client
-            .clone()
             .get($url)
             .basic_auth($user, Some($pwd))
             .header(
