@@ -79,6 +79,8 @@ pub enum SubCommand {
     List(ListOpts),
     /// Stream from a source
     Stream(StreamOpts),
+    /// List all package versions
+    Version,
 }
 
 // ------

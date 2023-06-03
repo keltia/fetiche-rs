@@ -1,6 +1,6 @@
 use std::fs;
 use std::io;
-use std::io::Write;
+use std::io::{stderr, Write};
 
 use anyhow::{anyhow, Result};
 use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
@@ -141,6 +141,7 @@ fn main() -> Result<()> {
                 writeln!(io::stderr(), "{}", str)?;
             }
         },
+        SubCommand::Version => writeln!(stderr(), "{}", version())?,
     }
     Ok(())
 }
@@ -150,9 +151,10 @@ fn main() -> Result<()> {
 #[inline]
 pub fn version() -> String {
     format!(
-        "{}/{} by {}\n{}\n",
+        "{}/{} {} by {}\n{}\n",
         NAME,
         VERSION,
+        fetiche_sources::version(),
         AUTHORS,
         crate_description!()
     )
