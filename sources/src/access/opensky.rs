@@ -136,7 +136,7 @@ impl Default for Opensky {
 impl Fetchable for Opensky {
     /// All credentials are passed every time we call the API so return a fake token
     ///
-    fn authenticate(&self) -> anyhow::Result<String> {
+    fn authenticate(&self) -> Result<String> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
     }
@@ -223,7 +223,7 @@ impl Streamable for Opensky {
         trace!("opensky::stream");
 
         let mut stream_duration = 0;
-        let mut stream_delay = 0;
+        let mut stream_delay = 1000;
 
         let now = Utc::now().timestamp();
 
@@ -243,9 +243,7 @@ impl Streamable for Opensky {
                 delay,
                 from,
             } => {
-                // default is 0
                 stream_duration = duration;
-                // default is 1000ms
                 stream_delay = delay;
 
                 if from == 0 {
@@ -334,6 +332,8 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         thread::spawn(move || {
             trace!("Starting worker thread");
 
+            // Cache is local to the worker thread
+            //
             let cache = Cache::builder()
                 .max_capacity(CACHE_SIZE)
                 .time_to_idle(CACHE_IDLE)
@@ -354,7 +354,9 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
 
                 debug!("{:?}", &resp);
 
-                // Check status
+                // Check status of request.  We will ignore any error for now as the server
+                // does not seem to be very stable.  It tends to returns 502 for transient errors.
+                // So we sleep and continue
                 //
                 match resp.status() {
                     StatusCode::OK => {
@@ -364,6 +366,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         let h = &resp.headers();
                         eprintln!("Error({}): {:?},", code, h);
                         thread::sleep(Duration::from_millis(stream_delay as u64));
+                        continue;
                     }
                 }
 
