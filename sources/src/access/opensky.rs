@@ -12,8 +12,8 @@
 //! So now we cache them.
 //!
 
-use std::io::{copy, stderr, Write};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::io::Write;
+use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Duration;
@@ -225,12 +225,6 @@ impl Streamable for Opensky {
         let mut stream_duration = 0;
         let mut stream_delay = 0;
 
-        let cache = Cache::builder()
-            .max_capacity(CACHE_SIZE)
-            .time_to_idle(CACHE_IDLE)
-            .time_to_live(CACHE_MAX)
-            .build();
-
         let now = Utc::now().timestamp();
 
         let res: Vec<&str> = token.split(':').collect();
@@ -278,8 +272,7 @@ impl Streamable for Opensky {
             _ => url,
         };
 
-        writeln!(
-            stderr(),
+        eprintln!(
             r##"
 StreamURL: {}
 Duration {}s with {}ms delay and cache with {} entries for {}s
@@ -291,7 +284,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             stream_delay,
             CACHE_SIZE,
             CACHE_IDLE.as_secs(),
-        )?;
+        );
 
         // Infinite loop until we get cancelled or timeout expire
         // self.duration is 0 -> infinite
@@ -313,139 +306,136 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         //
         let (tx, rx) = channel::<String>();
 
-        // Launch it!
+        // Timer set?  If yes, launch a sleeper thread
         //
-        while !term.load(Ordering::Relaxed) {
-            // Timer set?  If yes, launch a sleeper thread
-            //
-            if stream_duration != 0 {
-                trace!("setup wakeup alarm");
+        if stream_duration != 0 {
+            trace!("setup wakeup alarm");
 
-                let d = stream_duration;
-                let tx1 = tx.clone();
-                thread::spawn(move || {
-                    if d != 0 {
-                        thread::sleep(time::Duration::from_secs(d as u64));
-                    }
-                    tx1.send("TIMEOUT".to_string());
-                });
-                trace!("end of sleep");
-            }
-
-            // reqwest::blocking::Client
-            //
-            let client = self.client.clone();
-
-            let url = url.clone();
-            let login = self.login.clone();
-            let password = self.password.clone();
-
-            let wt_cache = cache.clone();
-
-            // Worker thread
-            //
+            let d = stream_duration;
+            let tx1 = tx.clone();
             thread::spawn(move || {
-                trace!("Starting worker thread");
-                let tx1 = tx.clone();
-                loop {
-                    let resp = client
-                        .get(&url)
-                        .basic_auth(&login, Some(&password))
-                        .header(
-                            "user-agent",
-                            format!("{}/{}", crate_name!(), crate_version!()),
-                        )
-                        .header("content-type", "application/json")
-                        .send()
-                        .expect("can not call the server");
+                if d != 0 {
+                    thread::sleep(time::Duration::from_secs(d as u64));
+                }
+                tx1.send("TIMEOUT".to_string()).unwrap();
+            });
+            trace!("end of sleep");
+        }
 
-                    debug!("{:?}", &resp);
+        // reqwest::blocking::Client
+        //
+        let client = self.client.clone();
 
-                    // Check status
-                    //
-                    match resp.status() {
-                        StatusCode::OK => {
-                            trace!("OK");
-                        }
-                        code => {
-                            let h = &resp.headers();
-                            writeln!(stderr(), "Error({}): {:?},", code, h);
-                            thread::sleep(Duration::from_millis(stream_delay as u64));
-                        }
+        let login = self.login.clone();
+        let password = self.password.clone();
+
+        // Worker thread
+        //
+        thread::spawn(move || {
+            trace!("Starting worker thread");
+
+            let cache = Cache::builder()
+                .max_capacity(CACHE_SIZE)
+                .time_to_idle(CACHE_IDLE)
+                .time_to_live(CACHE_MAX)
+                .build();
+
+            loop {
+                let resp = client
+                    .get(&url)
+                    .basic_auth(&login, Some(&password))
+                    .header(
+                        "user-agent",
+                        format!("{}/{}", crate_name!(), crate_version!()),
+                    )
+                    .header("content-type", "application/json")
+                    .send()
+                    .expect("can not call the server");
+
+                debug!("{:?}", &resp);
+
+                // Check status
+                //
+                match resp.status() {
+                    StatusCode::OK => {
+                        trace!("OK");
                     }
-
-                    let mut buf = resp.text().unwrap();
-                    //copy(&mut buf, &mut data);
-
-                    // Retrieve answer and look into it, if answer was empty this should be rather fast
-                    //
-                    let sl: StateList = serde_json::from_str(buf.as_str()).expect("broken data");
-
-                    // Check whether data was returned
-                    //
-                    if sl.states.is_some() {
-                        // Check whether we've seen it before
-                        //
-                        match wt_cache.get(&sl.time) {
-                            // We have seen it, loop
-                            //
-                            Some(_time) => {
-                                write!(stderr(), "*");
-                                continue;
-                            }
-                            // No, write it and cache its `time`
-                            //
-                            _ => {
-                                write!(stderr(), "{},", sl.time);
-                                tx1.send(buf).expect("send");
-                                wt_cache.insert(sl.time, true);
-                            }
-                        }
-                    } else {
-                        // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
-                        //
-                        wt_cache.sync();
-                        if wt_cache.entry_count() == 0 {
-                            writeln!(stderr(), "No traffic, waiting for 2s.");
-                            thread::sleep(Duration::from_secs(2_u64));
-                        } else {
-                            write!(stderr(), ".");
-                        }
-                    }
-
-                    // Whatever happened, sleep for to avoid CPU/network overload
-                    if stream_delay != 0 {
+                    code => {
+                        let h = &resp.headers();
+                        eprintln!("Error({}): {:?},", code, h);
                         thread::sleep(Duration::from_millis(stream_delay as u64));
                     }
                 }
-            });
 
-            // Now data gathering loop
-            //
-            loop {
-                match rx.recv() {
-                    Ok(msg) => match msg.as_str() {
-                        // Timer expired
+                let buf = resp.text().unwrap();
+
+                // Retrieve answer and look into it, if answer was empty this should be rather fast
+                //
+                let sl: StateList = serde_json::from_str(buf.as_str()).expect("broken data");
+
+                // Check whether data was returned
+                //
+                if sl.states.is_some() {
+                    // Check whether we've seen it before
+                    //
+                    match cache.get(&sl.time) {
+                        // We have seen it, loop
                         //
-                        "TIMEOUT" => {
-                            trace!("End of scheduled run.");
-                            break;
+                        Some(_time) => {
+                            eprint!("*");
+                            continue;
                         }
-                        // Anything else is sent
+                        // No, eprint it and cache its `time`
                         //
                         _ => {
-                            write!(out, "{}", msg)?;
-                            out.flush()?;
+                            eprint!("{},", sl.time);
+                            tx.send(buf).expect("send");
+                            cache.insert(sl.time, true);
                         }
-                    },
-                    _ => continue,
+                    }
+                } else {
+                    // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
+                    //
+                    cache.sync();
+                    if cache.entry_count() == 0 {
+                        eprintln!("No traffic, waiting for 2s.");
+                        thread::sleep(Duration::from_secs(2_u64));
+                    } else {
+                        eprint!(".");
+                    }
+                }
+
+                // Whatever happened, sleep for to avoid CPU/network overload
+                if stream_delay != 0 {
+                    thread::sleep(Duration::from_millis(stream_delay as u64));
                 }
             }
-            // sync; sync; sync
-            //
-            out.flush()?;
-            return Ok(());
+        });
+
+        // Now data gathering loop
+        //
+        loop {
+            match rx.recv() {
+                Ok(msg) => match msg.as_str() {
+                    // Timer expired
+                    //
+                    "TIMEOUT" => {
+                        trace!("End of scheduled run.");
+                        break;
+                    }
+                    // Anything else is sent
+                    //
+                    _ => {
+                        write!(out, "{}", msg)?;
+                        out.flush()?;
+                    }
+                },
+                _ => continue,
+            }
         }
+        // sync; sync; sync
+        //
+        out.flush()?;
         Ok(())
     }
 
