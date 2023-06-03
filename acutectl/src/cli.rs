@@ -50,9 +50,6 @@ pub struct Opts {
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
     pub verbose: u8,
-    /// Display utility full version.
-    #[clap(short = 'V', long)]
-    pub version: bool,
     /// Sub-commands (see below).
     #[clap(subcommand)]
     pub subcmd: SubCommand,
