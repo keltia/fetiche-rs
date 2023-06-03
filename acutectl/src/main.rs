@@ -1,6 +1,6 @@
 use std::fs;
 use std::io;
-use std::io::{stderr, Write};
+use std::io::Write;
 
 use anyhow::{anyhow, Result};
 use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
@@ -145,14 +145,14 @@ fn main() -> Result<()> {
         // Standalone `version` command
         //
         SubCommand::Version => {
-            write!(stderr(), "Modules: ").unwrap();
+            eprint!("Modules: ");
             [
                 fetiche_engine::version(),
                 fetiche_formats::version(),
                 fetiche_sources::version(),
             ]
             .iter()
-            .for_each(|s| write!(stderr(), "{s} ").unwrap());
+            .for_each(|s| eprint!("{s} "));
         }
     }
     Ok(())
@@ -168,8 +168,7 @@ pub fn version() -> String {
 /// Display banner
 ///
 fn banner() -> Result<()> {
-    Ok(writeln!(
-        stderr(),
+    Ok(eprintln!(
         r##"
 {}/{} by {}
 {}
@@ -178,5 +177,5 @@ fn banner() -> Result<()> {
         VERSION,
         AUTHORS,
         crate_description!()
-    )?)
+    ))
 }
