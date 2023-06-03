@@ -11,13 +11,11 @@ use std::time::Duration;
 use std::{env, thread, time};
 
 use anyhow::Result;
-
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 #[cfg(unix)]
 use tokio::signal::ctrl_c;
 #[cfg(windows)]
 use tokio::signal::windows::ctrl_c;
-
 use tokio::sync::mpsc;
 
 // If 0, infinite wait, need SIGINT to sop
