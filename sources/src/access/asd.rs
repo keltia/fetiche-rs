@@ -13,21 +13,26 @@
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
 
+use std::io::Write;
+use std::ops::Add;
+
 use anyhow::{anyhow, Result};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use clap::{crate_name, crate_version};
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use format_specs::Asd as InputFormat;
-use format_specs::{Cat21, Format};
+use fetiche_formats::Format;
 
 use crate::filter::Filter;
 use crate::site::{Auth, Site};
-use crate::{http_post, http_post_auth, Fetchable};
+use crate::{http_post, http_post_auth, Fetchable, Sources};
+
+/// Default token
+const DEF_TOKEN: &str = "asd_default_token";
 
 /// Different types of source
 ///
@@ -93,7 +98,7 @@ struct Param {
 pub struct Asd {
     /// Name of the site (site "foo" may use the same interface)
     pub site: String,
-    /// Input format-specs
+    /// Input formats
     pub format: Format,
     /// Username
     pub login: String,
@@ -157,34 +162,72 @@ impl Default for Asd {
 impl Fetchable for Asd {
     /// Authenticate to the site using the supplied credentials and get a token
     ///
-    /// TODO: check whether $config/tokens/<source>.token exists and if yes, check
-    ///       expiration date and possibly re-use it.
-    ///
     fn authenticate(&self) -> Result<String> {
-        //let curr_tok =
+        trace!("authenticate as ({:?})", &self.login);
         // Prepare our submission data
         //
-        trace!("Submit auth as {:?}", &self.login);
         let cred = Credentials {
             email: self.login.clone(),
             password: self.password.clone(),
         };
 
-        // fetch token
+        // Retrieve token from storage
         //
-        let url = format!("{}{}", self.base_url, self.token);
-        trace!("Fetching token through {}…", url);
-        let resp = http_post!(self, url, &cred)?;
-        trace!("resp={:?}", resp);
-        let resp = resp.text()?;
-        let res: Token = serde_json::from_str(&resp)?;
-        trace!("token={}", res.token);
-        Ok(res.token)
+        // Use `<token>-<email>` to allow identity-based tokens
+        //
+        let fname = format!("{}-{}", DEF_TOKEN, self.login);
+        let res = if let Ok(token) = Sources::get_token(&fname) {
+            // Load potential token data
+            //
+            trace!("load stored token");
+            let token: Token = match serde_json::from_str(&token) {
+                Ok(token) => token,
+                Err(_) => return Err(anyhow!("Invalid/no token in {:?}", token)),
+            };
+
+            // Check stored token expiration date
+            //
+            let now: DateTime<Utc> = Utc::now();
+            let tok_time: DateTime<Utc> = Utc.timestamp_opt(token.expired_at, 0).unwrap();
+            if now > tok_time {
+                // Should we delete it?
+                //
+                warn!("Stored token in {:?} has expired, deleting!", fname);
+                return match Sources::purge_token(&fname) {
+                    Ok(()) => Ok("done".to_string()),
+                    Err(e) => Err(e),
+                };
+            }
+            trace!("token is valid");
+            token.token
+        } else {
+            trace!("no token");
+            // fetch token from site
+            //
+            let url = format!("{}{}", self.base_url, self.token);
+            trace!("Fetching token through {}…", url);
+            let resp = http_post!(self, url, &cred)?;
+            trace!("resp={:?}", resp);
+            let resp = resp.text()?;
+            let res: Token = serde_json::from_str(&resp)?;
+            trace!("token={}", res.token);
+
+            // Write fetched token in `tokens` (unless it is during tests)
+            //
+            #[cfg(not(test))]
+            Sources::store_token(&fname, &resp)?;
+
+            res.token
+        };
+
+        // Return final token
+        //
+        Ok(res)
     }
 
     /// Fetch actual data using the aforementioned token
     ///
-    fn fetch(&self, token: &str, args: &str) -> Result<String> {
+    fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
         trace!("Submit parameters");
 
         let f: Filter = serde_json::from_str(args)?;
@@ -192,19 +235,23 @@ impl Fetchable for Asd {
         // If we have a filter defined, extract times
         //
         let data = match f {
+            Filter::Duration(d) => Param {
+                start_time: NaiveDateTime::default(),
+                end_time: NaiveDateTime::default().add(Duration::seconds(d as i64)),
+                sources: vec![Source::As, Source::Wi],
+            },
             Filter::Interval { begin, end } => Param {
                 start_time: begin,
                 end_time: end,
                 sources: vec![Source::As, Source::Wi],
             },
-            Filter::None => Param {
+            _ => Param {
                 start_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
                 end_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
                 sources: vec![Source::As, Source::Wi],
             },
         };
 
-        debug!("param={:?}", data);
         debug!("json={}", json!(&data));
 
         // use token
@@ -234,33 +281,12 @@ impl Fetchable for Asd {
         }
 
         let resp = resp.text()?;
-        Ok(resp)
+        write!(out, "{}", resp)?;
+        out.flush()?;
+        Ok(())
     }
 
-    /// Process every fetched data line and generate the `Cat21` result
-    ///
-    fn process(&self, input: String) -> Result<Vec<Cat21>> {
-        debug!("Reading & transforming…");
-        debug!("IN={:?}", input);
-        let res: Vec<InputFormat> = serde_json::from_str(&input)?;
-
-        debug!("rec={:?}", res);
-        let res: Vec<_> = res
-            .iter()
-            .enumerate()
-            .inspect(|(n, f)| debug!("f={:?}-{:?}", n, f))
-            .map(|(cnt, rec)| {
-                debug!("cnt={}/rec={:?}", cnt, rec);
-                let mut line = Cat21::from(rec);
-                line.rec_num = cnt;
-                line
-            })
-            .collect();
-        debug!("res={:?}", res);
-        Ok(res)
-    }
-
-    /// Return the site's input format-specs
+    /// Return the site's input formats
     ///
     fn format(&self) -> Format {
         Format::Asd
@@ -276,8 +302,10 @@ struct Token {
     token: String,
     /// Don't ask
     gjrt: String,
+    /// Expiration date
     expired_at: i64,
     roles: Vec<String>,
+    /// Fullname
     name: String,
     supervision: Option<String>,
     lang: String,
@@ -307,14 +335,18 @@ impl Default for Token {
 
 #[cfg(test)]
 mod tests {
+    use env_logger;
     use httpmock::prelude::*;
     use serde_json::json;
 
-    use crate::filter::Filter;
-
     use super::*;
 
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
     fn setup_asd(server: &MockServer) -> Asd {
+        init();
         let client = Client::new();
         Asd {
             site: "NONE".to_string(),
@@ -331,12 +363,19 @@ mod tests {
     #[test]
     fn test_get_asd_token() {
         let server = MockServer::start();
+        let now = Utc::now().timestamp() + 3600i64;
         let token = Token {
             token: "FOOBAR".to_string(),
+            expired_at: now,
             ..Default::default()
         };
 
         let jtok = json!(token).to_string();
+        let cred = Credentials {
+            email: "user".to_string(),
+            password: "pass".to_string(),
+        };
+        let cred = json!(cred).to_string();
         let m = server.mock(|when, then| {
             when.method(POST)
                 .header(
@@ -344,13 +383,14 @@ mod tests {
                     format!("{}/{}", crate_name!(), crate_version!()),
                 )
                 .header("content-type", "application/json")
+                .body(&cred)
                 .path("/api/security/login");
             then.status(200).body(&jtok);
         });
 
         let site = setup_asd(&server);
         let t = site.authenticate();
-
+        dbg!(&t);
         m.assert();
         assert!(t.is_ok());
         assert_eq!("FOOBAR", t.as_ref().unwrap());

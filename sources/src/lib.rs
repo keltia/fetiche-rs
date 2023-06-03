@@ -7,22 +7,22 @@
 //!
 
 use std::fmt::Debug;
+use std::io::Write;
 
 use anyhow::Result;
 
-use format_specs::{Cat21, Format};
-
 // Re-export these modules for a shorted import path.
 //
-pub use config::*;
+pub use access::*;
+use fetiche_formats::Format;
 pub use filter::*;
-pub use s::*;
 pub use site::*;
+pub use sources::*;
 
-mod config;
+mod access;
 mod filter;
-mod s;
 mod site;
+mod sources;
 
 #[macro_use]
 mod macros;
@@ -34,9 +34,34 @@ pub trait Fetchable: Debug {
     /// If credentials are needed, get a token for subsequent operations
     fn authenticate(&self) -> Result<String>;
     /// Fetch actual data
-    fn fetch(&self, token: &str, args: &str) -> Result<String>;
-    /// Transform fetched data into Cat21
-    fn process(&self, input: String) -> Result<Vec<Cat21>>;
-    /// Returns the input format-specs
+    fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()>;
+    /// Returns the input formats
     fn format(&self) -> Format;
+}
+
+/// This trait enables us to manage different ways of connecting and streaming data under
+/// a single interface.  The object can connect to a TCP stream or create one by repeatedly calling
+/// some API (cf. Opensky).
+///
+pub trait Streamable: Debug {
+    /// If credentials are needed, get a token for subsequent operations
+    fn authenticate(&self) -> Result<String>;
+    /// Stream actual data
+    fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()>;
+    /// Returns the input formats
+    fn format(&self) -> Format;
+}
+
+/// Default configuration filename
+const CONFIG: &str = "sources.hcl";
+const CVERSION: usize = 3;
+
+#[cfg(unix)]
+const BASEDIR: &str = ".config";
+
+/// Relative path to `BASEDIR` for storing auth tokens
+const TOKEN_BASE: &str = "tokens";
+
+pub fn version() -> String {
+    format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }

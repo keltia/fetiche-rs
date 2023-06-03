@@ -4,7 +4,7 @@
 //! way of fetching data from different sources.  This is written because there are as many ways
 //! to authenticate and connect as there are sources more or less.
 //!
-//! The different formats are in the `format-specs` crate and the sources' parameters in the `site` crate.
+//! The different formats are in the `formats` crate and the sources' parameters in the `site` crate.
 //!
 //! Include Task-related code.
 //!
@@ -18,9 +18,12 @@
 /// # use anyhow::Result;
 /// # use std::path::PathBuf;
 /// # use log::info;
-/// # fn main() -> Result<()> {
+/// use anyhow::anyhow;
 /// use cat21conv::Task;
-/// use format_specs::{Cat21, Format};
+/// use fetiche_formats::{Cat21, Format};
+/// use fetiche_sources::Flow;
+///
+/// # fn main() -> Result<()> {
 ///
 /// let what = "foo.json";
 /// let format = Format::None;
@@ -39,18 +42,24 @@
 ///
 /// // Fetch from network
 /// //
-/// use format_specs::Cat21;
+/// use fetiche_formats::Cat21;
 ///
-/// use sources::{Sites,Filter,Site};
+/// use fetiche_sources::{Sources,Filter,Site};
 ///
 /// # fn main() -> Result<()> {
-/// # let name = "eih";
+/// # use anyhow::anyhow;
+/// # use fetiche_sources::Flow;
+/// let name = "eih";
 /// # let filter = Filter::None;
 ///
-/// let cfg = Sites::load(&Some(PathBuf::from("config.hcl")))?;
+/// let cfg = Sources::load(&Some(PathBuf::from("config.hcl")))?;
 ///
 /// let site = Site::load(name, &cfg)?;
-/// let res: Vec<Cat21> = Task::new(name).site(site).with(filter).run()?;
+/// let site = match site {
+///     Flow::Fetchable(s) => s,
+///     _ => return Err(anyhow!("this is not streamable"))
+/// };
+/// let res: Vec<Cat21> = Task::new(name).site(site).when(filter).run()?;
 ///
 /// # Ok(())
 /// # }
@@ -64,8 +73,8 @@ use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
 use log::debug;
 
-use format_specs::{Cat21, Format};
-use sources::{Fetchable, Filter};
+use fetiche_formats::{Cat21, Format};
+use fetiche_sources::{Fetchable, Filter};
 
 pub(crate) const VERSION: &str = crate_version!();
 pub(crate) const NAME: &str = crate_name!();
@@ -80,10 +89,10 @@ pub fn version() -> String {
 ///
 #[derive(Debug, Default)]
 pub enum Input {
-    /// File-based means we need the format-specs beforehand and a pathname
+    /// File-based means we need the formats beforehand and a pathname
     ///
     File {
-        /// Input format-specs
+        /// Input formats
         format: Format,
         /// Path of the input file
         path: PathBuf,
@@ -92,7 +101,7 @@ pub enum Input {
     /// file.  The `site` is a `Fetchable` object generated from `Config`.
     ///
     Network {
-        /// Input format-specs
+        /// Input formats
         format: Format,
         /// Site itself
         site: Box<dyn Fetchable>,
@@ -139,10 +148,10 @@ impl Task {
         self
     }
 
-    /// Set the input format-specs (from cmdline for files)
+    /// Set the input formats (from cmdline for files)
     ///
     pub fn format(&mut self, fmt: Format) -> &mut Self {
-        debug!("Add format-specs {:?}", fmt);
+        debug!("Add formats {:?}", fmt);
         if let Input::File { path, .. } = &self.input {
             let path = path.clone();
             self.input = Input::File { format: fmt, path }
@@ -163,9 +172,17 @@ impl Task {
 
     /// Add a date filter if specified
     ///
-    pub fn with(&mut self, f: Filter) -> &mut Self {
+    pub fn when(&mut self, f: Filter) -> &mut Self {
         debug!("Add date filter {:?}", f);
         self.args = f.to_string();
+        self
+    }
+
+    /// Add an optional argument
+    ///
+    pub fn args(&mut self, s: &str) -> &mut Self {
+        debug!("Add argument {}", s);
+        self.args = s.to_string();
         self
     }
 
@@ -174,7 +191,7 @@ impl Task {
     pub fn run(&mut self) -> Result<Vec<Cat21>> {
         debug!("…run()…");
         match &self.input {
-            // Input::File is simple, we have the format-specs
+            // Input::File is simple, we have the formats
             //
             Input::File { format, path } => {
                 let res = fs::read_to_string(path)?;
@@ -189,13 +206,21 @@ impl Task {
                 // Fetch data as bytes
                 //
                 let token = site.authenticate()?;
-                let data = site.fetch(&token, &self.args)?;
-                debug!("{}", &data);
-                let res = site.process(data)?;
+
+                let mut data = vec![];
+                site.fetch(&mut data, &token, &self.args)?;
+                let data = String::from_utf8(data)?;
+                debug!("{}", data);
+
+                let fmt = site.format();
+                let res: Vec<Cat21> = match fmt {
+                    Format::Asd => Cat21::from_asd(&data)?,
+                    _ => unimplemented!(),
+                };
                 debug!("{:?} as {}", res, format);
                 Ok(res)
             }
-            Input::Nothing => Err(anyhow!("no format-specs specified")),
+            Input::Nothing => Err(anyhow!("no formats specified")),
         }
     }
 }

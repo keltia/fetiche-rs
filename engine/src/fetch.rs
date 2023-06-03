@@ -1,23 +1,22 @@
-//! Bare-bone task engine
-//!
-//! Add a simple API to specify both network and file based input.  Only fetch data, no processing
-//! like in `cat21conv`.
+//! `Fetch` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use log::{debug, error, trace};
+use log::trace;
 
-use format_specs::Format;
-use sources::Fetchable;
+use fetiche_formats::Format;
+use fetiche_sources::{Fetchable, Filter};
 
-use crate::{Filter, Input};
+use crate::{Input, Runnable};
 
-/// The task itself
+/// The Fetch task
+///
 #[derive(Debug)]
-pub struct Task {
+pub struct Fetch {
     /// name for the task
     pub name: String,
     /// Input type, File or Network
@@ -26,12 +25,12 @@ pub struct Task {
     pub args: String,
 }
 
-impl Task {
+impl Fetch {
     /// Initialize our environment
     ///
     pub fn new(name: &str) -> Self {
-        debug!("New task {}", name);
-        Task {
+        trace!("New Fetch {}", name);
+        Fetch {
             name: name.to_owned(),
             input: Input::Nothing,
             args: "".to_string(),
@@ -53,10 +52,10 @@ impl Task {
         self
     }
 
-    /// Set the input format-specs (from cmdline for files)
+    /// Set the input formats (from cmdline for files)
     ///
     pub fn format(&mut self, fmt: Format) -> &mut Self {
-        trace!("Add format-specs {:?}", fmt);
+        trace!("Add formats {:?}", fmt);
         if let Input::File { path, .. } = &self.input {
             let path = path.clone();
             self.input = Input::File { format: fmt, path }
@@ -78,15 +77,17 @@ impl Task {
     /// Add a date filter if specified
     ///
     pub fn with(&mut self, f: Filter) -> &mut Self {
-        trace!("Add date filter {:?}", f);
+        trace!("Add filter {}", f);
         self.args = f.to_string();
         self
     }
+}
 
+impl Runnable for Fetch {
     /// The heart of the matter: fetch data
     ///
-    pub fn run(&mut self) -> Result<String> {
-        trace!("…run()…");
+    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
+        trace!("Fetch::run()");
         match &self.input {
             // Input::Network is more complicated and rely on the Site
             //
@@ -94,19 +95,21 @@ impl Task {
                 // Fetch data as bytes
                 //
                 let token = site.authenticate()?;
-                let data = site.fetch(&token, &self.args)?;
-                debug!("{}", &data);
-                Ok(data)
+                Ok(site.fetch(out, &token, &self.args)?)
             }
-            Input::File { path, .. } => Ok(fs::read_to_string(path)?),
-            Input::Nothing => Err(anyhow!("no format-specs specified")),
+            Input::File { path, .. } => {
+                let r = fs::read_to_string(path)?;
+                Ok(write!(out, "{}", r)?)
+            }
+            Input::Stream { .. } => Err(anyhow!("streaming not supported, use Streamable")),
+            Input::Nothing => Err(anyhow!("no formats specified")),
         }
     }
 }
 
-impl Default for Task {
+impl Default for Fetch {
     fn default() -> Self {
-        Task::new("default")
+        Fetch::new("default")
     }
 }
 
@@ -115,8 +118,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_task_new() {
-        let t = Task::new("foo");
+    fn test_fetch_new() {
+        let t = Fetch::new("foo");
 
         assert_eq!("foo", t.name);
         match t.input {
@@ -126,8 +129,8 @@ mod tests {
     }
 
     #[test]
-    fn test_task_none() {
-        let mut t = Task::new("foo");
+    fn test_fetch_none() {
+        let mut t = Fetch::new("foo");
         t.path("/nonexistent");
 
         assert_eq!("foo", t.name);

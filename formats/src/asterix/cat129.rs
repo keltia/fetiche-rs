@@ -7,7 +7,7 @@ use crate::{Position, DEF_SAC, DEF_SIC};
 /// As the number implies (> 127), it is created to describe a special Civil/Military category,
 /// specialised for drones.
 ///
-/// See: https://www.eurocontrol.int/sites/default/files/2019-06/cat129p29ed12_0.pdf
+/// See: <https://www.eurocontrol.int/sites/default/files/2019-06/cat129p29ed12_0.pdf>
 ///
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]

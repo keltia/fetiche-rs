@@ -5,15 +5,17 @@
 //!
 //! JSON endpoint added later by ASD in Nov. 2022.
 
+use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
+use log::debug;
 use serde::Deserialize;
 
 use crate::drone::DronePoint;
-use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
+use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated};
 
 /// Our input structure from the json file coming out of the main ASD site
 ///
-/// Data can be obtained either in CSV or JSON format-specs, we prefer the latter.
+/// Data can be obtained either in CSV or JSON formats, we prefer the latter.
 ///
 /// NOTE: Some fields are String and not the actual type (f32 for example) because there
 /// are apparently stored as DECIMAL in their database and not as FLOAT.  There are then
@@ -31,7 +33,7 @@ pub struct Asd {
     pub source: String,
     // Point/record ID
     pub location: u32,
-    // Date of event (in the non standard YYYY-MM-DD HH:MM:SS format-specs)
+    // Date of event (in the non standard YYYY-MM-DD HH:MM:SS formats)
     pub timestamp: String,
     // $7 (actually f32)
     pub latitude: String,
@@ -63,6 +65,9 @@ pub struct Asd {
     pub station_lon: Option<String>,
 }
 
+convert_to!(from_asd, Asd, Cat21);
+convert_to!(from_asd, Asd, DronePoint);
+
 /// For privacy reasons, we truncate the drone ID value to something not unique
 ///
 #[cfg(feature = "privacy")]
@@ -80,6 +85,18 @@ impl From<&Asd> for Cat21 {
     ///
     /// The default values are arbitrary and taken from the original `aeroscope-CDG.sh` script
     /// by Marc Gravis.
+    ///
+    /// The following fields are lost:
+    /// - journey
+    /// - location
+    /// - station_lat/lon
+    /// - station_name
+    /// - heading
+    /// - home_lat/lon
+    /// - home_height
+    /// - model
+    /// - gps
+    /// - rssi
     ///
     fn from(line: &Asd) -> Self {
         let tod = NaiveDateTime::parse_from_str(&line.timestamp, "%Y-%m-%d %H:%M:%S")

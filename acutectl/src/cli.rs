@@ -22,16 +22,14 @@
 //! `completion` is here just to configure the various shells completion system.
 //!
 //! A `Site` is a `Fetchable` object with the corresponding trait methods (`authenticate()` & `fetch()`)
-//! from the `sources` crate.  File formats are from the `format-specs` crate.
+//! from the `sources` crate.  File formats are from the `formats` crate.
 //!
 //! [InfluxDB]: https://www.influxdata.com/
 //!
 
 use std::path::PathBuf;
 
-use clap::{
-    crate_authors, crate_description, crate_name, crate_version, Parser, Subcommand, ValueEnum,
-};
+use clap::{crate_authors, crate_description, crate_name, crate_version, Parser, ValueEnum};
 use clap_complete::shells::Shell;
 
 /// CLI options
@@ -52,9 +50,6 @@ pub struct Opts {
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
     pub verbose: u8,
-    /// Display utility full version.
-    #[clap(short = 'V', long)]
-    pub version: bool,
     /// Sub-commands (see below).
     #[clap(subcommand)]
     pub subcmd: SubCommand,
@@ -75,10 +70,14 @@ pub enum SubCommand {
     Completion(ComplOpts),
     /// Fetch data from specified site
     Fetch(FetchOpts),
-    /// Import into InfluxDB
+    /// Import into InfluxDB (WIP)
     Import(ImportOpts),
-    /// Handle drone data
+    /// List information about formats and sources
     List(ListOpts),
+    /// Stream from a source
+    Stream(StreamOpts),
+    /// List all package versions
+    Version,
 }
 
 // ------
@@ -87,19 +86,25 @@ pub enum SubCommand {
 ///
 #[derive(Debug, Parser)]
 pub struct FetchOpts {
-    /// Start the data at specified date (optional)
-    #[clap(short = 'B', long)]
-    pub begin: Option<String>,
-    /// End date (optional)
-    #[clap(short = 'E', long)]
-    pub end: Option<String>,
-    /// Output file.
-    #[clap(short = 'o', long)]
-    pub output: Option<PathBuf>,
     /// We want today only
     #[clap(long)]
     pub today: bool,
-    /// site name
+    /// Start date - YYYY-MM-DD HH:MM:SS -- optional
+    #[clap(short = 'B', long)]
+    pub begin: Option<String>,
+    /// End date - YYYY-MM-DD HH:MM:SS -- optional
+    #[clap(short = 'E', long)]
+    pub end: Option<String>,
+    /// Duration in seconds (negative = back in time) -- optional
+    #[clap(short = 'D', long)]
+    pub since: Option<i32>,
+    /// Keyword filter: e.g. "--keyword icao24:foobar" -- optional
+    #[clap(short = 'K', long)]
+    pub keyword: Option<String>,
+    /// Output file -- default is stdout
+    #[clap(short = 'o', long)]
+    pub output: Option<PathBuf>,
+    /// Source name -- (see "list sources")
     pub site: String,
 }
 
@@ -165,8 +170,52 @@ pub struct ListOpts {
 ///
 #[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq, ValueEnum)]
 pub enum ListSubCommand {
-    /// List all formats in `format-specs`
+    /// List all formats in `formats`
     Formats,
     /// List all sources from `sources.hcl`
     Sources,
+    /// List all currently stored tokens
+    Tokens,
+}
+
+// -----
+
+/// Options for fetching data with basic filtering and an optional output file.
+///
+#[derive(Debug, Parser)]
+pub struct StreamOpts {
+    // ASD
+    //
+    /// We want today only
+    #[clap(long)]
+    pub today: bool,
+    /// Start date - YYYY-MM-DD HH:MM:SS -- optional
+    #[clap(short = 'B', long)]
+    pub begin: Option<String>,
+    /// End date - YYYY-MM-DD HH:MM:SS -- optional
+    #[clap(short = 'E', long)]
+    pub end: Option<String>,
+
+    // Opensky
+    //
+    /// Start the stream at EPOCH + `start`
+    #[clap(short = 'S', long)]
+    pub start: Option<i64>,
+    /// Duration in seconds (negative = back in time) -- default to 0 (do not stop)
+    #[clap(short = 'D', long, default_value = "0")]
+    pub duration: u32,
+    /// Keyword filter: e.g. "--keyword icao24:foobar" -- optional
+    #[clap(short = 'K', long)]
+    pub keyword: Option<String>,
+    /// Insert a slight delay between calls in ms, default is 1000
+    #[clap(long, default_value = "1000")]
+    pub delay: u32,
+
+    // General options
+    //
+    /// Output file -- default is stdout
+    #[clap(short = 'o', long)]
+    pub output: Option<PathBuf>,
+    /// Source name -- (see "list sources")
+    pub site: String,
 }

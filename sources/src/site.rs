@@ -17,11 +17,10 @@ use anyhow::{anyhow, Result};
 use log::trace;
 use serde::{Deserialize, Serialize};
 
-use format_specs::Format;
+use fetiche_formats::Format;
 
-use crate::config::Sources;
-use crate::Fetchable;
-use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky};
+use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky, Streamable};
+use crate::{Fetchable, Sources};
 
 /// Describe what a site is and associated credentials.
 ///
@@ -94,24 +93,45 @@ impl Display for Auth {
 #[serde(rename_all = "lowercase")]
 pub enum DataType {
     /// Plain ADS-B traffic
-    #[default]
     Adsb,
     /// Drone specific traffic
     Drone,
+    /// Invalid datatype
+    #[default]
+    Invalid,
 }
 
-macro_rules! insert_format {
-    ($name:ident, $fmt:ident, $site:ident, $($list:ident),+)  => {
-        match $fmt {
-        $(
-            Format::$list => {
-                let s = $list::new().load($site).clone();
-                Ok(Box::new(s))
-            },
-        )+
-            _ => Err(anyhow!("invalid site {}", $name)),
+impl From<&str> for DataType {
+    fn from(value: &str) -> Self {
+        let value = value.to_lowercase();
+        match value.as_str() {
+            "adsb" => DataType::Adsb,
+            "drone" => DataType::Drone,
+            _ => DataType::Invalid,
         }
     }
+}
+
+impl Display for DataType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                DataType::Adsb => "adsb",
+                DataType::Drone => "drone",
+                DataType::Invalid => "none",
+            }
+        )
+    }
+}
+
+/// We have two different traits now
+///
+#[derive(Debug)]
+pub enum Flow {
+    Fetchable(Box<dyn Fetchable>),
+    Streamable(Box<dyn Streamable>),
 }
 
 impl Site {
@@ -123,18 +143,46 @@ impl Site {
 
     /// Load site by checking whether it is present in the configuration file
     ///
-    pub fn load(name: &str, cfg: &Sources) -> Result<Box<dyn Fetchable>> {
+    pub fn load(name: &str, cfg: &Sources) -> Result<Flow> {
         trace!("Loading site {}", name);
         match cfg.get(name) {
             Some(site) => {
                 let fmt = site.format();
-                insert_format!(name, fmt, site, Asd, Aeroscope, Safesky, Opensky)
+
+                // We have to explicitly list all supported formats as we return
+                // an enum whether the site will be streamable or not
+                //
+                match fmt {
+                    Format::Asd => {
+                        let s = Asd::new().load(site).clone();
+                        Ok(Flow::Fetchable(Box::new(s)))
+                    }
+                    Format::Aeroscope => {
+                        let s = Aeroscope::new().load(site).clone();
+                        Ok(Flow::Fetchable(Box::new(s)))
+                    }
+                    Format::Safesky => {
+                        let s = Safesky::new().load(site).clone();
+                        Ok(Flow::Fetchable(Box::new(s)))
+                    }
+                    // For now, only Opensky support streaming
+                    //
+                    Format::Opensky => {
+                        let s = Opensky::new().load(site).clone();
+                        if site.has("stream") {
+                            Ok(Flow::Streamable(Box::new(s)))
+                        } else {
+                            Ok(Flow::Fetchable(Box::new(s)))
+                        }
+                    }
+                    _ => Err(anyhow!("invalid site {}", name)),
+                }
             }
             None => Err(anyhow!("no such site {name}")),
         }
     }
 
-    /// Return the site format-specs
+    /// Return the site formats
     ///
     pub fn format(&self) -> Format {
         self.format.as_str().into()
@@ -190,8 +238,9 @@ impl Display for Site {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::path::PathBuf;
+
+    use rstest::rstest;
 
     use crate::makepath;
 
@@ -288,5 +337,15 @@ mod tests {
 
         let s = s.unwrap();
         assert!(s.has("get"));
+    }
+
+    #[rstest]
+    #[case("adsb", DataType::Adsb)]
+    #[case("ads-b", DataType::Invalid)]
+    #[case("drone", DataType::Drone)]
+    #[case("drones", DataType::Invalid)]
+    #[case("foobar", DataType::Invalid)]
+    fn test_datatype_from(#[case] s: &str, #[case] dt: DataType) {
+        assert_eq!(dt, s.into());
     }
 }

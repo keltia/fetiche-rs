@@ -4,11 +4,13 @@
 //! 1. use the configured login & password to obtain a token
 //! 2. use the token to get the data
 //!
-//! Data fetched is json and not csv but our struct in `format-specs/aeroscope.rs`  is compatible with
+//! Data fetched is json and not csv but our struct in `formats/aeroscope.rs`  is compatible with
 //! both, even flattening the different lat/long structs in a sensible way.
 //!
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
+
+use std::io::Write;
 
 use anyhow::Result;
 use clap::{crate_name, crate_version};
@@ -16,8 +18,7 @@ use log::{debug, trace};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use format_specs::Aeroscope as InputFormat;
-use format_specs::{Cat21, Format};
+use fetiche_formats::Format;
 
 use crate::site::{Auth, Site};
 use crate::{http_get_auth, http_post, Fetchable};
@@ -44,7 +45,7 @@ struct Token {
 /// ///
 #[derive(Clone, Debug)]
 pub struct Aeroscope {
-    /// Input format-specs
+    /// Input formats
     pub format: Format,
     /// Auth data, username
     pub login: String,
@@ -133,7 +134,7 @@ impl Fetchable for Aeroscope {
 
     /// Fetch actual data from the site as a long String.
     ///
-    fn fetch(&self, token: &str, _args: &str) -> Result<String> {
+    fn fetch(&self, out: &mut dyn Write, token: &str, _args: &str) -> Result<()> {
         debug!("Now fetching data");
 
         // Use the token to authenticate ourselves
@@ -143,37 +144,12 @@ impl Fetchable for Aeroscope {
         let resp = resp?.text()?;
 
         debug!("{} bytes read. ", resp.len());
-        Ok(resp)
+        write!(out, "{}", resp)?;
+        out.flush()?;
+        Ok(())
     }
 
-    /// Process data fetch in previous stage and render it as wanted
-    ///
-    fn process(&self, input: String) -> Result<Vec<Cat21>> {
-        debug!("Reading & transforming…");
-        debug!("IN={:?}", input);
-        let res: Vec<InputFormat> = serde_json::from_str(&input)?;
-
-        let res = res
-            .iter()
-            // Skip if element doesn't have any position
-            .filter(|line| line.coordinate.latitude != 0.0 && line.coordinate.longitude != 0.0)
-            // Add "line number" for output
-            .enumerate()
-            // Debug
-            .inspect(|(n, f)| println!("res={:?}-{:?}", n, f))
-            // Convert
-            .map(|(cnt, rec)| {
-                debug!("rec={:?}", rec);
-                let mut line = Cat21::from(rec);
-                line.rec_num = cnt;
-                line
-            })
-            .collect();
-        debug!("res={:?}", res);
-        Ok(res)
-    }
-
-    /// Returns the site's input format-specs
+    /// Returns the site's input formats
     ///
     fn format(&self) -> Format {
         Format::Aeroscope
@@ -182,12 +158,10 @@ impl Fetchable for Aeroscope {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use crate::aeroscope::Aeroscope as InputFormat;
-
     use httpmock::prelude::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_get_aeroscope_token() {

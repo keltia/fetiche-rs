@@ -1,27 +1,40 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use log::{info, trace};
-use sources::{Filter, Site, Sources};
 
-use crate::{FetchOpts, Task};
+use fetiche_engine::{Fetch, Job};
+use fetiche_sources::{Filter, Flow, Site, Sources};
+
+use crate::FetchOpts;
 
 /// Actual fetching of data from a given site
 ///
 pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<String> {
     trace!("fetch_from_site({:?})", fopts.site);
 
-    check_args(&fopts)?;
+    check_args(fopts)?;
 
     let name = &fopts.site;
-    let site = Site::load(name, cfg)?;
-    let filter = filter_from_opts(&fopts)?;
+    let site = match Site::load(name, cfg)? {
+        Flow::Fetchable(s) => s,
+        _ => return Err(anyhow!("this site is not fetchable")),
+    };
+    let filter = filter_from_opts(fopts)?;
 
     info!("Fetching from network site {}", name);
 
     // Full json array with all point
     //
-    let data = Task::new(name).site(site).with(filter).run()?;
-    trace!("data={}", data);
+    let mut task = Fetch::new(name);
+
+    task.site(site).with(filter);
+
+    let mut data = vec![];
+
+    Job::new("fetch_from_site")
+        .add(Box::new(task))
+        .run(&mut data)?;
+    let data = String::from_utf8(data)?;
     Ok(data)
 }
 
@@ -44,11 +57,11 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
             .and_hms_opt(23, 59, 59)
             .unwrap();
 
-        Ok(Filter::from(begin, end))
+        Ok(Filter::interval(begin, end))
     } else if opts.begin.is_some() {
         // Assume both are there, checked elsewhere
         //
-        // We have to parse both arguments ourselves because it uses its own format-specs
+        // We have to parse both arguments ourselves because it uses its own formats
         //
         let begin = match &opts.begin {
             Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?,
@@ -59,7 +72,20 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
             None => return Err(anyhow!("Bad -E parameter")),
         };
 
-        Ok(Filter::from(begin, end))
+        Ok(Filter::interval(begin, end))
+    } else if opts.keyword.is_some() {
+        let keyword = opts.keyword.clone().unwrap();
+
+        let v: Vec<_> = keyword.split(':').collect();
+        let (k, v) = (v[0], v[1]);
+        Ok(Filter::Keyword {
+            name: k.to_string(),
+            value: v.to_string(),
+        })
+    } else if opts.since.is_some() {
+        let d = opts.since.unwrap();
+
+        Ok(Filter::Duration(d))
     } else {
         Ok(Filter::default())
     }

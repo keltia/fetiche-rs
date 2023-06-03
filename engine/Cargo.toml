@@ -1,14 +1,14 @@
 [package]
-name = "fetiche-sources"
-version = "0.9.0"
+name = "fetiche-engine"
+version = "0.4.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
-description = "Fetiche component for access methods to connect/fetch data."
+description = "Engine component of Fetiche."
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/keltia/drone-gencsv"
-categories = ["aerospace::drones"]
-keywords = ["cat21", "asterix", "drones", "aeronautical-data", "hcl", "fetiche"]
+categories = ["aerospace::drones", "aerospace"]
+keywords = ["aeronautical-data", "transformations", "fetiche"]
 
 [features]
 default = ["privacy"]
@@ -26,24 +26,11 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
-clap.workspace = true
 env_logger.workspace = true
 fetiche-formats.workspace = true
+fetiche-sources.workspace = true
 hcl-rs.workspace = true
-home.workspace = true
 log.workspace = true
 reqwest.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 
-csv = "1.1"
-mini-moka = "0.10"
-percent-encoding = "2.2"
-serde_repr = "0.1"
-tabled = "0.12"
-signal-hook = "0.3"
-tokio = { version = "1.28", features = ["full"] }
-
-[dev-dependencies]
-httpmock = { version = "0.6", features = ["colored", "color", "clap"] }
-rstest = "0"
+nom = "7"

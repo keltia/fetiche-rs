@@ -7,12 +7,13 @@
 //! Format is take from the CSV given as an example
 //!
 
+use std::io::Write;
+
 use anyhow::{anyhow, Result};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-use format_specs::Cat21;
-use format_specs::{Format, Position};
+use fetiche_formats::{Format, Position};
 
 use crate::site::{Auth, Site};
 use crate::Fetchable;
@@ -96,11 +97,7 @@ impl Fetchable for Safesky {
         Ok(self.api_key.clone())
     }
 
-    fn fetch(&self, _token: &str, _args: &str) -> Result<String> {
-        todo!()
-    }
-
-    fn process(&self, _input: String) -> Result<Vec<Cat21>> {
+    fn fetch(&self, _out: &mut dyn Write, _token: &str, _args: &str) -> Result<()> {
         todo!()
     }
 
@@ -111,13 +108,13 @@ impl Fetchable for Safesky {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use clap::{crate_name, crate_version};
     use httpmock::Method::GET;
     use httpmock::MockServer;
 
-    fn setup_safesky(server: &MockServer) -> Safesky {
+    use super::*;
+
+    fn setup_safesky(_server: &MockServer) -> Safesky {
         let client = Client::new();
         Safesky {
             format: Format::Safesky,
@@ -131,7 +128,7 @@ mod tests {
     #[test]
     fn test_safesky_load() {
         let server = MockServer::start();
-        let m = server.mock(|when, then| {
+        let _m = server.mock(|when, then| {
             when.method(GET)
                 .header(
                     "user-agent",
@@ -142,6 +139,6 @@ mod tests {
             then.status(200);
         });
 
-        let site = setup_safesky(&server);
+        let _site = setup_safesky(&server);
     }
 }

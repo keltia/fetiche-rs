@@ -1,27 +1,26 @@
-//! Main configuration management and loading
+//! This is the exposed part of the `fetiche-sources` API.
 //!
+
 use std::collections::btree_map::{IntoValues, Iter, Keys, Values, ValuesMut};
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fs;
-use std::fs::create_dir_all;
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
+use std::time::UNIX_EPOCH;
 
 use anyhow::{anyhow, Result};
+use chrono::{DateTime, Utc};
 #[cfg(unix)]
 use home::home_dir;
 use log::{debug, trace};
 use serde::{Deserialize, Serialize};
-
-use crate::{makepath, Site};
-
-/// Default configuration filename
-const CONFIG: &str = "sources.hcl";
-const CVERSION: usize = 3;
+use tabled::builder::Builder;
+use tabled::settings::Style;
 
 #[cfg(unix)]
-const BASEDIR: &str = ".config";
+use crate::BASEDIR;
+use crate::{makepath, Auth, Site, CONFIG, CVERSION, TOKEN_BASE};
 
 /// List of sources, this is the only exposed struct from here.
 ///
@@ -29,24 +28,29 @@ const BASEDIR: &str = ".config";
 pub struct Sources(BTreeMap<String, Site>);
 
 impl Sources {
-    /// Returns the path of the default config file
+    /// Returns the path of the default config directory
     ///
     #[cfg(unix)]
-    pub fn default_file() -> PathBuf {
+    pub fn config_path() -> PathBuf {
         let homedir = home_dir().unwrap();
-        let def: PathBuf = makepath!(homedir, BASEDIR, "drone-utils", CONFIG);
-        trace!("Default file: {:?}", def);
+        let def: PathBuf = makepath!(homedir, BASEDIR, "drone-utils");
+        def
+    }
+
+    /// Returns the path of the default config directory
+    ///
+    #[cfg(windows)]
+    pub fn config_path() -> PathBuf {
+        let homedir = env!("LOCALAPPDATA");
+
+        let def: PathBuf = makepath!(homedir, "drone-utils");
         def
     }
 
     /// Returns the path of the default config file
     ///
-    #[cfg(windows)]
     pub fn default_file() -> PathBuf {
-        let homedir = env!("LOCALAPPDATA");
-
-        let def: PathBuf = makepath!(homedir, "drone-utils", CONFIG);
-        def
+        Self::config_path().join(CONFIG)
     }
 
     /// Install default files
@@ -55,7 +59,7 @@ impl Sources {
         // Create config directory if needed
         //
         if !dir.exists() {
-            create_dir_all(dir)?
+            fs::create_dir_all(dir)?
         }
 
         // Copy content of `sources.hcl`  into place.
@@ -96,6 +100,140 @@ impl Sources {
         Ok(Sources(sources))
     }
 
+    /// List of currently known sources into a nicely formatted string.
+    ///
+    pub fn list(&self) -> Result<String> {
+        let header = vec!["Name", "Type", "Format", "URL", "Auth"];
+
+        let mut builder = Builder::default();
+        builder.set_header(header);
+
+        self.0.iter().for_each(|(n, s)| {
+            let mut row = vec![];
+
+            let dtype = s.dtype.clone().to_string();
+            let format = s.format.clone();
+            let base_url = s.base_url.clone();
+            row.push(n);
+            row.push(&dtype);
+            row.push(&format);
+            row.push(&base_url);
+            let auth = if let Some(auth) = &s.auth {
+                match auth {
+                    Auth::Login { .. } => "login",
+                    Auth::Token { .. } => "token",
+                    Auth::Anon => "open",
+                    Auth::Key { .. } => "API key",
+                }
+                .to_string()
+            } else {
+                "anon".to_owned()
+            };
+            row.push(&auth);
+            builder.push_record(row);
+        });
+
+        let table = builder.build().with(Style::rounded()).to_string();
+        let table = format!("Listing all sources:\n\n{table}");
+        Ok(table)
+    }
+}
+
+// Token management
+//
+impl Sources {
+    /// Returns the path of the directory storing tokens
+    ///
+    pub fn token_path() -> PathBuf {
+        Self::config_path().join(TOKEN_BASE)
+    }
+
+    /// Return the content of named token
+    ///
+    pub fn get_token(name: &str) -> Result<String> {
+        let t = Self::token_path().join(name);
+        trace!("get_token: {t:?}");
+        if t.exists() {
+            Ok(fs::read_to_string(t)?)
+        } else {
+            Err(anyhow!("{:?}: No such file", t))
+        }
+    }
+
+    /// Store (overwrite) named token
+    ///
+    pub fn store_token(name: &str, data: &str) -> Result<()> {
+        let p = Self::token_path();
+
+        // Check token cache
+        //
+        if !p.exists() {
+            // Create it
+            //
+            trace!("create token store: {p:?}");
+
+            fs::create_dir_all(p)?
+        }
+        let t = Self::token_path().join(name);
+        trace!("store_token: {t:?}");
+        Ok(fs::write(t, data)?)
+    }
+
+    /// Purge expired token
+    ///
+    pub fn purge_token(name: &str) -> Result<()> {
+        trace!("purge expired token");
+        let p = Self::token_path().join(name);
+        Ok(fs::remove_file(p)?)
+    }
+
+    /// List tokens
+    ///
+    /// NOTE: we do not show data from each token (like expiration, etc.) because at this point
+    ///       we do not know which kind of token each one is.
+    ///
+    pub fn list_tokens() -> Result<String> {
+        trace!("listing tokens");
+
+        let header = vec!["Path", "Created at"];
+
+        let mut builder = Builder::default();
+        builder.set_header(header);
+
+        let p = Self::token_path();
+        if let Ok(dir) = fs::read_dir(p) {
+            for fname in dir {
+                let mut row = vec![];
+
+                if let Ok(fname) = fname {
+                    // Using strings is easier
+                    //
+                    let name = format!("{}", fname.file_name().to_string_lossy());
+                    row.push(name.clone());
+
+                    let st = fname.metadata().unwrap();
+                    let modified = DateTime::<Utc>::from(st.modified().unwrap());
+                    let modified = format!("{}", modified);
+                    row.push(modified);
+                } else {
+                    row.push("INVALID".to_string());
+                    let origin = format!("{}", DateTime::<Utc>::from(UNIX_EPOCH));
+                    row.push(origin);
+                }
+                builder.push_record(row);
+            }
+        }
+        let table = builder.build().with(Style::rounded()).to_string();
+        let table = format!("Listing all tokens:\n{}", table);
+        Ok(table)
+    }
+}
+
+// -----
+
+/// Helper methods
+///
+impl Sources {
     /// Wrap `get`
     ///
     #[inline]
@@ -322,6 +460,7 @@ mod tests {
     use std::env::temp_dir;
 
     use anyhow::bail;
+    use log::debug;
 
     use crate::site::Auth;
     use crate::DataType;
@@ -392,5 +531,29 @@ mod tests {
             _ => bail!("all failed"),
         }
         Ok(())
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_basedir() {
+        let p = Sources::config_path();
+        let ep: PathBuf = makepath!(env!("HOME"), BASEDIR, "drone-utils");
+        assert_eq!(ep, p);
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_basedir() {
+        let p = Sources::config_path();
+        let ep: PathBuf = makepath!(env!("LOCALAPPDATA"), "drone-utils");
+        assert_eq!(ep, p);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_token_path() {
+        let p = Sources::token_path();
+        let ep: PathBuf = makepath!(env!("HOME"), BASEDIR, "drone-utils", "tokens");
+        assert_eq!(ep, p);
     }
 }

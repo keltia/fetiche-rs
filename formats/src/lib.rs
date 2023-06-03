@@ -1,10 +1,10 @@
-//! Definition of a data format-specs
+//! Definition of a data formats
 //!
-//! This module makes the link between the shared output format-specs `Cat21` and the different
+//! This module makes the link between the shared output formats `Cat21` and the different
 //! input formats defined in the other modules.
 //!
-//! To add a new format-specs, insert here the different hooks (`Source`, etc.) & names and a `FORMAT.rs`
-//! file which will define the input format-specs and the transformations needed.
+//! To add a new formats, insert here the different hooks (`Source`, etc.) & names and a `FORMAT.rs`
+//! file which will define the input formats and the transformations needed.
 //!
 
 use std::collections::BTreeMap;
@@ -15,6 +15,7 @@ use anyhow::Result;
 use csv::{Reader, WriterBuilder};
 use log::{debug, trace};
 use serde::{Deserialize, Serialize};
+use tabled::{builder::Builder, settings::Style};
 
 // Re-export for convenience
 //
@@ -22,7 +23,6 @@ pub use aeroscope::*;
 pub use asd::*;
 pub use asterix::*;
 pub use drone::*;
-pub use influx::*;
 pub use opensky::*;
 pub use safesky::*;
 
@@ -30,7 +30,6 @@ mod aeroscope;
 mod asd;
 mod asterix;
 mod drone;
-mod influx;
 mod opensky;
 mod safesky;
 
@@ -39,6 +38,10 @@ mod safesky;
 const FVERSION: usize = 2;
 
 // -----
+
+pub fn version() -> String {
+    format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+}
 
 /// For each format, we define a set of key attributes that will get displayed.
 ///
@@ -99,13 +102,45 @@ macro_rules! into_cat21 {
     };
 }
 
+// Generate a converter called `$name` which takes `&str` and
+// output a `Vec<$to>`.  `input` is deserialized from JSON as
+// `$from`.
+//
+// Uses `$to::from()` for each format.
+//
+#[macro_export]
+macro_rules! convert_to {
+    ($name:ident, $from:ident, $to:ident) => {
+        impl $to {
+            #[doc = concat!("This is ", stringify!($name), " which convert a string into a ", stringify!($to), "object")]
+            ///
+            pub fn $name(input: &str) -> Result<Vec<$to>> {
+                debug!("IN={:?}", input);
+                let res: Vec<$from> = serde_json::from_str(&input)?;
+                debug!("rec={:?}", res);
+                let res: Vec<_> = res
+                    .iter()
+                    .enumerate()
+                    .inspect(|(n, f)| debug!("f={:?}-{:?}", n, f))
+                    .map(|(cnt, rec)| {
+                        debug!("cnt={}/rec={:?}", cnt, rec);
+                        $to::from(rec)
+                    })
+                    .collect();
+                debug!("res={:?}", res);
+                Ok(res)
+            }
+        }
+    };
+}
+
 impl Format {
     /// Process each record coming from the input source, apply `Cat::from()` onto it
     /// and return the list.  This is used when reading from the csv files.
     ///
-    pub fn from_csv<T>(self, rdr: &mut Reader<T>) -> Result<Vec<Cat21>>
+    pub fn from_csv<R>(self, rdr: &mut Reader<R>) -> Result<Vec<Cat21>>
     where
-        T: Read,
+        R: Read,
     {
         debug!("Reading & transforming…");
         let res: Vec<_> = rdr
@@ -121,10 +156,47 @@ impl Format {
             .collect();
         Ok(res)
     }
+}
+
+impl Format {
+    /// List all supported formats into a string using `tabled`.
+    ///
+    pub fn list() -> Result<String> {
+        let descr = include_str!("formats.hcl");
+        let fstr: FormatFile = hcl::from_str(descr)?;
+
+        // Safety checks
+        //
+        assert_eq!(fstr.version, FVERSION);
+
+        let header = vec!["Name", "Type", "Description"];
+
+        let mut builder = Builder::default();
+        builder.set_header(header);
+
+        fstr.format.iter().for_each(|(name, entry)| {
+            let mut row = vec![];
+
+            let name = name.clone();
+            let dtype = entry.dtype.clone();
+            let description = entry.description.clone();
+            let source = entry.source.clone();
+            let url = entry.url.clone();
+
+            let row_text = format!("{}\nSource: {} -- URL: {}", description, source, url);
+            row.push(&name);
+            row.push(&dtype);
+            row.push(&row_text);
+            builder.push_record(row);
+        });
+        let allf = builder.build().with(Style::modern()).to_string();
+        let str = format!("List all formats:\n\n{allf}");
+        Ok(str)
+    }
 
     /// List all supported formats into a string
     ///
-    pub fn list() -> Result<String> {
+    pub fn list_plain() -> Result<String> {
         let descr = include_str!("formats.hcl");
         let fstr: FormatFile = hcl::from_str(descr)?;
         assert_eq!(fstr.version, FVERSION);
@@ -145,7 +217,7 @@ impl Format {
 }
 
 impl From<&str> for Format {
-    /// Create a format-specs from its name
+    /// Create a formats from its name
     ///
     fn from(s: &str) -> Self {
         match s {

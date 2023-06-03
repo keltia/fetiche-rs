@@ -5,8 +5,8 @@ use anyhow::{anyhow, Result};
 use log::trace;
 use serde::de;
 
-use format_specs::Format;
-use sources::{Fetchable, Filter};
+use fetiche_formats::Format;
+use fetiche_sources::{Fetchable, Filter};
 
 /// Type of task we will need to do
 ///
@@ -15,7 +15,7 @@ pub enum Input {
     /// File-based means we need the format beforehand and a pathname
     ///
     File {
-        /// Input format-specs
+        /// Input formats
         format: Format,
         /// Path of the input file
         path: PathBuf,
@@ -24,7 +24,7 @@ pub enum Input {
     /// file.  The `site` is a `Fetchable` object generated from `Config`.
     ///
     Network {
-        /// Input format-specs
+        /// Input formats
         format: Format,
         /// Site itself
         site: Box<dyn Fetchable>,
@@ -70,7 +70,7 @@ impl Task {
         self
     }
 
-    /// Set the input format-specs (from cmdline for files)
+    /// Set the input formats (from cmdline for files)
     ///
     pub fn format(&mut self, fmt: Format) -> &mut Self {
         trace!("Add format {:?}", fmt);
@@ -100,7 +100,7 @@ impl Task {
         self
     }
 
-    /// The heart of the matter: fetch and process data
+    /// The heart of the matter: fetch and process data                                                                    
     ///
     pub fn run<T>(&mut self) -> Result<Vec<T>>
     where
@@ -110,14 +110,14 @@ impl Task {
         let res = match &self.input {
             // Input::File is simple, we have the format
             //
-            Input::File { format, path } => {
+            Input::File { path, .. } => {
                 let res = fs::read_to_string(path)?;
                 let res: Vec<T> = serde_json::from_str(&res)?;
                 res
             }
             // Input::Network is more complicated and rely on the Site
             //
-            Input::Network { format, site } => {
+            Input::Network { site, .. } => {
                 // Fetch data as bytes
                 //
                 let token = site.authenticate()?;

@@ -6,8 +6,8 @@
 //! a configuration file  from `$HOME/.config/drone-utils` or `%LOCALAPPDATA%/drone-utils` on
 //! UNIX/Linux and Windows.
 //!
-//! Our pseudo-Cat21 format-specs is in `format-specs/lib`.
-//! The respective format-specs for the other sources are in the files inside the `format-specs` module.
+//! Our pseudo-Cat21 formats is in `formats/lib`.
+//! The respective formats for the other sources are in the files inside the `formats` module.
 //!
 //! Author: Ollivier Robert <ollivier.robert@eurocontrol.int> for the EIH
 //! Copyright: (c) 2022 by Ollivier Robert
@@ -15,6 +15,7 @@
 //! [Rust]: https://rust-lang.org/
 //!
 use std::fs;
+use std::io::{stderr, Write};
 use std::time::Instant;
 
 use anyhow::{anyhow, Result};
@@ -23,8 +24,8 @@ use clap::Parser;
 use log::{info, trace};
 
 use cat21conv::Task;
-use format_specs::{prepare_csv, Cat21, Format};
-use sources::{Filter, Site, Sources};
+use fetiche_formats::{prepare_csv, Cat21, Format};
+use fetiche_sources::{Filter, Flow, Site, Sources};
 
 use crate::cli::{check_args, Opts};
 use crate::version::version;
@@ -49,11 +50,11 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
             .and_hms_opt(23, 59, 59)
             .unwrap();
 
-        Ok(Filter::from(begin, end))
+        Ok(Filter::interval(begin, end))
     } else if opts.begin.is_some() {
         // Assume both are there, checked elsewhere
         //
-        // We have to parse both arguments ourselves because it uses its own format-specs
+        // We have to parse both arguments ourselves because it uses its own formats
         //
         let begin = match &opts.begin {
             Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?,
@@ -64,7 +65,20 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
             None => return Err(anyhow!("Bad -E parameter")),
         };
 
-        Ok(Filter::from(begin, end))
+        Ok(Filter::interval(begin, end))
+    } else if opts.keyword.is_some() {
+        let keyword = opts.keyword.clone().unwrap();
+
+        let v: Vec<_> = keyword.split(':').collect();
+        let (k, v) = (v[0], v[1]);
+        Ok(Filter::Keyword {
+            name: k.to_string(),
+            value: v.to_string(),
+        })
+    } else if opts.since.is_some() {
+        let d = opts.since.unwrap();
+
+        Ok(Filter::Duration(d))
     } else {
         Ok(Filter::default())
     }
@@ -101,11 +115,14 @@ fn get_from_source(cfg: &Sources, opts: &Opts) -> Result<Vec<Cat21>> {
                 .site
                 .as_ref()
                 .ok_or_else(|| anyhow!("Bad site name {:?}", opts.site))?;
-            let site = Site::load(name, cfg)?;
+            let site = match Site::load(name, cfg)? {
+                Flow::Fetchable(s) => s,
+                _ => return Err(anyhow!("this site is not fetchable")),
+            };
 
             info!("Fetching from network site {}", name);
 
-            Task::new(name).site(site).with(filter).run()
+            Task::new(name).site(site).when(filter).run()
         }
     }
 }
@@ -115,7 +132,7 @@ fn main() -> Result<()> {
 
     // Add banner
     //
-    println!("{}\n", version());
+    writeln!(stderr(), "{}\n", version())?;
 
     // Exit if needed
     //

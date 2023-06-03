@@ -10,7 +10,6 @@
 //!
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use log::trace;
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
@@ -29,6 +28,8 @@ pub enum Source {
 }
 
 /// Aircraft category
+///
+/// XXX BUG: Opensky actually returns 17 fields, excluding this one.
 ///
 #[derive(Clone, Copy, Debug, Deserialize_repr, PartialEq)]
 #[repr(u8)]
@@ -80,7 +81,7 @@ impl StateList {
     pub fn from_json(input: &str) -> Result<Self> {
         trace!("statelist::from_json");
 
-        let data: PDU = serde_json::from_str(input)?;
+        let data: Payload = serde_json::from_str(input)?;
 
         let states: Vec<StateVector> = data
             .states
@@ -103,7 +104,7 @@ impl StateList {
                 squawk: Some(r.14.clone()),
                 spi: r.15,
                 position_source: r.16,
-                category: r.17,
+                //category: r.17,
             })
             .collect();
 
@@ -138,14 +139,14 @@ pub struct StateVector {
     pub velocity: Option<f32>,
     pub true_track: Option<f32>,
     pub vertical_rate: Option<f32>,
-    pub sensors: Option<Vec<u32>>,
+    pub sensors: Option<Vec<i32>>,
     pub geo_altitude: Option<f32>,
     pub squawk: Option<String>,
     pub spi: bool,
     /// Position source
     pub position_source: Source,
-    /// Aircraft category
-    pub category: Category,
+    // /// Aircraft category XXX BUG
+    // pub category: Category,
 }
 
 // Private structs
@@ -153,7 +154,7 @@ pub struct StateVector {
 /// Struct returned by the Opensky API
 ///
 #[derive(Debug, Deserialize)]
-struct PDU {
+struct Payload {
     /// UNIX timestamp
     pub time: i32,
     /// State vectors
@@ -181,12 +182,12 @@ struct Rawdata(
     f32,
     f32,
     f32,
-    Vec<u32>,
+    Vec<i32>,
     f32,
     String,
     bool,
     Source,
-    Category,
+    //Category,
 );
 
 impl From<&StateVector> for Cat21 {
@@ -195,9 +196,7 @@ impl From<&StateVector> for Cat21 {
     /// DEPRECATED
     ///
     fn from(line: &StateVector) -> Self {
-        let tp = format!("{}", line.time_position.unwrap_or(0));
-        let tod = tp.parse::<DateTime<Utc>>().unwrap();
-        let tod = tod.timestamp();
+        let tod: i64 = line.time_position.unwrap_or(0) as i64;
         let callsign = line.callsign.clone().unwrap_or("".to_string());
 
         Cat21 {

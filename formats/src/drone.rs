@@ -1,4 +1,3 @@
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use influxdb::InfluxDbWriteable;
 use serde::{Deserialize, Serialize};
@@ -21,13 +20,15 @@ pub struct DronePoint {
     #[influxdb(tag)]
     pub journey: u32,
     /// Identifier for the drone
+    #[influxdb(tag)]
     pub drone_id: String,
     /// Model of the drone
+    #[influxdb(tag)]
     pub model: Option<String>,
     /// Source ([see src/site/asd.rs]) of the data
     #[influxdb(tag)]
     pub source: String,
-    /// Point/record ID
+    /// Monotonically increasing ID == PointID
     pub location: u32,
     /// Actual position (lat)
     pub latitude: f32,
