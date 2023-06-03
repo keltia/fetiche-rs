@@ -16,3 +16,4 @@ target/
 
 # Rest
 *.json
+data
