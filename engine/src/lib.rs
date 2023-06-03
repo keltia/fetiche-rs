@@ -23,11 +23,8 @@ mod job;
 mod parse;
 mod stream;
 
-const NAME: &str = env!("CARGO_PKG_NAME");
-const EVERSION: &str = env!("CARGO_PKG_VERSION");
-
 pub fn version() -> String {
-    format!("{}/{}", NAME, EVERSION)
+    format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }
 
 /// Main `Engine` struct that hold the sources and everything needed to perform

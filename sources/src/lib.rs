@@ -62,9 +62,6 @@ const BASEDIR: &str = ".config";
 /// Relative path to `BASEDIR` for storing auth tokens
 const TOKEN_BASE: &str = "tokens";
 
-const SOURCE_NAME: &str = env!("CARGO_PKG_NAME");
-const SOURCE_VERSION: &str = env!("CARGO_PKG_VERSION");
-
 pub fn version() -> String {
-    format!("{}/{}", SOURCE_NAME, SOURCE_VERSION)
+    format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }

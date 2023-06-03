@@ -39,6 +39,10 @@ const FVERSION: usize = 2;
 
 // -----
 
+pub fn version() -> String {
+    format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+}
+
 /// For each format, we define a set of key attributes that will get displayed.
 ///
 #[derive(Debug, Deserialize)]
