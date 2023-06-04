@@ -388,7 +388,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                             eprint!("*");
                             continue;
                         }
-                        // No, eprint it and cache its `time`
+                        // No, send it it and cache its `time`
                         //
                         _ => {
                             eprint!("{},", sl.time);
