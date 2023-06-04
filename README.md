@@ -1,14 +1,14 @@
 <!-- omit in TOC -->
 
-# fetiche
+# fetiche-rs
 
 > **FETICHE: Framework to import/fetch/transform various aeronautical data**
 
-[![Build status](https://github.com/keltia/drone-gencsv/actions/workflows/rust.yml/badge.svg)](https://github.com/keltia/drone-gencsv/actions/workflows/rust.yml)
-[![Buildstatus (develop)](https://github.com/keltia/drone-gencsv/actions/workflows/develop.yml/badge.svg)](https://github.com/keltia/drone-gencsv/actions/workflows/develop.yml)
-[![Docs](https://img.shields.io/docsrs/dmarc-rs)](https://docs.rs/drone-utils)
-[![GitHub release](https://img.shields.io/github/release/keltia/dmarc-rs.svg)](https://github.com/keltia/drone-gencsv/releases/)
-[![GitHub issues](https://img.shields.io/github/issues/keltia/drone-gencsv.svg)](https://github.com/keltia/drone-gencsv/issues)
+[![Build status](https://github.com/keltia/fetiche-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/keltia/fetiche-rs/actions/workflows/rust.yml)
+[![Buildstatus (develop)](https://github.com/keltia/fetiche-rs/actions/workflows/develop.yml/badge.svg)](https://github.com/keltia/fetiche-rs/actions/workflows/develop.yml)
+[![Docs](https://img.shields.io/docsrs/dmarc-rs)](https://docs.rs/fetiche-rs)
+[![GitHub release](https://img.shields.io/github/release/keltia/dmarc-rs.svg)](https://github.com/keltia/fetiche-rs/releases/)
+[![GitHub issues](https://img.shields.io/github/issues/keltia/fetiche-rs.svg)](https://github.com/keltia/fetiche-rs/issues)
 [![drone-utils: 1.56+]][Rust 1.56]
 [![SemVer](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/spec/v2.0.0.html)
 [![License](https://img.shields.io/crates/l/mit)](https://opensource.org/licenses/MIT)
@@ -361,8 +361,9 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~Support for Opensky (same)~~
 - ~~make `acutectl` use `fetiche-engine` instead of its own `task.rs`~~.
 - ~~add streaming support for sources like opensky~~.
-- rename `drone-utils` into the more proper `fetiche`.
+- ~~rename `drone-utils` into the more proper `fetiche-rs`~~.
 - merge `import-adsb` and `cat21conv` into `acutectl`.
+- rename `acutectl` into `fetichectl`.
 - link to HashiCorp Vault for storing credentials and tokens
 - ~~alternatively caching tokens (like ASD ones) locally~~
 - Add more tests & benchmarks.
@@ -394,7 +395,7 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) for some simple rules.
 
 I use Git Flow for this package so please use something similar or the usual GitHub workflow.
 
-1. Fork it [here](https://github.com/keltia/drone-gencsv/fork)
+1. Fork it [here](https://github.com/keltia/fetiche-rs/fork)
 2. Checkout the develop branch (`git checkout develop`)
 3. Create your feature branch (`git checkout -b my-new-feature`)
 4. Commit your changes (`git commit -am 'Add some feature'`)
@@ -419,6 +420,6 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [HCL]: https://developer.hashicorp.com/terraform/language
 
-[GitHub issues]: https://github.com/keltia/drone-gencsv/issues
+[GitHub issues]: https://github.com/keltia/fetiche-rs/issues
 
 [tokio]: https://crates.io/crates/tokio
