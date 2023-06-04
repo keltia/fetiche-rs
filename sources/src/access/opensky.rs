@@ -211,13 +211,16 @@ impl Streamable for Opensky {
 
     /// The main stream function
     ///
-    /// The cache might be overkill but:
-    /// - it is easy to code and use
-    /// - it can't hurt
+    /// Right now it runs until killed by Ctrl+C or the timer expire (if set).
     ///
-    /// Right now it runs until killed by Ctrl+C, the timer expire (if set) or an API error.
-    /// We may need to add a "retry until death or timeout" in order to keep trying (with a
-    /// backoff timer I guess?) when encountering an API error.
+    /// API Error are currently ignored after waiting for some time.  The server is not
+    /// stable enough to consider fatal errors (5xx) as real.  It will recover even after
+    /// a 502.
+    ///
+    /// The cache might be overkill because keeping only the last timestamp might be enough but:
+    /// - it is easy to code and use
+    /// - it helps determining whether we had lack of traffic for a longer time if we have no
+    ///   cached entries
     ///
     fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
@@ -415,7 +418,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             }
         });
 
-        // Now data gathering loop
+        // Now data gathering loop.  Should this be another thread?
         //
         loop {
             match rx.recv() {
