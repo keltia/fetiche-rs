@@ -450,6 +450,267 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
     }
 }
 
+#[cfg(feature = "async")]
+impl Opensky {
+    /// The main stream function
+    ///
+    /// Right now it runs until killed by Ctrl+C or the timer expire (if set).
+    ///
+    /// API Error are currently ignored after waiting for some time.  The server is not
+    /// stable enough to consider fatal errors (5xx) as real.  It will recover even after
+    /// a 502.
+    ///
+    /// The cache might be overkill because keeping only the last timestamp might be enough but:
+    /// - it is easy to code and use
+    /// - it helps determining whether we had lack of traffic for a longer time if we have no
+    ///   cached entries
+    ///
+    async fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
+        use reqwest::Client;
+        use tokio::signal::unix::{signal, SignalKind};
+
+        trace!("opensky::stream");
+
+        let mut stream_duration = 0;
+        let mut stream_delay = 1000;
+
+        let now = Utc::now().timestamp();
+
+        let res: Vec<&str> = token.split(':').collect();
+        let (login, password) = (res[0], res[1]);
+        trace!("opensky::stream(as {}:{})", login, password);
+
+        let url = format!("{}{}", self.base_url, self.get);
+        trace!("Streaming data from {}…", url);
+
+        // FIXME: we can have only one argument
+        //
+        let args = Filter::from(args);
+        let tm = match args {
+            Filter::Stream {
+                duration,
+                delay,
+                from,
+            } => {
+                stream_duration = duration;
+                stream_delay = delay;
+
+                if from == 0 {
+                    None
+                } else {
+                    let start = if now - from > MAX_INTERVAL {
+                        now - MAX_INTERVAL
+                    } else {
+                        from
+                    };
+
+                    // API takes 32-bit timestamp
+                    //
+                    let start: i32 = start.try_into().unwrap();
+                    Some(format!("time={}", start))
+                }
+            }
+            Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
+            _ => None,
+        };
+
+        let url = match tm {
+            Some(tm) => format!("{}?{}", url, tm),
+            _ => url,
+        };
+
+        eprintln!(
+            r##"
+StreamURL: {}
+Duration {}s with {}ms delay and cache with {} entries for {}s
+
+<number>: data packet / ".": no traffic / "*": cache hit
+        "##,
+            url,
+            stream_duration,
+            stream_delay,
+            CACHE_SIZE,
+            CACHE_IDLE.as_secs(),
+        );
+
+        // Infinite loop until we get cancelled or timeout expire
+        // self.duration is 0 -> infinite
+        // self.duration is N -> run for N secs
+        //
+
+        // out as a `dyn Write` is not `Send` so we can not use it within a thread.  Use channels
+        // to work around this.
+        //
+        let (tx, mut rx) = tokio::sync::mpsc::channel(20);
+        let (tx1, mut rx1) = tokio::sync::mpsc::channel(1);
+
+        // Timer set?  If yes, launch a sleeper thread
+        //
+        if stream_duration != 0 {
+            trace!("setup wakeup alarm");
+
+            let d = stream_duration;
+            tokio::spawn(async move {
+                if d != 0 {
+                    thread::sleep(time::Duration::from_secs(d as u64));
+                }
+                tx1.send("TIMEOUT".to_string()).await.unwrap();
+            });
+            trace!("end of sleep");
+        }
+
+        // setup ctrl-c handled
+        //
+        #[cfg(windows)]
+        let mut sig = ctrl_c()?;
+
+        #[cfg(unix)]
+        let mut stream = signal(SignalKind::interrupt())?;
+
+        // reqwest::Client
+        //
+        let client = self.client.clone();
+
+        let login = self.login.clone();
+        let password = self.password.clone();
+
+        // Worker thread
+        //
+        tokio::spawn(async move {
+            trace!("Starting worker thread");
+
+            // Cache is local to the worker thread
+            //
+            let cache = Cache::builder()
+                .max_capacity(CACHE_SIZE)
+                .time_to_idle(CACHE_IDLE)
+                .time_to_live(CACHE_MAX)
+                .build();
+
+            loop {
+                let resp = client
+                    .get(&url)
+                    .basic_auth(&login, Some(&password))
+                    .header(
+                        "user-agent",
+                        format!("{}/{}", crate_name!(), crate_version!()),
+                    )
+                    .header("content-type", "application/json")
+                    .send()
+                    .expect("can not call the server");
+
+                debug!("{:?}", &resp);
+
+                // Check status of request.  We will ignore any error for now as the server
+                // does not seem to be very stable.  It tends to returns 502 for transient errors.
+                // So we sleep and continue
+                //
+                match resp.status() {
+                    StatusCode::OK => {
+                        trace!("OK");
+                    }
+                    code => {
+                        let h = &resp.headers();
+                        eprintln!("Error({}): {:?},", code, h);
+                        thread::sleep(Duration::from_millis(stream_delay as u64));
+                        continue;
+                    }
+                }
+
+                let buf = resp.text().unwrap();
+
+                // Retrieve answer and look into it, if answer was empty this should be rather fast
+                //
+                let sl: StateList = serde_json::from_str(buf.as_str()).expect("broken data");
+
+                // Check whether data was returned
+                //
+                if sl.states.is_some() {
+                    // Check whether we've seen it before
+                    //
+                    match cache.get(&sl.time) {
+                        // We have seen it, loop
+                        //
+                        Some(_time) => {
+                            eprint!("*");
+                            continue;
+                        }
+                        // No, send it it and cache its `time`
+                        //
+                        _ => {
+                            eprint!("{},", sl.time);
+                            tx.send(buf).await.expect("send");
+                            cache.insert(sl.time, true);
+                        }
+                    }
+                } else {
+                    // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
+                    //
+                    cache.sync();
+                    if cache.entry_count() == 0 {
+                        eprintln!("No traffic, waiting for 2s.");
+                        thread::sleep(Duration::from_secs(2_u64));
+                    } else {
+                        eprint!(".");
+                    }
+                }
+
+                // Whatever happened, sleep for to avoid CPU/network overload
+                if stream_delay != 0 {
+                    thread::sleep(Duration::from_millis(stream_delay as u64));
+                }
+            }
+        });
+
+        // Now data gathering loop.  Should this be another thread?
+        //
+        loop {
+            #[cfg(unix)]
+            tokio::select! {
+                Some(_) = rx1.recv() =>  {
+                        // Timer expired
+                        //
+                        trace!("End of scheduled run.");
+                        break;
+                    },
+                    // Anything else is sent
+                    //
+                Some(msg) = rx.recv()  => {
+                    write!(out, "{}", msg)?;
+                    out.flush()?;
+                },
+                Some(_) = stream.recv() => {
+                    eprintln!("Got SIGINT");
+                    break;
+                },
+            };
+            #[cfg(windows)]
+            tokio::select! {
+                Some(msg) = rx1.recv().await =>  {
+                        // Timer expired
+                        //
+                        trace!("End of scheduled run.");
+                        break;
+                    },
+                    // Anything else is sent
+                    //
+                Some(msg) = rx.recv().await  => {
+                    write!(out, "{}", msg)?;
+                    out.flush()?;
+                },
+                _ = sig.recv() => {
+                    eprintln!("Got SIGINT");
+                    break;
+                },
+            };
+        }
+        // sync; sync; sync
+        //
+        out.flush()?;
+        Ok(())
+    }
+}
+
 /// Represent the area we want to get all from
 ///
 /// FIXME: this is not handled

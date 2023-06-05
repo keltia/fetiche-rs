@@ -13,6 +13,7 @@ keywords = ["cat21", "asterix", "drones", "aeronautical-data", "hcl", "fetiche"]
 [features]
 default = ["privacy"]
 privacy = []
+async = []
 
 [package.metadata.docs.rs]
 all-features = true
