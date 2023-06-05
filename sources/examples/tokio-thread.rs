@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 #[cfg(unix)]
-use tokio::signal::ctrl_c;
+use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
 use tokio::signal::windows::ctrl_c;
 use tokio::sync::mpsc;
@@ -39,7 +39,11 @@ async fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
 
     // setup ctrl-c handled
     //
+    #[cfg(windows)]
     let mut sig = ctrl_c()?;
+
+    #[cfg(unix)]
+    let mut stream = signal(SignalKind::interrupt())?;
 
     // start working
     //
@@ -55,6 +59,7 @@ async fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
 
     eprintln!("get data thread");
     loop {
+        #[cfg(windows)]
         tokio::select! {
             Some(msg) = rx.recv() => output.push_str(msg),
             Some(msg) = rx1.recv() => {
@@ -66,6 +71,19 @@ async fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
                 break;
             }
         }
+        #[cfg(unix)]
+        tokio::select! {
+            Some(msg) = rx.recv() => output.push_str(msg),
+            Some(msg) = rx1.recv() => {
+                output.push_str(&format!("{}:{}", msg, "finished!"));
+                break;
+            },
+            Some(_) = stream.recv() => {
+                eprintln!("Got SIGINT");
+                break;
+            },
+        }
+
         writeln!(out, "{}", output)?;
         out.flush()?;
     }
