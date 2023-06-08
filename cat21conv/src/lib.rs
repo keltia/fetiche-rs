@@ -215,6 +215,7 @@ impl Task {
                 let fmt = site.format();
                 let res: Vec<Cat21> = match fmt {
                     Format::Asd => Cat21::from_asd(&data)?,
+                    Format::Opensky => Cat21::from_opensky(&data)?,
                     _ => unimplemented!(),
                 };
                 debug!("{:?} as {}", res, format);
