@@ -59,17 +59,8 @@ fn main() -> Result<()> {
     match subcmd {
         SubCommand::Fetch(fopts) => {
             trace!("fetch");
-            let data = fetch_from_site(&cfg, fopts)?;
 
-            match &fopts.output {
-                Some(output) => {
-                    info!("Writing into {:?}", output);
-                    fs::write(output, data)?
-                }
-                // stdout otherwise
-                //
-                _ => println!("{}", data),
-            }
+            fetch_from_site(&cfg, fopts)?;
         }
 
         // Handle `stream site`
