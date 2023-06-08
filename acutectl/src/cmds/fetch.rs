@@ -1,3 +1,6 @@
+use std::fs;
+use std::io::{stdout, Write};
+
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use log::{info, trace};
@@ -9,7 +12,7 @@ use crate::FetchOpts;
 
 /// Actual fetching of data from a given site
 ///
-pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<String> {
+pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
 
     check_args(fopts)?;
@@ -35,7 +38,18 @@ pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<String> {
         .add(Box::new(task))
         .run(&mut data)?;
     let data = String::from_utf8(data)?;
-    Ok(data)
+
+    match &fopts.output {
+        Some(output) => {
+            info!("Writing into {:?}", output);
+            fs::write(output, data)?
+        }
+        // stdout otherwise
+        //
+        _ => write!(stdout(), "{}", data)?,
+    }
+
+    Ok(())
 }
 
 /// From the CLI options

@@ -10,11 +10,11 @@
 //!
 
 use anyhow::Result;
-use log::trace;
+use log::{debug, trace};
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
-use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
+use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
 
 /// Origin of state's position
 ///
@@ -148,6 +148,9 @@ pub struct StateVector {
     // /// Aircraft category XXX BUG
     // pub category: Category,
 }
+
+convert_to!(from_opensky, StateVector, Cat21);
+//convert_to!(from_opensky, StateList, DronePoint);
 
 // Private structs
 

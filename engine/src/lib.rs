@@ -14,6 +14,7 @@ use fetiche_sources::{Fetchable, Sources, Streamable};
 pub use into::*;
 pub use job::*;
 pub use parse::*;
+pub use read::*;
 pub use stream::*;
 
 mod common;
@@ -21,6 +22,7 @@ mod fetch;
 mod into;
 mod job;
 mod parse;
+mod read;
 mod stream;
 
 pub fn version() -> String {
