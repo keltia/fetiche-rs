@@ -57,6 +57,8 @@ fn main() -> Result<()> {
 
     let subcmd = &opts.subcmd;
     match subcmd {
+        // Handle `fetch site`
+        //
         SubCommand::Fetch(fopts) => {
             trace!("fetch");
 
@@ -72,6 +74,7 @@ fn main() -> Result<()> {
         }
 
         // Handle `import site`  and `import file`
+        // FIXME:
         //
         SubCommand::Import(opts) => {
             trace!("import");
@@ -85,9 +88,13 @@ fn main() -> Result<()> {
                         _ => return Err(anyhow!("this site is not fetchable")),
                     };
                     let fmt = site.format();
-                    let data = fetch_from_site(&cfg, fopts)?;
 
-                    import_data(&cfg, &data, fmt)?;
+                    // FIXME
+                    let data: Vec<u8> = vec![];
+
+                    fetch_from_site(&cfg, fopts)?;
+
+                    //import_data(&cfg, &data, fmt)?;
                 }
                 ImportSubCommand::ImportFile(if_opts) => {
                     trace!("drone import file");
