@@ -6,8 +6,14 @@
 
 use std::fmt::Debug;
 use std::io::Write;
+use std::sync::mpsc::{channel, Receiver};
+use std::thread;
+use std::thread::JoinHandle;
 
 use anyhow::Result;
+use log::trace;
+
+use engine_macros::RunnableDerive;
 
 use crate::Runnable;
 
@@ -15,20 +21,18 @@ use crate::Runnable;
 
 /// NOP
 ///
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, RunnableDerive)]
 pub struct Nothing {}
 
-impl Runnable for Nothing {
-    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
-        Ok(write!(out, "NOP")?)
+impl Nothing {
+    #[inline]
+    fn transform(&self, data: String) -> Result<String> {
+        Ok(format!("{}|NOP", data))
     }
 }
-
-// -----
-
 /// Just display a message
 ///
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, RunnableDerive)]
 pub struct Message {
     /// What to display
     msg: String,
@@ -39,11 +43,10 @@ impl Message {
     pub fn new(s: &str) -> Self {
         Message { msg: s.to_owned() }
     }
-}
 
-impl Runnable for Message {
-    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
-        Ok(write!(out, "{}", self.msg)?)
+    #[inline]
+    fn transform(&self, data: String) -> Result<String> {
+        Ok(format!("{}|{}", data, self.msg))
     }
 }
 
@@ -55,10 +58,12 @@ mod tests {
     fn test_nothing_run() {
         let mut t = Nothing {};
 
-        let mut data = vec![];
-        let r = t.run(&mut data);
+        let (tx, rx) = channel();
 
-        let r = String::from_utf8(data);
+        let mut data = vec![];
+        let (r, h) = t.run(rx);
+
+        let r = r.recv();
         assert!(r.is_ok());
         let r = r.unwrap();
         assert_eq!("NOP", r);
@@ -68,11 +73,12 @@ mod tests {
     fn test_message_run() {
         let mut m = Message::new("the brown fox");
 
+        let (tx, rx) = channel();
+
         let mut data = vec![];
+        let (r, h) = m.run(rx);
 
-        let s = m.run(&mut data);
-        let s = String::from_utf8(data);
-
+        let r = r.recv();
         assert!(s.is_ok());
         let s = s.unwrap();
         assert_eq!("the brown fox", s);
