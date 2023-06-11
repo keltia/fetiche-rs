@@ -4,10 +4,12 @@
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+use std::thread;
 
 use anyhow::{anyhow, Result};
 use log::trace;
 
+use engine_macros::RunnableDerive;
 use fetiche_formats::Format;
 use fetiche_sources::{Fetchable, Filter};
 
@@ -15,7 +17,7 @@ use crate::{Input, Runnable};
 
 /// The Read task
 ///
-#[derive(Debug)]
+#[derive(Debug, RunnableDerive)]
 pub struct Read {
     /// name for the task
     pub name: String,
@@ -70,22 +72,18 @@ impl Read {
         self.args = f.to_string();
         self
     }
-}
 
-impl Runnable for Read {
     /// The heart of the matter: fetch data
     ///
-    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
-        trace!("Read::run()");
+    fn transform(&mut self, data: String) -> Result<String> {
+        trace!("Read::transform()");
         match &self.input {
-            // Input::Network is more complicated and rely on the Site
-            //
             Input::File { path, .. } => {
                 let r = fs::read_to_string(path)?;
-                Ok(write!(out, "{}", r)?)
+                Ok(r)
             }
             Input::Network { .. } | Input::Stream { .. } => {
-                Err(anyhow!("streaming not supported, use Streamable"))
+                Err(anyhow!("streams not supported, use Streamable"))
             }
             Input::Nothing => Err(anyhow!("no formats specified")),
         }
