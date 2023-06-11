@@ -11,7 +11,7 @@ use log::trace;
 
 use engine_macros::RunnableDerive;
 use fetiche_formats::Format;
-use fetiche_sources::{Fetchable, Filter};
+use fetiche_sources::Filter;
 
 use crate::{Input, Runnable};
 
@@ -82,10 +82,7 @@ impl Read {
                 let r = fs::read_to_string(path)?;
                 Ok(r)
             }
-            Input::Network { .. } | Input::Stream { .. } => {
-                Err(anyhow!("streams not supported, use Streamable"))
-            }
-            Input::Nothing => Err(anyhow!("no formats specified")),
+            _ => Err(anyhow!("Only files supported")),
         }
     }
 }
