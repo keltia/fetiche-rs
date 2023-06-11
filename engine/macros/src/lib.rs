@@ -13,12 +13,12 @@ pub fn runnable(input: TokenStream) -> TokenStream {
         impl Runnable for #klass {
         fn run(
             &mut self,
-            input: Receiver<String>,
-        ) -> (Receiver<String>, JoinHandle<Result<()>>) {
-            let (stdout, stdin) = channel::<String>();
+            input: ::std::sync::mpsc::Receiver<::std::string::String>,
+        ) -> (::std::sync::mpsc::Receiver<String>, ::std::thread::JoinHandle<Result<()>>) {
+            let (stdout, stdin) = ::std::sync::mpsc::channel::<::std::string::String>();
 
-            let h = thread::spawn(move || {
-                trace!("Runnable({})", stringify!(#klass));
+            let h = ::std::thread::spawn(move || {
+                ::log::trace!("Runnable({})", stringify!(#klass));
 
                 // Add our message
                 //
