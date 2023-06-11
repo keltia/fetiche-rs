@@ -2,9 +2,7 @@
 //!
 
 use std::fs;
-use std::io::Write;
 use std::path::PathBuf;
-use std::thread;
 
 use anyhow::{anyhow, Result};
 use log::trace;

@@ -910,24 +910,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "curves"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "assert_cmd",
- "clap",
- "env_logger",
- "fetiche-formats",
- "fetiche-sources",
- "flo_curves",
- "hcl-rs",
- "home",
- "log",
- "reqwest",
- "serde",
-]
-
-[[package]]
 name = "dashmap"
 version = "5.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1031,6 +1013,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine-macros"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "quote",
+ "syn 2.0.16",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1094,6 +1085,7 @@ version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "engine-macros",
  "env_logger",
  "fetiche-formats",
  "fetiche-sources",
@@ -1162,17 +1154,6 @@ checksum = "3b9429470923de8e8cbd4d2dc513535400b4b3fef0319fb5c4e1f520a7bef743"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
-]
-
-[[package]]
-name = "flo_curves"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6586b01a3f7402193156b4f480563bef2195ab8237b6e553776e0b5288a1206f"
-dependencies = [
- "itertools",
- "roots",
- "smallvec",
 ]
 
 [[package]]
@@ -2641,12 +2622,6 @@ dependencies = [
  "web-sys",
  "winapi",
 ]
-
-[[package]]
-name = "roots"
-version = "0.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "082f11ffa03bbef6c2c6ea6bea1acafaade2fd9050ae0234ab44a2153742b058"
 
 [[package]]
 name = "rsa"

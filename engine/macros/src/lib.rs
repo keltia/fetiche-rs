@@ -17,6 +17,7 @@ pub fn runnable(input: TokenStream) -> TokenStream {
         ) -> (::std::sync::mpsc::Receiver<String>, ::std::thread::JoinHandle<Result<()>>) {
             let (stdout, stdin) = ::std::sync::mpsc::channel::<::std::string::String>();
 
+            let src = self.clone();
             let h = ::std::thread::spawn(move || {
                 ::log::trace!("Runnable({})", stringify!(#klass));
 
@@ -25,7 +26,7 @@ pub fn runnable(input: TokenStream) -> TokenStream {
                 for data in input {
                     // Do something (or not) with the input data if there is an error
                     //
-                    let data = self.transform(data).unwrap();
+                    let data = src.transform(data).unwrap();
                     if stdout.send(data).is_err() {
                         break;
                     }

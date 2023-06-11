@@ -13,8 +13,8 @@
 //!
 
 use std::fmt::Debug;
-use std::io::Write;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 use std::thread::JoinHandle;
 
@@ -50,9 +50,17 @@ pub struct Engine {
     pub sources: Sources,
 }
 
+enum Task {
+    Copy,
+    Fetch,
+    Message,
+    Read,
+    Stream,
+}
+
 /// Type of task we will need to do
 ///
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub enum Input {
     /// File-based means we need the formats beforehand and a pathname
     ///
@@ -69,13 +77,13 @@ pub enum Input {
         /// Input formats
         format: Format,
         /// Site itself
-        site: Box<dyn Fetchable>,
+        site: Arc<dyn Fetchable>,
     },
     Stream {
         /// Input formats
         stream: Format,
         /// Site itself
-        site: Box<dyn Streamable>,
+        site: Arc<dyn Streamable>,
     },
     #[default]
     Nothing,

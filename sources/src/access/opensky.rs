@@ -14,7 +14,7 @@
 
 use std::io::Write;
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{thread, time};
@@ -134,6 +134,10 @@ impl Default for Opensky {
 }
 
 impl Fetchable for Opensky {
+    fn name(&self) -> String {
+        unimplemented!()
+    }
+
     /// All credentials are passed every time we call the API so return a fake token
     ///
     fn authenticate(&self) -> Result<String> {
@@ -202,6 +206,10 @@ impl Fetchable for Opensky {
 }
 
 impl Streamable for Opensky {
+    fn name(&self) -> String {
+        unimplemented!()
+    }
+
     /// All credentials are passed every time we call the API so return a fake token
     ///
     fn authenticate(&self) -> Result<String> {
@@ -222,7 +230,7 @@ impl Streamable for Opensky {
     /// - it helps determining whether we had lack of traffic for a longer time if we have no
     ///   cached entries
     ///
-    fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
+    fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
 
         let mut stream_duration = 0;
@@ -432,8 +440,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     // Anything else is sent
                     //
                     _ => {
-                        write!(out, "{}", msg)?;
-                        out.flush()?;
+                        out.send(msg)?;
                     }
                 },
                 _ => continue,
@@ -441,7 +448,6 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         }
         // sync; sync; sync
         //
-        out.flush()?;
         Ok(())
     }
 

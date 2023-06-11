@@ -1,20 +1,21 @@
 //! Module handling the conversions between different formats
 //!
 
-use std::io::Write;
+use anyhow::Result;
 
+use engine_macros::RunnableDerive;
 use fetiche_formats::Format;
 
 use crate::Runnable;
 
-#[derive(Debug)]
+#[derive(Debug, RunnableDerive)]
 pub struct Into {
     pub from: Format,
     pub into: Format,
 }
 
-impl Runnable for Into {
-    fn run(&mut self, out: &mut dyn Write) -> anyhow::Result<()> {
-        todo!()
+impl Into {
+    fn transform(&mut self, data: String) -> Result<String> {
+        Ok(data)
     }
 }

@@ -5,13 +5,8 @@
 //!
 
 use std::fmt::Debug;
-use std::io::Write;
-use std::sync::mpsc::{channel, Receiver};
-use std::thread;
-use std::thread::JoinHandle;
 
 use anyhow::Result;
-use log::trace;
 
 use engine_macros::RunnableDerive;
 

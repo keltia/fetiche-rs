@@ -78,7 +78,7 @@ impl Job {
         //
         match output.recv() {
             Ok(msg) => Ok(write!(out, "{}", msg)?),
-            None => Ok(()),
+            Err(e) => e,
         }
     }
 }

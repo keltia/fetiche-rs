@@ -160,6 +160,10 @@ impl Default for Asd {
 }
 
 impl Fetchable for Asd {
+    fn name(&self) -> String {
+        self.site.to_string()
+    }
+
     /// Authenticate to the site using the supplied credentials and get a token
     ///
     fn authenticate(&self) -> Result<String> {

@@ -3,21 +3,26 @@
 
 use std::fmt::{Debug, Formatter};
 use std::io::Write;
+use std::sync::Arc;
+use std::thread;
+use std::sync::mpsc::channel;
 
 use anyhow::{anyhow, Result};
 use log::trace;
 
 use fetiche_sources::{Filter, Streamable};
 
-use crate::{Input, Runnable};
+use crate::Runnable;
+use engine_macros::RunnableDerive;
 
 /// The Stream task
 ///
+#[derive(RunnableDerive)]
 pub struct Stream {
     /// name for the task
     pub name: String,
-    /// Input type, File or Network
-    pub input: Input,
+    /// Site
+    pub site: Option<Arc<dyn Streamable>>,
     /// Interval in secs
     pub every: usize,
     /// Optional arguments (usually json-encoded string)
@@ -42,7 +47,7 @@ impl Stream {
         trace!("New Stream {}", name);
         Stream {
             name: name.to_owned(),
-            input: Input::Nothing,
+            site: None,
             args: "".to_string(),
             every: 0,
         }
@@ -50,12 +55,9 @@ impl Stream {
 
     /// Copy the site's data
     ///
-    pub fn site(&mut self, s: Box<dyn Streamable>) -> &mut Self {
-        trace!("Add site {:?}", self.name);
-        self.input = Input::Stream {
-            stream: s.format(),
-            site: s,
-        };
+    pub fn site(&mut self, s: Arc<dyn Streamable>) -> &mut Self {
+        trace!("Add site {} as {}", self.name, s.name());
+        self.site = Some(s);
         self
     }
 
@@ -74,25 +76,34 @@ impl Stream {
         self.every = i;
         self
     }
-}
 
-impl Runnable for Stream {
     /// The heart of the matter: fetch data
     ///
-    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
+    fn transform(&mut self, data: String) -> Result<String> {
         trace!("Stream::run()");
 
-        match &self.input {
-            // Streaming is only supported for Input::Network
-            //
-            Input::Stream { site, .. } => {
-                // Stream data as bytes
-                //
+        // Stream data as bytes
+        //
+        match &self.site {
+            Some(site) => {
                 let token = site.authenticate()?;
 
-                Ok(site.stream(out, &token, &self.args)?)
-            }
-            _ => Err(anyhow!("Only network support streaming")),
+                let mut data: Vec<u8> = vec![];
+                let (tx, rx) = channel::<String>();
+                let args = self.args.clone();
+                thread::spawn(move || {
+                    site.stream(tx.clone(), &token, &self.args)?;
+                });
+
+                loop {
+                    match rx.recv() {
+                        Some(buf) => data.add(&buf),
+                        None => break,
+                    }
+                    return Ok(String::from_utf8(data)?);
+                }
+            },
+            None => return Err(anyhow!("site not defined")),
         }
     }
 }

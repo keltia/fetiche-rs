@@ -87,6 +87,9 @@ impl Default for Safesky {
 }
 
 impl Fetchable for Safesky {
+    fn name(&self) -> String {
+        "safesky".to_string()
+    }
     /// Safesky is using an API key you need to have for all transactions, there is no
     /// real authentication.
     ///

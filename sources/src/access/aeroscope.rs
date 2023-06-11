@@ -108,6 +108,10 @@ impl Default for Aeroscope {
 }
 
 impl Fetchable for Aeroscope {
+    fn name(&self) -> String {
+        "aeroscope".to_string()
+    }
+
     /// Authenticate to the site with login/password and return a token
     ///
     fn authenticate(&self) -> Result<String> {
