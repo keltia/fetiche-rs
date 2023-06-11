@@ -32,5 +32,6 @@ fetiche-sources.workspace = true
 hcl-rs.workspace = true
 log.workspace = true
 reqwest.workspace = true
+engine-macros = { version = "0", path = "macros" }
 
 nom = "7"
