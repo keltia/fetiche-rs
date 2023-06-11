@@ -182,6 +182,15 @@ impl Site {
         }
     }
 
+    /// Return the site name
+    ///
+    pub fn name(&self) -> Option<String> {
+        match &self.name {
+            Some(name) => Some(name.to_string()),
+            None => None,
+        }
+    }
+
     /// Return the site formats
     ///
     pub fn format(&self) -> Format {
