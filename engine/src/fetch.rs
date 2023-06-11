@@ -1,13 +1,14 @@
 //! `Fetch` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
-use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use log::trace;
+use nom::AsBytes;
 
+use engine_macros::RunnableDerive;
 use fetiche_formats::Format;
 use fetiche_sources::{Fetchable, Filter};
 
@@ -15,7 +16,7 @@ use crate::{Input, Runnable};
 
 /// The Fetch task
 ///
-#[derive(Debug)]
+#[derive(Debug, RunnableDerive)]
 pub struct Fetch {
     /// name for the task
     pub name: String,
@@ -81,25 +82,26 @@ impl Fetch {
         self.args = f.to_string();
         self
     }
-}
 
-impl Runnable for Fetch {
     /// The heart of the matter: fetch data
     ///
-    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
-        trace!("Fetch::run()");
+    fn transform(&mut self, data: String) -> Result<String> {
+        trace!("Fetch::transform()");
+        trace!("received: {}", data);
         match &self.input {
             // Input::Network is more complicated and rely on the Site
             //
             Input::Network { site, .. } => {
                 // Fetch data as bytes
                 //
+                let mut data = vec![];
                 let token = site.authenticate()?;
-                Ok(site.fetch(out, &token, &self.args)?)
+                site.fetch(&mut data, &token, &self.args)?;
+
+                Ok(String::from_utf8(data.to_vec())?)
             }
             Input::File { path, .. } => {
-                let r = fs::read_to_string(path)?;
-                Ok(write!(out, "{}", r)?)
+                Err(anyhow!("fetching not supported, use Read."))
             }
             Input::Stream { .. } => Err(anyhow!("streaming not supported, use Streamable")),
             Input::Nothing => Err(anyhow!("no formats specified")),
