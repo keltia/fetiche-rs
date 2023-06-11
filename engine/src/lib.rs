@@ -1,9 +1,22 @@
 //! Library implementing common part of the transformations
 //!
+//! In the Engine, we run jobs.  Jobs are made from a list a Task and all tasks are put into
+//! a pipeline.  All tasks must be Runnable and the RunnableDerive macro stitches everything
+//! together with channels.
+//!
+//! Most jobs will be fetch or stream with a conversion task at the end, etc.
+//! For the first task, the stdin channel will just serve as a trigger for the pipeline.
+//!
+//! Each Runnable task will be marked as RunnableDerive and will need to define a transform()
+//! member function for the main task.  It takes the previous stage output as a string and should
+//! return a string with the transformed output that will be sent to the next stage.
+//!
 
 use std::fmt::Debug;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::mpsc::Receiver;
+use std::thread::JoinHandle;
 
 use anyhow::Result;
 
@@ -71,5 +84,5 @@ pub enum Input {
 /// Anything that can be `run()` is runnable.
 ///
 pub trait Runnable: Debug {
-    fn run(&mut self, out: &mut dyn Write) -> Result<()>;
+    fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
 }
