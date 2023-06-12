@@ -192,7 +192,7 @@ impl Sources {
     /// NOTE: we do not show data from each token (like expiration, etc.) because at this point
     ///       we do not know which kind of token each one is.
     ///
-    pub fn list_tokens() -> Result<String> {
+    pub fn list_tokens(&self) -> Result<String> {
         trace!("listing tokens");
 
         let header = vec!["Path", "Created at"];
