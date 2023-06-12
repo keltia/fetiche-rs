@@ -20,8 +20,8 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::Format;
 
-use crate::site::{Auth, Site};
-use crate::{http_get_auth, http_post, Fetchable};
+use crate::{Auth, Fetchable, http_get_auth, http_post};
+use crate::site::Site;
 
 /// Data to send to authenticate ourselves and get a token
 ///

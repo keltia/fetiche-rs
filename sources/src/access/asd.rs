@@ -27,9 +27,9 @@ use serde_json::json;
 
 use fetiche_formats::Format;
 
+use crate::{Auth, Fetchable, http_post, http_post_auth, Sources};
 use crate::filter::Filter;
-use crate::site::{Auth, Site};
-use crate::{http_post, http_post_auth, Fetchable, Sources};
+use crate::site::Site;
 
 /// Default token
 const DEF_TOKEN: &str = "asd_default_token";

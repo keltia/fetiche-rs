@@ -15,8 +15,8 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::{Format, Position};
 
-use crate::site::{Auth, Site};
-use crate::Fetchable;
+use crate::{Auth, Fetchable};
+use crate::site::Site;
 
 /// Define the square inside which we want beacons information
 ///
