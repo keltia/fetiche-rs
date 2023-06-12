@@ -29,12 +29,9 @@ fn main() -> Result<()> {
     //
     env_logger::init();
 
-    // Read sources
+    // Config only has the credentials for every source now.
     //
-    let cfn = match cfn {
-        Some(cfn) => cfn,
-        None => Sources::default_file(),
-    };
+    let cfg = Config::load(opts.config)?;
 
     // Banner
     //
