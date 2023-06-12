@@ -27,7 +27,7 @@ use serde_json::json;
 
 use fetiche_formats::Format;
 
-use crate::{Auth, Fetchable, http_post, http_post_auth, Sources};
+use crate::{Auth, Capability, Fetchable, http_post, http_post_auth, Sources};
 use crate::filter::Filter;
 use crate::site::Site;
 
@@ -96,6 +96,8 @@ struct Param {
 ///
 #[derive(Clone, Debug)]
 pub struct Asd {
+    /// Describe the different features of the source
+    pub features: Capability,
     /// Name of the site (site "foo" may use the same interface)
     pub site: String,
     /// Input formats
@@ -117,8 +119,9 @@ pub struct Asd {
 impl Asd {
     pub fn new() -> Self {
         Asd {
+            features: Capability::Fetch,
             site: "NONE".to_string(),
-            format: Format::None,
+            format: Format::Asd,
             login: "".to_owned(),
             password: "".to_owned(),
             base_url: "".to_owned(),

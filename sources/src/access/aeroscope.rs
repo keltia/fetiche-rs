@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::Format;
 
-use crate::{Auth, Fetchable, http_get_auth, http_post};
+use crate::{Auth, Capability, Fetchable, http_get_auth, http_post};
 use crate::site::Site;
 
 /// Data to send to authenticate ourselves and get a token
@@ -45,6 +45,8 @@ struct Token {
 /// ///
 #[derive(Clone, Debug)]
 pub struct Aeroscope {
+    /// Describe the different features of the source
+    pub features: Capability,
     /// Input formats
     pub format: Format,
     /// Auth data, username
@@ -66,7 +68,8 @@ impl Aeroscope {
         // Set some reasonable defaults
         //
         Aeroscope {
-            format: Format::None,
+            features: Capability::Fetch | Capability::Read,
+            format: Format::Aeroscope,
             login: "".to_owned(),
             password: "".to_owned(),
             base_url: "".to_owned(),

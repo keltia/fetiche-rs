@@ -30,6 +30,16 @@ mod sources;
 #[macro_use]
 mod macros;
 
+#[derive(Debug, Default)]
+#[repr(u8)]
+pub enum Capability {
+    #[default]
+    None = 0,
+    Fetch = 1,
+    Read = 2,
+    Stream = 4,
+}
+
 /// This trait enables us to manage different ways of connecting and fetching data under
 /// a single interface.
 ///

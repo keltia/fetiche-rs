@@ -32,7 +32,7 @@ use signal_hook::flag;
 
 use fetiche_formats::{Format, StateList};
 
-use crate::{Auth, Fetchable, Filter, http_get_basic, Streamable};
+use crate::{Auth, Capability, Fetchable, Filter, http_get_basic, Streamable};
 use crate::Site;
 
 /// We can go back only 1h in Opensky API
@@ -52,6 +52,8 @@ const CACHE_SIZE: u64 = 20;
 ///
 #[derive(Clone, Debug)]
 pub struct Opensky {
+    /// Describe the different features of the source
+    pub features: Capability,
     /// Input formats
     pub format: Format,
     /// Username
@@ -93,6 +95,7 @@ struct Credentials {
 impl Opensky {
     pub fn new() -> Self {
         Opensky {
+            features: Capability::Fetch | Capability::Stream,
             format: Format::Opensky,
             login: "".to_owned(),
             password: "".to_owned(),
