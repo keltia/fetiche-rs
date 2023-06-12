@@ -15,12 +15,14 @@ use anyhow::Result;
 // Re-export these modules for a shorted import path.
 //
 pub use access::*;
+pub use auth::*;
 use fetiche_formats::Format;
 pub use filter::*;
 pub use site::*;
 pub use sources::*;
 
 mod access;
+mod auth;
 mod filter;
 mod site;
 mod sources;
