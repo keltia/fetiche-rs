@@ -15,8 +15,8 @@
 use std::convert::Into;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::mpsc::Receiver;
 use std::sync::Arc;
+use std::sync::mpsc::Receiver;
 use std::thread::JoinHandle;
 
 use anyhow::{anyhow, Result};
@@ -45,7 +45,7 @@ pub fn version() -> String {
 
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Engine {
     /// Sources
     pub sources: Arc<Sources>,
@@ -137,6 +137,9 @@ pub enum Input {
 }
 
 /// Anything that can be `run()` is runnable.
+///
+/// See the engine-macro crate for a rpoc-macro that implement the `run()`  wrapper for
+/// the `Runnable` trait.
 ///
 pub trait Runnable: Debug {
     fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
