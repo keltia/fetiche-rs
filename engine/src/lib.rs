@@ -12,13 +12,14 @@
 //! return a string with the transformed output that will be sent to the next stage.
 //!
 
+use std::convert::Into;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 use std::thread::JoinHandle;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 pub use common::*;
 pub use fetch::*;
@@ -47,7 +48,53 @@ pub fn version() -> String {
 #[derive(Debug)]
 pub struct Engine {
     /// Sources
-    pub sources: Sources,
+    pub sources: Arc<Sources>,
+}
+
+impl Engine {
+    pub fn new() -> Self {
+        let src = Sources::load(&None);
+        match src {
+            Ok(src) => Engine {
+                sources: Arc::new(src),
+            },
+            _ => panic!("No sources configured"),
+        }
+    }
+
+    pub fn from(fname: &str) -> Self {
+        let src = Sources::load(&Some(fname.into()));
+        match src {
+            Ok(src) => Engine {
+                sources: Arc::new(src),
+            },
+            _ => panic!("No sources configured in {fname}"),
+        }
+    }
+
+    /// Return an `Arc::clone` of the Engine sources
+    ///
+    pub fn sources(&self) -> Arc<Sources> {
+        Arc::clone(&self.sources)
+    }
+
+    /// Return a description of all supported sources
+    ///
+    pub fn list_sources(&self) -> Result<String> {
+        Ok(self.sources.list()?)
+    }
+
+    /// Return a descriptions of all supported data formats
+    ///
+    pub fn list_formats(&self) -> Result<String> {
+        Ok(Format::list()?)
+    }
+
+    /// Return a list of all currently available authentication tokens
+    ///
+    pub fn list_tokens(&self) -> Result<String> {
+        Ok(self.sources.list_tokens()?)
+    }
 }
 
 enum Task {

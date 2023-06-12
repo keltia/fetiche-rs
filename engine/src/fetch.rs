@@ -2,13 +2,14 @@
 //!
 
 use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
 use log::trace;
 
 use engine_macros::RunnableDerive;
-use fetiche_sources::{Fetchable, Filter};
+use fetiche_sources::{Fetchable, Filter, Sources};
 
-use crate::Runnable;
+use crate::{Engine, Runnable};
 
 /// The Fetch task
 ///
@@ -17,7 +18,7 @@ pub struct Fetch {
     /// name for the task
     pub name: String,
     /// Site
-    pub site: Option<Arc<dyn Fetchable>>,
+    pub site: String,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
 }
@@ -27,7 +28,7 @@ impl Fetch {
         Self {
             name: s.to_string(),
             args: String::new(),
-            site: None,
+            site: "".to_string(),
         }
     }
     /// Copy the site's data
@@ -54,14 +55,14 @@ impl Fetch {
         // Fetch data as bytes
         //
         let mut data = vec![];
+        let cfg = Engine::sources();
         match &self.site {
             Some(site) => {
                 let token = site.authenticate()?;
                 site.fetch(&mut data, &token, &self.args)?;
-            },
+            }
             None => Err(anyhow!("no site defined")),
         }
         Ok(String::from_utf8(data.to_vec())?)
     }
 }
-
