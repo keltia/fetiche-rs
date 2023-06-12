@@ -35,7 +35,7 @@ pub struct Site {
     pub format: String,
     /// Base URL (to avoid repeating)
     pub base_url: String,
-    /// Credentials
+    /// Credentials (will be empty by default and will get filled in by clients)
     pub auth: Option<Auth>,
     /// Different URLs available
     pub routes: Option<BTreeMap<String, String>>,
