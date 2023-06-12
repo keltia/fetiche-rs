@@ -4,20 +4,20 @@ use std::io::stdout;
 use anyhow::{anyhow, Result};
 use log::{info, trace};
 
-use fetiche_engine::{Job, Stream};
+use fetiche_engine::{Engine, Job, Stream};
 use fetiche_sources::{Filter, Flow, Site, Sources};
 
-use crate::StreamOpts;
+use crate::{Config, StreamOpts};
 
 /// Actual fetching of data from a given site
 ///
-pub fn stream_from_site(cfg: &Sources, sopts: &StreamOpts) -> Result<()> {
+pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
     trace!("stream_from_site({:?})", sopts.site);
 
     check_args(sopts)?;
 
     let name = &sopts.site;
-    let site = match Site::load(name, cfg)? {
+    let site = match Site::load(name, engine)? {
         Flow::Streamable(s) => s,
         _ => return Err(anyhow!("this site is not fetchable")),
     };

@@ -5,14 +5,14 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use log::{info, trace};
 
-use fetiche_engine::{Fetch, Job};
+use fetiche_engine::{Engine, Fetch, Job};
 use fetiche_sources::{Filter, Flow, Site, Sources};
 
-use crate::FetchOpts;
+use crate::{Config, FetchOpts};
 
 /// Actual fetching of data from a given site
 ///
-pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<()> {
+pub fn fetch_from_site(cfg: &Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
 
     check_args(fopts)?;
