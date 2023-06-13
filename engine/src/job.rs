@@ -73,7 +73,7 @@ impl Job {
         //
         let (key, stdout) = channel::<String>();
 
-        // Gather results for all tasks into a single string using `Iterator::fold()`
+        // Gather results for all tasks into a single pipeline using `Iterator::fold()`
         //
         let output = self.list.iter_mut().fold(stdout, |acc, t| {
             let (rx, _) = t.run(acc);
