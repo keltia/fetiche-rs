@@ -48,6 +48,8 @@ impl Message {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::mpsc::channel;
+
     use super::*;
 
     #[test]
