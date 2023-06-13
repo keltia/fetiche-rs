@@ -12,12 +12,12 @@
 //! So now we cache them.
 //!
 
-use std::{thread, time};
 use std::io::Write;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
+use std::sync::Arc;
 use std::time::Duration;
+use std::{thread, time};
 
 use anyhow::{anyhow, Result};
 use chrono::Utc;
@@ -32,8 +32,8 @@ use signal_hook::flag;
 
 use fetiche_formats::{Format, StateList};
 
-use crate::{Auth, Capability, Fetchable, Filter, http_get_basic, Streamable};
 use crate::Site;
+use crate::{http_get_basic, Auth, Capability, Fetchable, Filter, Streamable};
 
 /// We can go back only 1h in Opensky API
 const MAX_INTERVAL: i64 = 3600;
@@ -53,7 +53,7 @@ const CACHE_SIZE: u64 = 20;
 #[derive(Clone, Debug)]
 pub struct Opensky {
     /// Describe the different features of the source
-    pub features: Capability,
+    pub features: Vec<Capability>,
     /// Input formats
     pub format: Format,
     /// Username
@@ -95,7 +95,7 @@ struct Credentials {
 impl Opensky {
     pub fn new() -> Self {
         Opensky {
-            features: Capability::Fetch | Capability::Stream,
+            features: vec![Capability::Fetch, Capability::Stream],
             format: Format::Opensky,
             login: "".to_owned(),
             password: "".to_owned(),

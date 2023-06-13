@@ -11,6 +11,7 @@
 //!
 
 use std::io::Write;
+use std::vec;
 
 use anyhow::Result;
 use clap::{crate_name, crate_version};
@@ -20,8 +21,8 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::Format;
 
-use crate::{Auth, Capability, Fetchable, http_get_auth, http_post};
 use crate::site::Site;
+use crate::{http_get_auth, http_post, Auth, Capability, Fetchable};
 
 /// Data to send to authenticate ourselves and get a token
 ///
@@ -46,7 +47,7 @@ struct Token {
 #[derive(Clone, Debug)]
 pub struct Aeroscope {
     /// Describe the different features of the source
-    pub features: Capability,
+    pub features: Vec<Capability>,
     /// Input formats
     pub format: Format,
     /// Auth data, username
@@ -68,7 +69,7 @@ impl Aeroscope {
         // Set some reasonable defaults
         //
         Aeroscope {
-            features: Capability::Fetch | Capability::Read,
+            features: vec![Capability::Fetch, Capability::Read],
             format: Format::Aeroscope,
             login: "".to_owned(),
             password: "".to_owned(),

@@ -30,7 +30,7 @@ mod sources;
 #[macro_use]
 mod macros;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 #[repr(u8)]
 pub enum Capability {
     #[default]

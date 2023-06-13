@@ -15,8 +15,8 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::{Format, Position};
 
-use crate::{Auth, Capability, Fetchable};
 use crate::site::Site;
+use crate::{Auth, Capability, Fetchable};
 
 /// Define the square inside which we want beacons information
 ///
@@ -47,7 +47,7 @@ struct Param {
 #[derive(Clone, Debug)]
 pub struct Safesky {
     /// Describe the different features of the source
-    pub features: Capability,
+    pub features: Vec<Capability>,
     /// Format of data
     pub format: Format,
     /// Base URL for the API
@@ -63,7 +63,7 @@ pub struct Safesky {
 impl Safesky {
     pub fn new() -> Self {
         Safesky {
-            features: Capability::Fetch,
+            features: vec![Capability::Fetch],
             format: Format::Safesky,
             base_url: "".to_owned(),
             api_key: "".to_owned(),
