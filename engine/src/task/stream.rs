@@ -3,17 +3,17 @@
 
 use std::fmt::{Debug, Formatter};
 use std::io::Write;
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread;
-use std::sync::mpsc::channel;
 
 use anyhow::{anyhow, Result};
 use log::trace;
 
+use engine_macros::RunnableDerive;
 use fetiche_sources::{Filter, Streamable};
 
 use crate::Runnable;
-use engine_macros::RunnableDerive;
 
 /// The Stream task
 ///
@@ -22,7 +22,7 @@ pub struct Stream {
     /// name for the task
     pub name: String,
     /// Site
-    pub site: Option<Arc<dyn Streamable>>,
+    pub site: Option<String>,
     /// Interval in secs
     pub every: usize,
     /// Optional arguments (usually json-encoded string)
@@ -102,7 +102,7 @@ impl Stream {
                     }
                     return Ok(String::from_utf8(data)?);
                 }
-            },
+            }
             None => return Err(anyhow!("site not defined")),
         }
     }

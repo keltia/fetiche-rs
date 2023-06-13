@@ -25,6 +25,7 @@ impl Nothing {
         Ok(format!("{}|NOP", data))
     }
 }
+
 /// Just display a message
 ///
 #[derive(Clone, Debug, RunnableDerive)]

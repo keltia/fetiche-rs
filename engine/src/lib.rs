@@ -19,25 +19,16 @@ use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 use std::thread::JoinHandle;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
-pub use common::*;
-pub use fetch::*;
 use fetiche_formats::Format;
 use fetiche_sources::{Fetchable, Sources, Streamable};
-pub use into::*;
-pub use job::*;
-pub use parse::*;
-pub use read::*;
-pub use stream::*;
 
-mod common;
-mod fetch;
-mod into;
+use crate::job::Job;
+
 mod job;
 mod parse;
-mod read;
-mod stream;
+mod task;
 
 pub fn version() -> String {
     format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))

@@ -71,7 +71,8 @@ impl Read {
         if self.path.is_none() || self.format == Format::None {
             Err(anyhow!("uninitialised read"))
         } else {
-            let r = fs::read_to_string(path)?;
+            let p = &self.path.expect("No file");
+            let r = fs::read_to_string(p)?;
             Ok(r)
         }
     }
