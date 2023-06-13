@@ -103,7 +103,7 @@ impl Sources {
     /// List of currently known sources into a nicely formatted string.
     ///
     pub fn list(&self) -> Result<String> {
-        let header = vec!["Name", "Type", "Format", "URL", "Auth"];
+        let header = vec!["Name", "Type", "Format", "URL", "Auth", "Ops"];
 
         let mut builder = Builder::default();
         builder.set_header(header);
@@ -130,7 +130,7 @@ impl Sources {
                 "anon".to_owned()
             };
             row.push(&auth);
-            builder.push_record(row);
+            let cap = s.builder.push_record(row);
         });
 
         let table = builder.build().with(Style::rounded()).to_string();
