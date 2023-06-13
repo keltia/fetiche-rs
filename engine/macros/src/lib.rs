@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 
 use quote::quote;
-use syn::{DeriveInput, parse_macro_input};
+use syn::{parse_macro_input, DeriveInput};
 
 /// Most basic proc_macro ever: use as a template.
 ///
@@ -38,4 +38,3 @@ pub fn runnable(input: TokenStream) -> TokenStream {
     });
     outer.into()
 }
-
