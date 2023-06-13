@@ -15,8 +15,8 @@
 use std::convert::Into;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use anyhow::Result;
@@ -85,6 +85,12 @@ impl Engine {
     ///
     pub fn list_tokens(&self) -> Result<String> {
         Ok(self.sources.list_tokens()?)
+    }
+
+    /// Create a new job queue
+    ///
+    pub fn create_job(&self, s: &str) -> Job {
+        Job::new(s, Arc::clone(&self.sources))
     }
 }
 
