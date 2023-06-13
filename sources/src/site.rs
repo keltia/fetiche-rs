@@ -19,14 +19,17 @@ use serde::{Deserialize, Serialize};
 use fetiche_formats::Format;
 
 use crate::{
-    aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky, Auth, Routes, Streamable,
+    aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky, Auth, Capability, Routes,
+    Streamable,
 };
 use crate::{Fetchable, Sources};
 
-/// Describe what a site is and associated credentials.
+/// Describe what a site is, its capabilities, access methods and authentication method.
 ///
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Site {
+    /// Features of the site
+    pub features: Vec<Capability>,
     /// Which data are we getting (drone or plain ads-b)
     #[serde(rename = "type")]
     pub dtype: DataType,

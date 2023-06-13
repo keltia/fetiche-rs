@@ -6,7 +6,7 @@
 //! - fetching data (GET or POST, etc.).
 //!
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 use std::io::Write;
 use std::sync::mpsc::Sender;
 
@@ -40,6 +40,18 @@ pub enum Capability {
     Fetch = 1,
     Read = 2,
     Stream = 3,
+}
+
+impl Display for Capability {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Capability::None => "none",
+            Capability::Read => "read",
+            Capability::Fetch => "fetch",
+            Capability::Stream => "stream",
+        };
+        write!(f, "{s}")
+    }
 }
 
 /// This trait enables us to manage different ways of connecting and fetching data under

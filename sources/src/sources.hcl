@@ -2,7 +2,8 @@
 //
 version = 4
 
-site "eih" {
+site "aeroscope" {
+  features = ["fetch"]
   type     = "drone"
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
@@ -13,6 +14,7 @@ site "eih" {
 }
 
 site "asd" {
+  features = ["fetch"]
   type     = "drone"
   format   = "asd"
   base_url = "https://eur.airspacedrone.com/api"
@@ -23,6 +25,7 @@ site "asd" {
 }
 
 site "lux" {
+  features = ["fetch"]
   type     = "drone"
   format   = "asd"
   base_url = "https://eur.airspacedrone.com/api"
@@ -34,6 +37,7 @@ site "lux" {
 }
 
 site "opensky" {
+  features = ["fetch", "stream"]
   type     = "adsb"
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
@@ -44,6 +48,7 @@ site "opensky" {
 }
 
 site "safesky" {
+  features = ["fetch"]
   type     = "adsb"
   format   = "safesky"
   base_url = "https://public-api.safesky.app"
