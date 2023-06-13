@@ -73,19 +73,27 @@ impl Job {
         //
         let (key, stdout) = channel::<String>();
 
-        // Gather result for all tasks into a single string using `Iterator::fold()`
+        // Gather results for all tasks into a single string using `Iterator::fold()`
         //
         let output = self.list.iter_mut().fold(stdout, |acc, t| {
             let (rx, _) = t.run(acc);
             rx
         });
 
-        // Send final output
+        // Start the pipeline
         //
-        match output.recv() {
-            Ok(msg) => Ok(write!(out, "{}", msg)?),
-            Err(e) => e,
+        key.send("start".to_string())?;
+
+        // Close the pipeline which will stop all threads in sequence
+        //
+        drop(key);
+
+        // Wait for final output to be received and send it out
+        //
+        for msg in output {
+            Ok(write!(out, "{}", msg)?);
         }
+        Ok(())
     }
 }
 
