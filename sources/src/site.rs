@@ -10,7 +10,6 @@
 //!
 //! History:
 
-use std::collections::BTreeMap;
 use std::fmt::{Debug, Display, Formatter};
 
 use anyhow::{anyhow, Result};
@@ -19,7 +18,9 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::Format;
 
-use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky, Auth, Streamable};
+use crate::{
+    aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky, Auth, Routes, Streamable,
+};
 use crate::{Fetchable, Sources};
 
 /// Describe what a site is and associated credentials.
@@ -38,7 +39,7 @@ pub struct Site {
     /// Credentials (will be empty by default and will get filled in by clients)
     pub auth: Option<Auth>,
     /// Different URLs available
-    pub routes: Option<BTreeMap<String, String>>,
+    pub routes: Option<Routes>,
 }
 
 /// Define the kind of data the source is managing

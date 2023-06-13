@@ -18,12 +18,14 @@ pub use access::*;
 pub use auth::*;
 use fetiche_formats::Format;
 pub use filter::*;
+pub use route::*;
 pub use site::*;
 pub use sources::*;
 
 mod access;
 mod auth;
 mod filter;
+mod route;
 mod site;
 mod sources;
 
@@ -37,7 +39,7 @@ pub enum Capability {
     None = 0,
     Fetch = 1,
     Read = 2,
-    Stream = 4,
+    Stream = 3,
 }
 
 /// This trait enables us to manage different ways of connecting and fetching data under
