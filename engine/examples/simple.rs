@@ -1,6 +1,6 @@
 //! Basic framework for the runner
 //!
-//! cf. [Playground](https://play.rust-lang.org/?version=nightly&mode=debug&edition=2021&gist=f1527f30e3a1f015859e214218aa13aa)
+//! cf. [Playground](https://play.rust-lang.org/?version=nightly&mode=debug&edition=2021&gist=7fcf8265fc664d887e97959c61a18f6c)
 //!
 //! this is the bare version without using the macro.
 //!
