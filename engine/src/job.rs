@@ -8,9 +8,12 @@
 use std::collections::VecDeque;
 use std::io::Write;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use log::trace;
+
+use fetiche_sources::Sources;
 
 use crate::Runnable;
 
@@ -18,6 +21,8 @@ use crate::Runnable;
 ///
 #[derive(Debug)]
 pub struct Job {
+    /// Source parameters
+    pub srcs: Arc<Sources>,
     /// Name of the job
     pub name: String,
     /// FIFO list of tasks
@@ -30,9 +35,10 @@ impl Job {
     /// NOTE: No //EOJ
     ///
     #[inline]
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &str, srcs: Arc<Sources>) -> Self {
         trace!("Job::new");
         Job {
+            srcs: Arc::clone(&srcs),
             name: name.to_owned(),
             list: VecDeque::new(),
         }
@@ -85,14 +91,14 @@ impl Job {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Message, Nothing};
+    use crate::Task;
 
     use super::*;
 
     #[test]
     fn test_job_run() {
-        let t1 = Box::new(Nothing {});
-        let t2 = Box::new(Message::new("hello world"));
+        let t1 = Box::new(Task::Nothing {});
+        let t2 = Box::new(Task::Message::new("hello world"));
 
         let mut j: Job = Job::new("test");
         j.add(t1);
