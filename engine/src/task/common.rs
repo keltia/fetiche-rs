@@ -5,6 +5,7 @@
 //!
 
 use std::fmt::Debug;
+use std::sync::mpsc::Sender;
 
 use anyhow::Result;
 
@@ -21,8 +22,8 @@ pub struct Nothing {}
 
 impl Nothing {
     #[inline]
-    fn transform(&self, data: String) -> Result<String> {
-        Ok(format!("{}|NOP", data))
+    fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
+        Ok(stdout.send(format!("{}|NOP", data))?)
     }
 }
 
@@ -41,8 +42,8 @@ impl Message {
     }
 
     #[inline]
-    fn transform(&self, data: String) -> Result<String> {
-        Ok(format!("{}|{}", data, self.msg))
+    fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
+        Ok(stdout.send(format!("{}|{}", data, self.msg))?)
     }
 }
 

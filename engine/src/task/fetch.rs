@@ -2,14 +2,15 @@
 //!
 
 use std::sync::Arc;
+use std::sync::mpsc::Sender;
 
 use anyhow::{anyhow, Result};
 use log::trace;
 
 use engine_macros::RunnableDerive;
-use fetiche_sources::{Fetchable, Filter, Site, Sources};
+use fetiche_sources::{Filter, Flow, Site, Sources};
 
-use crate::{Engine, Runnable};
+use crate::Runnable;
 
 /// The Fetch task
 ///
@@ -26,11 +27,12 @@ pub struct Fetch {
 }
 
 impl Fetch {
-    pub fn new(s: &str) -> Self {
+    pub fn new(s: &str, srcs: Arc<Sources>) -> Self {
         Self {
             name: s.to_string(),
             args: String::new(),
             site: None,
+            srcs: Arc::clone(&srcs),
         }
     }
     /// Copy the site's data
@@ -49,24 +51,24 @@ impl Fetch {
         self
     }
 
-    pub fn using(&mut self, srcs: Arc<Sources>) -> &mut Self {}
     /// The heart of the matter: fetch data
     ///
-    fn transform(&mut self, data: String) -> Result<String> {
-        trace!("Fetch::transform()");
+    fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
+        trace!("Fetch::execute()");
         trace!("received: {}", data);
         // Fetch data as bytes
         //
         let mut data = vec![];
-        let cfg = Engine::sources();
         match &self.site {
             Some(site) => {
-                let site: Site = cfg[site]?;
-                let token = site.authenticate()?;
-                site.fetch(&mut data, &token, &self.args)?;
+                let site = Site::load(site, &self.srcs)?;
+                if let Flow::Fetchable(site) = site {
+                    let token = site.authenticate()?;
+                    site.fetch(&mut data, &token, &self.args)?;
+                }
             }
-            None => Err(anyhow!("no site defined")),
+            None => return Err(anyhow!("no site defined")),
         }
-        Ok(String::from_utf8(data.to_vec())?)
+        Ok(stdout.send(String::from_utf8(data.to_vec())?)?)
     }
 }

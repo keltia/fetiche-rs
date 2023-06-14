@@ -3,6 +3,7 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::mpsc::Sender;
 
 use anyhow::{anyhow, Result};
 use log::trace;
@@ -15,7 +16,7 @@ use crate::Runnable;
 
 /// The Read task
 ///
-#[derive(Debug, RunnableDerive)]
+#[derive(Clone, Debug, RunnableDerive)]
 pub struct Read {
     /// name for the task
     pub name: String,
@@ -66,14 +67,14 @@ impl Read {
 
     /// The heart of the matter: fetch data
     ///
-    fn transform(&mut self, _data: String) -> Result<String> {
+    pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Read::transform()");
         if self.path.is_none() || self.format == Format::None {
             Err(anyhow!("uninitialised read"))
         } else {
-            let p = &self.path.expect("No file");
-            let r = fs::read_to_string(p)?;
-            Ok(r)
+            let p = self.path.clone().unwrap();
+            let r = fs::read_to_string(&p)?;
+            Ok(stdout.send(r)?)
         }
     }
 }

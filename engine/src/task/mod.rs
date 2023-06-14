@@ -1,12 +1,6 @@
 //! Regroup all available task/commands
 //!
 
-use std::fmt::Debug;
-use std::sync::mpsc::Receiver;
-use std::thread::JoinHandle;
-
-use anyhow::Result;
-
 pub use common::*;
 pub use fetch::*;
 pub use into::*;
