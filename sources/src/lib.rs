@@ -11,6 +11,7 @@ use std::io::Write;
 use std::sync::mpsc::Sender;
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
 // Re-export these modules for a shorted import path.
 //
@@ -32,7 +33,8 @@ mod sources;
 #[macro_use]
 mod macros;
 
-#[derive(Clone, Copy, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Ord, PartialOrd, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
 #[repr(u8)]
 pub enum Capability {
     #[default]
@@ -85,7 +87,7 @@ pub trait Streamable: Debug {
 
 /// Default configuration filename
 const CONFIG: &str = "sources.hcl";
-const CVERSION: usize = 3;
+const CVERSION: usize = 4;
 
 #[cfg(unix)]
 const BASEDIR: &str = ".config";

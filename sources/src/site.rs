@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use fetiche_formats::Format;
 
 use crate::{
-    aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky, Auth, Capability, Routes,
+    aeroscope::Aeroscope, asd::Asd, Auth, Capability, opensky::Opensky, Routes, safesky::Safesky,
     Streamable,
 };
 use crate::{Fetchable, Sources};
@@ -127,6 +127,9 @@ impl Site {
                     //
                     Format::Opensky => {
                         let s = Opensky::new().load(site).clone();
+
+                        // FIXME: handle both cases
+                        //
                         if site.has("stream") {
                             Ok(Flow::Streamable(Box::new(s)))
                         } else {

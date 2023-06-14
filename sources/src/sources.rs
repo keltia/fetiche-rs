@@ -18,9 +18,9 @@ use serde::{Deserialize, Serialize};
 use tabled::builder::Builder;
 use tabled::settings::Style;
 
+use crate::{Auth, CONFIG, CVERSION, makepath, Site, TOKEN_BASE};
 #[cfg(unix)]
 use crate::BASEDIR;
-use crate::{makepath, Auth, Site, CONFIG, CVERSION, TOKEN_BASE};
 
 /// List of sources, this is the only exposed struct from here.
 ///
@@ -125,12 +125,14 @@ impl Sources {
                     Auth::Anon => "open",
                     Auth::Key { .. } => "API key",
                 }
-                .to_string()
+                    .to_string()
             } else {
                 "anon".to_owned()
             };
             row.push(&auth);
-            let cap = s.builder.push_record(row);
+            let cap = s.features.clone().iter().map(|c| c.to_string()).collect::<Vec<String>>().join(",");
+            row.push(&cap);
+            builder.push_record(row);
         });
 
         let table = builder.build().with(Style::rounded()).to_string();
@@ -441,6 +443,7 @@ impl Sites {
             .map(|n| {
                 let site = s.site.get(n).unwrap();
                 Site {
+                    features: site.features.clone(),
                     dtype: site.dtype,
                     name: Some(n.clone()),
                     format: site.format.clone(),
@@ -462,8 +465,8 @@ mod tests {
     use anyhow::bail;
     use log::debug;
 
-    use crate::site::Auth;
     use crate::DataType;
+    use crate::site::Auth;
 
     use super::*;
 
