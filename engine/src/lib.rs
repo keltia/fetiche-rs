@@ -15,8 +15,8 @@
 use std::convert::Into;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use anyhow::Result;
@@ -49,7 +49,7 @@ impl Engine {
             Ok(src) => Engine {
                 sources: Arc::new(src),
             },
-            Err(e) => panic!("No sources configured:{}", e.to_string()),
+            Err(e) => panic!("No sources configured:{}", e),
         }
     }
 
@@ -59,7 +59,7 @@ impl Engine {
             Ok(src) => Engine {
                 sources: Arc::new(src),
             },
-            Err(e) => panic!("No sources configured in {}:{}", fname, e.to_string()),
+            Err(e) => panic!("No sources configured in {}:{}", fname, e),
         }
     }
 
@@ -72,25 +72,31 @@ impl Engine {
     /// Return a description of all supported sources
     ///
     pub fn list_sources(&self) -> Result<String> {
-        Ok(self.sources.list()?)
+        self.sources.list()
     }
 
     /// Return a descriptions of all supported data formats
     ///
     pub fn list_formats(&self) -> Result<String> {
-        Ok(Format::list()?)
+        Format::list()
     }
 
     /// Return a list of all currently available authentication tokens
     ///
     pub fn list_tokens(&self) -> Result<String> {
-        Ok(self.sources.list_tokens()?)
+        self.sources.list_tokens()
     }
 
     /// Create a new job queue
     ///
     pub fn create_job(&self, s: &str) -> Job {
         Job::new(s, Arc::clone(&self.sources))
+    }
+}
+
+impl Default for Engine {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

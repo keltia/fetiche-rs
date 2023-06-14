@@ -146,10 +146,7 @@ impl Site {
     /// Return the site name
     ///
     pub fn name(&self) -> Option<String> {
-        match &self.name {
-            Some(name) => Some(name.to_string()),
-            None => None,
-        }
+        self.name.as_ref().map(|name| name.to_string())
     }
 
     /// Return the site formats

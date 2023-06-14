@@ -7,7 +7,7 @@ use anyhow::{anyhow, Result};
 use home::home_dir;
 use serde::Deserialize;
 
-use fetiche_sources::{Auth, makepath};
+use fetiche_sources::{makepath, Auth};
 
 const CONFIG: &str = "config.hcl";
 const CVERSION: usize = 1;
@@ -62,7 +62,7 @@ impl Config {
 
     pub fn load(fname: Option<PathBuf>) -> Result<Config> {
         let fname = match fname {
-            Some(fname) => PathBuf::from(fname),
+            Some(fname) => fname,
             _ => Self::default_file(),
         };
         let data = fs::read_to_string(fname).expect("Can not open config.hcl");

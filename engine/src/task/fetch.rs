@@ -39,7 +39,7 @@ impl Fetch {
     ///
     pub fn site(&mut self, s: String) -> &mut Self {
         trace!("Add site {} as {}", self.name, s);
-        self.site = Some(s.to_owned());
+        self.site = Some(s);
         self
     }
 

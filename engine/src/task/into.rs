@@ -18,7 +18,10 @@ pub struct Into {
 
 impl Into {
     pub fn new() -> Self {
-        Self { from: Format::None, into: Format::None }
+        Self {
+            from: Format::None,
+            into: Format::None,
+        }
     }
 
     pub fn from(&mut self, frm: Format) -> &mut Self {
@@ -33,5 +36,11 @@ impl Into {
 
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         Ok(stdout.send(data)?)
+    }
+}
+
+impl Default for Into {
+    fn default() -> Self {
+        Self::new()
     }
 }

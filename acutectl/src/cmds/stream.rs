@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use log::{info, trace};
 
-use fetiche_engine::{Engine, Job, Stream};
+use fetiche_engine::{Engine, Stream};
 use fetiche_sources::{Filter, Flow, Site};
 
 use crate::StreamOpts;
@@ -35,11 +35,13 @@ pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
     if let Some(out) = &sopts.output {
         let mut out = File::create(out)?;
 
-        engine.create_job("stream_from_site")
+        engine
+            .create_job("stream_from_site")
             .add(Box::new(task))
             .run(&mut out)?;
     } else {
-        engine.create_job("stream_from_site")
+        engine
+            .create_job("stream_from_site")
             .add(Box::new(task))
             .run(&mut stdout())?;
     };

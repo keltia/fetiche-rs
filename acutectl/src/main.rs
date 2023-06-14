@@ -1,16 +1,14 @@
 use std::fs;
 use std::io;
 use std::io::Write;
-use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use clap::{CommandFactory, crate_authors, crate_description, crate_version, Parser};
+use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
 use clap_complete::generate;
 use log::{info, trace};
 
 use acutectl::{
-    Config, fetch_from_site, ImportSubCommand, ListSubCommand, Opts, stream_from_site,
-    SubCommand,
+    fetch_from_site, stream_from_site, Config, ImportSubCommand, ListSubCommand, Opts, SubCommand,
 };
 use fetiche_engine::Engine;
 use fetiche_formats::Format;

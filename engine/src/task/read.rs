@@ -73,7 +73,7 @@ impl Read {
             Err(anyhow!("uninitialised read"))
         } else {
             let p = self.path.clone().unwrap();
-            let r = fs::read_to_string(&p)?;
+            let r = fs::read_to_string(p)?;
             Ok(stdout.send(r)?)
         }
     }
