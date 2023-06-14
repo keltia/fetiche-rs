@@ -1,9 +1,12 @@
 use proc_macro::TokenStream;
 
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{DeriveInput, parse_macro_input};
 
 /// Most basic proc_macro ever: use as a template.
+///
+/// `execute()` takes whatever was sent from the previous stage and process is, knowing that
+/// any input should be sent directly to the stdout channel.
 ///
 #[proc_macro_derive(RunnableDerive)]
 pub fn runnable(input: TokenStream) -> TokenStream {
@@ -17,7 +20,7 @@ pub fn runnable(input: TokenStream) -> TokenStream {
         ) -> (::std::sync::mpsc::Receiver<String>, ::std::thread::JoinHandle<Result<()>>) {
             let (stdout, stdin) = ::std::sync::mpsc::channel::<::std::string::String>();
 
-            let src = self.clone();
+            let mut src = self.clone();
             let h = ::std::thread::spawn(move || {
                 ::log::trace!("Runnable({})", stringify!(#klass));
 
@@ -26,10 +29,7 @@ pub fn runnable(input: TokenStream) -> TokenStream {
                 for data in input {
                     // Do something (or not) with the input data if there is an error
                     //
-                    let data = src.transform(data).unwrap();
-                    if stdout.send(data).is_err() {
-                        break;
-                    }
+                    src.execute(data, stdout.clone()).unwrap();
                 }
                 Ok(())
             });
