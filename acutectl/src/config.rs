@@ -9,6 +9,9 @@ use serde::Deserialize;
 
 use fetiche_sources::{makepath, Auth};
 
+#[cfg(unix)]
+const BASEDIR: &str = ".config";
+
 const CONFIG: &str = "config.hcl";
 const CVERSION: usize = 1;
 
