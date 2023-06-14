@@ -1,19 +1,20 @@
 use std::fs;
 use std::io;
 use std::io::Write;
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
+use clap::{CommandFactory, crate_authors, crate_description, crate_version, Parser};
 use clap_complete::generate;
 use log::{info, trace};
 
 use acutectl::{
-    fetch_from_site, import_data, stream_from_site, Config, ImportSubCommand, ListSubCommand, Opts,
+    Config, fetch_from_site, ImportSubCommand, ListSubCommand, Opts, stream_from_site,
     SubCommand,
 };
 use fetiche_engine::Engine;
 use fetiche_formats::Format;
-use fetiche_sources::{Flow, Site, Sources};
+use fetiche_sources::{Flow, Site};
 
 /// Binary name, using a different binary name
 pub(crate) const NAME: &str = env!("CARGO_BIN_NAME");
@@ -32,7 +33,7 @@ fn main() -> Result<()> {
 
     // Config only has the credentials for every source now.
     //
-    let cfg = Config::load(opts.config)?;
+    let cfg = Config::load(cfn)?;
 
     // Banner
     //
@@ -71,7 +72,8 @@ fn main() -> Result<()> {
                 ImportSubCommand::ImportSite(fopts) => {
                     trace!("drone import site");
 
-                    let site = match Site::load(&fopts.site, &cfg)? {
+                    let srcs = engine.sources();
+                    let site = match Site::load(&fopts.site, &srcs)? {
                         Flow::Fetchable(s) => s,
                         _ => return Err(anyhow!("this site is not fetchable")),
                     };
@@ -80,7 +82,7 @@ fn main() -> Result<()> {
                     // FIXME
                     let data: Vec<u8> = vec![];
 
-                    fetch_from_site(&cfg, fopts)?;
+                    fetch_from_site(&engine, fopts)?;
 
                     //import_data(&cfg, &data, fmt)?;
                 }
@@ -90,7 +92,7 @@ fn main() -> Result<()> {
                     let data = fs::read_to_string(&if_opts.file)?;
                     let fmt = Format::from(if_opts.format.clone().unwrap().as_str());
 
-                    import_data(&cfg, &data, fmt)?;
+                    //import_data(&srcs, &data, fmt)?;
                 }
             }
         }

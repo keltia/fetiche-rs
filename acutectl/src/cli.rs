@@ -46,7 +46,7 @@ use clap_complete::shells::Shell;
 pub struct Opts {
     /// configuration file.
     #[clap(short = 'c', long)]
-    pub config: Option<String>,
+    pub config: Option<PathBuf>,
     /// debug mode.
     #[clap(short = 'D', long = "debug")]
     pub debug: bool,

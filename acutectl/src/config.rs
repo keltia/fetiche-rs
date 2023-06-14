@@ -3,28 +3,34 @@ use std::fs;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
+#[cfg(unix)]
 use home::home_dir;
 use serde::Deserialize;
 
-use fetiche_sources::{makepath, Auth};
+use fetiche_sources::{Auth, makepath};
 
 const CONFIG: &str = "config.hcl";
 const CVERSION: usize = 1;
 
+/// Configuration for the CLI tool, supposed to include parameters and most importantly
+/// credentials for the various sources.
+///
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub version: usize,
-    pub sites: BTreeMap<String, Site>,
+    pub site: BTreeMap<String, Entry>,
 }
 
+/// Hold credentials
+///
 #[derive(Debug, Deserialize)]
-pub struct Site {
+pub struct Entry {
     auth: Auth,
 }
 
-impl Default for Site {
+impl Default for Entry {
     fn default() -> Self {
-        Site { auth: Auth::Anon }
+        Entry { auth: Auth::Anon }
     }
 }
 
@@ -54,21 +60,17 @@ impl Config {
         Self::config_path().join(CONFIG)
     }
 
-    pub fn load(fname: Option<String>) -> Result<Config> {
+    pub fn load(fname: Option<PathBuf>) -> Result<Config> {
         let fname = match fname {
-            Some(fname) => fname,
+            Some(fname) => PathBuf::from(fname),
             _ => Self::default_file(),
         };
         let data = fs::read_to_string(fname).expect("Can not open config.hcl");
 
-        match hcl::from_str(&data) {
-            Ok(cfg) => {
-                if cfg.version != CVERSION {
-                    return Err(anyhow!("bad file version: {}", cfg.version));
-                }
-                Ok(cfg)
-            }
-            Err(e) => Err(anyhow!("bad configuration file: {}", e.to_string())),
+        let data: Config = hcl::from_str(&data)?;
+        if data.version != CVERSION {
+            return Err(anyhow!("bad file version: {}", data.version));
         }
+        Ok(data)
     }
 }
