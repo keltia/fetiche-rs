@@ -15,16 +15,16 @@
 use std::convert::Into;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::mpsc::Receiver;
 use std::sync::Arc;
+use std::sync::mpsc::Receiver;
 use std::thread::JoinHandle;
 
 use anyhow::Result;
 
 use fetiche_formats::Format;
 use fetiche_sources::{Fetchable, Sources, Streamable};
-
-use crate::job::Job;
+pub use job::*;
+pub use task::*;
 
 mod job;
 mod parse;
@@ -49,7 +49,7 @@ impl Engine {
             Ok(src) => Engine {
                 sources: Arc::new(src),
             },
-            _ => panic!("No sources configured"),
+            Err(e) => panic!("No sources configured:{}", e.to_string()),
         }
     }
 
@@ -59,7 +59,7 @@ impl Engine {
             Ok(src) => Engine {
                 sources: Arc::new(src),
             },
-            _ => panic!("No sources configured in {fname}"),
+            Err(e) => panic!("No sources configured in {}:{}", fname, e.to_string()),
         }
     }
 
@@ -92,14 +92,6 @@ impl Engine {
     pub fn create_job(&self, s: &str) -> Job {
         Job::new(s, Arc::clone(&self.sources))
     }
-}
-
-enum Task {
-    Copy,
-    Fetch,
-    Message,
-    Read,
-    Stream,
 }
 
 /// Type of task we will need to do
