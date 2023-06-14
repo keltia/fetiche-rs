@@ -7,10 +7,10 @@
 //!
 use std::collections::VecDeque;
 use std::io::Write;
-use std::sync::mpsc::channel;
 use std::sync::Arc;
+use std::sync::mpsc::channel;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use log::trace;
 
 use fetiche_sources::Sources;
@@ -91,7 +91,7 @@ impl Job {
         // Wait for final output to be received and send it out
         //
         for msg in output {
-            Ok(write!(out, "{}", msg)?);
+            write!(out, "{}", msg)?;
         }
         Ok(())
     }
