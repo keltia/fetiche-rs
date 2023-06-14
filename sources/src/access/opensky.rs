@@ -12,12 +12,12 @@
 //! So now we cache them.
 //!
 
+use std::{thread, time};
 use std::io::Write;
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
-use std::sync::Arc;
 use std::time::Duration;
-use std::{thread, time};
 
 use anyhow::{anyhow, Result};
 use chrono::Utc;
@@ -32,8 +32,8 @@ use signal_hook::flag;
 
 use fetiche_formats::{Format, StateList};
 
+use crate::{Auth, Capability, Fetchable, Filter, http_get_basic, Streamable};
 use crate::Site;
-use crate::{http_get_basic, Auth, Capability, Fetchable, Filter, Streamable};
 
 /// We can go back only 1h in Opensky API
 const MAX_INTERVAL: i64 = 3600;
@@ -138,7 +138,7 @@ impl Default for Opensky {
 
 impl Fetchable for Opensky {
     fn name(&self) -> String {
-        unimplemented!()
+        "opensky".to_string()
     }
 
     /// All credentials are passed every time we call the API so return a fake token
@@ -210,7 +210,7 @@ impl Fetchable for Opensky {
 
 impl Streamable for Opensky {
     fn name(&self) -> String {
-        unimplemented!()
+        "opensky".to_string()
     }
 
     /// All credentials are passed every time we call the API so return a fake token
