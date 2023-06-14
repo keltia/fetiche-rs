@@ -5,13 +5,9 @@
 //!
 
 use std::fmt::Debug;
-use std::io::Write;
-use std::sync::mpsc::{channel, Receiver};
-use std::thread;
-use std::thread::JoinHandle;
+use std::sync::mpsc::Sender;
 
 use anyhow::Result;
-use log::trace;
 
 use engine_macros::RunnableDerive;
 
@@ -26,10 +22,11 @@ pub struct Nothing {}
 
 impl Nothing {
     #[inline]
-    fn transform(&self, data: String) -> Result<String> {
-        Ok(format!("{}|NOP", data))
+    fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
+        Ok(stdout.send(format!("{}|NOP", data))?)
     }
 }
+
 /// Just display a message
 ///
 #[derive(Clone, Debug, RunnableDerive)]
@@ -45,13 +42,15 @@ impl Message {
     }
 
     #[inline]
-    fn transform(&self, data: String) -> Result<String> {
-        Ok(format!("{}|{}", data, self.msg))
+    fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
+        Ok(stdout.send(format!("{}|{}", data, self.msg))?)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::mpsc::channel;
+
     use super::*;
 
     #[test]

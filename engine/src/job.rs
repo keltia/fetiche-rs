@@ -7,10 +7,13 @@
 //!
 use std::collections::VecDeque;
 use std::io::Write;
+use std::sync::Arc;
 use std::sync::mpsc::channel;
 
 use anyhow::Result;
 use log::trace;
+
+use fetiche_sources::Sources;
 
 use crate::Runnable;
 
@@ -18,6 +21,8 @@ use crate::Runnable;
 ///
 #[derive(Debug)]
 pub struct Job {
+    /// Source parameters
+    pub srcs: Arc<Sources>,
     /// Name of the job
     pub name: String,
     /// FIFO list of tasks
@@ -30,9 +35,10 @@ impl Job {
     /// NOTE: No //EOJ
     ///
     #[inline]
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &str, srcs: Arc<Sources>) -> Self {
         trace!("Job::new");
         Job {
+            srcs: Arc::clone(&srcs),
             name: name.to_owned(),
             list: VecDeque::new(),
         }
@@ -67,32 +73,40 @@ impl Job {
         //
         let (key, stdout) = channel::<String>();
 
-        // Gather result for all tasks into a single string using `Iterator::fold()`
+        // Gather results for all tasks into a single pipeline using `Iterator::fold()`
         //
         let output = self.list.iter_mut().fold(stdout, |acc, t| {
             let (rx, _) = t.run(acc);
             rx
         });
 
-        // Send final output
+        // Start the pipeline
         //
-        match output.recv() {
-            Ok(msg) => Ok(write!(out, "{}", msg)?),
-            None => Ok(()),
+        key.send("start".to_string())?;
+
+        // Close the pipeline which will stop all threads in sequence
+        //
+        drop(key);
+
+        // Wait for final output to be received and send it out
+        //
+        for msg in output {
+            write!(out, "{}", msg)?;
         }
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{Message, Nothing};
+    use crate::Task;
 
     use super::*;
 
     #[test]
     fn test_job_run() {
-        let t1 = Box::new(Nothing {});
-        let t2 = Box::new(Message::new("hello world"));
+        let t1 = Box::new(Task::Nothing {});
+        let t2 = Box::new(Task::Message::new("hello world"));
 
         let mut j: Job = Job::new("test");
         j.add(t1);

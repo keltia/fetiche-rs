@@ -28,8 +28,8 @@ use serde_json::json;
 use fetiche_formats::Format;
 
 use crate::filter::Filter;
-use crate::site::{Auth, Site};
-use crate::{http_post, http_post_auth, Fetchable, Sources};
+use crate::site::Site;
+use crate::{http_post, http_post_auth, Auth, Capability, Fetchable, Sources};
 
 /// Default token
 const DEF_TOKEN: &str = "asd_default_token";
@@ -96,6 +96,8 @@ struct Param {
 ///
 #[derive(Clone, Debug)]
 pub struct Asd {
+    /// Describe the different features of the source
+    pub features: Vec<Capability>,
     /// Name of the site (site "foo" may use the same interface)
     pub site: String,
     /// Input formats
@@ -117,8 +119,9 @@ pub struct Asd {
 impl Asd {
     pub fn new() -> Self {
         Asd {
+            features: vec![Capability::Fetch],
             site: "NONE".to_string(),
-            format: Format::None,
+            format: Format::Asd,
             login: "".to_owned(),
             password: "".to_owned(),
             base_url: "".to_owned(),
@@ -160,6 +163,10 @@ impl Default for Asd {
 }
 
 impl Fetchable for Asd {
+    fn name(&self) -> String {
+        self.site.to_string()
+    }
+
     /// Authenticate to the site using the supplied credentials and get a token
     ///
     fn authenticate(&self) -> Result<String> {

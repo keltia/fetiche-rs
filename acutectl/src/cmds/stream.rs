@@ -1,23 +1,25 @@
 use std::fs::File;
 use std::io::stdout;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use log::{info, trace};
 
-use fetiche_engine::{Job, Stream};
-use fetiche_sources::{Filter, Flow, Site, Sources};
+use fetiche_engine::{Engine, Stream};
+use fetiche_sources::{Filter, Flow, Site};
 
 use crate::StreamOpts;
 
 /// Actual fetching of data from a given site
 ///
-pub fn stream_from_site(cfg: &Sources, sopts: &StreamOpts) -> Result<()> {
+pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
     trace!("stream_from_site({:?})", sopts.site);
 
     check_args(sopts)?;
 
     let name = &sopts.site;
-    let site = match Site::load(name, cfg)? {
+    let srcs = Arc::clone(&engine.sources());
+    let site = match Site::load(name, &engine.sources())? {
         Flow::Streamable(s) => s,
         _ => return Err(anyhow!("this site is not fetchable")),
     };
@@ -27,17 +29,19 @@ pub fn stream_from_site(cfg: &Sources, sopts: &StreamOpts) -> Result<()> {
 
     // Full json array with all point
     //
-    let mut task = Stream::new(name);
+    let mut task = Stream::new(name, srcs);
 
-    task.site(site).with(filter);
+    task.site(site.name()).with(filter);
     if let Some(out) = &sopts.output {
         let mut out = File::create(out)?;
 
-        Job::new("stream_from_site")
+        engine
+            .create_job("stream_from_site")
             .add(Box::new(task))
             .run(&mut out)?;
     } else {
-        Job::new("stream_from_site")
+        engine
+            .create_job("stream_from_site")
             .add(Box::new(task))
             .run(&mut stdout())?;
     };

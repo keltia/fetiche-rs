@@ -12,31 +12,23 @@
 //! return a string with the transformed output that will be sent to the next stage.
 //!
 
+use std::convert::Into;
 use std::fmt::Debug;
-use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use anyhow::Result;
 
-pub use common::*;
-pub use fetch::*;
 use fetiche_formats::Format;
 use fetiche_sources::{Fetchable, Sources, Streamable};
-pub use into::*;
 pub use job::*;
-pub use parse::*;
-pub use read::*;
-pub use stream::*;
+pub use task::*;
 
-mod common;
-mod fetch;
-mod into;
 mod job;
 mod parse;
-mod read;
-mod stream;
+mod task;
 
 pub fn version() -> String {
     format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
@@ -44,15 +36,73 @@ pub fn version() -> String {
 
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Engine {
     /// Sources
-    pub sources: Sources,
+    pub sources: Arc<Sources>,
+}
+
+impl Engine {
+    pub fn new() -> Self {
+        let src = Sources::load(&None);
+        match src {
+            Ok(src) => Engine {
+                sources: Arc::new(src),
+            },
+            Err(e) => panic!("No sources configured:{}", e),
+        }
+    }
+
+    pub fn from(fname: &str) -> Self {
+        let src = Sources::load(&Some(fname.into()));
+        match src {
+            Ok(src) => Engine {
+                sources: Arc::new(src),
+            },
+            Err(e) => panic!("No sources configured in {}:{}", fname, e),
+        }
+    }
+
+    /// Return an `Arc::clone` of the Engine sources
+    ///
+    pub fn sources(&self) -> Arc<Sources> {
+        Arc::clone(&self.sources)
+    }
+
+    /// Return a description of all supported sources
+    ///
+    pub fn list_sources(&self) -> Result<String> {
+        self.sources.list()
+    }
+
+    /// Return a descriptions of all supported data formats
+    ///
+    pub fn list_formats(&self) -> Result<String> {
+        Format::list()
+    }
+
+    /// Return a list of all currently available authentication tokens
+    ///
+    pub fn list_tokens(&self) -> Result<String> {
+        self.sources.list_tokens()
+    }
+
+    /// Create a new job queue
+    ///
+    pub fn create_job(&self, s: &str) -> Job {
+        Job::new(s, Arc::clone(&self.sources))
+    }
+}
+
+impl Default for Engine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Type of task we will need to do
 ///
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub enum Input {
     /// File-based means we need the formats beforehand and a pathname
     ///
@@ -69,19 +119,22 @@ pub enum Input {
         /// Input formats
         format: Format,
         /// Site itself
-        site: Box<dyn Fetchable>,
+        site: Arc<dyn Fetchable>,
     },
     Stream {
         /// Input formats
         stream: Format,
         /// Site itself
-        site: Box<dyn Streamable>,
+        site: Arc<dyn Streamable>,
     },
     #[default]
     Nothing,
 }
 
 /// Anything that can be `run()` is runnable.
+///
+/// See the engine-macro crate for a rpoc-macro that implement the `run()`  wrapper for
+/// the `Runnable` trait.
 ///
 pub trait Runnable: Debug {
     fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);

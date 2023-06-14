@@ -12,12 +12,12 @@
 //! So now we cache them.
 //!
 
-use std::io::Write;
-use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::channel;
-use std::sync::Arc;
-use std::time::Duration;
 use std::{thread, time};
+use std::io::Write;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::sync::mpsc::{channel, Sender};
+use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use chrono::Utc;
@@ -32,8 +32,8 @@ use signal_hook::flag;
 
 use fetiche_formats::{Format, StateList};
 
-use crate::{http_get_basic, Fetchable, Filter, Streamable};
-use crate::{Auth, Site};
+use crate::{Auth, Capability, Fetchable, Filter, http_get_basic, Streamable};
+use crate::Site;
 
 /// We can go back only 1h in Opensky API
 const MAX_INTERVAL: i64 = 3600;
@@ -52,6 +52,8 @@ const CACHE_SIZE: u64 = 20;
 ///
 #[derive(Clone, Debug)]
 pub struct Opensky {
+    /// Describe the different features of the source
+    pub features: Vec<Capability>,
     /// Input formats
     pub format: Format,
     /// Username
@@ -93,6 +95,7 @@ struct Credentials {
 impl Opensky {
     pub fn new() -> Self {
         Opensky {
+            features: vec![Capability::Fetch, Capability::Stream],
             format: Format::Opensky,
             login: "".to_owned(),
             password: "".to_owned(),
@@ -134,6 +137,10 @@ impl Default for Opensky {
 }
 
 impl Fetchable for Opensky {
+    fn name(&self) -> String {
+        "opensky".to_string()
+    }
+
     /// All credentials are passed every time we call the API so return a fake token
     ///
     fn authenticate(&self) -> Result<String> {
@@ -202,6 +209,10 @@ impl Fetchable for Opensky {
 }
 
 impl Streamable for Opensky {
+    fn name(&self) -> String {
+        "opensky".to_string()
+    }
+
     /// All credentials are passed every time we call the API so return a fake token
     ///
     fn authenticate(&self) -> Result<String> {
@@ -222,7 +233,7 @@ impl Streamable for Opensky {
     /// - it helps determining whether we had lack of traffic for a longer time if we have no
     ///   cached entries
     ///
-    fn stream(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
+    fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
 
         let mut stream_duration = 0;
@@ -432,8 +443,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     // Anything else is sent
                     //
                     _ => {
-                        write!(out, "{}", msg)?;
-                        out.flush()?;
+                        out.send(msg)?;
                     }
                 },
                 _ => continue,
@@ -441,7 +451,6 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         }
         // sync; sync; sync
         //
-        out.flush()?;
         Ok(())
     }
 
