@@ -99,16 +99,17 @@ impl Job {
 
 #[cfg(test)]
 mod tests {
-    use crate::Task;
+    use crate::{Engine, Task};
 
     use super::*;
 
     #[test]
     fn test_job_run() {
-        let t1 = Box::new(Task::Nothing {});
+        let e = Engine::new();
+        let t1 = Box::new(Task::Nothing::new());
         let t2 = Box::new(Task::Message::new("hello world"));
 
-        let mut j: Job = Job::new("test");
+        let mut j: Job = Job::new("test", e.sources());
         j.add(t1);
         j.add(t2);
 

@@ -21,6 +21,10 @@ use crate::Runnable;
 pub struct Nothing {}
 
 impl Nothing {
+    fn new() -> Self {
+        Nothing {}
+    }
+
     #[inline]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
         Ok(stdout.send(format!("{}|NOP", data))?)
