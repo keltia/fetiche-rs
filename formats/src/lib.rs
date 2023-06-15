@@ -114,7 +114,7 @@ macro_rules! into_cat21 {
 macro_rules! convert_to {
     ($name:ident, $from:ident, $to:ident) => {
         impl $to {
-            #[doc = concat!("This is ", stringify!($name), " which convert a string into a ", stringify!($to), "object")]
+            #[doc = concat!("This is ", stringify!($name), " which convert a json string into a ", stringify!($to), "object")]
             ///
             pub fn $name(input: &str) -> Result<Vec<$to>> {
                 debug!("IN={:?}", input);
@@ -296,7 +296,7 @@ pub fn to_knots(a: f32) -> f32 {
 
 /// Output the final csv file with a different delimiter 'now ":")
 ///
-pub fn prepare_csv<T>(data: Vec<T>) -> Result<String>
+pub fn prepare_csv<T>(data: Vec<T>, header: bool) -> Result<String>
 where
     T: Serialize,
 {
@@ -305,7 +305,7 @@ where
     //
     let mut wtr = WriterBuilder::new()
         .delimiter(b':')
-        .has_headers(true)
+        .has_headers(header)
         .from_writer(vec![]);
 
     // Insert data
