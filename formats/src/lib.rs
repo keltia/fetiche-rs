@@ -192,7 +192,7 @@ impl Format {
             builder.push_record(row);
         });
         let allf = builder.build().with(Style::modern()).to_string();
-        let str = format!("List all formats:\n\n{allf}");
+        let str = format!("List all formats:\n{allf}");
         Ok(str)
     }
 
