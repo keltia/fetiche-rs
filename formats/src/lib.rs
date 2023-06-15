@@ -77,6 +77,8 @@ pub enum Format {
     None,
     Aeroscope,
     Asd,
+    Cat21,
+    Cat129,
     Opensky,
     Safesky,
 }
@@ -225,6 +227,8 @@ impl From<&str> for Format {
             "asd" => Format::Asd,
             "opensky" => Format::Opensky,
             "safesky" => Format::Safesky,
+            "cat21" => Format::Cat21,
+            "Cat129" => Format::Cat129,
             _ => Format::None,
         }
     }
@@ -238,6 +242,8 @@ impl Display for Format {
             Format::Safesky => "safesky".into(),
             Format::Opensky => "opensky".into(),
             Format::None => "none".into(),
+            Format::Cat21 => "cat21".into(),
+            Format::Cat129 => "cat129".into(),
         };
         write!(f, "{}", s)
     }
