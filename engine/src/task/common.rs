@@ -21,7 +21,7 @@ use crate::Runnable;
 pub struct Nothing {}
 
 impl Nothing {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Nothing {}
     }
 
@@ -34,10 +34,10 @@ impl Nothing {
 /// Copy
 ///
 #[derive(Clone, Debug, RunnableDerive)]
-struct Copy {}
+pub struct Copy {}
 
 impl Copy {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Copy {}
     }
 
