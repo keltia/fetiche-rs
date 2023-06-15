@@ -13,7 +13,7 @@ use log::trace;
 use engine_macros::RunnableDerive;
 use fetiche_formats::{prepare_csv, Format, StateList};
 
-use crate::Runnable;
+use crate::{Runnable, IO};
 
 pub trait ConvertInto {
     fn convert(&self, into: Format) -> String;
@@ -21,6 +21,7 @@ pub trait ConvertInto {
 
 #[derive(Clone, Debug, RunnableDerive)]
 pub struct Convert {
+    io: IO,
     pub from: Format,
     pub into: Format,
 }
@@ -29,6 +30,7 @@ impl Convert {
     #[inline]
     pub fn new() -> Self {
         Self {
+            io: IO::InOut,
             from: Format::None,
             into: Format::None,
         }

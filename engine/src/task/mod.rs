@@ -12,3 +12,18 @@ pub mod convert;
 pub mod fetch;
 pub mod read;
 pub mod stream;
+
+/// Task I/O characteristics
+///
+#[derive(Debug, Default)]
+pub enum IO {
+    /// Consumer
+    In,
+    /// Producer
+    Out,
+    /// Both (filter)
+    #[default]
+    InOut,
+    /// Cache (filter)
+    Cache,
+}

@@ -11,18 +11,21 @@ use anyhow::Result;
 
 use engine_macros::RunnableDerive;
 
-use crate::Runnable;
+use crate::{Runnable, IO};
 
 // -----
 
 /// NOP
 ///
 #[derive(Clone, Debug, RunnableDerive)]
-pub struct Nothing {}
+pub struct Nothing {
+    io: IO,
+}
 
 impl Nothing {
+    #[inline]
     pub fn new() -> Self {
-        Nothing {}
+        Nothing { io: IO::InOut }
     }
 
     #[inline]
@@ -34,11 +37,15 @@ impl Nothing {
 /// Copy
 ///
 #[derive(Clone, Debug, RunnableDerive)]
-pub struct Copy {}
+pub struct Copy {
+    /// I/O capabilities
+    io: IO,
+}
 
 impl Copy {
+    #[inline]
     pub fn new() -> Self {
-        Copy {}
+        Copy { io: IO::InOut }
     }
 
     #[inline]
@@ -51,6 +58,8 @@ impl Copy {
 ///
 #[derive(Clone, Debug, RunnableDerive)]
 pub struct Message {
+    /// I/O capabilities
+    io: IO,
     /// What to display
     msg: String,
 }
@@ -58,7 +67,10 @@ pub struct Message {
 impl Message {
     #[inline]
     pub fn new(s: &str) -> Self {
-        Message { msg: s.to_owned() }
+        Message {
+            io: IO::InOut,
+            msg: s.to_owned(),
+        }
     }
 
     #[inline]
@@ -75,7 +87,7 @@ mod tests {
 
     #[test]
     fn test_nothing_run() {
-        let mut t = Nothing {};
+        let mut t = Nothing::new();
 
         let (tx, rx) = channel();
 
@@ -85,7 +97,7 @@ mod tests {
         let r = r.recv();
         assert!(r.is_ok());
         let r = r.unwrap();
-        assert_eq!("NOP", r);
+        assert_eq!("|NOP", r);
     }
 
     #[test]
@@ -100,6 +112,6 @@ mod tests {
         let r = r.recv();
         assert!(s.is_ok());
         let s = s.unwrap();
-        assert_eq!("the brown fox", s);
+        assert_eq!("|the brown fox", s);
     }
 }
