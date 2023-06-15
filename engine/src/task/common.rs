@@ -31,6 +31,22 @@ impl Nothing {
     }
 }
 
+/// Copy
+///
+#[derive(Clone, Debug, RunnableDerive)]
+struct Copy {}
+
+impl Copy {
+    fn new() -> Self {
+        Copy {}
+    }
+
+    #[inline]
+    fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
+        Ok(stdout.send(data)?)
+    }
+}
+
 /// Just display a message
 ///
 #[derive(Clone, Debug, RunnableDerive)]
