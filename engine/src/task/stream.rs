@@ -2,22 +2,29 @@
 //!
 
 use std::fmt::{Debug, Formatter};
-use std::io::Write;
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use log::trace;
 
-use fetiche_sources::{Filter, Streamable};
+use engine_macros::RunnableDerive;
+use fetiche_sources::{Filter, Flow, Site, Sources};
 
-use crate::{Input, Runnable};
+use crate::{Runnable, IO};
 
 /// The Stream task
 ///
+#[derive(Clone, RunnableDerive)]
 pub struct Stream {
+    /// I/O capabilities
+    io: IO,
     /// name for the task
     pub name: String,
-    /// Input type, File or Network
-    pub input: Input,
+    /// Shared ref to configuration
+    pub srcs: Arc<Sources>,
+    /// Site
+    pub site: Option<String>,
     /// Interval in secs
     pub every: usize,
     /// Optional arguments (usually json-encoded string)
@@ -27,8 +34,10 @@ pub struct Stream {
 impl Debug for Stream {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Stream")
+            .field("io", &self.io)
             .field("name", &self.name)
-            .field("input", &self.input)
+            .field("site", &self.site)
+            .field("srcs", &self.srcs)
             .field("every", &self.every)
             .field("args", &self.args)
             .finish()
@@ -38,11 +47,13 @@ impl Debug for Stream {
 impl Stream {
     /// Initialize our environment
     ///
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &str, srcs: Arc<Sources>) -> Self {
         trace!("New Stream {}", name);
         Stream {
+            io: IO::Out,
             name: name.to_owned(),
-            input: Input::Nothing,
+            site: None,
+            srcs: Arc::clone(&srcs),
             args: "".to_string(),
             every: 0,
         }
@@ -50,12 +61,9 @@ impl Stream {
 
     /// Copy the site's data
     ///
-    pub fn site(&mut self, s: Box<dyn Streamable>) -> &mut Self {
-        trace!("Add site {:?}", self.name);
-        self.input = Input::Stream {
-            stream: s.format(),
-            site: s,
-        };
+    pub fn site(&mut self, s: String) -> &mut Self {
+        trace!("Add site {} as {}", self.name, s);
+        self.site = Some(s);
         self
     }
 
@@ -74,32 +82,27 @@ impl Stream {
         self.every = i;
         self
     }
-}
 
-impl Runnable for Stream {
     /// The heart of the matter: fetch data
     ///
-    fn run(&mut self, out: &mut dyn Write) -> Result<()> {
+    pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Stream::run()");
 
-        match &self.input {
-            // Streaming is only supported for Input::Network
-            //
-            Input::Stream { site, .. } => {
-                // Stream data as bytes
-                //
-                let token = site.authenticate()?;
+        // Stream data as bytes
+        //
+        match &self.site {
+            Some(site) => {
+                let site = Site::load(site, &self.srcs)?;
+                if let Flow::Streamable(site) = site {
+                    let token = site.authenticate()?;
 
-                Ok(site.stream(out, &token, &self.args)?)
+                    let args = self.args.clone();
+                    site.stream(stdout, &token, &args).unwrap();
+                }
             }
-            _ => Err(anyhow!("Only network support streaming")),
+            None => return Err(anyhow!("site not defined")),
         }
-    }
-}
-
-impl Default for Stream {
-    fn default() -> Self {
-        Stream::new("default")
+        Ok(())
     }
 }
 

@@ -10,7 +10,6 @@
 //!
 //! History:
 
-use std::collections::BTreeMap;
 use std::fmt::{Debug, Display, Formatter};
 
 use anyhow::{anyhow, Result};
@@ -19,13 +18,18 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::Format;
 
-use crate::{aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky, Streamable};
+use crate::{
+    aeroscope::Aeroscope, asd::Asd, Auth, Capability, opensky::Opensky, Routes, safesky::Safesky,
+    Streamable,
+};
 use crate::{Fetchable, Sources};
 
-/// Describe what a site is and associated credentials.
+/// Describe what a site is, its capabilities, access methods and authentication method.
 ///
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Site {
+    /// Features of the site
+    pub features: Vec<Capability>,
     /// Which data are we getting (drone or plain ads-b)
     #[serde(rename = "type")]
     pub dtype: DataType,
@@ -35,56 +39,10 @@ pub struct Site {
     pub format: String,
     /// Base URL (to avoid repeating)
     pub base_url: String,
-    /// Credentials
+    /// Credentials (will be empty by default and will get filled in by clients)
     pub auth: Option<Auth>,
     /// Different URLs available
-    pub routes: Option<BTreeMap<String, String>>,
-}
-
-/// Describe the possible ways to authenticate oneself
-///
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(untagged)]
-pub enum Auth {
-    /// Nothing special, no auth
-    #[default]
-    Anon,
-    /// Using an API key supplied through the URL or a header
-    Key { api_key: String },
-    /// Using a login/passwd to get a token
-    Token {
-        login: String,
-        password: String,
-        token: String,
-    },
-    /// Using plain login/password
-    Login { username: String, password: String },
-}
-
-impl Display for Auth {
-    /// Obfuscate the passwords & keys
-    ///
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        // Hide passwords & API keys
-        //
-        //let auth = self.clone();
-        let auth = match self.clone() {
-            Auth::Key { .. } => Auth::Key {
-                api_key: "HIDDEN".to_string(),
-            },
-            Auth::Login { username, .. } => Auth::Login {
-                username,
-                password: "HIDDEN".to_string(),
-            },
-            Auth::Token { login, token, .. } => Auth::Token {
-                login,
-                token,
-                password: "HIDDEN".to_string(),
-            },
-            _ => Auth::Anon,
-        };
-        write!(f, "{:?}", auth)
-    }
+    pub routes: Option<Routes>,
 }
 
 /// Define the kind of data the source is managing
@@ -169,6 +127,9 @@ impl Site {
                     //
                     Format::Opensky => {
                         let s = Opensky::new().load(site).clone();
+
+                        // FIXME: handle both cases
+                        //
                         if site.has("stream") {
                             Ok(Flow::Streamable(Box::new(s)))
                         } else {
@@ -180,6 +141,12 @@ impl Site {
             }
             None => Err(anyhow!("no such site {name}")),
         }
+    }
+
+    /// Return the site name
+    ///
+    pub fn name(&self) -> Option<String> {
+        self.name.as_ref().map(|name| name.to_string())
     }
 
     /// Return the site formats

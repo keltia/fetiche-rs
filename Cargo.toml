@@ -1,5 +1,6 @@
 [workspace]
-members = ["acutectl", "cat21conv", "curves", "engine", "formats", "sources"]
+resolver = "2"
+members = ["acutectl", "cat21conv", "engine", "formats", "sources"]
 
 [workspace.dependencies]
 anyhow = "1.0"
@@ -15,3 +16,5 @@ log = { version = "0.4", features = ["serde", "std"] }
 reqwest = { version = "0.11", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+serde_repr = "0.1"
+tabled = "0.12"

@@ -10,15 +10,16 @@
 //!
 
 use anyhow::Result;
-use log::trace;
-use serde::Deserialize;
-use serde_repr::Deserialize_repr;
+use log::{debug, trace};
+use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
+use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
 
 /// Origin of state's position
 ///
-#[derive(Clone, Copy, Debug, Deserialize_repr, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize_repr, PartialEq, Serialize_repr)]
+#[serde(rename_all = "lowercase")]
 #[repr(u8)]
 pub enum Source {
     AdsB = 0,
@@ -31,7 +32,7 @@ pub enum Source {
 ///
 /// XXX BUG: Opensky actually returns 17 fields, excluding this one.
 ///
-#[derive(Clone, Copy, Debug, Deserialize_repr, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize_repr, PartialEq, Serialize_repr)]
 #[repr(u8)]
 pub enum Category {
     NoInfo = 0,
@@ -123,7 +124,7 @@ impl StateList {
 
 /// Definition of a state vector as generated
 ///
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct StateVector {
     /// ICAO ID
     pub icao24: String,
@@ -148,6 +149,9 @@ pub struct StateVector {
     // /// Aircraft category XXX BUG
     // pub category: Category,
 }
+
+convert_to!(from_opensky, StateVector, Cat21);
+//convert_to!(from_opensky, StateList, DronePoint);
 
 // Private structs
 
@@ -189,6 +193,8 @@ struct Rawdata(
     Source,
     //Category,
 );
+
+convert_to!(from_vectors, StateVector, Cat21);
 
 impl From<&StateVector> for Cat21 {
     /// Generate a `Cat21` struct from `StateList`

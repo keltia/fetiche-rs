@@ -406,7 +406,7 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [ASTERIX]: https://www.eurocontrol.int/asterix/
 
-[drone-utils: 1.56+]: https://img.shields.io/badge/Rust%20version-1.56%2B-lightgrey
+[fetiche-rs: 1.56+]: https://img.shields.io/badge/Rust%20version-1.56%2B-lightgrey
 
 [Mozilla]: https://mozilla.org/
 

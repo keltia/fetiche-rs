@@ -1,21 +1,27 @@
+use std::fs;
+use std::io::{stdout, Write};
+use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
+use chrono::{Datelike, DateTime, NaiveDate, NaiveDateTime, Utc};
 use log::{info, trace};
 
-use fetiche_engine::{Fetch, Job};
-use fetiche_sources::{Filter, Flow, Site, Sources};
+use fetiche_engine::{Engine, Fetch};
+use fetiche_sources::{Filter, Flow, Site};
 
 use crate::FetchOpts;
 
 /// Actual fetching of data from a given site
 ///
-pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<String> {
+pub fn fetch_from_site(engine: &Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
 
     check_args(fopts)?;
 
     let name = &fopts.site;
-    let site = match Site::load(name, cfg)? {
+    let srcs = Arc::clone(&engine.sources());
+
+    let site = match Site::load(name, &srcs)? {
         Flow::Fetchable(s) => s,
         _ => return Err(anyhow!("this site is not fetchable")),
     };
@@ -25,17 +31,29 @@ pub fn fetch_from_site(cfg: &Sources, fopts: &FetchOpts) -> Result<String> {
 
     // Full json array with all point
     //
-    let mut task = Fetch::new(name);
+    let mut task = Fetch::new(name, srcs);
 
-    task.site(site).with(filter);
+    task.site(site.name()).with(filter);
 
     let mut data = vec![];
 
-    Job::new("fetch_from_site")
+    engine.create_job("fetch_from_site")
         .add(Box::new(task))
         .run(&mut data)?;
+
     let data = String::from_utf8(data)?;
-    Ok(data)
+
+    match &fopts.output {
+        Some(output) => {
+            info!("Writing into {:?}", output);
+            fs::write(output, data)?
+        }
+        // stdout otherwise
+        //
+        _ => write!(stdout(), "{}", data)?,
+    }
+
+    Ok(())
 }
 
 /// From the CLI options

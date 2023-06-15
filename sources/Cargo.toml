@@ -13,6 +13,7 @@ keywords = ["cat21", "asterix", "drones", "aeronautical-data", "hcl", "fetiche"]
 [features]
 default = ["privacy"]
 privacy = []
+async = []
 
 [package.metadata.docs.rs]
 all-features = true
@@ -20,6 +21,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [badges]
 maintenance = { status = "actively-developed" }
+
+[[bench]]
+name = "de"
+harness = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -35,15 +40,16 @@ log.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+serde_repr.workspace = true
+tabled.workspace = true
 
 csv = "1.1"
 mini-moka = "0.10"
 percent-encoding = "2.2"
-serde_repr = "0.1"
-tabled = "0.12"
 signal-hook = "0.3"
-tokio = { version = "1.28", features = ["full"] }
 
 [dev-dependencies]
+criterion = "0.5"
 httpmock = { version = "0.6", features = ["colored", "color", "clap"] }
 rstest = "0"
+tokio = { version = "1.28", features = ["full"] }

@@ -1,23 +1,27 @@
 use std::fs::File;
 use std::io::stdout;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use log::{info, trace};
 
-use fetiche_engine::{Job, Stream};
-use fetiche_sources::{Filter, Flow, Site, Sources};
+use fetiche_engine::Copy as Null;
+use fetiche_engine::{Convert, Engine, Stream};
+use fetiche_formats::Format;
+use fetiche_sources::{Filter, Flow, Site};
 
 use crate::StreamOpts;
 
 /// Actual fetching of data from a given site
 ///
-pub fn stream_from_site(cfg: &Sources, sopts: &StreamOpts) -> Result<()> {
+pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
     trace!("stream_from_site({:?})", sopts.site);
 
     check_args(sopts)?;
 
     let name = &sopts.site;
-    let site = match Site::load(name, cfg)? {
+    let srcs = Arc::clone(&engine.sources());
+    let site = match Site::load(name, &engine.sources())? {
         Flow::Streamable(s) => s,
         _ => return Err(anyhow!("this site is not fetchable")),
     };
@@ -27,19 +31,30 @@ pub fn stream_from_site(cfg: &Sources, sopts: &StreamOpts) -> Result<()> {
 
     // Full json array with all point
     //
-    let mut task = Stream::new(name);
+    let mut task = Stream::new(name, srcs);
+    task.site(site.name()).with(filter);
 
-    task.site(site).with(filter);
+    // Create job with first task
+    //
+    let mut job = engine.create_job("stream_from_site");
+    job.add(Box::new(task));
+
+    // If a conversion is requested, insert it
+    //
+    if let Some(into) = &sopts.into {
+        let mut convert = Convert::new();
+        convert.from(site.format()).into(Format::Cat21);
+        job.add(Box::new(convert));
+    };
+
+    // Handle output
+    //
     if let Some(out) = &sopts.output {
         let mut out = File::create(out)?;
 
-        Job::new("stream_from_site")
-            .add(Box::new(task))
-            .run(&mut out)?;
+        job.run(&mut out)?;
     } else {
-        Job::new("stream_from_site")
-            .add(Box::new(task))
-            .run(&mut stdout())?;
+        job.run(&mut stdout())?;
     };
 
     Ok(())

@@ -161,7 +161,7 @@ fn main() -> Result<()> {
     let data = get_from_source(&cfg, &opts)?;
     let len = data.len();
     trace!("{} bytes received", len);
-    let data = prepare_csv(data)?;
+    let data = prepare_csv(data, true)?;
 
     let now = now.elapsed().as_millis();
 

@@ -8,11 +8,11 @@ use clap_complete::generate;
 use log::{info, trace};
 
 use acutectl::{
-    fetch_from_site, import_data, list_formats, list_sources, list_tokens, stream_from_site,
-    ImportSubCommand, ListSubCommand, Opts, SubCommand,
+    fetch_from_site, stream_from_site, Config, ImportSubCommand, ListSubCommand, Opts, SubCommand,
 };
+use fetiche_engine::Engine;
 use fetiche_formats::Format;
-use fetiche_sources::{Flow, Site, Sources};
+use fetiche_sources::{Flow, Site};
 
 /// Binary name, using a different binary name
 pub(crate) const NAME: &str = env!("CARGO_BIN_NAME");
@@ -29,47 +29,27 @@ fn main() -> Result<()> {
     //
     env_logger::init();
 
-    // Read sources
+    // Config only has the credentials for every source now.
     //
-    let cfn = match cfn {
-        Some(cfn) => cfn,
-        None => Sources::default_file(),
-    };
+    let cfg = Config::load(cfn)?;
 
     // Banner
     //
     banner()?;
 
-    // Load default config if nothing is specified
-    //
-    info!("Loading config from {}…", cfn.to_string_lossy());
-    let cfg = Sources::load(&Some(cfn));
+    let engine = Engine::new();
+    let src = engine.sources();
 
-    let cfg = match cfg {
-        Ok(cfg) => cfg,
-        Err(e) => {
-            // Early exit if we have an error parsing `sources.hcl`.
-            //
-            return Err(e);
-        }
-    };
-    info!("{:?} sources loaded", cfg.len());
+    info!("{:?} sources loaded", src.len());
 
     let subcmd = &opts.subcmd;
     match subcmd {
+        // Handle `fetch site`
+        //
         SubCommand::Fetch(fopts) => {
             trace!("fetch");
-            let data = fetch_from_site(&cfg, fopts)?;
 
-            match &fopts.output {
-                Some(output) => {
-                    info!("Writing into {:?}", output);
-                    fs::write(output, data)?
-                }
-                // stdout otherwise
-                //
-                _ => println!("{}", data),
-            }
+            fetch_from_site(&engine, fopts)?;
         }
 
         // Handle `stream site`
@@ -77,10 +57,11 @@ fn main() -> Result<()> {
         SubCommand::Stream(sopts) => {
             trace!("stream");
 
-            stream_from_site(&cfg, sopts)?;
+            stream_from_site(&engine, sopts)?;
         }
 
         // Handle `import site`  and `import file`
+        // FIXME:
         //
         SubCommand::Import(opts) => {
             trace!("import");
@@ -89,14 +70,19 @@ fn main() -> Result<()> {
                 ImportSubCommand::ImportSite(fopts) => {
                     trace!("drone import site");
 
-                    let site = match Site::load(&fopts.site, &cfg)? {
+                    let srcs = engine.sources();
+                    let site = match Site::load(&fopts.site, &srcs)? {
                         Flow::Fetchable(s) => s,
                         _ => return Err(anyhow!("this site is not fetchable")),
                     };
                     let fmt = site.format();
-                    let data = fetch_from_site(&cfg, fopts)?;
 
-                    import_data(&cfg, &data, fmt)?;
+                    // FIXME
+                    let data: Vec<u8> = vec![];
+
+                    fetch_from_site(&engine, fopts)?;
+
+                    //import_data(&cfg, &data, fmt)?;
                 }
                 ImportSubCommand::ImportFile(if_opts) => {
                     trace!("drone import file");
@@ -104,7 +90,7 @@ fn main() -> Result<()> {
                     let data = fs::read_to_string(&if_opts.file)?;
                     let fmt = Format::from(if_opts.format.clone().unwrap().as_str());
 
-                    import_data(&cfg, &data, fmt)?;
+                    //import_data(&srcs, &data, fmt)?;
                 }
             }
         }
@@ -125,19 +111,19 @@ fn main() -> Result<()> {
             ListSubCommand::Sources => {
                 info!("Listing all sources:");
 
-                let str = list_sources(&cfg)?;
+                let str = engine.list_sources()?;
                 writeln!(io::stderr(), "{}", str)?;
             }
             ListSubCommand::Formats => {
                 info!("Listing all formats:");
 
-                let str = list_formats()?;
+                let str = engine.list_formats()?;
                 writeln!(io::stderr(), "{}", str)?;
             }
             ListSubCommand::Tokens => {
                 info!("Listing all tokens:");
 
-                let str = list_tokens()?;
+                let str = engine.list_tokens()?;
                 writeln!(io::stderr(), "{}", str)?;
             }
         },

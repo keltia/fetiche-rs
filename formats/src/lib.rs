@@ -77,6 +77,8 @@ pub enum Format {
     None,
     Aeroscope,
     Asd,
+    Cat21,
+    Cat129,
     Opensky,
     Safesky,
 }
@@ -112,7 +114,7 @@ macro_rules! into_cat21 {
 macro_rules! convert_to {
     ($name:ident, $from:ident, $to:ident) => {
         impl $to {
-            #[doc = concat!("This is ", stringify!($name), " which convert a string into a ", stringify!($to), "object")]
+            #[doc = concat!("This is ", stringify!($name), " which convert a json string into a ", stringify!($to), "object")]
             ///
             pub fn $name(input: &str) -> Result<Vec<$to>> {
                 debug!("IN={:?}", input);
@@ -190,7 +192,7 @@ impl Format {
             builder.push_record(row);
         });
         let allf = builder.build().with(Style::modern()).to_string();
-        let str = format!("List all formats:\n\n{allf}");
+        let str = format!("List all formats:\n{allf}");
         Ok(str)
     }
 
@@ -225,6 +227,8 @@ impl From<&str> for Format {
             "asd" => Format::Asd,
             "opensky" => Format::Opensky,
             "safesky" => Format::Safesky,
+            "cat21" => Format::Cat21,
+            "Cat129" => Format::Cat129,
             _ => Format::None,
         }
     }
@@ -238,6 +242,8 @@ impl Display for Format {
             Format::Safesky => "safesky".into(),
             Format::Opensky => "opensky".into(),
             Format::None => "none".into(),
+            Format::Cat21 => "cat21".into(),
+            Format::Cat129 => "cat129".into(),
         };
         write!(f, "{}", s)
     }
@@ -290,7 +296,7 @@ pub fn to_knots(a: f32) -> f32 {
 
 /// Output the final csv file with a different delimiter 'now ":")
 ///
-pub fn prepare_csv<T>(data: Vec<T>) -> Result<String>
+pub fn prepare_csv<T>(data: Vec<T>, header: bool) -> Result<String>
 where
     T: Serialize,
 {
@@ -299,7 +305,7 @@ where
     //
     let mut wtr = WriterBuilder::new()
         .delimiter(b':')
-        .has_headers(true)
+        .has_headers(header)
         .from_writer(vec![]);
 
     // Insert data

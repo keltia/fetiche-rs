@@ -14,6 +14,8 @@
 ///
 pub use cli::*;
 pub use cmds::*;
+pub use config::*;
 
 mod cli;
 mod cmds;
+mod config;

@@ -1,71 +1,59 @@
 // Safety check
 //
-version = 3
+version = 4
 
-site "eih" {
+site "aeroscope" {
+  features = ["fetch"]
   type     = "drone"
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
-  auth     = {
-    login    = "SOMETHING"
-    password = "NOPE"
-    token    = "/login"
-  }
-  routes = {
+  auth     = "token"
+  routes   = {
     get = "/drone/get"
   }
 }
 
 site "asd" {
+  features = ["fetch"]
   type     = "drone"
   format   = "asd"
   base_url = "https://eur.airspacedrone.com/api"
-  auth     = {
-    login    = "USERNAME"
-    password = "GUESS"
-    token    = "/security/login"
-  }
-  routes = {
+  auth     = "token"
+  routes   = {
     get = "/journeys/filteredlocations/json"
   }
 }
 
 site "lux" {
+  features = ["fetch"]
   type     = "drone"
   format   = "asd"
   base_url = "https://eur.airspacedrone.com/api"
-  auth     = {
-    login    = "USERNAME"
-    password = "GUESS"
-    token    = "/security/login"
-  }
-  routes = {
+  auth     = "token"
+  routes   = {
     list = "/journeys"
     get  = "/journeys/$1"
   }
 }
 
 site "opensky" {
+  features = ["fetch", "stream"]
   type     = "adsb"
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
-  auth     = {
-    username = "dphu"
-    password = "NOPE"
-  }
-  cmd = {
+  auth     = "login"
+  cmd      = {
     get = "/states/own"
   }
 }
 
 site "safesky" {
+  features = ["fetch"]
   type     = "adsb"
   format   = "safesky"
   base_url = "https://public-api.safesky.app"
-  auth     = {
-    api_key = "foobar"
-  }
-  routes = {
+  auth     = "api_key"
+  routes   = {
     get = "/v1/beacons"
   }
 }
