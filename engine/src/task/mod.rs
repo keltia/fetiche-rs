@@ -15,7 +15,7 @@ pub mod stream;
 
 /// Task I/O characteristics
 ///
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub enum IO {
     /// Consumer
     In,
