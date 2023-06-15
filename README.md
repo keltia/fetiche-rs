@@ -83,7 +83,20 @@ supported, depending on the source.
 - `fetiche-engine`
 
 This is the main library implementing the fetch & transform engine. It has a `Job` type and a set of different `struct`
-that define different tasks.
+that define different tasks. All the tasks defined in a given job are run in parallel like in a UNIX pipeline, that is,
+every stage output is connected the next stage input and so on. This allows for filters to be inserted for conversion
+and in the future for DB export as well.
+
+The current tasks defined are:
+
+- `Nothing`
+- `Message`
+- `Copy`
+- `Convert`
+- `Fetch`
+- `Stream`
+
+I think it is more flexible to work within the framework of the engine.
 
 > NOTE: this is a fast-changing WIP.
 
@@ -147,17 +160,12 @@ and `powershell` on Windows.
 <summary>sources.hcl</summary>
 
 ```hcl
-version = 3
+version = 4
 
 site "local" {
   type     = "drone"
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
-  auth     = {
-    login    = "SOMETHING"
-    password = "NOPE"
-    token    = "/login"
-  }
   routes = {
     get = "/drone/get"
   }
@@ -167,11 +175,6 @@ site "big.site.aero" {
   type     = "drone"
   format   = "asd"
   base_url = "https://api.site.aero"
-  auth     = {
-    login    = "USERNAME"
-    password = "GUESS"
-    token    = "/api/security"
-  }
   routes = {
     get = "/api/journeys/filteredlocations/json"
   }
@@ -181,10 +184,6 @@ site "opensky" {
   type     = "adsb"
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
-  auth     = {
-    login    = "anyone"
-    password = "NOPE"
-  }
   routes = {
     get = "/states/own"
   }
@@ -194,37 +193,36 @@ site "safesky" {
   type     = "adsb"
   format   = "safesky"
   base_url = "https://public-api.safesky.app"
-  auth     = {
-    api_key = "foobar"
-  }
   routes = {
     get = "/v1/beacons"
   }
 }
 ```
 
-As you can see, there are sites that require you to supply a login & password and others which don't.
+Credentials are now stored into the `acutectl` configuration file, located in the same directory but named, as one
+can expect, `config.hcl`.
 
 If you are just giving the utility a file, you must specify the input format with the `-F/--format` option.
 
 You can get the list of supported sources by using the `acutectl list sources` command.
 
 ```text
-acutectl/0.9.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
+acutectl/0.11.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
 CLI utility to fetch data.
 
 Listing all sources:
-
-╭─────────┬───────┬───────────┬─────────────────────────────────┬─────────╮
-│ Name    │ Type  │ Format    │ URL                             │ Auth    │
-├─────────┼───────┼───────────┼─────────────────────────────────┼─────────┤
-│ eih     │ drone │ aeroscope │ http://127.0.0.1:2400           │ token   │
-│ lux     │ drone │ asd       │ https://eur.airspacedrone.com   │ token   │
-│ lux-me  │ drone │ asd       │ https://eur.airspacedrone.com   │ token   │
-│ opensky │ adsb  │ opensky   │ https://opensky-network.org/api │ login   │
-│ safesky │ adsb  │ safesky   │ https://public-api.safesky.app  │ API key │
-╰─────────┴───────┴───────────┴─────────────────────────────────┴─────────╯
+╭─────────┬───────┬───────────┬───────────────────────────────────┬─────────┬──────────────╮
+│ Name    │ Type  │ Format    │ URL                               │ Auth    │ Ops          │
+├─────────┼───────┼───────────┼───────────────────────────────────┼─────────┼──────────────┤
+│ eih     │ drone │ aeroscope │ http://127.0.0.1:2400             │ token   │ fetch        │
+│ lux     │ drone │ asd       │ https://eur.airspacedrone.com/api │ token   │ fetch        │
+│ lux-me  │ drone │ asd       │ https://eur.airspacedrone.com/api │ token   │ fetch        │
+│ opensky │ adsb  │ opensky   │ https://opensky-network.org/api   │ login   │ fetch,stream │
+│ safesky │ adsb  │ safesky   │ https://public-api.safesky.app    │ API key │ fetch        │
+╰─────────┴───────┴───────────┴───────────────────────────────────┴─────────┴──────────────╯
 ```
+
+The `Ops` column describe which operations are supported for each source.
 
 </details>
 
@@ -272,11 +270,10 @@ To displayed currently supported formats, use `acutectl list formats`:
 <summary>acutectl list formats</summary>
 
 ```text
-acutectl/0.9.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
+acutectl/0.11.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
 CLI utility to fetch data.
 
 List all formats:
-
 ┌───────────┬───────┬───────────────────────────────────────────────────────────┐
 │ Name      │ Type  │ Description                                               │
 ├───────────┼───────┼───────────────────────────────────────────────────────────┤
@@ -314,7 +311,7 @@ The `list tokens` sub-command will show you the available tokens. These are per-
 <summary>acutectl list tokens</summary>
 
 ```text
-acutectl/0.9.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
+acutectl/0.11.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
 CLI utility to fetch data.
 
 Listing all tokens:
@@ -379,6 +376,7 @@ The `sources.hcl` configuration file is versioned to avoid incompatibilities.
 - v1 was the original version with the `Sites` struct
 - In v2 `Sites`  was renamed into `Sources` to reflect evolution
 - In v3 the `type`  keyword was added to the `Site` definition
+- In v4 the `features` keyword was added to indicate what is supported between `fetch` and `stream`.
 
 The `formats.hcl` add metadata about all supported formats.
 
