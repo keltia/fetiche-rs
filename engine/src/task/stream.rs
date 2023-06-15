@@ -2,8 +2,8 @@
 //!
 
 use std::fmt::{Debug, Formatter};
-use std::sync::Arc;
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use log::trace;
@@ -11,12 +11,14 @@ use log::trace;
 use engine_macros::RunnableDerive;
 use fetiche_sources::{Filter, Flow, Site, Sources};
 
-use crate::Runnable;
+use crate::{Runnable, IO};
 
 /// The Stream task
 ///
 #[derive(Clone, RunnableDerive)]
 pub struct Stream {
+    /// I/O capabilities
+    io: IO,
     /// name for the task
     pub name: String,
     /// Shared ref to configuration
@@ -32,6 +34,7 @@ pub struct Stream {
 impl Debug for Stream {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Stream")
+            .field("io", &self.io)
             .field("name", &self.name)
             .field("site", &self.site)
             .field("srcs", &self.srcs)
@@ -47,6 +50,7 @@ impl Stream {
     pub fn new(name: &str, srcs: Arc<Sources>) -> Self {
         trace!("New Stream {}", name);
         Stream {
+            io: IO::Out,
             name: name.to_owned(),
             site: None,
             srcs: Arc::clone(&srcs),
@@ -95,7 +99,7 @@ impl Stream {
                     let args = self.args.clone();
                     site.stream(stdout, &token, &args).unwrap();
                 }
-            },
+            }
             None => return Err(anyhow!("site not defined")),
         }
         Ok(())

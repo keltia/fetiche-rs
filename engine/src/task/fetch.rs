@@ -1,8 +1,8 @@
 //! `Fetch` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
-use std::sync::Arc;
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use log::trace;
@@ -10,12 +10,14 @@ use log::trace;
 use engine_macros::RunnableDerive;
 use fetiche_sources::{Filter, Flow, Site, Sources};
 
-use crate::Runnable;
+use crate::{Runnable, IO};
 
 /// The Fetch task
 ///
 #[derive(Clone, Debug, RunnableDerive)]
 pub struct Fetch {
+    /// I/O capabilities
+    io: IO,
     /// name for the task
     pub name: String,
     /// Shared ref to the sources parameters
@@ -29,6 +31,7 @@ pub struct Fetch {
 impl Fetch {
     pub fn new(s: &str, srcs: Arc<Sources>) -> Self {
         Self {
+            io: IO::Out,
             name: s.to_string(),
             args: String::new(),
             site: None,
