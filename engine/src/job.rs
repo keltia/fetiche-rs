@@ -11,7 +11,7 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 use anyhow::Result;
-use log::trace;
+use log::{info, trace};
 
 use fetiche_sources::Sources;
 use uuid::Uuid;
@@ -72,7 +72,7 @@ impl Job {
     /// more complicated like we did with `out`.
     ///
     pub fn run(&mut self, out: &mut dyn Write) -> Result<()> {
-        trace!(
+        info!(
             "Job({})::run({}) with {} tasks",
             self.id,
             self.name,
