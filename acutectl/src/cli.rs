@@ -222,6 +222,9 @@ pub struct StreamOpts {
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
+    /// Do we convert on streaming?
+    #[clap(long)]
+    pub into: Option<String>,
     /// Source name -- (see "list sources")
     pub site: String,
 }

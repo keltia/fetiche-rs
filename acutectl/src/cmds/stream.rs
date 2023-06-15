@@ -5,7 +5,9 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use log::{info, trace};
 
-use fetiche_engine::{Engine, Stream};
+use fetiche_engine::Copy as Null;
+use fetiche_engine::{Convert, Engine, Stream};
+use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 
 use crate::StreamOpts;
@@ -30,20 +32,29 @@ pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
     // Full json array with all point
     //
     let mut task = Stream::new(name, srcs);
-
     task.site(site.name()).with(filter);
+
+    // Create job with first task
+    //
+    let mut job = engine.create_job("stream_from_site");
+    job.add(Box::new(task));
+
+    // If a conversion is requested, insert it
+    //
+    if let Some(into) = &sopts.into {
+        let mut convert = Convert::new();
+        convert.from(site.format()).into(Format::Cat21);
+        job.add(Box::new(convert));
+    };
+
+    // Handle output
+    //
     if let Some(out) = &sopts.output {
         let mut out = File::create(out)?;
 
-        engine
-            .create_job("stream_from_site")
-            .add(Box::new(task))
-            .run(&mut out)?;
+        job.run(&mut out)?;
     } else {
-        engine
-            .create_job("stream_from_site")
-            .add(Box::new(task))
-            .run(&mut stdout())?;
+        job.run(&mut stdout())?;
     };
 
     Ok(())
