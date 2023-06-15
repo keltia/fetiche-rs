@@ -7,13 +7,14 @@
 //!
 use std::collections::VecDeque;
 use std::io::Write;
-use std::sync::Arc;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 
 use anyhow::Result;
 use log::trace;
 
 use fetiche_sources::Sources;
+use uuid::Uuid;
 
 use crate::Runnable;
 
@@ -21,6 +22,8 @@ use crate::Runnable;
 ///
 #[derive(Debug)]
 pub struct Job {
+    /// Job ID
+    id: String,
     /// Source parameters
     pub srcs: Arc<Sources>,
     /// Name of the job
@@ -36,8 +39,10 @@ impl Job {
     ///
     #[inline]
     pub fn new(name: &str, srcs: Arc<Sources>) -> Self {
-        trace!("Job::new");
+        let uuid = Uuid::new_v4().to_string();
+        trace!("Job::new({})", uuid);
         Job {
+            id: uuid,
             srcs: Arc::clone(&srcs),
             name: name.to_owned(),
             list: VecDeque::new(),
@@ -67,7 +72,12 @@ impl Job {
     /// more complicated like we did with `out`.
     ///
     pub fn run(&mut self, out: &mut dyn Write) -> Result<()> {
-        trace!("Job::run({}) with {} tasks", self.name, self.list.len());
+        trace!(
+            "Job({})::run({}) with {} tasks",
+            self.id,
+            self.name,
+            self.list.len()
+        );
 
         // Setup the pipeline
         //
