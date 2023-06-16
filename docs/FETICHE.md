@@ -20,10 +20,10 @@ Preliminary list of possible modules.
 
 ### Modules
 
+- engine
 - formats
 - sources
 - outputs
-- engine
 - transformations
 - filters
 - CLI control interface to daemon/tasks
@@ -37,7 +37,10 @@ extend this one.
 Currently, we have something like this:
 
 ```hcl
-sites "eih" {
+version = 4
+
+site "eih" {
+  features = ["fetch"]
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
   auth     = {
@@ -50,7 +53,8 @@ sites "eih" {
   }
 }
 
-sites "asd" {
+site "asd" {
+  features = ["fetch"]
   format   = "asd"
   base_url = "https://eur.airspacedrone.com"
   auth     = {
