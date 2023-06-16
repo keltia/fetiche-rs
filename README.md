@@ -295,8 +295,8 @@ in that file does not mean support except if it is a variation on a known source
 On UNIX systems, it is located in `$HOME/.config/drone-utils/sources.hcl` and in `%LOCALAPPDATA%\DRONE-UTILS` on
 Windows.
 
-There are only a few parameters for now, the most important one being the credentials for authenticate against the
-network endpoint. You can specify the different network endpoints. The current config file version is 4.
+The current config file version is 4. This is where all the URL for the parts of each API are defined, which routes are
+available, the default data model etc.
 
 <details>
 <summary>sources.hcl</summary>
@@ -305,6 +305,7 @@ network endpoint. You can specify the different network endpoints. The current c
 version = 4
 
 site "local" {
+  features = ["fetch"]
   type     = "drone"
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
@@ -314,6 +315,7 @@ site "local" {
 }
 
 site "big.site.aero" {
+  features = ["fetch"]
   type     = "drone"
   format   = "asd"
   base_url = "https://api.site.aero"
@@ -323,6 +325,7 @@ site "big.site.aero" {
 }
 
 site "opensky" {
+  features = ["fetch", "stream"]
   type     = "adsb"
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
@@ -332,6 +335,7 @@ site "opensky" {
 }
 
 site "safesky" {
+  features = ["fetch"]
   type     = "adsb"
   format   = "safesky"
   base_url = "https://public-api.safesky.app"
@@ -340,6 +344,8 @@ site "safesky" {
   }
 }
 ```
+
+</details>
 
 ### Token management
 
