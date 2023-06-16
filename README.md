@@ -9,7 +9,7 @@
 [![Docs](https://img.shields.io/docsrs/dmarc-rs)](https://docs.rs/fetiche-rs)
 [![GitHub release](https://img.shields.io/github/release/keltia/dmarc-rs.svg)](https://github.com/keltia/fetiche-rs/releases/)
 [![GitHub issues](https://img.shields.io/github/issues/keltia/fetiche-rs.svg)](https://github.com/keltia/fetiche-rs/issues)
-[![drone-utils: 1.56+]][Rust 1.56]
+[![fetiche-rs: 1.56+]][Rust 1.56]
 [![SemVer](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/spec/v2.0.0.html)
 [![License](https://img.shields.io/crates/l/mit)](https://opensource.org/licenses/MIT)
 
@@ -31,14 +31,14 @@ Licensed under the [MIT](LICENSE) license.
 utilities for Aeronautical data about drones and aircraft.
 
 This is now divided into different crates with libraries (`fetiche-engine`, `fetiche-formats`, `fetiche-sources`) shared
-by the binary crates (`acutectl`, `cat21conv` and `import-adsb`).
+by the binary crates (`acutectl` and `cat21conv`).
 
 Binary crates include a command-line utility called `acutectl` to perform import from a file or fetch data from
 different sites. This program has been enhanced to cover both file and network input and as well to support more
 input formats.
 
 In a second phase, `acutectl` will be used to import ADS-B data into tables on a MySQL/MariaDB/Postgres/InfluxDB
-database, and replace both `cat21conv` and `import-adsb`.
+database, and replace both `cat21conv`.
 
 ## History
 
@@ -65,43 +65,6 @@ identifiable value. See `Cargo.toml` for this.
 
 This is intentionally *not* a run-time option but a compile-time one.
 
-## Structure
-
-`Fetiche` has 3 main component so far:
-
-- `fetiche-formats`
-
-This crate implement the various data models used by the different sources. Included are two [ASTERIX] formats --
-generic `Cat21` and drone-specific `Cat129` -- and formats used by different data providers like [Opensky] or [ASD].
-This library implement some methods of conversion between some of these formats.
-
-- `fetiche-sources`
-
-Each data source has its own set of access, authentication and data retrieval methods. Both fetching and streaming are
-supported, depending on the source.
-
-- `fetiche-engine`
-
-This is the main library implementing the fetch & transform engine. It has a `Job` type and a set of different `struct`
-that define different tasks. All the tasks defined in a given job are run in parallel like in a UNIX pipeline, that is,
-every stage output is connected the next stage input and so on. This allows for filters to be inserted for conversion
-and in the future for DB export as well.
-
-The current tasks defined are:
-
-- `Nothing`
-- `Message`
-- `Copy`
-- `Convert`
-- `Fetch`
-- `Stream`
-
-I think it is more flexible to work within the framework of the engine.
-
-> NOTE: this is a fast-changing WIP.
-
-The other crates are for the binaries that rely on `Fetiche` like `acutectl`.
-
 ## Usage
 
 For the moment, there is only one binary called `acutectl` (with `.exe` on Windows). It can be used to fetch data into
@@ -110,10 +73,10 @@ on the source's declared type in `sources.hcl`. Right now, `acutectl` use blocki
 `async` features.
 
 However, while working on streaming support for Opensky, I have been experimenting with [tokio] for async support and
-`acutectl` might soon become fully-async. It does help for some stuff including signal (read ^C) support.
+`acutectl` might eventually become fully-async. It does help for some stuff including signal (read ^C) support.
 
 <details>
-<summary>acutectl</summary>
+<summary>`acutectl help`</summary>
 
 ```text
 $ acutectl
@@ -135,7 +98,7 @@ Options:
   -D, --debug            debug mode
   -o, --output <OUTPUT>  Output file
   -v, --verbose...       Verbose mode
-  -h, --help             Print help```
+  -h, --help             Print help
 ```
 
 </details>
@@ -143,68 +106,57 @@ Options:
 As seen, there are different sub-commands. You can use `acutectl help <sub-command>`  to get description of the
 different parameters.
 
-The configuration for the different sources of data is handled by the `fetiche-source` crate in [HCL] file
-format. Note that it is mainly used to avoid hard-coding some parameters like username and API URLs. Adding an entry
-in that file does not mean support except if it is a variation on a known source.
-
-On UNIX systems, it is located in `$HOME/.config/drone-utils/sources.hcl` and in `%LOCALAPPDATA%\DRONE-UTILS` on Windows.
-
-There are only a few parameters for now, the most important one being the credentials for authenticate against the
-network endpoint. You can specify the different network endpoints. The current config file version is 3 as the `type`
-entry was added to the `Site` struct.
-
 The `completion` keyword can be used to generate completion scripts for various shells including `zsh` on UNIX
 and `powershell` on Windows.
 
-<details>
-<summary>sources.hcl</summary>
+Credentials are stored into the `acutectl` configuration file, located in the same directory but named, as one
+can expect, `config.hcl`.
 
-```hcl
-version = 4
+<details>
+<summary>`config.hcl`</summary>
+
+```text
+version = 1
 
 site "local" {
-  type     = "drone"
-  format   = "aeroscope"
-  base_url = "http://127.0.0.1:2400"
-  routes = {
-    get = "/drone/get"
+  auth = {
+    username = "aeroscope"
+    password = "NOPE"
+    token    = "/login"
   }
 }
 
 site "big.site.aero" {
-  type     = "drone"
-  format   = "asd"
-  base_url = "https://api.site.aero"
-  routes = {
-    get = "/api/journeys/filteredlocations/json"
+  auth = {
+    username = "SOMEONE"
+    password = "HIDDEN"
+    token = "/auth"
   }
 }
 
 site "opensky" {
-  type     = "adsb"
-  format   = "opensky"
-  base_url = "https://opensky-network.org/api"
-  routes = {
-    get = "/states/own"
+  auth = {
+    login    = "someone"
+    password = "SECRET" 
   }
 }
 
 site "safesky" {
-  type     = "adsb"
-  format   = "safesky"
-  base_url = "https://public-api.safesky.app"
-  routes = {
-    get = "/v1/beacons"
+  auth {
+    api_key = "FOOBAR"
   }
 }
+
 ```
 
-Credentials are now stored into the `acutectl` configuration file, located in the same directory but named, as one
-can expect, `config.hcl`.
+</details>
 
 If you are just giving the utility a file, you must specify the input format with the `-F/--format` option.
 
 You can get the list of supported sources by using the `acutectl list sources` command.
+
+<details>
+<summary>`list sources`</summary>
 
 ```text
 acutectl/0.11.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
@@ -222,19 +174,19 @@ Listing all sources:
 ╰─────────┴───────┴───────────┴───────────────────────────────────┴─────────┴──────────────╯
 ```
 
-The `Ops` column describe which operations are supported for each source.
-
 </details>
+
+The `Ops` column describe which operations are supported for each source.
 
 The `acutectl import` sub-command will also use another one called `dbfile.hcl`  located in the same directory.
 
 Here is an example of `dbfile.hcl`:
 
 <details>
-<summary>dbfile.hcl</summary>
+<summary>`dbfile.hcl`</summary>
 
 ```hcl
-version = "1"
+version = 1
 
 db "local" {
   type   = sqlite
@@ -259,7 +211,39 @@ db "time" {
 
 </details>
 
-## Formats (managed in the `fetiche-formats`  crate)
+## Structure and Design
+
+`Fetiche` has 3 main component so far:
+
+### Engine (managed in the `fetiche-engine` crate)
+
+As the name implies, this is the heart of the `Fetiche` framework. It is a fully-threaded engine, with one thread per
+job and each task
+has a number of threads inside. It use a pipeline design that ensure that every stage has input from the previous one
+and send its own
+output to the next one. Some stage/tasks are filters (`Convert`) and some are either consumer or producer (
+notably `Fetch` and `Stream`).
+
+This allows for filters to be inserted for conversion and in the future for DB export as well.
+
+The current tasks defined are:
+
+- `Nothing`
+- `Message`
+- `Copy`
+- `Convert`
+- `Fetch`
+- `Stream`
+
+I think it is more flexible to work within the framework of the engine.
+
+> NOTE: this is a fast-changing WIP.
+
+### Formats (managed in the `fetiche-formats` crate)
+
+This crate implement the various data models used by the different sources. Included are two [ASTERIX] formats --
+generic `Cat21` and drone-specific `Cat129` -- and formats used by different data providers like [Opensky] or [ASD].
+This library implement some methods of conversion between some of these formats.
 
 The default input format is the one used by the Aeroscope from ASD, but it will soon support the format used
 by [Opensky] site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
@@ -301,6 +285,61 @@ The reason for the different categories is to give the engine a hint on how to p
 transformed into our `DronePoint` and `Journey` types for post-processing.
 
 </details>
+
+### Sources (managed in the `fetiche-sources` crate)
+
+The configuration for the different sources of data is handled by the `fetiche-source` crate in [HCL] file
+format. Note that it is mainly used to avoid hard-coding some parameters like username and API URLs. Adding an entry
+in that file does not mean support except if it is a variation on a known source.
+
+On UNIX systems, it is located in `$HOME/.config/drone-utils/sources.hcl` and in `%LOCALAPPDATA%\DRONE-UTILS` on
+Windows.
+
+There are only a few parameters for now, the most important one being the credentials for authenticate against the
+network endpoint. You can specify the different network endpoints. The current config file version is 4.
+
+<details>
+<summary>sources.hcl</summary>
+
+```hcl
+version = 4
+
+site "local" {
+  type     = "drone"
+  format   = "aeroscope"
+  base_url = "http://127.0.0.1:2400"
+  routes   = {
+    get = "/drone/get"
+  }
+}
+
+site "big.site.aero" {
+  type     = "drone"
+  format   = "asd"
+  base_url = "https://api.site.aero"
+  routes   = {
+    get = "/api/journeys/filteredlocations/json"
+  }
+}
+
+site "opensky" {
+  type     = "adsb"
+  format   = "opensky"
+  base_url = "https://opensky-network.org/api"
+  routes   = {
+    get = "/states/own"
+  }
+}
+
+site "safesky" {
+  type     = "adsb"
+  format   = "safesky"
+  base_url = "https://public-api.safesky.app"
+  routes   = {
+    get = "/v1/beacons"
+  }
+}
+```
 
 ### Token management
 
