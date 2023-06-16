@@ -233,6 +233,7 @@ The current tasks defined are:
 - `Copy`
 - `Convert`
 - `Fetch`
+- `Read`
 - `Stream`
 
 I think it is more flexible to work within the framework of the engine.
