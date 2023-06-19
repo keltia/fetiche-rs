@@ -205,11 +205,9 @@ db "time" {
 ### Engine (managed in the `fetiche-engine` crate)
 
 As the name implies, this is the heart of the `Fetiche` framework. It is a fully-threaded engine, with one thread per
-job and each task
-has a number of threads inside. It use a pipeline design that ensure that every stage has input from the previous one
-and send its own
-output to the next one. Some stage/tasks are filters (`Convert`) and some are either consumer or producer (
-notably `Fetch` and `Stream`).
+job and each task has a number of threads inside. It use a pipeline design that ensure that every stage has input from
+the previous one and send its own output to the next one. Some stage/tasks are filters (`Convert`) and some are either
+consumer or producer (notably `Fetch` and `Stream`).
 
 This allows for filters to be inserted for conversion and in the future for DB export as well.
 
