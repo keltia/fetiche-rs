@@ -115,7 +115,7 @@ can expect, `config.hcl`.
 <details>
 <summary>`config.hcl`</summary>
 
-```text
+```hcl
 version = 1
 
 site "local" {
@@ -405,14 +405,14 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~make `acutectl` use `fetiche-engine` instead of its own `task.rs`~~.
 - ~~add streaming support for sources like opensky~~.
 - ~~rename `drone-utils` into the more proper `fetiche-rs`~~.
+- ~~Data formats conversion framework~~
+- ~~caching tokens (like ASD ones) locally~~
 - merge `import-adsb` and `cat21conv` into `acutectl`.
 - rename `acutectl` into `fetichectl`.
 - link to HashiCorp Vault for storing credentials and tokens
-- ~~alternatively caching tokens (like ASD ones) locally~~
 - Add more tests & benchmarks.
 - support for Safesky for ADS-B data
 - Support for Sherlock formats and access methods
-- Data formats conversion framework
 - Multicast output?
 
 ## Configuration History
