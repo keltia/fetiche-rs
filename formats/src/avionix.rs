@@ -33,23 +33,41 @@ use crate::ICAOString;
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Avionix {
+    /// UNIX timestamp in milli-secs (u64)
     pub uti: u64,
+    /// ESRI timestamp e.g. 2015-07-26 07:36:51.657189000
     pub dat: String,
+    /// SIC
     pub sic: usize,
+    /// SAC
     pub sac: usize,
+    /// ICAO 6 byte code for the aircraft
     pub hex: ICAOString,
+    /// Call-sign
     pub fli: String,
+    /// Position latitude
     pub lat: f32,
+    /// Position longitude
     pub lon: f32,
+    /// Ground/Airborne status, A=Air, G=Ground
     pub gda: Gda,
+    /// Source of position, A=ADS-B, M=MLAT (always A in this case)
     pub src: Src,
+    /// Altitude in feet
     pub alt: f32,
+    /// Ground speed
     pub spd: f32,
+    /// True track
     pub trk: f32,
+    /// Category (A0 to C7)
     pub cat: String,
+    /// Squawk
     pub squ: String,
+    /// Vertical Rate
     pub vrt: f32,
+    /// MOPS
     pub mps: usize,
+    /// NucP_NIC
     pub nic: usize,
 }
 
@@ -57,7 +75,9 @@ pub struct Avionix {
 ///
 #[derive(Debug, Deserialize, Serialize)]
 pub enum Gda {
+    /// Airborne
     A,
+    /// Ground
     G,
 }
 
@@ -85,7 +105,9 @@ impl From<&str> for Gda {
 ///
 #[derive(Debug, Deserialize, Serialize)]
 pub enum Src {
+    /// ADS-B
     A,
+    /// MLAT
     M,
 }
 
