@@ -34,6 +34,12 @@ impl Nothing {
     }
 }
 
+impl Default for Nothing {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Copy
 ///
 #[derive(Clone, Debug, RunnableDerive)]
@@ -51,6 +57,12 @@ impl Copy {
     #[inline]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
         Ok(stdout.send(data)?)
+    }
+}
+
+impl Default for Copy {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

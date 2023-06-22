@@ -11,7 +11,7 @@ use anyhow::Result;
 use log::trace;
 
 use engine_macros::RunnableDerive;
-use fetiche_formats::{prepare_csv, Asd, Cat21, Format, StateList};
+use fetiche_formats::{prepare_csv, Cat21, Format};
 
 use crate::{Runnable, IO};
 
@@ -51,24 +51,25 @@ impl Convert {
     /// This is the task here, converting between format from the previous stage
     /// of the pipeline and send it down to the next stage.
     ///
+    /// FIXME: only output Cat21 for now.
+    ///
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("into::execute");
 
-        let res = match self.from {
+        let res: Vec<_> = match self.from {
             Format::Opensky => {
-                let r = Cat21::from_opensky(&data)?;
-                let res = prepare_csv(r, false).unwrap();
-                res
+                trace!("opensky:json to cat21: {}", data);
+
+                Cat21::from_opensky(&data)?
             }
             Format::Asd => {
                 trace!("asd:json to cat21: {}", data);
 
-                let r = Cat21::from_asd(&data)?;
-                let res = prepare_csv(r, false).unwrap();
-                res
+                Cat21::from_asd(&data)?
             }
             _ => unimplemented!(),
         };
+        let res = prepare_csv(res, false).unwrap();
         Ok(stdout.send(res)?)
     }
 }
