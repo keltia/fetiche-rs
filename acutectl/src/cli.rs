@@ -216,6 +216,9 @@ pub struct StreamOpts {
     /// Insert a slight delay between calls in ms, default is 1000
     #[clap(long, default_value = "1000")]
     pub delay: u32,
+    /// Create une copy of the raw file before any conversion
+    #[clap(long)]
+    pub tee: Option<String>,
 
     // General options
     //

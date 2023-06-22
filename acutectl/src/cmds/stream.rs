@@ -5,8 +5,8 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use log::{info, trace};
 
-use fetiche_engine::Copy as Null;
 use fetiche_engine::{Convert, Engine, Stream};
+use fetiche_engine::{Copy as Null, Tee};
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 
@@ -39,9 +39,16 @@ pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
     let mut job = engine.create_job("stream_from_site");
     job.add(Box::new(task));
 
+    // Do we <ant a copy of the raw data (often before converting it)
+    //
+    if let Some(tee) = &sopts.tee {
+        let copy = Tee::into(tee);
+        job.add(Box::new(copy));
+    }
+
     // If a conversion is requested, insert it
     //
-    if let Some(into) = &sopts.into {
+    if let Some(_into) = &sopts.into {
         let mut convert = Convert::new();
         convert.from(site.format()).into(Format::Cat21);
         job.add(Box::new(convert));
