@@ -1,8 +1,8 @@
 //! Module handling the conversions between different formats
 //!
 //! Currently supported:
-//! - Input: Aeroscope, Asd, Opensky
-//! - Output: DronePoint, Cat21, Cat129*
+//! - Input: Asd, Opensky
+//! - Output: Cat21
 //!
 
 use std::sync::mpsc::Sender;
@@ -56,9 +56,7 @@ impl Convert {
 
         let res = match self.from {
             Format::Opensky => {
-                let sl: StateList = serde_json::from_str(&data).unwrap();
-                let r = sl.to_cat21();
-
+                let r = Cat21::from_opensky(&data)?;
                 let res = prepare_csv(r, false).unwrap();
                 res
             }
@@ -66,7 +64,7 @@ impl Convert {
                 trace!("asd:json to cat21: {}", data);
 
                 let r = Cat21::from_asd(&data)?;
-                let res = prepare_csv(r, true).unwrap();
+                let res = prepare_csv(r, false).unwrap();
                 res
             }
             _ => unimplemented!(),
