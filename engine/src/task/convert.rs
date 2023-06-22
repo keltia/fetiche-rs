@@ -11,7 +11,7 @@ use anyhow::Result;
 use log::trace;
 
 use engine_macros::RunnableDerive;
-use fetiche_formats::{prepare_csv, Format, StateList};
+use fetiche_formats::{prepare_csv, Asd, Cat21, Format, StateList};
 
 use crate::{Runnable, IO};
 
@@ -54,10 +54,23 @@ impl Convert {
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("into::execute");
 
-        let sl: StateList = serde_json::from_str(&data).unwrap();
-        let r = sl.to_cat21();
+        let res = match self.from {
+            Format::Opensky => {
+                let sl: StateList = serde_json::from_str(&data).unwrap();
+                let r = sl.to_cat21();
 
-        let res = prepare_csv(r, false).unwrap();
+                let res = prepare_csv(r, false).unwrap();
+                res
+            }
+            Format::Asd => {
+                trace!("asd:json to cat21: {}", data);
+
+                let r = Cat21::from_asd(&data)?;
+                let res = prepare_csv(r, true).unwrap();
+                res
+            }
+            _ => unimplemented!(),
+        };
         Ok(stdout.send(res)?)
     }
 }
