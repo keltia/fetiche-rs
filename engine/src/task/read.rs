@@ -12,12 +12,14 @@ use engine_macros::RunnableDerive;
 use fetiche_formats::Format;
 use fetiche_sources::Filter;
 
-use crate::Runnable;
+use crate::{Runnable, IO};
 
 /// The Read task
 ///
 #[derive(Clone, Debug, RunnableDerive)]
 pub struct Read {
+    /// I/O capabilities
+    io: IO,
     /// name for the task
     pub name: String,
     /// Format
@@ -34,6 +36,7 @@ impl Read {
     pub fn new(name: &str) -> Self {
         trace!("New Read {}", name);
         Read {
+            io: IO::Out,
             name: name.to_owned(),
             format: Format::None,
             path: None,

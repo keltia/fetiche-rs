@@ -4,17 +4,17 @@ version = 3
 
 [[package]]
 name = "acutectl"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
- "anyhow",
- "assert_cmd",
- "chrono",
- "clap",
- "clap_complete",
- "csv",
- "env_logger",
- "fetiche-engine",
- "fetiche-formats",
+    "anyhow",
+    "assert_cmd",
+    "chrono",
+    "clap",
+    "clap_complete",
+    "csv",
+    "env_logger",
+    "fetiche-engine",
+    "fetiche-formats",
  "fetiche-sources",
  "hcl-rs",
  "home",
@@ -474,29 +474,6 @@ name = "castaway"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2698f953def977c68f935bb0dfa959375ad4638570e969e2f1e9f433cbf1af6"
-
-[[package]]
-name = "cat21conv"
-version = "0.8.1"
-dependencies = [
- "anyhow",
- "assert_cmd",
- "chrono",
- "clap",
- "csv",
- "env_logger",
- "fetiche-formats",
- "fetiche-sources",
- "hcl-rs",
- "home",
- "httpmock",
- "log",
- "percent-encoding",
- "reqwest",
- "serde",
- "serde_json",
- "serde_repr",
-]
 
 [[package]]
 name = "cc"
@@ -967,17 +944,17 @@ dependencies = [
 
 [[package]]
 name = "fetiche-engine"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
- "anyhow",
- "chrono",
- "engine-macros",
- "env_logger",
- "fetiche-formats",
- "fetiche-sources",
- "hcl-rs",
- "log",
- "nom",
+    "anyhow",
+    "chrono",
+    "engine-macros",
+    "env_logger",
+    "fetiche-formats",
+    "fetiche-sources",
+    "hcl-rs",
+    "log",
+    "nom",
  "reqwest",
  "serde_json",
  "uuid",
@@ -985,17 +962,17 @@ dependencies = [
 
 [[package]]
 name = "fetiche-formats"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
- "anyhow",
- "chrono",
- "csv",
- "hcl-rs",
- "influxdb",
- "log",
- "percent-encoding",
- "reqwest",
- "serde",
+    "anyhow",
+    "chrono",
+    "csv",
+    "hcl-rs",
+    "influxdb",
+    "log",
+    "percent-encoding",
+    "reqwest",
+    "serde",
  "serde_json",
  "serde_repr",
  "tabled",
@@ -1003,17 +980,17 @@ dependencies = [
 
 [[package]]
 name = "fetiche-sources"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "criterion",
- "csv",
- "env_logger",
- "fetiche-formats",
- "hcl-rs",
- "home",
+    "anyhow",
+    "chrono",
+    "clap",
+    "criterion",
+    "csv",
+    "env_logger",
+    "fetiche-formats",
+    "hcl-rs",
+    "home",
  "httpmock",
  "log",
  "mini-moka",

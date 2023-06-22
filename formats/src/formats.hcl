@@ -43,3 +43,10 @@ format "cat129" {
   source      = "ECTL"
   url         = "https://www.eurocontrol.int/asterix/"
 }
+
+format "avionix" {
+  type        = "adsb"
+  description = "Flattened ASTERIX cat21-like for Avionix stations"
+  source      = "Avionix"
+  url         = "http://www.avionix.pl"
+}

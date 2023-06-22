@@ -12,17 +12,17 @@
 //! So now we cache them.
 //!
 
-use std::{thread, time};
 use std::io::Write;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
+use std::sync::Arc;
 use std::time::Duration;
+use std::{thread, time};
 
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
-use log::{debug, trace};
+use log::{debug, error, trace};
 use mini_moka::sync::{Cache, ConcurrentCacheExt};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
@@ -32,8 +32,8 @@ use signal_hook::flag;
 
 use fetiche_formats::{Format, StateList};
 
-use crate::{Auth, Capability, Fetchable, Filter, http_get_basic, Streamable};
 use crate::Site;
+use crate::{http_get_basic, Auth, Capability, Fetchable, Filter, Streamable};
 
 /// We can go back only 1h in Opensky API
 const MAX_INTERVAL: i64 = 3600;
@@ -363,9 +363,18 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         format!("{}/{}", crate_name!(), crate_version!()),
                     )
                     .header("content-type", "application/json")
-                    .send()
-                    .expect("can not call the server");
+                    .send();
 
+                // Do not exit thread on server error, sleep and try to recover
+                //
+                let resp = match resp {
+                    Ok(resp) => resp,
+                    Err(e) => {
+                        error!("worker-thread: {}", e.to_string());
+                        thread::sleep(Duration::from_secs(2));
+                        continue;
+                    }
+                };
                 debug!("{:?}", &resp);
 
                 // Check status of request.  We will ignore any error for now as the server

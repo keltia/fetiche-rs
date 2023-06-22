@@ -107,9 +107,18 @@ pub struct FetchOpts {
     /// Keyword filter: e.g. "--keyword icao24:foobar" -- optional
     #[clap(short = 'K', long)]
     pub keyword: Option<String>,
+
+    // General options
+    //
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
+    /// Create a copy of the raw file before any conversion
+    #[clap(long)]
+    pub tee: Option<String>,
+    /// Do we convert on streaming?
+    #[clap(long)]
+    pub into: Option<String>,
     /// Source name -- (see "list sources")
     pub site: String,
 }
@@ -222,6 +231,9 @@ pub struct StreamOpts {
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
+    /// Create a copy of the raw file before any conversion
+    #[clap(long)]
+    pub tee: Option<String>,
     /// Do we convert on streaming?
     #[clap(long)]
     pub into: Option<String>,

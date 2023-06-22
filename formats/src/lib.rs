@@ -22,6 +22,7 @@ use tabled::{builder::Builder, settings::Style};
 pub use aeroscope::*;
 pub use asd::*;
 pub use asterix::*;
+pub use avionix::*;
 pub use drone::*;
 pub use opensky::*;
 pub use safesky::*;
@@ -29,6 +30,7 @@ pub use safesky::*;
 mod aeroscope;
 mod asd;
 mod asterix;
+mod avionix;
 mod drone;
 mod opensky;
 mod safesky;
@@ -77,11 +79,16 @@ pub enum Format {
     None,
     Aeroscope,
     Asd,
+    Avionix,
     Cat21,
     Cat129,
     Opensky,
     Safesky,
 }
+
+/// This is the special hex string for ICAO codes
+///
+pub type ICAOString = [u8; 6];
 
 /// Macro to create the code which deserialize known types.
 ///
@@ -229,6 +236,7 @@ impl From<&str> for Format {
             "safesky" => Format::Safesky,
             "cat21" => Format::Cat21,
             "Cat129" => Format::Cat129,
+            "Avionix" => Format::Avionix,
             _ => Format::None,
         }
     }
@@ -241,9 +249,10 @@ impl Display for Format {
             Format::Asd => "asd".into(),
             Format::Safesky => "safesky".into(),
             Format::Opensky => "opensky".into(),
-            Format::None => "none".into(),
             Format::Cat21 => "cat21".into(),
             Format::Cat129 => "cat129".into(),
+            Format::Avionix => "avionix".into(),
+            Format::None => "none".into(),
         };
         write!(f, "{}", s)
     }

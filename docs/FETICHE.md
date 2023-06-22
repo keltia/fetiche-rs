@@ -20,10 +20,10 @@ Preliminary list of possible modules.
 
 ### Modules
 
+- engine
 - formats
 - sources
 - outputs
-- engine
 - transformations
 - filters
 - CLI control interface to daemon/tasks
@@ -37,7 +37,10 @@ extend this one.
 Currently, we have something like this:
 
 ```hcl
-sites "eih" {
+version = 4
+
+site "eih" {
+  features = ["fetch"]
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
   auth     = {
@@ -50,7 +53,8 @@ sites "eih" {
   }
 }
 
-sites "asd" {
+site "asd" {
+  features = ["fetch"]
   format   = "asd"
   base_url = "https://eur.airspacedrone.com"
   auth     = {
@@ -132,15 +136,23 @@ could be seen in [TS] as well.  Having a proper definition of what is available 
 
 ### Lua
 
-[Lua] is also a viable extension language, already used by many projects (including [FreeBSD]).  The [mlua] crate does
-provide access to Lua.  Main issues I see with Lua is incompatibility between the different versions.
+[Lua] is also a viable extension language, already used by many projects (including [FreeBSD]). The [mlua] crate does
+provide access to Lua. Main issues I see with Lua is incompatibility between the different versions.
 
-I'm not sure how much of a support we have to access Rust data from Lua.  Main advantage over [TS]  would be 
+I'm not sure how much of a support we have to access Rust data from Lua. Main advantage over [TS]  would be
 the size of the implementation although Rust binaries tend to be rather big anyway.
 
 ## Schedule ?
 
 cf. above.
+
+## Why the name Fetiche?
+
+If you have seen the French animated movie "Kirikou et la sorcière", you know. If not, learn that the main characters
+are Kirikou, a small boy with extraordinary gifts and a sorceress called Karaba. She has some special minions called "
+les
+fétiches". These are wooden fetishes that do her bidding in all things. One of them is on top of her case and is tasked
+with looking around and doing... surveillance. Hence the name of its framework.
 
 ## References
 
@@ -148,7 +160,7 @@ cf. above.
 
 [Vault]: https://crates.io/hashicorp_vault
 
-[TS]: https://en.wikipedia.org/wiki/TypeScript 
+[TS]: https://en.wikipedia.org/wiki/TypeScript
 
 [deno]: https://deno.land/
 

@@ -1,17 +1,20 @@
 <!-- omit in TOC -->
 
-# format-specs
+# fetiche-format
 
-> **Library to import/fetch/transform various aeronautical data into Cat21-like format**
+> **Library to import/fetch/transform between various aeronautical data formats**
 
 ## About
 
-This rate contains only the code for the different input file formats supported by `cat21conv`:
+This crate contains only the code for the different input file formats supported by `acutectl` as part of the Fetiche
+framework.
 
-- Aeroscope
-- Asd
-- Opensky
+- Aeroscope - basic format coming straight from the antenna
+- Asd - The JSON & CSV format from `airspacedrones.com`.
+- [Opensky] - ADS-B data from the Opensky network of probes
 - Safesky
+- [ASTERIX] Cat21 & Cat129 (the flattened CSV-based versions)
+- [Avionix] - another variation on a flattened Cat21-like format
 
 ### Features
 
@@ -31,7 +34,7 @@ also transformations in each case when converting into our CSV-based Cat21-like 
 ### Cat21
 
 Our own Cat21-like format is named because it uses the field names coming from the [ASTERIX] specifications (although
-everything is flat in a csv so enums are flattened as well). See `src/format/mod.rs`  for the description.
+everything is flat in a csv so enums are flattened as well). See the files in `src/format/asterix`  for the description.
 
 ## MSRV
 
@@ -53,7 +56,7 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - support for Safesky
 - Support for Opensky
 
-[ASD]: https://eur.airspacedrone.com/
+[ASD]: https://airspacedrone.com/
 
 [ASTERIX]: https://www.eurocontrol.int/asterix/
 
@@ -61,10 +64,15 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 
 [RUST]: https://www.rust-lang.org/
 
-[drone-utils: 1.56+]: https://img.shields.io/badge/Rust%20version-1.56%2B-lightgrey
+[fetiche-rs: 1.56+]: https://img.shields.io/badge/Rust%20version-1.56%2B-lightgrey
 
 [Rust 1.56]: https://blog.rust-lang.org/2021/10/21/Rust-1.56.0.html
 
 [Safesky]: https://safesky.app/
 
 [TOML]: https://github.com/naoina/toml/
+
+[Opensky]: https://opensky-network.org/
+
+[Avionix]: http://www.avionix.pl/
+

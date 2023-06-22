@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["acutectl", "cat21conv", "engine", "formats", "sources"]
+members = ["acutectl", "engine", "formats", "sources"]
 
 [workspace.dependencies]
 anyhow = "1.0"

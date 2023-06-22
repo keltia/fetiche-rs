@@ -6,12 +6,14 @@ pub use convert::*;
 pub use fetch::*;
 pub use read::*;
 pub use stream::*;
+pub use tee::*;
 
 pub mod common;
 pub mod convert;
 pub mod fetch;
 pub mod read;
 pub mod stream;
+pub mod tee;
 
 /// Task I/O characteristics
 ///
