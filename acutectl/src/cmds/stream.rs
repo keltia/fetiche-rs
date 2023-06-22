@@ -39,7 +39,7 @@ pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
     let mut job = engine.create_job("stream_from_site");
     job.add(Box::new(task));
 
-    // Do we <ant a copy of the raw data (often before converting it)
+    // Do we want a copy of the raw data (often before converting it)
     //
     if let Some(tee) = &sopts.tee {
         let copy = Tee::into(tee);
