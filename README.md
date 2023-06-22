@@ -392,7 +392,7 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~rename `drone-utils` into the more proper `fetiche-rs`~~.
 - ~~Data formats conversion framework~~
 - ~~caching tokens (like ASD ones) locally~~
-- merge `import-adsb` and `cat21conv` into `acutectl`.
+- ~~merge `import-adsb` and `cat21conv` into `acutectl`~~.
 - rename `acutectl` into `fetichectl`.
 - link to HashiCorp Vault for storing credentials and tokens
 - Add more tests & benchmarks.
