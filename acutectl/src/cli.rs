@@ -107,9 +107,18 @@ pub struct FetchOpts {
     /// Keyword filter: e.g. "--keyword icao24:foobar" -- optional
     #[clap(short = 'K', long)]
     pub keyword: Option<String>,
+
+    // General options
+    //
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
+    /// Create a copy of the raw file before any conversion
+    #[clap(long)]
+    pub tee: Option<String>,
+    /// Do we convert on streaming?
+    #[clap(long)]
+    pub into: Option<String>,
     /// Source name -- (see "list sources")
     pub site: String,
 }
@@ -216,15 +225,15 @@ pub struct StreamOpts {
     /// Insert a slight delay between calls in ms, default is 1000
     #[clap(long, default_value = "1000")]
     pub delay: u32,
-    /// Create une copy of the raw file before any conversion
-    #[clap(long)]
-    pub tee: Option<String>,
 
     // General options
     //
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
     pub output: Option<PathBuf>,
+    /// Create a copy of the raw file before any conversion
+    #[clap(long)]
+    pub tee: Option<String>,
     /// Do we convert on streaming?
     #[clap(long)]
     pub into: Option<String>,

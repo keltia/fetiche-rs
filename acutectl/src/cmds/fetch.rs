@@ -3,10 +3,11 @@ use std::io::{stdout, Write};
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use chrono::{Datelike, DateTime, NaiveDate, NaiveDateTime, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use log::{info, trace};
 
-use fetiche_engine::{Engine, Fetch};
+use fetiche_engine::{Convert, Engine, Fetch, Tee};
+use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 
 use crate::FetchOpts;
@@ -37,9 +38,27 @@ pub fn fetch_from_site(engine: &Engine, fopts: &FetchOpts) -> Result<()> {
 
     let mut data = vec![];
 
-    engine.create_job("fetch_from_site")
-        .add(Box::new(task))
-        .run(&mut data)?;
+    let mut job = engine.create_job("fetch_from_site");
+    job.add(Box::new(task));
+
+    // Do we <ant a copy of the raw data (often before converting it)
+    //
+    if let Some(tee) = &fopts.tee {
+        let copy = Tee::into(tee);
+        job.add(Box::new(copy));
+    }
+
+    // If a conversion is requested, insert it
+    //
+    if let Some(_into) = &fopts.into {
+        let mut convert = Convert::new();
+        convert.from(site.format()).into(Format::Cat21);
+        job.add(Box::new(convert));
+    };
+
+    // Launch it now
+    //
+    job.run(&mut data)?;
 
     let data = String::from_utf8(data)?;
 
