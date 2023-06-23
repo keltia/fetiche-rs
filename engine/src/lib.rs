@@ -14,6 +14,7 @@
 
 use std::convert::Into;
 use std::fmt::Debug;
+use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
@@ -40,6 +41,8 @@ pub fn version() -> String {
 pub struct Engine {
     /// Sources
     pub sources: Arc<Sources>,
+    /// Storage area for long running jobs
+    pub storage: Option<PathBuf>,
 }
 
 impl Engine {
@@ -48,6 +51,7 @@ impl Engine {
         match src {
             Ok(src) => Engine {
                 sources: Arc::new(src),
+                storage: None,
             },
             Err(e) => panic!("No sources configured:{}", e),
         }
@@ -58,9 +62,19 @@ impl Engine {
         match src {
             Ok(src) => Engine {
                 sources: Arc::new(src),
+                storage: None,
             },
             Err(e) => panic!("No sources configured in {}:{}", fname, e),
         }
+    }
+
+    /// Initialize the optional storage area for jobs' output files
+    ///
+    pub fn store(&mut self, path: &str) -> &mut Self {
+        let path = PathBuf::from(path);
+        create_dir_all(&path).expect("unable to create storage area");
+        self.storage = Some(path);
+        self
     }
 
     /// Return an `Arc::clone` of the Engine sources
