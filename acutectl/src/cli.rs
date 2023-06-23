@@ -259,7 +259,7 @@ pub struct ConvertOpts {
     #[clap(long)]
     pub into: Format,
     /// Input file
-    pub infile: PathBuf,
+    pub infile: String,
     /// Output file
-    pub outfile: PathBuf,
+    pub outfile: String,
 }
