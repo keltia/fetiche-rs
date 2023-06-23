@@ -9,9 +9,10 @@ use std::sync::mpsc::Sender;
 
 use anyhow::Result;
 use log::trace;
+use serde_json::json;
 
 use engine_macros::RunnableDerive;
-use fetiche_formats::{prepare_csv, Cat21, Format};
+use fetiche_formats::{prepare_csv, Cat21, Format, StateList};
 
 use crate::{Runnable, IO};
 
@@ -60,6 +61,10 @@ impl Convert {
             Format::Opensky => {
                 trace!("opensky:json to cat21: {}", data);
 
+                let data: StateList = serde_json::from_str(&data)?;
+                trace!("data={:?}", data);
+                let data = json!(&data.states).to_string();
+                trace!("data={}", data);
                 Cat21::from_opensky(&data)?
             }
             Format::Asd => {
