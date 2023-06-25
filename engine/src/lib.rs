@@ -74,7 +74,9 @@ impl Engine {
     ///
     pub fn store(&mut self, path: &str) -> &mut Self {
         let path = PathBuf::from(path);
-        create_dir_all(&path).expect("unable to create storage area");
+        if !path.exists() {
+            create_dir_all(&path).expect("create_dir_all failed");
+        }
         self.storage = Some(path);
         self
     }
