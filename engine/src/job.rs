@@ -23,7 +23,7 @@ use crate::{Runnable, IO};
 #[derive(Debug)]
 pub struct Job {
     /// Job ID
-    id: String,
+    pub id: String,
     /// Source parameters
     pub srcs: Arc<Sources>,
     /// Name of the job
