@@ -149,9 +149,9 @@ cf. above.
 ## Why the name Fetiche?
 
 If you have seen the French animated movie "Kirikou et la sorcière", you know. If not, learn that the main characters
-are Kirikou, a small boy with extraordinary gifts and a sorceress called Karaba. She has some special minions called "
-les
-fétiches". These are wooden fetishes that do her bidding in all things. One of them is on top of her case and is tasked
+are Kirikou, a small boy with extraordinary gifts and a sorceress called Karaba. She has some special minions called
+"les fétiches". These are wooden fetishes that do her bidding in all things. One of them is on top of her case and is
+tasked
 with looking around and doing... surveillance. Hence the name of its framework.
 
 ## References
