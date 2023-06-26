@@ -3,7 +3,7 @@ use std::fs::File;
 use anyhow::Result;
 use log::trace;
 
-use fetiche_engine::{Convert, Engine, Job, Read};
+use fetiche_engine::{Convert, Engine, Read};
 
 use crate::ConvertOpts;
 
