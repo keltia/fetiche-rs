@@ -31,7 +31,7 @@ pub struct Fetch {
 impl Fetch {
     pub fn new(s: &str, srcs: Arc<Sources>) -> Self {
         Self {
-            io: IO::Out,
+            io: IO::Producer,
             name: s.to_string(),
             args: String::new(),
             site: None,

@@ -149,6 +149,24 @@ pub enum Input {
     Nothing,
 }
 
+/// Task I/O characteristics
+///
+/// The main principle being that a consumer should not be first in a job queue
+/// just like an Out one should not be last.
+///
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub enum IO {
+    /// Consumer (no output or different like file)
+    Consumer,
+    /// Producer (discard input)
+    Producer,
+    /// Both (filter)
+    #[default]
+    Filter,
+    /// Cache (filter)
+    Cache,
+}
+
 /// Anything that can be `run()` is runnable.
 ///
 /// See the engine-macro crate for a rpoc-macro that implement the `run()`  wrapper for

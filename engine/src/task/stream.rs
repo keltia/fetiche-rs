@@ -50,7 +50,7 @@ impl Stream {
     pub fn new(name: &str, srcs: Arc<Sources>) -> Self {
         trace!("New Stream {}", name);
         Stream {
-            io: IO::Out,
+            io: IO::Producer,
             name: name.to_owned(),
             site: None,
             srcs: Arc::clone(&srcs),

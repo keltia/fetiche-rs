@@ -31,7 +31,7 @@ impl Convert {
     #[inline]
     pub fn new() -> Self {
         Self {
-            io: IO::InOut,
+            io: IO::Filter,
             from: Format::None,
             into: Format::None,
         }

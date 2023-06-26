@@ -37,7 +37,7 @@ impl Read {
     pub fn new(name: &str) -> Self {
         trace!("New Read {}", name);
         Read {
-            io: IO::Out,
+            io: IO::Producer,
             name: name.to_owned(),
             format: Format::None,
             path: None,

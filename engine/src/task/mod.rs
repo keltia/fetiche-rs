@@ -16,21 +16,3 @@ pub mod read;
 pub mod store;
 pub mod stream;
 pub mod tee;
-
-/// Task I/O characteristics
-///
-/// The main principle being that a consumer should not be first in a job queue
-/// just like an Out one should not be last.
-///
-#[derive(Clone, Debug, Default)]
-pub enum IO {
-    /// Consumer (no output or different like file)
-    In,
-    /// Producer (discard input)
-    Out,
-    /// Both (filter)
-    #[default]
-    InOut,
-    /// Cache (filter)
-    Cache,
-}

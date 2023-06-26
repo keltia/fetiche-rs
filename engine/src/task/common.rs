@@ -25,7 +25,7 @@ pub struct Nothing {
 impl Nothing {
     #[inline]
     pub fn new() -> Self {
-        Nothing { io: IO::InOut }
+        Nothing { io: IO::Filter }
     }
 
     #[inline]
@@ -51,7 +51,7 @@ pub struct Copy {
 impl Copy {
     #[inline]
     pub fn new() -> Self {
-        Copy { io: IO::InOut }
+        Copy { io: IO::Filter }
     }
 
     #[inline]
@@ -80,7 +80,7 @@ impl Message {
     #[inline]
     pub fn new(s: &str) -> Self {
         Message {
-            io: IO::InOut,
+            io: IO::Filter,
             msg: s.to_owned(),
         }
     }

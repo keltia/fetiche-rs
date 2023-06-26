@@ -27,7 +27,7 @@ impl Tee {
     pub fn into(p: &str) -> Self {
         let path = PathBuf::from(p);
         Tee {
-            io: IO::InOut,
+            io: IO::Filter,
             fh: Arc::new(Mutex::new(File::create(path).unwrap())),
         }
     }
