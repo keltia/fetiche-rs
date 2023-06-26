@@ -104,28 +104,6 @@ You are not really supposed to edit this file.
 
 More details in the specific [Sources README.md](sources/README.md).
 
-### Token management
-
-The `fetiche-sources`  crate has some support for token caching to avoid getting a fresh token for each call.  
-The `list tokens` sub-command will show you the available tokens. These are per-identity tokens.
-
-<details>
-<summary>acutectl list tokens</summary>
-
-```text
-acutectl/0.11.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
-CLI utility to fetch data.
-
-Listing all tokens:
-╭───────────────────────────────────────────────────┬───────────────────────────────────╮
-│ Path                                              │ Created at                        │
-├───────────────────────────────────────────────────┼───────────────────────────────────┤
-│ asd_default_token-some.user@eurocontrol.int       │ 2023-05-31 20:31:43.027646800 UTC │
-│ asd_default_token-ollivier.robert@eurocontrol.int │ 2023-05-24 09:17:44.891997300 UTC │
-╰───────────────────────────────────────────────────┴───────────────────────────────────╯
-```
-
-</details>
 
 ### Data Model
 

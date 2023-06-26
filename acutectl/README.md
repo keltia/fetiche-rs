@@ -41,6 +41,8 @@ different parameters.
 The `completion` keyword can be used to generate completion scripts for various shells including `zsh` on UNIX
 and `powershell` on Windows.
 
+### Configuration
+
 Credentials are stored into the `acutectl` configuration file, located in the same directory but named, as one
 can expect, `config.hcl`.
 
@@ -85,6 +87,8 @@ site "safesky" {
 
 If you are just giving the utility a file, you must specify the input format with the `-F/--format` option.
 
+### Formats
+
 To displayed currently supported formats, use `acutectl list formats`:
 
 <details>
@@ -123,6 +127,8 @@ transformed into our `DronePoint` and `Journey` types for post-processing.
 
 </details>
 
+### Sources
+
 You can get the list of supported sources by using the `acutectl list sources` command.
 
 <details>
@@ -147,6 +153,31 @@ Listing all sources:
 </details>
 
 The `Ops` column describe which operations are supported for each source.
+
+### Token management
+
+The `fetiche-sources`  crate has some support for token caching to avoid getting a fresh token for each call.  
+The `list tokens` sub-command will show you the available tokens. These are per-identity tokens.
+
+<details>
+<summary>acutectl list tokens</summary>
+
+```text
+acutectl/0.11.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
+CLI utility to fetch data.
+
+Listing all tokens:
+╭───────────────────────────────────────────────────┬───────────────────────────────────╮
+│ Path                                              │ Created at                        │
+├───────────────────────────────────────────────────┼───────────────────────────────────┤
+│ asd_default_token-some.user@eurocontrol.int       │ 2023-05-31 20:31:43.027646800 UTC │
+│ asd_default_token-ollivier.robert@eurocontrol.int │ 2023-05-24 09:17:44.891997300 UTC │
+╰───────────────────────────────────────────────────┴───────────────────────────────────╯
+```
+
+</details>
+
+### DB Import (incomplete)
 
 The `acutectl import` sub-command will also use another one called `dbfile.hcl`  located in the same directory.
 
