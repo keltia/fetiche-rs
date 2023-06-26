@@ -242,6 +242,9 @@ pub struct StreamOpts {
     /// Do we convert on streaming?
     #[clap(long)]
     pub into: Option<String>,
+    /// Do we want split output?
+    #[clap(long)]
+    pub split: Option<String>,
     /// Source name -- (see "list sources")
     pub site: String,
 }

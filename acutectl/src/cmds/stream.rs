@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use log::{info, trace};
 
-use fetiche_engine::{Convert, Engine, Stream, Tee};
+use fetiche_engine::{Convert, Engine, Store, Stream, Tee};
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 
@@ -53,16 +53,27 @@ pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
         job.add(Box::new(convert));
     };
 
-    // Handle output
+    // If split is required, add a consumer for it at the end.
     //
-    if let Some(out) = &sopts.output {
-        let mut out = File::create(out)?;
+    if sopts.split.is_some() {
+        let basedir = sopts.split.as_ref().unwrap();
 
-        job.run(&mut out)?;
-    } else {
+        // Store must be the last one, it is a pure consumer
+        //
+        let store = Store::new(&basedir, &job.id);
+        job.add(Box::new(store));
         job.run(&mut stdout())?;
-    };
+    } else {
+        // Handle output if no consumer is present at the end
+        //
+        if let Some(out) = &sopts.output {
+            let mut out = File::create(out)?;
 
+            job.run(&mut out)?;
+        } else {
+            job.run(&mut stdout())?;
+        };
+    }
     Ok(())
 }
 
