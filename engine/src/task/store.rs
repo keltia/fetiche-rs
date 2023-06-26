@@ -1,7 +1,11 @@
-//! Special task that will
+//! Special task that will store input in a tree of files, one every hour for now.
 //!
 //! 1. create a directory with the job ID
 //! 2. store all data coming from the pipe in files every hour
+//!
+//! FIXME: make it configurable?
+//!
+//! This module is data-agnostic and does not care whether it is JSON, binary or a CSV.
 //!
 
 use std::fs::{create_dir, OpenOptions};
@@ -18,6 +22,11 @@ use fetiche_sources::makepath;
 
 use crate::{Runnable, IO};
 
+/// Struct describing the data for the `Store` task.
+///
+/// We currently do not cache the open file for the current output, we might
+/// do that in the future but the cost is 2 more syscalls but simplified code.
+///
 #[derive(Clone, Debug, RunnableDerive)]
 pub struct Store {
     /// IO Capability
@@ -36,7 +45,12 @@ impl Default for Store {
 }
 
 impl Store {
+    /// Given a base directory in `path` create the tree if not present and store the full
+    /// path as path/ID
+    ///
     pub fn new(path: &str, id: &str) -> Self {
+        trace!("store::new({})", path);
+
         let path: PathBuf = makepath!(path, id);
 
         // Base is PATH/ID/
