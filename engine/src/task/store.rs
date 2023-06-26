@@ -22,8 +22,6 @@ use crate::{Runnable, IO};
 pub struct Store {
     /// IO Capability
     io: IO,
-    /// Job ID
-    id: String,
     /// Our storage directory
     path: Option<PathBuf>,
 }
@@ -32,7 +30,6 @@ impl Default for Store {
     fn default() -> Self {
         Store {
             io: IO::Consumer,
-            id: "".to_string(),
             path: None,
         }
     }
@@ -53,8 +50,7 @@ impl Store {
         trace!("store::new({})", path.to_string_lossy());
         Store {
             io: IO::Consumer,
-            id: id.to_owned(),
-            path: Some(path.clone()),
+            path: Some(path),
         }
     }
 
