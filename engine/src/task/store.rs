@@ -4,13 +4,13 @@
 //! 2. store all data coming from the pipe in files every hour
 //!
 
-use std::fs::{create_dir, File, OpenOptions};
+use std::fs::{create_dir, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
 use anyhow::Result;
-use chrono::{Datelike, Utc};
+use chrono::{Datelike, Timelike, Utc};
 use log::trace;
 
 use engine_macros::RunnableDerive;
@@ -41,11 +41,8 @@ impl Store {
 
         // Base is PATH/ID/
         //
-        create_dir(&path).expect(&format!(
-            "can not create {} in {}",
-            id,
-            path.to_string_lossy()
-        ));
+        create_dir(&path)
+            .unwrap_or_else(|_| panic!("can not create {} in {}", id, path.to_string_lossy()));
 
         trace!("store::new({})", path.to_string_lossy());
         Store {
@@ -63,25 +60,21 @@ impl Store {
 
         // Extract parts to get to a filename
         //
-        let (year, month, day) = (tm.year(), tm.month(), tm.day());
-        let fname = format!("{}{}{}-000000", year, month, day);
+        // Filename format is YYYYMMDD-HH0000
+        //
+        let (year, month, day, hour) = (tm.year(), tm.month(), tm.day(), tm.hour());
+        let fname = format!("{}{:02}{:02}-{:02}0000", year, month, day, hour);
 
         // Full path is BASE/ID/FNAME
         //
-        let base: PathBuf = [self.path.clone().unwrap(), PathBuf::from(&self.id)]
+        let path: PathBuf = [self.path.clone().unwrap(), PathBuf::from(fname)]
             .iter()
             .collect();
-        let path: PathBuf = [base, PathBuf::from(fname)].iter().collect();
+        trace!("fname={}", path.to_string_lossy());
 
-        // Create if not present
+        // Append to it (and create if not yet present)
         //
-        if !path.exists() {
-            File::create(&path)?;
-        }
-
-        // Append to it
-        //
-        let mut fh = OpenOptions::new().write(true).append(true).open(&path)?;
+        let mut fh = OpenOptions::new().create(true).append(true).open(&path)?;
         write!(fh, "{}", data)?;
 
         Ok(stdout.send("w".to_string())?)
