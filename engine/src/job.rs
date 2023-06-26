@@ -96,7 +96,7 @@ impl Job {
         // At this point, `self.list` is not empty so in the worst case, `first == last`.
         //
         let last = last.unwrap();
-        if last.cap() != IO::Consumer || last.cap() != IO::Filter {
+        if last.cap() != IO::Consumer && last.cap() != IO::Filter {
             return Err(anyhow!("last must be consumer or filter"));
         }
 
