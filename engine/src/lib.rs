@@ -173,5 +173,6 @@ pub enum IO {
 /// the `Runnable` trait.
 ///
 pub trait Runnable: Debug {
+    fn cap(&self) -> IO;
     fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
 }

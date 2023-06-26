@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 
 use quote::quote;
-use syn::{DeriveInput, parse_macro_input};
+use syn::{parse_macro_input, DeriveInput};
 
 /// Most basic proc_macro ever: use as a template.
 ///
@@ -14,27 +14,32 @@ pub fn runnable(input: TokenStream) -> TokenStream {
     let klass = klass.ident;
     let outer = quote!(
         impl Runnable for #klass {
-        fn run(
-            &mut self,
-            input: ::std::sync::mpsc::Receiver<::std::string::String>,
-        ) -> (::std::sync::mpsc::Receiver<String>, ::std::thread::JoinHandle<Result<()>>) {
-            let (stdout, stdin) = ::std::sync::mpsc::channel::<::std::string::String>();
+            fn cap(&self) -> IO {
+                self.io.clone()
+            }
 
-            let mut src = self.clone();
-            let h = ::std::thread::spawn(move || {
-                ::log::trace!("Runnable({})", stringify!(#klass));
+            fn run(
+                &mut self,
+                input: ::std::sync::mpsc::Receiver<::std::string::String>,
+            ) -> (::std::sync::mpsc::Receiver<String>, ::std::thread::JoinHandle<Result<()>>) {
+                let (stdout, stdin) = ::std::sync::mpsc::channel::<::std::string::String>();
 
-                // Add our message
-                //
-                for data in input {
-                    // Do something (or not) with the input data if there is an error
+                let mut src = self.clone();
+                let h = ::std::thread::spawn(move || {
+                    ::log::trace!("Runnable({})", stringify!(#klass));
+
+                    // Add our message
                     //
-                    src.execute(data, stdout.clone()).unwrap();
-                }
-                Ok(())
-            });
-            (stdin, h)
+                    for data in input {
+                        // Do something (or not) with the input data if there is an error
+                        //
+                        src.execute(data, stdout.clone()).unwrap();
+                    }
+                    Ok(())
+                });
+                (stdin, h)
+            }
         }
-    });
+    );
     outer.into()
 }
