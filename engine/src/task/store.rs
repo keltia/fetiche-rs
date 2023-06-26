@@ -51,9 +51,10 @@ impl Store {
         }
     }
 
-    /// Store is like
+    /// Store and rotate every hour for now.  We open/create and write every packet without
+    /// trying to open first.  More syscalls but these are cheap.
     ///
-    pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
+    pub fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
         trace!("store::execute");
 
         let tm = Utc::now();
@@ -77,6 +78,6 @@ impl Store {
         let mut fh = OpenOptions::new().create(true).append(true).open(&path)?;
         write!(fh, "{}", data)?;
 
-        Ok(stdout.send("w".to_string())?)
+        Ok(())
     }
 }
