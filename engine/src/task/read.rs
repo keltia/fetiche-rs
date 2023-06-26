@@ -1,7 +1,8 @@
 //! `Read` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
-use std::fs;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
@@ -36,7 +37,7 @@ impl Read {
     pub fn new(name: &str) -> Self {
         trace!("New Read {}", name);
         Read {
-            io: IO::Out,
+            io: IO::Producer,
             name: name.to_owned(),
             format: Format::None,
             path: None,
@@ -76,8 +77,14 @@ impl Read {
             Err(anyhow!("uninitialised read"))
         } else {
             let p = self.path.clone().unwrap();
-            let r = fs::read_to_string(p)?;
-            Ok(stdout.send(r)?)
+            let fh = File::open(p)?;
+            let bfh = BufReader::new(fh);
+
+            // Now send each line down the pipe
+            //
+            bfh.lines().for_each(|l| stdout.send(l.unwrap()).unwrap());
+
+            Ok(())
         }
     }
 }

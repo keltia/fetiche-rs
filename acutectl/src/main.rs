@@ -8,7 +8,8 @@ use clap_complete::generate;
 use log::{info, trace};
 
 use acutectl::{
-    fetch_from_site, stream_from_site, Config, ImportSubCommand, ListSubCommand, Opts, SubCommand,
+    convert_from_to, fetch_from_site, stream_from_site, Config, ImportSubCommand, ListSubCommand,
+    Opts, SubCommand,
 };
 use fetiche_engine::Engine;
 use fetiche_formats::Format;
@@ -58,6 +59,14 @@ fn main() -> Result<()> {
             trace!("stream");
 
             stream_from_site(&engine, sopts)?;
+        }
+
+        // Handle `convert from to`
+        //
+        SubCommand::Convert(copts) => {
+            trace!("convert");
+
+            convert_from_to(&engine, copts)?;
         }
 
         // Handle `import site`  and `import file`

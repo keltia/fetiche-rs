@@ -10,20 +10,20 @@ use std::io::Write;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use log::{info, trace};
-
-use fetiche_sources::Sources;
 use uuid::Uuid;
 
-use crate::Runnable;
+use fetiche_sources::Sources;
+
+use crate::{Runnable, IO};
 
 /// The engine is processing jobs, made of runnable tasks
 ///
 #[derive(Debug)]
 pub struct Job {
     /// Job ID
-    id: String,
+    pub id: String,
     /// Source parameters
     pub srcs: Arc<Sources>,
     /// Name of the job
@@ -78,6 +78,27 @@ impl Job {
             self.name,
             self.list.len()
         );
+
+        // Basic checks on the pipeline
+        //
+        let first = &self.list.front();
+        let last = &self.list.back();
+
+        match first {
+            Some(first) => {
+                if first.cap() != IO::Producer {
+                    return Err(anyhow!("First task must be a producer"));
+                }
+            }
+            None => return Err(anyhow!("empty task list")),
+        }
+
+        // At this point, `self.list` is not empty so in the worst case, `first == last`.
+        //
+        let last = last.unwrap();
+        if last.cap() != IO::Consumer && last.cap() != IO::Filter {
+            return Err(anyhow!("last must be consumer or filter"));
+        }
 
         // Setup the pipeline
         //

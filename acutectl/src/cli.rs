@@ -4,6 +4,7 @@
 //!
 //! - `completion`
 //! - `fetch`
+//! - `convert`
 //! - `import`
 //! - `list`
 //! - `stream`
@@ -37,6 +38,8 @@ use std::path::PathBuf;
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser, ValueEnum};
 use clap_complete::shells::Shell;
+
+use fetiche_formats::Format;
 
 /// CLI options
 #[derive(Parser)]
@@ -74,6 +77,8 @@ pub struct Opts {
 pub enum SubCommand {
     /// Generate Completion stuff
     Completion(ComplOpts),
+    /// Convert between formats
+    Convert(ConvertOpts),
     /// Fetch data from specified site
     Fetch(FetchOpts),
     /// Import into InfluxDB (WIP)
@@ -237,6 +242,27 @@ pub struct StreamOpts {
     /// Do we convert on streaming?
     #[clap(long)]
     pub into: Option<String>,
+    /// Do we want split output?
+    #[clap(long)]
+    pub split: Option<String>,
     /// Source name -- (see "list sources")
     pub site: String,
+}
+
+// -----
+
+/// Options for the `convert` command, take a filename and format
+///
+#[derive(Debug, Parser)]
+pub struct ConvertOpts {
+    /// Input format
+    #[clap(long)]
+    pub from: Format,
+    /// Output format
+    #[clap(long)]
+    pub into: Format,
+    /// Input file
+    pub infile: String,
+    /// Output file
+    pub outfile: String,
 }

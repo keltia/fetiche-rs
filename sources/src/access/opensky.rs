@@ -452,7 +452,9 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     // Anything else is sent
                     //
                     _ => {
-                        out.send(msg)?;
+                        // Every record is separated with LF
+                        //
+                        out.send(format!("{}\n", msg))?;
                     }
                 },
                 _ => continue,
