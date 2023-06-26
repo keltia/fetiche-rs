@@ -164,6 +164,7 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~Data formats conversion framework~~
 - ~~caching tokens (like ASD ones) locally~~
 - ~~merge `import-adsb` and `cat21conv` into `acutectl`~~.
+- ~~Add a `Store` module to handle long-running jobs and their output.~~
 - rename `acutectl` into `fetichectl`.
 - link to HashiCorp Vault for storing credentials and tokens
 - Add more tests & benchmarks.
