@@ -62,10 +62,15 @@ pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
         //
         let store = Store::new(&basedir, &job.id);
         job.add(Box::new(store));
+
+        info!("Running job #{} with {} tasks.", job.id, job.list.len());
+
         job.run(&mut stdout())?;
     } else {
         // Handle output if no consumer is present at the end
         //
+        info!("Running job #{} with {} tasks.", job.id, job.list.len());
+
         if let Some(out) = &sopts.output {
             let mut out = File::create(out)?;
 
