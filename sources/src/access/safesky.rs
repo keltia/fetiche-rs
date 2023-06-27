@@ -10,6 +10,7 @@
 use std::io::Write;
 
 use anyhow::{anyhow, Result};
+use log::trace;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
@@ -62,6 +63,8 @@ pub struct Safesky {
 
 impl Safesky {
     pub fn new() -> Self {
+        trace!("safesky::new");
+
         Safesky {
             features: vec![Capability::Fetch],
             format: Format::Safesky,
@@ -73,6 +76,8 @@ impl Safesky {
     }
 
     pub fn load(&mut self, site: &Site) -> &mut Self {
+        trace!("safesky::load");
+
         self.format = site.format.as_str().into();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
@@ -102,6 +107,8 @@ impl Fetchable for Safesky {
     /// real authentication.
     ///
     fn authenticate(&self) -> Result<String> {
+        trace!("safesky::authenticate");
+
         if self.api_key.is_empty() {
             return Err(anyhow!("No API key"));
         }
@@ -109,6 +116,7 @@ impl Fetchable for Safesky {
     }
 
     fn fetch(&self, _out: &mut dyn Write, _token: &str, _args: &str) -> Result<()> {
+        trace!("safesky::fetch");
         todo!()
     }
 
@@ -128,7 +136,7 @@ mod tests {
     fn setup_safesky(_server: &MockServer) -> Safesky {
         let client = Client::new();
         Safesky {
-            features: Capability::Fetch,
+            features: vec![Capability::Fetch],
             format: Format::Safesky,
             base_url: "http://example.net".to_string(),
             get: "/v1/beacons".to_string(),

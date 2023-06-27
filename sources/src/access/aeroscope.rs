@@ -66,6 +66,8 @@ pub struct Aeroscope {
 
 impl Aeroscope {
     pub fn new() -> Self {
+        trace!("aeroscope::new");
+
         // Set some reasonable defaults
         //
         Aeroscope {
@@ -83,7 +85,8 @@ impl Aeroscope {
     /// Load our site details from what is in the configuration file
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
-        trace!("Loading {site:?}");
+        trace!("aeroscope::load({site:?})");
+
         self.format = site.format.as_str().into();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
@@ -119,9 +122,10 @@ impl Fetchable for Aeroscope {
     /// Authenticate to the site with login/password and return a token
     ///
     fn authenticate(&self) -> Result<String> {
+        trace!("aeroscope::authenticate({:?})", &self.login);
+
         // Prepare our submission data
         //
-        debug!("Submit auth as {:?}", &self.login);
         let cred = Credentials {
             username: self.login.clone(),
             password: self.password.clone(),
@@ -130,7 +134,7 @@ impl Fetchable for Aeroscope {
         // fetch token
         //
         let url = format!("{}{}", self.base_url, self.token);
-        debug!("Fetching token through {}…", url);
+        trace!("Fetching token through {}…", url);
 
         let resp = http_post!(self, url, &cred)?;
         let resp = resp.text()?;
@@ -143,7 +147,7 @@ impl Fetchable for Aeroscope {
     /// Fetch actual data from the site as a long String.
     ///
     fn fetch(&self, out: &mut dyn Write, token: &str, _args: &str) -> Result<()> {
-        debug!("Now fetching data");
+        trace!("aeroscope::fetch");
 
         // Use the token to authenticate ourselves
         //
@@ -191,6 +195,7 @@ mod tests {
 
         let client = Client::new();
         let site = Aeroscope {
+            features: vec![Capability::Fetch],
             format: Format::Aeroscope,
             login: "user".to_string(),
             password: "pass".to_string(),

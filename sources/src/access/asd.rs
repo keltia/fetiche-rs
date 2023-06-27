@@ -118,6 +118,8 @@ pub struct Asd {
 
 impl Asd {
     pub fn new() -> Self {
+        trace!("asd::new");
+
         Asd {
             features: vec![Capability::Fetch],
             site: "NONE".to_string(),
@@ -134,6 +136,8 @@ impl Asd {
     /// Load some data from the configuration file
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
+        trace!("asd::load");
+
         self.site = site.name.clone().unwrap();
         self.format = site.format.as_str().into();
         self.base_url = site.base_url.to_owned();
@@ -171,6 +175,7 @@ impl Fetchable for Asd {
     ///
     fn authenticate(&self) -> Result<String> {
         trace!("authenticate as ({:?})", &self.login);
+
         // Prepare our submission data
         //
         let cred = Credentials {
@@ -209,6 +214,7 @@ impl Fetchable for Asd {
             token.token
         } else {
             trace!("no token");
+
             // fetch token from site
             //
             let url = format!("{}{}", self.base_url, self.token);
@@ -235,7 +241,7 @@ impl Fetchable for Asd {
     /// Fetch actual data using the aforementioned token
     ///
     fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
-        trace!("Submit parameters");
+        trace!("asd::fetch");
 
         let f: Filter = serde_json::from_str(args)?;
 
@@ -264,7 +270,7 @@ impl Fetchable for Asd {
         // use token
         //
         let url = format!("{}{}", self.base_url, self.get);
-        debug!("Fetching data through {}…", url);
+        trace!("Fetching data through {}…", url);
 
         let resp = http_post_auth!(self, url, token, &data)?;
 

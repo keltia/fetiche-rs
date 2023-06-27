@@ -22,7 +22,7 @@ use std::{thread, time};
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
-use log::{debug, error, trace};
+use log::{debug, error, info, trace};
 use mini_moka::sync::{Cache, ConcurrentCacheExt};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
@@ -94,6 +94,8 @@ struct Credentials {
 
 impl Opensky {
     pub fn new() -> Self {
+        trace!("opensky::new");
+
         Opensky {
             features: vec![Capability::Fetch, Capability::Stream],
             format: Format::Opensky,
@@ -109,6 +111,8 @@ impl Opensky {
     /// Load some data from in-memory loaded config
     ///
     pub fn load(&mut self, site: &Site) -> &mut Self {
+        trace!("opensky::load");
+
         self.format = site.format.as_str().into();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
@@ -151,6 +155,8 @@ impl Fetchable for Opensky {
     /// Single call API
     ///
     fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
+        trace!("opensky::fetch");
+
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
         trace!("opensky::fetch(as {}:{})", login, password);
@@ -284,7 +290,7 @@ impl Streamable for Opensky {
             _ => url,
         };
 
-        eprintln!(
+        info!(
             r##"
 StreamURL: {}
 Duration {}s with {}ms delay and cache with {} entries for {}s
