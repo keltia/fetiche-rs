@@ -30,7 +30,7 @@ pub enum Source {
 
 /// Aircraft category
 ///
-/// XXX BUG: Opensky actually returns 17 fields, excluding this one.
+/// By default, Opensky actually returns 17 fields, excluding this one.
 ///
 #[derive(Clone, Copy, Debug, Deserialize_repr, PartialEq, Serialize_repr)]
 #[repr(u8)]
@@ -59,9 +59,15 @@ pub enum Category {
 
 // Public structs
 
+/// This is the main container for packets sent by the API.
+/// It includes a 32-bit UNIX timestamp and a set of `StateVector`.
+///
+/// We assume that if two `StateList` have the same timestamp they have
+/// the same payload (we use it for caching when streaming data).
+///
 #[derive(Debug, Deserialize)]
 pub struct StateList {
-    /// UNIX timestamps
+    /// UNIX timestamp
     pub time: i32,
     /// The state vectors
     pub states: Option<Vec<StateVector>>,
@@ -71,6 +77,8 @@ impl StateList {
     /// Transform a given record into an array of Cat21 records
     ///
     pub fn to_cat21(&self) -> Vec<Cat21> {
+        trace!("statelist::to_cat21");
+
         match &self.states {
             Some(v) => v.iter().map(Cat21::from).collect(),
             None => vec![],
@@ -128,7 +136,9 @@ impl StateList {
 pub struct StateVector {
     /// ICAO ID
     pub icao24: String,
+    /// Call-sign of the vehicule
     pub callsign: Option<String>,
+    /// Origin Country
     pub origin_country: String,
     pub time_position: Option<i32>,
     pub last_contact: i32,
@@ -198,8 +208,6 @@ convert_to!(from_vectors, StateVector, Cat21);
 
 impl From<&StateVector> for Cat21 {
     /// Generate a `Cat21` struct from `StateList`
-    ///
-    /// DEPRECATED
     ///
     fn from(line: &StateVector) -> Self {
         let tod: i64 = line.time_position.unwrap_or(0) as i64;
