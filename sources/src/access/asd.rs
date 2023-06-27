@@ -362,6 +362,7 @@ mod tests {
         init();
         let client = Client::new();
         Asd {
+            features: vec![Capability::Fetch],
             site: "NONE".to_string(),
             format: Format::Asd,
             login: "user".to_string(),
