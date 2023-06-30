@@ -14,8 +14,10 @@
 //! FIXME: at some point, a `[u8]`  might be preferable to a `String`.
 //!
 
+use std::collections::BTreeMap;
 use std::convert::Into;
 use std::fmt::Debug;
+use std::fs;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
@@ -25,9 +27,11 @@ use std::thread::JoinHandle;
 use anyhow::Result;
 
 use fetiche_formats::Format;
-use fetiche_sources::{Fetchable, Sources, Streamable};
+use fetiche_sources::{makepath, Fetchable, Sources, Streamable};
 pub use job::*;
 pub use task::*;
+
+use crate::StoreArea::Directory;
 
 mod job;
 mod parse;
@@ -37,6 +41,30 @@ pub fn version() -> String {
     format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }
 
+#[cfg(unix)]
+const BASEDIR: &str = ".config";
+
+/// Configuration filename
+const ENGINE_CONFIG: &str = "engine.hcl";
+
+/// Configuration file version
+const ENGINE_VERSION: usize = 1;
+
+/// We define a `Store` enum, describing storage areas like a directory or an S3
+/// bucket (from an actual AWS account or a Garage instance).
+///
+#[derive(Clone, Debug)]
+pub enum StoreArea {
+    /// S3 AWS/Garage bucket
+    Bucket { name: String },
+    /// in-memory K/V store like DragonflyDB or REDIS
+    Cache,
+    /// In the local filesystem
+    Directory { path: PathBuf },
+}
+
+pub struct StorageAreas(BTreeMap<String, StoreArea>);
+
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
 #[derive(Clone, Debug)]
@@ -44,30 +72,65 @@ pub struct Engine {
     /// Sources
     pub sources: Arc<Sources>,
     /// Storage area for long running jobs
-    pub storage: Option<PathBuf>,
+    pub storage: Arc<StoreAreas>,
 }
 
 impl Engine {
     pub fn new() -> Self {
+        // Load storage areas
+        //
+        let fname = Self::default_file();
+        let areas = match fs::read_to_string(fname) {
+            Ok(data) => {
+                let store: BTreeMap<String, StoreArea> = hcl::from_str(&data).unwrap();
+                store
+            }
+            Err(e) => panic!("No storage define in {}:{}", fname.to_string_lossy(), e),
+        };
+
+        // Register sources
+        //
         let src = Sources::load(&None);
-        match src {
-            Ok(src) => Engine {
-                sources: Arc::new(src),
-                storage: None,
-            },
-            Err(e) => panic!("No sources configured:{}", e),
+        let src = match src {
+            Ok(src) => src,
+            Err(e) => panic!("No sources configured in 'sources.hcl':{}", e),
+        };
+
+        Engine {
+            sources: Arc::new(src),
+            storage: Arc::new(areas),
         }
     }
 
-    pub fn from(fname: &str) -> Self {
-        let src = Sources::load(&Some(fname.into()));
-        match src {
-            Ok(src) => Engine {
-                sources: Arc::new(src),
-                storage: None,
-            },
-            Err(e) => panic!("No sources configured in {}:{}", fname, e),
-        }
+    /// Returns the path of the default config directory
+    ///
+    #[cfg(unix)]
+    pub fn config_path() -> PathBuf {
+        let homedir = home_dir().unwrap();
+        let def: PathBuf = makepath!(homedir, BASEDIR, "drone-utils");
+        def
+    }
+
+    /// Returns the path of the default config directory
+    ///
+    #[cfg(windows)]
+    pub fn config_path() -> PathBuf {
+        let homedir = env!("LOCALAPPDATA");
+
+        let def: PathBuf = makepath!(homedir, "drone-utils");
+        def
+    }
+
+    /// Returns the path of the default config file
+    ///
+    pub fn default_file() -> PathBuf {
+        Self::config_path().join(ENGINE_CONFIG)
+    }
+
+    // Load configuration file for storage areas
+    //
+    pub fn with(fname: &str) -> Self {
+        let cfg = fs::read_to_string(fname);
     }
 
     /// Initialize the optional storage area for jobs' output files
@@ -77,7 +140,7 @@ impl Engine {
         if !path.exists() {
             create_dir_all(&path).expect("create_dir_all failed");
         }
-        self.storage = Some(path);
+        self.storage = Some(Directory { path });
         self
     }
 
@@ -139,6 +202,9 @@ pub enum Input {
         /// Site itself
         site: Arc<dyn Fetchable>,
     },
+    /// Stream-based means we need the site name (whose details are taken from the configuration
+    /// file.  The `site` is a `Streamable` object generated from `Config`.
+    ///
     Stream {
         /// Input formats
         stream: Format,
