@@ -16,7 +16,7 @@
 
 use std::collections::BTreeMap;
 use std::convert::Into;
-use std::fmt::Debug;
+use std::fmt::{Debug, format};
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
@@ -29,12 +29,14 @@ use anyhow::Result;
 use fetiche_formats::Format;
 use fetiche_sources::{makepath, Fetchable, Sources, Streamable};
 pub use job::*;
+pub use storage::*;
 pub use task::*;
 
 use crate::StoreArea::Directory;
 
 mod job;
 mod parse;
+mod storage;
 mod task;
 
 pub fn version() -> String {
@@ -50,21 +52,6 @@ const ENGINE_CONFIG: &str = "engine.hcl";
 /// Configuration file version
 const ENGINE_VERSION: usize = 1;
 
-/// We define a `Store` enum, describing storage areas like a directory or an S3
-/// bucket (from an actual AWS account or a Garage instance).
-///
-#[derive(Clone, Debug)]
-pub enum StoreArea {
-    /// S3 AWS/Garage bucket
-    Bucket { name: String },
-    /// in-memory K/V store like DragonflyDB or REDIS
-    Cache,
-    /// In the local filesystem
-    Directory { path: PathBuf },
-}
-
-pub struct StorageAreas(BTreeMap<String, StoreArea>);
-
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
 #[derive(Clone, Debug)]
@@ -75,16 +62,34 @@ pub struct Engine {
     pub storage: Arc<StoreAreas>,
 }
 
+/// Configuration file format
+///
+#[derive(Clone, Debug)]
+pub struct EngineConfig {
+    /// Usual check for malformed file
+    pub version: usize,
+    /// List of storage types
+    pub storage: BTreeMap<String, StoreArea>,
+}
+
 impl Engine {
     pub fn new() -> Self {
         // Load storage areas
         //
         let fname = Self::default_file();
-        let areas = match fs::read_to_string(fname) {
-            Ok(data) => {
-                let store: BTreeMap<String, StoreArea> = hcl::from_str(&data).unwrap();
-                store
-            }
+        let data = fs::read_to_string(&fname)
+            .expect(&format!("file not found {}", fname.to_string_lossy()));
+
+        let cfg: EngineConfig = hcl::from_str(&data).expect("syntax error");
+
+        // Bail out if different
+        //
+        if &cfg.version != ENGINE_VERSION {
+            panic!("incompatible version {} in {}", &cfg.version, fname.to_string_lossy());
+        }
+
+        let areas: BTreeMap<String, StoreArea> = match cfg.storage {
+            Ok(data) => data,
             Err(e) => panic!("No storage define in {}:{}", fname.to_string_lossy(), e),
         };
 
@@ -140,7 +145,7 @@ impl Engine {
         if !path.exists() {
             create_dir_all(&path).expect("create_dir_all failed");
         }
-        self.storage = Some(Directory { path });
+        self.storage.insert(path.file_name().unwrap().to_string_lossy(), Directory { path });
         self
     }
 
@@ -148,6 +153,12 @@ impl Engine {
     ///
     pub fn sources(&self) -> Arc<Sources> {
         Arc::clone(&self.sources)
+    }
+
+    /// Returns a list of all defined storage areas
+    ///
+    pub fn list_storage(&self) -> Result<String> {
+        self.storage.into_iter().
     }
 
     /// Return a description of all supported sources

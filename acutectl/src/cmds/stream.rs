@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use log::{info, trace};
 
-use fetiche_engine::{Convert, Engine, StoreArea, Stream, Tee};
+use fetiche_engine::{Convert, Engine, Store, StoreArea, Stream, Tee};
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 
@@ -60,7 +60,7 @@ pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
 
         // Store must be the last one, it is a pure consumer
         //
-        let store = StoreArea::new(&basedir, &job.id);
+        let store = Store::new(&basedir, &job.id);
         job.add(Box::new(store));
 
         info!("Running job #{} with {} tasks.", job.id, job.list.len());
