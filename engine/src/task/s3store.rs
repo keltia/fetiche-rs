@@ -3,6 +3,8 @@
 //!
 //! S3 bucket can be some any AWS S3 compatible storage like Garage or Minio
 //!
+//! This will use the `aws-config` crate to avoid specifying any credentials.
+//!
 
 use std::sync::mpsc::Sender;
 
@@ -18,10 +20,6 @@ pub struct S3store {
     io: IO,
     /// S3 Bucket ID
     bucket: String,
-    /// AWS key
-    key: String,
-    /// AWS secret
-    secret: String,
 }
 
 impl Default for S3store {
@@ -35,22 +33,14 @@ impl S3store {
         S3store {
             io: IO::Consumer,
             bucket: "".to_string(),
-            key: "".to_string(),
-            secret: "".to_string(),
         }
     }
 
-    pub fn region(&mut self, region: String) -> &mut Self {
-        self.region = region
+    pub fn into(&mut self, bucket: String) -> &mut Self {
+        self.bucket = bucket;
         self
     }
 
-    pub fn info(&mut self, bucket: String) -> &mut Self {
-        self.bucket = bucket
-        self
-    }
-
-    pub fn with(&mut self, )
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         Ok(())
     }

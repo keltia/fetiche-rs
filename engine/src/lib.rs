@@ -16,7 +16,7 @@
 
 use std::collections::BTreeMap;
 use std::convert::Into;
-use std::fmt::{Debug, format};
+use std::fmt::{Debug, Display};
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
@@ -25,6 +25,7 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use anyhow::Result;
+use home::home_dir;
 
 use fetiche_formats::Format;
 use fetiche_sources::{makepath, Fetchable, Sources, Streamable};
@@ -59,7 +60,7 @@ pub struct Engine {
     /// Sources
     pub sources: Arc<Sources>,
     /// Storage area for long running jobs
-    pub storage: Arc<StoreAreas>,
+    pub storage: Arc<BTreeMap<String, StoreArea>>,
 }
 
 /// Configuration file format
@@ -74,23 +75,34 @@ pub struct EngineConfig {
 
 impl Engine {
     pub fn new() -> Self {
-        // Load storage areas
+        // Load storage areas from `engine.hcl`
         //
-        let fname = Self::default_file();
-        let data = fs::read_to_string(&fname)
-            .expect(&format!("file not found {}", fname.to_string_lossy()));
+        Self::with(Self::default_file().to_string_lossy())
+    }
+
+    // Load configuration file for storage areas
+    //
+    pub fn with<T>(fname: T) -> Self
+    where
+        T: Into<PathBuf> + Display,
+    {
+        let data = fs::read_to_string(fname.into()).expect(&format!("file not found {}", fname));
 
         let cfg: EngineConfig = hcl::from_str(&data).expect("syntax error");
 
         // Bail out if different
         //
         if &cfg.version != ENGINE_VERSION {
-            panic!("incompatible version {} in {}", &cfg.version, fname.to_string_lossy());
+            panic!(
+                "Only v{} config file supported in {}",
+                ENGINE_VERSION,
+                fname.to_string_lossy()
+            );
         }
 
         let areas: BTreeMap<String, StoreArea> = match cfg.storage {
             Ok(data) => data,
-            Err(e) => panic!("No storage define in {}:{}", fname.to_string_lossy(), e),
+            Err(e) => panic!("No storage defined in {}:{}", fname.to_string_lossy(), e),
         };
 
         // Register sources
@@ -132,12 +144,6 @@ impl Engine {
         Self::config_path().join(ENGINE_CONFIG)
     }
 
-    // Load configuration file for storage areas
-    //
-    pub fn with(fname: &str) -> Self {
-        let cfg = fs::read_to_string(fname);
-    }
-
     /// Initialize the optional storage area for jobs' output files
     ///
     pub fn store(&mut self, path: &str) -> &mut Self {
@@ -145,7 +151,10 @@ impl Engine {
         if !path.exists() {
             create_dir_all(&path).expect("create_dir_all failed");
         }
-        self.storage.insert(path.file_name().unwrap().to_string_lossy(), Directory { path });
+        self.storage.insert(
+            path.file_name().unwrap().to_string_lossy(),
+            Directory { path },
+        );
         self
     }
 
@@ -158,7 +167,7 @@ impl Engine {
     /// Returns a list of all defined storage areas
     ///
     pub fn list_storage(&self) -> Result<String> {
-        self.storage.into_iter().
+        self.storage.list()
     }
 
     /// Return a description of all supported sources

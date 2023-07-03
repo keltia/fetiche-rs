@@ -14,8 +14,6 @@ pub enum StoreArea {
     Directory { path: PathBuf },
 }
 
-pub struct StorageAreas(BTreeMap<String, StoreArea>);
-
 impl StoreArea {
     pub fn save(path: &str) -> Self {
         Self::Directory {
