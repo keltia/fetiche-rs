@@ -4,7 +4,13 @@
 //! S3 bucket can be some any AWS S3 compatible storage like Garage or Minio
 //!
 
-use crate::IO;
+use std::sync::mpsc::Sender;
+
+use anyhow::Result;
+
+use engine_macros::RunnableDerive;
+
+use crate::{Runnable, IO};
 
 #[derive(Clone, Debug, RunnableDerive)]
 pub struct S3store {
@@ -12,21 +18,40 @@ pub struct S3store {
     io: IO,
     /// S3 Bucket ID
     bucket: String,
+    /// AWS key
+    key: String,
+    /// AWS secret
+    secret: String,
 }
 
 impl Default for S3store {
     fn default() -> Self {
-        S3store {
-            io: IO::Consumer,
-            bucket: "".to_string(),
-        }
+        S3store::new()
     }
 }
 
 impl S3store {
-    pub fn new(bucket: String) -> Self {
-        let mut s = S3store::default();
-        s.bucket = bucket.clone();
-        s
+    pub fn new() -> Self {
+        S3store {
+            io: IO::Consumer,
+            bucket: "".to_string(),
+            key: "".to_string(),
+            secret: "".to_string(),
+        }
+    }
+
+    pub fn region(&mut self, region: String) -> &mut Self {
+        self.region = region
+        self
+    }
+
+    pub fn info(&mut self, bucket: String) -> &mut Self {
+        self.bucket = bucket
+        self
+    }
+
+    pub fn with(&mut self, )
+    pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
+        Ok(())
     }
 }
