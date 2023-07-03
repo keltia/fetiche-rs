@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use log::{info, trace};
 
-use fetiche_engine::{Convert, Engine, Store, Stream, Tee};
+use fetiche_engine::{Convert, Engine, Store, StoreArea, Stream, Tee};
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 
