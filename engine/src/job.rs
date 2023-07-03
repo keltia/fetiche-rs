@@ -96,8 +96,15 @@ impl Job {
         // At this point, `self.list` is not empty so in the worst case, `first == last`.
         //
         let last = last.unwrap();
-        if last.cap() != IO::Consumer && last.cap() != IO::Filter {
-            return Err(anyhow!("last must be consumer or filter"));
+
+        // If there is only one task, it should be fine.
+        //
+        if self.list.len() != 1 {
+            // Then we check the last one
+            //
+            if last.cap() != IO::Consumer && last.cap() != IO::Filter {
+                return Err(anyhow!("last must be consumer or filter"));
+            }
         }
 
         // Setup the pipeline
