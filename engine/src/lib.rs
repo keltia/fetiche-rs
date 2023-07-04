@@ -27,6 +27,7 @@ use std::thread::JoinHandle;
 use anyhow::Result;
 use home::home_dir;
 
+pub use config::*;
 use fetiche_formats::Format;
 use fetiche_sources::{makepath, Fetchable, Sources, Streamable};
 pub use job::*;
@@ -35,6 +36,7 @@ pub use task::*;
 
 use crate::StoreArea::Directory;
 
+mod config;
 mod job;
 mod parse;
 mod storage;
@@ -60,50 +62,36 @@ pub struct Engine {
     /// Sources
     pub sources: Arc<Sources>,
     /// Storage area for long running jobs
-    pub storage: Arc<BTreeMap<String, StoreArea>>,
-}
-
-/// Configuration file format
-///
-#[derive(Clone, Debug)]
-pub struct EngineConfig {
-    /// Usual check for malformed file
-    pub version: usize,
-    /// List of storage types
-    pub storage: BTreeMap<String, StoreArea>,
+    pub storage: Arc<Storage>,
 }
 
 impl Engine {
     pub fn new() -> Self {
         // Load storage areas from `engine.hcl`
         //
-        Self::with(Self::default_file().to_string_lossy())
+        Self::with(Self::default_file())
     }
 
     // Load configuration file for storage areas
     //
     pub fn with<T>(fname: T) -> Self
     where
-        T: Into<PathBuf> + Display,
+        T: Into<PathBuf>,
     {
-        let data = fs::read_to_string(fname.into()).expect(&format!("file not found {}", fname));
+        let fname = fname.into();
+        let data = fs::read_to_string(&fname).expect(&format!("file not found {:?}", fname));
 
         let cfg: EngineConfig = hcl::from_str(&data).expect("syntax error");
 
         // Bail out if different
         //
-        if &cfg.version != ENGINE_VERSION {
+        if cfg.version != ENGINE_VERSION {
             panic!(
                 "Only v{} config file supported in {}",
                 ENGINE_VERSION,
                 fname.to_string_lossy()
             );
         }
-
-        let areas: BTreeMap<String, StoreArea> = match cfg.storage {
-            Ok(data) => data,
-            Err(e) => panic!("No storage defined in {}:{}", fname.to_string_lossy(), e),
-        };
 
         // Register sources
         //
@@ -113,6 +101,7 @@ impl Engine {
             Err(e) => panic!("No sources configured in 'sources.hcl':{}", e),
         };
 
+        let areas = Storage::register(&cfg.storage);
         Engine {
             sources: Arc::new(src),
             storage: Arc::new(areas),
@@ -142,20 +131,6 @@ impl Engine {
     ///
     pub fn default_file() -> PathBuf {
         Self::config_path().join(ENGINE_CONFIG)
-    }
-
-    /// Initialize the optional storage area for jobs' output files
-    ///
-    pub fn store(&mut self, path: &str) -> &mut Self {
-        let path = PathBuf::from(path);
-        if !path.exists() {
-            create_dir_all(&path).expect("create_dir_all failed");
-        }
-        self.storage.insert(
-            path.file_name().unwrap().to_string_lossy(),
-            Directory { path },
-        );
-        self
     }
 
     /// Return an `Arc::clone` of the Engine sources

@@ -15,8 +15,6 @@ pub struct EngineConfig {
 
 #[derive(Clone, Debug, Deserialize)]
 pub enum StorageConfig {
-    /// S3 AWS/Garage bucket
-    Bucket { region: String, name: String },
     /// in-memory K/V store like DragonflyDB or REDIS
     Cache { url: String },
     /// In the local filesystem
