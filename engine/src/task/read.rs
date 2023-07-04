@@ -115,7 +115,7 @@ mod tests {
 
         assert_eq!("foo", t.name);
         assert_eq!(Format::None, t.format);
-        assert_eq!(PathBuf::from("/nonexistent"), path.clone());
+        assert_eq!(PathBuf::from("/nonexistent"), t.path.unwrap());
     }
 
     #[test]
@@ -126,6 +126,6 @@ mod tests {
 
         assert_eq!("foo", t.name);
         assert_eq!(Format::Asd, t.format);
-        assert_eq!(PathBuf::from("../Cargo.toml"), path.clone());
+        assert_eq!(PathBuf::from("../Cargo.toml"), t.path.unwrap());
     }
 }
