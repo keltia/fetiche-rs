@@ -14,6 +14,7 @@ pub struct EngineConfig {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
 pub enum StorageConfig {
     /// in-memory K/V store like DragonflyDB or REDIS
     Cache { url: String },
