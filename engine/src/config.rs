@@ -18,5 +18,5 @@ pub enum StorageConfig {
     /// in-memory K/V store like DragonflyDB or REDIS
     Cache { url: String },
     /// In the local filesystem
-    Directory { path: PathBuf },
+    Directory { path: PathBuf, rotation: String },
 }
