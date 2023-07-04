@@ -986,6 +986,7 @@ dependencies = [
  "log",
  "nom",
  "reqwest",
+ "rstest",
  "serde",
  "serde_json",
  "uuid",
