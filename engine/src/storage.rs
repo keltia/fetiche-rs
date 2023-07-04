@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
+use log::{debug, trace};
 use nom::{
     character::complete::{i8, one_of},
     combinator::map,
@@ -40,10 +41,11 @@ impl Storage {
     /// Register all areas from a config struct read from `engine.hcl`
     ///
     pub fn register(cfg: &BTreeMap<String, StorageConfig>) -> Self {
+        trace!("load storage areas");
+
         let mut b = BTreeMap::<String, StoreArea>::new();
 
-        while let Some(name) = cfg.keys().next() {
-            let area = cfg.get(name).unwrap().clone();
+        for (name, area) in cfg.iter() {
             match area {
                 // Local directory
                 //
@@ -53,15 +55,22 @@ impl Storage {
                             .expect(&format!("storage::init::create_dir_all failed: {:?}", path));
                     }
                     let (_, rotation) = Self::parse_rotation(&rotation).unwrap();
-                    b.insert(name.to_string(), StoreArea::Directory { path, rotation });
+                    b.insert(
+                        name.to_string(),
+                        StoreArea::Directory {
+                            path: path.clone(),
+                            rotation,
+                        },
+                    );
                 }
                 // Future cache support
                 //
                 StorageConfig::Cache { url } => {
-                    b.insert(name.to_string(), StoreArea::Cache { url });
+                    b.insert(name.to_string(), StoreArea::Cache { url: url.clone() });
                 }
             }
         }
+        debug!("b={:?}", b);
         Storage(b)
     }
 
