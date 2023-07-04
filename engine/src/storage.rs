@@ -3,6 +3,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
+use nom::{
+    character::complete::{i8, one_of},
+    combinator::map,
+    sequence::tuple,
+    IResult,
+};
 
 use crate::StorageConfig;
 
@@ -27,7 +33,7 @@ pub enum StoreArea {
     /// in-memory K/V store like DragonflyDB or REDIS
     Cache { url: String },
     /// In the local filesystem
-    Directory { path: PathBuf },
+    Directory { path: PathBuf, rotation: u32 },
 }
 
 impl Storage {
@@ -41,12 +47,13 @@ impl Storage {
             match area {
                 // Local directory
                 //
-                StorageConfig::Directory { path } => {
+                StorageConfig::Directory { path, rotation } => {
                     if !path.exists() {
                         std::fs::create_dir_all(&path)
                             .expect(&format!("storage::init::create_dir_all failed: {:?}", path));
                     }
-                    b.insert(name.to_string(), StoreArea::Directory { path });
+                    let (_, rotation) = Self::parse_rotation(&rotation).unwrap();
+                    b.insert(name.to_string(), StoreArea::Directory { path, rotation });
                 }
                 // Future cache support
                 //
@@ -58,7 +65,39 @@ impl Storage {
         Storage(b)
     }
 
+    /// Parse 1s/1m/1h/1d
+    ///
+    fn parse_rotation(input: &str) -> IResult<&str, u32> {
+        let into_s = |(n, tag): (std::primitive::i8, char)| match tag {
+            's' => n as u32,
+            'm' => (n as u32) * 60,
+            'h' => (n as u32) * 3_600,
+            'd' => (n as u32) * 3_600 * 24,
+            _ => n as u32,
+        };
+        let r = tuple((i8, one_of("smhd")));
+        map(r, into_s)(input)
+    }
+
     pub fn insert<T: Into<String>>(&mut self, key: T, val: StoreArea) -> Option<StoreArea> {
         self.0.insert(key.into(), val)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case("42s", 42_u32)]
+    #[case("60s", 60_u32)]
+    #[case("2m", 120_u32)]
+    #[case("5h", 18_000_u32)]
+    #[case("1d", 86_400_u32)]
+    fn test_parse_rotation(#[case] input: &str, #[case] val: u32) {
+        let (_, v) = Storage::parse_rotation(input).unwrap();
+        assert_eq!(val, v);
     }
 }
