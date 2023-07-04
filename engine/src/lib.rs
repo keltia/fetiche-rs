@@ -26,6 +26,7 @@ use std::thread::JoinHandle;
 
 use anyhow::Result;
 use home::home_dir;
+use log::trace;
 
 pub use config::*;
 use fetiche_formats::Format;
@@ -67,6 +68,7 @@ pub struct Engine {
 
 impl Engine {
     pub fn new() -> Self {
+        trace!("engine::new");
         // Load storage areas from `engine.hcl`
         //
         Self::with(Self::default_file())
@@ -79,6 +81,9 @@ impl Engine {
         T: Into<PathBuf>,
     {
         let fname = fname.into();
+
+        trace!("engine::with({:?}", fname);
+
         let data = fs::read_to_string(&fname).expect(&format!("file not found {:?}", fname));
 
         let cfg: EngineConfig = hcl::from_str(&data).expect("syntax error");
@@ -93,6 +98,7 @@ impl Engine {
             );
         }
 
+        trace!("engine::with::load sources");
         // Register sources
         //
         let src = Sources::load(&None);
