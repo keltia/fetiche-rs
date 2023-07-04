@@ -108,7 +108,7 @@ impl Job {
             out.flush().unwrap();
         }
         for p in pids {
-            p.join().unwrap();
+            let _ = p.join().unwrap();
         }
     }
 }
