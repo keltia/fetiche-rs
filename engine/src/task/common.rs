@@ -103,7 +103,6 @@ mod tests {
 
         let (tx, rx) = channel();
 
-        let mut data = vec![];
         let (r, h) = t.run(rx);
 
         let r = r.recv();
@@ -118,12 +117,11 @@ mod tests {
 
         let (tx, rx) = channel();
 
-        let mut data = vec![];
         let (r, h) = m.run(rx);
 
         let r = r.recv();
-        assert!(s.is_ok());
-        let s = s.unwrap();
+        assert!(r.is_ok());
+        let s = r.unwrap();
         assert_eq!("|the brown fox", s);
     }
 }
