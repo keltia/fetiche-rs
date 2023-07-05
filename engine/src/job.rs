@@ -116,7 +116,7 @@ impl Job {
         //
         let (key, stdout) = channel::<String>();
 
-        trace!("job::run::create pipeline");
+        trace!("create pipeline");
 
         // Gather results for all tasks into a single pipeline using `Iterator::fold()`
         //
