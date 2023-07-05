@@ -7,12 +7,12 @@
 //! Format is take from the CSV given as an example
 //!
 
-use std::io::Write;
+use std::sync::mpsc::Sender;
 
 use anyhow::{anyhow, Result};
-use log::trace;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use tracing::trace;
 
 use fetiche_formats::{Format, Position};
 
@@ -62,6 +62,7 @@ pub struct Safesky {
 }
 
 impl Safesky {
+    #[tracing::instrument]
     pub fn new() -> Self {
         trace!("safesky::new");
 
@@ -75,6 +76,7 @@ impl Safesky {
         }
     }
 
+    #[tracing::instrument]
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("safesky::load");
 
@@ -106,6 +108,7 @@ impl Fetchable for Safesky {
     /// Safesky is using an API key you need to have for all transactions, there is no
     /// real authentication.
     ///
+    #[tracing::instrument]
     fn authenticate(&self) -> Result<String> {
         trace!("safesky::authenticate");
 
@@ -115,7 +118,8 @@ impl Fetchable for Safesky {
         Ok(self.api_key.clone())
     }
 
-    fn fetch(&self, _out: &mut dyn Write, _token: &str, _args: &str) -> Result<()> {
+    #[tracing::instrument]
+    fn fetch(&self, _out: Sender<String>, _token: &str, _args: &str) -> Result<()> {
         trace!("safesky::fetch");
         todo!()
     }

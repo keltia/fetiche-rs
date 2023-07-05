@@ -13,17 +13,17 @@
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
 
-use std::io::Write;
 use std::ops::Add;
+use std::sync::mpsc::Sender;
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use clap::{crate_name, crate_version};
-use log::{debug, trace, warn};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tracing::{debug, trace, warn};
 
 use fetiche_formats::Format;
 
@@ -117,6 +117,7 @@ pub struct Asd {
 }
 
 impl Asd {
+    #[tracing::instrument]
     pub fn new() -> Self {
         trace!("asd::new");
 
@@ -135,6 +136,7 @@ impl Asd {
 
     /// Load some data from the configuration file
     ///
+    #[tracing::instrument]
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("asd::load");
 
@@ -173,6 +175,7 @@ impl Fetchable for Asd {
 
     /// Authenticate to the site using the supplied credentials and get a token
     ///
+    #[tracing::instrument]
     fn authenticate(&self) -> Result<String> {
         trace!("authenticate as ({:?})", &self.login);
 
@@ -240,7 +243,8 @@ impl Fetchable for Asd {
 
     /// Fetch actual data using the aforementioned token
     ///
-    fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
+    #[tracing::instrument]
+    fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
         trace!("asd::fetch");
 
         let f: Filter = serde_json::from_str(args)?;
@@ -294,9 +298,7 @@ impl Fetchable for Asd {
         }
 
         let resp = resp.text()?;
-        write!(out, "{}", resp)?;
-        out.flush()?;
-        Ok(())
+        Ok(out.send(resp)?)
     }
 
     /// Return the site's input formats

@@ -13,7 +13,6 @@
 //!
 
 use std::fmt::{Display, Formatter};
-use std::io::Write;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
@@ -23,13 +22,13 @@ use std::{thread, time};
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
-use log::{debug, error, info, trace};
 use mini_moka::sync::{Cache, ConcurrentCacheExt};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
+use tracing::{debug, error, info, trace};
 
 use fetiche_formats::{Format, StateList};
 
@@ -143,6 +142,7 @@ pub(crate) enum StatMsg {
 }
 
 impl Opensky {
+    #[tracing::instrument]
     pub fn new() -> Self {
         trace!("opensky::new");
 
@@ -160,6 +160,7 @@ impl Opensky {
 
     /// Load some data from in-memory loaded config
     ///
+    #[tracing::instrument]
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("opensky::load");
 
@@ -197,6 +198,7 @@ impl Fetchable for Opensky {
 
     /// All credentials are passed every time we call the API so return a fake token
     ///
+    #[tracing::instrument]
     fn authenticate(&self) -> Result<String> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
@@ -204,7 +206,8 @@ impl Fetchable for Opensky {
 
     /// Single call API
     ///
-    fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
+    #[tracing::instrument]
+    fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
         trace!("opensky::fetch");
 
         let res: Vec<&str> = token.split(':').collect();
@@ -255,8 +258,7 @@ impl Fetchable for Opensky {
 
         trace!("Fetching raw data");
         let resp = resp.text()?;
-        write!(out, "{}", resp)?;
-        Ok(())
+        Ok(out.send(resp)?)
     }
 
     fn format(&self) -> Format {
@@ -271,6 +273,7 @@ impl Streamable for Opensky {
 
     /// All credentials are passed every time we call the API so return a fake token
     ///
+    #[tracing::instrument]
     fn authenticate(&self) -> Result<String> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
@@ -289,6 +292,7 @@ impl Streamable for Opensky {
     /// - it helps determining whether we had lack of traffic for a longer time if we have no
     ///   cached entries
     ///
+    #[tracing::instrument]
     fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
 
