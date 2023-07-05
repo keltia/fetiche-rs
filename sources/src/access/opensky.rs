@@ -415,6 +415,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         //
                         Some(_time) => {
                             eprint!("*");
+                            thread::sleep(Duration::from_secs(stream_delay as u64));
                             continue;
                         }
                         // No, send it it and cache its `time`
