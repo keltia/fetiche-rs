@@ -61,17 +61,16 @@ impl Fetch {
         trace!("received: {}", data);
         // Fetch data as bytes
         //
-        let mut data = vec![];
         match &self.site {
             Some(site) => {
                 let site = Site::load(site, &self.srcs)?;
                 if let Flow::Fetchable(site) = site {
                     let token = site.authenticate()?;
-                    site.fetch(&mut data, &token, &self.args)?;
+                    site.fetch(stdout, &token, &self.args)?;
                 }
             }
             None => return Err(anyhow!("no site defined")),
         }
-        Ok(stdout.send(String::from_utf8(data.to_vec())?)?)
+        Ok(())
     }
 }
