@@ -12,6 +12,7 @@
 //! So now we cache them.
 //!
 
+use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
@@ -90,6 +91,55 @@ struct Credentials {
     username: String,
     /// Password
     password: String,
+}
+
+/// Statistics gathering struct
+///
+#[derive(Clone, Debug, Serialize)]
+pub(crate) struct Stats {
+    pub pkts: u32,
+    pub bytes: u64,
+    pub hits: u32,
+    pub miss: u32,
+    pub empty: u32,
+    pub err: u32,
+}
+
+impl Default for Stats {
+    fn default() -> Self {
+        Self {
+            pkts: 0,
+            bytes: 0_u64,
+            hits: 0,
+            miss: 0,
+            empty: 0,
+            err: 0,
+        }
+    }
+}
+
+impl Display for Stats {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "pkts={} bytes={} hits={} miss={} empty={} errors={}",
+            self.pkts, self.bytes, self.hits, self.miss, self.empty, self.err
+        )
+    }
+}
+
+/// Messages to send to the stats threads
+///
+#[derive(Clone, Debug, Serialize)]
+pub(crate) enum StatMsg {
+    Pkts,
+    Bytes(u64),
+    Hits,
+    Miss,
+    Empty,
+    Error,
+    Print,
+    Exit,
 }
 
 impl Opensky {
@@ -347,9 +397,45 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         let login = self.login.clone();
         let password = self.password.clone();
 
-        // Worker thread
+        // Launch stat gathering thread.
         //
-        thread::spawn(move || {
+        let (st_tx, st_rx) = channel::<StatMsg>();
+        let stat_id = thread::spawn(move || {
+            trace!("stats::thread");
+
+            let mut stats = Stats::default();
+            while let Ok(msg) = st_rx.recv() {
+                match msg {
+                    StatMsg::Pkts => stats.pkts += 1,
+                    StatMsg::Hits => stats.hits += 1,
+                    StatMsg::Miss => stats.miss += 1,
+                    StatMsg::Empty => stats.empty += 1,
+                    StatMsg::Error => stats.err += 1,
+                    StatMsg::Bytes(n) => stats.bytes += n,
+                    StatMsg::Print => eprintln!("Stats: {}", stats),
+                    // The end
+                    StatMsg::Exit => break,
+                }
+            }
+            trace!("end of stats thread");
+            eprintln!("Stats: {}", stats);
+        });
+
+        // Launch a thread that sleep for 30s then ask for statistics
+        //
+        let disp_tx = st_tx.clone();
+        let disp_id = thread::spawn(move || {
+            trace!("stats::display");
+            loop {
+                thread::sleep(Duration::from_secs(30_u64));
+                disp_tx.send(StatMsg::Print).expect("ping");
+            }
+        });
+
+        // Worker thread1
+        //
+        let stat_tx = st_tx.clone();
+        let work_id = thread::spawn(move || {
             trace!("Starting worker thread");
 
             // Cache is local to the worker thread
@@ -377,6 +463,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     Ok(resp) => resp,
                     Err(e) => {
                         error!("worker-thread: {}", e.to_string());
+                        stat_tx.send(StatMsg::Error).expect("stat::error");
                         thread::sleep(Duration::from_secs(2));
                         continue;
                     }
@@ -394,6 +481,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     code => {
                         let h = &resp.headers();
                         eprintln!("Error({}): {:?},", code, h);
+                        stat_tx.send(StatMsg::Error).expect("stat::error");
                         thread::sleep(Duration::from_millis(stream_delay as u64));
                         continue;
                     }
@@ -415,13 +503,21 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         //
                         Some(_time) => {
                             eprint!("*");
-                            thread::sleep(Duration::from_secs(stream_delay as u64));
+                            stat_tx.send(StatMsg::Hits).expect("stat::hits");
+                            thread::sleep(Duration::from_millis(stream_delay as u64));
                             continue;
                         }
                         // No, send it it and cache its `time`
                         //
                         _ => {
                             eprint!("{},", sl.time);
+
+                            stat_tx.send(StatMsg::Miss).expect("stat::miss");
+                            stat_tx.send(StatMsg::Pkts).expect("stat::pkts");
+                            stat_tx
+                                .send(StatMsg::Bytes(buf.len() as u64))
+                                .expect("stat::bytes");
+
                             tx.send(buf).expect("send");
                             cache.insert(sl.time, true);
                         }
@@ -429,6 +525,8 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                 } else {
                     // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
                     //
+                    stat_tx.send(StatMsg::Empty).expect("stat::empty");
+
                     cache.sync();
                     if cache.entry_count() == 0 {
                         eprintln!("No traffic, waiting for 2s.");
@@ -467,8 +565,16 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                 _ => continue,
             }
         }
+        // End threads
+        //
+        st_tx.send(StatMsg::Exit).unwrap();
+
         // sync; sync; sync
         //
+        stat_id.join().unwrap();
+        work_id.join().unwrap();
+        disp_id.join().unwrap();
+
         Ok(())
     }
 
