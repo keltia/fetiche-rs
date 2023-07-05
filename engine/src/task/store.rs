@@ -16,7 +16,7 @@ use std::sync::mpsc::Sender;
 
 use anyhow::Result;
 use chrono::{Datelike, Timelike, Utc};
-use log::trace;
+use tracing::trace;
 
 use engine_macros::RunnableDerive;
 use fetiche_sources::makepath;
@@ -49,6 +49,7 @@ impl Store {
     /// Given a base directory in `path` create the tree if not present and store the full
     /// path as path/ID
     ///
+    #[tracing::instrument]
     pub fn new(path: &str, id: &str) -> Self {
         trace!("store::new({})", path);
 
@@ -80,6 +81,7 @@ impl Store {
     /// Store and rotate every hour for now.  We open/create and write every packet without
     /// trying to open first.  More syscalls but these are cheap.
     ///
+    #[tracing::instrument]
     pub fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
         trace!("store::execute");
 

@@ -1,15 +1,14 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use anyhow::Result;
-use log::{debug, trace};
 use nom::{
     character::complete::{i8, one_of},
     combinator::map,
     sequence::tuple,
     IResult,
 };
+use tracing::{debug, trace};
 
 use crate::StorageConfig;
 
@@ -40,6 +39,7 @@ pub enum StoreArea {
 impl Storage {
     /// Register all areas from a config struct read from `engine.hcl`
     ///
+    #[tracing::instrument]
     pub fn register(cfg: &BTreeMap<String, StorageConfig>) -> Self {
         trace!("load storage areas");
 

@@ -14,19 +14,18 @@
 //! FIXME: at some point, a `[u8]`  might be preferable to a `String`.
 //!
 
-use std::collections::BTreeMap;
 use std::convert::Into;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::fs;
-use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use anyhow::Result;
+#[cfg(unix)]
 use home::home_dir;
-use log::trace;
+use tracing::{event, trace, Level};
 
 pub use config::*;
 use fetiche_formats::Format;
@@ -34,8 +33,6 @@ use fetiche_sources::{makepath, Fetchable, Sources, Streamable};
 pub use job::*;
 pub use storage::*;
 pub use task::*;
-
-use crate::StoreArea::Directory;
 
 mod config;
 mod job;
@@ -67,6 +64,7 @@ pub struct Engine {
 }
 
 impl Engine {
+    #[tracing::instrument]
     pub fn new() -> Self {
         trace!("engine::new");
         // Load storage areas from `engine.hcl`
@@ -76,9 +74,10 @@ impl Engine {
 
     // Load configuration file for storage areas
     //
+    #[tracing::instrument]
     pub fn with<T>(fname: T) -> Self
     where
-        T: Into<PathBuf>,
+        T: Into<PathBuf> + Debug,
     {
         let fname = fname.into();
 
@@ -91,6 +90,11 @@ impl Engine {
         // Bail out if different
         //
         if cfg.version != ENGINE_VERSION {
+            event!(
+                Level::ERROR,
+                tag = "bad config version",
+                version = cfg.version
+            );
             panic!(
                 "Only v{} config file supported in {}",
                 ENGINE_VERSION,
@@ -106,6 +110,8 @@ impl Engine {
             Ok(src) => src,
             Err(e) => panic!("No sources configured in 'sources.hcl':{}", e),
         };
+
+        event!(Level::INFO, tag = "engine::sources", sources = src.len());
 
         let areas = Storage::register(&cfg.storage);
         Engine {

@@ -5,7 +5,7 @@ use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use log::trace;
+use tracing::trace;
 
 use engine_macros::RunnableDerive;
 use fetiche_sources::{Filter, Flow, Site, Sources};
@@ -29,6 +29,7 @@ pub struct Fetch {
 }
 
 impl Fetch {
+    #[tracing::instrument]
     pub fn new(s: &str, srcs: Arc<Sources>) -> Self {
         Self {
             io: IO::Producer,
@@ -56,6 +57,7 @@ impl Fetch {
 
     /// The heart of the matter: fetch data
     ///
+    #[tracing::instrument]
     fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Fetch::execute()");
         trace!("received: {}", data);

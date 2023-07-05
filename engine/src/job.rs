@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use log::{info, trace};
+use tracing::{span, Level};
 use uuid::Uuid;
 
 use fetiche_sources::Sources;
@@ -38,6 +39,7 @@ impl Job {
     /// NOTE: No //EOJ
     ///
     #[inline]
+    #[tracing::instrument]
     pub fn new(name: &str, srcs: Arc<Sources>) -> Self {
         let uuid = Uuid::new_v4().to_string();
         trace!("Job::new({})", uuid);
@@ -72,6 +74,9 @@ impl Job {
     /// more complicated like we did with `out`.
     ///
     pub fn run(&mut self, out: &mut dyn Write) -> Result<()> {
+        let span = span!(Level::TRACE, "job::run");
+        let _ = span.enter();
+
         info!(
             "Job({})::run({}) with {} tasks",
             self.id,
@@ -111,12 +116,16 @@ impl Job {
         //
         let (key, stdout) = channel::<String>();
 
+        trace!("job::run::create pipeline");
+
         // Gather results for all tasks into a single pipeline using `Iterator::fold()`
         //
         let output = self.list.iter_mut().fold(stdout, |acc, t| {
             let (rx, _) = t.run(acc);
             rx
         });
+
+        trace!("starting pipe");
 
         // Start the pipeline
         //

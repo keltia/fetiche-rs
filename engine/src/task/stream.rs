@@ -6,7 +6,7 @@ use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use log::trace;
+use tracing::trace;
 
 use engine_macros::RunnableDerive;
 use fetiche_sources::{Filter, Flow, Site, Sources};
@@ -47,6 +47,7 @@ impl Debug for Stream {
 impl Stream {
     /// Initialize our environment
     ///
+    #[tracing::instrument]
     pub fn new(name: &str, srcs: Arc<Sources>) -> Self {
         trace!("New Stream {}", name);
         Stream {
@@ -85,6 +86,7 @@ impl Stream {
 
     /// The heart of the matter: fetch data
     ///
+    #[tracing::instrument]
     pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Stream::run()");
 

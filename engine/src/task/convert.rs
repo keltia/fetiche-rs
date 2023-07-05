@@ -29,6 +29,7 @@ pub struct Convert {
 
 impl Convert {
     #[inline]
+    #[tracing::instrument]
     pub fn new() -> Self {
         Self {
             io: IO::Filter,
@@ -54,6 +55,7 @@ impl Convert {
     ///
     /// FIXME: only output Cat21 for now.
     ///
+    #[tracing::instrument]
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("into::execute");
 

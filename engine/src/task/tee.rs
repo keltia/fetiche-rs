@@ -10,7 +10,7 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use log::trace;
+use tracing::trace;
 
 use engine_macros::RunnableDerive;
 
@@ -24,6 +24,7 @@ pub struct Tee {
 
 impl Tee {
     #[inline]
+    #[tracing::instrument]
     pub fn into(p: &str) -> Self {
         let path = PathBuf::from(p);
         Tee {
@@ -35,6 +36,7 @@ impl Tee {
     /// This is the main task.  Every data packet we receive will be written in the designed
     /// file then passed down.
     ///
+    #[tracing::instrument]
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("tee::execute");
         let mut fh = self.fh.lock().unwrap();

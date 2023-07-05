@@ -24,11 +24,13 @@ pub struct Nothing {
 
 impl Nothing {
     #[inline]
+    #[tracing::instrument]
     pub fn new() -> Self {
         Nothing { io: IO::Filter }
     }
 
     #[inline]
+    #[tracing::instrument]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
         Ok(stdout.send(format!("{}|NOP", data))?)
     }
@@ -50,11 +52,13 @@ pub struct Copy {
 
 impl Copy {
     #[inline]
+    #[tracing::instrument]
     pub fn new() -> Self {
         Copy { io: IO::Filter }
     }
 
     #[inline]
+    #[tracing::instrument]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
         Ok(stdout.send(data)?)
     }
@@ -78,6 +82,7 @@ pub struct Message {
 
 impl Message {
     #[inline]
+    #[tracing::instrument]
     pub fn new(s: &str) -> Self {
         Message {
             io: IO::Filter,
@@ -86,6 +91,7 @@ impl Message {
     }
 
     #[inline]
+    #[tracing::instrument]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
         Ok(stdout.send(format!("{}|{}", data, self.msg))?)
     }

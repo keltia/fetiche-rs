@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
 use anyhow::{anyhow, Result};
-use log::trace;
+use tracing::trace;
 
 use engine_macros::RunnableDerive;
 use fetiche_formats::Format;
@@ -34,6 +34,7 @@ pub struct Read {
 impl Read {
     /// Initialize our environment
     ///
+    #[tracing::instrument]
     pub fn new(name: &str) -> Self {
         trace!("New Read {}", name);
         Read {
@@ -71,6 +72,7 @@ impl Read {
 
     /// The heart of the matter: fetch data
     ///
+    #[tracing::instrument]
     pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Read::transform()");
         if self.path.is_none() || self.format == Format::None {
