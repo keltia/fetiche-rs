@@ -13,10 +13,10 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 #[cfg(unix)]
 use home::home_dir;
-use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 use tabled::builder::Builder;
 use tabled::settings::Style;
+use tracing::{debug, trace};
 
 #[cfg(unix)]
 use crate::BASEDIR;
@@ -71,6 +71,7 @@ impl Sources {
 
     /// Load configuration from either the specified file or the default one.
     ///
+    #[tracing::instrument]
     pub fn load(fname: &Option<PathBuf>) -> Result<Sources> {
         // Load default config if nothing is specified
         //
@@ -102,6 +103,7 @@ impl Sources {
 
     /// List of currently known sources into a nicely formatted string.
     ///
+    #[tracing::instrument]
     pub fn list(&self) -> Result<String> {
         let header = vec!["Name", "Type", "Format", "URL", "Auth", "Ops"];
 
@@ -158,6 +160,7 @@ impl Sources {
 
     /// Return the content of named token
     ///
+    #[tracing::instrument]
     pub fn get_token(name: &str) -> Result<String> {
         let t = Self::token_path().join(name);
         trace!("get_token: {t:?}");
@@ -170,6 +173,7 @@ impl Sources {
 
     /// Store (overwrite) named token
     ///
+    #[tracing::instrument]
     pub fn store_token(name: &str, data: &str) -> Result<()> {
         let p = Self::token_path();
 
@@ -189,6 +193,7 @@ impl Sources {
 
     /// Purge expired token
     ///
+    #[tracing::instrument]
     pub fn purge_token(name: &str) -> Result<()> {
         trace!("purge expired token");
         let p = Self::token_path().join(name);
@@ -200,6 +205,7 @@ impl Sources {
     /// NOTE: we do not show data from each token (like expiration, etc.) because at this point
     ///       we do not know which kind of token each one is.
     ///
+    #[tracing::instrument]
     pub fn list_tokens(&self) -> Result<String> {
         trace!("listing tokens");
 
@@ -408,6 +414,7 @@ impl Sites {
     /// Returns an empty struct
     ///
     #[inline]
+    #[tracing::instrument]
     pub fn new() -> Sites {
         Sites {
             version: CVERSION,
@@ -417,6 +424,7 @@ impl Sites {
 
     /// Load the specified config file
     ///
+    #[tracing::instrument]
     fn read_file(fname: &PathBuf) -> Result<Vec<Site>> {
         trace!("Reading {:?}", fname);
         let content = fs::read_to_string(fname)?;

@@ -42,6 +42,8 @@ serde.workspace = true
 serde_json.workspace = true
 serde_repr.workspace = true
 tabled.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
 
 csv = "1.1"
 mini-moka = "0.10"
