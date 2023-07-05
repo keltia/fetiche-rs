@@ -8,6 +8,7 @@
 //! This module is data-agnostic and does not care whether it is JSON, binary or a CSV.
 //!
 
+use std::fs;
 use std::fs::{create_dir, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
@@ -57,6 +58,17 @@ impl Store {
         //
         create_dir(&path)
             .unwrap_or_else(|_| panic!("can not create {} in {}", id, path.to_string_lossy()));
+
+        let curr: PathBuf = makepath!(&path, "current");
+        if curr.exists() {
+            fs::remove_file(&curr).expect("can not remove current");
+        }
+
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_dir(&path, &curr).expect("can not symlink current");
+
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&path, &curr).expect("can not symlink current");
 
         trace!("store::new({})", path.to_string_lossy());
         Store {
