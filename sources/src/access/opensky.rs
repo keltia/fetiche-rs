@@ -275,7 +275,6 @@ impl Streamable for Opensky {
 
     /// All credentials are passed every time we call the API so return a fake token
     ///
-    #[tracing::instrument]
     fn authenticate(&self) -> Result<String> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
