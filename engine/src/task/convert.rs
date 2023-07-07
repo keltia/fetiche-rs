@@ -8,8 +8,8 @@
 use std::sync::mpsc::Sender;
 
 use anyhow::Result;
-use log::trace;
 use serde_json::json;
+use tracing::trace;
 
 use engine_macros::RunnableDerive;
 use fetiche_formats::{prepare_csv, Cat21, Format, StateList};

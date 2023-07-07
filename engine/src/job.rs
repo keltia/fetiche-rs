@@ -11,7 +11,7 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use log::{info, trace};
+use tracing::{info, trace};
 use tracing::{span, Level};
 use uuid::Uuid;
 
