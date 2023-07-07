@@ -230,7 +230,7 @@ pub enum Input {
 /// just like an Out one should not be last.
 ///
 #[derive(Clone, Debug, Default, Eq, PartialEq, EnumString, strum::Display, Deserialize)]
-#[strum(serialize_all = "lowercase")]
+#[strum(serialize_all = "PascalCase")]
 pub enum IO {
     /// Consumer (no output or different like file)
     Consumer,
