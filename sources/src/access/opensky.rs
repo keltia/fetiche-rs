@@ -16,7 +16,7 @@ use std::fmt::{Display, Formatter};
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{thread, time};
 
 use anyhow::{anyhow, Result};
@@ -96,6 +96,7 @@ struct Credentials {
 ///
 #[derive(Clone, Debug, Serialize)]
 pub(crate) struct Stats {
+    pub tm: u64,
     pub pkts: u32,
     pub bytes: u64,
     pub hits: u32,
@@ -107,6 +108,7 @@ pub(crate) struct Stats {
 impl Default for Stats {
     fn default() -> Self {
         Self {
+            tm: 0_u64,
             pkts: 0,
             bytes: 0_u64,
             hits: 0,
@@ -121,8 +123,8 @@ impl Display for Stats {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "pkts={} bytes={} hits={} miss={} empty={} errors={}",
-            self.pkts, self.bytes, self.hits, self.miss, self.empty, self.err
+            "time={}s pkts={} bytes={} hits={} miss={} empty={} errors={}",
+            self.tm, self.pkts, self.bytes, self.hits, self.miss, self.empty, self.err
         )
     }
 }
@@ -407,6 +409,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         let stat_id = thread::spawn(move || {
             trace!("stats::thread");
 
+            let start = Instant::now();
             let mut stats = Stats::default();
             while let Ok(msg) = st_rx.recv() {
                 match msg {
@@ -416,9 +419,16 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     StatMsg::Empty => stats.empty += 1,
                     StatMsg::Error => stats.err += 1,
                     StatMsg::Bytes(n) => stats.bytes += n,
-                    StatMsg::Print => eprintln!("Stats: {}", stats),
+                    StatMsg::Print => {
+                        stats.tm = start.elapsed().as_secs();
+                        eprintln!("Stats: {}", stats)
+                    }
                     // The end
-                    StatMsg::Exit => break,
+                    StatMsg::Exit => {
+                        stats.tm = start.elapsed().as_secs();
+                        eprintln!("\nSession: {}", stats);
+                        break;
+                    }
                 }
             }
             trace!("end of stats thread");
