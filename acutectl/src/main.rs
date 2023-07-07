@@ -117,6 +117,12 @@ fn main() -> Result<()> {
         // Standalone `list` command
         //
         SubCommand::List(lopts) => match lopts.cmd {
+            ListSubCommand::Commands => {
+                info!("Listing all commands:");
+
+                let str = engine.list_commands()?;
+                eprintln!("{}", str);
+            }
             ListSubCommand::Sources => {
                 info!("Listing all sources:");
 

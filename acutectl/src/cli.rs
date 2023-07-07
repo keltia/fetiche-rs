@@ -190,6 +190,8 @@ pub struct ListOpts {
 ///
 #[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq, ValueEnum)]
 pub enum ListSubCommand {
+    /// List all commands in `Engine`
+    Commands,
     /// List all formats in `formats`
     Formats,
     /// List all sources from `sources.hcl`
