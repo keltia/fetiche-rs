@@ -16,7 +16,7 @@
 //! ```no_run
 //! # use anyhow::Result;
 //! # use std::path::PathBuf;
-//! # use log::info;
+//! # use tracing::info;
 //! use anyhow::anyhow;
 //! use cat21conv::Task;
 //! use fetiche_formats::{Cat21, Format};
@@ -71,9 +71,10 @@ use std::path::PathBuf;
 use anyhow::{anyhow, Result};
 use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
+
 use fetiche_formats::{Cat21, Format};
 use fetiche_sources::{Fetchable, Filter};
-use log::debug;
+use tracing::debug;
 
 pub(crate) const VERSION: &str = crate_version!();
 pub(crate) const NAME: &str = crate_name!();

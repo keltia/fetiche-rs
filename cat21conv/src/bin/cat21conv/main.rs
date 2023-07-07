@@ -21,11 +21,11 @@ use std::time::Instant;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use clap::Parser;
-use log::{info, trace};
 
 use cat21conv::Task;
 use fetiche_formats::{prepare_csv, Cat21, Format};
 use fetiche_sources::{Filter, Flow, Site, Sources};
+use tracing::{info, trace};
 
 use crate::cli::{check_args, Opts};
 use crate::version::version;
