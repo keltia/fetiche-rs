@@ -10,9 +10,9 @@
 //!
 
 use anyhow::Result;
-use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use tracing::{debug, trace};
 
 use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
 
@@ -76,6 +76,7 @@ pub struct StateList {
 impl StateList {
     /// Transform a given record into an array of Cat21 records
     ///
+    #[tracing::instrument]
     pub fn to_cat21(&self) -> Vec<Cat21> {
         trace!("statelist::to_cat21");
 
@@ -87,6 +88,7 @@ impl StateList {
 
     /// Deserialize from json
     ///
+    #[tracing::instrument]
     pub fn from_json(input: &str) -> Result<Self> {
         trace!("statelist::from_json");
 

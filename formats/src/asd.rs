@@ -7,8 +7,8 @@
 
 use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use log::debug;
 use serde::Deserialize;
+use tracing::debug;
 
 use crate::drone::DronePoint;
 use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated};
@@ -98,6 +98,7 @@ impl From<&Asd> for Cat21 {
     /// - gps
     /// - rssi
     ///
+    #[tracing::instrument]
     fn from(line: &Asd) -> Self {
         let tod = NaiveDateTime::parse_from_str(&line.timestamp, "%Y-%m-%d %H:%M:%S")
             .unwrap()
@@ -152,6 +153,7 @@ fn safe_coord(s: Option<String>) -> Option<f32> {
 }
 
 impl From<&Asd> for DronePoint {
+    #[tracing::instrument]
     fn from(value: &Asd) -> Self {
         // Transform the string into proper datetime
         //
