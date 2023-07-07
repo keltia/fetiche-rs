@@ -387,9 +387,8 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             let d = stream_duration;
             let tx1 = tx.clone();
             thread::spawn(move || {
-                if d != 0 {
-                    thread::sleep(time::Duration::from_secs(d as u64));
-                }
+                trace!("alarm set to {}s", d);
+                thread::sleep(time::Duration::from_secs(d as u64));
                 tx1.send("TIMEOUT".to_string()).unwrap();
             });
             trace!("end of sleep");
