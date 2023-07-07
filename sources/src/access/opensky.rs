@@ -440,7 +440,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             trace!("stats::display");
             loop {
                 thread::sleep(Duration::from_secs(30_u64));
-                disp_tx.send(StatMsg::Print).expect("ping");
+                let _ = disp_tx.send(StatMsg::Print);
             }
         });
 
@@ -515,7 +515,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         //
                         Some(_time) => {
                             eprint!("*");
-                            stat_tx.send(StatMsg::Hits).expect("stat::hits");
+                            let _ = stat_tx.send(StatMsg::Hits);
                             thread::sleep(Duration::from_millis(stream_delay as u64));
                             continue;
                         }
@@ -524,11 +524,9 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         _ => {
                             eprint!("{},", sl.time);
 
-                            stat_tx.send(StatMsg::Miss).expect("stat::miss");
-                            stat_tx.send(StatMsg::Pkts).expect("stat::pkts");
-                            stat_tx
-                                .send(StatMsg::Bytes(buf.len() as u64))
-                                .expect("stat::bytes");
+                            let _ = stat_tx.send(StatMsg::Miss);
+                            let _ = stat_tx.send(StatMsg::Pkts);
+                            let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
 
                             tx.send(buf).expect("send");
                             cache.insert(sl.time, true);
@@ -537,7 +535,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                 } else {
                     // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
                     //
-                    stat_tx.send(StatMsg::Empty).expect("stat::empty");
+                    let _ = stat_tx.send(StatMsg::Empty);
 
                     cache.sync();
                     if cache.entry_count() == 0 {
@@ -579,14 +577,10 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         }
         // End threads
         //
-        st_tx.send(StatMsg::Exit).unwrap();
+        let _ = st_tx.send(StatMsg::Exit);
 
         // sync; sync; sync
         //
-        stat_id.join().unwrap();
-        work_id.join().unwrap();
-        disp_id.join().unwrap();
-
         Ok(())
     }
 
