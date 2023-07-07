@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
-use log::{info, trace};
+use tracing::{info, trace};
 
 use fetiche_engine::{Convert, Engine, Fetch, Tee};
 use fetiche_formats::Format;
@@ -14,6 +14,7 @@ use crate::FetchOpts;
 
 /// Actual fetching of data from a given site
 ///
+#[tracing::instrument]
 pub fn fetch_from_site(engine: &Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
 
@@ -77,6 +78,7 @@ pub fn fetch_from_site(engine: &Engine, fopts: &FetchOpts) -> Result<()> {
 
 /// From the CLI options
 ///
+#[tracing::instrument]
 pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
     trace!("filter_from_opts");
 
@@ -130,6 +132,7 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
 
 /// Check the presence and validity of some of the arguments
 ///
+#[tracing::instrument]
 fn check_args(opts: &FetchOpts) -> Result<()> {
     trace!("check_args");
 

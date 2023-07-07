@@ -1,10 +1,12 @@
-use anyhow::Result;
-use log::{info, trace};
 use std::collections::BTreeMap;
+
+use anyhow::Result;
+use tracing::{info, trace};
 
 use fetiche_formats::{Asd, DronePoint, Format};
 use fetiche_sources::Sources;
 
+#[tracing::instrument]
 pub fn import_data(_cfg: &Sources, data: &str, _fmt: Format) -> Result<()> {
     trace!("import_data");
 

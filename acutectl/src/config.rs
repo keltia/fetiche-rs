@@ -6,6 +6,7 @@ use anyhow::{anyhow, Result};
 #[cfg(unix)]
 use home::home_dir;
 use serde::Deserialize;
+use tracing::trace;
 
 use fetiche_sources::{makepath, Auth};
 
@@ -63,7 +64,9 @@ impl Config {
         Self::config_path().join(CONFIG)
     }
 
+    #[tracing::instrument]
     pub fn load(fname: Option<PathBuf>) -> Result<Config> {
+        trace!("loading config");
         let fname = match fname {
             Some(fname) => fname,
             _ => Self::default_file(),

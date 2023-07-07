@@ -3,7 +3,7 @@ use std::io::stdout;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use log::{info, trace};
+use tracing::{info, trace};
 
 use fetiche_engine::{Convert, Engine, Store, StoreArea, Stream, Tee};
 use fetiche_formats::Format;
@@ -13,6 +13,7 @@ use crate::StreamOpts;
 
 /// Actual fetching of data from a given site
 ///
+#[tracing::instrument]
 pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
     trace!("stream_from_site({:?})", sopts.site);
 
@@ -84,6 +85,7 @@ pub fn stream_from_site(engine: &Engine, sopts: &StreamOpts) -> Result<()> {
 
 /// From the CLI options
 ///
+#[tracing::instrument]
 pub fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
     trace!("filter_from_opts");
 
@@ -109,6 +111,7 @@ pub fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
 
 /// Check the presence and validity of some of the arguments
 ///
+#[tracing::instrument]
 fn check_args(opts: &StreamOpts) -> Result<()> {
     trace!("check_args");
 

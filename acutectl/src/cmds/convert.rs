@@ -1,12 +1,13 @@
 use std::fs::File;
 
 use anyhow::Result;
-use log::trace;
+use tracing::trace;
 
 use fetiche_engine::{Convert, Engine, Read};
 
 use crate::ConvertOpts;
 
+#[tracing::instrument]
 pub fn convert_from_to(engine: &Engine, copts: &ConvertOpts) -> Result<()> {
     trace!("convert_from_to");
 

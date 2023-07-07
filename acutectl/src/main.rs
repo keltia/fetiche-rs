@@ -1,11 +1,12 @@
 use std::fs;
 use std::io;
-use std::io::Write;
 
 use anyhow::{anyhow, Result};
 use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
 use clap_complete::generate;
-use log::{info, trace};
+use tracing::{info, trace};
+use tracing_log::LogTracer;
+use tracing_subscriber::FmtSubscriber;
 
 use acutectl::{
     convert_from_to, fetch_from_site, stream_from_site, Config, ImportSubCommand, ListSubCommand,
@@ -22,13 +23,21 @@ pub(crate) const VERSION: &str = crate_version!();
 /// Authors
 pub(crate) const AUTHORS: &str = crate_authors!();
 
+#[tracing::instrument]
 fn main() -> Result<()> {
     let opts = Opts::parse();
     let cfn = opts.config.clone();
 
     // Initialise logging.
     //
-    env_logger::init();
+    //env_logger::init();
+
+    let sub = FmtSubscriber::new();
+    tracing::subscriber::set_global_default(sub).expect("can not subscribe for logging");
+
+    LogTracer::builder()
+        .with_max_level(log::LevelFilter::Trace)
+        .init()?;
 
     // Config only has the credentials for every source now.
     //
@@ -39,9 +48,6 @@ fn main() -> Result<()> {
     banner()?;
 
     let engine = Engine::new();
-    let src = engine.sources();
-
-    info!("{:?} sources loaded", src.len());
 
     let subcmd = &opts.subcmd;
     match subcmd {
@@ -127,19 +133,19 @@ fn main() -> Result<()> {
                 info!("Listing all sources:");
 
                 let str = engine.list_sources()?;
-                writeln!(io::stderr(), "{}", str)?;
+                eprintln!("{}", str);
             }
             ListSubCommand::Formats => {
                 info!("Listing all formats:");
 
                 let str = engine.list_formats()?;
-                writeln!(io::stderr(), "{}", str)?;
+                eprintln!("{}", str);
             }
             ListSubCommand::Tokens => {
                 info!("Listing all tokens:");
 
                 let str = engine.list_tokens()?;
-                writeln!(io::stderr(), "{}", str)?;
+                eprintln!("{}", str);
             }
         },
 
