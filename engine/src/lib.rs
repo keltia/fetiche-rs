@@ -25,7 +25,9 @@ use std::thread::JoinHandle;
 use anyhow::Result;
 #[cfg(unix)]
 use home::home_dir;
-use tracing::{event, trace, Level};
+use serde::Deserialize;
+use strum::EnumString;
+use tracing::{event, info, trace, Level};
 
 pub use config::*;
 use fetiche_formats::Format;
@@ -66,7 +68,7 @@ pub struct Engine {
 impl Engine {
     #[tracing::instrument]
     pub fn new() -> Self {
-        trace!("engine::new");
+        trace!("new engine");
         // Load storage areas from `engine.hcl`
         //
         Self::with(Self::default_file())
@@ -81,7 +83,7 @@ impl Engine {
     {
         let fname = fname.into();
 
-        trace!("engine::with({:?}", fname);
+        trace!("reading({:?}", fname);
 
         let data = fs::read_to_string(&fname).expect(&format!("file not found {:?}", fname));
 
@@ -102,7 +104,7 @@ impl Engine {
             );
         }
 
-        trace!("engine::with::load sources");
+        trace!("load sources");
         // Register sources
         //
         let src = Sources::load(&None);
@@ -111,7 +113,7 @@ impl Engine {
             Err(e) => panic!("No sources configured in 'sources.hcl':{}", e),
         };
 
-        event!(Level::INFO, tag = "engine::sources", sources = src.len());
+        info!("{} sources loaded", src.len());
 
         let areas = Storage::register(&cfg.storage);
         Engine {
@@ -227,7 +229,8 @@ pub enum Input {
 /// The main principle being that a consumer should not be first in a job queue
 /// just like an Out one should not be last.
 ///
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, EnumString, strum::Display, Deserialize)]
+#[strum(serialize_all = "lowercase")]
 pub enum IO {
     /// Consumer (no output or different like file)
     Consumer,
