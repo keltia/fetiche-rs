@@ -245,7 +245,7 @@ pub enum IO {
 
 /// Anything that can be `run()` is runnable.
 ///
-/// See the engine-macro crate for a rpoc-macro that implement the `run()`  wrapper for
+/// See the engine-macro crate for a proc-macro that implement the `run()`  wrapper for
 /// the `Runnable` trait.
 ///
 pub trait Runnable: Debug {
