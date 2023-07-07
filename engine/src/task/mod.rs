@@ -1,6 +1,14 @@
 //! Regroup all available task/commands
 //!
 
+use std::collections::BTreeMap;
+
+use anyhow::Result;
+use serde::Deserialize;
+use strum::{EnumIter, EnumVariantNames, IntoEnumIterator};
+use tabled::{builder::Builder, settings::Style};
+use tracing::{debug, trace};
+
 pub use common::*;
 pub use convert::*;
 pub use fetch::*;
@@ -9,10 +17,91 @@ pub use store::*;
 pub use stream::*;
 pub use tee::*;
 
-pub mod common;
-pub mod convert;
-pub mod fetch;
-pub mod read;
-pub mod store;
-pub mod stream;
-pub mod tee;
+use crate::{Engine, IO};
+
+mod common;
+mod convert;
+mod fetch;
+mod read;
+mod store;
+mod stream;
+mod tee;
+
+#[derive(Debug, strum::Display, EnumVariantNames, EnumIter)]
+#[strum(serialize_all = "PascalCase")]
+pub enum Cmds {
+    Convert,
+    Copy,
+    Fetch,
+    Message,
+    Nothing,
+    Read,
+    Store,
+    Stream,
+    Tee,
+}
+
+/// For each format, we define a set of key attributes that will get displayed.
+///
+#[derive(Debug, Deserialize)]
+pub struct CmdsDescr {
+    /// Type of data each command refers to
+    #[serde(rename = "type")]
+    pub ctype: IO,
+    /// Free text description
+    pub description: String,
+}
+
+/// Current version of the cmds.hcl file.
+const CVERSION: usize = 1;
+
+/// Struct to be read from an HCL file at compile-time
+///
+#[derive(Debug, Deserialize)]
+pub struct CmdsFile {
+    /// Version
+    pub version: usize,
+    /// Ordered list of format metadata
+    pub cmds: BTreeMap<String, CmdsDescr>,
+}
+
+impl Engine {
+    /// Returns the content of the `cmds.hcl` file as a table.
+    ///
+    #[tracing::instrument]
+    pub fn list_commands(&self) -> Result<String> {
+        trace!("list all commands");
+
+        let allcmds_s = include_str!("cmds.hcl");
+        let allcmds: CmdsFile = hcl::from_str(allcmds_s)?;
+
+        // Safety checks
+        //
+        assert_eq!(allcmds.version, CVERSION);
+
+        let header = vec!["Name", "Type", "Description"];
+
+        let mut builder = Builder::default();
+        builder.set_header(header);
+
+        allcmds
+            .cmds
+            .iter()
+            .for_each(|(cmd, cmd_desc): (&String, &CmdsDescr)| {
+                let mut row = vec![];
+
+                let name = cmd.clone();
+                let ctype = cmd_desc.ctype.clone().to_string();
+                let descr = cmd_desc.description.clone();
+                row.push(name);
+                row.push(ctype);
+                row.push(descr);
+                builder.push_record(row);
+            });
+
+        let allc = builder.build().with(Style::modern()).to_string();
+        let str = format!("List all commands:\n{allc}");
+
+        Ok(str)
+    }
+}
