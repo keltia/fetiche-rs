@@ -477,7 +477,7 @@ mod tests {
     use std::env::temp_dir;
 
     use anyhow::bail;
-    use log::debug;
+    use tracing::debug;
 
     use crate::site::Auth;
     use crate::DataType;
