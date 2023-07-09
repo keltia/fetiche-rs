@@ -6,7 +6,7 @@ authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Various input file formats for the Fetiche framework."
 readme = "README.md"
 license = "MIT"
-repository = "https://github.com/keltia/drone-gencsv"
+repository = "https://github.com/keltia/fetiche-rs"
 categories = ["aerospace::drones"]
 keywords = ["asterix", "drones", "aeronautical-data", "ads-b"]
 
