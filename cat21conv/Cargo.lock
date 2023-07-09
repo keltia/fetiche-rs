@@ -279,8 +279,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9ccdd8f2a161be9bd5c023df56f1b2a0bd1d83872ae53b71a84a12c9bf6e842"
 dependencies = [
  "proc-macro2",
-    "quote",
-    "syn 2.0.22",
+ "quote",
+ "syn 2.0.22",
 ]
 
 [[package]]
@@ -295,9 +295,9 @@ version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
 dependencies = [
-    "hermit-abi 0.1.19",
-    "libc",
-    "winapi",
+ "hermit-abi 0.1.19",
+ "libc",
+ "winapi",
 ]
 
 [[package]]
@@ -460,22 +460,22 @@ checksum = "a2698f953def977c68f935bb0dfa959375ad4638570e969e2f1e9f433cbf1af6"
 name = "cat21conv"
 version = "0.8.1"
 dependencies = [
-    "anyhow",
-    "assert_cmd",
-    "chrono",
-    "clap",
-    "csv",
-    "env_logger 0.10.0",
-    "fetiche-formats",
-    "fetiche-sources",
-    "hcl-rs",
-    "home",
-    "httpmock",
-    "log",
-    "percent-encoding",
-    "reqwest",
-    "serde",
-    "serde_json",
+ "anyhow",
+ "assert_cmd",
+ "chrono",
+ "clap",
+ "csv",
+ "env_logger 0.10.0",
+ "fetiche-formats",
+ "fetiche-sources",
+ "hcl-rs",
+ "home",
+ "httpmock",
+ "log",
+ "percent-encoding",
+ "reqwest",
+ "serde",
+ "serde_json",
  "serde_repr",
 ]
 
@@ -769,7 +769,7 @@ version = "0.8.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071a31f4ee85403370b58aca746f01041ede6f0da2730960ad001edc2b71b394"
 dependencies = [
-    "cfg-if",
+ "cfg-if",
 ]
 
 [[package]]
@@ -778,11 +778,11 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
 dependencies = [
-    "atty",
-    "humantime 1.3.0",
-    "log",
-    "regex",
-    "termcolor",
+ "atty",
+ "humantime 1.3.0",
+ "log",
+ "regex",
+ "termcolor",
 ]
 
 [[package]]
@@ -791,11 +791,11 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85cdab6a89accf66733ad5a1693a4dcced6aeff64602b634530dd73c1f3ee9f0"
 dependencies = [
-    "humantime 2.1.0",
-    "is-terminal",
-    "log",
-    "regex",
-    "termcolor",
+ "humantime 2.1.0",
+ "is-terminal",
+ "log",
+ "regex",
+ "termcolor",
 ]
 
 [[package]]
@@ -849,43 +849,43 @@ version = "0.12.0"
 dependencies = [
  "anyhow",
  "chrono",
-    "csv",
-    "hcl-rs",
-    "influxdb",
-    "log",
-    "percent-encoding",
-    "reqwest",
-    "serde",
-    "serde_json",
-    "serde_repr",
-    "tabled",
-    "tracing",
-    "tracing-log",
+ "csv",
+ "hcl-rs",
+ "influxdb",
+ "log",
+ "percent-encoding",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "tabled",
+ "tracing",
+ "tracing-log",
 ]
 
 [[package]]
 name = "fetiche-sources"
 version = "0.10.0"
 dependencies = [
-    "anyhow",
-    "chrono",
-    "clap",
-    "csv",
-    "env_logger 0.10.0",
-    "fetiche-formats",
-    "hcl-rs",
-    "home",
-    "log",
-    "mini-moka",
-    "percent-encoding",
-    "reqwest",
-    "serde",
-    "serde_json",
-    "serde_repr",
-    "signal-hook",
-    "tabled",
-    "tracing",
-    "tracing-log",
+ "anyhow",
+ "chrono",
+ "clap",
+ "csv",
+ "env_logger 0.10.0",
+ "fetiche-formats",
+ "hcl-rs",
+ "home",
+ "log",
+ "mini-moka",
+ "percent-encoding",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "signal-hook",
+ "tabled",
+ "tracing",
+ "tracing-log",
 ]
 
 [[package]]
@@ -1103,8 +1103,8 @@ dependencies = [
  "itoa",
  "pest",
  "pest_derive",
-    "serde",
-    "vecmap-rs",
+ "serde",
+ "vecmap-rs",
 ]
 
 [[package]]
@@ -1119,7 +1119,7 @@ version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
 dependencies = [
-    "libc",
+ "libc",
 ]
 
 [[package]]
@@ -1128,7 +1128,7 @@ version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7"
 dependencies = [
-    "libc",
+ "libc",
 ]
 
 [[package]]
@@ -1198,14 +1198,14 @@ dependencies = [
  "isahc",
  "lazy_static",
  "levenshtein",
-    "log",
-    "regex",
-    "serde",
-    "serde_json",
-    "serde_regex",
-    "similar",
-    "tokio",
-    "url",
+ "log",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_regex",
+ "similar",
+ "tokio",
+ "url",
 ]
 
 [[package]]
@@ -1214,7 +1214,7 @@ version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df004cfca50ef23c36850aaaa59ad52cc70d0e90243c3c7737a4dd32dc7a3c4f"
 dependencies = [
-    "quick-error",
+ "quick-error",
 ]
 
 [[package]]
@@ -1945,9 +1945,9 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77a1a2f1f0a7ecff9c31abbe177637be0e97a0aef46cf8738ece09327985d998"
 dependencies = [
-    "bitflags",
-    "memchr",
-    "unicase",
+ "bitflags",
+ "memchr",
+ "unicase",
 ]
 
 [[package]]
@@ -1962,7 +1962,7 @@ version = "1.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "573015e8ab27661678357f27dc26460738fd2b6c86e46f386fde94cb5d913105"
 dependencies = [
-    "proc-macro2",
+ "proc-macro2",
 ]
 
 [[package]]
@@ -2659,8 +2659,8 @@ version = "0.1.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0955b8137a1df6f1a2e9a37d8a6656291ff0297c1a97c24e0d8425fe2312f79a"
 dependencies = [
-    "once_cell",
-    "valuable",
+ "once_cell",
+ "valuable",
 ]
 
 [[package]]
@@ -2669,8 +2669,8 @@ version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97d095ae15e245a057c8e8451bab9b3ee1e1f68e9ba2b4fbc18d0ac5237835f2"
 dependencies = [
-    "pin-project",
-    "tracing",
+ "pin-project",
+ "tracing",
 ]
 
 [[package]]
@@ -2679,10 +2679,10 @@ version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ddad33d2d10b1ed7eb9d1f518a5674713876e97e5bb9b7345a7984fbb4f922"
 dependencies = [
-    "env_logger 0.7.1",
-    "lazy_static",
-    "log",
-    "tracing-core",
+ "env_logger 0.7.1",
+ "lazy_static",
+ "log",
+ "tracing-core",
 ]
 
 [[package]]
@@ -2764,8 +2764,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50bff7831e19200a85b17131d085c25d7811bc4e186efdaf54bbd132994a88cb"
 dependencies = [
  "form_urlencoded",
-    "idna",
-    "percent-encoding",
+ "idna",
+ "percent-encoding",
 ]
 
 [[package]]
