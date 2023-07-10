@@ -5,7 +5,7 @@
 //! supposed to be collecting data (like `fetch` or `stream`) and send it along
 //! the pipe for processing.
 //!
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::io::Write;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
@@ -25,8 +25,6 @@ use crate::{Runnable, IO};
 pub struct Job {
     /// Job ID
     pub id: String,
-    /// Source parameters
-    pub srcs: Arc<Sources>,
     /// Name of the job
     pub name: String,
     /// FIFO list of tasks
@@ -45,7 +43,6 @@ impl Job {
         trace!("Job::new({})", uuid);
         Job {
             id: uuid,
-            srcs: Arc::clone(&srcs),
             name: name.to_owned(),
             list: VecDeque::new(),
         }
@@ -143,6 +140,11 @@ impl Job {
         Ok(())
     }
 }
+
+/// Job queue
+///
+#[derive(Debug)]
+pub struct Jobs(BTreeMap<String, Job>);
 
 #[cfg(test)]
 mod tests {
