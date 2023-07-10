@@ -424,13 +424,12 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     // The end
                     StatMsg::Exit => {
                         stats.tm = start.elapsed().as_secs();
-                        eprintln!("\nSession: {}", stats);
                         break;
                     }
                 }
             }
+            eprintln!("\nSession: {}", stats);
             trace!("end of stats thread");
-            eprintln!("Stats: {}", stats);
         });
 
         // Launch a thread that sleep for 30s then ask for statistics
