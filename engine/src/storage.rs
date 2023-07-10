@@ -8,6 +8,9 @@ use nom::{
     sequence::tuple,
     IResult,
 };
+use strum::EnumString;
+use tabled::builder::Builder;
+use tabled::settings::Style;
 use tracing::{debug, trace};
 
 use crate::StorageConfig;
@@ -17,18 +20,13 @@ use crate::StorageConfig;
 #[derive(Clone, Debug)]
 pub struct Storage(BTreeMap<String, StoreArea>);
 
-impl Storage {
-    pub fn list(&self) -> Result<String> {
-        Ok("".to_owned())
-    }
-}
-
 /// We define a `Store` enum, describing storage areas like a directory or an S3
 /// bucket (from an actual AWS account or a Garage instance).
 ///
 /// FIXME: S3 support require async which we will not do yet
 ///
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumString, strum::Display)]
+#[strum(serialize_all = "PascalCase")]
 pub enum StoreArea {
     /// in-memory K/V store like DragonflyDB or REDIS
     Cache { url: String },
@@ -72,6 +70,32 @@ impl Storage {
         }
         debug!("b={:?}", b);
         Storage(b)
+    }
+
+    pub fn list(&self) -> Result<String> {
+        let header = vec!["Name", "Path/URL", "Rotation"];
+
+        let mut builder = Builder::default();
+        builder.set_header(header);
+
+        self.0.iter().for_each(|(n, s)| {
+            let mut row = vec![];
+            let name = n.clone();
+            let area = s.clone();
+            row.push(name);
+            match area {
+                StoreArea::Cache { url } => row.push(url),
+                StoreArea::Directory { path, rotation } => {
+                    let path = path.to_string_lossy();
+                    row.push(path.to_string());
+                    row.push(format!("{}s", rotation));
+                }
+            };
+            builder.push_record(row);
+        });
+        let allc = builder.build().with(Style::modern()).to_string();
+        let str = format!("List all storage areas:\n{allc}");
+        Ok(str)
     }
 
     /// Parse 1s/1m/1h/1d

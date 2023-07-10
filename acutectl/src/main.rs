@@ -150,6 +150,12 @@ fn main() -> Result<()> {
                 let str = engine.list_tokens()?;
                 eprintln!("{}", str);
             }
+            ListSubCommand::Storage => {
+                info!("Listing all storage areas:");
+
+                let str = engine.list_storage()?;
+                eprintln!("{}", str);
+            }
         },
 
         // Standalone `version` command
