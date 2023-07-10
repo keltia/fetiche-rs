@@ -1,7 +1,7 @@
 //! This is the exposed part of the `fetiche-sources` API.
 //!
 
-use std::collections::btree_map::{IntoValues, Iter, Keys, Values, ValuesMut};
+use std::collections::btree_map::{IntoValues, Iter, IterMut, Keys, Values, ValuesMut};
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -325,11 +325,18 @@ impl Sources {
         self.0.contains_key(s)
     }
 
-    /// Wrap `contains_key()`
+    /// Wrap `iter()`
     ///
     #[inline]
     pub fn iter(&self) -> Iter<'_, String, Site> {
         self.0.iter()
+    }
+
+    /// Wrap `iter_mut()`
+    ///
+    #[inline]
+    pub fn iter_mut(&mut self) -> IterMut<'_, String, Site> {
+        self.0.iter_mut()
     }
 }
 
