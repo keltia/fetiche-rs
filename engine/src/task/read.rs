@@ -84,7 +84,7 @@ impl Read {
 
             // Now send each line down the pipe
             //
-            bfh.lines().for_each(|l| stdout.send(l.unwrap())?);
+            bfh.lines().for_each(|l| stdout.send(l.unwrap()).unwrap());
 
             Ok(())
         }
