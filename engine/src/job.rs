@@ -134,7 +134,7 @@ impl Job {
         for msg in output {
             write!(out, "{}", msg)?;
         }
-        Ok(())
+        Ok(out.flush()?)
     }
 }
 
@@ -155,7 +155,7 @@ mod tests {
         let t1 = Box::new(Nothing::new());
         let t2 = Box::new(Message::new("hello world"));
 
-        let mut j: Job = Job::new("test", e.sources());
+        let mut j: Job = e.create_job("test");
         j.add(t1);
         j.add(t2);
 
@@ -165,6 +165,6 @@ mod tests {
 
         let res = String::from_utf8(data);
         assert!(res.is_ok());
-        assert_eq!("NOPhello world", res.unwrap())
+        assert_eq!("NOP|hello world", res.unwrap())
     }
 }
