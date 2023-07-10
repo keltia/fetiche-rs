@@ -404,7 +404,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         // Launch stat gathering thread.
         //
         let (st_tx, st_rx) = channel::<StatMsg>();
-        let stat_id = thread::spawn(move || {
+        thread::spawn(move || {
             trace!("stats::thread");
 
             let start = Instant::now();
@@ -435,7 +435,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         // Launch a thread that sleep for 30s then ask for statistics
         //
         let disp_tx = st_tx.clone();
-        let disp_id = thread::spawn(move || {
+        thread::spawn(move || {
             trace!("stats::display");
             loop {
                 thread::sleep(Duration::from_secs(30_u64));
@@ -446,7 +446,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         // Worker thread1
         //
         let stat_tx = st_tx.clone();
-        let work_id = thread::spawn(move || {
+        thread::spawn(move || {
             trace!("Starting worker thread");
 
             // Cache is local to the worker thread
