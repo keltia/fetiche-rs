@@ -145,6 +145,12 @@ impl Site {
         }
     }
 
+    /// Add authtentication info
+    ///
+    pub fn auth(&mut self, auth: Auth) -> &mut Self {
+        self.auth = Some(auth);
+        self
+    }
     /// Return the site name
     ///
     pub fn name(&self) -> Option<String> {

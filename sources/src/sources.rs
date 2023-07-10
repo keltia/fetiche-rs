@@ -399,6 +399,14 @@ impl<'a> IntoIterator for &'a Sources {
     }
 }
 
+/// Initialise a `Source` from a `BTreeMap`
+///
+impl From<BTreeMap<String, Site>> for Sources {
+    fn from(value: BTreeMap<String, Site>) -> Self {
+        Sources(value.clone())
+    }
+}
+
 // -----
 
 /// Main struct holding configurations internally
