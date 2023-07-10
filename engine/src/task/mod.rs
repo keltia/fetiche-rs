@@ -5,9 +5,9 @@ use std::collections::BTreeMap;
 
 use anyhow::Result;
 use serde::Deserialize;
-use strum::{EnumIter, EnumVariantNames, IntoEnumIterator};
+use strum::{EnumIter, EnumVariantNames};
 use tabled::{builder::Builder, settings::Style};
-use tracing::{debug, trace};
+use tracing::trace;
 
 pub use common::*;
 pub use convert::*;
