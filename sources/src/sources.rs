@@ -494,7 +494,6 @@ mod tests {
     use anyhow::bail;
     use tracing::debug;
 
-    use crate::site::Auth;
     use crate::DataType;
 
     use super::*;
