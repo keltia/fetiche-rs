@@ -44,7 +44,7 @@ mod parse;
 mod storage;
 mod task;
 
-pub fn version() -> String {
+pub(crate) fn version() -> String {
     format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }
 
@@ -200,6 +200,17 @@ impl Engine {
     ///
     pub fn create_job(&self, s: &str) -> Job {
         Job::new(s, Arc::clone(&self.sources))
+    }
+
+    /// Return Engine version (and internal modules)
+    ///
+    pub fn version(&self) -> String {
+        format!(
+            "{} ({} {})",
+            version(),
+            fetiche_formats::version(),
+            fetiche_sources::version()
+        )
     }
 }
 
