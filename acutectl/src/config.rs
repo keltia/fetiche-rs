@@ -13,7 +13,9 @@ use fetiche_engine::{makepath, Auth};
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
 
+/// Config filename
 const CONFIG: &str = "config.hcl";
+/// Current version
 const CVERSION: usize = 1;
 
 /// Configuration for the CLI tool, supposed to include parameters and most importantly
@@ -21,7 +23,9 @@ const CVERSION: usize = 1;
 ///
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    /// Version in the file MUST match `CVERSION`
     pub version: usize,
+    /// Each site credentials
     pub site: BTreeMap<String, Auth>,
 }
 
