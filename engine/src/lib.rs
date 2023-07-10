@@ -31,8 +31,9 @@ use strum::EnumString;
 use tracing::{event, info, trace, Level};
 
 pub use config::*;
-use fetiche_formats::Format;
-use fetiche_sources::{makepath, Auth, Fetchable, Site, Sources, Streamable};
+// Re-export formats/sources.
+pub use fetiche_formats::Format;
+pub use fetiche_sources::{makepath, Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
 pub use job::*;
 pub use storage::*;
 pub use task::*;
