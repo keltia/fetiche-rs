@@ -199,7 +199,7 @@ impl Engine {
     /// Create a new job queue
     ///
     pub fn create_job(&self, s: &str) -> Job {
-        Job::new(s, Arc::clone(&self.sources))
+        Job::new(s)
     }
 
     /// Return Engine version (and internal modules)

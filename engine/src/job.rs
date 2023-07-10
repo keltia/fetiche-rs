@@ -8,14 +8,11 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::io::Write;
 use std::sync::mpsc::channel;
-use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use tracing::{info, trace};
 use tracing::{span, Level};
 use uuid::Uuid;
-
-use fetiche_sources::Sources;
 
 use crate::{Runnable, IO};
 
@@ -38,7 +35,7 @@ impl Job {
     ///
     #[inline]
     #[tracing::instrument]
-    pub fn new(name: &str, srcs: Arc<Sources>) -> Self {
+    pub fn new(name: &str) -> Self {
         let uuid = Uuid::new_v4().to_string();
         trace!("Job::new({})", uuid);
         Job {
