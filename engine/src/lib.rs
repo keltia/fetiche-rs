@@ -14,6 +14,7 @@
 //! FIXME: at some point, a `[u8]`  might be preferable to a `String`.
 //!
 
+use std::collections::BTreeMap;
 use std::convert::Into;
 use std::fmt::Debug;
 use std::fs;
@@ -31,7 +32,7 @@ use tracing::{event, info, trace, Level};
 
 pub use config::*;
 use fetiche_formats::Format;
-use fetiche_sources::{makepath, Fetchable, Sources, Streamable};
+use fetiche_sources::{makepath, Auth, Fetchable, Site, Sources, Streamable};
 pub use job::*;
 pub use storage::*;
 pub use task::*;
@@ -120,6 +121,23 @@ impl Engine {
             sources: Arc::new(src),
             storage: Arc::new(areas),
         }
+    }
+
+    pub fn auth(&mut self, db: BTreeMap<String, Auth>) -> &mut Self {
+        // Generate a sources list with credentials
+        //
+        let mut srcs = BTreeMap::<String, Site>::new();
+
+        self.sources.values().for_each(|site: &Site| {
+            let mut s = site.clone();
+            if let Some(auth) = db.get(&s.name().unwrap()) {
+                s.auth(auth.clone());
+            }
+            let n = &s.name().unwrap();
+            srcs.insert(n.clone(), s.clone());
+        });
+        self.sources = Arc::new(Sources::from(srcs));
+        self
     }
 
     /// Returns the path of the default config directory
