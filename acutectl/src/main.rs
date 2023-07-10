@@ -23,7 +23,6 @@ pub(crate) const VERSION: &str = crate_version!();
 /// Authors
 pub(crate) const AUTHORS: &str = crate_authors!();
 
-#[tracing::instrument]
 fn main() -> Result<()> {
     let opts = Opts::parse();
     let cfn = opts.config.clone();
@@ -47,7 +46,13 @@ fn main() -> Result<()> {
     //
     banner()?;
 
-    let engine = Engine::new();
+    // Instantiate Engine
+    //
+    let mut engine = Engine::new();
+
+    // Load auth data
+    //
+    engine.auth(cfg.site);
 
     let subcmd = &opts.subcmd;
     match subcmd {

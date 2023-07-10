@@ -22,20 +22,7 @@ const CVERSION: usize = 1;
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub version: usize,
-    pub site: BTreeMap<String, Entry>,
-}
-
-/// Hold credentials
-///
-#[derive(Debug, Deserialize)]
-pub struct Entry {
-    auth: Auth,
-}
-
-impl Default for Entry {
-    fn default() -> Self {
-        Entry { auth: Auth::Anon }
-    }
+    pub site: BTreeMap<String, Auth>,
 }
 
 impl Config {
