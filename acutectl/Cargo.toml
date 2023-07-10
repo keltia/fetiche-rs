@@ -26,7 +26,6 @@ clap.workspace = true
 env_logger.workspace = true
 fetiche-engine.workspace = true
 fetiche-formats.workspace = true
-fetiche-sources.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
 log.workspace = true

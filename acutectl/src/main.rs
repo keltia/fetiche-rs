@@ -12,9 +12,7 @@ use acutectl::{
     convert_from_to, fetch_from_site, stream_from_site, Config, ImportSubCommand, ListSubCommand,
     Opts, SubCommand,
 };
-use fetiche_engine::Engine;
-use fetiche_formats::Format;
-use fetiche_sources::{Flow, Site};
+use fetiche_engine::{Engine, Flow, Format, Site};
 
 /// Binary name, using a different binary name
 pub(crate) const NAME: &str = env!("CARGO_BIN_NAME");
@@ -157,14 +155,8 @@ fn main() -> Result<()> {
         // Standalone `version` command
         //
         SubCommand::Version => {
-            eprint!("Modules: ");
-            [
-                fetiche_engine::version(),
-                fetiche_formats::version(),
-                fetiche_sources::version(),
-            ]
-            .iter()
-            .for_each(|s| eprint!("{s} "));
+            eprintln!("Modules: ");
+            eprintln!("\t{}", engine.version());
         }
     }
     Ok(())

@@ -8,7 +8,7 @@ use home::home_dir;
 use serde::Deserialize;
 use tracing::trace;
 
-use fetiche_sources::{makepath, Auth};
+use fetiche_engine::{makepath, Auth};
 
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
