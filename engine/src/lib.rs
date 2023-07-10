@@ -220,40 +220,6 @@ impl Default for Engine {
     }
 }
 
-/// Type of task we will need to do
-///
-#[derive(Clone, Debug, Default)]
-pub enum Input {
-    /// File-based means we need the formats beforehand and a pathname
-    ///
-    File {
-        /// Input formats
-        format: Format,
-        /// Path of the input file
-        path: PathBuf,
-    },
-    /// Network-based means we need the site name (whose details are taken from the configuration
-    /// file.  The `site` is a `Fetchable` object generated from `Config`.
-    ///
-    Network {
-        /// Input formats
-        format: Format,
-        /// Site itself
-        site: Arc<dyn Fetchable>,
-    },
-    /// Stream-based means we need the site name (whose details are taken from the configuration
-    /// file.  The `site` is a `Streamable` object generated from `Config`.
-    ///
-    Stream {
-        /// Input formats
-        stream: Format,
-        /// Site itself
-        site: Arc<dyn Streamable>,
-    },
-    #[default]
-    Nothing,
-}
-
 /// Task I/O characteristics
 ///
 /// The main principle being that a consumer should not be first in a job queue
