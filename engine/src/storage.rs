@@ -98,6 +98,12 @@ impl Storage {
         Ok(str)
     }
 
+    /// Return the number of storage areas
+    ///
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     /// Parse 1s/1m/1h/1d
     ///
     fn parse_rotation(input: &str) -> IResult<&str, u32> {
