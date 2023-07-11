@@ -1,13 +1,15 @@
-version = 1
+version = 2
+
+basedir = "/var/run/acute"
 
 // Describe a local directory tree used to store files
 //
-storage "local" {
-  path     = "/var/run/acute"
+storage "hourly" {
+  path     = ":basedir/hourly"
   rotation = "1h"
 }
 
 storage "daily" {
-  path     = "/var/run/acute/data"
+  path     = ":basedir/data"
   rotation = "1d"
 }
