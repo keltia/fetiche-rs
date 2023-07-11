@@ -54,13 +54,20 @@ const BASEDIR: &str = ".config";
 /// Configuration filename
 const ENGINE_CONFIG: &str = "engine.hcl";
 
+/// Current running process ID
+const ENGINE_PID: &str = "fetiched.pid";
+
 /// Configuration file version
-const ENGINE_VERSION: usize = 1;
+const ENGINE_VERSION: usize = 2;
 
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
 #[derive(Clone, Debug)]
 pub struct Engine {
+    /// Current process DI
+    pub pid: u32,
+    /// Main area where state is saved (PID, jobs, etc.)
+    pub home: Arc<PathBuf>,
     /// Sources
     pub sources: Arc<Sources>,
     /// Storage area for long running jobs
@@ -114,11 +121,26 @@ impl Engine {
             Ok(src) => src,
             Err(e) => panic!("No sources configured in 'sources.hcl':{}", e),
         };
-
         info!("{} sources loaded", src.len());
 
+        trace!("load storage areas");
+        // Register storage areas
+        //
         let areas = Storage::register(&cfg.storage);
+        info!("{} areas loaded", areas.len());
+
+        // Save PID
+        //
+        let pid = std::process::id();
+        let basedir: PathBuf = cfg.basedir.unwrap_or(PathBuf::from("/var/run/acute"));
+        let pidfile: PathBuf = makepath!(&basedir, ENGINE_PID);
+        fs::write(&pidfile, format!("{pid}")).expect("can not write fetiched.pid");
+
+        info!("PID {} written in {:?}", pid, pidfile);
+
         Engine {
+            pid,
+            home: Arc::new(basedir),
             sources: Arc::new(src),
             storage: Arc::new(areas),
         }
@@ -219,6 +241,14 @@ impl Default for Engine {
         Self::new()
     }
 }
+
+/// Register the state of the running `Engine`.
+///
+/// NOTE: At the moment, the is not `fetiched` daemon, it is all in a single
+/// binary.
+///
+#[derive(Clone, Debug)]
+pub struct State {}
 
 /// Task I/O characteristics
 ///
