@@ -5,8 +5,8 @@ use anyhow::{anyhow, Result};
 use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
 use clap_complete::generate;
 use tracing::{info, trace};
-use tracing_log::LogTracer;
-use tracing_subscriber::FmtSubscriber;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{filter::EnvFilter, fmt};
 
 use acutectl::{
     convert_from_to, fetch_from_site, stream_from_site, Config, ImportSubCommand, ListSubCommand,
@@ -15,11 +15,11 @@ use acutectl::{
 use fetiche_engine::{Engine, Flow, Format, Site};
 
 /// Binary name, using a different binary name
-pub(crate) const NAME: &str = env!("CARGO_BIN_NAME");
+pub const NAME: &str = env!("CARGO_BIN_NAME");
 /// Binary version
-pub(crate) const VERSION: &str = crate_version!();
+pub const VERSION: &str = crate_version!();
 /// Authors
-pub(crate) const AUTHORS: &str = crate_authors!();
+pub const AUTHORS: &str = crate_authors!();
 
 fn main() -> Result<()> {
     let opts = Opts::parse();
@@ -27,14 +27,19 @@ fn main() -> Result<()> {
 
     // Initialise logging.
     //
-    //env_logger::init();
+    let fmt = fmt::layer()
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .with_target(false)
+        .compact();
 
-    let sub = FmtSubscriber::new();
-    tracing::subscriber::set_global_default(sub).expect("can not subscribe for logging");
+    // Load filters from environment
+    //
+    let filter = EnvFilter::from_default_env();
 
-    LogTracer::builder()
-        .with_max_level(log::LevelFilter::Trace)
-        .init()?;
+    // Combine filter & specific format
+    //
+    tracing_subscriber::registry().with(filter).with(fmt).init();
 
     // Config only has the credentials for every source now.
     //
@@ -53,13 +58,17 @@ fn main() -> Result<()> {
     engine.auth(cfg.site);
 
     let subcmd = &opts.subcmd;
+    Ok(handle_subcmd(&engine, subcmd)?)
+}
+
+pub fn handle_subcmd(engine: &Engine, subcmd: &SubCommand) -> Result<()> {
     match subcmd {
         // Handle `fetch site`
         //
         SubCommand::Fetch(fopts) => {
             trace!("fetch");
 
-            fetch_from_site(&engine, fopts)?;
+            fetch_from_site(&engine, &fopts)?;
         }
 
         // Handle `stream site`
@@ -67,7 +76,7 @@ fn main() -> Result<()> {
         SubCommand::Stream(sopts) => {
             trace!("stream");
 
-            stream_from_site(&engine, sopts)?;
+            stream_from_site(&engine, &sopts)?;
         }
 
         // Handle `convert from to`
@@ -75,7 +84,7 @@ fn main() -> Result<()> {
         SubCommand::Convert(copts) => {
             trace!("convert");
 
-            convert_from_to(&engine, copts)?;
+            convert_from_to(&engine, &copts)?;
         }
 
         // Handle `import site`  and `import file`
