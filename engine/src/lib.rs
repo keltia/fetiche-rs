@@ -194,6 +194,12 @@ impl Engine {
         Arc::clone(&self.sources)
     }
 
+    /// Return an `Arc::clone` of the Engine storage areas
+    ///
+    pub fn storage(&self) -> Arc<Storage> {
+        Arc::clone(&self.storage)
+    }
+
     /// Returns a list of all defined storage areas
     ///
     pub fn list_storage(&self) -> Result<String> {
