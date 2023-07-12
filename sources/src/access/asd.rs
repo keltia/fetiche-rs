@@ -289,7 +289,7 @@ impl Fetchable for Asd {
                 //
                 use percent_encoding::percent_decode;
                 trace!("error resp={:?}", resp);
-                let h = &resp.headers();
+                let h = resp.headers();
                 let errtxt = percent_decode(h["x-debug-exception"].as_bytes())
                     .decode_utf8()
                     .unwrap();
