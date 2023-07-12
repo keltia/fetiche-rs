@@ -151,6 +151,8 @@ mod tests {
 
     #[test]
     fn test_job_run() {
+        env_logger::init();
+
         let e = Engine::new();
         let t1 = Box::new(Nothing::new());
         let t2 = Box::new(Message::new("hello world"));
@@ -162,9 +164,10 @@ mod tests {
         let mut data = vec![];
 
         let res = j.run(&mut data);
+        assert!(res.is_ok());
 
         let res = String::from_utf8(data);
         assert!(res.is_ok());
-        assert_eq!("NOP|hello world", res.unwrap())
+        assert_eq!("start|NOP|hello world", res.unwrap())
     }
 }
