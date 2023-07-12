@@ -132,7 +132,7 @@ impl Engine {
         // Save PID
         //
         let pid = std::process::id();
-        let basedir: PathBuf = cfg.basedir.unwrap_or(PathBuf::from("/var/run/acute"));
+        let basedir: PathBuf = cfg.basedir;
         let pidfile: PathBuf = makepath!(&basedir, ENGINE_PID);
         fs::write(&pidfile, format!("{pid}")).expect("can not write fetiched.pid");
 
