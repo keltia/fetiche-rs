@@ -62,9 +62,10 @@ impl Config {
             Some(fname) => fname,
             _ => Self::default_file(),
         };
-        let data = fs::read_to_string(fname).expect("Can not open config.hcl");
 
+        let data = fs::read_to_string(fname)?;
         let data: Config = hcl::from_str(&data)?;
+
         if data.version != CVERSION {
             return Err(anyhow!("bad file version: {}", data.version));
         }
