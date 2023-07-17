@@ -58,17 +58,17 @@ fn main() -> Result<()> {
     engine.auth(cfg.site);
 
     let subcmd = &opts.subcmd;
-    Ok(handle_subcmd(&engine, subcmd)?)
+    Ok(handle_subcmd(&mut engine, subcmd)?)
 }
 
-pub fn handle_subcmd(engine: &Engine, subcmd: &SubCommand) -> Result<()> {
+pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
     match subcmd {
         // Handle `fetch site`
         //
         SubCommand::Fetch(fopts) => {
             trace!("fetch");
 
-            fetch_from_site(&engine, &fopts)?;
+            fetch_from_site(&mut engine, &fopts)?;
         }
 
         // Handle `stream site`
@@ -76,7 +76,7 @@ pub fn handle_subcmd(engine: &Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Stream(sopts) => {
             trace!("stream");
 
-            stream_from_site(&engine, &sopts)?;
+            stream_from_site(&mut engine, &sopts)?;
         }
 
         // Handle `convert from to`
@@ -84,7 +84,7 @@ pub fn handle_subcmd(engine: &Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Convert(copts) => {
             trace!("convert");
 
-            convert_from_to(&engine, &copts)?;
+            convert_from_to(&mut engine, &copts)?;
         }
 
         // Handle `import site`  and `import file`
@@ -97,7 +97,7 @@ pub fn handle_subcmd(engine: &Engine, subcmd: &SubCommand) -> Result<()> {
                 ImportSubCommand::ImportSite(fopts) => {
                     trace!("drone import site");
 
-                    let srcs = engine.sources();
+                    let srcs = &engine.sources();
                     let site = match Site::load(&fopts.site, &srcs)? {
                         Flow::Fetchable(s) => s,
                         _ => return Err(anyhow!("this site is not fetchable")),
@@ -107,7 +107,7 @@ pub fn handle_subcmd(engine: &Engine, subcmd: &SubCommand) -> Result<()> {
                     // FIXME
                     let data: Vec<u8> = vec![];
 
-                    fetch_from_site(&engine, fopts)?;
+                    fetch_from_site(&mut engine, fopts)?;
 
                     //import_data(&cfg, &data, fmt)?;
                 }

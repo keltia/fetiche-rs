@@ -8,7 +8,7 @@ use fetiche_engine::{Convert, Engine, Read};
 use crate::ConvertOpts;
 
 #[tracing::instrument]
-pub fn convert_from_to(engine: &Engine, copts: &ConvertOpts) -> Result<()> {
+pub fn convert_from_to(engine: &mut Engine, copts: &ConvertOpts) -> Result<()> {
     trace!("convert_from_to");
 
     let infile = &copts.infile;
