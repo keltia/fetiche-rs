@@ -14,21 +14,23 @@
 //! FIXME: at some point, a `[u8]`  might be preferable to a `String`.
 //!
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::convert::Into;
 use std::fmt::Debug;
-use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Receiver;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
+use std::time::Duration;
+use std::{fs, thread};
 
 use anyhow::Result;
 #[cfg(unix)]
 use home::home_dir;
 use serde::Deserialize;
 use strum::EnumString;
-use tracing::{event, info, trace, Level};
+use tracing::{debug, error, event, info, trace, warn, Level};
 
 pub use config::*;
 pub use database::*;
@@ -36,6 +38,7 @@ pub use database::*;
 pub use fetiche_formats::Format;
 pub use fetiche_sources::{makepath, Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
 pub use job::*;
+pub use state::*;
 pub use storage::*;
 pub use task::*;
 
@@ -43,6 +46,7 @@ mod config;
 mod database;
 mod job;
 mod parse;
+mod state;
 mod storage;
 mod task;
 
@@ -68,12 +72,18 @@ const ENGINE_VERSION: usize = 2;
 pub struct Engine {
     /// Current process DI
     pub pid: u32,
+    /// Next job ID
+    pub next: Arc<AtomicUsize>,
     /// Main area where state is saved (PID, jobs, etc.)
     pub home: Arc<PathBuf>,
     /// Sources
     pub sources: Arc<Sources>,
     /// Storage area for long running jobs
     pub storage: Arc<Storage>,
+    /// Current state
+    pub state: Arc<RwLock<State>>,
+    /// Job Queue
+    pub jobs: Arc<RwLock<VecDeque<usize>>>,
 }
 
 impl Engine {
@@ -140,14 +150,90 @@ impl Engine {
 
         info!("PID {} written in {:?}", pid, pidfile);
 
-        Engine {
+        // Load state
+        //
+        let fname: PathBuf = makepath!(&basedir, STATE_FILE);
+        let state = match State::from(fname.clone()) {
+            Ok(state) => {
+                info!("State loaded from {:?}", fname);
+                debug!("{:?}", state);
+                state
+            }
+            Err(e) => {
+                warn!("Can not load state, creating new: {}", e.to_string());
+                State::new()
+            }
+        };
+
+        let jobs = VecDeque::<usize>::new();
+
+        // Instantiate everything
+        //
+        let engine = Engine {
             pid,
+            next: Arc::new(AtomicUsize::new(*state.queue.back().unwrap() + 1)),
             home: Arc::new(basedir),
             sources: Arc::new(src),
             storage: Arc::new(areas),
-        }
+            state: Arc::new(RwLock::new(state)),
+            jobs: Arc::new(RwLock::new(jobs)),
+        };
+        info!("New Engine loaded");
+
+        // Sync immediately, ensuring state is clean
+        //
+        engine.sync().expect("can not sync");
+
+        // Launch the sync thread for state
+        //
+        trace!(
+            "launching syncd for {}",
+            engine.state_file().to_string_lossy()
+        );
+
+        let e = engine.clone();
+        thread::spawn(move || loop {
+            if let Err(err) = e.sync() {
+                error!("engine::sync failed: {}", err.to_string());
+            }
+            thread::sleep(Duration::from_secs(30 as u64));
+        });
+
+        engine
     }
 
+    /// Create a new job queue
+    ///
+    #[tracing::instrument]
+    pub fn create_job(&mut self, s: &str) -> Job {
+        // Fetch next ID
+        //
+        let nextid = self.next.fetch_add(1, Ordering::SeqCst);
+
+        // Initialise job
+        //
+        let job = Job::new_with_id(s, nextid);
+
+        // Insert into job queue
+        //
+        let mut jobs = self.jobs.write().unwrap();
+        jobs.push_back(nextid.into());
+
+        // Update state
+        //
+        let mut state = self.state.write().unwrap();
+        state.last = nextid;
+        state.queue.push_back(nextid);
+
+        trace!("create_job with id: {}", nextid);
+        self.sync().expect("can not sync");
+
+        job
+    }
+
+    /// Load authentication data
+    ///
+    #[tracing::instrument]
     pub fn auth(&mut self, db: BTreeMap<String, Auth>) -> &mut Self {
         // Generate a sources list with credentials
         //
@@ -226,12 +312,6 @@ impl Engine {
         self.sources.list_tokens()
     }
 
-    /// Create a new job queue
-    ///
-    pub fn create_job(&self, s: &str) -> Job {
-        Job::new(s)
-    }
-
     /// Return Engine version (and internal modules)
     ///
     pub fn version(&self) -> String {
@@ -249,14 +329,6 @@ impl Default for Engine {
         Self::new()
     }
 }
-
-/// Register the state of the running `Engine`.
-///
-/// NOTE: At the moment, the is not `fetiched` daemon, it is all in a single
-/// binary.
-///
-#[derive(Clone, Debug)]
-pub struct State {}
 
 /// Task I/O characteristics
 ///

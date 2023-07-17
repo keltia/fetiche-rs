@@ -12,7 +12,6 @@ use std::sync::mpsc::channel;
 use anyhow::{anyhow, Result};
 use tracing::{info, trace};
 use tracing::{span, Level};
-use uuid::Uuid;
 
 use crate::{Runnable, IO};
 
@@ -21,7 +20,7 @@ use crate::{Runnable, IO};
 #[derive(Debug)]
 pub struct Job {
     /// Job ID
-    pub id: String,
+    pub id: usize,
     /// Name of the job
     pub name: String,
     /// FIFO list of tasks
@@ -33,13 +32,25 @@ impl Job {
     ///
     /// NOTE: No //EOJ
     ///
-    #[inline]
     #[tracing::instrument]
+    #[inline]
     pub fn new(name: &str) -> Self {
-        let uuid = Uuid::new_v4().to_string();
-        trace!("Job::new({})", uuid);
-        Job {
-            id: uuid,
+        trace!("Job::new()");
+        Self {
+            id: 0,
+            name: name.to_owned(),
+            list: VecDeque::new(),
+        }
+    }
+
+    /// Create job with a specific ID
+    ///
+    #[tracing::instrument]
+    #[inline]
+    pub fn new_with_id(name: &str, id: usize) -> Self {
+        trace!("job({}) with id {}", name, id);
+        Self {
+            id,
             name: name.to_owned(),
             list: VecDeque::new(),
         }
@@ -153,7 +164,7 @@ mod tests {
     fn test_job_run() {
         env_logger::init();
 
-        let e = Engine::new();
+        let mut e = Engine::new();
         let t1 = Box::new(Nothing::new());
         let t2 = Box::new(Message::new("hello world"));
 
