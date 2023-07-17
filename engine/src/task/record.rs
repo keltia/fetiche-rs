@@ -4,12 +4,14 @@
 //!       and the database on initialisation.
 //!
 
+use std::sync::mpsc::Sender;
+
 use anyhow::Result;
 
 use engine_macros::RunnableDerive;
 use fetiche_formats::Format;
 
-use crate::IO;
+use crate::{Runnable, IO};
 
 #[derive(Clone, Debug, RunnableDerive)]
 pub struct Record {
@@ -37,5 +39,9 @@ impl Record {
         s.fmt = fmt;
         s.db = Some(db);
         s
+    }
+
+    pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
+        Ok(())
     }
 }
