@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use anyhow::Result;
 use serde::Deserialize;
+use strum::{EnumIter, EnumVariantNames};
 use tabled::builder::Builder;
 use tabled::settings::Style;
 use tracing::trace;
@@ -16,7 +17,8 @@ mod mysql;
 
 /// All supported databases
 ///
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default, Deserialize, strum::Display, EnumVariantNames, EnumIter)]
+#[strum(serialize_all = "PascalCase")]
 pub enum DB {
     #[default]
     InfluxDB,
@@ -47,38 +49,38 @@ pub struct DatabaseFile {
     /// Version
     pub version: usize,
     /// Ordered list of format metadata
-    pub cmds: BTreeMap<String, DatabaseDescr>,
+    pub dbs: BTreeMap<String, DatabaseDescr>,
 }
 
 impl Engine {
     /// Returns the content of the `cmds.hcl` file as a table.
     ///
     #[tracing::instrument]
-    pub fn list_commands(&self) -> Result<String> {
+    pub fn list_databases(&self) -> Result<String> {
         trace!("list all commands");
 
-        let data = include_str!("cmds.hcl");
-        let dbs: DatabaseDescr = hcl::from_str(data)?;
+        let data = include_str!("databases.hcl");
+        let dbs: DatabaseFile = hcl::from_str(data)?;
 
         // Safety checks
         //
-        assert_eq!(dbs.version, CVERSION);
+        assert_eq!(dbs.version, DVERSION);
 
         let header = vec!["Name", "Type", "Description"];
 
         let mut builder = Builder::default();
         builder.set_header(header);
 
-        dbs.cmds
+        dbs.dbs
             .iter()
-            .for_each(|(cmd, cmd_desc): (&String, &DatabaseDescr)| {
+            .for_each(|(db, db_desc): (&String, &DatabaseDescr)| {
                 let mut row = vec![];
 
-                let name = cmd.clone();
-                let ctype = cmd_desc.dtype.clone().to_string();
-                let descr = cmd_desc.description.clone();
+                let name = db.clone();
+                let dtype = db_desc.dtype.clone().to_string();
+                let descr = db_desc.description.clone();
                 row.push(name);
-                row.push(ctype);
+                row.push(dtype);
                 row.push(descr);
                 builder.push_record(row);
             });
