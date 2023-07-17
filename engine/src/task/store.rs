@@ -50,10 +50,11 @@ impl Store {
     /// path as path/ID
     ///
     #[tracing::instrument]
-    pub fn new(path: &str, id: &str) -> Self {
+    pub fn new(path: &str, id: usize) -> Self {
         trace!("store::new({})", path);
 
-        let path: PathBuf = makepath!(path, id);
+        let id = format!("{id}");
+        let path: PathBuf = makepath!(path, &id);
 
         // Base is PATH/ID/
         //
