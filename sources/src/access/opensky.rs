@@ -94,7 +94,7 @@ struct Credentials {
 
 /// Statistics gathering struct
 ///
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub(crate) struct Stats {
     pub tm: u64,
     pub pkts: u32,
@@ -103,20 +103,6 @@ pub(crate) struct Stats {
     pub miss: u32,
     pub empty: u32,
     pub err: u32,
-}
-
-impl Default for Stats {
-    fn default() -> Self {
-        Self {
-            tm: 0_u64,
-            pkts: 0,
-            bytes: 0_u64,
-            hits: 0,
-            miss: 0,
-            empty: 0,
-            err: 0,
-        }
-    }
 }
 
 impl Display for Stats {
