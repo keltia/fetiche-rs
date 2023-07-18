@@ -49,10 +49,11 @@ impl Storage {
                 //
                 StorageConfig::Directory { path, rotation } => {
                     if !path.exists() {
-                        std::fs::create_dir_all(&path)
-                            .expect(&format!("storage::init::create_dir_all failed: {:?}", path));
+                        std::fs::create_dir_all(path).unwrap_or_else(|_| {
+                            panic!("storage::init::create_dir_all failed: {:?}", path)
+                        });
                     }
-                    let (_, rotation) = Self::parse_rotation(&rotation).unwrap();
+                    let (_, rotation) = Self::parse_rotation(rotation).unwrap();
                     b.insert(
                         name.to_string(),
                         StoreArea::Directory {
@@ -102,6 +103,12 @@ impl Storage {
     ///
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    /// Check whether it is empty or not
+    ///
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     /// Parse 1s/1m/1h/1d

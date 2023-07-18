@@ -35,10 +35,11 @@ impl Default for Record {
 
 impl Record {
     pub fn new(fmt: Format, db: String) -> Self {
-        let mut s = Self::default();
-        s.fmt = fmt;
-        s.db = Some(db);
-        s
+        Record {
+            fmt,
+            db: Some(db),
+            ..Self::default()
+        }
     }
 
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {

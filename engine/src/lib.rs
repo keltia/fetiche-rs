@@ -106,7 +106,8 @@ impl Engine {
 
         trace!("reading({:?}", fname);
 
-        let data = fs::read_to_string(&fname).expect(&format!("file not found {:?}", fname));
+        let data =
+            fs::read_to_string(&fname).unwrap_or_else(|_| panic!("file not found {:?}", fname));
 
         let cfg: EngineConfig = hcl::from_str(&data).expect("syntax error");
 
@@ -196,7 +197,7 @@ impl Engine {
             if let Err(err) = e.sync() {
                 error!("engine::sync failed: {}", err.to_string());
             }
-            thread::sleep(Duration::from_secs(30 as u64));
+            thread::sleep(Duration::from_secs(30_u64));
         });
 
         engine
@@ -217,7 +218,7 @@ impl Engine {
         // Insert into job queue
         //
         let mut jobs = self.jobs.write().unwrap();
-        jobs.push_back(nextid.into());
+        jobs.push_back(nextid);
 
         // Update state
         //

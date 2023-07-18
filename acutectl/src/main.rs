@@ -68,7 +68,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Fetch(fopts) => {
             trace!("fetch");
 
-            fetch_from_site(&mut engine, &fopts)?;
+            fetch_from_site(engine, &fopts)?;
         }
 
         // Handle `stream site`
@@ -76,7 +76,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Stream(sopts) => {
             trace!("stream");
 
-            stream_from_site(&mut engine, &sopts)?;
+            stream_from_site(engine, &sopts)?;
         }
 
         // Handle `convert from to`
@@ -84,7 +84,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Convert(copts) => {
             trace!("convert");
 
-            convert_from_to(&mut engine, &copts)?;
+            convert_from_to(engine, &copts)?;
         }
 
         // Handle `import site`  and `import file`
@@ -107,7 +107,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
                     // FIXME
                     let data: Vec<u8> = vec![];
 
-                    fetch_from_site(&mut engine, fopts)?;
+                    fetch_from_site(engine, fopts)?;
 
                     //import_data(&cfg, &data, fmt)?;
                 }

@@ -13,6 +13,7 @@ use tracing::trace;
 
 use crate::Engine;
 
+/// Main state data file, will be created in `basedir`.
 pub const STATE_FILE: &str = "state";
 
 /// Register the state of the running `Engine`.
@@ -51,6 +52,12 @@ impl State {
     }
 }
 
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Engine {
     /// Returns the path of the default state file in basedir
     ///
@@ -65,10 +72,10 @@ impl Engine {
         let mut data = self.state.write().unwrap();
         *data = State {
             tm: Utc::now().timestamp(),
-            last: *data.queue.back().unwrap_or_else(|| &1),
+            last: *data.queue.back().unwrap_or(&1),
             queue: data.queue.clone(),
         };
         let data = json!(*data).to_string();
-        Ok(fs::write(self.state_file(), &data)?)
+        Ok(fs::write(self.state_file(), data)?)
     }
 }
