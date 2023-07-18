@@ -34,7 +34,6 @@ use tracing::{debug, error, event, info, trace, warn, Level};
 
 pub use config::*;
 pub use database::*;
-// Re-export formats/sources.
 pub use fetiche_formats::Format;
 pub use fetiche_sources::{makepath, Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
 pub use job::*;
@@ -65,6 +64,9 @@ const ENGINE_PID: &str = "fetiched.pid";
 
 /// Configuration file version
 const ENGINE_VERSION: usize = 2;
+
+/// Tick is every 30s
+const TICK: u64 = 30;
 
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
@@ -188,8 +190,9 @@ impl Engine {
         // Launch the sync thread for state
         //
         trace!(
-            "launching syncd for {}",
-            engine.state_file().to_string_lossy()
+            "launching syncer for {}, every {}s",
+            engine.state_file().to_string_lossy(),
+            TICK
         );
 
         let e = engine.clone();
@@ -197,7 +200,7 @@ impl Engine {
             if let Err(err) = e.sync() {
                 error!("engine::sync failed: {}", err.to_string());
             }
-            thread::sleep(Duration::from_secs(30_u64));
+            thread::sleep(Duration::from_secs(TICK));
         });
 
         engine
