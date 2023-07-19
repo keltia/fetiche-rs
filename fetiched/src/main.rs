@@ -11,7 +11,7 @@ use std::time::Duration;
 use std::{fs, io};
 
 use anyhow::Result;
-use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
+use clap::Parser;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::EnvFilter, fmt};
@@ -67,7 +67,7 @@ fn main() -> Result<()> {
             let mut stdout = io::stdout();
 
             info!("sleep");
-            thread::sleep(Duration::from_secs(60));
+            std::thread::sleep(Duration::from_secs(60));
         }
         Err(e) => eprintln!("Error: {}", e),
     }
