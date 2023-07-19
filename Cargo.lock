@@ -1002,7 +1002,6 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
- "daemonize",
  "engine-macros",
  "env_logger 0.10.0",
  "fetiche-formats",
@@ -1071,6 +1070,33 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-log",
+]
+
+[[package]]
+name = "fetiched"
+version = "0.1.0"
+dependencies = [
+    "anyhow",
+    "chrono",
+    "daemonize",
+    "env_logger 0.10.0",
+    "fetiche-engine",
+    "fetiche-sources",
+    "hcl-rs",
+    "home",
+    "log",
+    "nom",
+    "reqwest",
+    "rstest",
+    "serde",
+    "serde_json",
+    "strum",
+    "tabled",
+    "tokio",
+    "tracing",
+    "tracing-log",
+    "tracing-subscriber",
+    "uuid",
 ]
 
 [[package]]
