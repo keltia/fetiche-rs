@@ -104,6 +104,12 @@ You are not really supposed to edit this file.
 
 More details in the specific [Sources README.md](sources/README.md).
 
+## `fetiched`
+
+On UNIX systems, there is a new command called `fetiched``. It is a daemon running the latest engine, detaching itself
+from the terminal and accepting requests through an [GRPC] interface.
+
+**This is a Work-In-Progress**
 
 ### Data Model
 
@@ -184,3 +190,5 @@ I use Git Flow for this package so please use something similar or the usual Git
 [GitHub issues]: https://github.com/keltia/fetiche-rs/issues
 
 [tokio]: https://crates.io/crates/tokio
+
+[GRPC]: https://en.wikipedia.org/wiki/GRPC
