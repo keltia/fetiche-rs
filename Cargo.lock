@@ -1076,7 +1076,9 @@ name = "fetiched"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assert_cmd",
  "chrono",
+ "clap",
  "daemonize",
  "env_logger 0.10.0",
  "fetiche-engine",
