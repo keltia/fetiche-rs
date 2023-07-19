@@ -16,6 +16,7 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
+clap.workspace = true
 env_logger.workspace = true
 fetiche-engine.workspace = true
 fetiche-sources.workspace = true
@@ -39,4 +40,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "time", "traci
 daemonize = "0.5"
 
 [dev-dependencies]
+assert_cmd = "2.0"
 rstest.workspace = true
+
