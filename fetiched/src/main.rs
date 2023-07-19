@@ -3,6 +3,9 @@
 //! It could have been part of `acutectl`  but it is cleaner that way.
 //!
 
+use std::fs::File;
+use std::path::PathBuf;
+use std::time::Duration;
 use std::{fs, io};
 
 use anyhow::Result;
@@ -61,7 +64,7 @@ fn main() -> Result<()> {
             let mut stdout = io::stdout();
 
             info!("sleep");
-            sleep(Duration::from_secs(60));
+            thread::sleep(Duration::from_secs(60));
         }
         Err(e) => eprintln!("Error: {}", e),
     }
