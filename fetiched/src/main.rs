@@ -8,10 +8,11 @@ use std::{fs, io};
 use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
 use clap_complete::generate;
-use fetiche_engine::Engine;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::EnvFilter, fmt};
+
+use fetiche_engine::Engine;
 
 /// Daemon name
 const NAME: &str = env!("CARGO_BIN_NAME");
