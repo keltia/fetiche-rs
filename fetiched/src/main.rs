@@ -3,6 +3,8 @@
 //! It could have been part of `acutectl`  but it is cleaner that way.
 //!
 
+mod cli;
+
 use std::fs::File;
 use std::path::PathBuf;
 use std::time::Duration;
