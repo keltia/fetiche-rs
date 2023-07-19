@@ -3,7 +3,15 @@
 //! It could have been part of `acutectl`  but it is cleaner that way.
 //!
 
+use std::{fs, io};
+
 use anyhow::Result;
+use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
+use clap_complete::generate;
+use fetiche_engine::Engine;
+use tracing::{info, trace};
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{filter::EnvFilter, fmt};
 
 /// Daemon name
 const NAME: &str = env!("CARGO_BIN_NAME");
@@ -12,6 +20,8 @@ const NAME: &str = env!("CARGO_BIN_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() -> Result<()> {
+    let opts: Opts = Opts::parse();
+
     let fmt = fmt::layer()
         .with_thread_ids(true)
         .with_thread_names(true)
