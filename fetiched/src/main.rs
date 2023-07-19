@@ -17,6 +17,8 @@ use tracing_subscriber::{filter::EnvFilter, fmt};
 
 use fetiche_engine::Engine;
 
+use crate::cli::Opts;
+
 /// Daemon name
 const NAME: &str = env!("CARGO_BIN_NAME");
 
