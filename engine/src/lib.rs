@@ -49,7 +49,9 @@ mod state;
 mod storage;
 mod task;
 
-pub(crate) fn version() -> String {
+/// Engine signature
+///
+pub fn version() -> String {
     format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }
 

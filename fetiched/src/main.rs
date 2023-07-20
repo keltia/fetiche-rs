@@ -3,8 +3,6 @@
 //! It could have been part of `acutectl`  but it is cleaner that way.
 //!
 
-mod cli;
-
 use std::fs::File;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -12,13 +10,13 @@ use std::{fs, io};
 
 use anyhow::Result;
 use clap::Parser;
-use tracing::{info, trace};
+use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::EnvFilter, fmt};
 
-use fetiche_engine::Engine;
-
 use crate::cli::Opts;
+
+mod cli;
 
 /// Daemon name
 const NAME: &str = env!("CARGO_BIN_NAME");
@@ -72,4 +70,14 @@ fn main() -> Result<()> {
         Err(e) => eprintln!("Error: {}", e),
     }
     Ok(fs::remove_file(&pid)?)
+}
+
+/// Announce ourselves
+pub(crate) fn version() -> String {
+    format!(
+        "{}/{} ({})",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION"),
+        fetiche_engine::version(),
+    )
 }
