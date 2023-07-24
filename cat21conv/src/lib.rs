@@ -71,10 +71,10 @@ use std::path::PathBuf;
 use anyhow::{anyhow, Result};
 use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
+use tracing::debug;
 
 use fetiche_formats::{Cat21, Format};
 use fetiche_sources::{Fetchable, Filter};
-use tracing::debug;
 
 pub(crate) const VERSION: &str = crate_version!();
 pub(crate) const NAME: &str = crate_name!();
@@ -207,9 +207,12 @@ impl Task {
                 //
                 let token = site.authenticate()?;
 
-                let mut data = vec![];
-                site.fetch(&mut data, &token, &self.args)?;
-                let data = String::from_utf8(data)?;
+                let (tx, rx) = std::sync::mpsc::channel::<String>();
+
+                site.fetch(tx, &token, &self.args)?;
+
+                let data = rx.recv()?;
+
                 debug!("{}", data);
 
                 let fmt = site.format();
