@@ -21,11 +21,14 @@ use std::time::Instant;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use clap::Parser;
+use tracing::{info, trace};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{fmt, EnvFilter};
 
 use cat21conv::Task;
 use fetiche_formats::{prepare_csv, Cat21, Format};
 use fetiche_sources::{Filter, Flow, Site, Sources};
-use tracing::{info, trace};
 
 use crate::cli::{check_args, Opts};
 use crate::version::version;
@@ -144,9 +147,21 @@ fn main() -> Result<()> {
     //
     check_args(&opts)?;
 
-    // Prepare logging.
+    // Initialise logging.
     //
-    env_logger::init();
+    let fmt = fmt::layer()
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .with_target(false)
+        .compact();
+
+    // Load filters from environment
+    //
+    let filter = EnvFilter::from_default_env();
+
+    // Combine filter & specific format
+    //
+    tracing_subscriber::registry().with(filter).with(fmt).init();
 
     // Load default config if nothing is specified
     //
