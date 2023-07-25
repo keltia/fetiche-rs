@@ -53,6 +53,8 @@ impl Store {
     pub fn new(path: &str, id: usize) -> Self {
         trace!("store::new({})", path);
 
+        // We want to have `path/current` pointing to `path/ID`
+        //
         let id = format!("{id}");
         let base = path.clone();
         let path: PathBuf = makepath!(path, &id);
