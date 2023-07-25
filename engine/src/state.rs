@@ -11,10 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::trace;
 
-use crate::Engine;
-
-/// Main state data file, will be created in `basedir`.
-pub const STATE_FILE: &str = "state";
+use crate::{Engine, STATE_FILE};
 
 /// Register the state of the running `Engine`.
 ///

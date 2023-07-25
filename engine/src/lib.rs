@@ -61,11 +61,14 @@ const BASEDIR: &str = ".config";
 /// Configuration filename
 const ENGINE_CONFIG: &str = "engine.hcl";
 
-/// Current running process ID
+/// FIXME: Current running process ID — this will be handled by `fetiched` when operational
 const ENGINE_PID: &str = "fetiched.pid";
 
 /// Configuration file version
 const ENGINE_VERSION: usize = 2;
+
+/// Main state data file, will be created in `basedir`.
+pub(crate) const STATE_FILE: &str = "state";
 
 /// Tick is every 30s
 const TICK: u64 = 30;
