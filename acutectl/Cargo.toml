@@ -28,7 +28,6 @@ fetiche-engine.workspace = true
 fetiche-formats.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
-log.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true

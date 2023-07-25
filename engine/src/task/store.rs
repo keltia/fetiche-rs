@@ -54,6 +54,7 @@ impl Store {
         trace!("store::new({})", path);
 
         let id = format!("{id}");
+        let base = path.clone();
         let path: PathBuf = makepath!(path, &id);
 
         // Base is PATH/ID/
@@ -61,7 +62,7 @@ impl Store {
         create_dir(&path)
             .unwrap_or_else(|_| panic!("can not create {} in {}", id, path.to_string_lossy()));
 
-        let curr: PathBuf = makepath!(&path, "current");
+        let curr: PathBuf = makepath!(&base, "current");
         if curr.exists() {
             fs::remove_file(&curr).expect("can not remove current");
         }
