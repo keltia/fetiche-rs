@@ -59,7 +59,7 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
 
         // Store must be the last one, it is a pure consumer
         //
-        let store = Store::new(&basedir, job.id);
+        let store = Store::new(basedir, job.id);
         job.add(Box::new(store));
 
         info!("Running job #{} with {} tasks.", job.id, job.list.len());

@@ -58,7 +58,7 @@ fn main() -> Result<()> {
     engine.auth(cfg.site);
 
     let subcmd = &opts.subcmd;
-    Ok(handle_subcmd(&mut engine, subcmd)?)
+    handle_subcmd(&mut engine, subcmd)
 }
 
 pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
@@ -68,7 +68,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Fetch(fopts) => {
             trace!("fetch");
 
-            fetch_from_site(engine, &fopts)?;
+            fetch_from_site(engine, fopts)?;
         }
 
         // Handle `stream site`
@@ -76,7 +76,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Stream(sopts) => {
             trace!("stream");
 
-            stream_from_site(engine, &sopts)?;
+            stream_from_site(engine, sopts)?;
         }
 
         // Handle `convert from to`
@@ -84,7 +84,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Convert(copts) => {
             trace!("convert");
 
-            convert_from_to(engine, &copts)?;
+            convert_from_to(engine, copts)?;
         }
 
         // Handle `import site`  and `import file`
@@ -98,7 +98,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
                     trace!("drone import site");
 
                     let srcs = &engine.sources();
-                    let site = match Site::load(&fopts.site, &srcs)? {
+                    let site = match Site::load(&fopts.site, srcs)? {
                         Flow::Fetchable(s) => s,
                         _ => return Err(anyhow!("this site is not fetchable")),
                     };
