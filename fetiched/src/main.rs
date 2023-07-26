@@ -52,6 +52,16 @@ fn main() -> Result<()> {
     let stdout = File::create("/tmp/fetiched.out")?;
     let stderr = File::create("/tmp/fetiched.err")?;
 
+    #[cfg(unix)]
+    start_daemon();
+
+    // Now start serving
+
+    Ok(fs::remove_file(&pid)?)
+}
+
+#[cfg(unix)]
+fn start_daemon() -> Result<()> {
     let daemon = daemonize::Daemonize::new()
         .pid_file(&pid)
         .working_directory("/tmp")
@@ -64,12 +74,10 @@ fn main() -> Result<()> {
 
             let mut stdout = io::stdout();
 
-            info!("sleep");
-            std::thread::sleep(Duration::from_secs(60));
+            info!("daemon is running");
         }
         Err(e) => eprintln!("Error: {}", e),
     }
-    Ok(fs::remove_file(&pid)?)
 }
 
 /// Announce ourselves
