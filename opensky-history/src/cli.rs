@@ -11,12 +11,15 @@ pub struct Opts {
     /// Output file (default is stdout).
     #[clap(short = 'o', long)]
     pub output: Option<String>,
+    /// Location name (if in `locations.hcl`).
+    #[clap(short = 'n', long)]
+    pub name: Option<String>,
     /// Location latitude
-    pub lat: f32,
+    pub lat: Option<f32>,
     /// Location longitude
-    pub lon: f32,
+    pub lon: Option<f32>,
     /// Start date (YYYY-MM-DD).
-    pub start: String,
+    pub start: Option<String>,
     /// End date (YYYY-MM-DD).
-    pub end: String,
+    pub end: Option<String>,
 }

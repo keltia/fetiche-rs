@@ -37,13 +37,12 @@ use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use clap::Parser;
 use inline_python::{python, Context};
-use serde::Deserialize;
 use tracing::trace;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use crate::cli::Opts;
-use crate::location::load_locations;
+use crate::location::{list_locations, load_locations};
 
 mod cli;
 mod location;
@@ -91,10 +90,33 @@ fn main() -> Result<()> {
 
     let loc = load_locations(opts.config)?;
 
+    // List loaded locations if nothing is specified, neither name nor location
+    //
+    if opts.lat.is_none() && opts.lon.is_none() && opts.name.is_none() {
+        let str = list_locations(&loc)?;
+        eprintln!("Locations:\n{}", str);
+        std::process::exit(1);
+    }
+
     // Get arguments, add hours ourselves as we do not care about them.
     //
-    let start = opts.start + "00:00:00";
-    let end = opts.end + "00:00:00";
+    let start = match opts.start {
+        Some(start) => start,
+        None => {
+            let now: DateTime<Utc> = Utc::now();
+            now.format("%Y-%m-%d").to_string()
+        }
+    } + "00:00:00";
+    trace!("start={}", start);
+
+    let end = match opts.end {
+        Some(end) => end,
+        None => {
+            let now: DateTime<Utc> = Utc::now();
+            now.format("%Y-%m-%d").to_string()
+        }
+    } + "00:00:00";
+    trace!("end={}", end);
 
     // Convert into UNIX timestamps
     //

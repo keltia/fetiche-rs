@@ -3,9 +3,10 @@ use std::fs;
 
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
+use tracing::trace;
 
-/// one degree is circumference of earth / 360°
-const ONE_DEG_NM: f32 = 40_000.0 / 360;
+/// one degree is circumference of earth / 360°, convert into nautical miles
+const ONE_DEG_NM: f32 = (40_000. / 1.852) / 360.;
 /// Current location file version
 const LOCATION_FILE_VER: usize = 1;
 
@@ -47,11 +48,18 @@ pub struct Location {
 
 /// Load all locations
 ///
+#[tracing::instrument]
 pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location>> {
-    let data = match fname {
-        Some(fname) => fs::read_to_string(&fname),
-        None => Some(include_str!("locations.hcl")),
-    }?;
+    trace!("load_locations");
+
+    // Load from file if specified
+    //
+    let data = if let Some(fname) = fname {
+        fs::read_to_string(&fname)?
+    } else {
+        include_str!("locations.hcl").to_owned()
+    };
+
     let loc: LocationsFile = hcl::from_str(&data)?;
     if loc.version != LOCATION_FILE_VER {
         return Err(anyhow!("Bad locations file version, aborting…"));
@@ -61,13 +69,19 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
 
 /// List loaded locations
 ///
+#[tracing::instrument]
 pub fn list_locations(data: &BTreeMap<String, Location>) -> Result<String> {
-    Ok(data
+    trace!("list_locations");
+
+    let str = data
         .keys()
         .map(|name| {
             let loc = data.get(name).unwrap();
 
             format!("Location: {} — {:.2}, {:.2}", name, loc.lat, loc.lon)
         })
-        .join("\n"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    Ok(str)
 }
