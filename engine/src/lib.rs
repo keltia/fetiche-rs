@@ -19,7 +19,7 @@ use std::convert::Into;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -73,10 +73,22 @@ pub(crate) const STATE_FILE: &str = "state";
 /// Tick is every 30s
 const TICK: u64 = 30;
 
+/// An `Engine` instance has a command channel for commands.
+///
+#[derive(Clone, Debug, strum::Display, EnumString)]
+pub enum EngineCtrl {
+    Start,
+    Stop,
+    Sync,
+    List,
+}
+
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
 #[derive(Clone, Debug)]
 pub struct Engine {
+    /// Command channel
+    pub ctrl: Sender<EngineCtrl>,
     /// Current process DI
     pub pid: u32,
     /// Next job ID
@@ -177,7 +189,14 @@ impl Engine {
 
         // Instantiate everything
         //
+        // Control channel first
+        //
+        let (tx, rx) = channel::<EngineCtrl>();
+
+        // tx is not in an Arc because it is clonable
+        //
         let engine = Engine {
+            ctrl: tx,
             pid,
             next: Arc::new(AtomicUsize::new(*state.queue.back().unwrap() + 1)),
             home: Arc::new(basedir),
@@ -192,6 +211,25 @@ impl Engine {
         //
         engine.sync().expect("can not sync");
 
+        // Launch the control channel thread
+        //
+        trace!("launching controller");
+
+        let e = engine.clone();
+        thread::spawn(move || {
+            while let Ok(msg) = rx.recv() {
+                trace!("engine::controller: command: {}", msg);
+
+                match msg {
+                    EngineCtrl::Sync => match e.sync() {
+                        Ok(_) => (),
+                        Err(e) => error!("engine::controller: sync failed: {}", e.to_string()),
+                    },
+                    _ => (),
+                };
+            }
+        });
+
         // Launch the sync thread for state
         //
         trace!(
@@ -202,13 +240,20 @@ impl Engine {
 
         let e = engine.clone();
         thread::spawn(move || loop {
-            if let Err(err) = e.sync() {
+            if let Err(err) = e.command(EngineCtrl::Sync) {
                 error!("engine::sync failed: {}", err.to_string());
             }
             thread::sleep(Duration::from_secs(TICK));
         });
 
         engine
+    }
+
+    /// Send a command to the engine
+    ///
+    #[tracing::instrument]
+    pub fn command(&self, cmd: EngineCtrl) -> Result<()> {
+        Ok(self.ctrl.send(cmd)?)
     }
 
     /// Create a new job queue
@@ -235,7 +280,7 @@ impl Engine {
         state.queue.push_back(nextid);
 
         trace!("create_job with id: {}", nextid);
-        self.sync().expect("can not sync");
+        self.command(EngineCtrl::Sync).expect("can not sync");
 
         job
     }
