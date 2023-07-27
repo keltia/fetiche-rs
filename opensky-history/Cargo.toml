@@ -37,7 +37,7 @@ serde_repr = "0.1"
 strum = { version = "0", features = ["derive"] }
 tracing = "0.1"
 tracing-log = { version = "0.1", features = ["env_logger"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "time", "tracing"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
 
 [dev-dependencies]
 rstest = "0.17"
