@@ -39,6 +39,8 @@ use clap::Parser;
 use inline_python::{python, Context};
 use serde::Deserialize;
 use tracing::trace;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{fmt, EnvFilter};
 
 use crate::cli::Opts;
 use crate::location::load_locations;
@@ -70,6 +72,22 @@ const BELFAST: [f32; 4] = [54.3, -5.8, 55.1, -6.6];
 
 fn main() -> Result<()> {
     let opts = Opts::parse();
+
+    // Initialise logging.
+    //
+    let fmt = fmt::layer()
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .with_target(false)
+        .compact();
+
+    // Load filters from environment
+    //
+    let filter = EnvFilter::from_default_env();
+
+    // Combine filter & specific format
+    //
+    tracing_subscriber::registry().with(filter).with(fmt).init();
 
     let loc = load_locations(opts.config)?;
 
