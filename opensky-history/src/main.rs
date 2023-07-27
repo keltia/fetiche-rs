@@ -89,26 +89,53 @@ fn main() -> Result<()> {
 
     println!("From: {} To: {}", start, end);
 
+    // We need to calculate the exact shard the data we want is into, otherwise the query will
+    // take hours scanning all shards.
+    //
     let v = extract_segments(start as i32, end as i32)?;
     println!("{} segments", v.len());
     println!("{:?}", v);
 
     let bb = BELFAST;
 
-    // We fetch data through this embedded python script
+    // Initialise our embedded Python environment
     //
-    let ctx = Context::new();
-    ctx.run(python! {
+    let v1 = v.clone();
+    let ctx: Context = python! {
         from pyopensky import OpenskyImpalaWrapper
 
         opensky = OpenskyImpalaWrapper()
-        print(opensky)
 
         print("From: ", 'start, "To: ", 'end, "BB=", 'bb)
+        print("Segments: ", len('v1))
+    };
 
-        df = opensky.query(type="adsb", start='start, end='end, bound='bb)
-        print(df)
-    });
+    // Now for each segment, use the pythong code to fetch and return the DataFrames in CSV format
+    //
+    let data: Vec<_> = v
+        .iter()
+        .map(|tm| {
+            println!("Fetching segment {}", tm);
+            ctx.run(python! {
+                seg = 'tm
+                bb = 'bb
+                q = "SELECT * FROM state_vectors_data4 \
+                WHERE lat >= {} AND lat <= {} AND lon >= {} AND lon <= {} AND hour={};\
+                ".format(bb[0], bb[2], bb[3], bb[1], seg)
+
+                df = opensky.rawquery(q)
+                data = df.to_csv()
+            });
+            ctx.get::<String>("data")
+        })
+        .collect();
+
+    // End of the Python part thanks $DEITY! (and @m_ou_se on Twitter)
+    //
+    // data is a Vec<String> with each component a CSV string
+    //
+
+    println!("final array of csv:\n{:?}", data);
 
     Ok(())
 }
