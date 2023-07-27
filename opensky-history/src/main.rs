@@ -104,7 +104,7 @@ fn main() -> Result<()> {
     if opts.lat.is_none() && opts.lon.is_none() && opts.name.is_none() {
         let str = list_locations(&loc)?;
         eprintln!("Locations:\n{}", str);
-        std::process::exit(1);
+        std::process::exit(0);
     }
 
     // Get arguments, add hours ourselves as we do not care about them.
@@ -144,7 +144,15 @@ fn main() -> Result<()> {
     println!("{} segments", v.len());
     println!("{:?}", v);
 
-    let bb = BELFAST;
+    let bb = match opts.name {
+        Some(name) => match loc.get(&name) {
+            Some(loc) => loc,
+            None => return Err(anyhow!("Unknown location")),
+        },
+        None => return Err(anyhow!("You must specify a location")),
+    };
+
+    let bb = generate_bounding_box(bb.lat, bb.lon, 25);
 
     // Initialise our embedded Python environment
     //
