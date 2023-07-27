@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["acutectl", "engine", "fetiched", "formats", "sources", "opensky-history"]
-exclude = ["cat21conv"]
+members = ["acutectl", "engine", "fetiched", "formats", "sources"]
+exclude = ["cat21conv", "opensky-history"]
 
 [workspace.dependencies]
 anyhow = "1.0"
