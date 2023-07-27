@@ -112,7 +112,7 @@ fn main() -> Result<()> {
         print("Segments: ", len('v1))
     };
 
-    // Now for each segment, use the pythong code to fetch and return the DataFrames in CSV format
+    // Now for each segment, use the python code to fetch and return the DataFrames in CSV format
     //
     let data: Vec<_> = v
         .iter()
