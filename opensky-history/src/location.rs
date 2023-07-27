@@ -33,7 +33,7 @@ struct LocationsFile {
     /// Version number for safety
     pub version: usize,
     /// List of locations
-    pub data: BTreeMap<String, Location>,
+    pub location: BTreeMap<String, Location>,
 }
 
 /// Actual location
@@ -64,7 +64,7 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
     if loc.version != LOCATION_FILE_VER {
         return Err(anyhow!("Bad locations file version, aborting…"));
     }
-    Ok(loc.data)
+    Ok(loc.location)
 }
 
 /// List loaded locations
@@ -78,7 +78,7 @@ pub fn list_locations(data: &BTreeMap<String, Location>) -> Result<String> {
         .map(|name| {
             let loc = data.get(name).unwrap();
 
-            format!("Location: {} — {:.2}, {:.2}", name, loc.lat, loc.lon)
+            format!("\t{:10}: {:.2}, {:.2}", name, loc.lat, loc.lon)
         })
         .collect::<Vec<_>>()
         .join("\n");
