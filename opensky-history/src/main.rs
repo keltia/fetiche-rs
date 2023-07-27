@@ -5,6 +5,8 @@
 //! It uses an embedded python script through the [inline-python] crate.
 //! The script use [pyopensky] to connect to the [Impala Shell] at Opensky.
 //!
+//! XXX: "nightly" toolchain is mandatory for this.
+//!
 //! [inline-python]: https://crates.io/crates/inline-python
 //! [pyopensky]: https://pypi.org/project/pyopensky/
 //! [Impala Shell]: https://opensky-network.org/data/impala
