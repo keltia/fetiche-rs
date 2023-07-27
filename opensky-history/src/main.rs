@@ -65,6 +65,12 @@ struct Opts {
     pub end: String,
 }
 
+// Belfast airport is 54.7 N, 6.2 E (aka -6.2)
+// We want +- 25nm around it
+//
+/// Belfast bounding box
+const BELFAST: [f32; 4] = [54.3, -5.8, 55.1, -6.6];
+
 fn main() -> Result<()> {
     let opts = Opts::parse();
 
@@ -87,6 +93,8 @@ fn main() -> Result<()> {
     println!("{} segments", v.len());
     println!("{:?}", v);
 
+    let bb = BELFAST;
+
     // We fetch data through this embedded python script
     //
     let ctx = Context::new();
@@ -96,7 +104,10 @@ fn main() -> Result<()> {
         opensky = OpenskyImpalaWrapper()
         print(opensky)
 
-        print("From: ", 'start, "To: ", 'end)
+        print("From: ", 'start, "To: ", 'end, "BB=", 'bb)
+
+        df = opensky.query(type="adsb", start='start, end='end, bound='bb)
+        print(df)
     });
 
     Ok(())
