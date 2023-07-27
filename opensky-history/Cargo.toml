@@ -1,0 +1,50 @@
+[package]
+name = "opensky-history"
+version = "0.1.0"
+edition = "2021"
+description = "Rust CLI app to fetch historical data through pyopensky."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/fetiche-rs"
+categories = ["aerospace::drones", "aerospace"]
+keywords = ["aeronautical-data", "transformations", "fetiche", "python", "opensky"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[[example]]
+name = "version"
+
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+env_logger.workspace = true
+fetiche-formats.workspace = true
+fetiche-sources.workspace = true
+hcl-rs.workspace = true
+home.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+strum.workspace = true
+tabled.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
+
+inline-python = "0.12"
+
+tracing-subscriber = { version = "0.3", features = ["env-filter", "time", "tracing"] }
+
+[dev-dependencies]
+rstest.workspace = true
+
+[dependencies.pyo3]
+version = "0.19"
+features = ["auto-initialize"]
+
