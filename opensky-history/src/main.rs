@@ -48,6 +48,7 @@ mod location;
 
 /// Calculate the list of 1h segments necessary for a given time interval
 ///
+#[tracing::instrument]
 pub fn extract_segments(start: i32, stop: i32) -> Result<Vec<i32>> {
     let beg_hour = start - (start % 3600);
     let end_hour = stop - (stop % 3600);
@@ -69,6 +70,8 @@ const BELFAST: [f32; 4] = [54.3, -5.8, 55.1, -6.6];
 
 fn main() -> Result<()> {
     let opts = Opts::parse();
+
+    let loc = load_locations(opts.config)?;
 
     // Get arguments, add hours ourselves as we do not care about them.
     //
@@ -110,8 +113,8 @@ fn main() -> Result<()> {
     //
     let data: Vec<_> = v
         .iter()
+        .inspect(|tm| trace!("Fetching segment {}", tm))
         .map(|tm| {
-            println!("Fetching segment {}", tm);
             ctx.run(python! {
                 seg = 'tm
                 bb = 'bb
