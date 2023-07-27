@@ -2,6 +2,7 @@
 name = "opensky-history"
 version = "0.1.0"
 edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Rust CLI app to fetch historical data through pyopensky."
 readme = "README.md"
 license = "MIT"
@@ -16,7 +17,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 [[example]]
 name = "version"
 
-
 [badges]
 maintenance = { status = "actively-developed" }
 
@@ -25,7 +25,7 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
-env_logger.workspace = true
+clap.workspace = true
 fetiche-formats.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
