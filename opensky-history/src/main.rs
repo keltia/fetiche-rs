@@ -35,8 +35,16 @@
 
 use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use clap::Parser;
 use inline_python::{python, Context};
+use serde::Deserialize;
+use tracing::trace;
+
+use crate::cli::Opts;
+use crate::location::load_locations;
+
+mod cli;
+mod location;
 
 /// Calculate the list of 1h segments necessary for a given time interval
 ///
@@ -51,20 +59,6 @@ pub fn extract_segments(start: i32, stop: i32) -> Result<Vec<i32>> {
         i += 3600;
     }
     Ok(v)
-}
-
-#[derive(Parser)]
-#[command(disable_version_flag = true)]
-#[clap(name = crate_name!(), about = crate_description!())]
-#[clap(version = crate_version!(), author = crate_authors!())]
-struct Opts {
-    /// Output file (default is stdout).
-    #[clap(short = 'o', long)]
-    pub output: Option<String>,
-    /// Start date (YYYY-MM-DD).
-    pub start: String,
-    /// End date (YYYY-MM-DD).
-    pub end: String,
 }
 
 // Belfast airport is 54.7 N, 6.2 E (aka -6.2)
