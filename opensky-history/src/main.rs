@@ -67,7 +67,14 @@ pub fn extract_segments(start: i32, stop: i32) -> Result<Vec<i32>> {
 // We want +- 25nm around it
 //
 /// Belfast bounding box
-const BELFAST: [f32; 4] = [54.3, -5.8, 55.1, -6.6];
+//const BELFAST: [f32; 4] = [54.3, -5.8, 55.1, -6.6];
+
+/// Binary name, using a different binary name
+pub const NAME: &str = env!("CARGO_BIN_NAME");
+/// Binary version
+pub const VERSION: &str = crate_version!();
+/// Authors
+pub const AUTHORS: &str = crate_authors!();
 
 fn main() -> Result<()> {
     let opts = Opts::parse();
@@ -84,7 +91,11 @@ fn main() -> Result<()> {
     //
     tracing_subscriber::registry().with(filter).with(fmt).init();
 
-    let loc = load_locations(opts.config)?;
+    // Banner
+    //
+    banner()?;
+
+    let loc: BTreeMap<String, Location> = load_locations(opts.config)?;
 
     // List loaded locations if nothing is specified, neither name nor location
     //
@@ -173,4 +184,26 @@ fn main() -> Result<()> {
     println!("final array of csv:\n{:?}", data);
 
     Ok(())
+}
+
+/// Return our version number
+///
+#[inline]
+pub fn version() -> String {
+    format!("{}/{}", NAME, VERSION)
+}
+
+/// Display banner
+///
+fn banner() -> Result<()> {
+    Ok(eprintln!(
+        r##"
+{}/{} by {}
+{}
+"##,
+        NAME,
+        VERSION,
+        AUTHORS,
+        crate_description!()
+    ))
 }
