@@ -74,11 +74,7 @@ fn main() -> Result<()> {
 
     // Initialise logging.
     //
-    let fmt = fmt::layer()
-        .with_thread_ids(true)
-        .with_thread_names(true)
-        .with_target(false)
-        .compact();
+    let fmt = fmt::layer().with_target(false).compact();
 
     // Load filters from environment
     //
