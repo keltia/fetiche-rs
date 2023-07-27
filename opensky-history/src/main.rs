@@ -33,19 +33,21 @@
 // N requests
 //
 
-use anyhow::Result;
+mod cli;
+mod location;
+
+use std::collections::BTreeMap;
+
+use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDateTime, Utc};
-use clap::Parser;
+use clap::{crate_authors, crate_description, crate_version, Parser};
 use inline_python::{python, Context};
 use tracing::trace;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use crate::cli::Opts;
-use crate::location::{list_locations, load_locations};
-
-mod cli;
-mod location;
+use crate::location::{generate_bounding_box, list_locations, load_locations, Location};
 
 /// Calculate the list of 1h segments necessary for a given time interval
 ///
