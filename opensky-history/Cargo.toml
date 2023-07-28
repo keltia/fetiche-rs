@@ -26,6 +26,7 @@ maintenance = { status = "actively-developed" }
 anyhow = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
+dateparser = "0.2"
 fetiche-formats = { version = "0", path = "../formats" }
 hcl-rs = "0.14"
 home = "0.5"
