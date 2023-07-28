@@ -147,7 +147,10 @@ fn main() -> Result<()> {
                 ".format(bb[1], bb[3], bb[0], bb[2], seg)
 
                 df = opensky.rawquery(q)
-                data = df.to_csv()
+                if df is None:
+                    data = ""
+                else:
+                    data = df.to_csv()
             });
             ctx.get::<String>("data")
         })
