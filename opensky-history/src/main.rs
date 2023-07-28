@@ -12,64 +12,21 @@
 //! [Impala Shell]: https://opensky-network.org/data/impala
 //!
 
-// Algorithm for finding which segments are interesting otherwise Impala takes forever to
-// retrieve data
-//
-// All timestamps are UNIX-epoch kind of timestamp.
-//
-// start = NNNNNN
-// stop = MMMMMM
-//
-// i(0) => beg_hour = NNNNNN
-// i(N) => end_hour = MMMMMM - (MMMMMM mod 3600)
-//
-// N =  (MMMMMM - NNNNNN) / 3600
-//
-// thus
-//
-// [beg_hour <= start] ... [end_hour <= stop]
-// i(0)                ... i(N)
-//
-// N requests
-//
-
 mod cli;
 mod location;
 
 use std::collections::BTreeMap;
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::prelude::*;
 use clap::{crate_authors, crate_description, crate_version, Parser};
 use inline_python::{python, Context};
-use tracing::trace;
+use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use crate::cli::Opts;
-use crate::location::{generate_bounding_box, list_locations, load_locations, Location};
-
-/// Calculate the list of 1h segments necessary for a given time interval
-///
-#[tracing::instrument]
-pub fn extract_segments(start: i32, stop: i32) -> Result<Vec<i32>> {
-    let beg_hour = start - (start % 3600);
-    let end_hour = stop - (stop % 3600);
-
-    let mut v = vec![];
-    let mut i = beg_hour;
-    while i <= end_hour {
-        v.push(i);
-        i += 3600;
-    }
-    Ok(v)
-}
-
-// Belfast airport is 54.7 N, 6.2 E (aka -6.2)
-// We want +- 25nm around it
-//
-/// Belfast bounding box
-//const BELFAST: [f32; 4] = [54.3, -5.8, 55.1, -6.6];
+use crate::location::{list_locations, load_locations, Location, BB};
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -78,6 +35,7 @@ pub const VERSION: &str = crate_version!();
 /// Authors
 pub const AUTHORS: &str = crate_authors!();
 
+#[tracing::instrument]
 fn main() -> Result<()> {
     let opts = Opts::parse();
 
@@ -101,48 +59,39 @@ fn main() -> Result<()> {
 
     // List loaded locations if nothing is specified, neither name nor location
     //
-    if opts.lat.is_none() && opts.lon.is_none() && opts.name.is_none() {
+    if opts.name.is_none() {
         let str = list_locations(&loc)?;
         eprintln!("Locations:\n{}", str);
-        std::process::exit(0);
+        return Ok(());
     }
 
-    // Get arguments, add hours ourselves as we do not care about them.
+    // Get arguments, parse anything as a date
     //
     let start = match opts.start {
-        Some(start) => start,
-        None => {
-            let now: DateTime<Utc> = Utc::now();
-            now.format("%Y-%m-%d").to_string()
-        }
-    } + "00:00:00";
+        Some(start) => dateparser::parse(&start),
+        None => Ok(Utc::now()),
+    }?;
     trace!("start={}", start);
 
     let end = match opts.end {
-        Some(end) => end,
-        None => {
-            let now: DateTime<Utc> = Utc::now();
-            now.format("%Y-%m-%d").to_string()
-        }
-    } + "00:00:00";
+        Some(end) => dateparser::parse(&end),
+        None => Ok(Utc::now()),
+    }?;
     trace!("end={}", end);
 
     // Convert into UNIX timestamps
     //
-    let start = NaiveDateTime::parse_from_str(&start, "%Y-%m-%d %H:%M:%S")?;
-    let start = DateTime::<Utc>::from_utc(start, Utc).timestamp();
-
-    let end = NaiveDateTime::parse_from_str(&end, "%Y-%m-%d %H:%M:%S")?;
-    let end = DateTime::<Utc>::from_utc(end, Utc).timestamp();
+    let start = start.timestamp() as i32;
+    let end = end.timestamp() as i32;
 
     println!("From: {} To: {}", start, end);
 
     // We need to calculate the exact shard the data we want is into, otherwise the query will
     // take hours scanning all shards.
     //
-    let v = extract_segments(start as i32, end as i32)?;
-    println!("{} segments", v.len());
-    println!("{:?}", v);
+    let v = extract_segments(start, end)?;
+    info!("{} segments", v.len());
+    trace!("{:?}", v);
 
     let bb = match opts.name {
         Some(name) => match loc.get(&name) {
@@ -152,7 +101,10 @@ fn main() -> Result<()> {
         None => return Err(anyhow!("You must specify a location")),
     };
 
-    let bb = generate_bounding_box(bb.lat, bb.lon, 25);
+    // Default range is 25 nm
+    //
+    let bb = BB::from_location(bb, opts.range);
+    let bb = [bb.min_lon, bb.min_lat, bb.max_lon, bb.max_lat];
 
     // Initialise our embedded Python environment
     //
@@ -177,7 +129,7 @@ fn main() -> Result<()> {
                 bb = 'bb
                 q = "SELECT * FROM state_vectors_data4 \
                 WHERE lat >= {} AND lat <= {} AND lon >= {} AND lon <= {} AND hour={};\
-                ".format(bb[0], bb[2], bb[3], bb[1], seg)
+                ".format(bb[1], bb[3], bb[0], bb[2], seg)
 
                 df = opensky.rawquery(q)
                 if df != None:
@@ -197,6 +149,42 @@ fn main() -> Result<()> {
     println!("final array of csv:\n{:?}", data);
 
     Ok(())
+}
+
+/// Calculate the list of 1h segments necessary for a given time interval
+///
+/// Algorithm for finding which segments are interesting otherwise Impala takes forever to
+/// retrieve data
+///
+/// All timestamps are UNIX-epoch kind of timestamp.
+///
+/// start = NNNNNN
+/// stop = MMMMMM
+///
+/// i(0) => beg_hour = NNNNNN
+/// i(N) => end_hour = MMMMMM - (MMMMMM mod 3600)
+///
+/// N =  (MMMMMM - NNNNNN) / 3600
+///
+/// thus
+///
+/// [beg_hour <= start] ... [end_hour <= stop]
+/// i(0)                ... i(N)
+///
+/// N requests
+///
+#[tracing::instrument]
+pub fn extract_segments(start: i32, stop: i32) -> Result<Vec<i32>> {
+    let beg_hour = start - (start % 3600);
+    let end_hour = stop - (stop % 3600);
+
+    let mut v = vec![];
+    let mut i = beg_hour;
+    while i <= end_hour {
+        v.push(i);
+        i += 3600;
+    }
+    Ok(v)
 }
 
 /// Return our version number
