@@ -16,14 +16,18 @@ mod cli;
 mod location;
 
 use std::collections::BTreeMap;
+use std::fs;
 
 use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use clap::{crate_authors, crate_description, crate_version, Parser};
+use csv::ReaderBuilder;
 use inline_python::{python, Context};
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
+
+use fetiche_formats::{prepare_csv, Cat21, Format};
 
 use crate::cli::Opts;
 use crate::location::{list_locations, load_locations, Location, BB};
@@ -133,8 +137,8 @@ fn main() -> Result<()> {
 
     let data: Vec<_> = v
         .iter()
-        .inspect(|tm| trace!("Fetching segment {}", tm))
-        .map(|tm| {
+        .inspect(|&tm| trace!("Fetching segment {}", tm))
+        .map(|&tm| {
             ctx.run(python! {
                 seg = 'tm
                 bb = 'bb
@@ -151,10 +155,32 @@ fn main() -> Result<()> {
 
     // End of the Python part thanks $DEITY! (and @m_ou_se on Twitter)
     //
-    // data is a Vec<String> with each component a CSV string
-    //
+    let format = Format::PandaStateVector;
 
-    println!("final array of csv:\n{:?}", data);
+    trace!("now merging {} csv segments", data.len());
+
+    // data is a Vec<String> with each component a CSV "file"
+    //
+    let data: Vec<Cat21> = data
+        .iter()
+        .map(|seg| {
+            let mut rdr = ReaderBuilder::new()
+                .flexible(true)
+                .has_headers(true)
+                .from_reader(seg.as_bytes());
+            format.from_csv(&mut rdr).unwrap()
+        })
+        .flatten()
+        .collect();
+
+    let data = prepare_csv(data, true)?;
+
+    // Manage output
+    //
+    match opts.output {
+        Some(output) => fs::write(output, data)?,
+        _ => println!("{:?}", data),
+    }
 
     Ok(())
 }
