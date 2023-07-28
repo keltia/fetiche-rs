@@ -15,12 +15,8 @@ pub struct Opts {
     #[clap(short = 'o', long)]
     pub output: Option<String>,
     /// Detection range in nautical miles (default is 25)
-    #[clap(short = 'R', long, default_value = 25)]
+    #[clap(short = 'R', long, default_value = "25")]
     pub range: u32,
-    /// Location latitude
-    pub lat: Option<f32>,
-    /// Location longitude
-    pub lon: Option<f32>,
     /// Start date (YYYY-MM-DD).
     pub start: Option<String>,
     /// End date (YYYY-MM-DD).
