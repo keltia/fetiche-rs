@@ -45,7 +45,7 @@ tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
 
-csv = "1.1"
+csv = "1.2"
 mini-moka = "0.10"
 percent-encoding = "2.2"
 signal-hook = "0.3"
