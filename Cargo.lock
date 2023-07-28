@@ -842,6 +842,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dateparser"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18e537db44ee4822af930a9a2c9eedfcde9d47e01c6731fbf34ea01b5a7ccf7d"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "lazy_static",
+ "regex",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1991,6 +2003,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "dateparser",
  "fetiche-formats",
  "hcl-rs",
  "home",
