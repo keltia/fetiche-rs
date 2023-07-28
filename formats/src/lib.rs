@@ -83,6 +83,7 @@ pub enum Format {
     Cat21,
     Cat129,
     Opensky,
+    PandaStateVector,
     Safesky,
 }
 
@@ -160,7 +161,7 @@ impl Format {
             .map(|(cnt, rec)| {
                 let rec = rec.unwrap();
                 debug!("rec={:?}", rec);
-                let mut line = into_cat21!(self, rec, Aeroscope, Asd, Safesky);
+                let mut line = into_cat21!(self, rec, Aeroscope, Asd, Safesky, PandaStateVector);
                 line.rec_num = cnt;
                 line
             })
@@ -239,6 +240,7 @@ impl From<&str> for Format {
             "cat21" => Format::Cat21,
             "Cat129" => Format::Cat129,
             "Avionix" => Format::Avionix,
+            "impala" => Format::PandaStateVector,
             _ => Format::None,
         }
     }
@@ -254,6 +256,7 @@ impl Display for Format {
             Format::Cat21 => "cat21".into(),
             Format::Cat129 => "cat129".into(),
             Format::Avionix => "avionix".into(),
+            Format::PandaStateVector => "impala".to_string(),
             Format::None => "none".into(),
         };
         write!(f, "{}", s)
