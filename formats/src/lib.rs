@@ -103,7 +103,12 @@ macro_rules! into_cat21 {
         match $from {
         $(
             Format::$name => {
-                let l: $name = $rec.deserialize(None).unwrap();
+                let l: $name = match $rec.deserialize(None) {
+                    Ok(rec) => rec,
+                    Err(e) => {
+                        panic!("{}", e.to_string());
+                    }
+                };
                 Cat21::from(&l)
             },
         )+
@@ -158,6 +163,7 @@ impl Format {
         let res: Vec<_> = rdr
             .records()
             .enumerate()
+            .inspect(|(n, _)| trace!("record #{}", n))
             .map(|(cnt, rec)| {
                 let rec = rec.unwrap();
                 debug!("rec={:?}", rec);
