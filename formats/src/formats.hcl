@@ -50,3 +50,10 @@ format "avionix" {
   source      = "Avionix"
   url         = "http://www.avionix.pl"
 }
+
+format "impala" {
+  type        = "adsb"
+  description = "Flattened StateVector extracted from Opensky Impala DB."
+  source      = "Opensky"
+  url         = "https://opensky-network.org/data/impala"
+}
