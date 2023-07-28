@@ -37,6 +37,8 @@ pub const AUTHORS: &str = crate_authors!();
 
 #[tracing::instrument]
 fn main() -> Result<()> {
+    trace!("enter");
+
     let opts = Opts::parse();
 
     // Initialise logging.
@@ -55,7 +57,10 @@ fn main() -> Result<()> {
     //
     banner()?;
 
+    trace!("read locations");
     let loc: BTreeMap<String, Location> = load_locations(opts.config)?;
+
+    trace!("parse arguments");
 
     // List loaded locations if nothing is specified, neither name nor location
     //
@@ -89,6 +94,8 @@ fn main() -> Result<()> {
     // We need to calculate the exact shard the data we want is into, otherwise the query will
     // take hours scanning all shards.
     //
+    trace!("calculate segments");
+
     let v = extract_segments(start, end)?;
     info!("{} segments", v.len());
     trace!("{:?}", v);
@@ -108,6 +115,8 @@ fn main() -> Result<()> {
 
     // Initialise our embedded Python environment
     //
+    trace!("initialise python");
+
     let v1 = v.clone();
     let ctx: Context = python! {
         from pyopensky import OpenskyImpalaWrapper
@@ -120,6 +129,8 @@ fn main() -> Result<()> {
 
     // Now for each segment, use the python code to fetch and return the DataFrames in CSV format
     //
+    trace!("fetch segments");
+
     let data: Vec<_> = v
         .iter()
         .inspect(|tm| trace!("Fetching segment {}", tm))
@@ -172,6 +183,8 @@ fn main() -> Result<()> {
 ///
 #[tracing::instrument]
 pub fn extract_segments(start: i32, stop: i32) -> Result<Vec<i32>> {
+    trace!("enter");
+
     let beg_hour = start - (start % 3600);
     let end_hour = stop - (stop % 3600);
 
