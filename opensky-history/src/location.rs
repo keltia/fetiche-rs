@@ -73,6 +73,8 @@ struct LocationsFile {
 ///
 #[tracing::instrument]
 pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location>> {
+    trace!("enter");
+
     // Load from file if specified
     //
     let data = if let Some(fname) = fname {
@@ -92,6 +94,8 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
 ///
 #[tracing::instrument]
 pub fn list_locations(data: &BTreeMap<String, Location>) -> Result<String> {
+    trace!("enter");
+
     let str = data
         .keys()
         .map(|name| {
