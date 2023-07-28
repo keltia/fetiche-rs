@@ -204,8 +204,6 @@ pub struct PandaStateVector {
     pub hour: i32,
 }
 
-convert_to!(from_parquet, PandaStateVector, Cat21);
-
 impl From<&PandaStateVector> for Cat21 {
     /// Generate a `Cat21` struct from `PandaStateVector`
     ///
