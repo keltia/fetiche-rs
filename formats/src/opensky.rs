@@ -171,7 +171,7 @@ convert_to!(from_opensky, StateVector, Cat21);
 ///
 /// XXX: Yet another definition, different in names and order
 ///
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct PandaStateVector {
     /// ID in the table
     pub id: u32,
@@ -207,7 +207,7 @@ pub struct PandaStateVector {
 convert_to!(from_parquet, PandaStateVector, Cat21);
 
 impl From<&PandaStateVector> for Cat21 {
-    /// Generate a `Cat21` struct from `StateList`
+    /// Generate a `Cat21` struct from `PandaStateVector`
     ///
     fn from(line: &PandaStateVector) -> Self {
         let tod: i64 = line.time as i64;
