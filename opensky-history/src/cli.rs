@@ -14,7 +14,7 @@ pub struct Opts {
     /// Output file (default is stdout).
     #[clap(short = 'o', long)]
     pub output: Option<String>,
-    /// Detection range in nautical miles (default is 25)
+    /// Detection range in nautical miles.
     #[clap(short = 'R', long, default_value = "25")]
     pub range: u32,
     /// Start date (YYYY-MM-DD).
