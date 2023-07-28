@@ -191,15 +191,15 @@ pub struct PandaStateVector {
     pub vertical_rate: Option<f32>,
     /// Call-sign of the vehicule
     pub callsign: Option<String>,
-    /// Situation
-    pub on_ground: bool,
-    pub alert: bool,
-    pub spi: bool,
+    /// Situation (actually bool but Python has False, not false.
+    pub on_ground: String,
+    pub alert: String,
+    pub spi: String,
     pub squawk: Option<String>,
     pub baro_altitude: Option<f32>,
     pub geo_altitude: Option<f32>,
-    pub last_position_update: Option<i32>,
-    pub last_contact: i32,
+    pub last_position_update: Option<f32>,
+    pub last_contact: f32,
     /// time shard aka hour
     pub hour: i32,
 }
