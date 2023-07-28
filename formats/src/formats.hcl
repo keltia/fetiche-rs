@@ -46,7 +46,7 @@ format "cat129" {
 
 format "avionix" {
   type        = "adsb"
-  description = "Flattened ASTERIX cat21-like for Avionix stations"
+  description = "Flattened ASTERIX cat21-like for Avionix stations."
   source      = "Avionix"
   url         = "http://www.avionix.pl"
 }
