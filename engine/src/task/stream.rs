@@ -5,7 +5,7 @@ use std::fmt::{Debug, Formatter};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 use tracing::trace;
 
 use engine_macros::RunnableDerive;
@@ -102,7 +102,7 @@ impl Stream {
                     site.stream(stdout, &token, &args).unwrap();
                 }
             }
-            None => return Err(anyhow!("site not defined")),
+            None => return Err(eyre!("site not defined")),
         }
         Ok(())
     }

@@ -25,7 +25,7 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 use std::{fs, thread};
 
-use anyhow::Result;
+use eyre::Result;
 #[cfg(unix)]
 use home::home_dir;
 use serde::Deserialize;

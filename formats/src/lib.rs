@@ -11,8 +11,8 @@ use std::collections::BTreeMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::Read;
 
-use anyhow::Result;
 use csv::{Reader, WriterBuilder};
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tabled::{builder::Builder, settings::Style};
 use tracing::{debug, trace};

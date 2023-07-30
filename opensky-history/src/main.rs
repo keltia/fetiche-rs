@@ -18,10 +18,10 @@ mod location;
 use std::collections::BTreeMap;
 use std::fs;
 
-use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use clap::{crate_authors, crate_description, crate_version, Parser};
 use csv::ReaderBuilder;
+use eyre::{eyre, Result};
 use inline_python::{python, Context};
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
@@ -79,13 +79,15 @@ fn main() -> Result<()> {
     let start = match opts.start {
         Some(start) => dateparser::parse(&start),
         None => Ok(Utc::now()),
-    }?;
+    }
+    .unwrap();
     trace!("start={}", start);
 
     let end = match opts.end {
         Some(end) => dateparser::parse(&end),
         None => Ok(Utc::now()),
-    }?;
+    }
+    .unwrap();
     trace!("end={}", end);
 
     // Convert into UNIX timestamps
@@ -107,9 +109,9 @@ fn main() -> Result<()> {
     let bb = match opts.name {
         Some(name) => match loc.get(&name) {
             Some(loc) => loc,
-            None => return Err(anyhow!("Unknown location")),
+            None => return Err(eyre!("Unknown location")),
         },
-        None => return Err(anyhow!("You must specify a location")),
+        None => return Err(eyre!("You must specify a location")),
     };
 
     // Default range is 25 nm

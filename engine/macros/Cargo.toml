@@ -20,6 +20,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow.workspace = true
+eyre.workspace = true
 syn = { version = "2.0", features = ["extra-traits"] }
 quote = "1.0"

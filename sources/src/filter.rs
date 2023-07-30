@@ -156,7 +156,7 @@ impl From<String> for Filter {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
+    use eyre::Result;
     use rstest::rstest;
 
     use super::*;

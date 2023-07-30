@@ -11,7 +11,7 @@
 //! [Impala]: https://opensky-network.org/data/impala/
 //!
 
-use anyhow::Result;
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use tracing::{debug, trace};

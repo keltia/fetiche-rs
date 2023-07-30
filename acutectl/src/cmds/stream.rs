@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::stdout;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 use tracing::{info, trace};
 
 use fetiche_engine::{Convert, Engine, Filter, Flow, Format, Site, Store, Stream, Tee};
@@ -21,7 +21,7 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
     let srcs = Arc::clone(&engine.sources());
     let site = match Site::load(name, &engine.sources())? {
         Flow::Streamable(s) => s,
-        _ => return Err(anyhow!("this site is not fetchable")),
+        _ => return Err(eyre!("this site is not fetchable")),
     };
 
     let filter = filter_from_opts(sopts)?;
@@ -116,12 +116,12 @@ fn check_args(opts: &StreamOpts) -> Result<()> {
     // Do we have options for filter
     //
     if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
-        return Err(anyhow!("Can not specify --today and -B/-E"));
+        return Err(eyre!("Can not specify --today and -B/-E"));
     }
 
     if (opts.begin.is_some() && opts.end.is_none()) || (opts.begin.is_none() && opts.end.is_some())
     {
-        return Err(anyhow!("We need both -B/-E or none"));
+        return Err(eyre!("We need both -B/-E or none"));
     }
 
     Ok(())

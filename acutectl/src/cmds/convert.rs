@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use anyhow::Result;
+use eyre::Result;
 use tracing::trace;
 
 use fetiche_engine::{Convert, Engine, Read};

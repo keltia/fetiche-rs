@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use anyhow::Result;
+use eyre::Result;
 use serde::Deserialize;
 use strum::{EnumIter, EnumVariantNames};
 use tabled::builder::Builder;

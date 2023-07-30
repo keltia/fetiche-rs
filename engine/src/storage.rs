@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use anyhow::Result;
+use eyre::Result;
 use nom::{
     character::complete::{i8, one_of},
     combinator::map,

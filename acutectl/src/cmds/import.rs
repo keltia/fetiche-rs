@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use anyhow::Result;
+use eyre::Result;
 use tracing::{info, trace};
 
 use fetiche_engine::{Engine, Format};

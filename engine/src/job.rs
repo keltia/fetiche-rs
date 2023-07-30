@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, VecDeque};
 use std::io::Write;
 use std::sync::mpsc::channel;
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 use tracing::{info, trace};
 use tracing::{span, Level};
 
@@ -97,10 +97,10 @@ impl Job {
         match first {
             Some(first) => {
                 if first.cap() != IO::Producer {
-                    return Err(anyhow!("First task must be a producer"));
+                    return Err(eyre!("First task must be a producer"));
                 }
             }
-            None => return Err(anyhow!("empty task list")),
+            None => return Err(eyre!("empty task list")),
         }
 
         // At this point, `self.list` is not empty so in the worst case, `first == last`.
@@ -113,7 +113,7 @@ impl Job {
             // Then we check the last one
             //
             if last.cap() != IO::Consumer && last.cap() != IO::Filter {
-                return Err(anyhow!("last must be consumer or filter"));
+                return Err(eyre!("last must be consumer or filter"));
             }
         }
 

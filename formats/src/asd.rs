@@ -5,8 +5,8 @@
 //!
 //! JSON endpoint added later by ASD in Nov. 2022.
 
-use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
+use eyre::Result;
 use serde::Deserialize;
 use tracing::debug;
 

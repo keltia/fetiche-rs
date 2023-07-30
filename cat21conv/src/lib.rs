@@ -14,10 +14,10 @@
 //!
 //! File-based example:
 //! ```no_run
-//! # use anyhow::Result;
+//! # use eyre::Result;
 //! # use std::path::PathBuf;
 //! # use tracing::info;
-//! use anyhow::anyhow;
+//! use eyre::eyre;
 //! use cat21conv::Task;
 //! use fetiche_formats::{Cat21, Format};
 //! use fetiche_sources::Flow;
@@ -35,7 +35,7 @@
 //!
 //! Network-based example:
 //! ```no_run
-//! # use anyhow::Result;
+//! # use eyre::Result;
 //! # use std::path::PathBuf;
 //! use cat21conv::Task;
 //!
@@ -46,7 +46,7 @@
 //! use fetiche_sources::{Sources,Filter,Site};
 //!
 //! # fn main() -> Result<()> {
-//! # use anyhow::anyhow;
+//! # use eyre::eyre;
 //! # use fetiche_sources::Flow;
 //! let name = "eih";
 //! # let filter = Filter::None;
@@ -56,7 +56,7 @@
 //! let site = Site::load(name, &cfg)?;
 //! let site = match site {
 //!     Flow::Fetchable(s) => s,
-//!     _ => return Err(anyhow!("this is not streamable"))
+//!     _ => return Err(eyre!("this is not streamable"))
 //! };
 //! let res: Vec<Cat21> = Task::new(name).site(site).when(filter).run()?;
 //!
@@ -68,9 +68,9 @@
 use std::fs;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
 use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
+use eyre::{eyre, Result};
 use tracing::debug;
 
 use fetiche_formats::{Cat21, Format};
@@ -224,7 +224,7 @@ impl Task {
                 debug!("{:?} as {}", res, format);
                 Ok(res)
             }
-            Input::Nothing => Err(anyhow!("no formats specified")),
+            Input::Nothing => Err(eyre!("no formats specified")),
         }
     }
 }

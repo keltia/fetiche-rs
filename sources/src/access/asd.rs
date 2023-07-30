@@ -16,9 +16,9 @@
 use std::ops::Add;
 use std::sync::mpsc::Sender;
 
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use clap::{crate_name, crate_version};
+use eyre::{eyre, Result};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -197,7 +197,7 @@ impl Fetchable for Asd {
             trace!("load stored token");
             let token: Token = match serde_json::from_str(&token) {
                 Ok(token) => token,
-                Err(_) => return Err(anyhow!("Invalid/no token in {:?}", token)),
+                Err(_) => return Err(eyre!("Invalid/no token in {:?}", token)),
             };
 
             // Check stored token expiration date
@@ -293,7 +293,7 @@ impl Fetchable for Asd {
                 let errtxt = percent_decode(h["x-debug-exception"].as_bytes())
                     .decode_utf8()
                     .unwrap();
-                return Err(anyhow!("Error({}): {}", code, errtxt));
+                return Err(eyre!("Error({}): {}", code, errtxt));
             }
         }
 

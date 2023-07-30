@@ -1,9 +1,9 @@
 use std::fs;
 use std::io;
 
-use anyhow::{anyhow, Result};
 use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
 use clap_complete::generate;
+use eyre::{eyre, Result};
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::EnvFilter, fmt};
@@ -100,7 +100,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
                     let srcs = &engine.sources();
                     let site = match Site::load(&fopts.site, srcs)? {
                         Flow::Fetchable(s) => s,
-                        _ => return Err(anyhow!("this site is not fetchable")),
+                        _ => return Err(eyre!("this site is not fetchable")),
                     };
                     let fmt = site.format();
 

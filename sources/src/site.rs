@@ -12,7 +12,7 @@
 
 use std::fmt::{Debug, Display, Formatter};
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 use serde::{Deserialize, Serialize};
 use tracing::trace;
 
@@ -138,10 +138,10 @@ impl Site {
                             Ok(Flow::Fetchable(Box::new(s)))
                         }
                     }
-                    _ => Err(anyhow!("invalid site {}", name)),
+                    _ => Err(eyre!("invalid site {}", name)),
                 }
             }
-            None => Err(anyhow!("no such site {name}")),
+            None => Err(eyre!("no such site {name}")),
         }
     }
 

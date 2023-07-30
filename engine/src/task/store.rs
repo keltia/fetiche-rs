@@ -14,8 +14,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
-use anyhow::Result;
 use chrono::{Datelike, Timelike, Utc};
+use eyre::Result;
 use tracing::trace;
 
 use engine_macros::RunnableDerive;

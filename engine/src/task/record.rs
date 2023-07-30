@@ -6,7 +6,7 @@
 
 use std::sync::mpsc::Sender;
 
-use anyhow::Result;
+use eyre::Result;
 
 use engine_macros::RunnableDerive;
 use fetiche_formats::Format;

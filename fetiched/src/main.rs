@@ -8,8 +8,8 @@ use std::path::PathBuf;
 use std::time::Duration;
 use std::{fs, io};
 
-use anyhow::Result;
 use clap::Parser;
+use eyre::Result;
 use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::EnvFilter, fmt};

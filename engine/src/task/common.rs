@@ -7,7 +7,7 @@
 use std::fmt::Debug;
 use std::sync::mpsc::Sender;
 
-use anyhow::Result;
+use eyre::Result;
 
 use engine_macros::RunnableDerive;
 

@@ -19,9 +19,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{thread, time};
 
-use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
+use eyre::{eyre, Result};
 use mini_moka::sync::{Cache, ConcurrentCacheExt};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
@@ -240,7 +240,7 @@ impl Fetchable for Opensky {
             }
             code => {
                 let h = &resp.headers();
-                return Err(anyhow!("Error({}): {:?}", code, h));
+                return Err(eyre!("Error({}): {:?}", code, h));
             }
         }
 

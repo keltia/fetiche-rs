@@ -4,10 +4,10 @@ members = ["acutectl", "engine", "fetiched", "formats", "sources", "opensky-hist
 exclude = ["cat21conv"]
 
 [workspace.dependencies]
-anyhow = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 env_logger = "0.10"
+eyre = { version = "0.6.8", features = ["auto-install", "track-caller", "pyo3"] }
 fetiche-engine = { version = "0", path = "engine" }
 fetiche-formats = { version = "0", path = "formats" }
 fetiche-sources = { version = "0", path = "sources" }

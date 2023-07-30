@@ -4,7 +4,7 @@
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 use tracing::trace;
 
 use engine_macros::RunnableDerive;
@@ -71,7 +71,7 @@ impl Fetch {
                     site.fetch(stdout, &token, &self.args)?;
                 }
             }
-            None => return Err(anyhow!("no site defined")),
+            None => return Err(eyre!("no site defined")),
         }
         Ok(())
     }

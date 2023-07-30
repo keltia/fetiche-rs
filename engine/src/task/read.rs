@@ -6,7 +6,7 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 use tracing::trace;
 
 use engine_macros::RunnableDerive;
@@ -76,7 +76,7 @@ impl Read {
     pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Read::transform()");
         if self.path.is_none() || self.format == Format::None {
-            Err(anyhow!("uninitialised read"))
+            Err(eyre!("uninitialised read"))
         } else {
             let p = self.path.clone().unwrap();
             let fh = File::open(p)?;

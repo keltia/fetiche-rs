@@ -9,8 +9,8 @@ use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
 
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
+use eyre::{eyre, Result};
 #[cfg(unix)]
 use home::home_dir;
 use serde::{Deserialize, Serialize};
@@ -167,7 +167,7 @@ impl Sources {
         if t.exists() {
             Ok(fs::read_to_string(t)?)
         } else {
-            Err(anyhow!("{:?}: No such file", t))
+            Err(eyre!("{:?}: No such file", t))
         }
     }
 
@@ -455,13 +455,13 @@ impl Sites {
         let s: hcl::error::Result<Sites> = hcl::from_str(&content);
         let s = match s {
             Ok(s) => s,
-            Err(e) => return Err(anyhow!("syntax error or wrong version: {}", e)),
+            Err(e) => return Err(eyre!("syntax error or wrong version: {}", e)),
         };
 
         // First check
         //
         if s.version != CVERSION {
-            return Err(anyhow!("bad config version"));
+            return Err(eyre!("bad config version"));
         }
 
         // Fetch the site name and insert it into each Site
@@ -491,7 +491,7 @@ impl Sites {
 mod tests {
     use std::env::temp_dir;
 
-    use anyhow::bail;
+    use eyre::bail;
     use tracing::debug;
 
     use crate::DataType;

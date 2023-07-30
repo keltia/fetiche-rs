@@ -13,8 +13,8 @@
 use std::sync::mpsc::Sender;
 use std::vec;
 
-use anyhow::Result;
 use clap::{crate_name, crate_version};
+use eyre::Result;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};

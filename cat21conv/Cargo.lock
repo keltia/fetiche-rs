@@ -91,7 +91,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyhow"
+name = "eyre"
 version = "1.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c7d0618f0e0b7e8ff11427422b64564d5fb0be1940354bfe2e0529b18a9d9b8"
@@ -460,7 +460,7 @@ checksum = "a2698f953def977c68f935bb0dfa959375ad4638570e969e2f1e9f433cbf1af6"
 name = "cat21conv"
 version = "0.8.1"
 dependencies = [
- "anyhow",
+    "eyre",
  "assert_cmd",
  "chrono",
  "clap",
@@ -850,7 +850,7 @@ dependencies = [
 name = "fetiche-formats"
 version = "0.13.0"
 dependencies = [
- "anyhow",
+    "eyre",
  "chrono",
  "csv",
  "hcl-rs",
@@ -870,7 +870,7 @@ dependencies = [
 name = "fetiche-sources"
 version = "0.10.0"
 dependencies = [
- "anyhow",
+    "eyre",
  "chrono",
  "clap",
  "csv",

@@ -14,8 +14,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use anyhow::Result;
 use async_trait::async_trait;
+use eyre::Result;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::*;
 use tokio::task::JoinHandle;

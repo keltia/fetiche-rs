@@ -17,7 +17,7 @@ use std::thread::*;
 use std::time::Duration;
 use std::{fs, io, thread};
 
-use anyhow::Result;
+use eyre::Result;
 use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::EnvFilter, fmt};

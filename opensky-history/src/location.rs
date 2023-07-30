@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::fs;
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 use serde::Deserialize;
 use tracing::trace;
 
@@ -85,7 +85,7 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
 
     let loc: LocationsFile = hcl::from_str(&data)?;
     if loc.version != LOCATION_FILE_VER {
-        return Err(anyhow!("Bad locations file version, aborting…"));
+        return Err(eyre!("Bad locations file version, aborting…"));
     }
     Ok(loc.location)
 }
