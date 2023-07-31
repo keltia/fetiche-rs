@@ -30,14 +30,15 @@ Licensed under the [MIT](LICENSE) license.
 utilities for Aeronautical data about drones and aircraft.
 
 This is now divided into different crates with libraries (`fetiche-engine`, `fetiche-formats`, `fetiche-sources`) shared
-by the binary crates (`acutectl` and `cat21conv`).
+by the binary crates (`acutectl` and `opensky-history`).
 
 Binary crates include a command-line utility called `acutectl` to perform import from a file or fetch data from
 different sites. This program has been enhanced to cover both file and network input and as well to support more
 input formats.
 
-In a second phase, `acutectl` will be used to import ADS-B data into tables on a MySQL/MariaDB/Postgres/InfluxDB
-database, and replace both `cat21conv`.
+Now is included a utility call `opensky-history` to retrieve historical data from [Opensky]. This access is managed
+through a SSH-based shell to the Impala database. This is for everything older than 1h of real-time data which does
+complicate things. This utility use the [pyopensky] Python module (embedded through the `inline-python` crate).
 
 ## Installation
 
@@ -149,6 +150,7 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~caching tokens (like ASD ones) locally~~
 - ~~merge `import-adsb` and `cat21conv` into `acutectl`~~.
 - ~~Add a `Store` module to handle long-running jobs and their output.~~
+- ~~Retrieve historical data from the [Opensky] site.~~
 - rename `acutectl` into `fetichectl`.
 - link to HashiCorp Vault for storing credentials and tokens
 - Add more tests & benchmarks.
