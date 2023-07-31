@@ -12,9 +12,6 @@
 //! [Impala Shell]: https://opensky-network.org/data/impala
 //!
 
-mod cli;
-mod location;
-
 use std::collections::BTreeMap;
 use std::fs;
 
@@ -31,6 +28,9 @@ use fetiche_formats::{prepare_csv, Cat21, Format};
 
 use crate::cli::Opts;
 use crate::location::{list_locations, load_locations, Location, BB};
+
+mod cli;
+mod location;
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -168,14 +168,13 @@ fn main() -> Result<()> {
     //
     let data: Vec<Cat21> = data
         .iter()
-        .map(|seg| {
+        .flat_map(|seg| {
             let mut rdr = ReaderBuilder::new()
                 .flexible(true)
                 .has_headers(true)
                 .from_reader(seg.as_bytes());
             format.from_csv(&mut rdr).unwrap()
         })
-        .flatten()
         .collect();
 
     let data = prepare_csv(data, true)?;

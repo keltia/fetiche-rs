@@ -78,7 +78,7 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
     // Load from file if specified
     //
     let data = if let Some(fname) = fname {
-        fs::read_to_string(&fname)?
+        fs::read_to_string(fname)?
     } else {
         include_str!("locations.hcl").to_owned()
     };
