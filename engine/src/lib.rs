@@ -14,37 +14,44 @@
 //! FIXME: at some point, a `[u8]`  might be preferable to a `String`.
 //!
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::convert::Into;
 use std::fmt::Debug;
-use std::fs;
 use std::path::PathBuf;
-use std::sync::mpsc::Receiver;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
+use std::time::Duration;
+use std::{fs, thread};
 
-use anyhow::Result;
+use eyre::Result;
 #[cfg(unix)]
 use home::home_dir;
 use serde::Deserialize;
 use strum::EnumString;
-use tracing::{event, info, trace, Level};
+use tracing::{debug, error, event, info, trace, warn, Level};
 
 pub use config::*;
-// Re-export formats/sources.
+pub use database::*;
 pub use fetiche_formats::Format;
 pub use fetiche_sources::{makepath, Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
 pub use job::*;
+pub use state::*;
 pub use storage::*;
 pub use task::*;
 
 mod config;
+mod database;
 mod job;
 mod parse;
+mod state;
 mod storage;
 mod task;
 
-pub(crate) fn version() -> String {
+/// Engine signature
+///
+pub fn version() -> String {
     format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }
 
@@ -54,17 +61,48 @@ const BASEDIR: &str = ".config";
 /// Configuration filename
 const ENGINE_CONFIG: &str = "engine.hcl";
 
+/// FIXME: Current running process ID — this will be handled by `fetiched` when operational
+const ENGINE_PID: &str = "fetiched.pid";
+
 /// Configuration file version
-const ENGINE_VERSION: usize = 1;
+const ENGINE_VERSION: usize = 2;
+
+/// Main state data file, will be created in `basedir`.
+pub(crate) const STATE_FILE: &str = "state";
+
+/// Tick is every 30s
+const TICK: u64 = 30;
+
+/// An `Engine` instance has a command channel for commands.
+///
+#[derive(Clone, Debug, strum::Display, EnumString)]
+pub enum EngineCtrl {
+    Start,
+    Stop,
+    Sync,
+    List,
+}
 
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
 #[derive(Clone, Debug)]
 pub struct Engine {
+    /// Command channel
+    pub ctrl: Sender<EngineCtrl>,
+    /// Current process DI
+    pub pid: u32,
+    /// Next job ID
+    pub next: Arc<AtomicUsize>,
+    /// Main area where state is saved (PID, jobs, etc.)
+    pub home: Arc<PathBuf>,
     /// Sources
     pub sources: Arc<Sources>,
     /// Storage area for long running jobs
     pub storage: Arc<Storage>,
+    /// Current state
+    pub state: Arc<RwLock<State>>,
+    /// Job Queue
+    pub jobs: Arc<RwLock<VecDeque<usize>>>,
 }
 
 impl Engine {
@@ -87,7 +125,8 @@ impl Engine {
 
         trace!("reading({:?}", fname);
 
-        let data = fs::read_to_string(&fname).expect(&format!("file not found {:?}", fname));
+        let data =
+            fs::read_to_string(&fname).unwrap_or_else(|_| panic!("file not found {:?}", fname));
 
         let cfg: EngineConfig = hcl::from_str(&data).expect("syntax error");
 
@@ -114,16 +153,141 @@ impl Engine {
             Ok(src) => src,
             Err(e) => panic!("No sources configured in 'sources.hcl':{}", e),
         };
-
         info!("{} sources loaded", src.len());
 
+        trace!("load storage areas");
+        // Register storage areas
+        //
         let areas = Storage::register(&cfg.storage);
-        Engine {
+        info!("{} areas loaded", areas.len());
+
+        // Save PID
+        //
+        let pid = std::process::id();
+        let basedir: PathBuf = cfg.basedir;
+        let pidfile: PathBuf = makepath!(&basedir, ENGINE_PID);
+        fs::write(&pidfile, format!("{pid}")).expect("can not write fetiched.pid");
+
+        info!("PID {} written in {:?}", pid, pidfile);
+
+        // Load state
+        //
+        let fname: PathBuf = makepath!(&basedir, STATE_FILE);
+        let state = match State::from(fname.clone()) {
+            Ok(state) => {
+                info!("State loaded from {:?}", fname);
+                debug!("{:?}", state);
+                state
+            }
+            Err(e) => {
+                warn!("Can not load state, creating new: {}", e.to_string());
+                State::new()
+            }
+        };
+
+        let jobs = VecDeque::<usize>::new();
+
+        // Instantiate everything
+        //
+        // Control channel first
+        //
+        let (tx, rx) = channel::<EngineCtrl>();
+
+        // tx is not in an Arc because it is clonable
+        //
+        let engine = Engine {
+            ctrl: tx,
+            pid,
+            next: Arc::new(AtomicUsize::new(*state.queue.back().unwrap() + 1)),
+            home: Arc::new(basedir),
             sources: Arc::new(src),
             storage: Arc::new(areas),
-        }
+            state: Arc::new(RwLock::new(state)),
+            jobs: Arc::new(RwLock::new(jobs)),
+        };
+        info!("New Engine loaded");
+
+        // Sync immediately, ensuring state is clean
+        //
+        engine.sync().expect("can not sync");
+
+        // Launch the control channel thread
+        //
+        trace!("launching controller");
+
+        let e = engine.clone();
+        thread::spawn(move || {
+            while let Ok(msg) = rx.recv() {
+                trace!("engine::controller: command: {}", msg);
+
+                match msg {
+                    EngineCtrl::Sync => match e.sync() {
+                        Ok(_) => (),
+                        Err(e) => error!("engine::controller: sync failed: {}", e.to_string()),
+                    },
+                    _ => (),
+                };
+            }
+        });
+
+        // Launch the sync thread for state
+        //
+        trace!(
+            "launching syncer for {}, every {}s",
+            engine.state_file().to_string_lossy(),
+            TICK
+        );
+
+        let e = engine.clone();
+        thread::spawn(move || loop {
+            if let Err(err) = e.command(EngineCtrl::Sync) {
+                error!("engine::sync failed: {}", err.to_string());
+            }
+            thread::sleep(Duration::from_secs(TICK));
+        });
+
+        engine
     }
 
+    /// Send a command to the engine
+    ///
+    #[tracing::instrument]
+    pub fn command(&self, cmd: EngineCtrl) -> Result<()> {
+        Ok(self.ctrl.send(cmd)?)
+    }
+
+    /// Create a new job queue
+    ///
+    #[tracing::instrument]
+    pub fn create_job(&mut self, s: &str) -> Job {
+        // Fetch next ID
+        //
+        let nextid = self.next.fetch_add(1, Ordering::SeqCst);
+
+        // Initialise job
+        //
+        let job = Job::new_with_id(s, nextid);
+
+        // Insert into job queue
+        //
+        let mut jobs = self.jobs.write().unwrap();
+        jobs.push_back(nextid);
+
+        // Update state
+        //
+        let mut state = self.state.write().unwrap();
+        state.last = nextid;
+        state.queue.push_back(nextid);
+
+        trace!("create_job with id: {}", nextid);
+        self.command(EngineCtrl::Sync).expect("can not sync");
+
+        job
+    }
+
+    /// Load authentication data
+    ///
+    #[tracing::instrument]
     pub fn auth(&mut self, db: BTreeMap<String, Auth>) -> &mut Self {
         // Generate a sources list with credentials
         //
@@ -172,6 +336,12 @@ impl Engine {
         Arc::clone(&self.sources)
     }
 
+    /// Return an `Arc::clone` of the Engine storage areas
+    ///
+    pub fn storage(&self) -> Arc<Storage> {
+        Arc::clone(&self.storage)
+    }
+
     /// Returns a list of all defined storage areas
     ///
     pub fn list_storage(&self) -> Result<String> {
@@ -194,12 +364,6 @@ impl Engine {
     ///
     pub fn list_tokens(&self) -> Result<String> {
         self.sources.list_tokens()
-    }
-
-    /// Create a new job queue
-    ///
-    pub fn create_job(&self, s: &str) -> Job {
-        Job::new(s)
     }
 
     /// Return Engine version (and internal modules)

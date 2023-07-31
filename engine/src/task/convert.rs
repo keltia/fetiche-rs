@@ -7,7 +7,7 @@
 
 use std::sync::mpsc::Sender;
 
-use anyhow::Result;
+use eyre::Result;
 use serde_json::json;
 use tracing::trace;
 

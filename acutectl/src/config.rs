@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 #[cfg(unix)]
 use home::home_dir;
 use serde::Deserialize;
@@ -62,11 +62,12 @@ impl Config {
             Some(fname) => fname,
             _ => Self::default_file(),
         };
-        let data = fs::read_to_string(fname).expect("Can not open config.hcl");
 
+        let data = fs::read_to_string(fname)?;
         let data: Config = hcl::from_str(&data)?;
+
         if data.version != CVERSION {
-            return Err(anyhow!("bad file version: {}", data.version));
+            return Err(eyre!("bad file version: {}", data.version));
         }
         Ok(data)
     }

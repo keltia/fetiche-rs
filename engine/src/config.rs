@@ -9,6 +9,8 @@ use serde::Deserialize;
 pub struct EngineConfig {
     /// Usual check for malformed file
     pub version: usize,
+    /// Base directory
+    pub basedir: PathBuf,
     /// List of storage types
     pub storage: BTreeMap<String, StorageConfig>,
 }

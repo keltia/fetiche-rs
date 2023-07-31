@@ -9,7 +9,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::sync::mpsc::Sender;
 
-use anyhow::Result;
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 
 // Re-export these modules for a shorted import path.

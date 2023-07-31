@@ -2,8 +2,8 @@ use std::fs;
 use std::io::{stdout, Write};
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
+use eyre::{eyre, Result};
 use tracing::{info, trace};
 
 use fetiche_engine::{Convert, Engine, Fetch, Filter, Flow, Format, Site, Tee};
@@ -13,7 +13,7 @@ use crate::FetchOpts;
 /// Actual fetching of data from a given site
 ///
 #[tracing::instrument]
-pub fn fetch_from_site(engine: &Engine, fopts: &FetchOpts) -> Result<()> {
+pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
 
     check_args(fopts)?;
@@ -23,7 +23,7 @@ pub fn fetch_from_site(engine: &Engine, fopts: &FetchOpts) -> Result<()> {
 
     let site = match Site::load(name, &srcs)? {
         Flow::Fetchable(s) => s,
-        _ => return Err(anyhow!("this site is not fetchable")),
+        _ => return Err(eyre!("this site is not fetchable")),
     };
     let filter = filter_from_opts(fopts)?;
 
@@ -102,11 +102,11 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
         //
         let begin = match &opts.begin {
             Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?,
-            None => return Err(anyhow!("bad -B parameter")),
+            None => return Err(eyre!("bad -B parameter")),
         };
         let end = match &opts.end {
             Some(end) => NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S")?,
-            None => return Err(anyhow!("Bad -E parameter")),
+            None => return Err(eyre!("Bad -E parameter")),
         };
 
         Ok(Filter::interval(begin, end))
@@ -137,12 +137,12 @@ fn check_args(opts: &FetchOpts) -> Result<()> {
     // Do we have options for filter
     //
     if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
-        return Err(anyhow!("Can not specify --today and -B/-E"));
+        return Err(eyre!("Can not specify --today and -B/-E"));
     }
 
     if (opts.begin.is_some() && opts.end.is_none()) || (opts.begin.is_none() && opts.end.is_some())
     {
-        return Err(anyhow!("We need both -B/-E or none"));
+        return Err(eyre!("We need both -B/-E or none"));
     }
 
     Ok(())

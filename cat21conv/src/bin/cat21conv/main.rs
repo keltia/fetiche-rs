@@ -18,14 +18,16 @@ use std::fs;
 use std::io::{stderr, Write};
 use std::time::Instant;
 
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use clap::Parser;
+use eyre::{eyre, Result};
+use tracing::{info, trace};
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{fmt, EnvFilter};
 
 use cat21conv::Task;
 use fetiche_formats::{prepare_csv, Cat21, Format};
 use fetiche_sources::{Filter, Flow, Site, Sources};
-use tracing::{info, trace};
 
 use crate::cli::{check_args, Opts};
 use crate::version::version;
@@ -58,11 +60,11 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
         //
         let begin = match &opts.begin {
             Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?,
-            None => return Err(anyhow!("bad -B parameter")),
+            None => return Err(eyre!("bad -B parameter")),
         };
         let end = match &opts.end {
             Some(end) => NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S")?,
-            None => return Err(anyhow!("Bad -E parameter")),
+            None => return Err(eyre!("Bad -E parameter")),
         };
 
         Ok(Filter::interval(begin, end))
@@ -104,7 +106,7 @@ fn get_from_source(cfg: &Sources, opts: &Opts) -> Result<Vec<Cat21>> {
 
             let fname = what
                 .to_str()
-                .ok_or_else(|| anyhow!("Bad file name {:?}", what))?;
+                .ok_or_else(|| eyre!("Bad file name {:?}", what))?;
 
             Task::new(fname).path(fname).format(fmt).run()
         }
@@ -114,10 +116,10 @@ fn get_from_source(cfg: &Sources, opts: &Opts) -> Result<Vec<Cat21>> {
             let name = opts
                 .site
                 .as_ref()
-                .ok_or_else(|| anyhow!("Bad site name {:?}", opts.site))?;
+                .ok_or_else(|| eyre!("Bad site name {:?}", opts.site))?;
             let site = match Site::load(name, cfg)? {
                 Flow::Fetchable(s) => s,
-                _ => return Err(anyhow!("this site is not fetchable")),
+                _ => return Err(eyre!("this site is not fetchable")),
             };
 
             info!("Fetching from network site {}", name);
@@ -144,9 +146,21 @@ fn main() -> Result<()> {
     //
     check_args(&opts)?;
 
-    // Prepare logging.
+    // Initialise logging.
     //
-    env_logger::init();
+    let fmt = fmt::layer()
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .with_target(false)
+        .compact();
+
+    // Load filters from environment
+    //
+    let filter = EnvFilter::from_default_env();
+
+    // Combine filter & specific format
+    //
+    tracing_subscriber::registry().with(filter).with(fmt).init();
 
     // Load default config if nothing is specified
     //

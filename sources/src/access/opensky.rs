@@ -19,9 +19,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{thread, time};
 
-use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
+use eyre::{eyre, Result};
 use mini_moka::sync::{Cache, ConcurrentCacheExt};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
@@ -94,7 +94,7 @@ struct Credentials {
 
 /// Statistics gathering struct
 ///
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub(crate) struct Stats {
     pub tm: u64,
     pub pkts: u32,
@@ -103,20 +103,6 @@ pub(crate) struct Stats {
     pub miss: u32,
     pub empty: u32,
     pub err: u32,
-}
-
-impl Default for Stats {
-    fn default() -> Self {
-        Self {
-            tm: 0_u64,
-            pkts: 0,
-            bytes: 0_u64,
-            hits: 0,
-            miss: 0,
-            empty: 0,
-            err: 0,
-        }
-    }
 }
 
 impl Display for Stats {
@@ -254,7 +240,7 @@ impl Fetchable for Opensky {
             }
             code => {
                 let h = &resp.headers();
-                return Err(anyhow!("Error({}): {:?}", code, h));
+                return Err(eyre!("Error({}): {:?}", code, h));
             }
         }
 

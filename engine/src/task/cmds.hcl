@@ -33,6 +33,11 @@ cmds "read" {
   description = "Read a block of data from a local file."
 }
 
+cmds "record" {
+  type        = "Consumer"
+  description = "Insert records into a database"
+}
+
 cmds "store" {
   type        = "Consumer"
   description = "Split the incoming data into different files in a StorageArea."

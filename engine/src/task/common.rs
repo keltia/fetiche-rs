@@ -7,7 +7,7 @@
 use std::fmt::Debug;
 use std::sync::mpsc::Sender;
 
-use anyhow::Result;
+use eyre::Result;
 
 use engine_macros::RunnableDerive;
 
@@ -32,6 +32,7 @@ impl Nothing {
     #[inline]
     #[tracing::instrument]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
+        dbg!(&data);
         Ok(stdout.send(format!("{}|NOP", data))?)
     }
 }
@@ -60,6 +61,7 @@ impl Copy {
     #[inline]
     #[tracing::instrument]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
+        dbg!(&data);
         Ok(stdout.send(data)?)
     }
 }

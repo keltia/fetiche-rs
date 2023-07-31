@@ -9,10 +9,9 @@ use std::collections::{BTreeMap, VecDeque};
 use std::io::Write;
 use std::sync::mpsc::channel;
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 use tracing::{info, trace};
 use tracing::{span, Level};
-use uuid::Uuid;
 
 use crate::{Runnable, IO};
 
@@ -21,7 +20,7 @@ use crate::{Runnable, IO};
 #[derive(Debug)]
 pub struct Job {
     /// Job ID
-    pub id: String,
+    pub id: usize,
     /// Name of the job
     pub name: String,
     /// FIFO list of tasks
@@ -33,13 +32,25 @@ impl Job {
     ///
     /// NOTE: No //EOJ
     ///
-    #[inline]
     #[tracing::instrument]
+    #[inline]
     pub fn new(name: &str) -> Self {
-        let uuid = Uuid::new_v4().to_string();
-        trace!("Job::new({})", uuid);
-        Job {
-            id: uuid,
+        trace!("Job::new()");
+        Self {
+            id: 0,
+            name: name.to_owned(),
+            list: VecDeque::new(),
+        }
+    }
+
+    /// Create job with a specific ID
+    ///
+    #[tracing::instrument]
+    #[inline]
+    pub fn new_with_id(name: &str, id: usize) -> Self {
+        trace!("job({}) with id {}", name, id);
+        Self {
+            id,
             name: name.to_owned(),
             list: VecDeque::new(),
         }
@@ -86,10 +97,10 @@ impl Job {
         match first {
             Some(first) => {
                 if first.cap() != IO::Producer {
-                    return Err(anyhow!("First task must be a producer"));
+                    return Err(eyre!("First task must be a producer"));
                 }
             }
-            None => return Err(anyhow!("empty task list")),
+            None => return Err(eyre!("empty task list")),
         }
 
         // At this point, `self.list` is not empty so in the worst case, `first == last`.
@@ -102,7 +113,7 @@ impl Job {
             // Then we check the last one
             //
             if last.cap() != IO::Consumer && last.cap() != IO::Filter {
-                return Err(anyhow!("last must be consumer or filter"));
+                return Err(eyre!("last must be consumer or filter"));
             }
         }
 
@@ -151,7 +162,9 @@ mod tests {
 
     #[test]
     fn test_job_run() {
-        let e = Engine::new();
+        env_logger::init();
+
+        let mut e = Engine::new();
         let t1 = Box::new(Nothing::new());
         let t2 = Box::new(Message::new("hello world"));
 
@@ -162,9 +175,10 @@ mod tests {
         let mut data = vec![];
 
         let res = j.run(&mut data);
+        assert!(res.is_ok());
 
         let res = String::from_utf8(data);
         assert!(res.is_ok());
-        assert_eq!("NOP|hello world", res.unwrap())
+        assert_eq!("start|NOP|hello world", res.unwrap())
     }
 }

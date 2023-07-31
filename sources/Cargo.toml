@@ -29,7 +29,7 @@ harness = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow.workspace = true
+eyre.workspace = true
 chrono.workspace = true
 clap.workspace = true
 env_logger.workspace = true
@@ -45,7 +45,7 @@ tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
 
-csv = "1.1"
+csv = "1.2"
 mini-moka = "0.10"
 percent-encoding = "2.2"
 signal-hook = "0.3"

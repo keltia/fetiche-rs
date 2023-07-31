@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
-use anyhow::Result;
+use eyre::Result;
 use tracing::trace;
 
 use engine_macros::RunnableDerive;

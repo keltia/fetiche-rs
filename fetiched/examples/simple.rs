@@ -4,13 +4,23 @@
 //!
 //! this is the bare version without using the macro.
 //!
+//! Added daemonize stuff to test detaching from the terminal **UNIX-only**
+//!
 
 use std::collections::VecDeque;
 use std::fmt::Debug;
-use std::io::{stdout, Write};
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
 use std::sync::mpsc::*;
-use std::thread;
 use std::thread::*;
+use std::time::Duration;
+use std::{fs, io, thread};
+
+use eyre::Result;
+use tracing::info;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{filter::EnvFilter, fmt};
 
 pub trait Runnable: Debug {
     fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
@@ -107,24 +117,70 @@ impl Job {
             writeln!(out, "received: ({})", msg).unwrap();
             out.flush().unwrap();
         }
-        for p in pids {
-            let _ = p.join().unwrap();
-        }
+        // for p in pids {
+        //     let _ = p.join().unwrap();
+        // }
     }
 }
 
-fn main() {
-    let t1 = Counter { cnt: 1 };
-    let t2 = Msg {
-        msg: "bnar".to_string(),
-    };
-    let t3 = Counter { cnt: 42 };
+fn main() -> Result<()> {
+    let fmt = fmt::layer()
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .with_target(false)
+        .compact();
 
-    let mut j = Job::new("test");
+    // Load filters from environment
+    //
+    let filter = EnvFilter::from_default_env();
 
-    j.add(Box::new(t1)).add(Box::new(t2)).add(Box::new(t3));
+    // Combine filter & specific format
+    //
+    tracing_subscriber::registry().with(filter).with(fmt).init();
 
-    dbg!(&j);
+    let pid = PathBuf::from("/tmp/simple.pid");
+    if pid.exists() {
+        info!("PID exist");
+        let pid = fs::read_to_string(&pid)?.trim_end().parse::<u32>()?;
+        eprintln!("Check PID {}", pid);
+        std::process::exit(1);
+    }
 
-    j.run(&mut stdout());
+    let stdout = File::create("/tmp/foo.out")?;
+    let stderr = File::create("/tmp/foo.err")?;
+
+    let daemon = daemonize::Daemonize::new()
+        .pid_file(&pid)
+        .working_directory("/tmp")
+        .stdout(stdout)
+        .stderr(stderr);
+
+    match daemon.start() {
+        Ok(_) => {
+            info!("In child, detached");
+
+            let mut stdout = io::stdout();
+
+            let t1 = Counter { cnt: 1 };
+            let t2 = Msg {
+                msg: "bnar".to_string(),
+            };
+            let t3 = Counter { cnt: 42 };
+
+            let mut j = Job::new("test");
+
+            j.add(Box::new(t1)).add(Box::new(t2)).add(Box::new(t3));
+
+            dbg!(&j);
+
+            j.run(&mut stdout);
+
+            let _ = stdout.flush()?;
+
+            info!("sleep");
+            sleep(Duration::from_secs(60));
+        }
+        Err(e) => eprintln!("Error: {}", e),
+    }
+    Ok(fs::remove_file(&pid)?)
 }

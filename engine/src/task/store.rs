@@ -14,8 +14,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
-use anyhow::Result;
 use chrono::{Datelike, Timelike, Utc};
+use eyre::Result;
 use tracing::trace;
 
 use engine_macros::RunnableDerive;
@@ -50,17 +50,21 @@ impl Store {
     /// path as path/ID
     ///
     #[tracing::instrument]
-    pub fn new(path: &str, id: &str) -> Self {
+    pub fn new(path: &str, id: usize) -> Self {
         trace!("store::new({})", path);
 
-        let path: PathBuf = makepath!(path, id);
+        // We want to have `path/current` pointing to `path/ID`
+        //
+        let id = format!("{id}");
+        let base = path.clone();
+        let path: PathBuf = makepath!(path, &id);
 
         // Base is PATH/ID/
         //
         create_dir(&path)
             .unwrap_or_else(|_| panic!("can not create {} in {}", id, path.to_string_lossy()));
 
-        let curr: PathBuf = makepath!(&path, "current");
+        let curr: PathBuf = makepath!(&base, "current");
         if curr.exists() {
             fs::remove_file(&curr).expect("can not remove current");
         }

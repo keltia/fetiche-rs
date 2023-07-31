@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use anyhow::Result;
+use eyre::Result;
 use serde::Deserialize;
 use strum::{EnumIter, EnumVariantNames};
 use tabled::{builder::Builder, settings::Style};
@@ -13,6 +13,7 @@ pub use common::*;
 pub use convert::*;
 pub use fetch::*;
 pub use read::*;
+pub use record::*;
 pub use store::*;
 pub use stream::*;
 pub use tee::*;
@@ -23,6 +24,7 @@ mod common;
 mod convert;
 mod fetch;
 mod read;
+mod record;
 mod store;
 mod stream;
 mod tee;
@@ -36,6 +38,7 @@ pub enum Cmds {
     Message,
     Nothing,
     Read,
+    Record,
     Store,
     Stream,
     Tee,

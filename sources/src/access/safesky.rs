@@ -9,7 +9,7 @@
 
 use std::sync::mpsc::Sender;
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use tracing::trace;
@@ -113,7 +113,7 @@ impl Fetchable for Safesky {
         trace!("safesky::authenticate");
 
         if self.api_key.is_empty() {
-            return Err(anyhow!("No API key"));
+            return Err(eyre!("No API key"));
         }
         Ok(self.api_key.clone())
     }

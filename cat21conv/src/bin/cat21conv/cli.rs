@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use eyre::{eyre, Result};
 
 /// CLI options
 #[derive(Parser, Debug)]
@@ -55,26 +55,26 @@ pub fn check_args(opts: &Opts) -> Result<()> {
     // Check arguments.
     //
     if opts.input.is_some() && opts.site.is_some() {
-        return Err(anyhow!("Specify either a site or a filename, not both"));
+        return Err(eyre!("Specify either a site or a filename, not both"));
     }
 
     if opts.input.is_none() && opts.site.is_none() {
-        return Err(anyhow!("Specify at least a site or a filename"));
+        return Err(eyre!("Specify at least a site or a filename"));
     }
 
     if opts.input.is_some() && opts.format.is_none() {
-        return Err(anyhow!("Format must be specified for files"));
+        return Err(eyre!("Format must be specified for files"));
     }
 
     // Do we have options for filter
 
     if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
-        return Err(anyhow!("Can not specify --today and -B/-E"));
+        return Err(eyre!("Can not specify --today and -B/-E"));
     }
 
     if (opts.begin.is_some() && opts.end.is_none()) || (opts.begin.is_none() && opts.end.is_some())
     {
-        return Err(anyhow!("We need both -B/-E or none"));
+        return Err(eyre!("We need both -B/-E or none"));
     }
 
     Ok(())
