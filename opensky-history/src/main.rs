@@ -114,6 +114,9 @@ fn main() -> Result<()> {
         None => return Err(eyre!("You must specify a location")),
     };
 
+    let icao = if opts.icao.is_some() {
+        " AND CODE = {}"
+    };
     // Default range is 25 nm
     //
     let bb = BB::from_location(bb, opts.range);
