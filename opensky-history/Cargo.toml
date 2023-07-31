@@ -23,19 +23,20 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = { version = "0.4", features = ["serde"] }
-clap = { version = "4", features = ["cargo", "derive"] }
+chrono.workspace = true
+clap.workspace = true
+eyre.workspace = true
+fetiche-formats.workspace = true
+hcl-rs.workspace = true
+home.workspace = true
+serde.workspace = true
+serde_repr.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
+
 csv = "1.2"
 dateparser = "0.2"
-eyre = { version = "0.6.8", features = ["auto-install", "track-caller", "pyo3"] }
-fetiche-formats = { version = "0", path = "../formats" }
-hcl-rs = "0.14"
-home = "0.5"
 inline-python = "0.12"
-serde = { version = "1.0", features = ["derive"] }
-serde_repr = "0.1"
-tracing = "0.1"
-tracing-log = { version = "0.1", features = ["env_logger"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
 
 [dependencies.pyo3]
