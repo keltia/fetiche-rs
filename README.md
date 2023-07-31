@@ -32,13 +32,13 @@ utilities for Aeronautical data about drones and aircraft.
 This is now divided into different crates with libraries (`fetiche-engine`, `fetiche-formats`, `fetiche-sources`) shared
 by the binary crates (`acutectl` and `opensky-history`).
 
-Binary crates include a command-line utility called `acutectl` to perform import from a file or fetch data from
-different sites. This program has been enhanced to cover both file and network input and as well to support more
-input formats.
+Binary crates include command-line utilitites (`acutectl` and `opensky-history`) to perform import from a file or 
+fetch data from different sites. This program has been enhanced to cover both file and network input and as well to
+support more input formats.
 
-Now is included a utility call `opensky-history` to retrieve historical data from [Opensky]. This access is managed
-through a SSH-based shell to the Impala database. This is for everything older than 1h of real-time data which does
-complicate things. This utility use the [pyopensky] Python module (embedded through the `inline-python` crate).
+`opensky-history` is for retrieving historical data from [Opensky]. This access is managed through a SSH-based shell to
+the Impala database. This is for everything older than 1h of real-time data which does complicate things. This utility 
+use the [pyopensky] Python module (embedded through the `inline-python` crate).
 
 ## Installation
 
@@ -55,9 +55,9 @@ This is intentionally *not* a run-time option but a compile-time one.
 
 ## Usage
 
-For the moment, there is only one binary called `acutectl` (with `.exe` on Windows). It can be used to fetch data into
-their native format (csv, json) or import said data into a database.  It uses the `fetiche-sources` for all the code 
-related to accessing, authenticating and fetching data in various ways.  
+For the moment, there are two binaries called `acutectl` (with `.exe` on Windows) and `opensky-history`. The formert is
+used to fetch data into their native format (csv, json) or import said data into a database.  It uses 
+`fetiche-engine` for all the code related to accessing, authenticating and fetching data in various ways.
 
 Right now, `acutectl` use blocking HTTP calls and is not using any
 `async` features.
@@ -65,7 +65,8 @@ Right now, `acutectl` use blocking HTTP calls and is not using any
 However, while working on streaming support for Opensky, I have been experimenting with [tokio] for async support and
 `acutectl` might eventually become fully-async. It does help for some stuff including signal (read ^C) support.
 
-All the commands are described in more details in the [acutectl README.md](acutectl/README.md).
+All the commands are described in more details in the [acutectl README.md](acutectl/README.md) and
+[opensky-history README.md](opensky-history/README.md) files. 
 
 ## Structure and Design
 
@@ -194,3 +195,5 @@ I use Git Flow for this package so please use something similar or the usual Git
 [tokio]: https://crates.io/crates/tokio
 
 [GRPC]: https://en.wikipedia.org/wiki/GRPC
+
+[pyopensky]: https://pypi.org/project/pyopensky/ 
