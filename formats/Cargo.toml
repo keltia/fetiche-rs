@@ -25,6 +25,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 chrono.workspace = true
+eyre.workspace = true
 hcl-rs.workspace = true
 log.workspace = true
 reqwest.workspace = true
@@ -35,7 +36,6 @@ tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
 
-csv = "1.1"
-eyre = { version = "0.6.8", features = ["auto-install", "track-caller", "pyo3"] }
+csv = "1.2"
 influxdb = { version = "0.6", features = ["derive"] }
 percent-encoding = "2.2"
