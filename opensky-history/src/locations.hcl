@@ -2,6 +2,11 @@ version = 1
 
 default = "Belfast"
 
+location "Merignac" {
+  lat = 44.8
+  lon = -0.7
+}
+
 location "Belfast" {
   lat = 54.7
   lon = -6.2
