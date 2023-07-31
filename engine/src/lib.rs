@@ -184,6 +184,7 @@ impl Engine {
                 State::new()
             }
         };
+        trace!("state={:?}", state);
 
         let jobs = VecDeque::<usize>::new();
 
@@ -198,7 +199,7 @@ impl Engine {
         let engine = Engine {
             ctrl: tx,
             pid,
-            next: Arc::new(AtomicUsize::new(*state.queue.back().unwrap() + 1)),
+            next: Arc::new(AtomicUsize::new(state.last + 1)),
             home: Arc::new(basedir),
             sources: Arc::new(src),
             storage: Arc::new(areas),
