@@ -1,12 +1,12 @@
 [package]
 name = "fetiche-formats"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Various input file formats for the Fetiche framework."
 readme = "README.md"
 license = "MIT"
-repository = "https://github.com/keltia/drone-gencsv"
+repository = "https://github.com/keltia/fetiche-rs"
 categories = ["aerospace::drones"]
 keywords = ["asterix", "drones", "aeronautical-data", "ads-b"]
 
@@ -24,8 +24,8 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow.workspace = true
 chrono.workspace = true
+eyre.workspace = true
 hcl-rs.workspace = true
 log.workspace = true
 reqwest.workspace = true
@@ -33,7 +33,9 @@ serde.workspace = true
 serde_json.workspace = true
 serde_repr.workspace = true
 tabled.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
 
-csv = "1.1"
+csv = "1.2"
 influxdb = { version = "0.6", features = ["derive"] }
 percent-encoding = "2.2"

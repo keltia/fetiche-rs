@@ -48,6 +48,7 @@ impl From<&Safesky> for Cat21 {
     ///
     /// TODO: transformations to be confirmed
     ///
+    #[tracing::instrument]
     fn from(line: &Safesky) -> Self {
         let tod = line.last_update.timestamp();
         Cat21 {

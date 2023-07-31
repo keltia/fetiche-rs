@@ -50,6 +50,7 @@ impl From<&Aeroscope> for Cat21 {
     /// The following fields are lost:
     /// - aeroscope_id
     ///
+    #[tracing::instrument]
     fn from(line: &Aeroscope) -> Self {
         let tod = line.receive_date.parse::<DateTime<Utc>>().unwrap();
         let tod = tod.timestamp();
@@ -101,6 +102,7 @@ impl From<&Aeroscope> for Cat21 {
 impl From<&Aeroscope> for Cat129 {
     /// Load and transform into Cat129
     ///
+    #[tracing::instrument]
     fn from(line: &Aeroscope) -> Self {
         let tod = line.receive_date.parse::<DateTime<Utc>>().unwrap();
         let tod = tod.timestamp();

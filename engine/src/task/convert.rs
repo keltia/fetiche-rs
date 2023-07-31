@@ -7,9 +7,9 @@
 
 use std::sync::mpsc::Sender;
 
-use anyhow::Result;
-use log::trace;
+use eyre::Result;
 use serde_json::json;
+use tracing::trace;
 
 use engine_macros::RunnableDerive;
 use fetiche_formats::{prepare_csv, Cat21, Format, StateList};
@@ -29,6 +29,7 @@ pub struct Convert {
 
 impl Convert {
     #[inline]
+    #[tracing::instrument]
     pub fn new() -> Self {
         Self {
             io: IO::Filter,
@@ -54,6 +55,7 @@ impl Convert {
     ///
     /// FIXME: only output Cat21 for now.
     ///
+    #[tracing::instrument]
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("into::execute");
 

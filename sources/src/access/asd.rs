@@ -13,17 +13,17 @@
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
 
-use std::io::Write;
 use std::ops::Add;
+use std::sync::mpsc::Sender;
 
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use clap::{crate_name, crate_version};
-use log::{debug, trace, warn};
+use eyre::{eyre, Result};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tracing::{debug, trace, warn};
 
 use fetiche_formats::Format;
 
@@ -117,7 +117,10 @@ pub struct Asd {
 }
 
 impl Asd {
+    #[tracing::instrument]
     pub fn new() -> Self {
+        trace!("asd::new");
+
         Asd {
             features: vec![Capability::Fetch],
             site: "NONE".to_string(),
@@ -133,7 +136,10 @@ impl Asd {
 
     /// Load some data from the configuration file
     ///
+    #[tracing::instrument]
     pub fn load(&mut self, site: &Site) -> &mut Self {
+        trace!("asd::load");
+
         self.site = site.name.clone().unwrap();
         self.format = site.format.as_str().into();
         self.base_url = site.base_url.to_owned();
@@ -169,8 +175,10 @@ impl Fetchable for Asd {
 
     /// Authenticate to the site using the supplied credentials and get a token
     ///
+    #[tracing::instrument]
     fn authenticate(&self) -> Result<String> {
         trace!("authenticate as ({:?})", &self.login);
+
         // Prepare our submission data
         //
         let cred = Credentials {
@@ -189,7 +197,7 @@ impl Fetchable for Asd {
             trace!("load stored token");
             let token: Token = match serde_json::from_str(&token) {
                 Ok(token) => token,
-                Err(_) => return Err(anyhow!("Invalid/no token in {:?}", token)),
+                Err(_) => return Err(eyre!("Invalid/no token in {:?}", token)),
             };
 
             // Check stored token expiration date
@@ -209,6 +217,7 @@ impl Fetchable for Asd {
             token.token
         } else {
             trace!("no token");
+
             // fetch token from site
             //
             let url = format!("{}{}", self.base_url, self.token);
@@ -234,8 +243,9 @@ impl Fetchable for Asd {
 
     /// Fetch actual data using the aforementioned token
     ///
-    fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
-        trace!("Submit parameters");
+    #[tracing::instrument]
+    fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
+        trace!("asd::fetch");
 
         let f: Filter = serde_json::from_str(args)?;
 
@@ -264,7 +274,7 @@ impl Fetchable for Asd {
         // use token
         //
         let url = format!("{}{}", self.base_url, self.get);
-        debug!("Fetching data through {}…", url);
+        trace!("Fetching data through {}…", url);
 
         let resp = http_post_auth!(self, url, token, &data)?;
 
@@ -279,18 +289,16 @@ impl Fetchable for Asd {
                 //
                 use percent_encoding::percent_decode;
                 trace!("error resp={:?}", resp);
-                let h = &resp.headers();
+                let h = resp.headers();
                 let errtxt = percent_decode(h["x-debug-exception"].as_bytes())
                     .decode_utf8()
                     .unwrap();
-                return Err(anyhow!("Error({}): {}", code, errtxt));
+                return Err(eyre!("Error({}): {}", code, errtxt));
             }
         }
 
         let resp = resp.text()?;
-        write!(out, "{}", resp)?;
-        out.flush()?;
-        Ok(())
+        Ok(out.send(resp)?)
     }
 
     /// Return the site's input formats
@@ -356,6 +364,7 @@ mod tests {
         init();
         let client = Client::new();
         Asd {
+            features: vec![Capability::Fetch],
             site: "NONE".to_string(),
             format: Format::Asd,
             login: "user".to_string(),

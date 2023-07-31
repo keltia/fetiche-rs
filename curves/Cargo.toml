@@ -6,7 +6,7 @@ authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = ""
 readme = "README.md"
 license = "MIT"
-repository = "https://github.com/keltia/drone-gencsv"
+repository = "https://github.com/keltia/fetiche-rs"
 categories = ["command-line-utilities", "aerospace::drones"]
 keywords = ["cat21", "asterix", "drones", "aeronautical-data"]
 
@@ -20,7 +20,7 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow.workspace = true
+eyre.workspace = true
 clap.workspace = true
 env_logger.workspace = true
 fetiche-sources.workspace = true

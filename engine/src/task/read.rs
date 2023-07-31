@@ -6,8 +6,8 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
-use anyhow::{anyhow, Result};
-use log::trace;
+use eyre::{eyre, Result};
+use tracing::trace;
 
 use engine_macros::RunnableDerive;
 use fetiche_formats::Format;
@@ -34,6 +34,7 @@ pub struct Read {
 impl Read {
     /// Initialize our environment
     ///
+    #[tracing::instrument]
     pub fn new(name: &str) -> Self {
         trace!("New Read {}", name);
         Read {
@@ -71,10 +72,11 @@ impl Read {
 
     /// The heart of the matter: fetch data
     ///
+    #[tracing::instrument]
     pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Read::transform()");
         if self.path.is_none() || self.format == Format::None {
-            Err(anyhow!("uninitialised read"))
+            Err(eyre!("uninitialised read"))
         } else {
             let p = self.path.clone().unwrap();
             let fh = File::open(p)?;
@@ -115,7 +117,7 @@ mod tests {
 
         assert_eq!("foo", t.name);
         assert_eq!(Format::None, t.format);
-        assert_eq!(PathBuf::from("/nonexistent"), path.clone());
+        assert_eq!(PathBuf::from("/nonexistent"), t.path.unwrap());
     }
 
     #[test]
@@ -126,6 +128,6 @@ mod tests {
 
         assert_eq!("foo", t.name);
         assert_eq!(Format::Asd, t.format);
-        assert_eq!(PathBuf::from("../Cargo.toml"), path.clone());
+        assert_eq!(PathBuf::from("../Cargo.toml"), t.path.unwrap());
     }
 }

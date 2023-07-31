@@ -2,17 +2,20 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 #[cfg(unix)]
 use home::home_dir;
 use serde::Deserialize;
+use tracing::trace;
 
-use fetiche_sources::{makepath, Auth};
+use fetiche_engine::{makepath, Auth};
 
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
 
+/// Config filename
 const CONFIG: &str = "config.hcl";
+/// Current version
 const CVERSION: usize = 1;
 
 /// Configuration for the CLI tool, supposed to include parameters and most importantly
@@ -20,21 +23,10 @@ const CVERSION: usize = 1;
 ///
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    /// Version in the file MUST match `CVERSION`
     pub version: usize,
-    pub site: BTreeMap<String, Entry>,
-}
-
-/// Hold credentials
-///
-#[derive(Debug, Deserialize)]
-pub struct Entry {
-    auth: Auth,
-}
-
-impl Default for Entry {
-    fn default() -> Self {
-        Entry { auth: Auth::Anon }
-    }
+    /// Each site credentials
+    pub site: BTreeMap<String, Auth>,
 }
 
 impl Config {
@@ -63,16 +55,19 @@ impl Config {
         Self::config_path().join(CONFIG)
     }
 
+    #[tracing::instrument]
     pub fn load(fname: Option<PathBuf>) -> Result<Config> {
+        trace!("loading config");
         let fname = match fname {
             Some(fname) => fname,
             _ => Self::default_file(),
         };
-        let data = fs::read_to_string(fname).expect("Can not open config.hcl");
 
+        let data = fs::read_to_string(fname)?;
         let data: Config = hcl::from_str(&data)?;
+
         if data.version != CVERSION {
-            return Err(anyhow!("bad file version: {}", data.version));
+            return Err(eyre!("bad file version: {}", data.version));
         }
         Ok(data)
     }

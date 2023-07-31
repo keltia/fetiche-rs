@@ -1,11 +1,13 @@
-use anyhow::Result;
-use log::{info, trace};
 use std::collections::BTreeMap;
 
-use fetiche_formats::{Asd, DronePoint, Format};
-use fetiche_sources::Sources;
+use eyre::Result;
+use tracing::{info, trace};
 
-pub fn import_data(_cfg: &Sources, data: &str, _fmt: Format) -> Result<()> {
+use fetiche_engine::{Engine, Format};
+use fetiche_formats::{Asd, DronePoint};
+
+#[tracing::instrument]
+pub fn import_data(_engine: &Engine, data: &str, _fmt: Format) -> Result<()> {
     trace!("import_data");
 
     // Transform into our `Drone` struct and sort it by "journey"

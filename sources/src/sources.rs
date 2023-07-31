@@ -1,7 +1,7 @@
 //! This is the exposed part of the `fetiche-sources` API.
 //!
 
-use std::collections::btree_map::{IntoValues, Iter, Keys, Values, ValuesMut};
+use std::collections::btree_map::{IntoValues, Iter, IterMut, Keys, Values, ValuesMut};
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -9,14 +9,14 @@ use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
 
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
+use eyre::{eyre, Result};
 #[cfg(unix)]
 use home::home_dir;
-use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 use tabled::builder::Builder;
 use tabled::settings::Style;
+use tracing::{debug, trace};
 
 #[cfg(unix)]
 use crate::BASEDIR;
@@ -71,6 +71,7 @@ impl Sources {
 
     /// Load configuration from either the specified file or the default one.
     ///
+    #[tracing::instrument]
     pub fn load(fname: &Option<PathBuf>) -> Result<Sources> {
         // Load default config if nothing is specified
         //
@@ -102,6 +103,7 @@ impl Sources {
 
     /// List of currently known sources into a nicely formatted string.
     ///
+    #[tracing::instrument]
     pub fn list(&self) -> Result<String> {
         let header = vec!["Name", "Type", "Format", "URL", "Auth", "Ops"];
 
@@ -158,18 +160,20 @@ impl Sources {
 
     /// Return the content of named token
     ///
+    #[tracing::instrument]
     pub fn get_token(name: &str) -> Result<String> {
         let t = Self::token_path().join(name);
         trace!("get_token: {t:?}");
         if t.exists() {
             Ok(fs::read_to_string(t)?)
         } else {
-            Err(anyhow!("{:?}: No such file", t))
+            Err(eyre!("{:?}: No such file", t))
         }
     }
 
     /// Store (overwrite) named token
     ///
+    #[tracing::instrument]
     pub fn store_token(name: &str, data: &str) -> Result<()> {
         let p = Self::token_path();
 
@@ -189,6 +193,7 @@ impl Sources {
 
     /// Purge expired token
     ///
+    #[tracing::instrument]
     pub fn purge_token(name: &str) -> Result<()> {
         trace!("purge expired token");
         let p = Self::token_path().join(name);
@@ -200,6 +205,7 @@ impl Sources {
     /// NOTE: we do not show data from each token (like expiration, etc.) because at this point
     ///       we do not know which kind of token each one is.
     ///
+    #[tracing::instrument]
     pub fn list_tokens(&self) -> Result<String> {
         trace!("listing tokens");
 
@@ -319,11 +325,18 @@ impl Sources {
         self.0.contains_key(s)
     }
 
-    /// Wrap `contains_key()`
+    /// Wrap `iter()`
     ///
     #[inline]
     pub fn iter(&self) -> Iter<'_, String, Site> {
         self.0.iter()
+    }
+
+    /// Wrap `iter_mut()`
+    ///
+    #[inline]
+    pub fn iter_mut(&mut self) -> IterMut<'_, String, Site> {
+        self.0.iter_mut()
     }
 }
 
@@ -386,6 +399,14 @@ impl<'a> IntoIterator for &'a Sources {
     }
 }
 
+/// Initialise a `Source` from a `BTreeMap`
+///
+impl From<BTreeMap<String, Site>> for Sources {
+    fn from(value: BTreeMap<String, Site>) -> Self {
+        Sources(value.clone())
+    }
+}
+
 // -----
 
 /// Main struct holding configurations internally
@@ -408,6 +429,7 @@ impl Sites {
     /// Returns an empty struct
     ///
     #[inline]
+    #[tracing::instrument]
     pub fn new() -> Sites {
         Sites {
             version: CVERSION,
@@ -417,6 +439,7 @@ impl Sites {
 
     /// Load the specified config file
     ///
+    #[tracing::instrument]
     fn read_file(fname: &PathBuf) -> Result<Vec<Site>> {
         trace!("Reading {:?}", fname);
         let content = fs::read_to_string(fname)?;
@@ -432,13 +455,13 @@ impl Sites {
         let s: hcl::error::Result<Sites> = hcl::from_str(&content);
         let s = match s {
             Ok(s) => s,
-            Err(e) => return Err(anyhow!("syntax error or wrong version: {}", e)),
+            Err(e) => return Err(eyre!("syntax error or wrong version: {}", e)),
         };
 
         // First check
         //
         if s.version != CVERSION {
-            return Err(anyhow!("bad config version"));
+            return Err(eyre!("bad config version"));
         }
 
         // Fetch the site name and insert it into each Site
@@ -468,10 +491,9 @@ impl Sites {
 mod tests {
     use std::env::temp_dir;
 
-    use anyhow::bail;
-    use log::debug;
+    use eyre::bail;
+    use tracing::debug;
 
-    use crate::site::Auth;
     use crate::DataType;
 
     use super::*;

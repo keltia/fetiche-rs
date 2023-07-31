@@ -12,23 +12,23 @@
 //! So now we cache them.
 //!
 
-use std::io::Write;
+use std::fmt::{Display, Formatter};
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{thread, time};
 
-use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::{crate_name, crate_version};
-use log::{debug, error, trace};
+use eyre::{eyre, Result};
 use mini_moka::sync::{Cache, ConcurrentCacheExt};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
+use tracing::{debug, error, info, trace};
 
 use fetiche_formats::{Format, StateList};
 
@@ -92,8 +92,48 @@ struct Credentials {
     password: String,
 }
 
+/// Statistics gathering struct
+///
+#[derive(Clone, Debug, Default, Serialize)]
+pub(crate) struct Stats {
+    pub tm: u64,
+    pub pkts: u32,
+    pub bytes: u64,
+    pub hits: u32,
+    pub miss: u32,
+    pub empty: u32,
+    pub err: u32,
+}
+
+impl Display for Stats {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "time={}s pkts={} bytes={} hits={} miss={} empty={} errors={}",
+            self.tm, self.pkts, self.bytes, self.hits, self.miss, self.empty, self.err
+        )
+    }
+}
+
+/// Messages to send to the stats threads
+///
+#[derive(Clone, Debug, Serialize)]
+pub(crate) enum StatMsg {
+    Pkts,
+    Bytes(u64),
+    Hits,
+    Miss,
+    Empty,
+    Error,
+    Print,
+    Exit,
+}
+
 impl Opensky {
+    #[tracing::instrument]
     pub fn new() -> Self {
+        trace!("opensky::new");
+
         Opensky {
             features: vec![Capability::Fetch, Capability::Stream],
             format: Format::Opensky,
@@ -108,7 +148,10 @@ impl Opensky {
 
     /// Load some data from in-memory loaded config
     ///
+    #[tracing::instrument]
     pub fn load(&mut self, site: &Site) -> &mut Self {
+        trace!("opensky::load");
+
         self.format = site.format.as_str().into();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
@@ -143,6 +186,7 @@ impl Fetchable for Opensky {
 
     /// All credentials are passed every time we call the API so return a fake token
     ///
+    #[tracing::instrument]
     fn authenticate(&self) -> Result<String> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
@@ -150,7 +194,10 @@ impl Fetchable for Opensky {
 
     /// Single call API
     ///
-    fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()> {
+    #[tracing::instrument]
+    fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
+        trace!("opensky::fetch");
+
         let res: Vec<&str> = token.split(':').collect();
         let (login, password) = (res[0], res[1]);
         trace!("opensky::fetch(as {}:{})", login, password);
@@ -193,14 +240,13 @@ impl Fetchable for Opensky {
             }
             code => {
                 let h = &resp.headers();
-                return Err(anyhow!("Error({}): {:?}", code, h));
+                return Err(eyre!("Error({}): {:?}", code, h));
             }
         }
 
         trace!("Fetching raw data");
         let resp = resp.text()?;
-        write!(out, "{}", resp)?;
-        Ok(())
+        Ok(out.send(resp)?)
     }
 
     fn format(&self) -> Format {
@@ -233,6 +279,7 @@ impl Streamable for Opensky {
     /// - it helps determining whether we had lack of traffic for a longer time if we have no
     ///   cached entries
     ///
+    #[tracing::instrument]
     fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
 
@@ -284,7 +331,7 @@ impl Streamable for Opensky {
             _ => url,
         };
 
-        eprintln!(
+        info!(
             r##"
 StreamURL: {}
 Duration {}s with {}ms delay and cache with {} entries for {}s
@@ -326,9 +373,8 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             let d = stream_duration;
             let tx1 = tx.clone();
             thread::spawn(move || {
-                if d != 0 {
-                    thread::sleep(time::Duration::from_secs(d as u64));
-                }
+                trace!("alarm set to {}s", d);
+                thread::sleep(time::Duration::from_secs(d as u64));
                 tx1.send("TIMEOUT".to_string()).unwrap();
             });
             trace!("end of sleep");
@@ -341,8 +387,51 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         let login = self.login.clone();
         let password = self.password.clone();
 
-        // Worker thread
+        // Launch stat gathering thread.
         //
+        let (st_tx, st_rx) = channel::<StatMsg>();
+        thread::spawn(move || {
+            trace!("stats::thread");
+
+            let start = Instant::now();
+            let mut stats = Stats::default();
+            while let Ok(msg) = st_rx.recv() {
+                match msg {
+                    StatMsg::Pkts => stats.pkts += 1,
+                    StatMsg::Hits => stats.hits += 1,
+                    StatMsg::Miss => stats.miss += 1,
+                    StatMsg::Empty => stats.empty += 1,
+                    StatMsg::Error => stats.err += 1,
+                    StatMsg::Bytes(n) => stats.bytes += n,
+                    StatMsg::Print => {
+                        stats.tm = start.elapsed().as_secs();
+                        eprintln!("Stats: {}", stats)
+                    }
+                    // The end
+                    StatMsg::Exit => {
+                        stats.tm = start.elapsed().as_secs();
+                        break;
+                    }
+                }
+            }
+            eprintln!("\nSession: {}", stats);
+            trace!("end of stats thread");
+        });
+
+        // Launch a thread that sleep for 30s then ask for statistics
+        //
+        let disp_tx = st_tx.clone();
+        thread::spawn(move || {
+            trace!("stats::display");
+            loop {
+                thread::sleep(Duration::from_secs(30_u64));
+                let _ = disp_tx.send(StatMsg::Print);
+            }
+        });
+
+        // Worker thread1
+        //
+        let stat_tx = st_tx.clone();
         thread::spawn(move || {
             trace!("Starting worker thread");
 
@@ -371,6 +460,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     Ok(resp) => resp,
                     Err(e) => {
                         error!("worker-thread: {}", e.to_string());
+                        stat_tx.send(StatMsg::Error).expect("stat::error");
                         thread::sleep(Duration::from_secs(2));
                         continue;
                     }
@@ -388,6 +478,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     code => {
                         let h = &resp.headers();
                         eprintln!("Error({}): {:?},", code, h);
+                        stat_tx.send(StatMsg::Error).expect("stat::error");
                         thread::sleep(Duration::from_millis(stream_delay as u64));
                         continue;
                     }
@@ -409,12 +500,19 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         //
                         Some(_time) => {
                             eprint!("*");
+                            let _ = stat_tx.send(StatMsg::Hits);
+                            thread::sleep(Duration::from_millis(stream_delay as u64));
                             continue;
                         }
                         // No, send it it and cache its `time`
                         //
                         _ => {
                             eprint!("{},", sl.time);
+
+                            let _ = stat_tx.send(StatMsg::Miss);
+                            let _ = stat_tx.send(StatMsg::Pkts);
+                            let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
+
                             tx.send(buf).expect("send");
                             cache.insert(sl.time, true);
                         }
@@ -422,6 +520,8 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                 } else {
                     // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
                     //
+                    let _ = stat_tx.send(StatMsg::Empty);
+
                     cache.sync();
                     if cache.entry_count() == 0 {
                         eprintln!("No traffic, waiting for 2s.");
@@ -460,6 +560,10 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                 _ => continue,
             }
         }
+        // End threads
+        //
+        let _ = st_tx.send(StatMsg::Exit);
+
         // sync; sync; sync
         //
         Ok(())

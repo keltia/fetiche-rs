@@ -6,7 +6,7 @@ authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Fetiche component for access methods to connect/fetch data."
 readme = "README.md"
 license = "MIT"
-repository = "https://github.com/keltia/drone-gencsv"
+repository = "https://github.com/keltia/fetiche-rs"
 categories = ["aerospace::drones"]
 keywords = ["cat21", "asterix", "drones", "aeronautical-data", "hcl", "fetiche"]
 
@@ -29,7 +29,7 @@ harness = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow.workspace = true
+eyre.workspace = true
 chrono.workspace = true
 clap.workspace = true
 env_logger.workspace = true
@@ -42,14 +42,17 @@ serde.workspace = true
 serde_json.workspace = true
 serde_repr.workspace = true
 tabled.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
 
-csv = "1.1"
+csv = "1.2"
 mini-moka = "0.10"
 percent-encoding = "2.2"
 signal-hook = "0.3"
 
 [dev-dependencies]
+rstest.workspace = true
+
 criterion = "0.5"
 httpmock = { version = "0.6", features = ["colored", "color", "clap"] }
-rstest = "0"
 tokio = { version = "1.28", features = ["full"] }

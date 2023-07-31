@@ -6,7 +6,7 @@ authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "CLI utility to fetch data."
 readme = "README.md"
 license = "MIT"
-repository = "https://github.com/keltia/drone-gencsv"
+repository = "https://github.com/keltia/fetiche-rs"
 categories = ["command-line-utilities", "aerospace::drones"]
 keywords = ["ads-b", "aeronautical-data"]
 
@@ -20,20 +20,22 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow.workspace = true
+eyre.workspace = true
 chrono.workspace = true
 clap.workspace = true
 env_logger.workspace = true
 fetiche-engine.workspace = true
 fetiche-formats.workspace = true
-fetiche-sources.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
-log.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_repr.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
+
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
 
 #async-std = "1.12"
 clap_complete = "4.2"

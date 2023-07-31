@@ -8,11 +8,13 @@
 //!
 //! Documentation is taken from [The Opensky site](https://opensky-network.github.io/opensky-api/rest.html)
 //!
+//! [Impala]: https://opensky-network.org/data/impala/
+//!
 
-use anyhow::Result;
-use log::{debug, trace};
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use tracing::{debug, trace};
 
 use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
 
@@ -30,7 +32,7 @@ pub enum Source {
 
 /// Aircraft category
 ///
-/// XXX BUG: Opensky actually returns 17 fields, excluding this one.
+/// By default, Opensky actually returns 17 fields, excluding this one.
 ///
 #[derive(Clone, Copy, Debug, Deserialize_repr, PartialEq, Serialize_repr)]
 #[repr(u8)]
@@ -59,9 +61,15 @@ pub enum Category {
 
 // Public structs
 
+/// This is the main container for packets sent by the API.
+/// It includes a 32-bit UNIX timestamp and a set of `StateVector`.
+///
+/// We assume that if two `StateList` have the same timestamp they have
+/// the same payload (we use it for caching when streaming data).
+///
 #[derive(Debug, Deserialize)]
 pub struct StateList {
-    /// UNIX timestamps
+    /// UNIX timestamp
     pub time: i32,
     /// The state vectors
     pub states: Option<Vec<StateVector>>,
@@ -70,7 +78,10 @@ pub struct StateList {
 impl StateList {
     /// Transform a given record into an array of Cat21 records
     ///
+    #[tracing::instrument]
     pub fn to_cat21(&self) -> Vec<Cat21> {
+        trace!("statelist::to_cat21");
+
         match &self.states {
             Some(v) => v.iter().map(Cat21::from).collect(),
             None => vec![],
@@ -79,6 +90,7 @@ impl StateList {
 
     /// Deserialize from json
     ///
+    #[tracing::instrument]
     pub fn from_json(input: &str) -> Result<Self> {
         trace!("statelist::from_json");
 
@@ -128,7 +140,9 @@ impl StateList {
 pub struct StateVector {
     /// ICAO ID
     pub icao24: String,
+    /// Call-sign of the vehicule
     pub callsign: Option<String>,
+    /// Origin Country
     pub origin_country: String,
     pub time_position: Option<i32>,
     pub last_contact: i32,
@@ -152,6 +166,89 @@ pub struct StateVector {
 
 convert_to!(from_opensky, StateVector, Cat21);
 //convert_to!(from_opensky, StateList, DronePoint);
+
+/// Definition of a state vector as stored in [Impala]
+///
+/// XXX: Yet another definition, different in names and order
+///
+#[derive(Debug, Deserialize)]
+pub struct PandaStateVector {
+    /// ID in the table
+    pub id: u32,
+    /// Actual time
+    pub time: i32,
+    /// ICAO ID
+    pub icao24: String,
+    /// Latitude
+    pub latitude: Option<f32>,
+    /// Longitude
+    pub longitude: Option<f32>,
+    /// Speed
+    pub velocity: Option<f32>,
+    /// Heading
+    pub heading: Option<f32>,
+    /// Vertical Rate
+    pub vertical_rate: Option<f32>,
+    /// Call-sign of the vehicule
+    pub callsign: Option<String>,
+    /// Situation (actually bool but Python has False, not false.
+    pub on_ground: String,
+    pub alert: String,
+    pub spi: String,
+    pub squawk: Option<String>,
+    pub baro_altitude: Option<f32>,
+    pub geo_altitude: Option<f32>,
+    pub last_position_update: Option<f32>,
+    pub last_contact: f32,
+    /// time shard aka hour
+    pub hour: i32,
+}
+
+impl From<&PandaStateVector> for Cat21 {
+    /// Generate a `Cat21` struct from `PandaStateVector`
+    ///
+    fn from(line: &PandaStateVector) -> Self {
+        let tod: i64 = line.time as i64;
+        let callsign = line.callsign.clone().unwrap_or("".to_string());
+
+        Cat21 {
+            sac: DEF_SAC,
+            sic: DEF_SIC,
+            alt_geo_ft: to_feet(line.geo_altitude.unwrap_or(0.0)),
+            pos_lat_deg: line.latitude.unwrap_or(0.0),
+            pos_long_deg: line.longitude.unwrap_or(0.0),
+            alt_baro_ft: to_feet(line.baro_altitude.unwrap_or(0.0)),
+            tod: 128 * (tod % 86400),
+            rec_time_posix: tod,
+            rec_time_ms: 0,
+            emitter_category: 13,
+            differential_correction: Bool::N,
+            ground_bit: Bool::N,
+            simulated_target: Bool::N,
+            test_target: Bool::N,
+            from_ft: Bool::N,
+            selected_alt_capability: Bool::N,
+            spi: Bool::N,
+            link_technology_cddi: Bool::N,
+            link_technology_mds: Bool::N,
+            link_technology_uat: Bool::N,
+            link_technology_vdl: Bool::N,
+            link_technology_other: Bool::N,
+            descriptor_atp: 1,
+            alt_reporting_capability_ft: 0,
+            target_addr: 623615,
+            cat: 21,
+            line_id: 1,
+            ds_id: 18,
+            report_type: 3,
+            tod_calculated: TodCalculated::N,
+            callsign,
+            groundspeed_kt: to_knots(line.velocity.unwrap_or(0.0)),
+            track_angle_deg: line.heading.unwrap_or(0.0),
+            rec_num: 1,
+        }
+    }
+}
 
 // Private structs
 
@@ -198,8 +295,6 @@ convert_to!(from_vectors, StateVector, Cat21);
 
 impl From<&StateVector> for Cat21 {
     /// Generate a `Cat21` struct from `StateList`
-    ///
-    /// DEPRECATED
     ///
     fn from(line: &StateVector) -> Self {
         let tod: i64 = line.time_position.unwrap_or(0) as i64;

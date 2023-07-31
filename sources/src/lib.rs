@@ -7,10 +7,9 @@
 //!
 
 use std::fmt::{Debug, Display, Formatter};
-use std::io::Write;
 use std::sync::mpsc::Sender;
 
-use anyhow::Result;
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 
 // Re-export these modules for a shorted import path.
@@ -65,7 +64,7 @@ pub trait Fetchable: Debug {
     /// If credentials are needed, get a token for subsequent operations
     fn authenticate(&self) -> Result<String>;
     /// Fetch actual data
-    fn fetch(&self, out: &mut dyn Write, token: &str, args: &str) -> Result<()>;
+    fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()>;
     /// Returns the input formats
     fn format(&self) -> Format;
 }

@@ -5,16 +5,13 @@
 //! supposed to be collecting data (like `fetch` or `stream`) and send it along
 //! the pipe for processing.
 //!
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::io::Write;
 use std::sync::mpsc::channel;
-use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
-use log::{info, trace};
-use uuid::Uuid;
-
-use fetiche_sources::Sources;
+use eyre::{eyre, Result};
+use tracing::{info, trace};
+use tracing::{span, Level};
 
 use crate::{Runnable, IO};
 
@@ -23,9 +20,7 @@ use crate::{Runnable, IO};
 #[derive(Debug)]
 pub struct Job {
     /// Job ID
-    pub id: String,
-    /// Source parameters
-    pub srcs: Arc<Sources>,
+    pub id: usize,
     /// Name of the job
     pub name: String,
     /// FIFO list of tasks
@@ -37,13 +32,25 @@ impl Job {
     ///
     /// NOTE: No //EOJ
     ///
+    #[tracing::instrument]
     #[inline]
-    pub fn new(name: &str, srcs: Arc<Sources>) -> Self {
-        let uuid = Uuid::new_v4().to_string();
-        trace!("Job::new({})", uuid);
-        Job {
-            id: uuid,
-            srcs: Arc::clone(&srcs),
+    pub fn new(name: &str) -> Self {
+        trace!("Job::new()");
+        Self {
+            id: 0,
+            name: name.to_owned(),
+            list: VecDeque::new(),
+        }
+    }
+
+    /// Create job with a specific ID
+    ///
+    #[tracing::instrument]
+    #[inline]
+    pub fn new_with_id(name: &str, id: usize) -> Self {
+        trace!("job({}) with id {}", name, id);
+        Self {
+            id,
             name: name.to_owned(),
             list: VecDeque::new(),
         }
@@ -72,6 +79,9 @@ impl Job {
     /// more complicated like we did with `out`.
     ///
     pub fn run(&mut self, out: &mut dyn Write) -> Result<()> {
+        let span = span!(Level::TRACE, "job::run");
+        let _ = span.enter();
+
         info!(
             "Job({})::run({}) with {} tasks",
             self.id,
@@ -87,22 +97,31 @@ impl Job {
         match first {
             Some(first) => {
                 if first.cap() != IO::Producer {
-                    return Err(anyhow!("First task must be a producer"));
+                    return Err(eyre!("First task must be a producer"));
                 }
             }
-            None => return Err(anyhow!("empty task list")),
+            None => return Err(eyre!("empty task list")),
         }
 
         // At this point, `self.list` is not empty so in the worst case, `first == last`.
         //
         let last = last.unwrap();
-        if last.cap() != IO::Consumer && last.cap() != IO::Filter {
-            return Err(anyhow!("last must be consumer or filter"));
+
+        // If there is only one task, it should be fine.
+        //
+        if self.list.len() != 1 {
+            // Then we check the last one
+            //
+            if last.cap() != IO::Consumer && last.cap() != IO::Filter {
+                return Err(eyre!("last must be consumer or filter"));
+            }
         }
 
         // Setup the pipeline
         //
         let (key, stdout) = channel::<String>();
+
+        trace!("create pipeline");
 
         // Gather results for all tasks into a single pipeline using `Iterator::fold()`
         //
@@ -110,6 +129,8 @@ impl Job {
             let (rx, _) = t.run(acc);
             rx
         });
+
+        trace!("starting pipe");
 
         // Start the pipeline
         //
@@ -124,32 +145,40 @@ impl Job {
         for msg in output {
             write!(out, "{}", msg)?;
         }
-        Ok(())
+        Ok(out.flush()?)
     }
 }
 
+/// Job queue
+///
+#[derive(Debug)]
+pub struct Jobs(BTreeMap<String, Job>);
+
 #[cfg(test)]
 mod tests {
-    use crate::{Engine, Task};
+    use crate::{Engine, Message, Nothing};
 
     use super::*;
 
     #[test]
     fn test_job_run() {
-        let e = Engine::new();
-        let t1 = Box::new(Task::Nothing::new());
-        let t2 = Box::new(Task::Message::new("hello world"));
+        env_logger::init();
 
-        let mut j: Job = Job::new("test", e.sources());
+        let mut e = Engine::new();
+        let t1 = Box::new(Nothing::new());
+        let t2 = Box::new(Message::new("hello world"));
+
+        let mut j: Job = e.create_job("test");
         j.add(t1);
         j.add(t2);
 
         let mut data = vec![];
 
         let res = j.run(&mut data);
+        assert!(res.is_ok());
 
         let res = String::from_utf8(data);
         assert!(res.is_ok());
-        assert_eq!("NOPhello world", res.unwrap())
+        assert_eq!("start|NOP|hello world", res.unwrap())
     }
 }

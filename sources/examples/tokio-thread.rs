@@ -7,7 +7,7 @@ use std::io::{stderr, Write};
 use std::thread;
 use std::time::Duration;
 
-use anyhow::Result;
+use eyre::Result;
 #[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]

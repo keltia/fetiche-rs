@@ -7,11 +7,12 @@
 //! Format is take from the CSV given as an example
 //!
 
-use std::io::Write;
+use std::sync::mpsc::Sender;
 
-use anyhow::{anyhow, Result};
+use eyre::{eyre, Result};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use tracing::trace;
 
 use fetiche_formats::{Format, Position};
 
@@ -61,7 +62,10 @@ pub struct Safesky {
 }
 
 impl Safesky {
+    #[tracing::instrument]
     pub fn new() -> Self {
+        trace!("safesky::new");
+
         Safesky {
             features: vec![Capability::Fetch],
             format: Format::Safesky,
@@ -72,7 +76,10 @@ impl Safesky {
         }
     }
 
+    #[tracing::instrument]
     pub fn load(&mut self, site: &Site) -> &mut Self {
+        trace!("safesky::load");
+
         self.format = site.format.as_str().into();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
@@ -101,14 +108,19 @@ impl Fetchable for Safesky {
     /// Safesky is using an API key you need to have for all transactions, there is no
     /// real authentication.
     ///
+    #[tracing::instrument]
     fn authenticate(&self) -> Result<String> {
+        trace!("safesky::authenticate");
+
         if self.api_key.is_empty() {
-            return Err(anyhow!("No API key"));
+            return Err(eyre!("No API key"));
         }
         Ok(self.api_key.clone())
     }
 
-    fn fetch(&self, _out: &mut dyn Write, _token: &str, _args: &str) -> Result<()> {
+    #[tracing::instrument]
+    fn fetch(&self, _out: Sender<String>, _token: &str, _args: &str) -> Result<()> {
+        trace!("safesky::fetch");
         todo!()
     }
 
@@ -128,7 +140,7 @@ mod tests {
     fn setup_safesky(_server: &MockServer) -> Safesky {
         let client = Client::new();
         Safesky {
-            features: Capability::Fetch,
+            features: vec![Capability::Fetch],
             format: Format::Safesky,
             base_url: "http://example.net".to_string(),
             get: "/v1/beacons".to_string(),

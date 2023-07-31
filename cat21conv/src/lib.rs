@@ -12,66 +12,66 @@
 //! We have a set of methods to add parameter and configure the task then we need to call `run()`
 //! to execute it.
 //!
+//! File-based example:
+//! ```no_run
+//! # use eyre::Result;
+//! # use std::path::PathBuf;
+//! # use tracing::info;
+//! use eyre::eyre;
+//! use cat21conv::Task;
+//! use fetiche_formats::{Cat21, Format};
+//! use fetiche_sources::Flow;
+//!
+//! # fn main() -> Result<()> {
+//!
+//! let what = "foo.json";
+//! let format = Format::None;
+//!
+//! let res: Vec<Cat21> = Task::new("foo").path(what).format(format).run()?;
+//!
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Network-based example:
+//! ```no_run
+//! # use eyre::Result;
+//! # use std::path::PathBuf;
+//! use cat21conv::Task;
+//!
+//! // Fetch from network
+//! //
+//! use fetiche_formats::Cat21;
+//!
+//! use fetiche_sources::{Sources,Filter,Site};
+//!
+//! # fn main() -> Result<()> {
+//! # use eyre::eyre;
+//! # use fetiche_sources::Flow;
+//! let name = "eih";
+//! # let filter = Filter::None;
+//!
+//! let cfg = Sources::load(&Some(PathBuf::from("config.hcl")))?;
+//!
+//! let site = Site::load(name, &cfg)?;
+//! let site = match site {
+//!     Flow::Fetchable(s) => s,
+//!     _ => return Err(eyre!("this is not streamable"))
+//! };
+//! let res: Vec<Cat21> = Task::new(name).site(site).when(filter).run()?;
+//!
+//! # Ok(())
+//! # }
+//! ```
+//!
 
-/// File-based example:
-/// ```no_run
-/// # use anyhow::Result;
-/// # use std::path::PathBuf;
-/// # use log::info;
-/// use anyhow::anyhow;
-/// use cat21conv::Task;
-/// use fetiche_formats::{Cat21, Format};
-/// use fetiche_sources::Flow;
-///
-/// # fn main() -> Result<()> {
-///
-/// let what = "foo.json";
-/// let format = Format::None;
-///
-/// let res: Vec<Cat21> = Task::new("foo").path(what).format(format).run()?;
-///
-/// # Ok(())
-/// # }
-/// ```
-///
-/// Network-based example:
-/// ```no_run
-/// # use anyhow::Result;
-/// # use std::path::PathBuf;
-/// use cat21conv::Task;
-///
-/// // Fetch from network
-/// //
-/// use fetiche_formats::Cat21;
-///
-/// use fetiche_sources::{Sources,Filter,Site};
-///
-/// # fn main() -> Result<()> {
-/// # use anyhow::anyhow;
-/// # use fetiche_sources::Flow;
-/// let name = "eih";
-/// # let filter = Filter::None;
-///
-/// let cfg = Sources::load(&Some(PathBuf::from("config.hcl")))?;
-///
-/// let site = Site::load(name, &cfg)?;
-/// let site = match site {
-///     Flow::Fetchable(s) => s,
-///     _ => return Err(anyhow!("this is not streamable"))
-/// };
-/// let res: Vec<Cat21> = Task::new(name).site(site).when(filter).run()?;
-///
-/// # Ok(())
-/// # }
-/// ```
-///
 use std::fs;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
 use clap::{crate_name, crate_version};
 use csv::ReaderBuilder;
-use log::debug;
+use eyre::{eyre, Result};
+use tracing::debug;
 
 use fetiche_formats::{Cat21, Format};
 use fetiche_sources::{Fetchable, Filter};
@@ -207,9 +207,12 @@ impl Task {
                 //
                 let token = site.authenticate()?;
 
-                let mut data = vec![];
-                site.fetch(&mut data, &token, &self.args)?;
-                let data = String::from_utf8(data)?;
+                let (tx, rx) = std::sync::mpsc::channel::<String>();
+
+                site.fetch(tx, &token, &self.args)?;
+
+                let data = rx.recv()?;
+
                 debug!("{}", data);
 
                 let fmt = site.format();
@@ -221,7 +224,7 @@ impl Task {
                 debug!("{:?} as {}", res, format);
                 Ok(res)
             }
-            Input::Nothing => Err(anyhow!("no formats specified")),
+            Input::Nothing => Err(eyre!("no formats specified")),
         }
     }
 }

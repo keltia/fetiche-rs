@@ -7,7 +7,7 @@
 use std::fmt::Debug;
 use std::sync::mpsc::Sender;
 
-use anyhow::Result;
+use eyre::Result;
 
 use engine_macros::RunnableDerive;
 
@@ -24,12 +24,15 @@ pub struct Nothing {
 
 impl Nothing {
     #[inline]
+    #[tracing::instrument]
     pub fn new() -> Self {
         Nothing { io: IO::Filter }
     }
 
     #[inline]
+    #[tracing::instrument]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
+        dbg!(&data);
         Ok(stdout.send(format!("{}|NOP", data))?)
     }
 }
@@ -50,12 +53,15 @@ pub struct Copy {
 
 impl Copy {
     #[inline]
+    #[tracing::instrument]
     pub fn new() -> Self {
         Copy { io: IO::Filter }
     }
 
     #[inline]
+    #[tracing::instrument]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
+        dbg!(&data);
         Ok(stdout.send(data)?)
     }
 }
@@ -78,6 +84,7 @@ pub struct Message {
 
 impl Message {
     #[inline]
+    #[tracing::instrument]
     pub fn new(s: &str) -> Self {
         Message {
             io: IO::Filter,
@@ -86,6 +93,7 @@ impl Message {
     }
 
     #[inline]
+    #[tracing::instrument]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
         Ok(stdout.send(format!("{}|{}", data, self.msg))?)
     }
@@ -103,7 +111,6 @@ mod tests {
 
         let (tx, rx) = channel();
 
-        let mut data = vec![];
         let (r, h) = t.run(rx);
 
         let r = r.recv();
@@ -118,12 +125,11 @@ mod tests {
 
         let (tx, rx) = channel();
 
-        let mut data = vec![];
         let (r, h) = m.run(rx);
 
         let r = r.recv();
-        assert!(s.is_ok());
-        let s = s.unwrap();
+        assert!(r.is_ok());
+        let s = r.unwrap();
         assert_eq!("|the brown fox", s);
     }
 }

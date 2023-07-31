@@ -1,23 +1,33 @@
-//! Special task that will
+//! Special task that will store input in a tree of files, one every hour for now.
 //!
 //! 1. create a directory with the job ID
 //! 2. store all data coming from the pipe in files every hour
 //!
+//! FIXME: make it configurable?
+//!
+//! This module is data-agnostic and does not care whether it is JSON, binary or a CSV.
+//!
 
+use std::fs;
 use std::fs::{create_dir, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
-use anyhow::Result;
 use chrono::{Datelike, Timelike, Utc};
-use log::trace;
+use eyre::Result;
+use tracing::trace;
 
 use engine_macros::RunnableDerive;
 use fetiche_sources::makepath;
 
 use crate::{Runnable, IO};
 
+/// Struct describing the data for the `Store` task.
+///
+/// We currently do not cache the open file for the current output, we might
+/// do that in the future but the cost is 2 more syscalls but simplified code.
+///
 #[derive(Clone, Debug, RunnableDerive)]
 pub struct Store {
     /// IO Capability
@@ -36,13 +46,34 @@ impl Default for Store {
 }
 
 impl Store {
-    pub fn new(path: &str, id: &str) -> Self {
-        let path: PathBuf = makepath!(path, id);
+    /// Given a base directory in `path` create the tree if not present and store the full
+    /// path as path/ID
+    ///
+    #[tracing::instrument]
+    pub fn new(path: &str, id: usize) -> Self {
+        trace!("store::new({})", path);
+
+        // We want to have `path/current` pointing to `path/ID`
+        //
+        let id = format!("{id}");
+        let base = path.clone();
+        let path: PathBuf = makepath!(path, &id);
 
         // Base is PATH/ID/
         //
         create_dir(&path)
             .unwrap_or_else(|_| panic!("can not create {} in {}", id, path.to_string_lossy()));
+
+        let curr: PathBuf = makepath!(&base, "current");
+        if curr.exists() {
+            fs::remove_file(&curr).expect("can not remove current");
+        }
+
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_dir(&path, &curr).expect("can not symlink current");
+
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&path, &curr).expect("can not symlink current");
 
         trace!("store::new({})", path.to_string_lossy());
         Store {
@@ -54,6 +85,7 @@ impl Store {
     /// Store and rotate every hour for now.  We open/create and write every packet without
     /// trying to open first.  More syscalls but these are cheap.
     ///
+    #[tracing::instrument]
     pub fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
         trace!("store::execute");
 

@@ -12,14 +12,14 @@
 
 use std::fmt::{Debug, Display, Formatter};
 
-use anyhow::{anyhow, Result};
-use log::trace;
+use eyre::{eyre, Result};
 use serde::{Deserialize, Serialize};
+use tracing::trace;
 
 use fetiche_formats::Format;
 
 use crate::{
-    aeroscope::Aeroscope, asd::Asd, Auth, Capability, opensky::Opensky, Routes, safesky::Safesky,
+    aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky, Auth, Capability, Routes,
     Streamable,
 };
 use crate::{Fetchable, Sources};
@@ -95,12 +95,14 @@ pub enum Flow {
 impl Site {
     /// Basic `new()`
     ///
+    #[tracing::instrument]
     pub fn new() -> Self {
         Site::default()
     }
 
     /// Load site by checking whether it is present in the configuration file
     ///
+    #[tracing::instrument]
     pub fn load(name: &str, cfg: &Sources) -> Result<Flow> {
         trace!("Loading site {}", name);
         match cfg.get(name) {
@@ -136,13 +138,19 @@ impl Site {
                             Ok(Flow::Fetchable(Box::new(s)))
                         }
                     }
-                    _ => Err(anyhow!("invalid site {}", name)),
+                    _ => Err(eyre!("invalid site {}", name)),
                 }
             }
-            None => Err(anyhow!("no such site {name}")),
+            None => Err(eyre!("no such site {name}")),
         }
     }
 
+    /// Add authtentication info
+    ///
+    pub fn auth(&mut self, auth: Auth) -> &mut Self {
+        self.auth = Some(auth);
+        self
+    }
     /// Return the site name
     ///
     pub fn name(&self) -> Option<String> {
@@ -157,6 +165,7 @@ impl Site {
 
     /// Return the list of routes
     ///
+    #[tracing::instrument]
     pub fn list(&self) -> Vec<&String> {
         match &self.routes {
             Some(routes) => routes.keys().collect::<Vec<_>>(),
@@ -166,6 +175,7 @@ impl Site {
 
     /// Check whether site has the mentioned route
     ///
+    #[tracing::instrument]
     pub fn has(&self, meth: &str) -> bool {
         match &self.routes {
             Some(routes) => routes.contains_key(meth),
@@ -175,6 +185,7 @@ impl Site {
 
     /// Retrieve a route
     ///
+    #[tracing::instrument]
     pub fn route(&self, key: &str) -> Option<&String> {
         match &self.routes {
             Some(routes) => routes.get(key),

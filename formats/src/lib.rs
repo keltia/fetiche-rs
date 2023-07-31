@@ -11,11 +11,11 @@ use std::collections::BTreeMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::Read;
 
-use anyhow::Result;
 use csv::{Reader, WriterBuilder};
-use log::{debug, trace};
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tabled::{builder::Builder, settings::Style};
+use tracing::{debug, trace};
 
 // Re-export for convenience
 //
@@ -83,6 +83,7 @@ pub enum Format {
     Cat21,
     Cat129,
     Opensky,
+    PandaStateVector,
     Safesky,
 }
 
@@ -102,7 +103,12 @@ macro_rules! into_cat21 {
         match $from {
         $(
             Format::$name => {
-                let l: $name = $rec.deserialize(None).unwrap();
+                let l: $name = match $rec.deserialize(None) {
+                    Ok(rec) => rec,
+                    Err(e) => {
+                        panic!("{}", e.to_string());
+                    }
+                };
                 Cat21::from(&l)
             },
         )+
@@ -123,6 +129,7 @@ macro_rules! convert_to {
         impl $to {
             #[doc = concat!("This is ", stringify!($name), " which convert a json string into a ", stringify!($to), "object")]
             ///
+            #[tracing::instrument]
             pub fn $name(input: &str) -> Result<Vec<$to>> {
                 debug!("IN={:?}", input);
                 let res: Vec<$from> = serde_json::from_str(&input)?;
@@ -147,18 +154,20 @@ impl Format {
     /// Process each record coming from the input source, apply `Cat::from()` onto it
     /// and return the list.  This is used when reading from the csv files.
     ///
+    #[tracing::instrument]
     pub fn from_csv<R>(self, rdr: &mut Reader<R>) -> Result<Vec<Cat21>>
     where
-        R: Read,
+        R: Read + Debug,
     {
         debug!("Reading & transforming…");
         let res: Vec<_> = rdr
             .records()
             .enumerate()
+            .inspect(|(n, _)| trace!("record #{}", n))
             .map(|(cnt, rec)| {
                 let rec = rec.unwrap();
                 debug!("rec={:?}", rec);
-                let mut line = into_cat21!(self, rec, Aeroscope, Asd, Safesky);
+                let mut line = into_cat21!(self, rec, Aeroscope, Asd, Safesky, PandaStateVector);
                 line.rec_num = cnt;
                 line
             })
@@ -237,6 +246,7 @@ impl From<&str> for Format {
             "cat21" => Format::Cat21,
             "Cat129" => Format::Cat129,
             "Avionix" => Format::Avionix,
+            "impala" => Format::PandaStateVector,
             _ => Format::None,
         }
     }
@@ -252,6 +262,7 @@ impl Display for Format {
             Format::Cat21 => "cat21".into(),
             Format::Cat129 => "cat129".into(),
             Format::Avionix => "avionix".into(),
+            Format::PandaStateVector => "impala".to_string(),
             Format::None => "none".into(),
         };
         write!(f, "{}", s)
@@ -305,9 +316,10 @@ pub fn to_knots(a: f32) -> f32 {
 
 /// Output the final csv file with a different delimiter 'now ":")
 ///
+#[tracing::instrument]
 pub fn prepare_csv<T>(data: Vec<T>, header: bool) -> Result<String>
 where
-    T: Serialize,
+    T: Serialize + Debug,
 {
     trace!("Generating output…");
     // Prepare the writer

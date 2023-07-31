@@ -1,13 +1,14 @@
 use std::fs::File;
 
-use anyhow::Result;
-use log::trace;
+use eyre::Result;
+use tracing::trace;
 
 use fetiche_engine::{Convert, Engine, Read};
 
 use crate::ConvertOpts;
 
-pub fn convert_from_to(engine: &Engine, copts: &ConvertOpts) -> Result<()> {
+#[tracing::instrument]
+pub fn convert_from_to(engine: &mut Engine, copts: &ConvertOpts) -> Result<()> {
     trace!("convert_from_to");
 
     let infile = &copts.infile;
@@ -17,7 +18,7 @@ pub fn convert_from_to(engine: &Engine, copts: &ConvertOpts) -> Result<()> {
 
     // Prepare tasks
     //
-    let mut r = Read::new(&infile);
+    let mut r = Read::new(infile);
     r.path(infile).format(*from);
 
     let mut c = Convert::new();
@@ -30,5 +31,5 @@ pub fn convert_from_to(engine: &Engine, copts: &ConvertOpts) -> Result<()> {
 
     let mut fh = File::create(outfile)?;
 
-    Ok(j.run(&mut fh)?)
+    j.run(&mut fh)
 }

@@ -6,7 +6,7 @@ authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "CLI utility to convert Aeronautical data into Cat21-like CSV."
 readme = "README.md"
 license = "MIT"
-repository = "https://github.com/keltia/drone-gencsv"
+repository = "https://github.com/keltia/fetiche-rs"
 categories = ["command-line-utilities", "aerospace::drones"]
 keywords = ["cat21", "asterix", "drones", "aeronautical-data"]
 
@@ -20,18 +20,21 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow.workspace = true
-chrono.workspace = true
-clap.workspace = true
-env_logger.workspace = true
-fetiche-sources.workspace = true
-fetiche-formats.workspace = true
-hcl-rs.workspace = true
-home.workspace = true
-log.workspace = true
-reqwest.workspace = true
-serde.workspace = true
-serde_json.workspace = true
+eyre = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["cargo", "derive"] }
+env_logger = "0.10"
+fetiche-formats = { version = "0", path = "../formats" }
+fetiche-sources = { version = "0", path = "../sources" }
+hcl-rs = "0.14"
+home = "0.5"
+log = { version = "0.4", features = ["serde", "std"] }
+reqwest = { version = "0.11", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+tracing-log = { version = "0.1", features = ["env_logger"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
 
 csv = "1.1"
 percent-encoding = "2"

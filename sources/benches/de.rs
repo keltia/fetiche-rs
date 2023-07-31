@@ -24,7 +24,7 @@ fn de_empty(c: &mut Criterion) {
 /// Bench a fake data packet
 ///
 fn de_full(c: &mut Criterion) {
-    let data = fs::read_to_string("../data/202306021750.json").unwrap();
+    let data = fs::read_to_string("../data/202306042003.json").unwrap();
 
     let mut sl: StateList = StateList {
         time: 0,

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::Result;
+use eyre::Result;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
 

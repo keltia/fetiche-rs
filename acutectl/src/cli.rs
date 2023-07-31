@@ -39,7 +39,7 @@ use std::path::PathBuf;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser, ValueEnum};
 use clap_complete::shells::Shell;
 
-use fetiche_formats::Format;
+use fetiche_engine::Format;
 
 /// CLI options
 #[derive(Parser)]
@@ -190,10 +190,14 @@ pub struct ListOpts {
 ///
 #[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq, ValueEnum)]
 pub enum ListSubCommand {
+    /// List all commands in `Engine`
+    Commands,
     /// List all formats in `formats`
     Formats,
     /// List all sources from `sources.hcl`
     Sources,
+    /// List all storage areas
+    Storage,
     /// List all currently stored tokens
     Tokens,
 }

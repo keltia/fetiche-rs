@@ -10,14 +10,14 @@
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
 
-use std::io::Write;
+use std::sync::mpsc::Sender;
 use std::vec;
 
-use anyhow::Result;
 use clap::{crate_name, crate_version};
-use log::{debug, trace};
+use eyre::Result;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use tracing::{debug, trace};
 
 use fetiche_formats::Format;
 
@@ -65,7 +65,10 @@ pub struct Aeroscope {
 }
 
 impl Aeroscope {
+    #[tracing::instrument]
     pub fn new() -> Self {
+        trace!("aeroscope::new");
+
         // Set some reasonable defaults
         //
         Aeroscope {
@@ -82,8 +85,10 @@ impl Aeroscope {
 
     /// Load our site details from what is in the configuration file
     ///
+    #[tracing::instrument]
     pub fn load(&mut self, site: &Site) -> &mut Self {
-        trace!("Loading {site:?}");
+        trace!("aeroscope::load({site:?})");
+
         self.format = site.format.as_str().into();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
@@ -118,10 +123,12 @@ impl Fetchable for Aeroscope {
 
     /// Authenticate to the site with login/password and return a token
     ///
+    #[tracing::instrument]
     fn authenticate(&self) -> Result<String> {
+        trace!("aeroscope::authenticate({:?})", &self.login);
+
         // Prepare our submission data
         //
-        debug!("Submit auth as {:?}", &self.login);
         let cred = Credentials {
             username: self.login.clone(),
             password: self.password.clone(),
@@ -130,7 +137,7 @@ impl Fetchable for Aeroscope {
         // fetch token
         //
         let url = format!("{}{}", self.base_url, self.token);
-        debug!("Fetching token through {}…", url);
+        trace!("Fetching token through {}…", url);
 
         let resp = http_post!(self, url, &cred)?;
         let resp = resp.text()?;
@@ -142,8 +149,9 @@ impl Fetchable for Aeroscope {
 
     /// Fetch actual data from the site as a long String.
     ///
-    fn fetch(&self, out: &mut dyn Write, token: &str, _args: &str) -> Result<()> {
-        debug!("Now fetching data");
+    #[tracing::instrument]
+    fn fetch(&self, out: Sender<String>, token: &str, _args: &str) -> Result<()> {
+        trace!("aeroscope::fetch");
 
         // Use the token to authenticate ourselves
         //
@@ -152,9 +160,7 @@ impl Fetchable for Aeroscope {
         let resp = resp?.text()?;
 
         debug!("{} bytes read. ", resp.len());
-        write!(out, "{}", resp)?;
-        out.flush()?;
-        Ok(())
+        Ok(out.send(resp)?)
     }
 
     /// Returns the site's input formats
@@ -191,6 +197,7 @@ mod tests {
 
         let client = Client::new();
         let site = Aeroscope {
+            features: vec![Capability::Fetch],
             format: Format::Aeroscope,
             login: "user".to_string(),
             password: "pass".to_string(),
