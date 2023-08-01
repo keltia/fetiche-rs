@@ -8,12 +8,13 @@
 //!
 
 use std::collections::BTreeMap;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use std::io::Read;
 
 use csv::{Reader, WriterBuilder};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use strum::EnumString;
 use tabled::{builder::Builder, settings::Style};
 use tracing::{debug, trace};
 
@@ -74,7 +75,9 @@ pub struct FormatFile {
 
 /// This struct holds the different data formats that we support.
 ///
-#[derive(Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+#[derive(
+    Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, EnumString, strum::Display, Serialize,
+)]
 #[serde(untagged, rename_all = "lowercase")]
 pub enum Format {
     #[default]
@@ -84,6 +87,7 @@ pub enum Format {
     Avionix,
     Cat21,
     Cat129,
+    Flightaware,
     Opensky,
     PandaStateVector,
     Safesky,
@@ -233,41 +237,6 @@ impl Format {
             .join("\n\n");
         let str = format!("List all formats:\n\n{allf}");
         Ok(str)
-    }
-}
-
-impl From<&str> for Format {
-    /// Create a formats from its name
-    ///
-    fn from(s: &str) -> Self {
-        match s {
-            "aeroscope" => Format::Aeroscope,
-            "asd" => Format::Asd,
-            "opensky" => Format::Opensky,
-            "safesky" => Format::Safesky,
-            "cat21" => Format::Cat21,
-            "Cat129" => Format::Cat129,
-            "Avionix" => Format::Avionix,
-            "impala" => Format::PandaStateVector,
-            _ => Format::None,
-        }
-    }
-}
-
-impl Display for Format {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let s: String = match self {
-            Format::Aeroscope => "aeroscope".into(),
-            Format::Asd => "asd".into(),
-            Format::Safesky => "safesky".into(),
-            Format::Opensky => "opensky".into(),
-            Format::Cat21 => "cat21".into(),
-            Format::Cat129 => "cat129".into(),
-            Format::Avionix => "avionix".into(),
-            Format::PandaStateVector => "impala".to_string(),
-            Format::None => "none".into(),
-        };
-        write!(f, "{}", s)
     }
 }
 
