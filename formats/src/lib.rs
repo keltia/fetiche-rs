@@ -24,6 +24,7 @@ pub use asd::*;
 pub use asterix::*;
 pub use avionix::*;
 pub use drone::*;
+pub use flightaware::*;
 pub use opensky::*;
 pub use safesky::*;
 
@@ -32,6 +33,7 @@ mod asd;
 mod asterix;
 mod avionix;
 mod drone;
+mod flightaware;
 mod opensky;
 mod safesky;
 
