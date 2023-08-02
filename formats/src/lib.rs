@@ -76,9 +76,9 @@ pub struct FormatFile {
 /// This struct holds the different data formats that we support.
 ///
 #[derive(
-    Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, EnumString, strum::Display, Serialize,
+    Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, strum::Display, EnumString, Serialize,
 )]
-#[serde(untagged, rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub enum Format {
     #[default]
     None,
