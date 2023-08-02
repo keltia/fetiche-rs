@@ -1,5 +1,6 @@
 use std::fs;
 use std::io;
+use std::str::FromStr;
 
 use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
 use clap_complete::generate;
@@ -115,7 +116,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
                     trace!("drone import file");
 
                     let data = fs::read_to_string(&if_opts.file)?;
-                    let fmt = Format::from(if_opts.format.clone().unwrap().as_str());
+                    let fmt = Format::from_str(&if_opts.format.clone().unwrap())?;
 
                     //import_data(&srcs, &data, fmt)?;
                 }
