@@ -13,6 +13,7 @@
 //!
 
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
@@ -152,7 +153,7 @@ impl Opensky {
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("opensky::load");
 
-        self.format = site.format.as_str().into();
+        self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
             match auth {

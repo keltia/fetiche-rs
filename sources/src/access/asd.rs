@@ -14,6 +14,7 @@
 //!
 
 use std::ops::Add;
+use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
@@ -141,7 +142,7 @@ impl Asd {
         trace!("asd::load");
 
         self.site = site.name.clone().unwrap();
-        self.format = site.format.as_str().into();
+        self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
             match auth {

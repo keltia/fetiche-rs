@@ -11,6 +11,7 @@
 //! History:
 
 use std::fmt::{Debug, Display, Formatter};
+use std::str::FromStr;
 
 use eyre::{eyre, Result};
 use serde::{Deserialize, Serialize};
@@ -160,7 +161,7 @@ impl Site {
     /// Return the site formats
     ///
     pub fn format(&self) -> Format {
-        self.format.as_str().into()
+        Format::from_str(&self.format).unwrap()
     }
 
     /// Return the list of routes
