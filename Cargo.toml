@@ -14,6 +14,7 @@ fetiche-sources = { version = "0", path = "sources" }
 hcl-rs = "0.15"
 home = "0.5"
 log = { version = "0.4", features = ["serde", "std"] }
+nom = "7"
 reqwest = { version = "0.11", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
 rstest = "0.18"
 serde = { version = "1.0", features = ["derive"] }
