@@ -100,8 +100,13 @@ pub fn list_locations(data: &BTreeMap<String, Location>) -> Result<String> {
         .keys()
         .map(|name| {
             let loc = data.get(name).unwrap();
-
-            format!("\t{:10}: {:.2}, {:.2}", name, loc.lat, loc.lon)
+            let poly = BB::from_location(loc, 25);
+            let point = format!("\t{:10}: {:.2}, {:.2} => ", name, loc.lat, loc.lon);
+            let poly = format!(
+                "\t[ {:.2}, {:.2}, {:.2}, {:.2}]",
+                poly.min_lat, poly.min_lon, poly.max_lat, poly.max_lon
+            );
+            format!("{}{}", point, poly)
         })
         .collect::<Vec<_>>()
         .join("\n");
