@@ -245,12 +245,21 @@ impl Format {
 /// In CSV files, the two fields are merged into this struct on deserialization
 /// and used as-is when coming from JSON.
 ///
-#[derive(Copy, Clone, Default, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Position {
     // Latitude in degrees
     pub latitude: f32,
     /// Longitude in degrees
     pub longitude: f32,
+}
+
+impl Default for Position {
+    fn default() -> Self {
+        Position {
+            latitude: 0.0,
+            longitude: 0.0,
+        }
+    }
 }
 
 #[derive(Debug, Default, Serialize)]
