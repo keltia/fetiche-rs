@@ -20,13 +20,13 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-eyre = "1.0"
+eyre = "0.6"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 env_logger = "0.10"
 fetiche-formats = { version = "0", path = "../formats" }
 fetiche-sources = { version = "0", path = "../sources" }
-hcl-rs = "0.14"
+hcl-rs = "0.16"
 home = "0.5"
 log = { version = "0.4", features = ["serde", "std"] }
 reqwest = { version = "0.11", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
