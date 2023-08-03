@@ -36,7 +36,7 @@ tracing = "0.1"
 tracing-log = { version = "0.1", features = ["env_logger"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
 
-csv = "1.1"
+csv = "1.2"
 percent-encoding = "2"
 serde_repr = "0.1"
 
