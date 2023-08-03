@@ -26,10 +26,12 @@ pub fn parse_location(input: &str) -> IResult<&str, Location> {
     alt((position, tagged_name))(input)
 }
 
+#[inline]
 fn tagged_name(input: &str) -> IResult<&str, Location> {
     map(alphanumeric1, |s: &str| Location::Tag(s.to_string()))(input)
 }
 
+#[inline]
 fn position(input: &str) -> IResult<&str, Location> {
     let pos = |(lat, lon): (f32, f32)| Location::Position { lat, lon };
 
