@@ -2,6 +2,11 @@
 //!
 //! Only the struct we need are there, this is not a general client API.
 //!
+//! NOTE: all fields are `String` regardless of the actual data type.  This is I guess
+//!       intentional by Flightaware to simplify internal stuff.  It is still a pain in the
+//!       *ss to deal with.  Not sure if I want to have two sets of types, the string and the real
+//!       ones to work with.
+//!
 //! Non-mandatory fields are `Option`.
 //!
 //! [FlightAware]: https://flightaware.com/
@@ -10,6 +15,10 @@
 
 use serde::Deserialize;
 use strum::{EnumString, EnumVariantNames};
+
+pub use location::*;
+
+mod location;
 
 #[derive(Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
 #[strum(serialize_all = "lowercase")]
@@ -25,17 +34,6 @@ pub enum TimeType {
     Actual,
     EnRoute,
     Estimate,
-}
-
-#[derive(Clone, Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
-#[strum(serialize_all = "lowercase")]
-pub enum Location {
-    /// "1NE5"
-    ICAOString(String),
-    /// "KMCO"
-    Waypoint(String),
-    /// e.g. "L 41.04194 -95.34611"
-    Position { lat: f32, lon: f32 },
 }
 
 /// Timestamps are in POSIX Epoch format (i32)
@@ -146,4 +144,4 @@ pub struct LocationExit {}
 pub struct PowerOn {}
 
 #[derive(Debug)]
-pub struct Position {}
+struct Position {}
