@@ -97,20 +97,20 @@ pub struct Cancellation {
     pub alt: Option<String>,
     /// ATC Ident
     pub atc_ident: Option<String>,
-    /// Destination String, can be ICAO code, waypoint, or Lat/Lon pair
+    /// Destination String, can be ICAO code, waypoint, or Lat/Lon pair -- see `Location`
     pub dest: Option<String>,
     /// Estimated Departure Time (i32)
     pub edt: Option<String>,
-    /// Estimated Time of Arrival
-    pub eta: Option<i32>,
-    /// En route time (in seconds)
-    pub ete: Option<i32>,
+    /// Estimated Time of Arrival (i32)
+    pub eta: Option<String>,
+    /// En route time (in seconds) (i32)
+    pub ete: Option<String>,
     /// Reporting facility hash
     pub facility_hash: Option<String>,
     /// Reporting facility hash
     pub facility_name: Option<String>,
-    /// Filed departure time
-    pub fdt: Option<i32>,
+    /// Filed departure time (i32)
+    pub fdt: Option<String>,
 }
 
 #[derive(Debug)]
