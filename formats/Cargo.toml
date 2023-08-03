@@ -41,3 +41,6 @@ tracing-log.workspace = true
 csv = "1.2"
 influxdb = { version = "0.7", features = ["derive"] }
 percent-encoding = "2.2"
+
+[dev-dependencies]
+rstest.workspace = true
