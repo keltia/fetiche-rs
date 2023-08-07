@@ -827,8 +827,8 @@ version = "0.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0209d94da627ab5605dcccf08bb18afa5009cfbef48d8a8b7d7bdbc79be25c5e"
 dependencies = [
-    "darling_core",
-    "darling_macro",
+ "darling_core",
+ "darling_macro",
 ]
 
 [[package]]
@@ -837,12 +837,12 @@ version = "0.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "177e3443818124b357d8e76f53be906d60937f0d3a90773a664fa63fa253e621"
 dependencies = [
-    "fnv",
-    "ident_case",
-    "proc-macro2",
-    "quote",
-    "strsim",
-    "syn 2.0.27",
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim",
+ "syn 2.0.27",
 ]
 
 [[package]]
@@ -851,9 +851,9 @@ version = "0.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "836a9bbc7ad63342d6d6e7b815ccab164bc77a2d95d84bc3117a8c0d5c98e2d5"
 dependencies = [
-    "darling_core",
-    "quote",
-    "syn 2.0.27",
+ "darling_core",
+ "quote",
+ "syn 2.0.27",
 ]
 
 [[package]]
@@ -1100,7 +1100,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
-    "serde_with",
+ "serde_with",
  "strum",
  "tabled",
  "tracing",
@@ -1162,7 +1162,6 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]
@@ -1650,7 +1649,7 @@ checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
 dependencies = [
  "autocfg",
  "hashbrown 0.12.3",
-    "serde",
+ "serde",
 ]
 
 [[package]]
@@ -2102,7 +2101,7 @@ dependencies = [
  "pyo3",
  "serde",
  "serde_repr",
-    "tabled",
+ "tabled",
  "tracing",
  "tracing-log",
  "tracing-subscriber",
@@ -2913,15 +2912,15 @@ version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1402f54f9a3b9e2efe71c1cea24e648acce55887983553eeb858cf3115acfd49"
 dependencies = [
-    "base64",
-    "chrono",
-    "hex",
-    "indexmap 1.9.3",
-    "indexmap 2.0.0",
-    "serde",
-    "serde_json",
-    "serde_with_macros",
-    "time 0.3.23",
+ "base64",
+ "chrono",
+ "hex",
+ "indexmap 1.9.3",
+ "indexmap 2.0.0",
+ "serde",
+ "serde_json",
+ "serde_with_macros",
+ "time 0.3.23",
 ]
 
 [[package]]
@@ -2930,10 +2929,10 @@ version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9197f1ad0e3c173a0222d3c4404fb04c3afe87e962bcb327af73e8301fa203c7"
 dependencies = [
-    "darling",
-    "proc-macro2",
-    "quote",
-    "syn 2.0.27",
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.27",
 ]
 
 [[package]]
