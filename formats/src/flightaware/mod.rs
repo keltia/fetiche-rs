@@ -223,7 +223,7 @@ struct Position {
     /// ADS-B version
     pub adsb_version: Option<String>,
     /// ICAO Aircraft Type Code
-    #[serde(rename = "aitcrafttype")]
+    #[serde(rename = "aircrafttype")]
     pub aircraft_type: Option<String>,
     /// Altitude
     #[serde_as(as = "Option<DisplayFromStr>")]
