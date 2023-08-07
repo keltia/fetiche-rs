@@ -69,8 +69,9 @@ fn main() -> Result<()> {
     // List loaded locations if nothing is specified, neither name nor location
     //
     if opts.name.is_none() {
-        let str = list_locations(&loc)?;
-        eprintln!("Locations:\n{}", str);
+        let dist = opts.range;
+        let str = list_locations(&loc, dist)?;
+        eprintln!("{}", str);
         return Ok(());
     }
 
