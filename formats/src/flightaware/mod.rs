@@ -38,6 +38,7 @@ pub enum TimeType {
 
 /// Timestamps are in POSIX Epoch format (i32)
 ///
+#[serde_as]
 #[derive(Clone, Debug, Deserialize)]
 pub struct Arrival {
     /// Arrival Time (i32)
@@ -83,6 +84,7 @@ pub struct Arrival {
     pub synthetic: Option<u8>,
 }
 
+#[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct Cancellation {
     /// FlightAware flight id
