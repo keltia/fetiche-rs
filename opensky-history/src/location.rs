@@ -102,7 +102,7 @@ pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<St
     let mut builder = Builder::default();
     builder.set_header(header);
 
-    let str = data.keys().for_each(|name| {
+    data.keys().for_each(|name| {
         let mut row = vec![];
 
         let loc = data.get(name).unwrap();
