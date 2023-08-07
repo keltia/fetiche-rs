@@ -34,8 +34,7 @@ serde_json.workspace = true
 serde_repr.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
-
-tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
+tracing-subscriber.workspace = true
 
 #async-std = "1.12"
 clap_complete = "4.2"

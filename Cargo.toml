@@ -24,3 +24,4 @@ strum = { version = "0", features = ["derive"] }
 tabled = "0.13"
 tracing = "0.1"
 tracing-log = { version = "0.1", features = ["env_logger"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
