@@ -31,6 +31,7 @@ hcl-rs.workspace = true
 home.workspace = true
 serde.workspace = true
 serde_repr.workspace = true
+tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
 
