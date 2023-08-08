@@ -42,8 +42,20 @@ site "opensky" {
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
   auth     = "login"
-  cmd      = {
+  routes   = {
     get = "/states/own"
+  }
+}
+
+site "fa-belfast" {
+  features = ["fetch", "stream"]
+  type     = "adsb"
+  format   = "flightaware"
+  auth     = "login"
+  base_url = "firehose.flightaware.com:1501"
+  routes = {
+    get = "range"
+    stream = "live"
   }
 }
 
