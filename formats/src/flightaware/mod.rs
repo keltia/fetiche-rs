@@ -18,6 +18,8 @@ use strum::{EnumString, EnumVariantNames};
 
 pub use location::*;
 
+use crate::Cat21;
+
 mod location;
 
 #[derive(Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
@@ -133,6 +135,7 @@ pub struct Departure {}
 #[derive(Debug)]
 pub struct ExtendedFlightInfo {}
 
+#[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct Error {
     /// Error Message
@@ -154,6 +157,7 @@ pub struct Fmswx {}
 #[derive(Debug)]
 pub struct GroundPosition {}
 
+#[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct Keepalive {
     /// PITR resume value
@@ -353,4 +357,10 @@ struct Position {
     /// Computed Wind Speed (knots) (u32)
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub wind_speed: Option<u32>,
+}
+
+impl From<&Position> for Cat21 {
+    fn from(value: &Position) -> Self {
+        todo!()
+    }
 }
