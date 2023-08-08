@@ -133,8 +133,14 @@ pub struct Departure {}
 #[derive(Debug)]
 pub struct ExtendedFlightInfo {}
 
-#[derive(Debug)]
-pub struct Error {}
+#[derive(Debug, Deserialize)]
+pub struct Error {
+    /// Error Message
+    pub error_msg: String,
+    /// Message Type ("error")
+    #[serde(rename = "type")]
+    pub etype: String,
+}
 
 #[derive(Debug)]
 pub struct Flifo {}
@@ -147,6 +153,20 @@ pub struct Fmswx {}
 
 #[derive(Debug)]
 pub struct GroundPosition {}
+
+#[derive(Debug, Deserialize)]
+pub struct Keepalive {
+    /// PITR resume value
+    #[serde_as(as = "DisplayFromStr")]
+    pub pitr: i32,
+    /// Time of keepalive generation
+    #[serde(rename = "serverTime")]
+    #[serde_as(as = "DisplayFromStr")]
+    pub server_time: i32,
+    /// Message Type ("keepalive")
+    #[serde(rename = "type")]
+    pub ktype: String,
+}
 
 #[derive(Debug)]
 pub struct LocationEntry {}
