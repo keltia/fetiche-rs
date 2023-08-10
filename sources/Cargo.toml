@@ -45,14 +45,14 @@ strum.workspace = true
 tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
+tracing-subscriber.workspace = true
 
 csv = "1.2"
 dateparser = "0.2"
 mini-moka = "0.10"
+openssl = "0.10"
 percent-encoding = "2.2"
 signal-hook = "0.3"
-native-tls = { version = "0.2", features = ["alpn"] }
-tracing-subscriber.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true
