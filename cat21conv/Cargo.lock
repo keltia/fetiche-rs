@@ -945,6 +945,7 @@ dependencies = [
 name = "fetiche-sources"
 version = "0.10.0"
 dependencies = [
+ "base64 0.21.2",
  "chrono",
  "clap",
  "csv",
@@ -956,9 +957,9 @@ dependencies = [
  "home",
  "log",
  "mini-moka",
+ "openssl",
  "percent-encoding",
  "reqwest",
- "rustls",
  "serde",
  "serde_json",
  "serde_repr",
@@ -967,6 +968,7 @@ dependencies = [
  "tabled",
  "tracing",
  "tracing-log",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2982,6 +2984,7 @@ dependencies = [
  "sharded-slab",
  "smallvec",
  "thread_local",
+ "time 0.3.25",
  "tracing",
  "tracing-core",
  "tracing-log",
