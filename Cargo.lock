@@ -1111,6 +1111,7 @@ dependencies = [
 name = "fetiche-sources"
 version = "0.10.0"
 dependencies = [
+ "base64",
  "chrono",
  "clap",
  "criterion",
@@ -1124,7 +1125,7 @@ dependencies = [
  "httpmock",
  "log",
  "mini-moka",
- "native-tls",
+ "openssl",
  "percent-encoding",
  "reqwest",
  "rstest",

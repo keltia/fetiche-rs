@@ -4,6 +4,7 @@
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
+use base64::{engine::general_purpose, Engine as _};
 use openssl::ssl::{SslConnector, SslMethod};
 use reqwest::Url;
 use tracing::trace;
@@ -26,11 +27,12 @@ fn main() -> eyre::Result<()> {
     //
     tracing_subscriber::registry().with(filter).with(fmt).init();
 
-    let proxy = std::env::var("http_proxy")?;
+    let proxy = std::env::var("http_proxy").unwrap_or("".to_string());
 
     let connector = SslConnector::builder(SslMethod::tls())?.build();
     let stream = if proxy.is_empty() {
         trace!("no proxy");
+
         TcpStream::connect(format!("{}:{}", URL, PORT))?
     } else {
         trace!("using proxy");
@@ -40,16 +42,34 @@ fn main() -> eyre::Result<()> {
 
         trace!("proxy = {}:{}", host, port);
 
+        let username = url.username();
+        let passwd = url.password().unwrap_or("");
+
+        // base64 API is total bullcrap.
+        //
+        let auth = general_purpose::STANDARD_NO_PAD.encode(format!("{}:{}", username, passwd));
+
+        trace!("CONNECT");
         let mut stream = TcpStream::connect(format!("{}:{}", host, port))?;
-        stream.write_all(format!("CONNECT {}:{} HTTP/1.1\r\n\r\n", URL, PORT).as_bytes())?;
+        stream.write_all(
+            format!(
+                "CONNECT {}:{} HTTP/1.1\r\nAuthorization: {}\r\n",
+                URL, PORT, auth
+            )
+            .as_bytes(),
+        )?;
         stream
     };
     let mut stream = connector.connect(URL, stream)?;
 
-    let str = format!("GET /\r\nHost: {}\r\nConnection: close\r\n\r\n", URL);
+    trace!("GET");
+    let str = format!(
+        "GET /index.html\r\nHost: {}\r\nConnection: close\r\n\r\n",
+        URL
+    );
     stream.write_all(str.as_bytes())?;
 
-    trace!("read from");
+    trace!("READ");
     let mut res = String::new();
     stream.read_to_string(&mut res)?;
 

@@ -53,6 +53,7 @@ mini-moka = "0.10"
 openssl = "0.10"
 percent-encoding = "2.2"
 signal-hook = "0.3"
+base64 = "0.21.2"
 
 [dev-dependencies]
 rstest.workspace = true
