@@ -23,7 +23,7 @@ use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
 use eyre::{eyre, Result};
-use native_tls::TlsConnector;
+use openssl::ssl::{SslConnector, SslMethod};
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, EnumVariantNames};
 use tracing::trace;
@@ -211,9 +211,9 @@ impl Fetchable for Flightaware {
 
         // Setup TLS connection
         //
-        let connector = TlsConnector::new().unwrap();
-        let stream = TcpStream::connect(&self.base_url).unwrap();
-        let mut stream = connector.connect("flightaware.com", stream).unwrap();
+        let connector = SslConnector::builder(SslMethod::tls())?.build();
+        let stream = TcpStream::connect(&self.base_url)?;
+        let mut stream = connector.connect("flightaware.com", stream)?;
 
         // Send request
         //
