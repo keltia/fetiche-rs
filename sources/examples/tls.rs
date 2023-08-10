@@ -47,6 +47,7 @@ fn main() -> eyre::Result<()> {
     let mut stream = connector.connect(URL, stream)?;
 
     let str = format!("GET /\r\nHost: {}\r\nConnection: close\r\n\r\n", URL);
+    stream.write_all(str.as_bytes())?;
 
     trace!("read from");
     let mut res = String::new();
