@@ -1124,10 +1124,10 @@ dependencies = [
  "httpmock",
  "log",
  "mini-moka",
+ "native-tls",
  "percent-encoding",
  "reqwest",
  "rstest",
- "rustls",
  "serde",
  "serde_json",
  "serde_repr",
@@ -1137,6 +1137,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-log",
+ "tracing-subscriber",
 ]
 
 [[package]]

@@ -12,11 +12,18 @@
 //! For now, the only event wwe are supporting at this level is `Position`, an ADS-B airplane
 //! position in time and space.  Again, this is not a general FA access library.
 //!
+//! There is not much differences between `Fetch` and `Stream` due to nature of FA's API.  One always
+//! open up a TLS connection to the site and send a request.  If this is a `live` or `pitr` one you
+//! get a stream and `range` gets you a "fixed" stream.
+//!
 
+use std::io::{Read, Write};
+use std::net::TcpStream;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
 use eyre::{eyre, Result};
+use native_tls::TlsConnector;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, EnumVariantNames};
 use tracing::trace;
@@ -45,8 +52,6 @@ pub struct Flightaware {
     pub stream: String,
     /// Running time (for streams)
     pub duration: i32,
-    /// rustls client
-    pub conn: rustls::ClientConnection,
 }
 
 /// This is the struct holding potential parameters to the API
@@ -114,7 +119,7 @@ struct Credentials {
 
 impl Flightaware {
     #[tracing::instrument]
-    pub fn new(conn: rustls::ClientConnection) -> Self {
+    pub fn new() -> Self {
         trace!("flightaware::new");
 
         Flightaware {
@@ -126,7 +131,6 @@ impl Flightaware {
             get: "".to_owned(),
             stream: "".to_owned(),
             duration: 0,
-            conn,
         }
     }
 
@@ -171,15 +175,17 @@ impl Fetchable for Flightaware {
         String::from("flightaware")
     }
 
-    /// All credentials are passed every time we call the API so return a fake token
+    /// Credentials are passed in the call the API    
     ///
     #[tracing::instrument]
     fn authenticate(&self) -> Result<String> {
-        trace!("fake token retrieval");
+        trace!("fake auth");
+
         Ok(format!("{}:{}", self.login, self.password))
     }
 
     fn fetch(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
+        trace!("fetch with TLS");
         let args: Param = serde_json::from_str(args)?;
 
         // Check arguments
@@ -203,7 +209,22 @@ impl Fetchable for Flightaware {
             self.login, self.password, start, end
         );
 
-        Ok(())
+        // Setup TLS connection
+        //
+        let connector = TlsConnector::new().unwrap();
+        let stream = TcpStream::connect(&self.base_url).unwrap();
+        let mut stream = connector.connect("flightaware.com", stream).unwrap();
+
+        // Send request
+        //
+        stream.write_all(req.as_bytes())?;
+
+        // Get answer
+        //
+        let mut res = String::new();
+        stream.read_to_string(&mut res)?;
+
+        Ok(out.send(res)?)
     }
 
     fn format(&self) -> Format {
@@ -220,7 +241,7 @@ impl Streamable for Flightaware {
     ///
     #[tracing::instrument]
     fn authenticate(&self) -> Result<String> {
-        trace!("fake token retrieval");
+        trace!("fake auth");
         Ok(format!("{}:{}", self.login, self.password))
     }
 

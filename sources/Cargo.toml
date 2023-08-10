@@ -50,8 +50,9 @@ csv = "1.2"
 dateparser = "0.2"
 mini-moka = "0.10"
 percent-encoding = "2.2"
-rustls = "0.21"
 signal-hook = "0.3"
+native-tls = { version = "0.2", features = ["alpn"] }
+tracing-subscriber.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true
