@@ -25,16 +25,13 @@ fn main() -> eyre::Result<()> {
     //
     tracing_subscriber::registry().with(filter).with(fmt).init();
 
-    let proxy = "proxysrv.eurocontrol.fr:8080";
+    //let proxy = "proxysrv.eurocontrol.fr:8080";
 
     let connector = TlsConnector::new()?;
-    let stream = TcpStream::connect(proxy)?;
-    let mut stream = connector.connect("eurocontrol.fr", stream)?;
+    let stream = TcpStream::connect(format!("{}:{}", URL, PORT))?;
+    let mut stream = connector.connect(URL, stream)?;
 
-    let str = format!(
-        "GET https://{}:{}/\r\nHost: {}\r\nConnection: close\r\n\r\n",
-        URL, PORT, URL
-    );
+    let str = format!("GET /\r\nHost: {}\r\nConnection: close\r\n\r\n", URL,);
     stream.write_all(str.as_bytes())?;
 
     trace!("read from");
