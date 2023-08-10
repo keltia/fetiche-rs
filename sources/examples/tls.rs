@@ -9,7 +9,7 @@ use tracing::trace;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-const URL: &str = "www.whatismyip.com:";
+const URL: &str = "www.whatismyip.com";
 const PORT: u16 = 443;
 
 fn main() -> eyre::Result<()> {
