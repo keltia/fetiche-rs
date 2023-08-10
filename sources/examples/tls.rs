@@ -60,6 +60,8 @@ fn main() -> eyre::Result<()> {
         )?;
         stream
     };
+    // Handover to the TLS engine hopefully
+    //
     let mut stream = connector.connect(URL, stream)?;
 
     trace!("GET");
