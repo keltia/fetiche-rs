@@ -146,7 +146,7 @@ impl Site {
         }
     }
 
-    /// Add authtentication info
+    /// Add authentication info
     ///
     pub fn auth(&mut self, auth: Auth) -> &mut Self {
         self.auth = Some(auth);
