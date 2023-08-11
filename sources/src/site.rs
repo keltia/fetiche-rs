@@ -20,8 +20,8 @@ use tracing::trace;
 use fetiche_formats::Format;
 
 use crate::{
-    aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky, Auth, Capability, Routes,
-    Streamable,
+    aeroscope::Aeroscope, asd::Asd, flightaware::Flightaware, opensky::Opensky, safesky::Safesky,
+    Auth, Capability, Routes, Streamable,
 };
 use crate::{Fetchable, Sources};
 
@@ -138,6 +138,13 @@ impl Site {
                         } else {
                             Ok(Flow::Fetchable(Box::new(s)))
                         }
+                    }
+                    Format::Flightaware => {
+                        let s = Flightaware::new().load(site).clone();
+
+                        // FIXME: Handle both cases
+                        //
+                        Ok(Flow::Fetchable(Box::new(s)))
                     }
                     _ => Err(eyre!("invalid site {}", name)),
                 }
