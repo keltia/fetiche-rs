@@ -39,6 +39,7 @@ tracing-subscriber.workspace = true
 #async-std = "1.12"
 clap_complete = "4.2"
 csv = "1.1"
+dateparser = "0.2"
 #influxdb = { version = "0.6", features = ["derive"] }
 percent-encoding = "2.2"
 #sqlx = { version = "0.6", features = ["json", "ipnetwork", "mysql", "tls", "chrono", "macros", "runtime-async-std-native-tls"] }

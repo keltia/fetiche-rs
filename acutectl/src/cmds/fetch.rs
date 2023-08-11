@@ -2,7 +2,7 @@ use std::fs;
 use std::io::{stdout, Write};
 use std::sync::Arc;
 
-use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
+use chrono::{DateTime, Datelike, TimeZone, Utc};
 use eyre::{eyre, Result};
 use tracing::{info, trace};
 
@@ -85,13 +85,11 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
     if opts.today {
         // Build our own begin, end
         //
-        let begin = NaiveDate::from_ymd_opt(t.year(), t.month(), t.day())
-            .unwrap()
-            .and_hms_opt(0, 0, 0)
+        let begin: DateTime<Utc> = Utc
+            .with_ymd_and_hms(t.year(), t.month(), t.day(), 0, 0, 0)
             .unwrap();
-        let end = NaiveDate::from_ymd_opt(t.year(), t.month(), t.day())
-            .unwrap()
-            .and_hms_opt(23, 59, 59)
+        let end: DateTime<Utc> = Utc
+            .with_ymd_and_hms(t.year(), t.month(), t.day(), 23, 59, 59)
             .unwrap();
 
         Ok(Filter::interval(begin, end))
@@ -101,11 +99,11 @@ pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
         // We have to parse both arguments ourselves because it uses its own formats
         //
         let begin = match &opts.begin {
-            Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?,
+            Some(begin) => dateparser::parse(begin).unwrap(),
             None => return Err(eyre!("bad -B parameter")),
         };
         let end = match &opts.end {
-            Some(end) => NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S")?,
+            Some(end) => dateparser::parse(end).unwrap(),
             None => return Err(eyre!("Bad -E parameter")),
         };
 
