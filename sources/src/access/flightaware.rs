@@ -160,6 +160,26 @@ impl Flightaware {
         self.stream = site.route("stream").unwrap().to_owned();
         self
     }
+
+    /// Generate the proper command string
+    ///
+    fn request(&self, cmd: Command) -> Result<String> {
+        let str = match cmd {
+            Command::Live => format!(
+                "live username {} password {} events \"position\"",
+                self.login, self.password
+            ),
+            Command::Pitr { pitr } => format!(
+                "pitr {} username {} password {} events \"position\"",
+                pitr, self.login, self.password
+            ),
+            Command::Range { begin, end } => format!(
+                "range {} {} username {} password {} events \"{}\"",
+                begin, end, self.login, self.password, "position"
+            ),
+        };
+        Ok(str)
+    }
 }
 
 /// Small helper function
@@ -196,8 +216,9 @@ impl Fetchable for Flightaware {
 
         // Get the range parameters
         //
-        let (start, end) = if args.start.is_some() && args.end.is_some() {
-            (get_timestamp(args.start)?, get_timestamp(args.end)?)
+        let cmd = if args.begin.is_some() && args.end.is_some() {
+            let (begin, end) = (get_timestamp(args.begin)?, get_timestamp(args.end)?);
+            Command::Range { begin, end }
         } else {
             return Err(eyre!("No start and/or end, use stream."));
         };
