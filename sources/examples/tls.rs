@@ -84,11 +84,11 @@ fn main() -> eyre::Result<()> {
     dbg!(&stream);
     let mut stream = connector.connect(&site, stream)?;
 
-    trace!("GET");
     let str = format!(
-        "GET /index.html\r\nHost: {}\r\nConnection: close\r\n\r\n",
-        URL
+        "GET /index.html HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
+        site
     );
+    trace!("{}", str);
     stream.write_all(str.as_bytes())?;
 
     trace!("READ");
