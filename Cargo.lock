@@ -1125,7 +1125,7 @@ dependencies = [
  "httpmock",
  "log",
  "mini-moka",
- "openssl",
+ "native-tls",
  "percent-encoding",
  "reqwest",
  "rstest",
