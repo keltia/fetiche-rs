@@ -71,6 +71,10 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
         _ => write!(stdout(), "{}", data)?,
     }
 
+    // Remove job from engine and state
+    //
+    engine.remove_job(job)?;
+
     Ok(())
 }
 
