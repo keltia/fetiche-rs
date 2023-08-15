@@ -957,7 +957,7 @@ dependencies = [
  "home",
  "log",
  "mini-moka",
- "openssl",
+ "native-tls",
  "percent-encoding",
  "reqwest",
  "serde",
