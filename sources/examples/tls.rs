@@ -1,7 +1,7 @@
 //! Proxy ought to work but torsocks-ify will not.
 //!
 
-use std::io::{Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 
 use base64::{engine::general_purpose, Engine as _};
@@ -11,7 +11,7 @@ use tracing::trace;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-const URL: &str = "www.whatismyip.com";
+const URL: &str = "www.whatismyipaddress.com";
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 
@@ -92,9 +92,10 @@ fn main() -> eyre::Result<()> {
     stream.write_all(str.as_bytes())?;
 
     trace!("READ");
-    let mut res = String::new();
-    stream.read_to_string(&mut res)?;
 
-    eprintln!("IP={}", res);
+    let out = BufReader::new(stream);
+    for data in out.lines() {
+        println!("{}", data.unwrap());
+    }
     Ok(())
 }
