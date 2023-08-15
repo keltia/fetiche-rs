@@ -133,7 +133,7 @@ impl Site {
 
                         // FIXME: handle both cases
                         //
-                        if site.has("stream") {
+                        if site.is_streamable() {
                             Ok(Flow::Streamable(Box::new(s)))
                         } else {
                             Ok(Flow::Fetchable(Box::new(s)))
@@ -144,7 +144,11 @@ impl Site {
 
                         // FIXME: Handle both cases
                         //
-                        Ok(Flow::Fetchable(Box::new(s)))
+                        if site.is_streamable() {
+                            Ok(Flow::Streamable(Box::new(s)))
+                        } else {
+                            Ok(Flow::Fetchable(Box::new(s)))
+                        }
                     }
                     _ => Err(eyre!("invalid site {}", name)),
                 }
@@ -159,6 +163,13 @@ impl Site {
         self.auth = Some(auth);
         self
     }
+
+    /// Return whether a site is streamable
+    ///
+    pub fn is_streamable(&self) -> bool {
+        self.features.contains(&Capability::Stream)
+    }
+
     /// Return the site name
     ///
     pub fn name(&self) -> Option<String> {
