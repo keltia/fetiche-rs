@@ -4,7 +4,7 @@
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
-use base64::{engine::general_purpose, Engine as _};
+use base64_light::base64_encode;
 use openssl::ssl::{SslConnector, SslMethod};
 use reqwest::Url;
 use tracing::trace;
@@ -45,9 +45,10 @@ fn main() -> eyre::Result<()> {
         let username = url.username();
         let passwd = url.password().unwrap_or("");
 
-        // base64 API is total bullcrap.
+        // base64_light API is better.
         //
-        let auth = general_purpose::STANDARD_NO_PAD.encode(format!("{}:{}", username, passwd));
+        let auth = base64_encode(&format!("{}:{}", username, passwd));
+        trace!("Auth token is {}", auth);
 
         trace!("CONNECT");
         let mut stream = TcpStream::connect(format!("{}:{}", host, port))?;
