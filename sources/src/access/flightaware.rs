@@ -21,17 +21,23 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
-use std::time::Duration;
 
+use base64_light::base64_encode;
 use eyre::{eyre, Result};
-use native_tls::TlsConnector;
+use native_tls::{TlsConnector, TlsStream};
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, EnumVariantNames};
 use tracing::trace;
 
 use fetiche_formats::Format;
 
-use crate::{Auth, Capability, Fetchable, Site, Streamable};
+use crate::{version, Auth, Capability, Fetchable, Site, Streamable};
+
+/// Firehose is out target
+const SITE: &str = "firehose.flightaware.com";
+/// Standard FA port
+const PORT: u16 = 1501;
 
 /// This si the Flightaware client/source struct.
 ///
@@ -60,7 +66,7 @@ pub struct Flightaware {
 #[derive(Debug, Deserialize, Serialize)]
 struct Param {
     /// timestamp of the state vectors to be retrieved
-    pub pitr: Option<u32>,
+    pub pitr: Option<i64>,
     /// Time to start from
     pub begin: Option<String>,
     /// Time to stop to
@@ -144,7 +150,7 @@ impl Flightaware {
 
     /// Load some data from in-memory loaded config
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("flightaware::load");
 
@@ -171,7 +177,7 @@ impl Flightaware {
 
     /// Generate the proper command string
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     fn request(&self, cmd: Command) -> Result<String> {
         let str = match cmd {
             Command::Live => format!(
@@ -188,6 +194,60 @@ impl Flightaware {
             ),
         };
         Ok(str)
+    }
+
+    /// Establish the TCP/TLS connection, optionally goes through an HTTP proxy
+    ///
+    #[tracing::instrument(skip(self))]
+    pub fn connect(&self, proxy: Option<String>) -> Result<TlsStream<TcpStream>> {
+        let connector = TlsConnector::new()?;
+        let stream = if proxy.is_some() {
+            trace!("using proxy");
+
+            let url = Url::parse(&proxy.unwrap())?;
+            let (host, port) = (url.host().unwrap(), url.port().unwrap());
+
+            trace!("proxy = {}:{}", host, port);
+
+            let username = url.username();
+            let passwd = url.password().unwrap_or("");
+
+            // base64_light API is better.
+            //
+            let auth = base64_encode(&format!("{}:{}", username, passwd));
+            trace!("Auth token is {}", auth);
+
+            trace!("CONNECT");
+            let mut stream = TcpStream::connect(format!("{}:{}", host, port))?;
+
+            stream.write_all(
+                format!(
+                    r##"CONNECT {}:{} HTTP/1.1
+Proxy-Authorization: Basic {}
+User-Agent: {}
+Proxy-Connection: Keep-Alive
+
+"##,
+                    SITE,
+                    PORT,
+                    auth,
+                    version()
+                )
+                .as_bytes(),
+            )?;
+            stream
+        } else {
+            trace!("no proxy");
+
+            TcpStream::connect(format!("{}:{}", SITE, PORT))?
+        };
+        // Handover to the TLS engine hopefully
+        //
+        trace!("TCP={:?}", stream);
+
+        let stream = connector.connect(SITE, stream)?;
+        dbg!(&stream);
+        Ok(stream)
     }
 }
 
@@ -208,14 +268,14 @@ impl Fetchable for Flightaware {
 
     /// Credentials are passed in the call the API    
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     fn authenticate(&self) -> Result<String> {
         trace!("fake auth");
 
         Ok(format!("{}:{}", self.login, self.password))
     }
 
-    //#[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     fn fetch(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
         trace!("fetch with TLS");
         let args: Param = serde_json::from_str(args)?;
@@ -237,12 +297,15 @@ impl Fetchable for Flightaware {
 
         let req = self.request(cmd)?;
 
-        // Setup TLS connection
+        // Setup TLS connection, check proxy environment var first.
         //
+        let proxy = match std::env::var("http_proxy") {
+            Ok(s) => Some(s),
+            Err(_) => None,
+        };
+
         trace!("tls connect");
-        let connector = TlsConnector::new()?;
-        let stream = TcpStream::connect(&self.base_url)?;
-        let mut stream = connector.connect("firehose.flightaware.com", stream)?;
+        let mut stream = self.connect(proxy)?;
 
         // Send request
         //
@@ -279,29 +342,28 @@ impl Streamable for Flightaware {
         Ok(format!("{}:{}", self.login, self.password))
     }
 
-    fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
+    fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
         trace!("stream with TLS");
         let args: Param = serde_json::from_str(args)?;
 
         // Check arguments
         //
-        if args.pitr.is_some() {
-            return Err(eyre!("Bad argument, 'pitr' is for streams"));
-        }
-
-        let cmd = Command::Live;
+        let cmd = match args.pitr {
+            Some(pitr) => Command::Pitr { pitr },
+            None => Command::Live,
+        };
 
         let req = self.request(cmd)?;
 
-        // Setup TLS connection
+        // Setup TLS connection, check proxy environment var first.
         //
+        let proxy = match std::env::var("http_proxy") {
+            Ok(s) => Some(s),
+            Err(_) => None,
+        };
+
         trace!("tls connect");
-        let connector = TlsConnector::new()?;
-
-        let stream = TcpStream::connect(&self.base_url)?;
-        stream.set_read_timeout(Some(Duration::from_secs(10)))?;
-
-        let mut stream = connector.connect("firehose.flightaware.com", stream)?;
+        let mut stream = self.connect(proxy)?;
 
         // Send request
         //
@@ -327,8 +389,9 @@ impl Streamable for Flightaware {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use chrono::{TimeZone, Utc};
+
+    use super::*;
 
     #[test]
     fn test_get_timestamp() {
