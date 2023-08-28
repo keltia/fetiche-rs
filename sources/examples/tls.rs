@@ -45,17 +45,20 @@ fn main() -> eyre::Result<()> {
 
     trace!("{}:{}", site, port);
 
-    let proxy = std::env::var("http_proxy").unwrap_or("".to_string());
+    let proxy = match std::env::var("http_proxy") {
+        Ok(s) => Some(s),
+        Err(_) => None,
+    };
 
     let connector = TlsConnector::new()?;
-    let stream = if proxy.is_empty() {
+    let stream = if proxy.is_none() {
         trace!("no proxy");
 
         TcpStream::connect(format!("{}:{}", site, port))?
     } else {
         trace!("using proxy");
 
-        let url = Url::parse(&proxy)?;
+        let url = Url::parse(&proxy.unwrap())?;
         let (host, port) = (url.host().unwrap(), url.port().unwrap());
 
         trace!("proxy = {}:{}", host, port);
@@ -68,21 +71,29 @@ fn main() -> eyre::Result<()> {
         let auth = base64_encode(&format!("{}:{}", username, passwd));
         trace!("Auth token is {}", auth);
 
-        trace!("CONNECT");
+        trace!("send CONNECT");
         let mut stream = TcpStream::connect(format!("{}:{}", host, port))?;
         stream.write_all(
             format!(
-                "CONNECT {}:{} HTTP/1.1\r\nAuthorization: {}\r\n",
-                site, port, auth
+                r##"CONNECT {}:{} HTTP/1.1
+Proxy-Authorization: Basic {}
+User-Agent: fetiche-rs
+Proxy-Connection: Keep-Alive
+
+"##,
+                site, 443, auth
             )
             .as_bytes(),
         )?;
         stream
     };
+
     // Handover to the TLS engine hopefully
     //
-    dbg!(&stream);
+    trace!("Over to TLS");
     let mut stream = connector.connect(&site, stream)?;
+
+    dbg!(&stream);
 
     let str = format!(
         "GET /index.html HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
