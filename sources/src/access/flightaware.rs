@@ -17,13 +17,14 @@
 //! get a stream and `range` gets you a "fixed" stream.
 //!
 
-use std::io::{Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
+use std::time::Duration;
 
 use eyre::{eyre, Result};
-use openssl::ssl::{SslConnector, SslMethod};
+use native_tls::TlsConnector;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, EnumVariantNames};
 use tracing::trace;
@@ -61,13 +62,13 @@ struct Param {
     /// timestamp of the state vectors to be retrieved
     pub pitr: Option<u32>,
     /// Time to start from
-    pub start: Option<String>,
+    pub begin: Option<String>,
     /// Time to stop to
     pub end: Option<String>,
     /// Compression type — **UNSUPPORTED**
     pub compress: Option<Compress>,
     /// Events
-    pub events: Vec<Events>,
+    pub events: Option<Vec<Events>>,
 }
 
 #[derive(Debug, Deserialize, strum::Display, EnumString, EnumVariantNames, Serialize)]
@@ -105,6 +106,13 @@ pub enum Events {
     LocationExit,
     // Weather
     Fmswx,
+}
+
+#[derive(Debug)]
+pub enum Command {
+    Live,
+    Pitr { pitr: i64 },
+    Range { begin: i64, end: i64 },
 }
 
 /// Credentials to submit to the site to get the token
@@ -160,12 +168,35 @@ impl Flightaware {
         self.stream = site.route("stream").unwrap().to_owned();
         self
     }
+
+    /// Generate the proper command string
+    ///
+    #[tracing::instrument]
+    fn request(&self, cmd: Command) -> Result<String> {
+        let str = match cmd {
+            Command::Live => format!(
+                "live username {} password {} events \"position\"",
+                self.login, self.password
+            ),
+            Command::Pitr { pitr } => format!(
+                "pitr {} username {} password {} events \"position\"",
+                pitr, self.login, self.password
+            ),
+            Command::Range { begin, end } => format!(
+                "range {} {} username {} password {} events \"{}\"",
+                begin, end, self.login, self.password, "position"
+            ),
+        };
+        Ok(str)
+    }
 }
 
 /// Small helper function
 ///
+#[tracing::instrument]
 fn get_timestamp(date: Option<String>) -> Result<i64> {
     let date = date.unwrap();
+    trace!("date={date}");
     let date = dateparser::parse(&date).unwrap();
     Ok(date.timestamp())
 }
@@ -184,6 +215,7 @@ impl Fetchable for Flightaware {
         Ok(format!("{}:{}", self.login, self.password))
     }
 
+    //#[tracing::instrument]
     fn fetch(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
         trace!("fetch with TLS");
         let args: Param = serde_json::from_str(args)?;
@@ -196,35 +228,37 @@ impl Fetchable for Flightaware {
 
         // Get the range parameters
         //
-        let (start, end) = if args.start.is_some() && args.end.is_some() {
-            (get_timestamp(args.start)?, get_timestamp(args.end)?)
+        let cmd = if args.begin.is_some() && args.end.is_some() {
+            let (begin, end) = (get_timestamp(args.begin)?, get_timestamp(args.end)?);
+            Command::Range { begin, end }
         } else {
             return Err(eyre!("No start and/or end, use stream."));
         };
 
-        // Build the request string
-        //
-        let req = format!(
-            "username {} password {} range {} {} events \"position\"",
-            self.login, self.password, start, end
-        );
+        let req = self.request(cmd)?;
 
         // Setup TLS connection
         //
-        let connector = SslConnector::builder(SslMethod::tls())?.build();
+        trace!("tls connect");
+        let connector = TlsConnector::new()?;
         let stream = TcpStream::connect(&self.base_url)?;
-        let mut stream = connector.connect("flightaware.com", stream)?;
+        let mut stream = connector.connect("firehose.flightaware.com", stream)?;
 
         // Send request
         //
+        trace!("req={req}");
         stream.write_all(req.as_bytes())?;
 
-        // Get answer
-        //
-        let mut res = String::new();
-        stream.read_to_string(&mut res)?;
+        trace!("read answer");
 
-        Ok(out.send(res)?)
+        let buf = BufReader::new(&mut stream);
+        for line in buf.lines() {
+            let line = line.unwrap();
+            trace!("line={}", line);
+            let _ = out.send(line);
+        }
+
+        Ok(())
     }
 
     fn format(&self) -> Format {
@@ -234,7 +268,7 @@ impl Fetchable for Flightaware {
 
 impl Streamable for Flightaware {
     fn name(&self) -> String {
-        todo!()
+        String::from("flightaware")
     }
 
     /// All credentials are passed every time we call the API so return a fake token
@@ -246,10 +280,62 @@ impl Streamable for Flightaware {
     }
 
     fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
-        todo!()
+        trace!("stream with TLS");
+        let args: Param = serde_json::from_str(args)?;
+
+        // Check arguments
+        //
+        if args.pitr.is_some() {
+            return Err(eyre!("Bad argument, 'pitr' is for streams"));
+        }
+
+        let cmd = Command::Live;
+
+        let req = self.request(cmd)?;
+
+        // Setup TLS connection
+        //
+        trace!("tls connect");
+        let connector = TlsConnector::new()?;
+
+        let stream = TcpStream::connect(&self.base_url)?;
+        stream.set_read_timeout(Some(Duration::from_secs(10)))?;
+
+        let mut stream = connector.connect("firehose.flightaware.com", stream)?;
+
+        // Send request
+        //
+        trace!("req={req}");
+        stream.write_all(req.as_bytes())?;
+
+        trace!("read answer");
+
+        let buf = BufReader::new(&mut stream);
+        for line in buf.lines() {
+            let line = line.unwrap();
+            trace!("line={}", line);
+            let _ = out.send(line);
+        }
+
+        Ok(())
     }
 
     fn format(&self) -> Format {
         Format::Flightaware
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{TimeZone, Utc};
+
+    #[test]
+    fn test_get_timestamp() {
+        let t = get_timestamp(Some("2023-08-02T00:00:00Z".to_string()));
+        let d = Utc.with_ymd_and_hms(2023, 8, 2, 0, 0, 0).unwrap();
+
+        assert!(t.is_ok());
+        assert_eq!(d.timestamp(), t.unwrap());
     }
 }

@@ -1,18 +1,30 @@
-//! No proxy
+//! Proxy ought to work but torsocks-ify will not.
 //!
 
-use std::io::{Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 
 use base64_light::base64_encode;
-use openssl::ssl::{SslConnector, SslMethod};
+use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use native_tls::TlsConnector;
 use reqwest::Url;
 use tracing::trace;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-const URL: &str = "www.whatismyip.com";
-const PORT: u16 = 443;
+const URL: &str = "www.whatismyipaddress.com";
+
+/// CLI options
+#[derive(Parser)]
+#[command(disable_version_flag = true)]
+#[clap(name = crate_name!(), about = crate_description!())]
+#[clap(version = crate_version!(), author = crate_authors!())]
+pub struct Opts {
+    #[clap(default_value = URL)]
+    pub site: Option<String>,
+    #[clap(default_value = "443")]
+    pub port: Option<u16>,
+}
 
 fn main() -> eyre::Result<()> {
     trace!("open connection");
@@ -27,13 +39,19 @@ fn main() -> eyre::Result<()> {
     //
     tracing_subscriber::registry().with(filter).with(fmt).init();
 
+    let opts: Opts = Opts::parse();
+    let site = opts.site.unwrap();
+    let port = opts.port.unwrap();
+
+    trace!("{}:{}", site, port);
+
     let proxy = std::env::var("http_proxy").unwrap_or("".to_string());
 
-    let connector = SslConnector::builder(SslMethod::tls())?.build();
+    let connector = TlsConnector::new()?;
     let stream = if proxy.is_empty() {
         trace!("no proxy");
 
-        TcpStream::connect(format!("{}:{}", URL, PORT))?
+        TcpStream::connect(format!("{}:{}", site, port))?
     } else {
         trace!("using proxy");
 
@@ -55,7 +73,7 @@ fn main() -> eyre::Result<()> {
         stream.write_all(
             format!(
                 "CONNECT {}:{} HTTP/1.1\r\nAuthorization: {}\r\n",
-                URL, PORT, auth
+                site, port, auth
             )
             .as_bytes(),
         )?;
@@ -63,19 +81,21 @@ fn main() -> eyre::Result<()> {
     };
     // Handover to the TLS engine hopefully
     //
-    let mut stream = connector.connect(URL, stream)?;
+    dbg!(&stream);
+    let mut stream = connector.connect(&site, stream)?;
 
-    trace!("GET");
     let str = format!(
-        "GET /index.html\r\nHost: {}\r\nConnection: close\r\n\r\n",
-        URL
+        "GET /index.html HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
+        site
     );
+    trace!("{}", str);
     stream.write_all(str.as_bytes())?;
 
     trace!("READ");
-    let mut res = String::new();
-    stream.read_to_string(&mut res)?;
 
-    eprintln!("IP={}", res);
+    let out = BufReader::new(stream);
+    for data in out.lines() {
+        println!("{}", data.unwrap());
+    }
     Ok(())
 }

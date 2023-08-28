@@ -20,8 +20,8 @@ use tracing::trace;
 use fetiche_formats::Format;
 
 use crate::{
-    aeroscope::Aeroscope, asd::Asd, opensky::Opensky, safesky::Safesky, Auth, Capability, Routes,
-    Streamable,
+    aeroscope::Aeroscope, asd::Asd, flightaware::Flightaware, opensky::Opensky, safesky::Safesky,
+    Auth, Capability, Routes, Streamable,
 };
 use crate::{Fetchable, Sources};
 
@@ -133,7 +133,18 @@ impl Site {
 
                         // FIXME: handle both cases
                         //
-                        if site.has("stream") {
+                        if site.is_streamable() {
+                            Ok(Flow::Streamable(Box::new(s)))
+                        } else {
+                            Ok(Flow::Fetchable(Box::new(s)))
+                        }
+                    }
+                    Format::Flightaware => {
+                        let s = Flightaware::new().load(site).clone();
+
+                        // FIXME: Handle both cases
+                        //
+                        if site.is_streamable() {
                             Ok(Flow::Streamable(Box::new(s)))
                         } else {
                             Ok(Flow::Fetchable(Box::new(s)))
@@ -146,12 +157,19 @@ impl Site {
         }
     }
 
-    /// Add authtentication info
+    /// Add authentication info
     ///
     pub fn auth(&mut self, auth: Auth) -> &mut Self {
         self.auth = Some(auth);
         self
     }
+
+    /// Return whether a site is streamable
+    ///
+    pub fn is_streamable(&self) -> bool {
+        self.features.contains(&Capability::Stream)
+    }
+
     /// Return the site name
     ///
     pub fn name(&self) -> Option<String> {

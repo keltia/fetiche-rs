@@ -42,10 +42,21 @@ impl State {
     /// Read our JSON file
     ///
     pub fn from(fname: PathBuf) -> Result<Self> {
-        trace!("state::from");
+        trace!("state::from({:?}", fname);
         let data = fs::read_to_string(fname)?;
         let data: State = serde_json::from_str(&data)?;
         Ok(data)
+    }
+
+    /// Perform a binary search on the job queue (job id are always incrementing) and remove said
+    /// job (done or cancelled, etc.).
+    ///
+    pub fn remove_job(&mut self, id: usize) -> &mut Self {
+        trace!("state::remove_job({})", id);
+        if let Ok(index) = self.queue.binary_search(&id) {
+            self.queue.remove(index);
+        }
+        self
     }
 }
 
@@ -74,5 +85,31 @@ impl Engine {
         };
         let data = json!(*data).to_string();
         Ok(fs::write(self.state_file(), data)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_state_new() {
+        let s = State::new();
+
+        assert_eq!(0, s.last);
+        assert!(s.queue.is_empty());
+    }
+
+    #[test]
+    fn test_state_remove() {
+        let mut s = State::new();
+
+        s.queue.push_back(666);
+        assert_eq!(1, s.queue.len());
+
+        let s = s.remove_job(666);
+        assert_eq!(0, s.last);
+        dbg!(&s.queue);
+        assert!(s.queue.is_empty());
     }
 }

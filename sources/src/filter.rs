@@ -10,7 +10,7 @@
 
 use std::fmt::{Display, Formatter};
 
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -21,8 +21,8 @@ use serde_json::json;
 pub enum Filter {
     /// Date-based interval as "%Y-%m-%d %H:%M:%S"
     Interval {
-        begin: NaiveDateTime,
-        end: NaiveDateTime,
+        begin: DateTime<Utc>,
+        end: DateTime<Utc>,
     },
     /// Special parameter with name=value
     Keyword { name: String, value: String },
@@ -42,7 +42,7 @@ pub enum Filter {
 impl Filter {
     /// from two time points
     ///
-    pub fn interval(begin: NaiveDateTime, end: NaiveDateTime) -> Self {
+    pub fn interval(begin: DateTime<Utc>, end: DateTime<Utc>) -> Self {
         Filter::Interval { begin, end }
     }
 
@@ -79,8 +79,8 @@ impl Display for Filter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         #[derive(Debug, Serialize)]
         struct Minimal {
-            begin: NaiveDateTime,
-            end: NaiveDateTime,
+            begin: DateTime<Utc>,
+            end: DateTime<Utc>,
         }
 
         #[derive(Debug, Serialize)]
@@ -210,9 +210,9 @@ mod tests {
         let begin = "2022-11-11 12:34:56";
         let end = "2022-11-30 12:34:56";
 
-        let begin = NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S");
+        let begin = dateparser::parse(&begin);
         assert!(begin.is_ok());
-        let end = NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S");
+        let end = dateparser::parse(&end);
         assert!(end.is_ok());
 
         let f = Filter::interval(begin.unwrap(), end.unwrap());
@@ -223,15 +223,15 @@ mod tests {
 
     #[test]
     fn test_filter_interval_to_string() {
-        let begin = "2022-11-11 12:34:56";
-        let end = "2022-11-30 12:34:56";
+        let begin = "2022-11-11 12:34:56 UTC";
+        let end = "2022-11-30 12:34:56 UTC";
 
-        let begin = NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S");
+        let begin = dateparser::parse(&begin);
         assert!(begin.is_ok());
-        let end = NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S");
+        let end = dateparser::parse(&end);
         assert!(end.is_ok());
 
-        let r = r##"{"begin":"2022-11-11T12:34:56","end":"2022-11-30T12:34:56"}"##;
+        let r = r##"{"begin":"2022-11-11T12:34:56Z","end":"2022-11-30T12:34:56Z"}"##;
 
         let f = Filter::interval(begin.unwrap(), end.unwrap());
         let s = f.to_string();

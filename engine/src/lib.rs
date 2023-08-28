@@ -286,6 +286,16 @@ impl Engine {
         job
     }
 
+    /// Remove a job
+    ///
+    #[tracing::instrument]
+    pub fn remove_job(&mut self, job: Job) -> Result<()> {
+        let mut state = self.state.try_write().unwrap();
+        state.remove_job(job.id);
+
+        Ok(self.sync()?)
+    }
+
     /// Load authentication data
     ///
     #[tracing::instrument]
