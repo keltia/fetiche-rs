@@ -103,11 +103,12 @@ impl Site {
 
     /// Load site by checking whether it is present in the configuration file
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(cfg))]
     pub fn load(name: &str, cfg: &Sources) -> Result<Flow> {
         trace!("Loading site {}", name);
         match cfg.get(name) {
             Some(site) => {
+                trace!("site={}", site);
                 let fmt = site.format();
 
                 // We have to explicitly list all supported formats as we return
