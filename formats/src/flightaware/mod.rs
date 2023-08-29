@@ -341,11 +341,11 @@ struct Position {
     /// Vertical Rate (feet/mn) (u32)
     #[serde(rename = "vertRate")]
     #[serde_as(as = "Option<DisplayFromStr>")]
-    pub vert_rate: Option<u32>,
+    pub vert_rate: Option<i32>,
     /// Geometric Vertical Rate — GNSS (feet/mn) (u32)
     #[serde(rename = "vertRate_geom")]
     #[serde_as(as = "Option<DisplayFromStr>")]
-    pub vert_rate_geom: Option<u32>,
+    pub vert_rate_geom: Option<i32>,
     /// List of 2D/3D/4D objects of locations
     pub waypoints: Vec<String>,
     /// Computed Wind Direction (f32) 0 = from North
