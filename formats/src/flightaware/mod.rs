@@ -291,9 +291,11 @@ struct Position {
     /// Mach Number
     pub mach: Option<String>,
     /// NACp (ADS-B Navigational Accuracy Category for Position)
-    pub nac_p: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub nac_p: Option<u32>,
     /// NACv (ADS-B Navigational Accuracy Category for Velocity)
-    pub nac_v: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub nac_v: Option<u32>,
     /// Navigation Altitude (f32)
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub nav_altitude: Option<f32>,
@@ -306,9 +308,11 @@ struct Position {
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub nav_qnh: Option<f32>,
     /// ADS-B Navigation Integrity Category
-    pub nic: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub nic: Option<u32>,
     /// ADS-B Navigation Integrity Category for barometer
-    pub nic_baro: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub nic_baro: Option<u32>,
     /// Origin (actually a Location)
     pub orig: Option<String>,
     /// Radius of Containment (m) (u32)
@@ -319,7 +323,8 @@ struct Position {
     /// Textual Route string
     pub route: Option<String>,
     /// ADS-B Source Integrity Level
-    pub sil: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub sil: Option<u32>,
     /// SIL type (per-hour or per-sample)
     pub sil_type: Option<String>,
     /// Filed cruising speed (knots) (u32)
