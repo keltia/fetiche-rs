@@ -320,14 +320,15 @@ impl Fetchable for Flightaware {
 
         trace!("read answer");
 
+        let _ = out.send("[".to_string())?;
         let buf = BufReader::new(&mut stream);
         for line in buf.lines() {
             info!(".");
             let line = line.unwrap();
             trace!("line={}", line);
-            let _ = out.send(line);
+            let _ = out.send(format!("{line},"));
         }
-
+        let _ = out.send("]".to_string())?;
         trace!("End of fetch");
         Ok(())
     }
