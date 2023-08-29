@@ -27,6 +27,7 @@ maintenance = { status = "actively-developed" }
 chrono.workspace = true
 eyre.workspace = true
 hcl-rs.workspace = true
+influxdb.workspace = true
 log.workspace = true
 nom.workspace = true
 reqwest.workspace = true
@@ -39,7 +40,6 @@ tracing.workspace = true
 tracing-log.workspace = true
 
 csv = "1.2"
-influxdb = { version = "0.7", features = ["derive"] }
 percent-encoding = "2.2"
 serde_with = { version = "3.2", features = ["base64", "chrono", "json", "hex"] }
 
