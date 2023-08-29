@@ -43,6 +43,8 @@ const PORT: u16 = 1501;
 ///
 #[derive(Clone, Debug)]
 pub struct Flightaware {
+    /// Name of the source
+    pub name: String,
     /// Describe the different features of the source
     pub features: Vec<Capability>,
     /// Input formats
@@ -137,6 +139,7 @@ impl Flightaware {
         trace!("flightaware::new");
 
         Flightaware {
+            name: "".to_owned(),
             features: vec![Capability::Fetch, Capability::Stream],
             format: Format::Flightaware,
             login: "".to_owned(),
@@ -154,6 +157,7 @@ impl Flightaware {
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("flightaware::load");
 
+        self.name = site.name.as_ref().unwrap().to_owned();
         self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
@@ -263,7 +267,7 @@ fn get_timestamp(date: Option<String>) -> Result<i64> {
 
 impl Fetchable for Flightaware {
     fn name(&self) -> String {
-        String::from("flightaware")
+        self.name.to_owned()
     }
 
     /// Credentials are passed in the call the API    
