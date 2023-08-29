@@ -18,7 +18,7 @@ use strum::{EnumString, EnumVariantNames};
 
 pub use location::*;
 
-use crate::Cat21;
+use crate::{to_feet, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
 
 mod location;
 
@@ -135,7 +135,6 @@ pub struct Departure {}
 #[derive(Debug)]
 pub struct ExtendedFlightInfo {}
 
-#[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct Error {
     /// Error Message
@@ -181,7 +180,7 @@ pub struct LocationExit {}
 #[derive(Debug)]
 pub struct PowerOn {}
 
-#[derive(Debug, Deserialize, EnumString, EnumVariantNames)]
+#[derive(Debug, Deserialize, EnumString, strum::Display, EnumVariantNames)]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum Update {
     /// ADS-B
@@ -202,7 +201,7 @@ pub enum Update {
     S,
 }
 
-#[derive(Debug, Deserialize, EnumString, EnumVariantNames)]
+#[derive(Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum AirGround {
     /// in Air
@@ -360,7 +359,45 @@ struct Position {
 }
 
 impl From<&Position> for Cat21 {
-    fn from(value: &Position) -> Self {
-        todo!()
+    fn from(line: &Position) -> Self {
+        let tod: i64 = line.clock as i64;
+        let callsign = line.ident.clone();
+
+        Cat21 {
+            sac: DEF_SAC,
+            sic: DEF_SIC,
+            alt_geo_ft: to_feet(line.alt.unwrap_or(0) as f32),
+            pos_lat_deg: line.lat as f32,
+            pos_long_deg: line.lon as f32,
+            alt_baro_ft: line.alt_gnss.unwrap_or(0),
+            tod: 128 * (tod % 86400),
+            rec_time_posix: tod,
+            rec_time_ms: 0,
+            emitter_category: 13,
+            differential_correction: Bool::N,
+            ground_bit: Bool::N,
+            simulated_target: Bool::N,
+            test_target: Bool::N,
+            from_ft: Bool::N,
+            selected_alt_capability: Bool::N,
+            spi: Bool::N,
+            link_technology_cddi: Bool::N,
+            link_technology_mds: Bool::N,
+            link_technology_uat: Bool::N,
+            link_technology_vdl: Bool::N,
+            link_technology_other: Bool::N,
+            descriptor_atp: 1,
+            alt_reporting_capability_ft: 0,
+            target_addr: 623615,
+            cat: 21,
+            line_id: 1,
+            ds_id: 18,
+            report_type: 3,
+            tod_calculated: TodCalculated::N,
+            callsign,
+            groundspeed_kt: line.gs.unwrap_or(0) as f32,
+            track_angle_deg: line.heading.unwrap_or(0.0),
+            rec_num: 1,
+        }
     }
 }
