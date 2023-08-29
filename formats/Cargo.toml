@@ -34,6 +34,7 @@ reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_repr.workspace = true
+serde_with.workspace = true
 strum.workspace = true
 tabled.workspace = true
 tracing.workspace = true
@@ -41,7 +42,6 @@ tracing-log.workspace = true
 
 csv = "1.2"
 percent-encoding = "2.2"
-serde_with = { version = "3.3", features = ["base64", "chrono", "json", "hex"] }
 
 [dev-dependencies]
 rstest.workspace = true
