@@ -12,13 +12,15 @@
 //! [Firehose]: https://flightaware.com/commercial/firehose/documentation/messages
 //!
 
+use eyre::Result;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use strum::{EnumString, EnumVariantNames};
+use tracing::debug;
 
 pub use location::*;
 
-use crate::{to_feet, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
+use crate::{convert_to, to_feet, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
 
 mod location;
 
@@ -357,6 +359,8 @@ struct Position {
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub wind_speed: Option<u32>,
 }
+
+convert_to!(from_flightaware, Position, Cat21);
 
 impl From<&Position> for Cat21 {
     fn from(line: &Position) -> Self {
