@@ -205,6 +205,9 @@ impl Flightaware {
     #[tracing::instrument(skip(self))]
     pub fn connect(&self, proxy: Option<String>) -> Result<TlsStream<TcpStream>> {
         let connector = TlsConnector::new()?;
+
+        // FIXME: this only support HTTP proxy, not HTTPS nor SOCKS
+        //
         let stream = if proxy.is_some() {
             trace!("using proxy");
 
@@ -250,7 +253,6 @@ Proxy-Connection: Keep-Alive
         trace!("TCP={:?}", stream);
 
         let stream = connector.connect(SITE, stream)?;
-        dbg!(&stream);
         Ok(stream)
     }
 }
