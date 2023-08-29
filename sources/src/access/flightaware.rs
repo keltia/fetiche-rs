@@ -185,15 +185,15 @@ impl Flightaware {
     fn request(&self, cmd: Command) -> Result<String> {
         let str = match cmd {
             Command::Live => format!(
-                "live username {} password {} events \"position\"",
+                "live username {} password {} events \"position\"\n",
                 self.login, self.password
             ),
             Command::Pitr { pitr } => format!(
-                "pitr {} username {} password {} events \"position\"",
+                "pitr {} username {} password {} events \"position\"\n",
                 pitr, self.login, self.password
             ),
             Command::Range { begin, end } => format!(
-                "range {} {} username {} password {} events \"{}\"",
+                "range {} {} username {} password {} events \"{}\"\n",
                 begin, end, self.login, self.password, "position"
             ),
         };
@@ -335,7 +335,7 @@ impl Fetchable for Flightaware {
 
 impl Streamable for Flightaware {
     fn name(&self) -> String {
-        String::from("flightaware")
+        self.name.to_owned()
     }
 
     /// All credentials are passed every time we call the API so return a fake token
