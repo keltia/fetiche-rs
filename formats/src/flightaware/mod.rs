@@ -347,7 +347,7 @@ struct Position {
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub vert_rate_geom: Option<i32>,
     /// List of 2D/3D/4D objects of locations
-    pub waypoints: Vec<String>,
+    pub waypoints: Option<Vec<String>>,
     /// Computed Wind Direction (f32) 0 = from North
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub wind_dir: Option<f32>,
