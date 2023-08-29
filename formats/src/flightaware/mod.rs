@@ -254,10 +254,10 @@ struct Position {
     pub aircraft_type: Option<String>,
     /// Altitude
     #[serde_as(as = "Option<DisplayFromStr>")]
-    pub alt: Option<u32>,
+    pub alt: Option<i32>,
     /// GNSS Altitude (feet over WGS84)
     #[serde_as(as = "Option<DisplayFromStr>")]
-    pub alt_gnss: Option<u32>,
+    pub alt_gnss: Option<i32>,
     /// Altitude Change ("C", "D" or " ")
     #[serde(rename = "altChange")]
     pub alt_change: Option<String>,
