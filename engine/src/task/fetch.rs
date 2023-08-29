@@ -10,7 +10,7 @@ use tracing::trace;
 use engine_macros::RunnableDerive;
 use fetiche_sources::{Filter, Flow, Site, Sources};
 
-use crate::IO;
+use crate::{Runnable, IO};
 
 /// The Fetch task
 ///
