@@ -348,7 +348,7 @@ impl Streamable for Flightaware {
 
     /// All credentials are passed every time we call the API so return a fake token
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     fn authenticate(&self) -> Result<String> {
         trace!("fake auth");
         Ok(format!("{}:{}", self.login, self.password))
