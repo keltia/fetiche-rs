@@ -10,7 +10,7 @@ use tracing::trace;
 use engine_macros::RunnableDerive;
 use fetiche_sources::{Filter, Flow, Site, Sources};
 
-use crate::{Runnable, IO};
+use crate::IO;
 
 /// The Fetch task
 ///
@@ -29,7 +29,7 @@ pub struct Fetch {
 }
 
 impl Fetch {
-    #[tracing::instrument]
+    #[tracing::instrument(skip(srcs))]
     pub fn new(s: &str, srcs: Arc<Sources>) -> Self {
         Self {
             io: IO::Producer,
@@ -57,7 +57,7 @@ impl Fetch {
 
     /// The heart of the matter: fetch data
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Fetch::execute()");
         trace!("received: {}", data);

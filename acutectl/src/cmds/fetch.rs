@@ -12,7 +12,7 @@ use crate::FetchOpts;
 
 /// Actual fetching of data from a given site
 ///
-#[tracing::instrument]
+#[tracing::instrument(skip(engine))]
 pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
 
