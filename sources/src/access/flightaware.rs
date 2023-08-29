@@ -28,7 +28,7 @@ use native_tls::{TlsConnector, TlsStream};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, EnumVariantNames};
-use tracing::trace;
+use tracing::{info, trace};
 
 use fetiche_formats::Format;
 
@@ -322,11 +322,13 @@ impl Fetchable for Flightaware {
 
         let buf = BufReader::new(&mut stream);
         for line in buf.lines() {
+            info!(".");
             let line = line.unwrap();
             trace!("line={}", line);
             let _ = out.send(line);
         }
 
+        trace!("End of fetch");
         Ok(())
     }
 
