@@ -41,7 +41,7 @@ tracing-log.workspace = true
 
 csv = "1.2"
 percent-encoding = "2.2"
-serde_with = { version = "3.2", features = ["base64", "chrono", "json", "hex"] }
+serde_with = { version = "3.3", features = ["base64", "chrono", "json", "hex"] }
 
 [dev-dependencies]
 rstest.workspace = true
