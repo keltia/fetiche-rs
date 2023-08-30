@@ -17,7 +17,7 @@
 //! get a stream and `range` gets you a "fixed" stream.
 //!
 
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
