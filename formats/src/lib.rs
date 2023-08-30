@@ -123,12 +123,29 @@ macro_rules! into_cat21 {
     };
 }
 
-// Generate a converter called `$name` which takes `&str` and
-// output a `Vec<$to>`.  `input` is deserialized from JSON as
-// `$from`.
-//
-// Uses `$to::from()` for each format.
-//
+/// Generate a converter called `$name` which takes `&str` and
+/// output a `Vec<$to>`.  `input` is deserialized from JSON as
+/// `$from`.
+///
+/// Uses `$to::from()` for each format.
+///
+/// You will need to `use` these in every file you use the macro
+/// ```no_rust
+/// use eyre::Result;
+/// use log::debug;
+/// ```
+/// or
+/// ```no_rust
+/// use eyre::Result;
+/// use tracing::debug;
+/// ```
+///
+/// Takes 3 arguments:
+///
+/// - name of the `fn` to create
+/// - name of the input `struct`
+/// - name of the output type like `Cat21`
+///
 #[macro_export]
 macro_rules! convert_to {
     ($name:ident, $from:ident, $to:ident) => {
