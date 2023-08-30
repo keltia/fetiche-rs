@@ -41,6 +41,7 @@ impl Tee {
         trace!("tee::execute");
         let mut fh = self.fh.lock().unwrap();
         write!(fh, "{data}")?;
+        fh.flush()?;
         Ok(stdout.send(data)?)
     }
 }
