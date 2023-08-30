@@ -130,12 +130,12 @@ macro_rules! into_cat21 {
 /// Uses `$to::from()` for each format.
 ///
 /// You will need to `use` these in every file you use the macro
-/// ```no_rust
+/// ```no_run
 /// use eyre::Result;
 /// use log::debug;
 /// ```
 /// or
-/// ```no_rust
+/// ```no_run
 /// use eyre::Result;
 /// use tracing::debug;
 /// ```
@@ -177,7 +177,7 @@ impl Format {
     /// Process each record coming from the input source, apply `Cat::from()` onto it
     /// and return the list.  This is used when reading from the csv files.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn from_csv<R>(self, rdr: &mut Reader<R>) -> Result<Vec<Cat21>>
     where
         R: Read + Debug,
