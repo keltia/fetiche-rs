@@ -7,6 +7,7 @@
 //! Format is take from the CSV given as an example
 //!
 
+use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
 use eyre::{eyre, Result};
@@ -80,7 +81,7 @@ impl Safesky {
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("safesky::load");
 
-        self.format = site.format.as_str().into();
+        self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
             match auth {

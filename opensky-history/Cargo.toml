@@ -31,13 +31,14 @@ hcl-rs.workspace = true
 home.workspace = true
 serde.workspace = true
 serde_repr.workspace = true
+tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
+tracing-subscriber.workspace = true
 
 csv = "1.2"
 dateparser = "0.2"
 inline-python = "0.12"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
 
 [dependencies.pyo3]
 version = "0.19"

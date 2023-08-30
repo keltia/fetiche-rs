@@ -3,6 +3,8 @@ use std::fs;
 
 use eyre::{eyre, Result};
 use serde::Deserialize;
+use tabled::builder::Builder;
+use tabled::settings::Style;
 use tracing::trace;
 
 /// one degree is circumference of earth / 360°, convert into nautical miles
@@ -93,20 +95,31 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
 /// List loaded locations
 ///
 #[tracing::instrument]
-pub fn list_locations(data: &BTreeMap<String, Location>) -> Result<String> {
+pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<String> {
     trace!("enter");
+    let header = vec!["Location", "Lat/Lon", "Polygon"];
 
-    let str = data
-        .keys()
-        .map(|name| {
-            let loc = data.get(name).unwrap();
+    let mut builder = Builder::default();
+    builder.set_header(header);
 
-            format!("\t{:10}: {:.2}, {:.2}", name, loc.lat, loc.lon)
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+    data.keys().for_each(|name| {
+        let mut row = vec![];
 
-    Ok(str)
+        let loc = data.get(name).unwrap();
+        let poly = BB::from_location(loc, dist);
+        let point = format!("{:.2}, {:.2}", loc.lat, loc.lon);
+        let poly = format!(
+            "{:.2}, {:.2}, {:.2}, {:.2}",
+            poly.min_lat, poly.min_lon, poly.max_lat, poly.max_lon
+        );
+        row.push(name);
+        row.push(&point);
+        row.push(&poly);
+        builder.push_record(row);
+    });
+
+    let allf = builder.build().with(Style::modern()).to_string();
+    Ok(format!("List all locations ({dist} nm):\n{allf}"))
 }
 
 #[cfg(test)]

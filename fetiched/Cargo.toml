@@ -23,6 +23,7 @@ fetiche-sources.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
 log.workspace = true
+nom.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -30,11 +31,9 @@ strum.workspace = true
 tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
+tracing-subscriber.workspace = true
 
-nom = "7"
-uuid = { version = "1.3", features = ["v4", "v7"] }
-tokio = { version = "1.28", features = ["full"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "time", "tracing"] }
+tokio = { version = "1.29", features = ["full"] }
 
 [target.'cfg(unix)'.dependencies]
 daemonize = "0.5"

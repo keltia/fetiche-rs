@@ -53,32 +53,24 @@ can expect, `config.hcl`.
 version = 1
 
 site "local" {
-  auth = {
     username = "aeroscope"
     password = "NOPE"
     token    = "/login"
-  }
 }
 
 site "big.site.aero" {
-  auth = {
     username = "SOMEONE"
     password = "HIDDEN"
     token = "/auth"
-  }
 }
 
 site "opensky" {
-  auth = {
     login    = "someone"
     password = "SECRET" 
-  }
 }
 
 site "safesky" {
-  auth {
     api_key = "FOOBAR"
-  }
 }
 
 ```
@@ -95,31 +87,39 @@ To displayed currently supported formats, use `acutectl list formats`:
 <summary>acutectl list formats</summary>
 
 ```text
-acutectl/0.11.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
+acutectl/0.13.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
 CLI utility to fetch data.
 
 List all formats:
-┌───────────┬───────┬───────────────────────────────────────────────────────────┐
-│ Name      │ Type  │ Description                                               │
-├───────────┼───────┼───────────────────────────────────────────────────────────┤
-│ aeroscope │ drone │ Data extracted from the DJI Aeroscope antenna.            │
-│           │       │ Source: ASD -- URL: https://airspacedrone.com/            │
-├───────────┼───────┼───────────────────────────────────────────────────────────┤
-│ asd       │ drone │ Data gathered & consolidated by ASD.                      │
-│           │       │ Source: ASD -- URL: https://airspacedrone.com/            │
-├───────────┼───────┼───────────────────────────────────────────────────────────┤
-│ cat129    │ drone │ Flattened ASTERIX Cat129 data for Drone data.             │
-│           │       │ Source: ECTL -- URL: https://www.eurocontrol.int/asterix/ │
-├───────────┼───────┼───────────────────────────────────────────────────────────┤
-│ cat21     │ adsb  │ Flattened ASTERIX Cat21 data for ADS-B.                   │
-│           │       │ Source: ECTL -- URL: https://www.eurocontrol.int/asterix/ │
-├───────────┼───────┼───────────────────────────────────────────────────────────┤
-│ opensky   │ adsb  │ Data coming from the Opensky site, mostly ADS-B.          │
-│           │       │ Source: Opensky -- URL: https://opensky-network.org/      │
-├───────────┼───────┼───────────────────────────────────────────────────────────┤
-│ safesky   │ adsb  │ Data coming from the Safesky site, mostly ADS-B.          │
-│           │       │ Source: Safesky -- URL: https://www.safesky.app/          │
-└───────────┴───────┴───────────────────────────────────────────────────────────┘
+┌─────────────┬───────┬───────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Name        │ Type  │ Description                                                                                   │
+├─────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ aeroscope   │ drone │ Data extracted from the DJI Aeroscope antenna.                                                │
+├─────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ asd         │ drone │ Data gathered & consolidated by ASD.                                                          │
+│             │       │ Source: ASD -- URL: https://airspacedrone.com/                                                │
+├─────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ avionix     │ adsb  │ Flattened ASTERIX cat21-like for Avionix stations.                                            │
+│             │       │ Source: Avionix -- URL: http://www.avionix.pl                                                 │
+├─────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ cat129      │ drone │ Flattened ASTERIX Cat129 data for Drone data.                                                 │
+│             │       │ Source: ECTL -- URL: https://www.eurocontrol.int/asterix/                                     │
+├─────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ cat21       │ adsb  │ Flattened ASTERIX Cat21 data for ADS-B.                                                       │
+│             │       │ Source: ECTL -- URL: https://www.eurocontrol.int/asterix/                                     │
+├─────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ flightaware │ adsb  │ ADS-B data by Flightaware.                                                                    │
+│             │       │ Source: Flightaware -- URL: https://flightaware.com/commercial/firehose/documentation/summary │
+├─────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ impala      │ adsb  │ Flattened StateVector extracted from Opensky Impala DB.                                       │
+│             │       │ Source: Opensky -- URL: https://opensky-network.org/data/impala                               │
+├─────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ opensky     │ adsb  │ Data coming from the Opensky site, mostly ADS-B.                                              │
+│             │       │ Source: Opensky -- URL: https://opensky-network.org/                                          │
+├─────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ safesky     │ adsb  │ Data coming from the Safesky site, mostly ADS-B.                                              │
+│             │       │ Source: Safesky -- URL: https://www.safesky.app/                                              │
+└─────────────┴───────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 The reason for the different categories is to give the engine a hint on how to process the data. Drone data will be

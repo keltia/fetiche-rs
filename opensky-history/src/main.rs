@@ -69,8 +69,9 @@ fn main() -> Result<()> {
     // List loaded locations if nothing is specified, neither name nor location
     //
     if opts.name.is_none() {
-        let str = list_locations(&loc)?;
-        eprintln!("Locations:\n{}", str);
+        let dist = opts.range;
+        let str = list_locations(&loc, dist)?;
+        eprintln!("{}", str);
         return Ok(());
     }
 
@@ -114,6 +115,14 @@ fn main() -> Result<()> {
         None => return Err(eyre!("You must specify a location")),
     };
 
+    // If the --icao option is specified, add the parameter to the query string.
+    //
+    let icao = if opts.icao.is_some() {
+        format!(" AND CALLSIGN = '{}'", opts.icao.unwrap())
+    } else {
+        String::new()
+    };
+
     // Default range is 25 nm
     //
     let bb = BB::from_location(bb, opts.range);
@@ -141,12 +150,13 @@ fn main() -> Result<()> {
         .iter()
         .inspect(|&tm| trace!("Fetching segment {}", tm))
         .map(|&tm| {
+            let icao = icao.clone();
             ctx.run(python! {
                 seg = 'tm
                 bb = 'bb
                 q = "SELECT * FROM state_vectors_data4 \
-                WHERE lat >= {} AND lat <= {} AND lon >= {} AND lon <= {} AND hour={};\
-                ".format(bb[1], bb[3], bb[0], bb[2], seg)
+                WHERE lat >= {} AND lat <= {} AND lon >= {} AND lon <= {} AND hour={}{};\
+                ".format(bb[1], bb[3], bb[0], bb[2], seg, 'icao)
 
                 df = opensky.rawquery(q)
                 if df is None:

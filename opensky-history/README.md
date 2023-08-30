@@ -39,10 +39,8 @@ you are giving it.
 
 ### Configuration
 
-`opensky-history` use the [`inline-python`](https://crates.io/crates/inline-python) crate because it uses
-the `pyopensky`
-module as a wrapper for the SSH-based Impala access. So you will need Python 3, `pip` and `pyopensky` installed before
-using the utility.
+`opensky-history` use the [`inline-python`](https://crates.io/crates/inline-python) crate because it uses the `pyopensky` module as a wrapper for the 
+SSH-based Impala access. So you will need Python 3, `pip` and `pyopensky` installed before  using the utility.
 
 <details>
 <summary>`secret.conf`</summary>

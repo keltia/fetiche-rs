@@ -1,6 +1,6 @@
 [package]
 name = "acutectl"
-version = "0.13.0"
+version = "0.14.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "CLI utility to fetch data."
@@ -34,13 +34,12 @@ serde_json.workspace = true
 serde_repr.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
-
-tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
+tracing-subscriber.workspace = true
 
 #async-std = "1.12"
 clap_complete = "4.2"
 csv = "1.1"
-#influxdb = { version = "0.6", features = ["derive"] }
+dateparser = "0.2"
 percent-encoding = "2.2"
 #sqlx = { version = "0.6", features = ["json", "ipnetwork", "mysql", "tls", "chrono", "macros", "runtime-async-std-native-tls"] }
 

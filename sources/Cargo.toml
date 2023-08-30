@@ -1,6 +1,6 @@
 [package]
 name = "fetiche-sources"
-version = "0.10.0"
+version = "0.11.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Fetiche component for access methods to connect/fetch data."
@@ -41,18 +41,25 @@ reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_repr.workspace = true
+serde_with.workspace = true
+strum.workspace = true
 tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
+tracing-subscriber.workspace = true
 
 csv = "1.2"
+dateparser = "0.2"
 mini-moka = "0.10"
+native-tls = "0.2"
 percent-encoding = "2.2"
 signal-hook = "0.3"
+base64_light = "0.1"
+progress = "0.2.0"
 
 [dev-dependencies]
 rstest.workspace = true
 
 criterion = "0.5"
 httpmock = { version = "0.6", features = ["colored", "color", "clap"] }
-tokio = { version = "1.28", features = ["full"] }
+tokio = { version = "1.29", features = ["full"] }

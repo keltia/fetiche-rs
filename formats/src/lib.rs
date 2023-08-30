@@ -8,12 +8,13 @@
 //!
 
 use std::collections::BTreeMap;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use std::io::Read;
 
 use csv::{Reader, WriterBuilder};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use strum::EnumString;
 use tabled::{builder::Builder, settings::Style};
 use tracing::{debug, trace};
 
@@ -24,6 +25,7 @@ pub use asd::*;
 pub use asterix::*;
 pub use avionix::*;
 pub use drone::*;
+pub use flightaware::*;
 pub use opensky::*;
 pub use safesky::*;
 
@@ -32,6 +34,7 @@ mod asd;
 mod asterix;
 mod avionix;
 mod drone;
+mod flightaware;
 mod opensky;
 mod safesky;
 
@@ -72,8 +75,10 @@ pub struct FormatFile {
 
 /// This struct holds the different data formats that we support.
 ///
-#[derive(Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
-#[serde(untagged, rename_all = "lowercase")]
+#[derive(
+    Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, strum::Display, EnumString, Serialize,
+)]
+#[strum(serialize_all = "lowercase")]
 pub enum Format {
     #[default]
     None,
@@ -82,6 +87,7 @@ pub enum Format {
     Avionix,
     Cat21,
     Cat129,
+    Flightaware,
     Opensky,
     PandaStateVector,
     Safesky,
@@ -117,12 +123,29 @@ macro_rules! into_cat21 {
     };
 }
 
-// Generate a converter called `$name` which takes `&str` and
-// output a `Vec<$to>`.  `input` is deserialized from JSON as
-// `$from`.
-//
-// Uses `$to::from()` for each format.
-//
+/// Generate a converter called `$name` which takes `&str` and
+/// output a `Vec<$to>`.  `input` is deserialized from JSON as
+/// `$from`.
+///
+/// Uses `$to::from()` for each format.
+///
+/// You will need to `use` these in every file you use the macro
+/// ```no_run
+/// use eyre::Result;
+/// use log::debug;
+/// ```
+/// or
+/// ```no_run
+/// use eyre::Result;
+/// use tracing::debug;
+/// ```
+///
+/// Takes 3 arguments:
+///
+/// - name of the `fn` to create
+/// - name of the input `struct`
+/// - name of the output type like `Cat21`
+///
 #[macro_export]
 macro_rules! convert_to {
     ($name:ident, $from:ident, $to:ident) => {
@@ -154,7 +177,7 @@ impl Format {
     /// Process each record coming from the input source, apply `Cat::from()` onto it
     /// and return the list.  This is used when reading from the csv files.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn from_csv<R>(self, rdr: &mut Reader<R>) -> Result<Vec<Cat21>>
     where
         R: Read + Debug,
@@ -234,52 +257,26 @@ impl Format {
     }
 }
 
-impl From<&str> for Format {
-    /// Create a formats from its name
-    ///
-    fn from(s: &str) -> Self {
-        match s {
-            "aeroscope" => Format::Aeroscope,
-            "asd" => Format::Asd,
-            "opensky" => Format::Opensky,
-            "safesky" => Format::Safesky,
-            "cat21" => Format::Cat21,
-            "Cat129" => Format::Cat129,
-            "Avionix" => Format::Avionix,
-            "impala" => Format::PandaStateVector,
-            _ => Format::None,
-        }
-    }
-}
-
-impl Display for Format {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let s: String = match self {
-            Format::Aeroscope => "aeroscope".into(),
-            Format::Asd => "asd".into(),
-            Format::Safesky => "safesky".into(),
-            Format::Opensky => "opensky".into(),
-            Format::Cat21 => "cat21".into(),
-            Format::Cat129 => "cat129".into(),
-            Format::Avionix => "avionix".into(),
-            Format::PandaStateVector => "impala".to_string(),
-            Format::None => "none".into(),
-        };
-        write!(f, "{}", s)
-    }
-}
-
 /// This structure hold a general location object with lat/long.
 ///
 /// In CSV files, the two fields are merged into this struct on deserialization
 /// and used as-is when coming from JSON.
 ///
-#[derive(Copy, Clone, Default, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Position {
     // Latitude in degrees
     pub latitude: f32,
     /// Longitude in degrees
     pub longitude: f32,
+}
+
+impl Default for Position {
+    fn default() -> Self {
+        Position {
+            latitude: 0.0,
+            longitude: 0.0,
+        }
+    }
 }
 
 #[derive(Debug, Default, Serialize)]

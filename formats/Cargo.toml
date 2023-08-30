@@ -1,6 +1,6 @@
 [package]
 name = "fetiche-formats"
-version = "0.13.0"
+version = "0.14.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Various input file formats for the Fetiche framework."
@@ -27,15 +27,21 @@ maintenance = { status = "actively-developed" }
 chrono.workspace = true
 eyre.workspace = true
 hcl-rs.workspace = true
+influxdb.workspace = true
 log.workspace = true
+nom.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_repr.workspace = true
+serde_with.workspace = true
+strum.workspace = true
 tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
 
 csv = "1.2"
-influxdb = { version = "0.6", features = ["derive"] }
 percent-encoding = "2.2"
+
+[dev-dependencies]
+rstest.workspace = true

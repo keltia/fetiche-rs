@@ -15,7 +15,7 @@
 //! [Rust]: https://rust-lang.org/
 //!
 use std::fs;
-use std::io::{stderr, Write};
+use std::str::FromStr;
 use std::time::Instant;
 
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
@@ -90,7 +90,7 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
 ///
 fn get_from_source(cfg: &Sources, opts: &Opts) -> Result<Vec<Cat21>> {
     let fmt = match &opts.format {
-        Some(fmt) => fmt.as_str().into(),
+        Some(fmt) => Format::from_str(fmt)?,
         _ => Format::None,
     };
 
@@ -134,7 +134,7 @@ fn main() -> Result<()> {
 
     // Add banner
     //
-    writeln!(stderr(), "{}\n", version())?;
+    eprintln!("{}\n", version());
 
     // Exit if needed
     //

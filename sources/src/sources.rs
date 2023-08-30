@@ -114,7 +114,7 @@ impl Sources {
             let mut row = vec![];
 
             let dtype = s.dtype.clone().to_string();
-            let format = s.format.clone();
+            let format = s.format.clone().to_string();
             let base_url = s.base_url.clone();
             row.push(n);
             row.push(&dtype);

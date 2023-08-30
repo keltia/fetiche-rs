@@ -78,6 +78,11 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
             job.run(&mut stdout())?;
         };
     }
+
+    // Remove job from engine and state
+    //
+    engine.remove_job(job)?;
+
     Ok(())
 }
 

@@ -184,6 +184,7 @@ impl Engine {
                 State::new()
             }
         };
+        trace!("state={:?}", state);
 
         let jobs = VecDeque::<usize>::new();
 
@@ -198,7 +199,7 @@ impl Engine {
         let engine = Engine {
             ctrl: tx,
             pid,
-            next: Arc::new(AtomicUsize::new(*state.queue.back().unwrap() + 1)),
+            next: Arc::new(AtomicUsize::new(state.last + 1)),
             home: Arc::new(basedir),
             sources: Arc::new(src),
             storage: Arc::new(areas),
@@ -283,6 +284,16 @@ impl Engine {
         self.command(EngineCtrl::Sync).expect("can not sync");
 
         job
+    }
+
+    /// Remove a job
+    ///
+    #[tracing::instrument]
+    pub fn remove_job(&mut self, job: Job) -> Result<()> {
+        let mut state = self.state.try_write().unwrap();
+        state.remove_job(job.id);
+
+        Ok(self.sync()?)
     }
 
     /// Load authentication data

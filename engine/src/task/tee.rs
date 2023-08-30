@@ -36,11 +36,12 @@ impl Tee {
     /// This is the main task.  Every data packet we receive will be written in the designed
     /// file then passed down.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("tee::execute");
         let mut fh = self.fh.lock().unwrap();
         write!(fh, "{data}")?;
+        fh.flush()?;
         Ok(stdout.send(data)?)
     }
 }

@@ -74,6 +74,11 @@ impl Convert {
 
                 Cat21::from_asd(&data)?
             }
+            Format::Flightaware => {
+                trace!("flightaware:json to cat21: {}", data);
+
+                Cat21::from_flightaware(&data)?
+            }
             _ => unimplemented!(),
         };
         let res = prepare_csv(res, false).unwrap();

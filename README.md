@@ -5,7 +5,8 @@
 > **FETICHE: Framework to import/fetch/transform various aeronautical data**
 
 [![Build status](https://github.com/keltia/fetiche-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/keltia/fetiche-rs/actions/workflows/rust.yml)
-[![Buildstatus (develop)](https://github.com/keltia/fetiche-rs/actions/workflows/develop.yml/badge.svg)](https://github.com/keltia/fetiche-rs/actions/workflows/develop.yml)
+[![Build status (develop)](https://github.com/keltia/fetiche-rs/actions/workflows/develop.yml/badge.svg)](https://github.com/keltia/fetiche-rs/actions/workflows/develop.yml)
+[![dependency status](https://deps.rs/repo/github/keltia/fetiche-rs/status.svg)](https://deps.rs/repo/github/keltia/fetiche-rs)
 [![Docs](https://img.shields.io/docsrs/dmarc-rs)](https://docs.rs/fetiche-rs)
 [![GitHub release](https://img.shields.io/github/release/keltia/dmarc-rs.svg)](https://github.com/keltia/fetiche-rs/releases/)
 [![GitHub issues](https://img.shields.io/github/issues/keltia/fetiche-rs.svg)](https://github.com/keltia/fetiche-rs/issues)
@@ -17,12 +18,11 @@ Licensed under the [MIT](LICENSE) license.
 
 1. [About](#about)
 2. [Installation](#installation)
-3. [Structure](#structure)
-4. [Usage](#usage)
-5. [Supported formats](#formats)
-6. [MSRV](#msrv)
-7. [TODO](#todo)
-8. [Contributing](#contributing)
+3. [Usage](#usage)
+4. [Structure](#structure-and-design)
+5. [MSRV](#msrv)
+6. [TODO](#todo)
+7. [Contributing](#contributing)
 
 ## About
 
@@ -32,13 +32,12 @@ utilities for Aeronautical data about drones and aircraft.
 This is now divided into different crates with libraries (`fetiche-engine`, `fetiche-formats`, `fetiche-sources`) shared
 by the binary crates (`acutectl` and `opensky-history`).
 
-Binary crates include a command-line utility called `acutectl` to perform import from a file or fetch data from
-different sites. This program has been enhanced to cover both file and network input and as well to support more
-input formats.
+Binary crates include command-line utilities (`acutectl` and `opensky-history`) to perform import from a file or
+fetch data from different sites.
 
-Now is included a utility call `opensky-history` to retrieve historical data from [Opensky]. This access is managed
-through a SSH-based shell to the Impala database. This is for everything older than 1h of real-time data which does
-complicate things. This utility use the [pyopensky] Python module (embedded through the `inline-python` crate).
+`opensky-history` is for retrieving historical data from [Opensky]. This access is managed through an SSH-based shell to
+the Impala database. This is for everything older than 1h of real-time data which does complicate things. This utility 
+use the [pyopensky] Python module (embedded through the `inline-python` crate).
 
 ## Installation
 
@@ -55,9 +54,9 @@ This is intentionally *not* a run-time option but a compile-time one.
 
 ## Usage
 
-For the moment, there is only one binary called `acutectl` (with `.exe` on Windows). It can be used to fetch data into
-their native format (csv, json) or import said data into a database.  It uses the `fetiche-sources` for all the code 
-related to accessing, authenticating and fetching data in various ways.  
+For the moment, there are two binaries called `acutectl` (with `.exe` on Windows) and `opensky-history`. The former is
+used to fetch data into their native format (csv, json) or import said data into a database.  It uses 
+`fetiche-engine` for all the code related to accessing, authenticating and fetching data in various ways.
 
 Right now, `acutectl` use blocking HTTP calls and is not using any
 `async` features.
@@ -65,11 +64,12 @@ Right now, `acutectl` use blocking HTTP calls and is not using any
 However, while working on streaming support for Opensky, I have been experimenting with [tokio] for async support and
 `acutectl` might eventually become fully-async. It does help for some stuff including signal (read ^C) support.
 
-All the commands are described in more details in the [acutectl README.md](acutectl/README.md).
+All the commands are described in more details in the [acutectl README.md](acutectl/README.md) and
+[opensky-history README.md](opensky-history/README.md) files. 
 
 ## Structure and Design
 
-`Fetiche` has 3 main component so far:
+`Fetiche` has 3 main library component so far:
 
 ### Engine (managed in the `fetiche-engine` crate)
 
@@ -105,12 +105,15 @@ You are not really supposed to edit this file.
 
 More details in the specific [Sources README.md](sources/README.md).
 
-## `fetiched`
+## `fetiched` (managed in the `fetiched` crate)
 
-On UNIX systems, there is a new command called `fetiched``. It is a daemon running the latest engine, detaching itself
-from the terminal and accepting requests through an [GRPC] interface.
+On UNIX systems, there is a new command called `fetiched`. It is a daemon running the latest engine, detaching itself
+from the terminal and accepting requests through an [GRPC] interface. The Windows version will have to be run from a
+specific terminal with the `serve` command.
 
-**This is a Work-In-Progress**
+More details in the specific [Fetiched README.md](fetiched/README.md).
+
+> NOTE: This is WIP
 
 ### Data Model
 
@@ -120,7 +123,7 @@ data model (extracted from the data sent by [ASD] with some fields with differen
 the string format) and real timestamp. These can be grouped into a `Journey` type which is a state vector with all the
 points in the trajectory.
 
-See the `fetiche-formats`  crate for more details.
+See the `fetiche-formats` crate for more details.
 
 ## MSRV
 
@@ -156,6 +159,7 @@ Here are some of the things I've been working on. Some of these are registered a
 - Add more tests & benchmarks.
 - support for Safesky for ADS-B data
 - Support for Sherlock formats and access methods
+- Support for Flightaware AeroAPI and Firehose.
 - Multicast output?
 
 ## Contributing
@@ -194,3 +198,5 @@ I use Git Flow for this package so please use something similar or the usual Git
 [tokio]: https://crates.io/crates/tokio
 
 [GRPC]: https://en.wikipedia.org/wiki/GRPC
+
+[pyopensky]: https://pypi.org/project/pyopensky/ 

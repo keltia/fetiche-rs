@@ -8,6 +8,9 @@ pub struct Opts {
     /// Location file path
     #[clap(short = 'C', long)]
     pub config: Option<String>,
+    /// ICAO code for searches
+    #[clap(short = 'I', long)]
+    pub icao: Option<String>,
     /// Location name (if in `locations.hcl`).
     #[clap(short = 'n', long)]
     pub name: Option<String>,

@@ -57,3 +57,10 @@ format "impala" {
   source      = "Opensky"
   url         = "https://opensky-network.org/data/impala"
 }
+
+format "flightaware" {
+  type        = "adsb"
+  description = "ADS-B data by Flightaware."
+  source      = "Flightaware"
+  url         = "https://flightaware.com/commercial/firehose/documentation/summary"
+}

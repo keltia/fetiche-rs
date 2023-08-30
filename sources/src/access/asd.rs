@@ -14,6 +14,7 @@
 //!
 
 use std::ops::Add;
+use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
@@ -85,9 +86,9 @@ struct Credentials {
 #[serde(rename_all = "camelCase")]
 struct Param {
     /// Limit ourselves to this time interval beginning at
-    start_time: NaiveDateTime,
+    start_time: DateTime<Utc>,
     /// Limit ourselves to this time interval ending at
-    end_time: NaiveDateTime,
+    end_time: DateTime<Utc>,
     /// Source of data from ASD, see below `Source` enum.
     sources: Vec<Source>,
 }
@@ -141,7 +142,7 @@ impl Asd {
         trace!("asd::load");
 
         self.site = site.name.clone().unwrap();
-        self.format = site.format.as_str().into();
+        self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
             match auth {
@@ -253,8 +254,11 @@ impl Fetchable for Asd {
         //
         let data = match f {
             Filter::Duration(d) => Param {
-                start_time: NaiveDateTime::default(),
-                end_time: NaiveDateTime::default().add(Duration::seconds(d as i64)),
+                start_time: DateTime::<Utc>::from_utc(NaiveDateTime::default(), Utc),
+                end_time: DateTime::<Utc>::from_utc(
+                    NaiveDateTime::default().add(Duration::seconds(d as i64)),
+                    Utc,
+                ),
                 sources: vec![Source::As, Source::Wi],
             },
             Filter::Interval { begin, end } => Param {
@@ -263,8 +267,8 @@ impl Fetchable for Asd {
                 sources: vec![Source::As, Source::Wi],
             },
             _ => Param {
-                start_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
-                end_time: NaiveDateTime::from_timestamp_opt(0i64, 0u32).unwrap(),
+                start_time: DateTime::<Utc>::MIN_UTC,
+                end_time: DateTime::<Utc>::MIN_UTC,
                 sources: vec![Source::As, Source::Wi],
             },
         };
