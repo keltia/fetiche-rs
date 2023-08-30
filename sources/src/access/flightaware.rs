@@ -324,6 +324,7 @@ impl Fetchable for Flightaware {
             .lines()
             .map(|l| l.unwrap())
             .inspect(|l| {
+                eprint!(".");
                 trace!("line={l}");
             })
             .collect::<Vec<_>>()
