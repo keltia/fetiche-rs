@@ -366,13 +366,25 @@ impl From<&Position> for Cat21 {
         let tod: i64 = line.clock as i64;
         let callsign = line.ident.clone();
 
+        // WTF it can be < 0
+        //
+        let alt_baro_ft = match line.alt_gnss {
+            Some(alt) => {
+                if alt < 0 {
+                    0
+                } else {
+                    alt
+                }
+            }
+            None => 0,
+        };
         Cat21 {
             sac: DEF_SAC,
             sic: DEF_SIC,
             alt_geo_ft: to_feet(line.alt.unwrap_or(0) as f32),
             pos_lat_deg: line.lat as f32,
             pos_long_deg: line.lon as f32,
-            alt_baro_ft: line.alt_gnss.unwrap_or(0),
+            alt_baro_ft: alt_baro_ft as u32,
             tod: 128 * (tod % 86400),
             rec_time_posix: tod,
             rec_time_ms: 0,
