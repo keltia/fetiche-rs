@@ -318,23 +318,25 @@ impl Fetchable for Flightaware {
         trace!("req={req}");
         stream.write_all(req.as_bytes())?;
 
+        let mut p = progress::SpinningCircle::new();
+        p.set_job_title("fetching...");
+
         trace!("read answer, format as an array");
         let buf = BufReader::new(&mut stream);
         let res = buf
             .lines()
             .map(|l| l.unwrap())
             .inspect(|l| {
-                eprint!(".");
+                p.tick();
                 trace!("line={l}");
             })
             .collect::<Vec<_>>()
             .join(",\n");
-        let _ = out.send(format!("[{res}]"))?;
-
         trace!("End of fetch");
-        drop(out);
+        p.jobs_done();
 
-        Ok(())
+        drop(stream);
+        Ok(out.send(format!("[{res}]"))?)
     }
 
     fn format(&self) -> Format {
@@ -355,6 +357,8 @@ impl Streamable for Flightaware {
         Ok(format!("{}:{}", self.login, self.password))
     }
 
+    /// FIXME: not tested or working
+    ///
     fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
         trace!("stream with TLS");
         let args: Param = serde_json::from_str(args)?;
