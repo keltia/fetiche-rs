@@ -281,7 +281,7 @@ impl Fetchable for Flightaware {
         Ok(format!("{}:{}", self.login, self.password))
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, _token))]
     fn fetch(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
         trace!("fetch with TLS");
         let args: Param = serde_json::from_str(args)?;
@@ -327,7 +327,7 @@ impl Fetchable for Flightaware {
                 trace!("line={l}");
             })
             .collect::<Vec<_>>()
-            .join(",");
+            .join(",\n");
         let _ = out.send(format!("[{res}]"))?;
 
         trace!("End of fetch");
