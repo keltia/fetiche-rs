@@ -6,6 +6,7 @@ This is the main CLI interface for retrieving the historical data from [Opensky]
 
 This is a special app, it uses embedded Python through
 It uses [SSH]  to connect to a specific shell on the `data.opensky-network.org` machine.
+It supports only `pyopensky` v1.4 for now.  2.x API has completely changed.
 
 ## USAGE
 
@@ -79,3 +80,6 @@ location "ILUX" {
 }
 ```
 
+[Opensky]: https://opensky.app/
+
+[pyopensky]: https://github.com/open-aviation/pyopensky

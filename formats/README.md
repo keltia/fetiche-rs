@@ -9,12 +9,13 @@
 This crate contains only the code for the different input file formats supported by `acutectl` as part of the Fetiche
 framework.
 
-- Aeroscope - basic format coming straight from the antenna
+- Aeroscope - basic format coming straight from the DJI antenna
 - Asd - The JSON & CSV format from `airspacedrones.com`.
 - [Opensky] - ADS-B data from the Opensky network of probes
-- Safesky
-- [ASTERIX] Cat21 & Cat129 (the flattened CSV-based versions)
+- [ASTERIX] Cat21 & Cat129 (the flattened CSV-based versions) and the new Adsb21, a trimmed-down version of Cat21 for
+  ADS-B data
 - [Avionix] - another variation on a flattened Cat21-like format
+- Safesky (WIP)
 
 ### Features
 
@@ -34,7 +35,12 @@ also transformations in each case when converting into our CSV-based Cat21-like 
 ### Cat21
 
 Our own Cat21-like format is named because it uses the field names coming from the [ASTERIX] specifications (although
-everything is flat in a csv so enums are flattened as well). See the files in `src/format/asterix`  for the description.
+everything is flat in a csv so enums are flattened as well). See the files in `src/asterix`  for the description.
+
+### Adsb21
+
+This is a trimmed-down version of `Cat21` which include only the fields we currently use when we import ADS-B data from
+either [Opensky] or [Flightaware] sources.
 
 ## MSRV
 
@@ -52,9 +58,10 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - ~~support more parameters (like dates, etc.)~~
 - ~~fetch and analyse from Aeroscope~~
 - ~~fetch and analyse from Asd~~
+- ~~Support for [Opensky]~~
+- ~~Support for [Flightaware]~~
 - Add more tests & benchmarks.
 - support for Safesky
-- Support for Opensky
 
 [ASD]: https://airspacedrone.com/
 
@@ -76,3 +83,4 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 
 [Avionix]: http://www.avionix.pl/
 
+[Flightaware]: https://www.flightaware.com/firehose/documentation

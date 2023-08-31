@@ -58,8 +58,7 @@ For the moment, there are two binaries called `acutectl` (with `.exe` on Windows
 used to fetch data into their native format (csv, json) or import said data into a database.  It uses 
 `fetiche-engine` for all the code related to accessing, authenticating and fetching data in various ways.
 
-Right now, `acutectl` use blocking HTTP calls and is not using any
-`async` features.
+Right now, `acutectl` use blocking HTTP calls and is not using any `async` features.
 
 However, while working on streaming support for Opensky, I have been experimenting with [tokio] for async support and
 `acutectl` might eventually become fully-async. It does help for some stuff including signal (read ^C) support.
@@ -86,9 +85,10 @@ More information on its internal design in [Engine README.md](engine/README.md).
 
 ### Formats (managed in the `fetiche-formats` crate)
 
-This crate implement the various data models used by the different sources. Included are two [ASTERIX] formats --
-generic `Cat21` and drone-specific `Cat129` -- and formats used by different data providers like [Opensky] or [ASD].
-This library implement some methods of conversion between some of these formats.
+This crate implement the various data models used by the different sources. Included are three [ASTERIX]-like formats --
+generic `Cat21`, a cut-down version of `Cat21` for ADS-B data (dubbed `Adsb21`) and drone-specific `Cat129` -- and 
+formats used by different data providers like [Opensky] or [ASD].  This library implement some methods of conversion 
+between some of these formats.
 
 The default input format is the one used by the Aeroscope from ASD, but it will soon support the format used
 by [Opensky] site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
@@ -110,6 +110,9 @@ More details in the specific [Sources README.md](sources/README.md).
 On UNIX systems, there is a new command called `fetiched`. It is a daemon running the latest engine, detaching itself
 from the terminal and accepting requests through an [GRPC] interface. The Windows version will have to be run from a
 specific terminal with the `serve` command.
+
+In the near future, `fetiched` might evolve into an Actor-based subsystem (using [Actix] most probably) to manage 
+orchestration between the internal modules. We might have an engine actor, a configuration actor, etc.
 
 More details in the specific [Fetiched README.md](fetiched/README.md).
 
@@ -134,6 +137,7 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 * Unix (tested on FreeBSD, Linux and macOS)
 * Windows
   * cmd.exe
+  * [Nushell]
   * Powershell (preferred)
 
 ## TODO
@@ -154,12 +158,13 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~merge `import-adsb` and `cat21conv` into `acutectl`~~.
 - ~~Add a `Store` module to handle long-running jobs and their output.~~
 - ~~Retrieve historical data from the [Opensky] site.~~
+- ~~Support for Flightaware AeroAPI and Firehose.~~
+- build `fetiched` as the core daemon and making all other talk to it through gRPC.
 - rename `acutectl` into `fetichectl`.
 - link to HashiCorp Vault for storing credentials and tokens
 - Add more tests & benchmarks.
 - support for Safesky for ADS-B data
 - Support for Sherlock formats and access methods
-- Support for Flightaware AeroAPI and Firehose.
 - Multicast output?
 
 ## Contributing
@@ -200,3 +205,7 @@ I use Git Flow for this package so please use something similar or the usual Git
 [GRPC]: https://en.wikipedia.org/wiki/GRPC
 
 [pyopensky]: https://pypi.org/project/pyopensky/ 
+
+[Nushell]: https://nushell.sh/
+
+[Actix]: https://actix.rs/
