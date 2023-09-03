@@ -3,9 +3,11 @@
 //! Regroup the various pseudo-categories we can use.
 //!
 
+mod adsb;
 mod cat129;
 mod cat21;
 
+pub use adsb::*;
 pub use cat129::*;
 pub use cat21::*;
 

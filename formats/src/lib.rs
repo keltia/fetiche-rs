@@ -82,6 +82,7 @@ pub struct FormatFile {
 pub enum Format {
     #[default]
     None,
+    Adsb21,
     Aeroscope,
     Asd,
     Avionix,
