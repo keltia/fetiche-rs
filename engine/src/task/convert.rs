@@ -55,10 +55,15 @@ impl Convert {
     ///
     /// FIXME: only output Cat21 for now.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("into::execute");
 
+        // Bow out early
+        //
+        if self.into != Format::Cat21 {
+            unimplemented!()
+        }
         let res: Vec<_> = match self.from {
             Format::Opensky => {
                 trace!("opensky:json to cat21: {}", data);
