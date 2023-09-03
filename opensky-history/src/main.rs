@@ -134,9 +134,9 @@ fn main() -> Result<()> {
 
     let v1 = v.clone();
     let ctx: Context = python! {
-        from pyopensky import OpenskyImpalaWrapper
+        from pyopensky.impala import Impala
 
-        opensky = OpenskyImpalaWrapper()
+        impala = Impala()
 
         print("From: ", 'start, "To: ", 'end, "BB=", 'bb)
         print("Segments: ", len('v1))
@@ -145,6 +145,11 @@ fn main() -> Result<()> {
     // Now for each segment, use the python code to fetch and return the DataFrames in CSV format
     //
     trace!("fetch segments");
+
+    let mut p = progress::Bar::new();
+    p.set_job_title("Fetching segments");
+
+    let step = 100 / v.len() as i32;
 
     let data: Vec<_> = v
         .iter()
@@ -155,18 +160,22 @@ fn main() -> Result<()> {
                 seg = 'tm
                 bb = 'bb
                 q = "SELECT * FROM state_vectors_data4 \
+
                 WHERE lat >= {} AND lat <= {} AND lon >= {} AND lon <= {} AND hour={}{};\
                 ".format(bb[1], bb[3], bb[0], bb[2], seg, 'icao)
 
-                df = opensky.rawquery(q)
+                df = impala.history()
                 if df is None:
                     data = ""
                 else:
                     data = df.to_csv()
             });
+            p.add_percent(step);
             ctx.get::<String>("data")
         })
         .collect();
+    p.reach_percent(100);
+    p.jobs_done();
 
     // End of the Python part thanks $DEITY! (and @m_ou_se on Twitter)
     //
@@ -176,6 +185,10 @@ fn main() -> Result<()> {
 
     // data is a Vec<String> with each component a CSV "file"
     //
+    let mut p = progress::Bar::new();
+    p.set_job_title("Merging csv");
+    let step = 100 / data.len() as i32;
+
     let data: Vec<Cat21> = data
         .iter()
         .flat_map(|seg| {
@@ -183,9 +196,12 @@ fn main() -> Result<()> {
                 .flexible(true)
                 .has_headers(true)
                 .from_reader(seg.as_bytes());
+            p.add_percent(step);
             format.from_csv(&mut rdr).unwrap()
         })
         .collect();
+    p.reach_percent(100);
+    p.jobs_done();
 
     let data = prepare_csv(data, true)?;
 
