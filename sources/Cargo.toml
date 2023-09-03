@@ -37,6 +37,7 @@ fetiche-formats.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
 log.workspace = true
+progress.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -55,7 +56,6 @@ native-tls = "0.2"
 percent-encoding = "2.2"
 signal-hook = "0.3"
 base64_light = "0.1"
-progress = "0.2.0"
 
 [dev-dependencies]
 rstest.workspace = true

@@ -888,7 +888,7 @@ dependencies = [
 
 [[package]]
 name = "fetiche-formats"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "chrono",
  "csv",
@@ -911,7 +911,7 @@ dependencies = [
 
 [[package]]
 name = "fetiche-sources"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "base64_light",
  "chrono",

@@ -2075,6 +2075,7 @@ dependencies = [
  "hcl-rs",
  "home",
  "inline-python",
+ "progress",
  "pyo3",
  "serde",
  "serde_repr",

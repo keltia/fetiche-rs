@@ -29,6 +29,7 @@ eyre.workspace = true
 fetiche-formats.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
+progress.workspace = true
 serde.workspace = true
 serde_repr.workspace = true
 tabled.workspace = true
