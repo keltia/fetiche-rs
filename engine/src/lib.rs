@@ -295,6 +295,10 @@ impl Engine {
         let mut state = self.state.try_write().unwrap();
         state.remove_job(job.id);
 
+        // Prevent deadlock by dropping ownership here, must be a better way to handle this
+        //
+        drop(state);
+
         trace!("sync");
         Ok(self.sync()?)
     }
