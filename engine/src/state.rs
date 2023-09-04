@@ -52,11 +52,13 @@ impl State {
     /// Perform a binary search on the job queue (job id are always incrementing) and remove said
     /// job (done or cancelled, etc.).
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn remove_job(&mut self, id: usize) -> &mut Self {
         trace!("state::remove_job({})", id);
         if let Ok(index) = self.queue.binary_search(&id) {
+            trace!("Found job {}", id);
             self.queue.remove(index);
+            trace!("queue={:?}", self.queue);
         }
         self
     }
