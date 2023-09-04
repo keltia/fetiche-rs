@@ -30,6 +30,7 @@ function generate_cmd() {
 
 function one_month() {
   num=$1
+  shift
 
   printf "Month %d\n" $num
 	for day in $(echo $*)
