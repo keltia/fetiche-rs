@@ -176,7 +176,7 @@ impl Fetchable for Asd {
 
     /// Authenticate to the site using the supplied credentials and get a token
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     fn authenticate(&self) -> Result<String> {
         trace!("authenticate as ({:?})", &self.login);
 
@@ -244,7 +244,7 @@ impl Fetchable for Asd {
 
     /// Fetch actual data using the aforementioned token
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
         trace!("asd::fetch");
 
