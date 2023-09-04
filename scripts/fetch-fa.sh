@@ -8,7 +8,7 @@
 # 8/2023
 #
 
-CMD="acutectl"
+CMD="acutectl fetch"
 CONV="--into cat21"
 FMT="-B \"%s\" -E \"%s\""
 DFMT1="2023-%s-%s 00:00:00 UTC"
@@ -36,7 +36,8 @@ function one_month() {
 	for day in $(echo $*)
 	do
 		ACUTECTL=$(generate_cmd $day $num)
-		echo $ACUTECTL
+		echo "$ACUTECTL"
+		eval $ACUTECTL
 	done
 }
 
