@@ -290,9 +290,12 @@ impl Engine {
     ///
     #[tracing::instrument]
     pub fn remove_job(&mut self, job: Job) -> Result<()> {
+        trace!("grab lock");
+
         let mut state = self.state.try_write().unwrap();
         state.remove_job(job.id);
 
+        trace!("sync");
         Ok(self.sync()?)
     }
 
