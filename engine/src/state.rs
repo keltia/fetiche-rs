@@ -41,6 +41,7 @@ impl State {
 
     /// Read our JSON file
     ///
+    #[tracing::instrument]
     pub fn from(fname: PathBuf) -> Result<Self> {
         trace!("state::from({:?}", fname);
         let data = fs::read_to_string(fname)?;
@@ -51,6 +52,7 @@ impl State {
     /// Perform a binary search on the job queue (job id are always incrementing) and remove said
     /// job (done or cancelled, etc.).
     ///
+    #[tracing::instrument]
     pub fn remove_job(&mut self, id: usize) -> &mut Self {
         trace!("state::remove_job({})", id);
         if let Ok(index) = self.queue.binary_search(&id) {
@@ -75,6 +77,7 @@ impl Engine {
 
     /// Sync all state into a file
     ///
+    #[tracing::instrument]
     pub fn sync(&self) -> Result<()> {
         trace!("engine::sync");
         let mut data = self.state.write().unwrap();
