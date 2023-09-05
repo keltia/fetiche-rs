@@ -71,6 +71,10 @@ At the moment, this task only support converting into our own `Cat21`  pseudo fo
 Consumers are used to store or duplicate data into different storage methods or even send data through
 different means (imagine a Multicast task).
 
+### Save
+
+This task saves the data it received into a single file.
+
 ### Store
 
 This task get all data from the upstream pipe and store it into a specific directory organized by Job ID
