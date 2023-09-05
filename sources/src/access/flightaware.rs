@@ -323,7 +323,7 @@ impl Fetchable for Flightaware {
         stream.write_all(req.as_bytes())?;
 
         let mut p = progress::SpinningCircle::new();
-        p.set_job_title("fetching...");
+        p.set_job_title("Fetching...");
 
         trace!("read answer, format as an array");
         let buf = BufReader::new(&mut stream);
