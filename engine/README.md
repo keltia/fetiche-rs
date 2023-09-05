@@ -30,6 +30,7 @@ The current tasks defined are:
 - `Convert`
 - `Fetch`
 - `Read`
+- `Save`
 - `Store`
 - `S3store`
 - `Stream`
@@ -80,7 +81,7 @@ This task saves the data it received into a single file.
 This task get all data from the upstream pipe and store it into a specific directory organized by Job ID
 and using a different file for every hour.
 
-### S3store
+### S3store (NOT IMPLEMENTED)
 
 This is like the previous `Store`  but using an S3-compatible method.
 
