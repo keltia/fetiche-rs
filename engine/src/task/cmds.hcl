@@ -38,6 +38,11 @@ cmds "record" {
   description = "Insert records into a database"
 }
 
+cmds "save" {
+  type        = "Consumer"
+  description = "Save into a single file."
+}
+
 cmds "store" {
   type        = "Consumer"
   description = "Split the incoming data into different files in a StorageArea."

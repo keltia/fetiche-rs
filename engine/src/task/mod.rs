@@ -25,6 +25,7 @@ mod convert;
 mod fetch;
 mod read;
 mod record;
+mod save;
 mod store;
 mod stream;
 mod tee;
@@ -39,6 +40,7 @@ pub enum Cmds {
     Nothing,
     Read,
     Record,
+    Save,
     Store,
     Stream,
     Tee,
