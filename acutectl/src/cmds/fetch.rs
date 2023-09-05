@@ -63,8 +63,12 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     match &fopts.output {
         Some(output) => {
-            info!("Writing into {:?}", output);
-            fs::write(output, data)?
+            let mut p = progress::SpinningCircle::new();
+            p.set_job_title(&format!("Writing into {}", output.to_string_lossy()));
+
+            let err = fs::write(output, data);
+
+            p.jobs_done();
         }
         // stdout otherwise
         //
@@ -73,6 +77,7 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     // Remove job from engine and state
     //
+    trace!("Job({}) done, removing it.", job.id);
     engine.remove_job(job)?;
 
     Ok(())
