@@ -20,6 +20,7 @@ dependencies = [
  "home",
  "httpmock",
  "percent-encoding",
+ "progress",
  "reqwest",
  "serde",
  "serde_json",
@@ -1036,7 +1037,7 @@ checksum = "6999dc1837253364c2ebb0704ba97994bd874e8f195d665c50b7548f6ea92764"
 
 [[package]]
 name = "fetiche-engine"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "chrono",
  "engine-macros",
