@@ -61,16 +61,13 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    let stdout = File::create("/tmp/fetiched.out")?;
-    let stderr = File::create("/tmp/fetiched.err")?;
-
     if opts.debug {
         info!("Debug mode, no detaching.");
         let pid = std::process::id();
         fs::write(&pid_file, &format!("{pid}")).await?;
     } else {
         #[cfg(unix)]
-        start_daemon(&pid_file, stdout, stderr);
+        start_daemon(&pid_file);
     }
 
     trace!("Starting configuration agent");
@@ -87,7 +84,7 @@ async fn main() -> Result<()> {
         }
     };
 
-    config
+    let _ = config
         .send(ConfigSet {
             name: "fetiche".to_string(),
             value: Param::String(r),
@@ -105,13 +102,18 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+/// UNIX-specific detach from terminal if -D/--debug is not specified
+///
 #[cfg(unix)]
-fn start_daemon(pid: &PathBuf, out: File, err: File) -> Result<()> {
+fn start_daemon(pid: &PathBuf) -> Result<()> {
+    let stdout = File::create("/tmp/fetiched.out")?;
+    let stderr = File::create("/tmp/fetiched.err")?;
+
     let daemon = daemonize::Daemonize::new()
         .pid_file(&pid)
         .working_directory("/tmp")
-        .stdout(out)
-        .stderr(err);
+        .stdout(stdout)
+        .stderr(stderr);
 
     match daemon.start() {
         Ok(_) => {
