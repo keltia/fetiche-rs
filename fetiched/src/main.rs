@@ -5,12 +5,11 @@
 
 use std::fs::File;
 use std::path::PathBuf;
-use std::time::Duration;
 use std::{fs, io};
 
 use clap::Parser;
 use eyre::Result;
-use tracing::info;
+use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::EnvFilter, fmt};
 
@@ -53,31 +52,34 @@ fn main() -> Result<()> {
     let stderr = File::create("/tmp/fetiched.err")?;
 
     #[cfg(unix)]
-    start_daemon();
+    start_daemon(&pid, stdout, stderr);
 
     // Now start serving
+    trace!("Serving.");
 
+    trace!("Finished.");
     Ok(fs::remove_file(&pid)?)
 }
 
 #[cfg(unix)]
-fn start_daemon() -> Result<()> {
+fn start_daemon(pid: &PathBuf, out: File, err: File) -> Result<()> {
     let daemon = daemonize::Daemonize::new()
         .pid_file(&pid)
         .working_directory("/tmp")
-        .stdout(stdout)
-        .stderr(stderr);
+        .stdout(out)
+        .stderr(err);
 
     match daemon.start() {
         Ok(_) => {
             info!("In child, detached");
 
-            let mut stdout = io::stdout();
+            let stdout = io::stdout();
 
             info!("daemon is running");
         }
         Err(e) => eprintln!("Error: {}", e),
     }
+    Ok(())
 }
 
 /// Announce ourselves
