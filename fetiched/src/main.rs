@@ -64,7 +64,7 @@ async fn main() -> Result<()> {
     if opts.debug {
         info!("Debug mode, no detaching.");
         let pid = std::process::id();
-        fs::write(&pid_file, &format!("{pid}")).await?;
+        info!("PID = {}", pid);
     } else {
         #[cfg(unix)]
         start_daemon(&pid_file);
@@ -98,7 +98,9 @@ async fn main() -> Result<()> {
     sleep(Duration::from_secs(10)).await;
 
     trace!("Finished.");
-    fs::remove_file(&pid_file).await?;
+    if !opts.debug {
+        fs::remove_file(&pid_file).await?;
+    }
     Ok(())
 }
 
