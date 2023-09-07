@@ -56,9 +56,6 @@ pub struct ServerOpts {
     /// Configuration file
     #[clap(short = 'C', long)]
     pub config: Option<String>,
-    /// Do not detach
-    #[clap(short = 'D', long)]
-    pub debug: bool,
     /// API listening IP, default is 127.0.0.1/::1
     #[clap(short = 'L', long, default_value = "::1")]
     pub listen: IpAddr,
