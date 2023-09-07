@@ -91,7 +91,14 @@ async fn main() -> Result<()> {
         })
         .await?;
     config.do_send(ConfigList {});
-    engine.do_send(EngineStatus {});
+
+    let status = match engine.send(EngineStatus {}).await {
+        Ok(status) => status,
+        Err(e) => {
+            error!("dead actor: {}", e.to_string());
+            e.to_string()
+        }
+    };
 
     trace!("Init done, serving.");
 
