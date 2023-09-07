@@ -33,7 +33,9 @@ tracing.workspace = true
 tracing-log.workspace = true
 tracing-subscriber.workspace = true
 
-tokio = { version = "1.29", features = ["full"] }
+actix = "0.13"
+actix-rt = "2.8"
+tokio = { version = "1", features = ["full"] }
 
 [target.'cfg(unix)'.dependencies]
 daemonize = "0.5"

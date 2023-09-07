@@ -4,14 +4,23 @@
 //!
 
 use std::fs::File;
+use std::io;
 use std::path::PathBuf;
-use std::{fs, io};
+use std::time::Duration;
 
+use actix::prelude::*;
 use clap::Parser;
 use eyre::Result;
+use log::error;
+use tokio::fs;
+use tokio::time::sleep;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
-use tracing_subscriber::{filter::EnvFilter, fmt};
+use tracing_subscriber::{fmt, EnvFilter};
+
+use fetiched::{
+    ConfigActor, ConfigList, ConfigSet, EngineActor, EngineStatus, EngineVersion, Param,
+};
 
 use crate::cli::Opts;
 
@@ -23,7 +32,8 @@ const NAME: &str = env!("CARGO_BIN_NAME");
 /// Daemon version
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn main() -> Result<()> {
+#[actix_rt::main]
+async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
     let fmt = fmt::layer()
@@ -40,10 +50,13 @@ fn main() -> Result<()> {
     //
     tracing_subscriber::registry().with(filter).with(fmt).init();
 
-    let pid = PathBuf::from("/tmp/fetiched.pid");
-    if pid.exists() {
+    let pid_file = PathBuf::from("/tmp/fetiched.pid");
+    if pid_file.exists() {
         info!("PID exist");
-        let pid = fs::read_to_string(&pid)?.trim_end().parse::<u32>()?;
+        let pid = fs::read_to_string(&pid_file)
+            .await?
+            .trim_end()
+            .parse::<u32>()?;
         eprintln!("Check PID {}", pid);
         std::process::exit(1);
     }
@@ -51,14 +64,45 @@ fn main() -> Result<()> {
     let stdout = File::create("/tmp/fetiched.out")?;
     let stderr = File::create("/tmp/fetiched.err")?;
 
-    #[cfg(unix)]
-    start_daemon(&pid, stdout, stderr);
+    if opts.debug {
+        info!("Debug mode, no detaching.");
+        let pid = std::process::id();
+        fs::write(&pid_file, &format!("{pid}")).await?;
+    } else {
+        #[cfg(unix)]
+        start_daemon(&pid_file, stdout, stderr);
+    }
 
-    // Now start serving
-    trace!("Serving.");
+    trace!("Starting configuration agent");
+    let config = ConfigActor::default().start();
+
+    trace!("Starting engine agent");
+    let engine = EngineActor::default().start();
+
+    let r = match engine.send(EngineVersion {}).await {
+        Ok(res) => res,
+        Err(e) => {
+            error!("dead actor: {}", e.to_string());
+            e.to_string()
+        }
+    };
+
+    config
+        .send(ConfigSet {
+            name: "fetiche".to_string(),
+            value: Param::String(r),
+        })
+        .await?;
+    config.do_send(ConfigList {});
+    engine.do_send(EngineStatus {});
+
+    trace!("Init done, serving.");
+
+    sleep(Duration::from_secs(10)).await;
 
     trace!("Finished.");
-    Ok(fs::remove_file(&pid)?)
+    fs::remove_file(&pid_file).await?;
+    Ok(())
 }
 
 #[cfg(unix)]
@@ -77,7 +121,7 @@ fn start_daemon(pid: &PathBuf, out: File, err: File) -> Result<()> {
 
             info!("daemon is running");
         }
-        Err(e) => eprintln!("Error: {}", e),
+        Err(e) => error!("Error: {}", e),
     }
     Ok(())
 }
