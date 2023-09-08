@@ -12,18 +12,21 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::mpsc::*;
-use std::thread::*;
 use std::time::Duration;
-use std::{fs, io, thread};
 
+use async_trait::async_trait;
 use eyre::Result;
+use tokio::io::AsyncWriteExt;
+use tokio::sync::mpsc::*;
+use tokio::task::JoinHandle;
+use tokio::{fs, io, select};
 use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::EnvFilter, fmt};
 
+#[async_trait]
 pub trait Runnable: Debug {
-    fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
+    async fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
 }
 
 #[derive(Debug)]
@@ -31,26 +34,30 @@ struct Counter {
     cnt: usize,
 }
 
+#[async_trait]
 impl Runnable for Counter {
-    fn run(&mut self, rx: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>) {
-        let (tx1, rx1) = channel::<String>();
+    async fn run(&mut self, rx: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>) {
+        let (tx1, rx1) = channel::<String>(10);
 
         let cnt = self.cnt.clone();
-        let h = thread::spawn(move || {
+        let h = tokio::spawn(async move {
             eprintln!("counter");
-            for data in rx {
+            select! {
+                Some(data) = rx.recv() => {
                 // send our data
-                for i in cnt..(cnt + 3) {
-                    let data = format!("->{},", i);
-                    if tx1.send(data).is_err() {
-                        eprintln!("err");
-                        break;
+                    for i in cnt..(cnt + 3) {
+                        let data = format!("->{},", i);
+                        if tx1.send(data).await.is_err() {
+                            eprintln!("err");
+                            break;
+                        }
                     }
+                    tx1.send("end".to_string()).await.unwrap();
                 }
             }
-            tx1.send("end".to_string()).unwrap();
             Ok(())
-        });
+        })
+        .await?;
         (rx1, h)
     }
 }
@@ -60,22 +67,27 @@ struct Msg {
     msg: String,
 }
 
+#[async_trait]
 impl Runnable for Msg {
-    fn run(&mut self, rx: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>) {
-        let (tx1, rx1) = channel::<String>();
+    async fn run(&mut self, rx: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>) {
+        let (tx1, rx1) = channel::<String>(10);
 
         let msg = self.msg.clone();
-        let h = thread::spawn(move || {
+        let h = tokio::spawn(async move {
             eprintln!("msg");
-            for data in rx {
-                let data = format!("{}", data);
-                if tx1.send(data).is_err() {
-                    break;
-                }
+            select! {
+                Some(data) = rx.recv() =>
+                    for data in rx {
+                        let data = format!("{}", data);
+                        if tx1.send(data).await.is_err() {
+                            break;
+                        }
+                    }
             }
             tx1.send(msg).unwrap();
             Ok(())
-        });
+        })
+        .await?;
         (rx1, h)
     }
 }
@@ -102,7 +114,7 @@ impl Job {
     pub fn run(&mut self, out: &mut dyn Write) {
         eprintln!("starting {}", self.name);
         // setup context tx: stdin / rx: stdout
-        let (tx, rx) = channel::<String>();
+        let (tx, rx) = channel::<String>(10);
         let mut pids = vec![];
 
         let end = self.list.iter_mut().fold(rx, |acc, t| {
@@ -123,7 +135,8 @@ impl Job {
     }
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let fmt = fmt::layer()
         .with_thread_ids(true)
         .with_thread_names(true)
@@ -184,7 +197,7 @@ fn main() -> Result<()> {
     let _ = stdout.flush()?;
 
     info!("sleep");
-    sleep(Duration::from_secs(60));
+    tokio::time::sleep(Duration::from_secs(60)).await;
 
-    Ok(fs::remove_file(&pid)?)
+    Ok(fs::remove_file(&pid).await?)
 }

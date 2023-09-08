@@ -9,24 +9,20 @@
 
 use std::collections::VecDeque;
 use std::fmt::Debug;
-use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::mpsc::*;
+use std::thread::*;
 use std::time::Duration;
+use std::{fs, io, thread};
 
-use async_trait::async_trait;
 use eyre::Result;
-use tokio::io::AsyncWriteExt;
-use tokio::sync::mpsc::*;
-use tokio::task::JoinHandle;
-use tokio::{fs, io};
 use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::EnvFilter, fmt};
 
-#[async_trait]
 pub trait Runnable: Debug {
-    async fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
+    fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
 }
 
 #[derive(Debug)]
@@ -34,28 +30,26 @@ struct Counter {
     cnt: usize,
 }
 
-#[async_trait]
 impl Runnable for Counter {
-    async fn run(&mut self, rx: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>) {
-        let (tx1, rx1) = channel::<String>(10);
+    fn run(&mut self, rx: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>) {
+        let (tx1, rx1) = channel::<String>();
 
         let cnt = self.cnt.clone();
-        let h = tokio::spawn(async move {
+        let h = thread::spawn(move || {
             eprintln!("counter");
             for data in rx {
                 // send our data
                 for i in cnt..(cnt + 3) {
                     let data = format!("->{},", i);
-                    if tx1.send(data).await.is_err() {
+                    if tx1.send(data).is_err() {
                         eprintln!("err");
                         break;
                     }
                 }
             }
-            tx1.send("end".to_string()).await.unwrap();
+            tx1.send("end".to_string()).unwrap();
             Ok(())
-        })
-        .await?;
+        });
         (rx1, h)
     }
 }
@@ -65,24 +59,22 @@ struct Msg {
     msg: String,
 }
 
-#[async_trait]
 impl Runnable for Msg {
-    async fn run(&mut self, rx: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>) {
-        let (tx1, rx1) = channel::<String>(10);
+    fn run(&mut self, rx: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>) {
+        let (tx1, rx1) = channel::<String>();
 
         let msg = self.msg.clone();
-        let h = tokio::spawn(async move {
+        let h = thread::spawn(move || {
             eprintln!("msg");
             for data in rx {
                 let data = format!("{}", data);
-                if tx1.send(data).await.is_err() {
+                if tx1.send(data).is_err() {
                     break;
                 }
             }
             tx1.send(msg).unwrap();
             Ok(())
-        })
-        .await?;
+        });
         (rx1, h)
     }
 }
@@ -109,7 +101,7 @@ impl Job {
     pub fn run(&mut self, out: &mut dyn Write) {
         eprintln!("starting {}", self.name);
         // setup context tx: stdin / rx: stdout
-        let (tx, rx) = channel::<String>(10);
+        let (tx, rx) = channel::<String>();
         let mut pids = vec![];
 
         let end = self.list.iter_mut().fold(rx, |acc, t| {
@@ -130,8 +122,7 @@ impl Job {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let fmt = fmt::layer()
         .with_thread_ids(true)
         .with_thread_names(true)
@@ -154,41 +145,45 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    let stdout = File::create("/tmp/foo.out")?;
-    let stderr = File::create("/tmp/foo.err")?;
+    #[cfg(unix)]
+    {
+        let stdout = File::create("/tmp/foo.out")?;
+        let stderr = File::create("/tmp/foo.err")?;
 
-    let daemon = daemonize::Daemonize::new()
-        .pid_file(&pid)
-        .working_directory("/tmp")
-        .stdout(stdout)
-        .stderr(stderr);
+        let daemon = daemonize::Daemonize::new()
+            .pid_file(&pid)
+            .working_directory("/tmp")
+            .stdout(stdout)
+            .stderr(stderr);
 
-    match daemon.start() {
-        Ok(_) => {
-            info!("In child, detached");
-
-            let mut stdout = io::stdout();
-
-            let t1 = Counter { cnt: 1 };
-            let t2 = Msg {
-                msg: "bnar".to_string(),
-            };
-            let t3 = Counter { cnt: 42 };
-
-            let mut j = Job::new("test");
-
-            j.add(Box::new(t1)).add(Box::new(t2)).add(Box::new(t3));
-
-            dbg!(&j);
-
-            j.run(&mut stdout);
-
-            let _ = stdout.flush()?;
-
-            info!("sleep");
-            tokio::time::sleep(Duration::from_secs(60)).await;
+        match daemon.start() {
+            Ok(_) => {
+                info!("In child, detached");
+            }
+            Err(e) => eprintln!("Error: {}", e),
         }
-        Err(e) => eprintln!("Error: {}", e),
     }
-    Ok(fs::remove_file(&pid).await?)
+
+    let mut stdout = io::stdout();
+
+    let t1 = Counter { cnt: 1 };
+    let t2 = Msg {
+        msg: "bnar".to_string(),
+    };
+    let t3 = Counter { cnt: 42 };
+
+    let mut j = Job::new("test");
+
+    j.add(Box::new(t1)).add(Box::new(t2)).add(Box::new(t3));
+
+    dbg!(&j);
+
+    j.run(&mut stdout);
+
+    let _ = stdout.flush()?;
+
+    info!("sleep");
+    sleep(Duration::from_secs(60));
+
+    Ok(fs::remove_file(&pid)?)
 }
