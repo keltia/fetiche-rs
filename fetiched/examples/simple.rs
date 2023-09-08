@@ -146,41 +146,45 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    let stdout = File::create("/tmp/foo.out")?;
-    let stderr = File::create("/tmp/foo.err")?;
+    #[cfg(unix)]
+    {
+        let stdout = File::create("/tmp/foo.out")?;
+        let stderr = File::create("/tmp/foo.err")?;
 
-    let daemon = daemonize::Daemonize::new()
-        .pid_file(&pid)
-        .working_directory("/tmp")
-        .stdout(stdout)
-        .stderr(stderr);
+        let daemon = daemonize::Daemonize::new()
+            .pid_file(&pid)
+            .working_directory("/tmp")
+            .stdout(stdout)
+            .stderr(stderr);
 
-    match daemon.start() {
-        Ok(_) => {
-            info!("In child, detached");
-
-            let mut stdout = io::stdout();
-
-            let t1 = Counter { cnt: 1 };
-            let t2 = Msg {
-                msg: "bnar".to_string(),
-            };
-            let t3 = Counter { cnt: 42 };
-
-            let mut j = Job::new("test");
-
-            j.add(Box::new(t1)).add(Box::new(t2)).add(Box::new(t3));
-
-            dbg!(&j);
-
-            j.run(&mut stdout);
-
-            let _ = stdout.flush()?;
-
-            info!("sleep");
-            sleep(Duration::from_secs(60));
+        match daemon.start() {
+            Ok(_) => {
+                info!("In child, detached");
+            }
+            Err(e) => eprintln!("Error: {}", e),
         }
-        Err(e) => eprintln!("Error: {}", e),
     }
+
+    let mut stdout = io::stdout();
+
+    let t1 = Counter { cnt: 1 };
+    let t2 = Msg {
+        msg: "bnar".to_string(),
+    };
+    let t3 = Counter { cnt: 42 };
+
+    let mut j = Job::new("test");
+
+    j.add(Box::new(t1)).add(Box::new(t2)).add(Box::new(t3));
+
+    dbg!(&j);
+
+    j.run(&mut stdout);
+
+    let _ = stdout.flush()?;
+
+    info!("sleep");
+    sleep(Duration::from_secs(60));
+
     Ok(fs::remove_file(&pid)?)
 }
