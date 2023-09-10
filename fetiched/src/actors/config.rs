@@ -54,6 +54,8 @@ impl Message for ConfigSet {
 #[rtype(result = "()")]
 pub struct ConfigList {}
 
+// ----- The Actor
+
 #[derive(Debug)]
 pub struct ConfigActor {
     c: HashMap<String, Param>,
