@@ -2,6 +2,8 @@
 //!
 //! It could have been part of `acutectl`  but it is cleaner that way.
 //!
+//! NOTE: this is a fully async daemon... calling the rest of the fetiche framework
+//!       which is completely sync.  Do not ask me how this works :)
 
 use std::fs::File;
 use std::io;
@@ -18,9 +20,7 @@ use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-use fetiched::{
-    ConfigActor, ConfigList, ConfigSet, EngineActor, EngineStatus, EngineVersion, Param,
-};
+use fetiched::{ConfigActor, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param};
 
 use crate::cli::Opts;
 
@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
     trace!("Starting engine agent");
     let engine = EngineActor::default().start();
 
-    let r = match engine.send(EngineVersion {}).await {
+    let r = match engine.send(GetVersion {}).await {
         Ok(res) => res,
         Err(e) => {
             error!("dead actor: {}", e.to_string());
@@ -92,11 +92,15 @@ async fn main() -> Result<()> {
         .await?;
     config.do_send(ConfigList {});
 
-    let status = match engine.send(EngineStatus {}).await {
-        Ok(status) => status,
+    match engine.send(GetStatus {}).await {
+        Ok(status) => {
+            info!(
+                "Engine is running, home is {}, {} jobs in queue.",
+                status.home, status.jobs
+            );
+        }
         Err(e) => {
             error!("dead actor: {}", e.to_string());
-            e.to_string()
         }
     };
 
