@@ -1096,6 +1096,7 @@ checksum = "6999dc1837253364c2ebb0704ba97994bd874e8f195d665c50b7548f6ea92764"
 name = "fetiche-engine"
 version = "0.8.1"
 dependencies = [
+ "async-trait",
  "chrono",
  "engine-macros",
  "env_logger 0.10.0",
