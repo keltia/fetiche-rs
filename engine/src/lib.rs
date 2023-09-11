@@ -260,7 +260,7 @@ impl Engine {
 
     /// Create a new job queue
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn create_job(&mut self, s: &str) -> Job {
         // Fetch next ID
         //
@@ -275,11 +275,19 @@ impl Engine {
         let mut jobs = self.jobs.write().unwrap();
         jobs.push_back(nextid);
 
+        // Ensure lock goes away
+        //
+        drop(jobs);
+
         // Update state
         //
         let mut state = self.state.write().unwrap();
         state.last = nextid;
         state.queue.push_back(nextid);
+
+        // Ensure lock goes away
+        //
+        drop(state);
 
         trace!("create_job with id: {}", nextid);
         self.command(EngineCtrl::Sync).expect("can not sync");
