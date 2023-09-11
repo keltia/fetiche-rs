@@ -37,6 +37,7 @@ pub use database::*;
 pub use fetiche_formats::Format;
 pub use fetiche_sources::{makepath, Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
 pub use job::*;
+pub use parse::*;
 pub use state::*;
 pub use storage::*;
 pub use task::*;
