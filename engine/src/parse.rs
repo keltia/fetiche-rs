@@ -40,15 +40,19 @@ use nom::IResult;
 
 use crate::Cmds;
 
+/// Parse a string surrounded by "double quotes"
+///
 fn parse_string(input: &str) -> IResult<&str, &str> {
     delimited(tag("\""), take_until("\""), tag("\""))(input)
 }
 
+/// Parse a keyword (i.e. "message")
+///
 fn parse_keyword(input: &str) -> IResult<&str, &str> {
     alphanumeric1(input)
 }
 
-/// Parse a string surrounded by double quotes
+/// Parse a job definition, currently <command>\s+"<string>"
 ///
 pub fn parse_job(input: &str) -> IResult<&str, (Cmds, String)> {
     let m = |(k, m): (&str, &str)| (Cmds::Message, m.to_string());
