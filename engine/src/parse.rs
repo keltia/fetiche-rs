@@ -50,8 +50,8 @@ fn parse_keyword(input: &str) -> IResult<&str, &str> {
 
 /// Parse a string surrounded by double quotes
 ///
-pub fn parse_job(input: &str) -> IResult<&str, Cmds> {
-    let m = |(k, m): (&str, &str)| Cmds::Message;
+pub fn parse_job(input: &str) -> IResult<&str, (Cmds, String)> {
+    let m = |(k, m): (&str, &str)| (Cmds::Message, m.to_string());
 
     let line = tuple((parse_keyword, preceded(space1, parse_string)));
     map(line, m)(input)
@@ -59,6 +59,8 @@ pub fn parse_job(input: &str) -> IResult<&str, Cmds> {
 
 #[cfg(test)]
 mod tests {
+    use crate::Cmds::Message;
+
     use super::*;
 
     #[test]
@@ -87,5 +89,17 @@ mod tests {
         println!("r={r}");
         assert!(i.is_empty());
         assert_eq!("ねこ", r);
+    }
+
+    #[test]
+    fn test_parse_job() {
+        let s = "message \"foobar\"";
+
+        let r = parse_job(s);
+        dbg!(&r);
+        assert!(r.is_ok());
+        let (i, r) = r.unwrap();
+        assert_eq!(Message, r.0);
+        assert_eq!("foobar", r.1);
     }
 }
