@@ -32,10 +32,13 @@ use nom::{
 
 use crate::Cmds;
 
+/// Delimiter for strings, only " supported
+const DELIM: &str = "\"";
+
 /// Parse a string surrounded by "double quotes"
 ///
 fn parse_string(input: &str) -> IResult<&str, &str> {
-    delimited(tag("\""), take_until("\""), tag("\""))(input)
+    delimited(tag(DELIM), take_until(DELIM), tag(DELIM))(input)
 }
 
 /// Parse a keyword (i.e. "message")
