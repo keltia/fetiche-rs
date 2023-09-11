@@ -11,7 +11,6 @@ use std::time::Duration;
 
 use actix::prelude::*;
 use clap::Parser;
-use eyre::Result;
 use tokio::fs;
 use tokio::time::sleep;
 use tracing::error;
@@ -112,7 +111,7 @@ async fn main() {
 
     // ねこ =  neko = cat
     //
-    let job = Submit::new("message \"ねこ\"");
+    let job = Submit::new("message \"ネコ\"");
     //let job = Submit::new("message \"test\"");
 
     trace!("job = {:?}", job);
@@ -129,11 +128,13 @@ async fn main() {
 
     println!("Res = {}", res);
 
+    assert_eq!("ネコ", res);
+
     sleep(Duration::from_secs(10)).await;
 
     trace!("Finished.");
     if !opts.debug {
-        fs::remove_file(&pid_file).await.unwrap();
+        let _ = fs::remove_file(&pid_file).await;
     }
     System::current().stop();
 }
