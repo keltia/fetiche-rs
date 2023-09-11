@@ -30,7 +30,7 @@ mod store;
 mod stream;
 mod tee;
 
-#[derive(Debug, strum::Display, EnumVariantNames, EnumIter)]
+#[derive(Debug, strum::Display, EnumVariantNames, EnumIter, PartialEq)]
 #[strum(serialize_all = "PascalCase")]
 pub enum Cmds {
     Convert,
