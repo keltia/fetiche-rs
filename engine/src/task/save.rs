@@ -10,7 +10,6 @@ use eyre::Result;
 use tracing::trace;
 
 use engine_macros::RunnableDerive;
-use fetiche_formats::Format;
 
 use crate::{Runnable, IO};
 
@@ -85,7 +84,6 @@ mod tests {
 
         assert_eq!("foo", t.name);
         assert!(t.path.is_none());
-        assert_eq!(Format::None, t.format);
     }
 
     #[test]
@@ -94,7 +92,6 @@ mod tests {
         t.path("/nonexistent");
 
         assert_eq!("foo", t.name);
-        assert_eq!(Format::None, t.format);
         assert_eq!(PathBuf::from("/nonexistent"), t.path.unwrap());
     }
 
@@ -104,7 +101,6 @@ mod tests {
         t.path("../Cargo.toml");
 
         assert_eq!("foo", t.name);
-        assert_eq!(Format::Asd, t.format);
         assert_eq!(PathBuf::from("../Cargo.toml"), t.path.unwrap());
     }
 }
