@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
     trace!("Starting engine agent");
     let engine = EngineActor::default().start();
 
-    let r = match engine.send(GetVersion {}).await {
+    let r = match engine.send(GetVersion).await {
         Ok(res) => res,
         Err(e) => {
             error!("dead actor: {}", e.to_string());
@@ -90,9 +90,9 @@ async fn main() -> Result<()> {
             value: Param::String(r),
         })
         .await?;
-    config.do_send(ConfigList {});
+    config.do_send(ConfigList);
 
-    match engine.send(GetStatus {}).await {
+    match engine.send(GetStatus).await {
         Ok(status) => {
             info!(
                 "Engine is running, home is {}, {} jobs in queue.",

@@ -52,7 +52,7 @@ impl Message for ConfigSet {
 
 #[derive(Debug, Message)]
 #[rtype(result = "()")]
-pub struct ConfigList {}
+pub struct ConfigList;
 
 // ----- The Actor
 

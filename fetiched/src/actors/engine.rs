@@ -11,7 +11,7 @@ use fetiche_engine::Engine;
 
 #[derive(Debug, Message)]
 #[rtype(result = "EngineStatus")]
-pub struct GetStatus {}
+pub struct GetStatus;
 
 #[derive(Debug, Message)]
 #[rtype(result = "EngineStatus")]
@@ -36,7 +36,7 @@ where
 
 #[derive(Debug, Message)]
 #[rtype(result = "String")]
-pub struct GetVersion {}
+pub struct GetVersion;
 
 // ----- The Actor
 
