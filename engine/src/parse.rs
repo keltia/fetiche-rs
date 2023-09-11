@@ -62,7 +62,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_string() {
+    fn test_parse_string_ascii() {
         env_logger::init();
 
         let s = r##""foo""##;
@@ -73,5 +73,19 @@ mod tests {
         println!("r={r}");
         assert!(i.is_empty());
         assert_eq!("foo", r);
+    }
+
+    #[test]
+    fn test_parse_string_utf8() {
+        env_logger::init();
+
+        let s = r##""ねこ""##;
+        let r = parse_string(s);
+
+        assert!(r.is_ok());
+        let (i, r) = r.unwrap();
+        println!("r={r}");
+        assert!(i.is_empty());
+        assert_eq!("ねこ", r);
     }
 }
