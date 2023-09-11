@@ -6,21 +6,22 @@
 //!       which is completely sync.  Do not ask me how this works :)
 
 use std::fs::File;
-use std::io;
 use std::path::PathBuf;
 use std::time::Duration;
 
 use actix::prelude::*;
 use clap::Parser;
 use eyre::Result;
-use log::error;
 use tokio::fs;
 use tokio::time::sleep;
+use tracing::error;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-use fetiched::{ConfigActor, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param};
+use fetiched::{
+    ConfigActor, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param, Submit,
+};
 
 use crate::cli::Opts;
 
@@ -33,7 +34,7 @@ const NAME: &str = env!("CARGO_BIN_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[actix_rt::main]
-async fn main() -> Result<()> {
+async fn main() {
     let opts: Opts = Opts::parse();
 
     let fmt = fmt::layer()
@@ -54,9 +55,11 @@ async fn main() -> Result<()> {
     if pid_file.exists() {
         info!("PID exist");
         let pid = fs::read_to_string(&pid_file)
-            .await?
+            .await
+            .unwrap()
             .trim_end()
-            .parse::<u32>()?;
+            .parse::<u32>()
+            .unwrap();
         eprintln!("Check PID {}", pid);
         std::process::exit(1);
     }
@@ -89,7 +92,8 @@ async fn main() -> Result<()> {
             name: "fetiche".to_string(),
             value: Param::String(r),
         })
-        .await?;
+        .await
+        .unwrap();
     config.do_send(ConfigList);
 
     match engine.send(GetStatus).await {
@@ -106,13 +110,32 @@ async fn main() -> Result<()> {
 
     trace!("Init done, serving.");
 
+    // ねこ =  neko = cat
+    //
+    let job = Submit::new("message \"ねこ\"");
+    //let job = Submit::new("message \"test\"");
+
+    trace!("job = {:?}", job);
+
+    let res = engine.send(job).await;
+
+    let res = match res {
+        Ok(res) => res,
+        Err(e) => {
+            error!("Can not send: {}", e.to_string());
+            std::process::exit(1);
+        }
+    };
+
+    println!("Res = {}", res);
+
     sleep(Duration::from_secs(10)).await;
 
     trace!("Finished.");
     if !opts.debug {
-        fs::remove_file(&pid_file).await?;
+        fs::remove_file(&pid_file).await.unwrap();
     }
-    Ok(())
+    System::current().stop();
 }
 
 /// UNIX-specific detach from terminal if -D/--debug is not specified
@@ -132,7 +155,7 @@ fn start_daemon(pid: &PathBuf) -> Result<()> {
         Ok(_) => {
             info!("In child, detached");
 
-            let stdout = io::stdout();
+            let stdout = std::io::stdout();
 
             info!("daemon is running");
         }
