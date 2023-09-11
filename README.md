@@ -81,6 +81,8 @@ This allows for filters to be inserted for conversion and in the future for DB e
 
 More information on its internal design in [Engine README.md](engine/README.md).
 
+There is also the beginning of a job/task description DSL to describe and submit jobs.
+
 > NOTE: this is a fast-changing WIP.
 
 ### Formats (managed in the `fetiche-formats` crate)
@@ -111,8 +113,8 @@ On UNIX systems, there is a new command called `fetiched`. It is a daemon runnin
 from the terminal and accepting requests through an [GRPC] interface. The Windows version will have to be run from a
 specific terminal with the `serve` command.
 
-In the near future, `fetiched` might evolve into an Actor-based subsystem (using [Actix] most probably) to manage 
-orchestration between the internal modules. We might have an engine actor, a configuration actor, etc.
+In the near future, `fetiched` is evolving into an Actor-based subsystem (using [Actix] ) to manage
+orchestration between the internal modules. We do have an engine actor, a configuration actor, etc.
 
 More details in the specific [Fetiched README.md](fetiched/README.md).
 
@@ -181,6 +183,8 @@ I use Git Flow for this package so please use something similar or the usual Git
 6. Create a new Pull Request
 
 [ASD]: https://eur.airspacedrone.com/
+
+[Actix]: https://actix.rs/
 
 [ASTERIX]: https://www.eurocontrol.int/asterix/
 
