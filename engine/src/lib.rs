@@ -253,7 +253,7 @@ impl Engine {
 
     /// Send a command to the engine
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn command(&self, cmd: EngineCtrl) -> Result<()> {
         Ok(self.ctrl.send(cmd)?)
     }
