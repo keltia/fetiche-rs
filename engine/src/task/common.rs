@@ -26,7 +26,7 @@ impl Nothing {
     #[inline]
     #[tracing::instrument]
     pub fn new() -> Self {
-        Nothing { io: IO::Filter }
+        Nothing { io: IO::Producer }
     }
 
     #[inline]
@@ -87,7 +87,7 @@ impl Message {
     #[tracing::instrument]
     pub fn new(s: &str) -> Self {
         Message {
-            io: IO::Filter,
+            io: IO::Producer,
             msg: s.to_owned(),
         }
     }
@@ -96,40 +96,5 @@ impl Message {
     #[tracing::instrument]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
         Ok(stdout.send(format!("{}|{}", data, self.msg))?)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::mpsc::channel;
-
-    use super::*;
-
-    #[test]
-    fn test_nothing_run() {
-        let mut t = Nothing::new();
-
-        let (tx, rx) = channel();
-
-        let (r, h) = t.run(rx);
-
-        let r = r.recv();
-        assert!(r.is_ok());
-        let r = r.unwrap();
-        assert_eq!("|NOP", r);
-    }
-
-    #[test]
-    fn test_message_run() {
-        let mut m = Message::new("the brown fox");
-
-        let (tx, rx) = channel();
-
-        let (r, h) = m.run(rx);
-
-        let r = r.recv();
-        assert!(r.is_ok());
-        let s = r.unwrap();
-        assert_eq!("|the brown fox", s);
     }
 }

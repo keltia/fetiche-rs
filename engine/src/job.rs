@@ -156,17 +156,17 @@ pub struct Jobs(BTreeMap<String, Job>);
 
 #[cfg(test)]
 mod tests {
-    use crate::{Engine, Message, Nothing};
+    use crate::{task, Engine, Message, Nothing};
 
     use super::*;
 
     #[test]
-    fn test_job_run() {
+    fn test_job_run_nothing() {
         env_logger::init();
 
         let mut e = Engine::new();
         let t1 = Box::new(Nothing::new());
-        let t2 = Box::new(Message::new("hello world"));
+        let t2 = Box::new(task::Copy::new());
 
         let mut j: Job = e.create_job("test");
         j.add(t1);
@@ -175,10 +175,34 @@ mod tests {
         let mut data = vec![];
 
         let res = j.run(&mut data);
+        dbg!(&res);
         assert!(res.is_ok());
 
         let res = String::from_utf8(data);
         assert!(res.is_ok());
-        assert_eq!("start|NOP|hello world", res.unwrap())
+        assert_eq!("start|NOP", res.unwrap())
+    }
+
+    #[test]
+    fn test_job_run_message() {
+        env_logger::init();
+
+        let mut e = Engine::new();
+        let t1 = Box::new(Message::new("hello world"));
+        let t2 = Box::new(task::Copy::new());
+
+        let mut j: Job = e.create_job("test");
+        j.add(t1);
+        j.add(t2);
+
+        let mut data = vec![];
+
+        let res = j.run(&mut data);
+        dbg!(&res);
+        assert!(res.is_ok());
+
+        let res = String::from_utf8(data);
+        assert!(res.is_ok());
+        assert_eq!("start|hello world", res.unwrap())
     }
 }
