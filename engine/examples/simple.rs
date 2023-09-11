@@ -116,9 +116,6 @@ impl Job {
             writeln!(out, "received: ({})", msg).unwrap();
             out.flush().unwrap();
         }
-        // for p in pids {
-        //     let _ = p.join().unwrap();
-        // }
     }
 }
 
@@ -143,25 +140,6 @@ fn main() -> Result<()> {
         let pid = fs::read_to_string(&pid)?.trim_end().parse::<u32>()?;
         eprintln!("Check PID {}", pid);
         std::process::exit(1);
-    }
-
-    #[cfg(unix)]
-    {
-        let stdout = File::create("/tmp/foo.out")?;
-        let stderr = File::create("/tmp/foo.err")?;
-
-        let daemon = daemonize::Daemonize::new()
-            .pid_file(&pid)
-            .working_directory("/tmp")
-            .stdout(stdout)
-            .stderr(stderr);
-
-        match daemon.start() {
-            Ok(_) => {
-                info!("In child, detached");
-            }
-            Err(e) => eprintln!("Error: {}", e),
-        }
     }
 
     let mut stdout = io::stdout();
