@@ -79,7 +79,7 @@ impl Engine {
 
     /// Sync all state into a file
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn sync(&self) -> Result<()> {
         trace!("engine::sync");
         let mut data = self.state.write().unwrap();
