@@ -74,6 +74,8 @@ impl Default for Copy {
 
 /// Just display a message
 ///
+/// FIXME: went from a `Filter` to a `Producer` to satisfy `Job` requirements.
+///
 #[derive(Clone, Debug, RunnableDerive)]
 pub struct Message {
     /// I/O capabilities
@@ -94,7 +96,7 @@ impl Message {
 
     #[inline]
     #[tracing::instrument]
-    fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
-        Ok(stdout.send(format!("{}|{}", data, self.msg))?)
+    fn execute(&self, _data: String, stdout: Sender<String>) -> Result<()> {
+        Ok(stdout.send(format!("{}", self.msg))?)
     }
 }
