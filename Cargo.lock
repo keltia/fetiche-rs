@@ -1098,6 +1098,7 @@ version = "0.8.1"
 dependencies = [
  "async-trait",
  "chrono",
+ "daemonize",
  "engine-macros",
  "env_logger 0.10.0",
  "eyre",
