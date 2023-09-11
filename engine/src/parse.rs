@@ -22,21 +22,13 @@
 //! ```
 //!
 
-//use nom::{complete::tag, IResult};
-
-// fn parse_message(input: &str) -> IResult<&str, &str> {}
-//
-// struct Schedule {}
-//
-// fn parse_schedule(input: &str) -> IResult<&str, Schedule> {}
-//
-// fn parse_fetch(input: &str) -> IResult<&str, &str> {}
-
-use nom::bytes::complete::{tag, take_until};
-use nom::character::complete::{alphanumeric1, space1};
-use nom::combinator::map;
-use nom::sequence::{delimited, preceded, tuple};
-use nom::IResult;
+use nom::{
+    bytes::complete::{tag, take_until},
+    character::complete::{alphanumeric1, space1},
+    combinator::map,
+    sequence::{delimited, preceded, tuple},
+    IResult,
+};
 
 use crate::Cmds;
 
