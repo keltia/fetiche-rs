@@ -3,9 +3,11 @@
 
 use actix::dev::{MessageResponse, OneshotSender};
 use actix::prelude::*;
+use log::trace;
 use tracing::info;
 
-use fetiche_engine::Engine;
+use fetiche_engine::Runnable;
+use fetiche_engine::{Cmds, Engine};
 
 // ---- Commands
 
@@ -37,6 +39,16 @@ where
 #[derive(Debug, Message)]
 #[rtype(result = "String")]
 pub struct GetVersion;
+
+#[derive(Debug, Message)]
+#[rtype(result = "String")]
+pub struct Submit(String);
+
+impl Submit {
+    pub fn new(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
 
 // ----- The Actor
 
@@ -85,5 +97,45 @@ impl Handler<GetVersion> for EngineActor {
     #[tracing::instrument(skip(self, msg))]
     fn handle(&mut self, msg: GetVersion, _: &mut Self::Context) -> Self::Result {
         fetiche_engine::version()
+    }
+}
+
+impl Handler<Submit> for EngineActor {
+    type Result = String;
+
+    #[tracing::instrument(skip(self, ctx))]
+    fn handle(&mut self, msg: Submit, ctx: &mut Self::Context) -> Self::Result {
+        let cmd = msg.0;
+        trace!("cmd={}", cmd);
+
+        let r = fetiche_engine::parse_job(&cmd);
+        let (msg, (cmd, arg)) = match r {
+            Ok((msg, cmd)) => (msg, cmd),
+            Err(e) => return e.to_string(),
+        };
+
+        trace!("cmd={}", cmd);
+        if cmd != Cmds::Message {
+            unimplemented!()
+        }
+
+        trace!("msg={}", arg);
+
+        let task = fetiche_engine::Message::new(&arg);
+        let copy = fetiche_engine::Copy::new();
+
+        let mut job = self.e.create_job("handle::submit");
+        job.add(Box::new(task));
+        job.add(Box::new(copy));
+
+        let mut data = vec![];
+
+        trace!("handle::run");
+        let _ = job.run(&mut data);
+
+        let res = String::from_utf8(data).unwrap();
+
+        trace!("handle:res={}", res);
+        res
     }
 }
