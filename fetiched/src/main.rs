@@ -19,7 +19,8 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use fetiched::{
-    ConfigActor, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param, Submit,
+    ConfigActor, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param, StateActor,
+    Submit,
 };
 
 use crate::cli::Opts;
@@ -74,6 +75,9 @@ async fn main() {
 
     trace!("Starting configuration agent");
     let config = ConfigActor::default().start();
+
+    trace!("Starting state agent");
+    let state = StateActor::new().start();
 
     trace!("Starting engine agent");
     let engine = EngineActor::default().start();
@@ -142,7 +146,7 @@ async fn main() {
 /// UNIX-specific detach from terminal if -D/--debug is not specified
 ///
 #[cfg(unix)]
-fn start_daemon(pid: &PathBuf) -> Result<()> {
+fn start_daemon(pid: &PathBuf) -> eyre::Result<()> {
     let stdout = File::create("/tmp/fetiched.out")?;
     let stderr = File::create("/tmp/fetiched.err")?;
 
