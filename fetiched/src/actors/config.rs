@@ -1,5 +1,11 @@
 //! This an `Actor` implementing a basic get/set key/value store for configuration variables.
 //!
+//! API:
+//!
+//! - `ConfigGet`
+//! - `ConfigSet`
+//! - `ConfigList`
+//!
 
 use std::collections::HashMap;
 
@@ -58,7 +64,7 @@ pub struct ConfigList;
 
 #[derive(Debug)]
 pub struct ConfigActor {
-    c: HashMap<String, Param>,
+    config: HashMap<String, Param>,
 }
 
 impl Default for ConfigActor {
@@ -67,7 +73,7 @@ impl Default for ConfigActor {
 
         h.insert("version".to_string(), Param::Integer(1));
 
-        Self { c: h.into() }
+        Self { config: h.into() }
     }
 }
 
@@ -88,7 +94,7 @@ impl Handler<ConfigGet> for ConfigActor {
 
     fn handle(&mut self, msg: ConfigGet, _: &mut Self::Context) -> Self::Result {
         trace!("config::get");
-        self.c.get(&msg.name).unwrap().clone()
+        self.config.get(&msg.name).unwrap().clone()
     }
 }
 
@@ -97,7 +103,7 @@ impl Handler<ConfigSet> for ConfigActor {
 
     fn handle(&mut self, msg: ConfigSet, _: &mut Self::Context) -> Self::Result {
         trace!("config::set");
-        self.c.insert(msg.name, msg.value);
+        self.config.insert(msg.name, msg.value);
         Ok(())
     }
 }
@@ -108,6 +114,6 @@ impl Handler<ConfigList> for ConfigActor {
     fn handle(&mut self, msg: ConfigList, _: &mut Self::Context) -> Self::Result {
         trace!("config::list");
 
-        info!("{}", serde_json::to_string(&self.c).unwrap());
+        info!("{}", serde_json::to_string(&self.config).unwrap());
     }
 }
