@@ -1,12 +1,17 @@
 //! This `Actor` wraps the `Engine` from `fetiche-engine` and will provide an interface to it.
 //!
+//! API:
+//!
+//! - `EngineStatus`
+//! - `GetVersion`
+//! - `Submit`
+//!
 
 use actix::dev::{MessageResponse, OneshotSender};
 use actix::prelude::*;
 use log::trace;
 use tracing::info;
 
-use fetiche_engine::Runnable;
 use fetiche_engine::{Cmds, Engine};
 
 // ---- Commands
@@ -20,7 +25,7 @@ pub struct GetStatus;
 pub struct EngineStatus {
     /// Runtime working area
     pub home: String,
-    /// Number of jobs curretnly in queue
+    /// Number of jobs currently in queue
     pub jobs: usize,
 }
 
@@ -31,7 +36,7 @@ where
 {
     fn handle(self, _ctx: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
         if let Some(tx) = tx {
-            tx.send(self);
+            tx.send(self)
         }
     }
 }
