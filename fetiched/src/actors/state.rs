@@ -1,4 +1,5 @@
-//! Keeping state in Fetiched as an actor
+//! Keeping state in Fetiched as an actor.  Create with the workdir directory as parameter,
+//! it will load the state file if present.
 //!
 //! API:
 //!
@@ -22,20 +23,20 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info, trace};
 
-use crate::{ConfigActor, ConfigGet, Param, DEF_HOMEDIR, STATE_FILE};
+use crate::STATE_FILE;
 
 // ---- Messages
 
 #[derive(Debug, Message)]
-#[rtype(result = "()")]
+#[rtype(result = "Result<()>")]
 pub struct Sync;
 
 impl Handler<Sync> for StateActor {
-    type Result = eyre::Result<()>;
+    type Result = Result<()>;
 
-    fn handle(&mut self, msg: Sync, _ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, _msg: Sync, _ctx: &mut Self::Context) -> Self::Result {
         trace!("state::sync");
-        let mut data = self.inner.write()?;
+        let mut data = self.inner.write().unwrap();
         *data = State {
             tm: Utc::now().timestamp(),
             last: *data.queue.back().unwrap_or(&1),
@@ -53,7 +54,7 @@ pub struct Info;
 #[derive(Debug)]
 pub struct StateInfo {
     /// Homedir
-    pub homedir: String,
+    pub workdir: String,
     /// Last sync
     pub tm: i64,
     /// Queue size
@@ -68,7 +69,7 @@ where
     #[tracing::instrument(skip(self, _ctx))]
     fn handle(self, _ctx: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
         if let Some(tx) = tx {
-            tx.send(self);
+            let _ = tx.send(self);
         }
     }
 }
@@ -81,7 +82,7 @@ impl Handler<Info> for StateActor {
         let inner = self.inner.read().unwrap();
 
         StateInfo {
-            homedir: self.home.to_string(),
+            workdir: self.home.to_string(),
             tm: inner.tm,
             len: inner.queue.len(),
         }
@@ -97,7 +98,7 @@ impl Handler<AddJob> for StateActor {
 
     #[tracing::instrument(skip(self, _ctx))]
     fn handle(&mut self, msg: AddJob, _ctx: &mut Self::Context) -> Self::Result {
-        let mut inner = self.inner.write()?;
+        let mut inner = self.inner.write().unwrap();
         inner.queue.push_back(msg.0);
         Ok(())
     }
@@ -113,11 +114,12 @@ impl Handler<RemoveJob> for StateActor {
     /// Perform a binary search on the job queue (job id are always incrementing) and remove said
     /// job (done or cancelled, etc.).
     ///
-    fn handle(&mut self, msg: AddJob, ctx: &mut Self::Context) -> Self::Result {
+    #[tracing::instrument(skip(self, _ctx))]
+    fn handle(&mut self, msg: RemoveJob, _ctx: &mut Self::Context) -> Self::Result {
         trace!("state::remove_job({})", msg.0);
 
         let id = msg.0;
-        let mut inner = self.inner.write()?;
+        let mut inner = self.inner.write().unwrap();
         if let Ok(index) = inner.queue.binary_search(&id) {
             trace!("Found job {}", id);
             inner.queue.remove(index);
@@ -133,7 +135,6 @@ impl Handler<RemoveJob> for StateActor {
 pub struct StateActor {
     home: String,
     inner: Arc<RwLock<State>>,
-    cfg: Addr<ConfigActor>,
 }
 
 impl Actor for StateActor {
@@ -149,31 +150,18 @@ impl Actor for StateActor {
 }
 
 impl StateActor {
-    #[tracing::instrument(skip(cfg))]
-    pub fn new(cfg: Addr<ConfigActor>) -> Self {
+    #[tracing::instrument]
+    pub fn new(workdir: &str) -> Self {
         // Get homedir
         //
-        let home = match cfg.send(ConfigGet {
-            name: "homedir".to_string(),
-        }) {
-            Ok(p) => match p {
-                Param::String(s) => s.as_str(),
-                _ => DEF_HOMEDIR,
-            },
-            Err(_) => {
-                error!("State: 'homedir' not found");
-                DEF_HOMEDIR
-            }
-        };
-        let file = Path::new(home).join(STATE_FILE);
+        let file = Path::new(workdir).join(STATE_FILE);
 
         trace!("Loading state from {}.", file.to_string_lossy());
 
-        let state = State::from(file).unwrap();
+        let state = State::from(file).unwrap_or(State::new());
         Self {
-            home: home.to_owned(),
+            home: workdir.to_owned(),
             inner: Arc::new(RwLock::new(state)),
-            cfg,
         }
     }
 
