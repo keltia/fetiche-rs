@@ -33,8 +33,8 @@ pub(crate) fn default_workdir() -> Result<PathBuf> {
 #[tracing::instrument]
 pub(crate) fn default_workdir() -> eyre::Result<PathBuf> {
     let def = match std::env::var("FETICHE_WORKDIR") {
-        Ok(path) => path,
-        None => {
+        Ok(path) => PathBuf::from(path),
+        Err(_) => {
             let local = std::env::var("LOCALAPPDATA")?;
 
             let def: PathBuf = [PathBuf::from(local), PathBuf::from("fetiche")]
@@ -49,5 +49,5 @@ pub(crate) fn default_workdir() -> eyre::Result<PathBuf> {
             def
         }
     };
-    Ok(PathBuf::from(def))
+    Ok(def)
 }
