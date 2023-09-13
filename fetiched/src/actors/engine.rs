@@ -36,7 +36,7 @@ where
 {
     fn handle(self, _ctx: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
         if let Some(tx) = tx {
-            tx.send(self)
+            let _ = tx.send(self);
         }
     }
 }
@@ -108,13 +108,12 @@ impl Handler<GetVersion> for EngineActor {
 impl Handler<Submit> for EngineActor {
     type Result = String;
 
-    #[tracing::instrument(skip(self, ctx))]
-    fn handle(&mut self, msg: Submit, ctx: &mut Self::Context) -> Self::Result {
+    #[tracing::instrument(skip(self, _ctx))]
+    fn handle(&mut self, msg: Submit, _ctx: &mut Self::Context) -> Self::Result {
         let cmd = msg.0;
-        trace!("cmd={}", cmd);
 
         let r = fetiche_engine::parse_job(&cmd);
-        let (msg, (cmd, arg)) = match r {
+        let (_, (cmd, arg)) = match r {
             Ok((msg, cmd)) => (msg, cmd),
             Err(e) => return e.to_string(),
         };
