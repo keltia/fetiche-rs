@@ -5,12 +5,12 @@
 //! NOTE: this is a fully async daemon... calling the rest of the fetiche framework
 //!       which is completely sync.  Do not ask me how this works :)
 
-use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use actix::prelude::*;
 use clap::Parser;
+use eyre::Result;
 use tokio::fs;
 use tokio::time::sleep;
 use tracing::error;
@@ -24,8 +24,10 @@ use fetiched::{
 };
 
 use crate::cli::Opts;
+use crate::config::default_workdir;
 
 mod cli;
+mod config;
 
 /// Daemon name
 const NAME: &str = env!("CARGO_BIN_NAME");
@@ -34,7 +36,7 @@ const NAME: &str = env!("CARGO_BIN_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[actix_rt::main]
-async fn main() {
+async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
     let fmt = fmt::layer()
@@ -51,7 +53,11 @@ async fn main() {
     //
     tracing_subscriber::registry().with(filter).with(fmt).init();
 
-    let pid_file = PathBuf::from("/tmp/fetiched.pid");
+    let workdir = opts.workdir.unwrap_or(default_workdir()?);
+    let pid_file = workdir.join(Path::new("fetiched.pid"));
+
+    trace!("Working directory is {:?}", workdir);
+
     if pid_file.exists() {
         info!("PID exist");
         let pid = fs::read_to_string(&pid_file)
@@ -77,7 +83,7 @@ async fn main() {
     let config = ConfigActor::default().start();
 
     trace!("Starting state agent");
-    let state = StateActor::new().start();
+    let state = StateActor::new(&workdir.to_string_lossy()).start();
 
     trace!("Starting engine agent");
     let engine = EngineActor::default().start();
@@ -141,6 +147,7 @@ async fn main() {
         let _ = fs::remove_file(&pid_file).await;
     }
     System::current().stop();
+    Ok(())
 }
 
 /// UNIX-specific detach from terminal if -D/--debug is not specified

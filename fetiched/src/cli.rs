@@ -15,6 +15,8 @@ pub struct Opts {
     /// configuration file.
     #[clap(short = 'c', long)]
     pub config: Option<PathBuf>,
+    #[clap(short = 'w', long)]
+    pub workdir: Option<PathBuf>,
     /// debug mode (no fork & detach).
     #[clap(short = 'D', long = "debug")]
     pub debug: bool,
