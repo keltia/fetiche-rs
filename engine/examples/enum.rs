@@ -1,8 +1,6 @@
 use eyre::Result;
 use strum::{EnumString, EnumVariantNames};
 
-use crate::Cmd::Complex;
-
 #[derive(Debug, strum::Display, EnumVariantNames, EnumString)]
 enum Cmd {
     Bare,
@@ -13,7 +11,7 @@ enum Cmd {
 fn main() -> Result<()> {
     let a = Cmd::Bare;
     let b = Cmd::String("here is a string".to_string());
-    let c = Complex { foo: 42 };
+    let c = Cmd::Complex { foo: 42 };
 
     println!("a={a} b={b} c={c}");
 
