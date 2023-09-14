@@ -240,16 +240,18 @@ mod tests {
         assert!(s.queue.is_empty());
     }
 
-    #[test]
-    fn test_state_remove() {
-        let mut s = State::new();
+    #[actix_rt::test]
+    async fn test_actor_state_info() -> Result<()> {
+        let workdir = std::env::temp_dir();
+        let s = StateActor::new(&workdir.to_string_lossy()).start();
 
-        s.queue.push_back(666);
-        assert_eq!(1, s.queue.len());
-
-        let s = s.remove_job(666);
-        assert_eq!(0, s.last);
-        dbg!(&s.queue);
-        assert!(s.queue.is_empty());
+        // We started fresh
+        let si = s.send(Info).await?;
+        assert!(si.is_ok());
+        let si = si.unwrap();
+        assert_eq!(workdir, PathBuf::from(&si.workdir));
+        assert_eq!(0, si.len);
+        dbg!(&si);
+        Ok(())
     }
 }
