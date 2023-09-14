@@ -47,16 +47,18 @@ may="23 24 25 26 27 28 29 30 31"
 
 # June/July/August
 #
-june=$(jot -w "%02d" 30)
-july=$(jot -w "%02d" 31)
-aug=$(jot -w "%02d" 31)
+#june=$(jot -w "%02d" 30)
+#july=$(jot -w "%02d" 31)
+#aug=$(jot -w "%02d" 31)
+sept=$(jot -w "%02d" 13)
 
 # Run for each month
 #
-one_month 05 $may
-one_month 06 $june
-one_month 07 $july
-one_month 08 $aug
+#one_month 05 $may
+#one_month 06 $june
+#one_month 07 $july
+#one_month 08 $aug
+one_month 09 $sept
 
 echo "---"
 
