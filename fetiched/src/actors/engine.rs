@@ -16,6 +16,8 @@ use fetiche_engine::{Cmds, Engine};
 
 // ---- Commands
 
+/// Return the current status of the engine
+///
 #[derive(Debug, Message)]
 #[rtype(result = "EngineStatus")]
 pub struct GetStatus;
@@ -44,6 +46,8 @@ where
 impl Handler<GetStatus> for EngineActor {
     type Result = EngineStatus;
 
+    /// Return the current status of the engine
+    ///
     #[tracing::instrument(skip(self, msg))]
     fn handle(&mut self, msg: GetStatus, _: &mut Self::Context) -> Self::Result {
         info!("{} {}", "EngineActor", fetiche_engine::version());
@@ -62,6 +66,8 @@ pub struct GetVersion;
 impl Handler<GetVersion> for EngineActor {
     type Result = String;
 
+    /// Return a string representing the engine version
+    ///
     #[tracing::instrument(skip(self, msg))]
     fn handle(&mut self, msg: GetVersion, _: &mut Self::Context) -> Self::Result {
         fetiche_engine::version()
@@ -83,6 +89,8 @@ impl Submit {
 impl Handler<Submit> for EngineActor {
     type Result = String;
 
+    /// String is parsed as a series of commands
+    ///
     #[tracing::instrument(skip(self, _ctx))]
     fn handle(&mut self, msg: Submit, _ctx: &mut Self::Context) -> Self::Result {
         let cmd = msg.0;
