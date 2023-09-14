@@ -16,14 +16,15 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use actix::dev::{MessageResponse, OneshotSender};
-use actix::{Actor, Addr, Context, Handler, Message};
+use actix::{Actor, Context, Handler, Message};
 use chrono::Utc;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{error, info, trace};
+use tracing::{info, trace};
 
-use crate::STATE_FILE;
+/// Main state data file, will be created in `basedir`.
+pub(crate) const STATE_FILE: &str = "state";
 
 // ---- Messages
 
