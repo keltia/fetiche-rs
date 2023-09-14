@@ -56,7 +56,7 @@ impl Handler<Sync> for StateActor {
 /// Request information about the current state
 ///
 #[derive(Debug, Message)]
-#[rtype(result = "StateInfo")]
+#[rtype(result = "Result<StateInfo>")]
 pub struct Info;
 
 #[derive(Debug)]
@@ -83,7 +83,7 @@ where
 }
 
 impl Handler<Info> for StateActor {
-    type Result = StateInfo;
+    type Result = Result<StateInfo>;
 
     /// Return a subset of the current state
     ///
