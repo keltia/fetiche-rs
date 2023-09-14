@@ -1,5 +1,7 @@
 //! This is the exposed part of the `fetiche-sources` API.
 //!
+//! FIXME: too many dependencies on being part of the binary and not from `fetiched`.
+//!
 
 use std::collections::btree_map::{IntoValues, Iter, IterMut, Keys, Values, ValuesMut};
 use std::collections::BTreeMap;

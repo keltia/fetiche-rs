@@ -48,7 +48,7 @@ site "opensky" {
 }
 
 site "fa-belfast" {
-  features = ["fetch", "stream"]
+  features = ["fetch"]
   type     = "adsb"
   format   = "flightaware"
   auth     = "login"
