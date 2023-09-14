@@ -28,6 +28,9 @@ pub(crate) const STATE_FILE: &str = "state";
 
 // ---- Messages
 
+/// `Sync` is the message sent regularly to save all the current state.  Can be called as well to
+/// indicate wish for immediate synchronisation.
+///
 #[derive(Debug, Message)]
 #[rtype(result = "Result<()>")]
 pub struct Sync;
@@ -35,6 +38,8 @@ pub struct Sync;
 impl Handler<Sync> for StateActor {
     type Result = Result<()>;
 
+    /// Lock and save the current state in the default file
+    ///
     fn handle(&mut self, _msg: Sync, _ctx: &mut Self::Context) -> Self::Result {
         trace!("state::sync");
         let mut data = self.inner.write().unwrap();
@@ -48,6 +53,8 @@ impl Handler<Sync> for StateActor {
     }
 }
 
+/// Request information about the current state
+///
 #[derive(Debug, Message)]
 #[rtype(result = "StateInfo")]
 pub struct Info;
@@ -78,18 +85,22 @@ where
 impl Handler<Info> for StateActor {
     type Result = StateInfo;
 
+    /// Return a subset of the current state
+    ///
     #[tracing::instrument(skip(self, _ctx))]
     fn handle(&mut self, msg: Info, _ctx: &mut Self::Context) -> Self::Result {
         let inner = self.inner.read().unwrap();
 
-        StateInfo {
+        Ok(StateInfo {
             workdir: self.home.to_string(),
             tm: inner.tm,
             len: inner.queue.len(),
-        }
+        })
     }
 }
 
+/// Add a job ID to the current job queue
+///
 #[derive(Debug, Message)]
 #[rtype(result = "Result<()>")]
 pub struct AddJob(usize);
@@ -97,6 +108,8 @@ pub struct AddJob(usize);
 impl Handler<AddJob> for StateActor {
     type Result = Result<()>;
 
+    /// Add the specified job ID to the end of the queue
+    ///
     #[tracing::instrument(skip(self, _ctx))]
     fn handle(&mut self, msg: AddJob, _ctx: &mut Self::Context) -> Self::Result {
         let mut inner = self.inner.write().unwrap();
@@ -105,6 +118,8 @@ impl Handler<AddJob> for StateActor {
     }
 }
 
+/// Remove the specified job from the job queue
+///
 #[derive(Debug, Message)]
 #[rtype(result = "Result<()>")]
 pub struct RemoveJob(usize);
