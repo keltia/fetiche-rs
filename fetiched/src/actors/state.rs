@@ -191,7 +191,7 @@ impl StateActor {
 /// Register the state of the running `Engine`.
 ///
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct State {
+struct State {
     /// Timestamp
     pub tm: i64,
     /// Last job ID
