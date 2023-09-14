@@ -107,18 +107,23 @@ pub struct Engine {
 }
 
 impl Engine {
+    /// Create an instance
+    ///
     #[tracing::instrument]
     pub fn new() -> Self {
         trace!("new engine");
+
         // Load storage areas from `engine.hcl`
         //
-        Self::with(Self::default_file())
+        Self::load(Self::default_file()).clone()
     }
 
-    // Load configuration file for storage areas
-    //
+    /// Load configuration file for the engine.
+    ///
+    /// Takes a string or anything that can be turned into a `PathBuf`.
+    ///
     #[tracing::instrument]
-    pub fn with<T>(fname: T) -> Self
+    pub fn load<T>(fname: T) -> Self
     where
         T: Into<PathBuf> + Debug,
     {
@@ -145,12 +150,20 @@ impl Engine {
                 fname.to_string_lossy()
             );
         }
+        Self::from_cfg(&cfg).clone()
+    }
 
+    /// Create a new instance from a EngineConfig struct
+    ///
+    /// FIXME: too many paths hard-coded in the `engine.hcl` or `storage.hcl` files.
+    ///
+    #[tracing::instrument]
+    pub fn from_cfg(cfg: &EngineConfig) -> Self {
         trace!("load sources");
+
         // Register sources
         //
-        let src = Sources::load(&None);
-        let src = match src {
+        let src = match Sources::load(&None) {
             Ok(src) => src,
             Err(e) => panic!("No sources configured in 'sources.hcl':{}", e),
         };
@@ -165,7 +178,7 @@ impl Engine {
         // Save PID
         //
         let pid = std::process::id();
-        let basedir: PathBuf = cfg.basedir;
+        let basedir: PathBuf = cfg.basedir.clone();
         let pidfile: PathBuf = makepath!(&basedir, ENGINE_PID);
         fs::write(&pidfile, format!("{pid}")).expect("can not write fetiched.pid");
 
@@ -197,7 +210,7 @@ impl Engine {
 
         // tx is not in an Arc because it is clonable
         //
-        let engine = Engine {
+        let mut engine = Engine {
             ctrl: tx,
             pid,
             next: Arc::new(AtomicUsize::new(state.last + 1)),
@@ -402,12 +415,6 @@ impl Engine {
             fetiche_formats::version(),
             fetiche_sources::version()
         )
-    }
-}
-
-impl Default for Engine {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
