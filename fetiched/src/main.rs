@@ -5,6 +5,7 @@
 //! NOTE: this is a fully async daemon... calling the rest of the fetiche framework
 //!       which is completely sync.  Do not ask me how this works :)
 
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -39,6 +40,8 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
+    // Initialise logging early
+    //
     let fmt = fmt::layer()
         .with_thread_ids(true)
         .with_thread_names(true)
@@ -52,6 +55,7 @@ async fn main() -> Result<()> {
     // Combine filter & specific format
     //
     tracing_subscriber::registry().with(filter).with(fmt).init();
+    trace!("Logging initialised.");
 
     let workdir = opts.workdir.unwrap_or(default_workdir()?);
     let pid_file = workdir.join(Path::new("fetiched.pid"));
