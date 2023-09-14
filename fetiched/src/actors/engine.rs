@@ -41,47 +41,6 @@ where
     }
 }
 
-#[derive(Debug, Message)]
-#[rtype(result = "String")]
-pub struct GetVersion;
-
-#[derive(Debug, Message)]
-#[rtype(result = "String")]
-pub struct Submit(String);
-
-impl Submit {
-    pub fn new(s: &str) -> Self {
-        Self(s.to_string())
-    }
-}
-
-// ----- The Actor
-
-#[derive(Debug)]
-pub struct EngineActor {
-    pub e: Engine,
-}
-
-impl Default for EngineActor {
-    #[tracing::instrument]
-    fn default() -> Self {
-        let e = Engine::new();
-        EngineActor { e }
-    }
-}
-
-impl Actor for EngineActor {
-    type Context = Context<Self>;
-
-    fn started(&mut self, _ctx: &mut Context<Self>) {
-        info!("Engine is alive");
-    }
-
-    fn stopped(&mut self, _ctx: &mut Context<Self>) {
-        info!("Engine is stopped");
-    }
-}
-
 impl Handler<GetStatus> for EngineActor {
     type Result = EngineStatus;
 
@@ -96,12 +55,28 @@ impl Handler<GetStatus> for EngineActor {
     }
 }
 
+#[derive(Debug, Message)]
+#[rtype(result = "String")]
+pub struct GetVersion;
+
 impl Handler<GetVersion> for EngineActor {
     type Result = String;
 
     #[tracing::instrument(skip(self, msg))]
     fn handle(&mut self, msg: GetVersion, _: &mut Self::Context) -> Self::Result {
         fetiche_engine::version()
+    }
+}
+
+/// Submit a new job to the engine.
+///
+#[derive(Debug, Message)]
+#[rtype(result = "String")]
+pub struct Submit(String);
+
+impl Submit {
+    pub fn new(s: &str) -> Self {
+        Self(s.to_owned())
     }
 }
 
@@ -141,5 +116,67 @@ impl Handler<Submit> for EngineActor {
 
         trace!("handle:res={}", res);
         res
+    }
+}
+
+// ----- The Actor
+
+#[derive(Debug)]
+pub struct EngineActor {
+    pub e: Engine,
+}
+
+impl Default for EngineActor {
+    #[tracing::instrument]
+    fn default() -> Self {
+        let e = Engine::new();
+        EngineActor { e }
+    }
+}
+
+impl Actor for EngineActor {
+    type Context = Context<Self>;
+
+    fn started(&mut self, _ctx: &mut Context<Self>) {
+        info!("Engine is alive");
+    }
+
+    fn stopped(&mut self, _ctx: &mut Context<Self>) {
+        info!("Engine is stopped");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use eyre::Result;
+
+    use super::*;
+
+    #[test]
+    fn test_foo() -> Result<()> {
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn test_engine_version() -> Result<()> {
+        let str = r##"
+version = 2
+
+basedir = "/tmp"
+
+// Describe a local directory tree used to store files
+//
+storage "hourly" {
+  path     = ":basedir/hourly"
+  rotation = "1h"
+}"##;
+        let cfg: fetiche_engine::EngineConfig = hcl::from_str(str)?;
+        let e = Engine::from_cfg(&cfg);
+        let e = EngineActor { e };
+        let e = EngineActor::default().start();
+
+        let v = e.send(GetVersion).await?;
+        assert_eq!(fetiche_engine::version(), v);
+        Ok(())
     }
 }
