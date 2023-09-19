@@ -57,6 +57,8 @@ async fn main() -> Result<()> {
     tracing_subscriber::registry().with(filter).with(fmt).init();
     trace!("Logging initialised.");
 
+    info!("This is {} starting up…", version());
+
     let workdir = opts.workdir.unwrap_or(default_workdir()?);
     let pid_file = workdir.join(Path::new("fetiched.pid"));
 
@@ -164,6 +166,7 @@ fn start_daemon(pid: &PathBuf) -> eyre::Result<()> {
     let daemon = daemonize::Daemonize::new()
         .pid_file(&pid)
         .working_directory("/tmp")
+        .umask(0o077)
         .stdout(stdout)
         .stderr(stderr);
 
