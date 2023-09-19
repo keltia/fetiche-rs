@@ -166,6 +166,8 @@ impl Actor for StateActor {
 }
 
 impl StateActor {
+    /// Load state from a file or create a new one
+    ///
     #[tracing::instrument]
     pub fn new(workdir: &str) -> Self {
         // Get homedir
