@@ -42,7 +42,7 @@ pub(crate) fn default_workdir() -> Result<PathBuf> {
 ///
 #[cfg(windows)]
 #[tracing::instrument]
-pub(crate) fn workdirault_workdir() -> Result<PathBuf> {
+pub(crate) fn default_workdir() -> Result<PathBuf> {
     trace!("Check for FETICHE_HOME var.");
 
     let workdir = match std::env::var("FETICHE_HOME") {
