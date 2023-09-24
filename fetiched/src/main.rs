@@ -21,7 +21,7 @@ use tracing_subscriber::{fmt, EnvFilter};
 
 use fetiched::{
     ConfigActor, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param, StateActor,
-    Submit,
+    StorageActor, Submit,
 };
 
 use crate::cli::Opts;
@@ -87,6 +87,9 @@ async fn main() -> Result<()> {
 
     trace!("Starting configuration agent");
     let config = ConfigActor::default().start();
+
+    trace!("Starting storage agent");
+    let storage = StorageActor::new("").start();
 
     trace!("Starting state agent");
     let state = StateActor::new(&workdir.to_string_lossy()).start();

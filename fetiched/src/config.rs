@@ -1,7 +1,17 @@
 use std::path::PathBuf;
 
 use eyre::Result;
+use serde::Deserialize;
 use tracing::{info, trace};
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum StorageConfig {
+    /// in-memory K/V store like DragonflyDB or REDIS
+    Cache { url: String },
+    /// In the local filesystem
+    Directory { path: PathBuf, rotation: String },
+}
 
 /// Default working directory (UNIX)
 #[cfg(unix)]
