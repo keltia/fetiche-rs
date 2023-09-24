@@ -69,6 +69,7 @@ pub(crate) fn default_workdir() -> Result<PathBuf> {
             if !workdir.exists() {
                 let _ = std::fs::create_dir_all(&workdir)?;
             }
+            info!("Will run from {workdir:?}");
             workdir
         }
     };
