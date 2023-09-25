@@ -6,6 +6,8 @@ use std::path::PathBuf;
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 
+const DEFAULT_PORT: &str = "1998";
+
 /// CLI options
 #[derive(Parser)]
 #[command(disable_version_flag = true)]
@@ -18,7 +20,7 @@ pub struct Opts {
     #[clap(short = 'w', long)]
     pub workdir: Option<PathBuf>,
     /// debug mode (no fork & detach).
-    #[clap(short = 'D', long = "debug")]
+    #[clap(short = 'D', long = "debug", default_value = "true")]
     pub debug: bool,
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
@@ -37,10 +39,10 @@ pub struct Opts {
 /// - `status`
 /// - `version`
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, PartialEq)]
 pub enum SubCommand {
     /// Display current config
-    Config,
+    Config(ConfigOpts),
     /// Run as a daemon (mostly for Windows)
     Server(ServerOpts),
     /// Shutdown everything
@@ -51,9 +53,17 @@ pub enum SubCommand {
     Version,
 }
 
+/// Options for `config`
+///
+#[derive(Debug, Parser, PartialEq)]
+pub struct ConfigOpts {
+    /// Working directory (configuration state, etc.).
+    pub workdir: String,
+}
+
 /// Options for `server`
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, PartialEq)]
 pub struct ServerOpts {
     /// Configuration file
     #[clap(short = 'C', long)]
@@ -62,13 +72,13 @@ pub struct ServerOpts {
     #[clap(short = 'L', long, default_value = "::1")]
     pub listen: IpAddr,
     /// API port, default is 1998
-    #[clap(short = 'P', long, default_value = "1998")]
+    #[clap(short = 'P', long, default_value = DEFAULT_PORT)]
     pub port: u16,
 }
 
 /// Options for `shutdown`
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, PartialEq)]
 pub struct ShutdownOpts {
     /// Optional delay
     pub delay: Option<usize>,
