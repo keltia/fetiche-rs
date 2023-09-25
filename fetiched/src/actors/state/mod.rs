@@ -65,7 +65,7 @@ pub struct Info;
 #[derive(Debug)]
 pub struct StateInfo {
     /// Homedir
-    pub workdir: String,
+    pub workdir: PathBuf,
     /// Last sync
     pub tm: i64,
     /// Queue size
@@ -95,7 +95,7 @@ impl Handler<Info> for StateActor {
         let inner = self.inner.read().unwrap();
 
         Ok(StateInfo {
-            workdir: self.home.to_string(),
+            workdir: self.home.clone(),
             tm: inner.tm,
             len: inner.queue.len(),
         })
@@ -152,7 +152,7 @@ impl Handler<RemoveJob> for StateActor {
 
 #[derive(Debug)]
 pub struct StateActor {
-    home: String,
+    home: PathBuf,
     inner: Arc<RwLock<State>>,
 }
 
@@ -172,12 +172,12 @@ impl StateActor {
     /// Load state from a file or create a new one
     ///
     #[tracing::instrument]
-    pub fn new(workdir: &str) -> Self {
+    pub fn new(workdir: &PathBuf) -> Self {
         // Get homedir
         //
-        let file = Path::new(workdir).join(STATE_FILE);
+        let file = workdir.join(STATE_FILE);
 
-        trace!("Loading state from {}.", file.to_string_lossy());
+        trace!("Loading state from {:?}.", file);
 
         let state = State::from(file).unwrap_or(State::new());
         Self {
@@ -198,7 +198,7 @@ mod tests {
     #[actix_rt::test]
     async fn test_actor_state_info() -> Result<()> {
         let workdir = std::env::temp_dir();
-        let s = StateActor::new(&workdir.to_string_lossy()).start();
+        let s = StateActor::new(&workdir).start();
 
         // We started fresh
         let si = s.send(Info).await?;
