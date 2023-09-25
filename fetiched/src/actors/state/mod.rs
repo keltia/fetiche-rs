@@ -10,7 +10,6 @@
 //! - `RemoveJob`
 //!
 
-use std::collections::VecDeque;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
@@ -23,12 +22,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{info, trace};
 
+pub use core::*;
+
+mod core;
+
 /// Main state data file, will be created in `basedir`.
 pub(crate) const STATE_FILE: &str = "state";
 
 // ---- Messages
 
-/// `Sync` is the message sent regularly to save all the current state.  Can be called as well to
+/// `Sync` is the message sent regularly to save all the current state.  Can be sent as well to
 /// indicate wish for immediate synchronisation.
 ///
 #[derive(Debug, Message)]
@@ -190,58 +193,8 @@ impl StateActor {
     }
 }
 
-/// Register the state of the running `Engine`.
-///
-#[derive(Clone, Debug, Deserialize, Serialize)]
-struct State {
-    /// Timestamp
-    pub tm: i64,
-    /// Last job ID
-    pub last: usize,
-    /// Job Queue
-    pub queue: VecDeque<usize>,
-}
-
-impl State {
-    /// Create an clean and empty state
-    ///
-    pub fn new() -> Self {
-        State {
-            tm: Utc::now().timestamp(),
-            last: 0,
-            queue: VecDeque::<usize>::new(),
-        }
-    }
-
-    /// Read our JSON file
-    ///
-    #[tracing::instrument]
-    fn from(fname: PathBuf) -> Result<Self> {
-        trace!("state::from({:?}", fname);
-        let data = fs::read_to_string(fname)?;
-        let data: State = serde_json::from_str(&data)?;
-        Ok(data)
-    }
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn test_state_new() {
-        let s = State::new();
-
-        assert_eq!(0, s.last);
-        assert!(s.queue.is_empty());
-    }
-
     #[actix_rt::test]
     async fn test_actor_state_info() -> Result<()> {
         let workdir = std::env::temp_dir();
