@@ -1,6 +1,6 @@
 //! This is the `fetiched` daemon launcher
 //!
-//! It could have been part of `acutectl`  but it is cleaner that way.
+//! It could have been part of `acutectl` but it is cleaner that way.
 //!
 //! NOTE: this is a fully async daemon... calling the rest of the fetiche framework
 //!       which is completely sync.  Do not ask me how this works :)
@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use actix::prelude::*;
 use clap::Parser;
-use eyre::Result;
+use eyre::{eyre, Result};
 use tokio::fs;
 use tokio::time::sleep;
 use tracing::error;
@@ -20,8 +20,8 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use fetiched::{
-    ConfigActor, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param, StateActor,
-    StorageActor, Submit,
+    ConfigActor, ConfigKeys, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param,
+    StateActor, StorageActor, Submit,
 };
 
 use crate::cli::Opts;
@@ -67,32 +67,32 @@ async fn main() -> Result<()> {
     if pid_file.exists() {
         info!("PID exist");
         let pid = fs::read_to_string(&pid_file)
-            .await
-            .unwrap()
+            .await?
             .trim_end()
-            .parse::<u32>()
-            .unwrap();
-        eprintln!("Check PID {}", pid);
-        std::process::exit(1);
+            .parse::<u32>()?;
+        return Err(eyre!("Check PID {}", pid));
     }
+
+    info!("PID = {}", std::process::id());
 
     if opts.debug {
         info!("Debug mode, no detaching.");
         let pid = std::process::id();
-        info!("PID = {}", pid);
     } else {
         #[cfg(unix)]
-        start_daemon(&pid_file);
+        if let Err(err) = start_daemon(&pid_file) {
+            panic!("Can not detach: {}", err.to_string());
+        }
     }
 
     trace!("Starting configuration agent");
     let config = ConfigActor::default().start();
 
     trace!("Starting storage agent");
-    let storage = StorageActor::new("").start();
+    let storage = StorageActor::new(&workdir).start();
 
     trace!("Starting state agent");
-    let state = StateActor::new(&workdir.to_string_lossy()).start();
+    let state = StateActor::new(&workdir).start();
 
     trace!("Starting engine agent");
     let engine = EngineActor::default().start();
@@ -105,14 +105,17 @@ async fn main() -> Result<()> {
         }
     };
 
-    let _ = config
-        .send(ConfigSet {
-            name: "fetiche".to_string(),
-            value: Param::String(r),
-        })
-        .await
-        .unwrap();
+    config.do_send(ConfigSet {
+        name: "fetiche".to_string(),
+        value: Param::String(r),
+    });
     config.do_send(ConfigList);
+
+    let res = config.send(ConfigKeys).await?;
+    match res {
+        Ok(res) => info!("All config keys={}", res.join(",")),
+        Err(e) => error!("Error getting keys: {}", e.to_string()),
+    };
 
     match engine.send(GetStatus).await {
         Ok(status) => {
@@ -128,10 +131,9 @@ async fn main() -> Result<()> {
 
     trace!("Init done, serving.");
 
-    // ねこ =  neko = cat
+    // ネコ = neko = cat
     //
     let job = Submit::new("message \"ネコ\"");
-    //let job = Submit::new("message \"test\"");
 
     trace!("job = {:?}", job);
 
