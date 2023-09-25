@@ -1,8 +1,6 @@
 //! Actor version of the storage part of fetiched.
 //!
 
-mod core;
-
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
@@ -12,12 +10,17 @@ use actix::{Actor, Context, Message};
 use eyre::Result;
 use serde::Deserialize;
 use tokio::fs::File;
-use tracing::{error, info, trace};
+use tracing::{info, trace};
 
 pub use core::*;
 
+mod core;
+
 /// Configuration file version
 const STORAGE_VERSION: usize = 1;
+
+/// Default configuration file name in workdir
+const STORAGE_FILE: &str = "storage.hcl";
 
 // ----- Messages
 
@@ -51,8 +54,6 @@ pub struct StreamFile;
 pub struct StorageConfig {
     /// Usual check for malformed file
     pub version: usize,
-    /// Base directory
-    pub basedir: PathBuf,
     /// List of storage types
     pub storage: BTreeMap<String, StorageArea>,
 }
@@ -67,19 +68,20 @@ pub struct StorageActor {
 
 impl StorageActor {
     #[tracing::instrument]
-    pub fn new(fname: &str) -> Self {
-        trace!("storageactor::new({})", fname);
+    pub fn new(workdir: &PathBuf) -> Self {
+        trace!("storageactor::new");
 
-        let data = fs::read_to_string(PathBuf::from(fname)).unwrap();
+        let fname = workdir.join(STORAGE_FILE);
+        let data = fs::read_to_string(PathBuf::from(&fname)).unwrap();
         let cfg: StorageConfig = match hcl::from_str(&data) {
             Ok(cfg) => cfg,
             Err(e) => {
-                panic!("Invalid {} file: {}", fname, e.to_string());
+                panic!("Invalid {:?} file: {}", fname, e.to_string());
             }
         };
 
         if cfg.version != STORAGE_VERSION {
-            panic!("Bad version in {}: {} required.", fname, STORAGE_VERSION);
+            panic!("Bad version in {:?}: {} required.", fname, STORAGE_VERSION);
         }
 
         let areas = Storage::register(&cfg.storage);
