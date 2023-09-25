@@ -142,9 +142,9 @@ async fn main() -> Result<()> {
 
     trace!("Init done, serving.");
 
-    // ネコ = neko = cat
+    // Mica is a cat = mika wa neko desu
     //
-    let job = Submit::new("message \"ネコ\"");
+    let job = Submit::new("message \"ミカは猫です\"");
 
     trace!("job = {:?}", job);
 
@@ -160,7 +160,7 @@ async fn main() -> Result<()> {
 
     println!("Res = {}", res);
 
-    assert_eq!("ネコ", res);
+    assert_eq!("ミカは猫です", res);
 
     sleep(Duration::from_secs(10)).await;
 
