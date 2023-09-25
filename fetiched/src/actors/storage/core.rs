@@ -23,6 +23,7 @@ pub struct Storage(BTreeMap<String, StorageArea>);
 /// bucket (from an actual AWS account or a Garage instance).
 ///
 #[derive(Clone, Debug, Deserialize, EnumString, strum::Display)]
+#[serde(untagged)]
 #[strum(serialize_all = "PascalCase")]
 pub enum StorageArea {
     /// in-memory K/V store like DragonflyDB or REDIS
@@ -34,6 +35,7 @@ pub enum StorageArea {
 }
 
 #[derive(Clone, Debug, Deserialize, strum::Display)]
+#[serde(untagged)]
 pub enum Threshold {
     /// Actual time in seconds
     U32(u32),
@@ -102,6 +104,8 @@ impl Storage {
         Storage(b)
     }
 
+    /// Returns a nice table with all options
+    ///
     pub fn list(&self) -> Result<String> {
         let header = vec!["Name", "Path/URL", "Rotation"];
 
