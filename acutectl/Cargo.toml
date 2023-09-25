@@ -24,7 +24,6 @@ eyre.workspace = true
 chrono.workspace = true
 clap.workspace = true
 env_logger.workspace = true
-fetiche-engine.workspace = true
 fetiche-formats.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
@@ -42,7 +41,8 @@ clap_complete = "4.2"
 csv = "1.1"
 dateparser = "0.2"
 percent-encoding = "2.2"
-#sqlx = { version = "0.6", features = ["json", "ipnetwork", "mysql", "tls", "chrono", "macros", "runtime-async-std-native-tls"] }
+syn = { version = "2.0", features = ["extra-traits"] }
+quote = "1.0"
 
 [dev-dependencies]
 assert_cmd = "2.0"
