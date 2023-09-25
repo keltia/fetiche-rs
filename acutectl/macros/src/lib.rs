@@ -1,7 +1,6 @@
+use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
-
-use proc_macro::TokenStream;
 
 /// Most basic proc_macro ever: use as a template.
 ///
