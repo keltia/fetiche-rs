@@ -21,8 +21,6 @@ pub use core::*;
 
 mod core;
 
-// -----
-
 // ----- Messages
 
 /// Get a single parameter
