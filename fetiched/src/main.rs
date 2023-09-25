@@ -24,7 +24,7 @@ use fetiched::{
     StateActor, StorageActor, Submit,
 };
 
-use crate::cli::Opts;
+use crate::cli::{Opts, SubCommand};
 use crate::config::default_workdir;
 
 mod cli;
@@ -75,6 +75,13 @@ async fn main() -> Result<()> {
 
     info!("PID = {}", std::process::id());
 
+    // Bail out early
+    //
+    if opts.subcmd == SubCommand::Version {
+        eprintln!("{}", version());
+        return Ok(());
+    }
+
     if opts.debug {
         info!("Debug mode, no detaching.");
         let pid = std::process::id();
@@ -109,11 +116,15 @@ async fn main() -> Result<()> {
         name: "fetiche".to_string(),
         value: Param::String(r),
     });
-    config.do_send(ConfigList);
+
+    match config.send(ConfigList).await? {
+        Ok(res) => eprintln!("Config:\n{}", res),
+        Err(e) => error!("Can not read configuration: {}", e.to_string()),
+    }
 
     let res = config.send(ConfigKeys).await?;
     match res {
-        Ok(res) => info!("All config keys={}", res.join(",")),
+        Ok(res) => eprintln!("All config keys={}", res.join(",")),
         Err(e) => error!("Error getting keys: {}", e.to_string()),
     };
 
@@ -164,7 +175,7 @@ async fn main() -> Result<()> {
 /// UNIX-specific detach from terminal if -D/--debug is not specified
 ///
 #[cfg(unix)]
-fn start_daemon(pid: &PathBuf) -> eyre::Result<()> {
+fn start_daemon(pid: &PathBuf) -> Result<()> {
     let stdout = File::create("/tmp/fetiched.out")?;
     let stderr = File::create("/tmp/fetiched.err")?;
 
@@ -179,21 +190,17 @@ fn start_daemon(pid: &PathBuf) -> eyre::Result<()> {
         Ok(_) => {
             info!("In child, detached");
 
-            let stdout = std::io::stdout();
-
             info!("daemon is running");
         }
-        Err(e) => error!("Error: {}", e),
+        Err(e) => {
+            error!("Error: {}", e);
+            return Err(e.into());
+        }
     }
     Ok(())
 }
 
 /// Announce ourselves
 pub(crate) fn version() -> String {
-    format!(
-        "{}/{} ({})",
-        env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION"),
-        fetiche_engine::version(),
-    )
+    format!("{}/{} ({})", NAME, VERSION, fetiche_engine::version(),)
 }
