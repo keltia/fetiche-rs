@@ -5,60 +5,54 @@
 //! - `ConfigGet`
 //! - `ConfigSet`
 //! - `ConfigList`
+//! - `ConfigKeys`
 //!
 
 use std::collections::HashMap;
+use std::str::FromStr;
 
-use actix::dev::{MessageResponse, OneshotSender};
+use actix::dev::MessageResponse;
 use actix::{Actor, Context, Handler, Message};
+use eyre::Result;
 use serde::Serialize;
-use strum::{EnumString, EnumVariantNames};
 use tracing::{info, trace};
 
-// -----
+pub use core::*;
 
-#[derive(Clone, Debug, strum::Display, EnumString, EnumVariantNames, Serialize)]
-pub enum Param {
-    Integer(i32),
-    String(String),
-}
-
-impl<A, M> MessageResponse<A, M> for Param
-where
-    A: Actor,
-    M: Message<Result = Param>,
-{
-    fn handle(self, _ctx: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
-        if let Some(tx) = tx {
-            tx.send(self);
-        }
-    }
-}
+mod core;
 
 // -----
 
-#[derive(Debug)]
+// ----- Messages
+
+/// Get a single parameter
+///
+#[derive(Debug, Message)]
+#[rtype(result = "Result<Param>")]
 pub struct ConfigGet {
     pub name: String,
 }
 
-impl Message for ConfigGet {
-    type Result = Param;
-}
-
-#[derive(Debug)]
+/// Set a single parameter
+///
+#[derive(Debug, Message)]
+#[rtype(result = "Result<()>")]
 pub struct ConfigSet {
     pub name: String,
     pub value: Param,
 }
 
-impl Message for ConfigSet {
-    type Result = eyre::Result<()>;
-}
-
+/// Get a json dump of all parameters
+///
 #[derive(Debug, Message)]
-#[rtype(result = "()")]
+#[rtype(result = "Result<String>")]
 pub struct ConfigList;
+
+/// Get all keys
+///
+#[derive(Debug, Message)]
+#[rtype(result = "Result<Vec<String>>")]
+pub struct ConfigKeys;
 
 // ----- The Actor
 
@@ -90,30 +84,47 @@ impl Actor for ConfigActor {
 }
 
 impl Handler<ConfigGet> for ConfigActor {
-    type Result = Param;
+    type Result = Result<Param>;
 
     fn handle(&mut self, msg: ConfigGet, _: &mut Self::Context) -> Self::Result {
         trace!("config::get");
-        self.config.get(&msg.name).unwrap().clone()
+
+        let res = match self.config.get(&msg.name) {
+            Some(res) => res,
+            None => return Err(eyre::eyre!("Unknown parameter {}", &msg.name)),
+        };
+        Ok(res.clone())
     }
 }
 
 impl Handler<ConfigSet> for ConfigActor {
-    type Result = eyre::Result<()>;
+    type Result = Result<()>;
 
     fn handle(&mut self, msg: ConfigSet, _: &mut Self::Context) -> Self::Result {
         trace!("config::set");
+
         self.config.insert(msg.name, msg.value);
         Ok(())
     }
 }
 
 impl Handler<ConfigList> for ConfigActor {
-    type Result = ();
+    type Result = Result<String>;
 
     fn handle(&mut self, msg: ConfigList, _: &mut Self::Context) -> Self::Result {
         trace!("config::list");
 
-        info!("{}", serde_json::to_string(&self.config).unwrap());
+        Ok(serde_json::to_string(&self.config)?)
+    }
+}
+
+impl Handler<ConfigKeys> for ConfigActor {
+    type Result = Result<Vec<String>>;
+
+    fn handle(&mut self, msg: ConfigKeys, ctx: &mut Self::Context) -> Self::Result {
+        trace!("config::keys");
+
+        let keys: Vec<_> = self.config.keys().map(|k| k.to_owned()).collect();
+        Ok(keys)
     }
 }
