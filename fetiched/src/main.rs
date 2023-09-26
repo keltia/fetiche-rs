@@ -104,6 +104,8 @@ async fn main() -> Result<()> {
     trace!("Starting engine agent");
     let engine = EngineActor::default().start();
 
+    trace!("Init done, serving.");
+
     let r = match engine.send(GetVersion).await {
         Ok(res) => res,
         Err(e) => {
@@ -114,7 +116,7 @@ async fn main() -> Result<()> {
 
     config.do_send(ConfigSet {
         name: "fetiche".to_string(),
-        value: Param::String(r),
+        value: Param::String(r.clone()),
     });
 
     match config.send(ConfigList).await? {
@@ -131,7 +133,7 @@ async fn main() -> Result<()> {
     match engine.send(GetStatus).await {
         Ok(status) => {
             info!(
-                "Engine is running, home is {}, {} jobs in queue.",
+                "Engine ({r}) is running, home is {}, {} jobs in queue.",
                 status.home, status.jobs
             );
         }
@@ -139,8 +141,6 @@ async fn main() -> Result<()> {
             error!("dead actor: {}", e.to_string());
         }
     };
-
-    trace!("Init done, serving.");
 
     // Mica is a cat = mika wa neko desu
     //
