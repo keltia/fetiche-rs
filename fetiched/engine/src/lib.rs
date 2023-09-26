@@ -25,6 +25,8 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 use std::{fs, thread};
 
+use actix::prelude::*;
+
 use eyre::Result;
 #[cfg(unix)]
 use home::home_dir;
@@ -32,7 +34,6 @@ use serde::Deserialize;
 use strum::EnumString;
 use tracing::{debug, error, event, info, trace, warn, Level};
 
-pub use config::*;
 pub use database::*;
 pub use fetiche_formats::Format;
 pub use fetiche_sources::{makepath, Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
@@ -42,7 +43,6 @@ pub use state::*;
 pub use storage::*;
 pub use task::*;
 
-mod config;
 mod database;
 mod job;
 mod parse;
@@ -56,14 +56,12 @@ pub fn version() -> String {
     format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }
 
-#[cfg(unix)]
-const BASEDIR: &str = ".config";
-
 /// Configuration filename
 const ENGINE_CONFIG: &str = "engine.hcl";
 
-/// FIXME: Current running process ID — this will be handled by `fetiched` when operational
-const ENGINE_PID: &str = "fetiched.pid";
+/// File containing known sources
+///
+const SOURCES_CONFIG: &str = "sources.hcl";
 
 /// Configuration file version
 const ENGINE_VERSION: usize = 2;
@@ -88,6 +86,8 @@ pub enum EngineCtrl {
 ///
 #[derive(Clone, Debug)]
 pub struct Engine {
+    /// Addr of `ConfigActor`
+    config: Addr<ConfigActor>,
     /// Command channel
     pub ctrl: Sender<EngineCtrl>,
     /// Current process DI
@@ -110,62 +110,17 @@ impl Engine {
     /// Create an instance
     ///
     #[tracing::instrument]
-    pub fn new() -> Self {
-        trace!("new engine");
+    pub fn new(workdir: &PathBuf, config: Addr<ConfigActor>) -> Self {
+        trace!("new engine({:?})", workdir);
 
-        // Load storage areas from `engine.hcl`
-        //
-        Self::load(Self::default_file()).clone()
-    }
-
-    /// Load configuration file for the engine.
-    ///
-    /// Takes a string or anything that can be turned into a `PathBuf`.
-    ///
-    #[tracing::instrument]
-    pub fn load<T>(fname: T) -> Self
-    where
-        T: Into<PathBuf> + Debug,
-    {
-        let fname = fname.into();
-
-        trace!("reading({:?}", fname);
-
-        let data =
-            fs::read_to_string(&fname).unwrap_or_else(|_| panic!("file not found {:?}", fname));
-
-        let cfg: EngineConfig = hcl::from_str(&data).expect("syntax error");
-
-        // Bail out if different
-        //
-        if cfg.version != ENGINE_VERSION {
-            event!(
-                Level::ERROR,
-                tag = "bad config version",
-                version = cfg.version
-            );
-            panic!(
-                "Only v{} config file supported in {}",
-                ENGINE_VERSION,
-                fname.to_string_lossy()
-            );
-        }
-        Self::from_cfg(&cfg).clone()
-    }
-
-    /// Create a new instance from a EngineConfig struct
-    ///
-    /// FIXME: too many paths hard-coded in the `engine.hcl` or `storage.hcl` files.
-    ///
-    #[tracing::instrument]
-    pub fn from_cfg(cfg: &EngineConfig) -> Self {
         trace!("load sources");
 
         // Register sources
         //
-        let src = match Sources::load(&None) {
+        let sources = workdir.join(SOURCES_CONFIG);
+        let src = match Sources::load(&Some(sources)) {
             Ok(src) => src,
-            Err(e) => panic!("No sources configured in 'sources.hcl':{}", e),
+            Err(e) => panic!("No sources configured in '{sources:?}':{}", e),
         };
         info!("{} sources loaded", src.len());
 
@@ -174,15 +129,6 @@ impl Engine {
         //
         let areas = Storage::register(&cfg.storage);
         info!("{} areas loaded", areas.len());
-
-        // Save PID
-        //
-        let pid = std::process::id();
-        let basedir: PathBuf = cfg.basedir.clone();
-        let pidfile: PathBuf = makepath!(&basedir, ENGINE_PID);
-        fs::write(&pidfile, format!("{pid}")).expect("can not write fetiched.pid");
-
-        info!("PID {} written in {:?}", pid, pidfile);
 
         // Load state
         //
