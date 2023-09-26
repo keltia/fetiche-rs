@@ -1094,35 +1094,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6999dc1837253364c2ebb0704ba97994bd874e8f195d665c50b7548f6ea92764"
 
 [[package]]
-name = "fetiche-engine"
-version = "0.8.1"
-dependencies = [
- "async-trait",
- "chrono",
- "daemonize",
- "engine-macros",
- "env_logger 0.10.0",
- "eyre",
- "fetiche-formats",
- "fetiche-sources",
- "hcl-rs",
- "home",
- "log",
- "nom",
- "reqwest",
- "rstest",
- "serde",
- "serde_json",
- "strum",
- "tabled",
- "tokio",
- "tracing",
- "tracing-log",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
 name = "fetiche-formats"
 version = "0.14.0"
 dependencies = [
@@ -1192,9 +1163,10 @@ dependencies = [
  "chrono",
  "clap",
  "daemonize",
+ "engine-macros",
  "env_logger 0.10.0",
  "eyre",
- "fetiche-engine",
+ "fetiche-formats",
  "fetiche-sources",
  "hcl-rs",
  "home",
@@ -1211,6 +1183,7 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
