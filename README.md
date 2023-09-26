@@ -36,7 +36,7 @@ Binary crates include command-line utilities (`acutectl` and `opensky-history`) 
 fetch data from different sites.
 
 `opensky-history` is for retrieving historical data from [Opensky]. This access is managed through an SSH-based shell to
-the Impala database. This is for everything older than 1h of real-time data which does complicate things. This utility 
+the Impala database. This is for everything older than 1h of real-time data which does complicate things. This utility
 use the [pyopensky] Python module (embedded through the `inline-python` crate).
 
 ## Installation
@@ -55,7 +55,7 @@ This is intentionally *not* a run-time option but a compile-time one.
 ## Usage
 
 For the moment, there are two binaries called `acutectl` (with `.exe` on Windows) and `opensky-history`. The former is
-used to fetch data into their native format (csv, json) or import said data into a database.  It uses 
+used to fetch data into their native format (csv, json) or import said data into a database. It uses
 `fetiche-engine` for all the code related to accessing, authenticating and fetching data in various ways.
 
 Right now, `acutectl` use blocking HTTP calls and is not using any `async` features.
@@ -64,7 +64,7 @@ However, while working on streaming support for Opensky, I have been experimenti
 `acutectl` might eventually become fully-async. It does help for some stuff including signal (read ^C) support.
 
 All the commands are described in more details in the [acutectl README.md](acutectl/README.md) and
-[opensky-history README.md](opensky-history/README.md) files. 
+[opensky-history README.md](opensky-history/README.md) files.
 
 ## Structure and Design
 
@@ -79,7 +79,7 @@ consumer or producer (notably `Fetch`, `Stream` and `Store`).
 
 This allows for filters to be inserted for conversion and in the future for DB export as well.
 
-More information on its internal design in [Engine README.md](engine/README.md).
+More information on its internal design in [Engine README.md](fetiched/README.md).
 
 There is also the beginning of a job/task description DSL to describe and submit jobs.
 
@@ -88,8 +88,8 @@ There is also the beginning of a job/task description DSL to describe and submit
 ### Formats (managed in the `fetiche-formats` crate)
 
 This crate implement the various data models used by the different sources. Included are three [ASTERIX]-like formats --
-generic `Cat21`, a cut-down version of `Cat21` for ADS-B data (dubbed `Adsb21`) and drone-specific `Cat129` -- and 
-formats used by different data providers like [Opensky] or [ASD].  This library implement some methods of conversion 
+generic `Cat21`, a cut-down version of `Cat21` for ADS-B data (dubbed `Adsb21`) and drone-specific `Cat129` -- and
+formats used by different data providers like [Opensky] or [ASD]. This library implement some methods of conversion
 between some of these formats.
 
 The default input format is the one used by the Aeroscope from ASD, but it will soon support the format used
@@ -162,7 +162,6 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~Retrieve historical data from the [Opensky] site.~~
 - ~~Support for Flightaware AeroAPI and Firehose.~~
 - build `fetiched` as the core daemon and making all other talk to it through gRPC.
-- rename `acutectl` into `fetichectl`.
 - link to HashiCorp Vault for storing credentials and tokens
 - Add more tests & benchmarks.
 - support for Safesky for ADS-B data
@@ -208,7 +207,7 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [GRPC]: https://en.wikipedia.org/wiki/GRPC
 
-[pyopensky]: https://pypi.org/project/pyopensky/ 
+[pyopensky]: https://pypi.org/project/pyopensky/
 
 [Nushell]: https://nushell.sh/
 
