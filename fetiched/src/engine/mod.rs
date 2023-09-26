@@ -21,27 +21,28 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, RwLock};
+use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
-use std::{fs, thread};
 
 use actix::prelude::*;
-
 use eyre::Result;
 #[cfg(unix)]
 use home::home_dir;
 use serde::Deserialize;
 use strum::EnumString;
-use tracing::{debug, error, event, info, trace, warn, Level};
+use tracing::{debug, error, info, trace, warn};
 
 pub use database::*;
-pub use fetiche_formats::Format;
+use fetiche_formats::Format;
 pub use fetiche_sources::{makepath, Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
 pub use job::*;
 pub use parse::*;
 pub use state::*;
 pub use storage::*;
 pub use task::*;
+
+use crate::ConfigActor;
 
 mod database;
 mod job;
