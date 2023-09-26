@@ -5,13 +5,15 @@
 //!
 //! - `Info`
 //! - `Sync`
+//! - `RegisterState`
+//! - `UpdateState`
 //!
 //! - `AddJob`
 //! - `RemoveJob`
 //!
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use actix::dev::{MessageResponse, OneshotSender};
@@ -95,7 +97,7 @@ impl Handler<Info> for StateActor {
         let inner = self.inner.read().unwrap();
 
         Ok(StateInfo {
-            workdir: self.home.clone(),
+            workdir: self.workdir.clone(),
             tm: inner.tm,
             len: inner.queue.len(),
         })
@@ -152,7 +154,7 @@ impl Handler<RemoveJob> for StateActor {
 
 #[derive(Debug)]
 pub struct StateActor {
-    home: PathBuf,
+    workdir: PathBuf,
     inner: Arc<RwLock<State>>,
 }
 
@@ -181,7 +183,7 @@ impl StateActor {
 
         let state = State::from(file).unwrap_or(State::new());
         Self {
-            home: workdir.to_owned(),
+            workdir: workdir.to_owned(),
             inner: Arc::new(RwLock::new(state)),
         }
     }
@@ -189,7 +191,7 @@ impl StateActor {
     /// Returns the path of the default state file in basedir
     ///
     pub fn state_file(&self) -> PathBuf {
-        Path::new(&self.home).join(STATE_FILE)
+        self.workdir.join(STATE_FILE)
     }
 }
 
