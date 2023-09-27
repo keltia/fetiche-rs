@@ -82,10 +82,13 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
+ "strum",
  "syn 2.0.31",
+ "tokio",
  "tracing",
  "tracing-log",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
