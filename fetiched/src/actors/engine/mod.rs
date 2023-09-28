@@ -9,10 +9,11 @@
 
 use actix::dev::{MessageResponse, OneshotSender};
 use actix::prelude::*;
+use eyre::Result;
 use log::trace;
 use tracing::info;
 
-use fetiche_engine::{Cmds, Engine};
+use crate::{engine, parse_job, version, Cmds, Engine};
 
 // ---- Commands
 
@@ -70,7 +71,7 @@ impl Handler<GetVersion> for EngineActor {
     ///
     #[tracing::instrument(skip(self, msg))]
     fn handle(&mut self, msg: GetVersion, _: &mut Self::Context) -> Self::Result {
-        fetiche_engine::version()
+        version()
     }
 }
 
@@ -95,7 +96,7 @@ impl Handler<Submit> for EngineActor {
     fn handle(&mut self, msg: Submit, _ctx: &mut Self::Context) -> Self::Result {
         let cmd = msg.0;
 
-        let r = fetiche_engine::parse_job(&cmd);
+        let r = parse_job(&cmd);
         let (_, (cmd, arg)) = match r {
             Ok((msg, cmd)) => (msg, cmd),
             Err(e) => return e.to_string(),
