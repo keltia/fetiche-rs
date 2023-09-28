@@ -158,10 +158,11 @@ impl Engine {
         // tx is not in an Arc because it is clonable
         //
         let mut engine = Engine {
+            config,
             ctrl: tx,
             pid,
             next: Arc::new(AtomicUsize::new(state.last + 1)),
-            home: Arc::new(basedir),
+            home: Arc::new(workdir.clone()),
             sources: Arc::new(src),
             storage: Arc::new(areas),
             state: Arc::new(RwLock::new(state)),
