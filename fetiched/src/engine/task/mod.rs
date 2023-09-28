@@ -35,8 +35,8 @@ mod tee;
 pub enum Cmds {
     Convert,
     Copy,
+    Echo,
     Fetch,
-    Message,
     Nothing,
     Read,
     Record,

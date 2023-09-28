@@ -102,14 +102,14 @@ impl Handler<Submit> for EngineActor {
         };
 
         trace!("cmd={}", cmd);
-        if cmd != Cmds::Message {
+        if cmd != Cmds::Echo {
             unimplemented!()
         }
 
         trace!("msg={}", arg);
 
-        let task = fetiche_engine::Message::new(&arg);
-        let copy = fetiche_engine::Copy::new();
+        let task = engine::Echo::new(&arg);
+        let copy = engine::Copy::new();
 
         let mut job = self.e.create_job("handle::submit");
         job.add(Box::new(task));

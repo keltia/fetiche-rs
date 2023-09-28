@@ -156,7 +156,7 @@ pub struct Jobs(BTreeMap<String, Job>);
 
 #[cfg(test)]
 mod tests {
-    use crate::{task, Engine, Message, Nothing};
+    use crate::{Copy, Echo, Engine, Nothing};
 
     use super::*;
 
@@ -166,7 +166,7 @@ mod tests {
 
         let mut e = Engine::new();
         let t1 = Box::new(Nothing::new());
-        let t2 = Box::new(task::Copy::new());
+        let t2 = Box::new(Copy::new());
 
         let mut j: Job = e.create_job("test");
         j.add(t1);
@@ -188,8 +188,8 @@ mod tests {
         env_logger::init();
 
         let mut e = Engine::new();
-        let t1 = Box::new(Message::new("hello world"));
-        let t2 = Box::new(task::Copy::new());
+        let t1 = Box::new(Echo::new("hello world"));
+        let t2 = Box::new(Copy::new());
 
         let mut j: Job = e.create_job("test");
         j.add(t1);

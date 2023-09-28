@@ -40,7 +40,7 @@ fn parse_keyword(input: &str) -> IResult<&str, &str> {
 /// Parse a job definition, currently <command>\s+"<string>"
 ///
 pub fn parse_job(input: &str) -> IResult<&str, (Cmds, String)> {
-    let m = |(k, m): (&str, &str)| (Cmds::Message, m.to_string());
+    let m = |(k, m): (&str, &str)| (Cmds::Echo, m.to_string());
 
     let line = tuple((parse_keyword, preceded(space1, parse_string)));
     map(line, m)(input)
@@ -48,7 +48,7 @@ pub fn parse_job(input: &str) -> IResult<&str, (Cmds, String)> {
 
 #[cfg(test)]
 mod tests {
-    use crate::Cmds::Message;
+    use crate::Cmds::Echo;
 
     use super::*;
 
@@ -88,7 +88,7 @@ mod tests {
         dbg!(&r);
         assert!(r.is_ok());
         let (i, r) = r.unwrap();
-        assert_eq!(Message, r.0);
+        assert_eq!(Echo, r.0);
         assert_eq!("foobar", r.1);
     }
 }

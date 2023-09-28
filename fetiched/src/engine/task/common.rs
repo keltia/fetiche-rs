@@ -77,18 +77,18 @@ impl Default for Copy {
 /// FIXME: went from a `Filter` to a `Producer` to satisfy `Job` requirements.
 ///
 #[derive(Clone, Debug, RunnableDerive)]
-pub struct Message {
+pub struct Echo {
     /// I/O capabilities
     io: IO,
     /// What to display
     msg: String,
 }
 
-impl Message {
+impl Echo {
     #[inline]
     #[tracing::instrument]
     pub fn new(s: &str) -> Self {
-        Message {
+        Echo {
             io: IO::Producer,
             msg: s.to_owned(),
         }
