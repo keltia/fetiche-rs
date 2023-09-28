@@ -51,7 +51,7 @@ impl Handler<GetStatus> for EngineActor {
     ///
     #[tracing::instrument(skip(self, msg))]
     fn handle(&mut self, msg: GetStatus, _: &mut Self::Context) -> Self::Result {
-        info!("{} {}", "EngineActor", fetiche_engine::version());
+        info!("{} {}", "EngineActor", version());
 
         EngineStatus {
             home: self.e.home.to_owned().to_string_lossy().to_string(),
