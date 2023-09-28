@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -7,16 +7,22 @@ use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tracing::trace;
 
-/// Register the state of the running `Engine`.
+/// We use a verion number for the state file to detect migrations and obsolete states.
+///
+const STATE_VERSION: usize = 1;
+
+/// Register the state of the running system.
 ///
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct State {
+    /// Version
+    pub version: usize,
     /// Timestamp
     pub tm: i64,
-    /// Last job ID
-    pub last: usize,
-    /// Job Queue
-    pub queue: VecDeque<usize>,
+    /// Dirty bit
+    pub dirty: bool,
+    /// Hash table for each sub-system's state
+    pub state: HashMap<String, String>,
 }
 
 impl State {
@@ -24,13 +30,14 @@ impl State {
     ///
     pub fn new() -> Self {
         State {
+            version: STATE_VERSION,
             tm: Utc::now().timestamp(),
-            last: 0,
-            queue: VecDeque::<usize>::new(),
+            dirty: true,
+            state: HashMap::<String, String>::new(),
         }
     }
 
-    /// Read our JSON file
+    /// Read our JSON file, any error results in the state being ignored and wiped out
     ///
     #[tracing::instrument]
     pub fn from(fname: PathBuf) -> Result<Self> {
@@ -55,7 +62,9 @@ mod tests {
     fn test_state_new() {
         let s = State::new();
 
-        assert_eq!(0, s.last);
-        assert!(s.queue.is_empty());
+        assert_eq!(STATE_VERSION, s.version);
+        assert!(!s.state.is_empty());
+        assert!(s.dirty);
+        assert!(s.state.is_empty());
     }
 }

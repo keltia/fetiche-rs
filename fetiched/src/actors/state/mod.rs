@@ -48,13 +48,42 @@ impl Handler<Sync> for StateActor {
     fn handle(&mut self, _msg: Sync, _ctx: &mut Self::Context) -> Self::Result {
         trace!("state::sync");
         let mut data = self.inner.write().unwrap();
-        *data = State {
-            tm: Utc::now().timestamp(),
-            last: *data.queue.back().unwrap_or(&1),
-            queue: data.queue.clone(),
-        };
-        let data = json!(*data).to_string();
-        Ok(fs::write(self.state_file(), data)?)
+        if data.dirty {
+            *data = State {
+                tm: Utc::now().timestamp(),
+                last: *data.queue.back().unwrap_or(&1),
+                queue: data.queue.clone(),
+            };
+            let data = json!(*data).to_string();
+            Ok(fs::write(self.state_file(), data)?)
+        } else {
+            trace!("Dirty not set");
+        }
+    }
+}
+
+/// UpdateState
+///
+#[derive(Debug, Message)]
+#[rtype(result = "Result<()>")]
+pub struct UpdateState(String, String);
+
+impl Handler<UpdateState> for StateActor {
+    type Result = Result<()>;
+
+    fn handle(&mut self, msg: UpdateState, ctx: &mut Self::Context) -> Self::Result {
+        // Retrieve sub-system tag and data
+        //
+        let tag = msg.0;
+        let state = msg.1;
+
+        // Lock & update
+        {
+            let mut data = self.inner.write()?;
+            data.state[tag] = state.clone();
+            data.dirty = true;
+        }
+        Ok(())
     }
 }
 
@@ -70,7 +99,7 @@ pub struct StateInfo {
     pub workdir: PathBuf,
     /// Last sync
     pub tm: i64,
-    /// Queue size
+    /// Number of currently held state
     pub len: usize,
 }
 
@@ -99,54 +128,8 @@ impl Handler<Info> for StateActor {
         Ok(StateInfo {
             workdir: self.workdir.clone(),
             tm: inner.tm,
-            len: inner.queue.len(),
+            len: inner.state.len(),
         })
-    }
-}
-
-/// Add a job ID to the current job queue
-///
-#[derive(Debug, Message)]
-#[rtype(result = "Result<()>")]
-pub struct AddJob(usize);
-
-impl Handler<AddJob> for StateActor {
-    type Result = Result<()>;
-
-    /// Add the specified job ID to the end of the queue
-    ///
-    #[tracing::instrument(skip(self, _ctx))]
-    fn handle(&mut self, msg: AddJob, _ctx: &mut Self::Context) -> Self::Result {
-        let mut inner = self.inner.write().unwrap();
-        inner.queue.push_back(msg.0);
-        Ok(())
-    }
-}
-
-/// Remove the specified job from the job queue
-///
-#[derive(Debug, Message)]
-#[rtype(result = "Result<()>")]
-pub struct RemoveJob(usize);
-
-impl Handler<RemoveJob> for StateActor {
-    type Result = Result<()>;
-
-    /// Perform a binary search on the job queue (job id are always incrementing) and remove said
-    /// job (done or cancelled, etc.).
-    ///
-    #[tracing::instrument(skip(self, _ctx))]
-    fn handle(&mut self, msg: RemoveJob, _ctx: &mut Self::Context) -> Self::Result {
-        trace!("state::remove_job({})", msg.0);
-
-        let id = msg.0;
-        let mut inner = self.inner.write().unwrap();
-        if let Ok(index) = inner.queue.binary_search(&id) {
-            trace!("Found job {}", id);
-            inner.queue.remove(index);
-            trace!("queue={:?}", inner.queue);
-        }
-        Ok(())
     }
 }
 
