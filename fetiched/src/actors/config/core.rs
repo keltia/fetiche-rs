@@ -1,21 +1,17 @@
 use std::str::FromStr;
 
 use actix::dev::{MessageResponse, OneshotSender};
-use actix::{Actor, Addr, Message};
+use actix::{Actor, Message};
 use serde::Serialize;
 use strum::EnumVariantNames;
 
 #[derive(Clone, Debug, strum::Display, EnumVariantNames, Serialize)]
-pub enum Param<A>
-where
-    A: Actor,
-{
-    Addr(Addr<A>),
+pub enum Param {
     Integer(i32),
     String(String),
 }
 
-impl<T> FromStr for Param<T> {
+impl FromStr for Param {
     type Err = ();
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
@@ -23,31 +19,22 @@ impl<T> FromStr for Param<T> {
     }
 }
 
-impl<T> From<i32> for Param<T> {
+impl From<i32> for Param {
     fn from(value: i32) -> Self {
         Param::Integer(value)
     }
 }
 
-impl<T> From<u32> for Param<T> {
+impl From<u32> for Param {
     fn from(value: u32) -> Self {
         Param::Integer(value as i32)
     }
 }
 
-impl<A> From<Addr<A>> for Param<A>
+impl<A, M> MessageResponse<A, M> for Param
 where
     A: Actor,
-{
-    fn from(value: Addr<A>) -> Self {
-        Param::Addr(value)
-    }
-}
-
-impl<A, M, T> MessageResponse<A, M> for Param<T>
-where
-    A: Actor,
-    M: Message<Result = Param<T>>,
+    M: Message<Result = Param>,
 {
     fn handle(self, _ctx: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
         if let Some(tx) = tx {
