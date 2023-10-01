@@ -42,7 +42,7 @@ pub use state::*;
 pub use storage::*;
 pub use task::*;
 
-use crate::ConfigActor;
+use crate::{ConfigActor, StorageActor, StorageList};
 
 mod database;
 mod job;
@@ -67,9 +67,6 @@ const SOURCES_CONFIG: &str = "sources.hcl";
 /// Configuration file version
 const ENGINE_VERSION: usize = 2;
 
-/// Main state data file, will be created in `basedir`.
-pub(crate) const STATE_FILE: &str = "state";
-
 /// Tick is every 30s
 const TICK: u64 = 30;
 
@@ -91,8 +88,6 @@ pub struct Engine {
     config: Addr<ConfigActor>,
     /// Command channel
     pub ctrl: Sender<EngineCtrl>,
-    /// Current process DI
-    pub pid: u32,
     /// Next job ID
     pub next: Arc<AtomicUsize>,
     /// Main area where state is saved (PID, jobs, etc.)
@@ -100,7 +95,7 @@ pub struct Engine {
     /// Sources
     pub sources: Arc<Sources>,
     /// Storage area for long running jobs
-    pub storage: Arc<Storage>,
+    pub store: Addr<StorageActor>,
     /// Current state
     pub state: Arc<RwLock<State>>,
     /// Job Queue
@@ -111,7 +106,7 @@ impl Engine {
     /// Create an instance
     ///
     #[tracing::instrument]
-    pub fn new(workdir: &PathBuf, config: Addr<ConfigActor>) -> Self {
+    pub fn new(workdir: &PathBuf, config: &Addr<ConfigActor>, store: Addr<StorageActor>) -> Self {
         trace!("new engine({:?})", workdir);
 
         trace!("load sources");
@@ -125,27 +120,14 @@ impl Engine {
         };
         info!("{} sources loaded", src.len());
 
+        trace!("loading state");
+        if let Ok(state) = state
         trace!("load storage areas");
         // Register storage areas
         //
-        let areas = Storage::register(&cfg.storage);
-        info!("{} areas loaded", areas.len());
-
-        // Load state
-        //
-        let fname: PathBuf = makepath!(&basedir, STATE_FILE);
-        let state = match State::from(fname.clone()) {
-            Ok(state) => {
-                info!("State loaded from {:?}", fname);
-                debug!("{:?}", state);
-                state
-            }
-            Err(e) => {
-                warn!("Can not load state, creating new: {}", e.to_string());
-                State::new()
-            }
-        };
-        trace!("state={:?}", state);
+        if let Some(areas) = store.send(StorageList) {
+            info!("{} areas loaded", areas.len());
+        }
 
         let jobs = VecDeque::<usize>::new();
 
@@ -160,12 +142,10 @@ impl Engine {
         let mut engine = Engine {
             config,
             ctrl: tx,
-            pid,
             next: Arc::new(AtomicUsize::new(state.last + 1)),
             home: Arc::new(workdir.clone()),
             sources: Arc::new(src),
-            storage: Arc::new(areas),
-            state: Arc::new(RwLock::new(state)),
+            store,
             jobs: Arc::new(RwLock::new(jobs)),
         };
         info!("New Engine loaded");
@@ -327,13 +307,13 @@ impl Engine {
     /// Return an `Arc::clone` of the Engine storage areas
     ///
     pub fn storage(&self) -> Arc<Storage> {
-        Arc::clone(&self.storage)
+        Arc::clone(&self.store)
     }
 
     /// Returns a list of all defined storage areas
     ///
     pub fn list_storage(&self) -> Result<String> {
-        self.storage.list()
+        self.store.list()
     }
 
     /// Return a description of all supported sources

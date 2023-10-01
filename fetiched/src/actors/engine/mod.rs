@@ -11,9 +11,10 @@ use actix::dev::{MessageResponse, OneshotSender};
 use actix::prelude::*;
 use eyre::Result;
 use log::trace;
+use std::path::PathBuf;
 use tracing::info;
 
-use crate::{engine, parse_job, version, Cmds, Engine};
+use crate::{engine, parse_job, version, Cmds, ConfigActor, Engine, StorageActor};
 
 // ---- Commands
 
@@ -135,10 +136,10 @@ pub struct EngineActor {
     pub e: Engine,
 }
 
-impl Default for EngineActor {
+impl EngineActor {
     #[tracing::instrument]
-    fn default() -> Self {
-        let e = Engine::new();
+    pub fn new(workdir: &PathBuf, config: Addr<ConfigActor>, store: Addr<StorageActor>) -> Self {
+        let e = Engine::new(workdir, config, store);
         EngineActor { e }
     }
 }

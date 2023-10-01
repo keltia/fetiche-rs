@@ -102,7 +102,14 @@ async fn main() -> Result<()> {
     let state = StateActor::new(&workdir).start();
 
     trace!("Starting engine agent");
-    let engine = EngineActor::default().start();
+    let engine = EngineActor::new(&workdir, &config, &storage).start();
+
+    trace!("Creating bus");
+    let bus = Bus {
+        config,
+        storage,
+        state,
+    };
 
     trace!("Init done, serving.");
 
@@ -170,6 +177,13 @@ async fn main() -> Result<()> {
     }
     System::current().stop();
     Ok(())
+}
+
+#[derive(Debug)]
+pub struct Bus {
+    pub config: Addr<ConfigActor>,
+    pub store: Addr<StorageActor>,
+    pub state: Addr<StateActor>,
 }
 
 /// UNIX-specific detach from terminal if -D/--debug is not specified
