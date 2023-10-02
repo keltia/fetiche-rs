@@ -14,7 +14,7 @@ use log::trace;
 use std::path::PathBuf;
 use tracing::info;
 
-use crate::{engine, parse_job, version, Cmds, ConfigActor, Engine, StorageActor};
+use crate::{engine, parse_job, response_for, version, Bus, Cmds, Engine};
 
 // ---- Commands
 
@@ -33,17 +33,7 @@ pub struct EngineStatus {
     pub jobs: usize,
 }
 
-impl<A, M> MessageResponse<A, M> for EngineStatus
-where
-    A: Actor,
-    M: Message<Result = EngineStatus>,
-{
-    fn handle(self, _ctx: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
-        if let Some(tx) = tx {
-            let _ = tx.send(self);
-        }
-    }
-}
+response_for!(EngineStatus);
 
 impl Handler<GetStatus> for EngineActor {
     type Result = EngineStatus;
@@ -138,8 +128,8 @@ pub struct EngineActor {
 
 impl EngineActor {
     #[tracing::instrument]
-    pub fn new(workdir: &PathBuf, config: Addr<ConfigActor>, store: Addr<StorageActor>) -> Self {
-        let e = Engine::new(workdir, config, store);
+    pub fn new(workdir: &PathBuf, bus: &Bus) -> Self {
+        let e = Engine::new(workdir, &bus);
         EngineActor { e }
     }
 }

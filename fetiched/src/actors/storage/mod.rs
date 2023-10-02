@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
+use actix::dev::{MessageResponse, OneshotSender};
 use actix::prelude::*;
 use actix::{Actor, Context, Message};
 use eyre::Result;
@@ -12,6 +13,7 @@ use serde::Deserialize;
 use tokio::fs::File;
 use tracing::{info, trace};
 
+use crate::response_for;
 pub use core::*;
 
 mod core;
@@ -22,11 +24,25 @@ const STORAGE_VERSION: usize = 1;
 /// Default configuration file name in workdir
 const STORAGE_FILE: &str = "storage.hcl";
 
+pub struct StorageAreas {
+    areas: BTreeMap<String, StorageArea>,
+}
+
 // ----- Messages
 
 #[derive(Debug, Message)]
-#[rtype(result = "Result<String>")]
-pub struct StorageList;
+#[rtype(result = "Result<BTreeMap<String, StorageArea>>")]
+pub struct List;
+
+impl Handler<List> for StorageActor {
+    type Result = Result<StorageAreas>;
+
+    fn handle(&mut self, msg: List, ctx: &mut Self::Context) -> Self::Result {
+        todo!()
+    }
+}
+
+response_for!(StorageAreas);
 
 #[derive(Debug, Message)]
 #[rtype(result = "Result<()>")]
@@ -51,7 +67,7 @@ pub struct StreamFile;
 // ----- Actor
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct StorageConfig {
+struct StorageConfig {
     /// Usual check for malformed file
     pub version: usize,
     /// List of storage types

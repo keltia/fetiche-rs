@@ -20,8 +20,8 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use fetiched::{
-    ConfigActor, ConfigKeys, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param,
-    StateActor, StorageActor, Submit,
+    Bus, ConfigActor, ConfigKeys, ConfigList, ConfigSet, Engine, EngineActor, GetStatus,
+    GetVersion, Param, StateActor, StorageActor, Submit,
 };
 
 use crate::cli::{Opts, SubCommand};
@@ -92,6 +92,8 @@ async fn main() -> Result<()> {
         }
     }
 
+    // System agents
+
     trace!("Starting configuration agent");
     let config = ConfigActor::default().start();
 
@@ -101,26 +103,24 @@ async fn main() -> Result<()> {
     trace!("Starting state agent");
     let state = StateActor::new(&workdir).start();
 
-    trace!("Starting engine agent");
-    let engine = EngineActor::new(&workdir, &config, &storage).start();
-
-    trace!("Creating bus");
+    trace!("Creating communication bus");
     let bus = Bus {
         config,
-        storage,
         state,
+        storage,
     };
 
     trace!("Init done, serving.");
 
-    let r = match engine.send(GetVersion).await {
-        Ok(res) => res,
-        Err(e) => {
-            error!("dead actor: {}", e.to_string());
-            e.to_string()
-        }
-    };
+    // Main agent
 
+    trace!("Starting engine");
+    let engine = EngineActor::new(&workdir, &bus).start();
+
+    let r = engine.send(GetVersion).await?;
+
+    // Register our version
+    //
     config.do_send(ConfigSet {
         name: "fetiche".to_string(),
         value: Param::String(r.clone()),
@@ -177,13 +177,6 @@ async fn main() -> Result<()> {
     }
     System::current().stop();
     Ok(())
-}
-
-#[derive(Debug)]
-pub struct Bus {
-    pub config: Addr<ConfigActor>,
-    pub store: Addr<StorageActor>,
-    pub state: Addr<StateActor>,
 }
 
 /// UNIX-specific detach from terminal if -D/--debug is not specified

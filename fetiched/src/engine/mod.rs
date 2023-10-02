@@ -42,7 +42,7 @@ pub use state::*;
 pub use storage::*;
 pub use task::*;
 
-use crate::{ConfigActor, StorageActor, StorageList};
+use crate::{Bus, ConfigActor, Info, List, StateActor, StorageActor};
 
 mod database;
 mod job;
@@ -86,6 +86,11 @@ pub enum EngineCtrl {
 pub struct Engine {
     /// Addr of `ConfigActor`
     config: Addr<ConfigActor>,
+    /// State management agent
+    pub state: Addr<StateActor>,
+    /// Storage area for long running jobs
+    pub store: Addr<StorageActor>,
+    //
     /// Command channel
     pub ctrl: Sender<EngineCtrl>,
     /// Next job ID
@@ -94,10 +99,6 @@ pub struct Engine {
     pub home: Arc<PathBuf>,
     /// Sources
     pub sources: Arc<Sources>,
-    /// Storage area for long running jobs
-    pub store: Addr<StorageActor>,
-    /// Current state
-    pub state: Arc<RwLock<State>>,
     /// Job Queue
     pub jobs: Arc<RwLock<VecDeque<usize>>>,
 }
@@ -106,11 +107,14 @@ impl Engine {
     /// Create an instance
     ///
     #[tracing::instrument]
-    pub fn new(workdir: &PathBuf, config: &Addr<ConfigActor>, store: Addr<StorageActor>) -> Self {
+    pub async fn new(workdir: &PathBuf, bus: &Bus) -> Self {
         trace!("new engine({:?})", workdir);
 
-        trace!("load sources");
+        let state = bus.state.clone();
+        let store = bus.store.clone();
+        let config = bus.config.clone();
 
+        trace!("loading sources");
         // Register sources
         //
         let sources = workdir.join(SOURCES_CONFIG);
@@ -118,15 +122,19 @@ impl Engine {
             Ok(src) => src,
             Err(e) => panic!("No sources configured in '{sources:?}':{}", e),
         };
-        info!("{} sources loaded", src.len());
+        info!("{} sources loaded.", src.len());
 
         trace!("loading state");
-        if let Ok(state) = state
+        let ourstate = if let Ok(state) = state.send(Info).await? {
+            info!("state loaded.");
+            state["engine"]
+        };
+
         trace!("load storage areas");
         // Register storage areas
         //
-        if let Some(areas) = store.send(StorageList) {
-            info!("{} areas loaded", areas.len());
+        if let Some(areas) = store.send(List).await? {
+            info!("{} areas loaded.", areas.len());
         }
 
         let jobs = VecDeque::<usize>::new();
@@ -141,11 +149,12 @@ impl Engine {
         //
         let mut engine = Engine {
             config,
+            state,
+            store,
             ctrl: tx,
             next: Arc::new(AtomicUsize::new(state.last + 1)),
             home: Arc::new(workdir.clone()),
             sources: Arc::new(src),
-            store,
             jobs: Arc::new(RwLock::new(jobs)),
         };
         info!("New Engine loaded");

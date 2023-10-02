@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{info, trace};
 
+use crate::response_for;
 pub use core::*;
 
 mod core;
@@ -80,7 +81,7 @@ impl Handler<UpdateState> for StateActor {
         // Lock & update
         {
             let mut data = self.inner.write()?;
-            data.state[tag] = state.clone();
+            data.state[&tag] = state.clone();
             data.dirty = true;
         }
         Ok(())
@@ -90,46 +91,20 @@ impl Handler<UpdateState> for StateActor {
 /// Request information about the current state
 ///
 #[derive(Debug, Message)]
-#[rtype(result = "Result<StateInfo>")]
+#[rtype(result = "Result<State>")]
 pub struct Info;
 
-#[derive(Debug)]
-pub struct StateInfo {
-    /// Homedir
-    pub workdir: PathBuf,
-    /// Last sync
-    pub tm: i64,
-    /// Number of currently held state
-    pub len: usize,
-}
-
-impl<A, M> MessageResponse<A, M> for StateInfo
-where
-    A: Actor,
-    M: Message<Result = StateInfo>,
-{
-    #[tracing::instrument(skip(self, _ctx))]
-    fn handle(self, _ctx: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
-        if let Some(tx) = tx {
-            let _ = tx.send(self);
-        }
-    }
-}
+response_for!(State);
 
 impl Handler<Info> for StateActor {
-    type Result = Result<StateInfo>;
+    type Result = Result<State>;
 
     /// Return a subset of the current state
     ///
     #[tracing::instrument(skip(self, _ctx))]
     fn handle(&mut self, msg: Info, _ctx: &mut Self::Context) -> Self::Result {
         let inner = self.inner.read().unwrap();
-
-        Ok(StateInfo {
-            workdir: self.workdir.clone(),
-            tm: inner.tm,
-            len: inner.state.len(),
-        })
+        Ok(inner.clone())
     }
 }
 
