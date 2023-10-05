@@ -44,7 +44,7 @@ tracing-subscriber.workspace = true
 csv = "1.2"
 percent-encoding = "2.2"
 parquet = { version = "47.0", features = ["json", "async", "cli"] }
-parquet_derive = "47.0ca"
+parquet_derive = "47.0"
 
 [dev-dependencies]
 rstest.workspace = true
