@@ -7,6 +7,7 @@
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use eyre::Result;
+use parquet_derive::ParquetRecordWriter;
 use serde::Deserialize;
 use tracing::debug;
 
@@ -21,7 +22,7 @@ use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated};
 /// are apparently stored as DECIMAL in their database and not as FLOAT.  There are then
 /// exported as 6-digit floating strings.
 ///
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ParquetRecordWriter)]
 pub struct Asd {
     // Each record is part of a drone journey with a specific ID
     pub journey: u32,
