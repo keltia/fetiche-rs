@@ -39,9 +39,12 @@ strum.workspace = true
 tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
+tracing-subscriber.workspace = true
 
 csv = "1.2"
 percent-encoding = "2.2"
+parquet = { version = "47.0", features = ["json", "async", "cli"] }
+parquet_derive = "47.0ca"
 
 [dev-dependencies]
 rstest.workspace = true
