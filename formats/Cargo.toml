@@ -45,6 +45,7 @@ csv = "1.2"
 percent-encoding = "2.2"
 parquet = { version = "47.0", features = ["json", "async", "cli"] }
 parquet_derive = "47.0"
+tracing-tree = { version = "0.2", features = ["time"] }
 
 [dev-dependencies]
 rstest.workspace = true

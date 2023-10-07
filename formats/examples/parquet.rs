@@ -14,7 +14,8 @@ use parquet_derive::ParquetRecordWriter;
 use serde::{Deserialize, Serialize};
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::EnvFilter;
+use tracing_tree::HierarchicalLayer;
 
 #[derive(Clone, Debug, Deserialize, ParquetRecordWriter, Serialize)]
 pub struct Asd {
@@ -64,11 +65,9 @@ pub struct Asd {
 fn main() -> eyre::Result<()> {
     // Initialise logging early
     //
-    let fmt = fmt::layer()
-        .with_thread_ids(true)
-        .with_thread_names(true)
-        .with_target(false)
-        .compact();
+    let tree = HierarchicalLayer::new(2)
+        .with_targets(true)
+        .with_bracketed_fields(true);
 
     // Load filters from environment
     //
@@ -76,9 +75,13 @@ fn main() -> eyre::Result<()> {
 
     // Combine filter & specific format
     //
-    tracing_subscriber::registry().with(filter).with(fmt).init();
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(tree)
+        .init();
     trace!("Logging initialised.");
 
+    trace!("Read data.");
     let str = fs::read_to_string("asd.json")?;
     let data: Vec<Asd> = serde_json::from_str(&str).unwrap();
 
@@ -88,6 +91,7 @@ fn main() -> eyre::Result<()> {
     //
     let schema = data.as_slice().schema()?;
 
+    trace!("Prepare output");
     // Prepare output
     //
     let file = File::create("asd.parquet")?;
@@ -102,5 +106,6 @@ fn main() -> eyre::Result<()> {
 
     data.as_slice().write_to_row_group(&mut row_group)?;
 
+    trace!("Done.");
     Ok(())
 }
