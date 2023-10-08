@@ -5,61 +5,27 @@ use std::fs;
 use std::fs::File;
 use std::string::ToString;
 
+use fetiche_formats::Asd;
 use parquet::basic::{Compression, Encoding, ZstdLevel};
 use parquet::{
     file::{properties::WriterProperties, writer::SerializedFileWriter},
     record::RecordWriter,
 };
-use parquet_derive::ParquetRecordWriter;
-use serde::{Deserialize, Serialize};
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
-#[derive(Clone, Debug, Deserialize, ParquetRecordWriter, Serialize)]
-pub struct Asd {
-    // Each record is part of a drone journey with a specific ID
-    pub journey: u32,
-    // Identifier for the drone
-    pub ident: String,
-    // Model of the drone
-    pub model: Option<String>,
-    // Source ([see src/site/asd.rs]) of the data
-    pub source: String,
-    // Point/record ID
-    pub location: u32,
-    // Date of event (in the non standard YYYY-MM-DD HH:MM:SS formats)
-    pub timestamp: String,
-    // $7 (actually f32)
-    pub latitude: String,
-    // $8 (actually f32)
-    pub longitude: String,
-    // Altitude, can be either null or negative (?)
-    pub altitude: Option<i16>,
-    // Distance to ground (estimated every 15s)
-    pub elevation: Option<u32>,
-    // Undocumented
-    pub gps: Option<u32>,
-    // Signal level (in dB)
-    pub rssi: Option<i32>,
-    // $13 (actually f32)
-    pub home_lat: Option<String>,
-    // $14 (actually f32)
-    pub home_lon: Option<String>,
-    // Altitude from takeoff point
-    pub home_height: Option<f32>,
-    // Current speed
-    pub speed: f32,
-    // True heading
-    pub heading: f32,
-    // Name of detecting point
-    pub station_name: Option<String>,
-    // Latitude (actually f32)
-    pub station_latitude: Option<String>,
-    // Longitude (actually f32)
-    pub station_longitude: Option<String>,
+#[tracing::instrument]
+fn read_data(fname: &str) -> eyre::Result<Vec<Asd>> {
+    trace!("Read data.");
+    let str = fs::read_to_string(fname)?;
+    let data: Vec<Asd> = serde_json::from_str(&str)?;
+    Ok(data)
 }
+
+const INPUT: &str = "asd.json";
+const OUTPUT: &str = "asd.parquet";
 
 #[tracing::instrument]
 fn main() -> eyre::Result<()> {
@@ -67,6 +33,8 @@ fn main() -> eyre::Result<()> {
     //
     let tree = HierarchicalLayer::new(2)
         .with_targets(true)
+        .with_verbose_entry(true)
+        .with_verbose_exit(true)
         .with_bracketed_fields(true);
 
     // Load filters from environment
@@ -81,9 +49,7 @@ fn main() -> eyre::Result<()> {
         .init();
     trace!("Logging initialised.");
 
-    trace!("Read data.");
-    let str = fs::read_to_string("asd.json")?;
-    let data: Vec<Asd> = serde_json::from_str(&str).unwrap();
+    let data = read_data(INPUT)?;
 
     info!("{} records read", data.len());
 
@@ -94,13 +60,14 @@ fn main() -> eyre::Result<()> {
     trace!("Prepare output");
     // Prepare output
     //
-    let file = File::create("asd.parquet")?;
+    let file = File::create(OUTPUT)?;
     let props = WriterProperties::builder()
         .set_created_by("fetiche".to_string())
         .set_encoding(Encoding::PLAIN)
         .set_compression(Compression::ZSTD(ZstdLevel::default()))
         .build();
 
+    trace!("Writing in {}", OUTPUT);
     let mut writer = SerializedFileWriter::new(file, schema, props.into())?;
     let mut row_group = writer.next_row_group()?;
 
