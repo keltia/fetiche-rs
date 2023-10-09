@@ -18,6 +18,7 @@ use tracing::error;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
+use tracing_tree::HierarchicalLayer;
 
 use fetiched::{
     Bus, ConfigActor, ConfigKeys, ConfigList, ConfigSet, Engine, EngineActor, GetStatus,
@@ -48,13 +49,20 @@ async fn main() -> Result<()> {
         .with_target(false)
         .compact();
 
+    let tree = HierarchicalLayer::new(2)
+        .with_target(true)
+        .with_bracketed_fields(true);
+
     // Load filters from environment
     //
     let filter = EnvFilter::from_default_env();
 
     // Combine filter & specific format
     //
-    tracing_subscriber::registry().with(filter).with(fmt).init();
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(tree)
+        .init();
     trace!("Logging initialised.");
 
     info!("This is {} starting up…", version());
