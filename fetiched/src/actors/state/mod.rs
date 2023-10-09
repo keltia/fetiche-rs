@@ -16,7 +16,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
-use actix::dev::{MessageResponse, OneshotSender};
+use actix::dev::MessageResponse;
 use actix::{Actor, Context, Handler, Message};
 use chrono::Utc;
 use eyre::Result;
@@ -24,7 +24,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{info, trace};
 
-use crate::response_for;
 pub use core::*;
 
 mod core;
@@ -115,7 +114,10 @@ impl Handler<Info> for StateActor {
         //
         let tag = msg.0;
         let inner = self.inner.read().unwrap();
-        inner.systems.get(&tag).ok_or("".to_string())
+        match inner.systems.get(&tag) {
+            Some(res) => res.to_string(),
+            None => panic!("empty state"),
+        }
     }
 }
 
