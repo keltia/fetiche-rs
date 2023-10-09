@@ -13,6 +13,7 @@ mod storage;
 
 /// This is a "bus" that regroup all actors' address for communication
 ///
+#[derive(Clone, Debug)]
 pub struct Bus {
     /// K/V configuration agent
     pub config: Addr<ConfigActor>,
