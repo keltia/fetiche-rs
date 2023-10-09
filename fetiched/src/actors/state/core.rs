@@ -9,7 +9,7 @@ use tracing::trace;
 
 /// We use a verion number for the state file to detect migrations and obsolete states.
 ///
-const STATE_VERSION: usize = 1;
+pub const STATE_VERSION: usize = 1;
 
 /// Register the state of the running system.
 ///
@@ -22,7 +22,7 @@ pub struct State {
     /// Dirty bit
     pub dirty: bool,
     /// Hash table for each sub-system's state
-    pub state: HashMap<String, String>,
+    pub systems: HashMap<String, String>,
 }
 
 impl State {
@@ -33,7 +33,7 @@ impl State {
             version: STATE_VERSION,
             tm: Utc::now().timestamp(),
             dirty: true,
-            state: HashMap::<String, String>::new(),
+            systems: HashMap::<String, String>::new(),
         }
     }
 
@@ -63,8 +63,8 @@ mod tests {
         let s = State::new();
 
         assert_eq!(STATE_VERSION, s.version);
-        assert!(!s.state.is_empty());
+        assert!(!s.systems.is_empty());
         assert!(s.dirty);
-        assert!(s.state.is_empty());
+        assert!(s.systems.is_empty());
     }
 }

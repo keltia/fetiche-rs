@@ -51,14 +51,16 @@ impl Handler<Sync> for StateActor {
         let mut data = self.inner.write().unwrap();
         if data.dirty {
             *data = State {
+                version: STATE_VERSION,
                 tm: Utc::now().timestamp(),
-                last: *data.queue.back().unwrap_or(&1),
-                queue: data.queue.clone(),
+                dirty: false,
+                systems: data.systems.clone(),
             };
-            let data = json!(*data).to_string();
-            Ok(fs::write(self.state_file(), data)?)
+            let content = json!(*data).to_string();
+            Ok(fs::write(self.state_file(), content)?)
         } else {
             trace!("Dirty not set");
+            Ok(())
         }
     }
 }
@@ -67,7 +69,7 @@ impl Handler<Sync> for StateActor {
 ///
 #[derive(Debug, Message)]
 #[rtype(result = "Result<()>")]
-pub struct UpdateState(String, String);
+pub struct UpdateState(pub String, pub String);
 
 impl Handler<UpdateState> for StateActor {
     type Result = Result<()>;
@@ -81,30 +83,39 @@ impl Handler<UpdateState> for StateActor {
         // Lock & update
         {
             let mut data = self.inner.write()?;
-            data.state[&tag] = state.clone();
+            data.systems[&tag] = state.clone();
             data.dirty = true;
         }
         Ok(())
     }
 }
 
-/// Request information about the current state
+/// Request information about the current state, state is per sub-system
 ///
 #[derive(Debug, Message)]
-#[rtype(result = "Result<State>")]
-pub struct Info;
+#[rtype(result = "String")]
+pub struct Info(String);
 
-response_for!(State);
+impl Info {
+    /// Helper constructor
+    ///
+    pub fn about(tag: &str) -> Self {
+        Info(tag.to_string())
+    }
+}
 
 impl Handler<Info> for StateActor {
-    type Result = Result<State>;
+    type Result = String;
 
     /// Return a subset of the current state
     ///
     #[tracing::instrument(skip(self, _ctx))]
     fn handle(&mut self, msg: Info, _ctx: &mut Self::Context) -> Self::Result {
+        // Retrieve sub-system tag
+        //
+        let tag = msg.0;
         let inner = self.inner.read().unwrap();
-        Ok(inner.clone())
+        inner.systems.get(&tag).ok_or("".to_string())
     }
 }
 
