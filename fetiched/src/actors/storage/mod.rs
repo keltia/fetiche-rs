@@ -13,8 +13,9 @@ use serde::Deserialize;
 use tokio::fs::File;
 use tracing::{info, trace};
 
-use crate::response_for;
 pub use core::*;
+
+use crate::response_for;
 
 mod core;
 
@@ -35,7 +36,7 @@ pub struct StorageAreas {
 pub struct List;
 
 impl Handler<List> for StorageActor {
-    type Result = Result<StorageAreas>;
+    type Result = Result<BTreeMap<String, StorageArea>>;
 
     fn handle(&mut self, msg: List, ctx: &mut Self::Context) -> Self::Result {
         todo!()
