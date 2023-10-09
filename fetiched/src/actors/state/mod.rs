@@ -70,6 +70,12 @@ impl Handler<Sync> for StateActor {
 #[rtype(result = "Result<()>")]
 pub struct UpdateState(pub String, pub String);
 
+impl UpdateState {
+    pub fn service(tag: &str, data: String) -> Self {
+        Self(tag.to_string(), data.clone())
+    }
+}
+
 impl Handler<UpdateState> for StateActor {
     type Result = Result<()>;
 

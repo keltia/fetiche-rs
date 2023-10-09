@@ -165,10 +165,7 @@ impl Engine {
         //
         let _ = engine
             .state
-            .send(UpdateState(
-                "engine".to_string(),
-                json!(ourstate).to_string(),
-            ))
+            .send(UpdateState::service("engine", json!(ourstate).to_string()))
             .await
             .expect("can not UpdateState");
 
@@ -206,7 +203,7 @@ impl Engine {
 
         trace!("create_job with id: {}", nextid);
 
-        self.state.do_send(UpdateState("engine".to_string(), state));
+        self.state.do_send(UpdateState::service("engine", state));
 
         job
     }
