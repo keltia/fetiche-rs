@@ -29,8 +29,10 @@ use actix::prelude::*;
 use eyre::Result;
 #[cfg(unix)]
 use home::home_dir;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use strum::EnumString;
+use tracing::field::debug;
 use tracing::{debug, error, info, trace, warn};
 
 pub use database::*;
@@ -42,7 +44,7 @@ pub use state::*;
 pub use storage::*;
 pub use task::*;
 
-use crate::{Bus, ConfigActor, Info, List, StateActor, StorageActor};
+use crate::{Bus, ConfigActor, Info, List, StateActor, StorageActor, UpdateState};
 
 mod database;
 mod job;
@@ -103,6 +105,25 @@ pub struct Engine {
     pub jobs: Arc<RwLock<VecDeque<usize>>>,
 }
 
+/// This is the struct that gets sent over to the state actor for sync.
+///
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct EngineState {
+    /// Next job ID
+    pub next: AtomicUsize,
+    /// Job Queue
+    pub jobs: VecDeque<usize>,
+}
+
+impl Default for EngineState {
+    fn default() -> Self {
+        Self {
+            next: 0.into(),
+            jobs: VecDeque::new(),
+        }
+    }
+}
+
 impl Engine {
     /// Create an instance
     ///
@@ -125,10 +146,15 @@ impl Engine {
         info!("{} sources loaded.", src.len());
 
         trace!("loading state");
-        let ourstate = if let Ok(state) = state.send(Info).await? {
+        let ourstate = if let Ok(state) = state.send(Info::about("engine")).await {
             info!("state loaded.");
-            state["engine"]
+            debug!("state={}", state);
+            let s: EngineState = serde_json::from_str(&state).unwrap();
+            s
+        } else {
+            EngineState::default()
         };
+        debug!("engine={:?}", ourstate);
 
         trace!("load storage areas");
         // Register storage areas
@@ -152,7 +178,7 @@ impl Engine {
             state,
             store,
             ctrl: tx,
-            next: Arc::new(AtomicUsize::new(state.last + 1)),
+            next: Arc::new(ourstate.next),
             home: Arc::new(workdir.clone()),
             sources: Arc::new(src),
             jobs: Arc::new(RwLock::new(jobs)),
@@ -192,7 +218,15 @@ impl Engine {
 
         let e = engine.clone();
         thread::spawn(move || loop {
-            if let Err(err) = e.command(EngineCtrl::Sync) {
+            // Save current state
+            //
+            let jobs = e.jobs.read()?;
+            let s = EngineState {
+                next: e.next.clone().into(),
+                jobs: jobs.into(),
+            };
+            let s = json!(&s).to_string();
+            if let Err(err) = state.do_send(UpdateState("engine".to_string(), s)) {
                 error!("engine::sync failed: {}", err.to_string());
             }
             thread::sleep(Duration::from_secs(TICK));
