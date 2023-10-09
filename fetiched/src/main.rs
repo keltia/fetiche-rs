@@ -21,8 +21,8 @@ use tracing_subscriber::{fmt, EnvFilter};
 use tracing_tree::HierarchicalLayer;
 
 use fetiched::{
-    Bus, ConfigActor, ConfigKeys, ConfigList, ConfigSet, Engine, EngineActor, GetStatus,
-    GetVersion, Param, StateActor, StorageActor, Submit,
+    Bus, ConfigActor, ConfigKeys, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param,
+    StateActor, StorageActor, Submit,
 };
 
 use crate::cli::{Opts, SubCommand};
@@ -53,6 +53,12 @@ async fn main() -> Result<()> {
         .with_target(true)
         .with_bracketed_fields(true);
 
+    // Setup Open Telemetry with Jaeger
+    //
+    let tracer =
+        opentelemetry_jaeger::new_agent_pipeline().install_batch(opentelemetry::runtime::Tokio)?;
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
     // Load filters from environment
     //
     let filter = EnvFilter::from_default_env();
@@ -62,6 +68,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(filter)
         .with(tree)
+        .with(telemetry)
         .init();
     trace!("Logging initialised.");
 
