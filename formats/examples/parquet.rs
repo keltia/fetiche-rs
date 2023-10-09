@@ -5,7 +5,6 @@ use std::fs;
 use std::fs::File;
 use std::string::ToString;
 
-use fetiche_formats::Asd;
 use parquet::basic::{Compression, Encoding, ZstdLevel};
 use parquet::schema::types::TypePtr;
 use parquet::{
@@ -16,6 +15,8 @@ use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
+
+use fetiche_formats::Asd;
 
 #[tracing::instrument]
 fn read_data(fname: &str) -> eyre::Result<Vec<Asd>> {
@@ -55,6 +56,9 @@ fn main() -> eyre::Result<()> {
     // Initialise logging early
     //
     let tree = HierarchicalLayer::new(2)
+        .with_ansi(true)
+        .with_thread_names(true)
+        .with_span_retrace(true)
         .with_targets(true)
         .with_verbose_entry(true)
         .with_verbose_exit(true)
