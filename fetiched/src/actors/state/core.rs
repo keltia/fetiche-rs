@@ -41,9 +41,10 @@ impl State {
     ///
     #[tracing::instrument]
     pub fn from(fname: PathBuf) -> Result<Self> {
-        trace!("state::from({:?}", fname);
+        trace!("state::from({:?})", fname);
         let data = fs::read_to_string(fname)?;
         let data: State = serde_json::from_str(&data)?;
+        trace!("data={:?}", data);
         Ok(data)
     }
 }

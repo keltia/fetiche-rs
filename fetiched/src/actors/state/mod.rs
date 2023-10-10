@@ -118,6 +118,7 @@ impl Handler<GetState> for StateActor {
         // Retrieve sub-system tag
         //
         let tag = msg.0;
+        trace!("getting {}", tag);
         let inner = self.inner.read().unwrap();
         match inner.systems.get(&tag) {
             Some(res) => res.to_string(),
