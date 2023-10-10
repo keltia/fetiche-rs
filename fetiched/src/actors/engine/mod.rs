@@ -127,9 +127,9 @@ pub struct EngineActor {
 }
 
 impl EngineActor {
-    #[tracing::instrument]
-    pub fn new(workdir: &PathBuf, bus: &Bus) -> Self {
-        let e = Engine::new(workdir, &bus);
+    #[tracing::instrument(skip(bus))]
+    pub async fn new(workdir: &PathBuf, bus: &Bus) -> Self {
+        let e = Engine::new(workdir, &bus).await;
         EngineActor { e }
     }
 }
@@ -171,9 +171,7 @@ storage "hourly" {
   rotation = "1h"
 }"##;
         let cfg: fetiche_engine::EngineConfig = hcl::from_str(str)?;
-        let e = Engine::from_cfg(&cfg);
-        let e = EngineActor { e };
-        let e = EngineActor::default().start();
+        let e = EngineActor::new(str).await;
 
         let v = e.send(GetVersion).await?;
         assert_eq!(fetiche_engine::version(), v);

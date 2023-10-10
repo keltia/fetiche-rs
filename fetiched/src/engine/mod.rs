@@ -40,7 +40,7 @@ pub use parse::*;
 //pub use state::*;
 pub use task::*;
 
-use crate::{Bus, ConfigActor, Info, List, StateActor, StorageActor, UpdateState};
+use crate::{Bus, ConfigActor, GetState, StateActor, StorageActor, StorageList, UpdateState};
 
 mod database;
 mod job;
@@ -110,7 +110,7 @@ impl Default for EngineState {
 impl Engine {
     /// Create an instance
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(bus))]
     pub async fn new(workdir: &PathBuf, bus: &Bus) -> Self {
         trace!("new engine({:?})", workdir);
 
@@ -129,7 +129,7 @@ impl Engine {
         info!("{} sources loaded.", src.len());
 
         trace!("loading state");
-        let ourstate = if let Ok(state) = state.send(Info::about("engine")).await {
+        let ourstate = if let Ok(state) = state.send(GetState::about("engine")).await {
             info!("state loaded.");
             debug!("state={}", state);
             let s: EngineState = serde_json::from_str(&state).unwrap();
@@ -142,7 +142,7 @@ impl Engine {
         trace!("load storage areas");
         // Register storage areas
         //
-        if let Ok(areas) = store.send(List).await.unwrap() {
+        if let Ok(areas) = store.send(StorageList).await.unwrap() {
             info!("{} areas loaded.", areas.len());
         }
 
@@ -214,15 +214,26 @@ impl Engine {
     pub fn remove_job(&mut self, job: Job) -> Result<()> {
         trace!("grab lock");
 
-        let mut state = self.state.try_write().unwrap();
-        state.remove_job(job.id);
+        // Find the job in queue, remove it and update our state
+        //
+        let mut jobs = self.jobs.try_write().unwrap();
+        let ind = jobs.binary_search(&job.id).unwrap();
+        jobs.remove(ind);
+
+        // Update state
+        //
+        let state = EngineState {
+            next: self.next.load(Ordering::Relaxed),
+            jobs: jobs.clone(),
+        };
+        let state = json!(state).to_string();
 
         // Prevent deadlock by dropping ownership here, must be a better way to handle this
         //
-        drop(state);
+        drop(jobs);
 
         trace!("sync");
-        Ok(self.sync()?)
+        Ok(self.state.do_send(UpdateState::service("engine", state)))
     }
 
     /// Load authentication data
@@ -274,12 +285,6 @@ impl Engine {
     ///
     pub fn sources(&self) -> Arc<Sources> {
         Arc::clone(&self.sources)
-    }
-
-    /// Returns a list of all defined storage areas
-    ///
-    pub fn list_storage(&self) -> Result<String> {
-        self.store.list()
     }
 
     /// Return a description of all supported sources

@@ -25,6 +25,7 @@ const STORAGE_VERSION: usize = 1;
 /// Default configuration file name in workdir
 const STORAGE_FILE: &str = "storage.hcl";
 
+#[derive(Debug)]
 pub struct StorageAreas {
     areas: BTreeMap<String, StorageArea>,
 }
@@ -33,12 +34,12 @@ pub struct StorageAreas {
 
 #[derive(Debug, Message)]
 #[rtype(result = "Result<BTreeMap<String, StorageArea>>")]
-pub struct List;
+pub struct StorageList;
 
-impl Handler<List> for StorageActor {
+impl Handler<StorageList> for StorageActor {
     type Result = Result<BTreeMap<String, StorageArea>>;
 
-    fn handle(&mut self, msg: List, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: StorageList, ctx: &mut Self::Context) -> Self::Result {
         todo!()
     }
 }

@@ -43,14 +43,8 @@ async fn main() -> Result<()> {
 
     // Initialise logging early
     //
-    let fmt = fmt::layer()
-        .with_thread_ids(true)
-        .with_thread_names(true)
-        .with_target(false)
-        .compact();
-
     let tree = HierarchicalLayer::new(2)
-        .with_target(true)
+        .with_targets(true)
         .with_bracketed_fields(true);
 
     // Setup Open Telemetry with Jaeger
@@ -113,16 +107,16 @@ async fn main() -> Result<()> {
     let config = ConfigActor::default().start();
 
     trace!("Starting storage agent");
-    let storage = StorageActor::new(&workdir).start();
+    let store = StorageActor::new(&workdir).start();
 
     trace!("Starting state agent");
     let state = StateActor::new(&workdir).start();
 
     trace!("Creating communication bus");
     let bus = Bus {
-        config,
-        state,
-        storage,
+        config: config.clone(),
+        state: state.clone(),
+        store: store.clone(),
     };
 
     trace!("Init done, serving.");
@@ -130,7 +124,7 @@ async fn main() -> Result<()> {
     // Main agent
 
     trace!("Starting engine");
-    let engine = EngineActor::new(&workdir, &bus).start();
+    let engine = EngineActor::new(&workdir, &bus).await.start();
 
     let r = engine.send(GetVersion).await?;
 
@@ -224,5 +218,5 @@ fn start_daemon(pid: &PathBuf) -> Result<()> {
 
 /// Announce ourselves
 pub(crate) fn version() -> String {
-    format!("{}/{} ({})", NAME, VERSION, fetiche_engine::version(),)
+    format!("{}/{}", NAME, VERSION)
 }

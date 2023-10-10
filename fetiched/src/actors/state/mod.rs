@@ -3,13 +3,9 @@
 //!
 //! API:
 //!
-//! - `Info`
+//! - `GetState`
 //! - `Sync`
-//! - `RegisterState`
 //! - `UpdateState`
-//!
-//! - `AddJob`
-//! - `RemoveJob`
 //!
 
 use std::fs;
@@ -45,6 +41,7 @@ impl Handler<Sync> for StateActor {
 
     /// Lock and save the current state in the default file
     ///
+    #[tracing::instrument(skip(self, _ctx))]
     fn handle(&mut self, _msg: Sync, _ctx: &mut Self::Context) -> Self::Result {
         trace!("state::sync");
         let mut data = self.inner.write().unwrap();
@@ -79,7 +76,8 @@ impl UpdateState {
 impl Handler<UpdateState> for StateActor {
     type Result = Result<()>;
 
-    fn handle(&mut self, msg: UpdateState, ctx: &mut Self::Context) -> Self::Result {
+    #[tracing::instrument(skip(self, _ctx))]
+    fn handle(&mut self, msg: UpdateState, _ctx: &mut Self::Context) -> Self::Result {
         // Retrieve sub-system tag and data
         //
         let tag = msg.0;
@@ -87,8 +85,9 @@ impl Handler<UpdateState> for StateActor {
 
         // Lock & update
         {
-            let mut data = self.inner.write()?;
-            data.systems[&tag] = state.clone();
+            let mut data = self.inner.write().unwrap();
+            dbg!(&data);
+            data.systems.insert(tag, state.clone());
             data.dirty = true;
         }
         Ok(())
@@ -99,23 +98,23 @@ impl Handler<UpdateState> for StateActor {
 ///
 #[derive(Debug, Message)]
 #[rtype(result = "String")]
-pub struct Info(String);
+pub struct GetState(String);
 
-impl Info {
+impl GetState {
     /// Helper constructor
     ///
     pub fn about(tag: &str) -> Self {
-        Info(tag.to_string())
+        GetState(tag.to_string())
     }
 }
 
-impl Handler<Info> for StateActor {
+impl Handler<GetState> for StateActor {
     type Result = String;
 
     /// Return a subset of the current state
     ///
     #[tracing::instrument(skip(self, _ctx))]
-    fn handle(&mut self, msg: Info, _ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: GetState, _ctx: &mut Self::Context) -> Self::Result {
         // Retrieve sub-system tag
         //
         let tag = msg.0;
@@ -169,23 +168,5 @@ impl StateActor {
     ///
     pub fn state_file(&self) -> PathBuf {
         self.workdir.join(STATE_FILE)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[actix_rt::test]
-    async fn test_actor_state_info() -> Result<()> {
-        let workdir = std::env::temp_dir();
-        let s = StateActor::new(&workdir).start();
-
-        // We started fresh
-        let si = s.send(Info).await?;
-        assert!(si.is_ok());
-        let si = si.unwrap();
-        assert_eq!(workdir, PathBuf::from(&si.workdir));
-        assert_eq!(0, si.len);
-        dbg!(&si);
-        Ok(())
     }
 }
