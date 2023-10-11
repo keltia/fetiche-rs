@@ -14,10 +14,7 @@ use tabled::builder::Builder;
 use tabled::settings::Style;
 use tracing::{debug, trace};
 
-/// This is the part describing the available storage areas
-///
-#[derive(Clone, Debug)]
-pub struct Storage(BTreeMap<String, StorageArea>);
+use crate::StorageAreas;
 
 /// We define a `Store` enum, describing storage areas like a directory or an S3
 /// bucket (from an actual AWS account or a Garage instance).
@@ -61,7 +58,7 @@ impl Default for Threshold {
     }
 }
 
-impl Storage {
+impl StorageAreas {
     /// Register all areas from a config struct read from `engine.hcl`
     ///
     #[tracing::instrument]
@@ -101,7 +98,7 @@ impl Storage {
             }
         }
         debug!("b={:?}", b);
-        Storage(b)
+        StorageAreas { areas: b }
     }
 
     /// Returns a nice table with all options
@@ -112,7 +109,7 @@ impl Storage {
         let mut builder = Builder::default();
         builder.set_header(header);
 
-        self.0.iter().for_each(|(n, s)| {
+        self.areas.iter().for_each(|(n, s)| {
             let mut row = vec![];
             let name = n.clone();
             let area = s.clone();
@@ -138,17 +135,17 @@ impl Storage {
     /// Return the number of storage areas
     ///
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.areas.len()
     }
 
     /// Check whether it is empty or not
     ///
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.areas.is_empty()
     }
 
     pub fn insert<T: Into<String>>(&mut self, key: T, val: StorageArea) -> Option<StorageArea> {
-        self.0.insert(key.into(), val)
+        self.areas.insert(key.into(), val)
     }
 }
 

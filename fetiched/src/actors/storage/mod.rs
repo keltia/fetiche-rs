@@ -25,7 +25,9 @@ const STORAGE_VERSION: usize = 1;
 /// Default configuration file name in workdir
 const STORAGE_FILE: &str = "storage.hcl";
 
-#[derive(Debug)]
+/// This is the part describing the available storage areas
+///
+#[derive(Clone, Debug)]
 pub struct StorageAreas {
     areas: BTreeMap<String, StorageArea>,
 }
@@ -33,14 +35,15 @@ pub struct StorageAreas {
 // ----- Messages
 
 #[derive(Debug, Message)]
-#[rtype(result = "Result<BTreeMap<String, StorageArea>>")]
+#[rtype(result = "Result<StorageAreas>")]
 pub struct StorageList;
 
 impl Handler<StorageList> for StorageActor {
-    type Result = Result<BTreeMap<String, StorageArea>>;
+    type Result = Result<StorageAreas>;
 
-    fn handle(&mut self, msg: StorageList, ctx: &mut Self::Context) -> Self::Result {
-        todo!()
+    #[tracing::instrument(skip(self, _ctx))]
+    fn handle(&mut self, _msg: StorageList, _ctx: &mut Self::Context) -> Self::Result {
+        Ok(self.areas.clone())
     }
 }
 
@@ -79,7 +82,7 @@ struct StorageConfig {
 #[derive(Debug)]
 pub struct StorageActor {
     /// Storage areas
-    pub areas: Storage,
+    pub areas: StorageAreas,
     /// Open files
     pub ofiles: Vec<File>,
 }
@@ -102,7 +105,7 @@ impl StorageActor {
             panic!("Bad version in {:?}: {} required.", fname, STORAGE_VERSION);
         }
 
-        let areas = Storage::register(&cfg.storage);
+        let areas = StorageAreas::register(&cfg.storage);
         trace!("{} areas loaded", areas.len());
         Self {
             areas,

@@ -18,8 +18,9 @@ use chrono::Utc;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{info, trace};
+use tracing::{debug, info, trace};
 
+use crate::System;
 pub use core::*;
 
 mod core;
@@ -44,20 +45,7 @@ impl Handler<Sync> for StateActor {
     #[tracing::instrument(skip(self, _ctx))]
     fn handle(&mut self, _msg: Sync, _ctx: &mut Self::Context) -> Self::Result {
         trace!("state::sync");
-        let mut data = self.inner.write().unwrap();
-        if data.dirty {
-            *data = State {
-                version: STATE_VERSION,
-                tm: Utc::now().timestamp(),
-                dirty: false,
-                systems: data.systems.clone(),
-            };
-            let content = json!(*data).to_string();
-            Ok(fs::write(self.state_file(), content)?)
-        } else {
-            trace!("Dirty not set");
-            Ok(())
-        }
+        self.sync()
     }
 }
 
@@ -65,10 +53,10 @@ impl Handler<Sync> for StateActor {
 ///
 #[derive(Debug, Message)]
 #[rtype(result = "Result<()>")]
-pub struct UpdateState(pub String, pub String);
+pub struct UpdateState(String, String);
 
 impl UpdateState {
-    pub fn service(tag: &str, data: String) -> Self {
+    pub fn service(tag: System, data: String) -> Self {
         Self(tag.to_string(), data.clone())
     }
 }
@@ -103,7 +91,7 @@ pub struct GetState(String);
 impl GetState {
     /// Helper constructor
     ///
-    pub fn about(tag: &str) -> Self {
+    pub fn about(tag: System) -> Self {
         GetState(tag.to_string())
     }
 }
@@ -122,7 +110,7 @@ impl Handler<GetState> for StateActor {
         let inner = self.inner.read().unwrap();
         match inner.systems.get(&tag) {
             Some(res) => res.to_string(),
-            None => panic!("empty state"),
+            None => "".to_string(),
         }
     }
 }
@@ -159,9 +147,30 @@ impl StateActor {
         trace!("Loading state from {:?}.", file);
 
         let state = State::from(file).unwrap_or(State::new());
+        debug!("state={:?}", state);
         Self {
             workdir: workdir.to_owned(),
             inner: Arc::new(RwLock::new(state)),
+        }
+    }
+
+    /// Does the actual sync to disk
+    ///
+    #[tracing::instrument(skip(self))]
+    pub fn sync(&mut self) -> Result<()> {
+        let mut data = self.inner.write().unwrap();
+        if data.dirty {
+            *data = State {
+                version: STATE_VERSION,
+                tm: Utc::now().timestamp(),
+                dirty: false,
+                systems: data.systems.clone(),
+            };
+            let content = json!(*data).to_string();
+            Ok(fs::write(self.state_file(), content)?)
+        } else {
+            trace!("Dirty not set");
+            Ok(())
         }
     }
 

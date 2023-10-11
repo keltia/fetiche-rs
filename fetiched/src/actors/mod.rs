@@ -1,4 +1,5 @@
 use actix::Addr;
+use strum::{EnumString, EnumVariantNames};
 
 pub use config::*;
 pub use engine::*;
@@ -21,6 +22,17 @@ pub struct Bus {
     pub state: Addr<StateActor>,
     /// Storage management agent
     pub store: Addr<StorageActor>,
+}
+
+/// Current registered sub-systems
+///
+#[derive(Debug, EnumString, strum::Display, EnumVariantNames)]
+#[strum(serialize_all = "lowercase")]
+pub enum System {
+    Config,
+    Engine,
+    State,
+    Storage,
 }
 
 /// Macro to generate boilerplate code for non-builtin structs.
