@@ -50,14 +50,13 @@ impl Store {
     /// path as path/ID
     ///
     #[tracing::instrument]
-    pub fn new(path: &str, id: usize) -> Self {
-        trace!("store::new({})", path);
+    pub fn new(base: &str, id: usize) -> Self {
+        trace!("store::new({})", base);
 
         // We want to have `path/current` pointing to `path/ID`
         //
         let id = format!("{id}");
-        let base = path.clone();
-        let path: PathBuf = makepath!(path, &id);
+        let path: PathBuf = makepath!(&base, &id);
 
         // Base is PATH/ID/
         //
