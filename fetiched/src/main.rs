@@ -22,7 +22,7 @@ use tracing_tree::HierarchicalLayer;
 
 use fetiched::{
     Bus, ConfigActor, ConfigKeys, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param,
-    StateActor, StorageActor, Submit,
+    StateActor, StorageActor, Submit, Sync,
 };
 
 use crate::cli::{Opts, SubCommand};
@@ -92,8 +92,7 @@ async fn main() -> Result<()> {
     }
 
     if opts.debug {
-        info!("Debug mode, no detaching.");
-        let pid = std::process::id();
+        info!("Debug mode, no detaching, PID={}", std::process::id());
     } else {
         #[cfg(unix)]
         if let Err(err) = start_daemon(&pid_file) {
@@ -125,6 +124,8 @@ async fn main() -> Result<()> {
 
     trace!("Starting engine");
     let engine = EngineActor::new(&workdir, &bus).await.start();
+
+    state.do_send(Sync);
 
     let r = engine.send(GetVersion).await?;
 
