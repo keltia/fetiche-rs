@@ -17,7 +17,7 @@ use tokio::time::sleep;
 use tracing::error;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 use fetiched::{
@@ -49,8 +49,11 @@ async fn main() -> Result<()> {
 
     // Setup Open Telemetry with Jaeger
     //
-    let tracer =
-        opentelemetry_jaeger::new_agent_pipeline().install_batch(opentelemetry::runtime::Tokio)?;
+    let tracer = opentelemetry_jaeger::new_agent_pipeline()
+        .with_auto_split_batch(true)
+        .with_max_packet_size(9_216)
+        .with_service_name(NAME)
+        .install_batch(opentelemetry::runtime::Tokio)?;
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
@@ -182,6 +185,8 @@ async fn main() -> Result<()> {
     sleep(Duration::from_secs(10)).await;
 
     trace!("Finished.");
+    state.do_send(Sync);
+
     if !opts.debug {
         let _ = fs::remove_file(&pid_file).await;
     }
