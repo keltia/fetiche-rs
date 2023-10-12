@@ -30,7 +30,7 @@ use home::home_dir;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use strum::EnumString;
-use tracing::{debug, info, trace};
+use tracing::{debug, info, trace, warn};
 
 pub use database::*;
 use fetiche_formats::Format;
@@ -40,7 +40,9 @@ pub use parse::*;
 //pub use state::*;
 pub use task::*;
 
-use crate::{Bus, ConfigActor, GetState, StateActor, StorageActor, StorageList, UpdateState};
+use crate::{
+    Bus, ConfigActor, GetState, StateActor, StorageActor, StorageList, Sync, System, UpdateState,
+};
 
 mod database;
 mod job;
@@ -129,15 +131,23 @@ impl Engine {
         info!("{} sources loaded.", src.len());
 
         trace!("loading state");
-        let ourstate = if let Ok(state) = state.send(GetState::about("engine")).await {
-            info!("state loaded.");
-            debug!("state={}", state);
-            let s: EngineState = serde_json::from_str(&state).unwrap();
-            s
+        let ourstate = if let Ok(state) = state.send(GetState::about(System::Engine)).await {
+            match serde_json::from_str(&state) {
+                Ok(state) => {
+                    info!("state loaded.");
+                    state
+                }
+                _ => {
+                    warn!("empty state");
+                    EngineState::default()
+                }
+            }
         } else {
             EngineState::default()
         };
         debug!("engine={:?}", ourstate);
+
+        state.do_send(Sync);
 
         trace!("load storage areas");
         // Register storage areas
@@ -165,7 +175,10 @@ impl Engine {
         //
         let _ = engine
             .state
-            .send(UpdateState::service("engine", json!(ourstate).to_string()))
+            .send(UpdateState::service(
+                System::Engine,
+                json!(ourstate).to_string(),
+            ))
             .await
             .expect("can not UpdateState");
 
@@ -203,7 +216,8 @@ impl Engine {
 
         trace!("create_job with id: {}", nextid);
 
-        self.state.do_send(UpdateState::service("engine", state));
+        self.state
+            .do_send(UpdateState::service(System::Engine, state));
 
         job
     }
@@ -233,7 +247,9 @@ impl Engine {
         drop(jobs);
 
         trace!("sync");
-        Ok(self.state.do_send(UpdateState::service("engine", state)))
+        Ok(self
+            .state
+            .do_send(UpdateState::service(System::Engine, state)))
     }
 
     /// Load authentication data
