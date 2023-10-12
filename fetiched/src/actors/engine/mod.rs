@@ -40,8 +40,8 @@ impl Handler<GetStatus> for EngineActor {
 
     /// Return the current status of the engine
     ///
-    #[tracing::instrument(skip(self, msg))]
-    fn handle(&mut self, msg: GetStatus, _: &mut Self::Context) -> Self::Result {
+    #[tracing::instrument(skip(self))]
+    fn handle(&mut self, _msg: GetStatus, _: &mut Self::Context) -> Self::Result {
         info!("{} {}", "EngineActor", version());
 
         EngineStatus {
@@ -60,8 +60,8 @@ impl Handler<GetVersion> for EngineActor {
 
     /// Return a string representing the engine version
     ///
-    #[tracing::instrument(skip(self, msg))]
-    fn handle(&mut self, msg: GetVersion, _: &mut Self::Context) -> Self::Result {
+    #[tracing::instrument(skip(self))]
+    fn handle(&mut self, _msg: GetVersion, _: &mut Self::Context) -> Self::Result {
         version()
     }
 }
