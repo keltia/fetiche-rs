@@ -14,7 +14,7 @@ use log::trace;
 use std::path::PathBuf;
 use tracing::info;
 
-use crate::{engine, parse_job, response_for, version, Bus, Cmds, Engine};
+use crate::{engine, parse_job, response_for, version, Bus, Cmds, Engine, Sync};
 
 // ---- Commands
 
@@ -113,6 +113,12 @@ impl Handler<Submit> for EngineActor {
         let _ = job.run(&mut data);
 
         let res = String::from_utf8(data).unwrap();
+
+        trace!("Remove job({})", job.id);
+        self.e.remove_job(job);
+
+        trace!("Sync.");
+        let _ = self.e.state.do_send(Sync);
 
         trace!("handle:res={}", res);
         res

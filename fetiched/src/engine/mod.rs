@@ -205,7 +205,7 @@ impl Engine {
         // Update state
         //
         let state = EngineState {
-            next: nextid,
+            next: self.next.load(Ordering::SeqCst),
             jobs: jobs.clone(),
         };
         let state = json!(state).to_string();
@@ -224,7 +224,7 @@ impl Engine {
 
     /// Remove a job
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn remove_job(&mut self, job: Job) -> Result<()> {
         trace!("grab lock");
 
@@ -241,6 +241,7 @@ impl Engine {
             jobs: jobs.clone(),
         };
         let state = json!(state).to_string();
+        debug!("{}", state);
 
         // Prevent deadlock by dropping ownership here, must be a better way to handle this
         //

@@ -72,12 +72,10 @@ impl Handler<UpdateState> for StateActor {
         let state = msg.1;
 
         // Lock & update
-        {
-            let mut data = self.inner.write().unwrap();
-            dbg!(&data);
-            data.systems.insert(tag, state.clone());
-            data.dirty = true;
-        }
+        let mut data = self.inner.write().unwrap();
+        data.systems.insert(tag, state.clone());
+        data.dirty = true;
+        dbg!(&data);
         Ok(())
     }
 }
