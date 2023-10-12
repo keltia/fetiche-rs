@@ -2,6 +2,7 @@
 //!
 
 use std::collections::BTreeMap;
+use std::env::set_current_dir;
 use std::fs;
 use std::path::PathBuf;
 
@@ -93,7 +94,7 @@ impl StorageActor {
         trace!("storageactor::new");
 
         let fname = workdir.join(STORAGE_FILE);
-        let data = fs::read_to_string(PathBuf::from(&fname)).unwrap();
+        let data = fs::read_to_string(&fname).unwrap();
         let cfg: StorageConfig = match hcl::from_str(&data) {
             Ok(cfg) => cfg,
             Err(e) => {
@@ -104,6 +105,11 @@ impl StorageActor {
         if cfg.version != STORAGE_VERSION {
             panic!("Bad version in {:?}: {} required.", fname, STORAGE_VERSION);
         }
+
+        // Move ourselves there
+        //
+        trace!("workdir={:?}", workdir);
+        let _ = set_current_dir(&workdir);
 
         let areas = StorageAreas::register(&cfg.storage);
         trace!("{} areas loaded", areas.len());

@@ -72,10 +72,12 @@ impl StorageAreas {
                 // Local directory
                 //
                 StorageArea::Directory { path, rotation } => {
+                    trace!("Checking {:?}", path);
                     if !path.exists() {
-                        std::fs::create_dir_all(path).unwrap_or_else(|_| {
+                        std::fs::create_dir_all(&path).unwrap_or_else(|_| {
                             panic!("storage::init::create_dir_all failed: {:?}", path)
                         });
+                        trace!("{:?} created", path);
                     }
                     b.insert(
                         name.to_string(),
@@ -88,11 +90,13 @@ impl StorageAreas {
                 // Future cache support
                 //
                 StorageArea::Cache { url } => {
+                    trace!("Checking {}", url);
                     b.insert(name.to_string(), StorageArea::Cache { url: url.clone() });
                 }
                 // S3 support
                 //
                 StorageArea::S3 { addr, bucket } => {
+                    trace!("Checking {}/{}", addr, bucket);
                     unimplemented!()
                 }
             }
