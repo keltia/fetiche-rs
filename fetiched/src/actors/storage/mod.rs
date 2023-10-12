@@ -2,9 +2,11 @@
 //!
 
 use std::collections::BTreeMap;
+use std::env::set_current_dir;
 use std::fs;
 use std::path::PathBuf;
 
+use actix::dev::{MessageResponse, OneshotSender};
 use actix::prelude::*;
 use actix::{Actor, Context, Message};
 use eyre::Result;
@@ -14,6 +16,8 @@ use tracing::{info, trace};
 
 pub use core::*;
 
+use crate::response_for;
+
 mod core;
 
 /// Configuration file version
@@ -22,11 +26,29 @@ const STORAGE_VERSION: usize = 1;
 /// Default configuration file name in workdir
 const STORAGE_FILE: &str = "storage.hcl";
 
+/// This is the part describing the available storage areas
+///
+#[derive(Clone, Debug)]
+pub struct StorageAreas {
+    areas: BTreeMap<String, StorageArea>,
+}
+
 // ----- Messages
 
 #[derive(Debug, Message)]
-#[rtype(result = "Result<String>")]
+#[rtype(result = "Result<StorageAreas>")]
 pub struct StorageList;
+
+impl Handler<StorageList> for StorageActor {
+    type Result = Result<StorageAreas>;
+
+    #[tracing::instrument(skip(self, _ctx))]
+    fn handle(&mut self, _msg: StorageList, _ctx: &mut Self::Context) -> Self::Result {
+        Ok(self.areas.clone())
+    }
+}
+
+response_for!(StorageAreas);
 
 #[derive(Debug, Message)]
 #[rtype(result = "Result<()>")]
@@ -51,7 +73,7 @@ pub struct StreamFile;
 // ----- Actor
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct StorageConfig {
+struct StorageConfig {
     /// Usual check for malformed file
     pub version: usize,
     /// List of storage types
@@ -61,7 +83,7 @@ pub struct StorageConfig {
 #[derive(Debug)]
 pub struct StorageActor {
     /// Storage areas
-    pub areas: Storage,
+    pub areas: StorageAreas,
     /// Open files
     pub ofiles: Vec<File>,
 }
@@ -72,7 +94,7 @@ impl StorageActor {
         trace!("storageactor::new");
 
         let fname = workdir.join(STORAGE_FILE);
-        let data = fs::read_to_string(PathBuf::from(&fname)).unwrap();
+        let data = fs::read_to_string(&fname).unwrap();
         let cfg: StorageConfig = match hcl::from_str(&data) {
             Ok(cfg) => cfg,
             Err(e) => {
@@ -84,7 +106,12 @@ impl StorageActor {
             panic!("Bad version in {:?}: {} required.", fname, STORAGE_VERSION);
         }
 
-        let areas = Storage::register(&cfg.storage);
+        // Move ourselves there
+        //
+        trace!("workdir={:?}", workdir);
+        let _ = set_current_dir(&workdir);
+
+        let areas = StorageAreas::register(&cfg.storage);
         trace!("{} areas loaded", areas.len());
         Self {
             areas,

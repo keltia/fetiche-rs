@@ -3,27 +3,24 @@
 //!
 //! API:
 //!
-//! - `Info`
+//! - `GetState`
 //! - `Sync`
-//! - `RegisterState`
 //! - `UpdateState`
-//!
-//! - `AddJob`
-//! - `RemoveJob`
 //!
 
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
-use actix::dev::{MessageResponse, OneshotSender};
+use actix::dev::MessageResponse;
 use actix::{Actor, Context, Handler, Message};
 use chrono::Utc;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{info, trace};
+use tracing::{debug, info, trace};
 
+use crate::System;
 pub use core::*;
 
 mod core;
@@ -45,20 +42,10 @@ impl Handler<Sync> for StateActor {
 
     /// Lock and save the current state in the default file
     ///
+    #[tracing::instrument(skip(self, _ctx))]
     fn handle(&mut self, _msg: Sync, _ctx: &mut Self::Context) -> Self::Result {
         trace!("state::sync");
-        let mut data = self.inner.write().unwrap();
-        if data.dirty {
-            *data = State {
-                tm: Utc::now().timestamp(),
-                last: *data.queue.back().unwrap_or(&1),
-                queue: data.queue.clone(),
-            };
-            let data = json!(*data).to_string();
-            Ok(fs::write(self.state_file(), data)?)
-        } else {
-            trace!("Dirty not set");
-        }
+        self.sync()
     }
 }
 
@@ -68,68 +55,61 @@ impl Handler<Sync> for StateActor {
 #[rtype(result = "Result<()>")]
 pub struct UpdateState(String, String);
 
+impl UpdateState {
+    pub fn service(tag: System, data: String) -> Self {
+        Self(tag.to_string(), data.clone())
+    }
+}
+
 impl Handler<UpdateState> for StateActor {
     type Result = Result<()>;
 
-    fn handle(&mut self, msg: UpdateState, ctx: &mut Self::Context) -> Self::Result {
+    #[tracing::instrument(skip(self, _ctx))]
+    fn handle(&mut self, msg: UpdateState, _ctx: &mut Self::Context) -> Self::Result {
         // Retrieve sub-system tag and data
         //
         let tag = msg.0;
         let state = msg.1;
 
         // Lock & update
-        {
-            let mut data = self.inner.write()?;
-            data.state[tag] = state.clone();
-            data.dirty = true;
-        }
+        let mut data = self.inner.write().unwrap();
+        data.systems.insert(tag, state.clone());
+        data.dirty = true;
+        dbg!(&data);
         Ok(())
     }
 }
 
-/// Request information about the current state
+/// Request information about the current state, state is per sub-system
 ///
 #[derive(Debug, Message)]
-#[rtype(result = "Result<StateInfo>")]
-pub struct Info;
+#[rtype(result = "String")]
+pub struct GetState(String);
 
-#[derive(Debug)]
-pub struct StateInfo {
-    /// Homedir
-    pub workdir: PathBuf,
-    /// Last sync
-    pub tm: i64,
-    /// Number of currently held state
-    pub len: usize,
-}
-
-impl<A, M> MessageResponse<A, M> for StateInfo
-where
-    A: Actor,
-    M: Message<Result = StateInfo>,
-{
-    #[tracing::instrument(skip(self, _ctx))]
-    fn handle(self, _ctx: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
-        if let Some(tx) = tx {
-            let _ = tx.send(self);
-        }
+impl GetState {
+    /// Helper constructor
+    ///
+    pub fn about(tag: System) -> Self {
+        GetState(tag.to_string())
     }
 }
 
-impl Handler<Info> for StateActor {
-    type Result = Result<StateInfo>;
+impl Handler<GetState> for StateActor {
+    type Result = String;
 
     /// Return a subset of the current state
     ///
     #[tracing::instrument(skip(self, _ctx))]
-    fn handle(&mut self, msg: Info, _ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: GetState, _ctx: &mut Self::Context) -> Self::Result {
+        // Retrieve sub-system tag
+        //
+        let tag = msg.0;
+        trace!("getting {}", tag);
         let inner = self.inner.read().unwrap();
-
-        Ok(StateInfo {
-            workdir: self.workdir.clone(),
-            tm: inner.tm,
-            len: inner.state.len(),
-        })
+        match inner.systems.get(&tag) {
+            Some(res) => res.to_string(),
+            None => "".to_string(),
+        }
     }
 }
 
@@ -165,9 +145,30 @@ impl StateActor {
         trace!("Loading state from {:?}.", file);
 
         let state = State::from(file).unwrap_or(State::new());
+        debug!("state={:?}", state);
         Self {
             workdir: workdir.to_owned(),
             inner: Arc::new(RwLock::new(state)),
+        }
+    }
+
+    /// Does the actual sync to disk
+    ///
+    #[tracing::instrument(skip(self))]
+    pub fn sync(&mut self) -> Result<()> {
+        let mut data = self.inner.write().unwrap();
+        if data.dirty {
+            *data = State {
+                version: STATE_VERSION,
+                tm: Utc::now().timestamp(),
+                dirty: false,
+                systems: data.systems.clone(),
+            };
+            let content = json!(*data).to_string();
+            Ok(fs::write(self.state_file(), content)?)
+        } else {
+            trace!("Dirty not set");
+            Ok(())
         }
     }
 
@@ -175,23 +176,5 @@ impl StateActor {
     ///
     pub fn state_file(&self) -> PathBuf {
         self.workdir.join(STATE_FILE)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[actix_rt::test]
-    async fn test_actor_state_info() -> Result<()> {
-        let workdir = std::env::temp_dir();
-        let s = StateActor::new(&workdir).start();
-
-        // We started fresh
-        let si = s.send(Info).await?;
-        assert!(si.is_ok());
-        let si = si.unwrap();
-        assert_eq!(workdir, PathBuf::from(&si.workdir));
-        assert_eq!(0, si.len);
-        dbg!(&si);
-        Ok(())
     }
 }

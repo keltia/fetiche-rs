@@ -19,36 +19,35 @@ use std::convert::Into;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::Receiver;
 use std::sync::{Arc, RwLock};
-use std::thread;
 use std::thread::JoinHandle;
-use std::time::Duration;
 
 use actix::prelude::*;
 use eyre::Result;
 #[cfg(unix)]
 use home::home_dir;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use strum::EnumString;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 pub use database::*;
 use fetiche_formats::Format;
 pub use fetiche_sources::{makepath, Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
 pub use job::*;
 pub use parse::*;
-pub use state::*;
-pub use storage::*;
+//pub use state::*;
 pub use task::*;
 
-use crate::{ConfigActor, StorageActor, StorageList};
+use crate::{
+    Bus, ConfigActor, GetState, StateActor, StorageActor, StorageList, Sync, System, UpdateState,
+};
 
 mod database;
 mod job;
 mod parse;
-mod state;
-mod storage;
+//mod state;
 mod task;
 
 /// Engine signature
@@ -70,133 +69,120 @@ const ENGINE_VERSION: usize = 2;
 /// Tick is every 30s
 const TICK: u64 = 30;
 
-/// An `Engine` instance has a command channel for commands.
-///
-#[derive(Clone, Debug, strum::Display, EnumString)]
-pub enum EngineCtrl {
-    Start,
-    Stop,
-    Sync,
-    List,
-}
-
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
 #[derive(Clone, Debug)]
 pub struct Engine {
     /// Addr of `ConfigActor`
     config: Addr<ConfigActor>,
-    /// Command channel
-    pub ctrl: Sender<EngineCtrl>,
+    /// State management agent
+    pub state: Addr<StateActor>,
+    /// Storage area for long running jobs
+    pub store: Addr<StorageActor>,
+    //
     /// Next job ID
     pub next: Arc<AtomicUsize>,
     /// Main area where state is saved (PID, jobs, etc.)
     pub home: Arc<PathBuf>,
     /// Sources
     pub sources: Arc<Sources>,
-    /// Storage area for long running jobs
-    pub store: Addr<StorageActor>,
-    /// Current state
-    pub state: Arc<RwLock<State>>,
     /// Job Queue
     pub jobs: Arc<RwLock<VecDeque<usize>>>,
+}
+
+/// This is the struct that gets sent over to the state actor for sync.
+///
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct EngineState {
+    /// Next job ID
+    pub next: usize,
+    /// Job Queue
+    pub jobs: VecDeque<usize>,
+}
+
+impl Default for EngineState {
+    fn default() -> Self {
+        Self {
+            next: 0,
+            jobs: VecDeque::new(),
+        }
+    }
 }
 
 impl Engine {
     /// Create an instance
     ///
-    #[tracing::instrument]
-    pub fn new(workdir: &PathBuf, config: &Addr<ConfigActor>, store: Addr<StorageActor>) -> Self {
+    #[tracing::instrument(skip(bus))]
+    pub async fn new(workdir: &PathBuf, bus: &Bus) -> Self {
         trace!("new engine({:?})", workdir);
 
-        trace!("load sources");
+        let state = bus.state.clone();
+        let store = bus.store.clone();
+        let config = bus.config.clone();
 
+        trace!("loading sources");
         // Register sources
         //
         let sources = workdir.join(SOURCES_CONFIG);
-        let src = match Sources::load(&Some(sources)) {
+        let src = match Sources::load(&Some(sources.clone())) {
             Ok(src) => src,
-            Err(e) => panic!("No sources configured in '{sources:?}':{}", e),
+            Err(e) => panic!("No sources configured in '{:?}':{}", sources, e),
         };
-        info!("{} sources loaded", src.len());
+        info!("{} sources loaded.", src.len());
 
         trace!("loading state");
-        if let Ok(state) = state
+        let ourstate = if let Ok(state) = state.send(GetState::about(System::Engine)).await {
+            match serde_json::from_str(&state) {
+                Ok(state) => {
+                    info!("state loaded.");
+                    state
+                }
+                _ => {
+                    warn!("empty state");
+                    EngineState::default()
+                }
+            }
+        } else {
+            EngineState::default()
+        };
+        debug!("engine={:?}", ourstate);
+
+        state.do_send(Sync);
+
         trace!("load storage areas");
         // Register storage areas
         //
-        if let Some(areas) = store.send(StorageList) {
-            info!("{} areas loaded", areas.len());
+        if let Ok(areas) = store.send(StorageList).await.unwrap() {
+            info!("{} areas loaded.", areas.len());
         }
 
         let jobs = VecDeque::<usize>::new();
 
         // Instantiate everything
         //
-        // Control channel first
-        //
-        let (tx, rx) = channel::<EngineCtrl>();
-
-        // tx is not in an Arc because it is clonable
-        //
-        let mut engine = Engine {
+        let engine = Engine {
             config,
-            ctrl: tx,
-            next: Arc::new(AtomicUsize::new(state.last + 1)),
+            state,
+            store,
+            next: Arc::new(AtomicUsize::new(ourstate.next)),
             home: Arc::new(workdir.clone()),
             sources: Arc::new(src),
-            store,
             jobs: Arc::new(RwLock::new(jobs)),
         };
         info!("New Engine loaded");
 
         // Sync immediately, ensuring state is clean
         //
-        engine.sync().expect("can not sync");
-
-        // Launch the control channel thread
-        //
-        trace!("launching controller");
-
-        let e = engine.clone();
-        thread::spawn(move || {
-            while let Ok(msg) = rx.recv() {
-                trace!("engine::controller: command: {}", msg);
-
-                match msg {
-                    EngineCtrl::Sync => match e.sync() {
-                        Ok(_) => (),
-                        Err(e) => error!("engine::controller: sync failed: {}", e.to_string()),
-                    },
-                    _ => (),
-                };
-            }
-        });
-
-        // Launch the sync thread for state
-        //
-        trace!(
-            "launching syncer for {}, every {}s",
-            engine.state_file().to_string_lossy(),
-            TICK
-        );
-
-        let e = engine.clone();
-        thread::spawn(move || loop {
-            if let Err(err) = e.command(EngineCtrl::Sync) {
-                error!("engine::sync failed: {}", err.to_string());
-            }
-            thread::sleep(Duration::from_secs(TICK));
-        });
+        let _ = engine
+            .state
+            .send(UpdateState::service(
+                System::Engine,
+                json!(ourstate).to_string(),
+            ))
+            .await
+            .expect("can not UpdateState");
 
         engine
-    }
-
-    /// Send a command to the engine
-    ///
-    #[tracing::instrument(skip(self))]
-    pub fn command(&self, cmd: EngineCtrl) -> Result<()> {
-        Ok(self.ctrl.send(cmd)?)
     }
 
     /// Create a new job queue
@@ -216,41 +202,55 @@ impl Engine {
         let mut jobs = self.jobs.write().unwrap();
         jobs.push_back(nextid);
 
+        // Update state
+        //
+        let state = EngineState {
+            next: self.next.load(Ordering::SeqCst),
+            jobs: jobs.clone(),
+        };
+        let state = json!(state).to_string();
+
         // Ensure lock goes away
         //
         drop(jobs);
 
-        // Update state
-        //
-        let mut state = self.state.write().unwrap();
-        state.last = nextid;
-        state.queue.push_back(nextid);
-
-        // Ensure lock goes away
-        //
-        drop(state);
-
         trace!("create_job with id: {}", nextid);
-        self.command(EngineCtrl::Sync).expect("can not sync");
+
+        self.state
+            .do_send(UpdateState::service(System::Engine, state));
 
         job
     }
 
     /// Remove a job
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn remove_job(&mut self, job: Job) -> Result<()> {
         trace!("grab lock");
 
-        let mut state = self.state.try_write().unwrap();
-        state.remove_job(job.id);
+        // Find the job in queue, remove it and update our state
+        //
+        let mut jobs = self.jobs.try_write().unwrap();
+        let ind = jobs.binary_search(&job.id).unwrap();
+        jobs.remove(ind);
+
+        // Update state
+        //
+        let state = EngineState {
+            next: self.next.load(Ordering::Relaxed),
+            jobs: jobs.clone(),
+        };
+        let state = json!(state).to_string();
+        debug!("{}", state);
 
         // Prevent deadlock by dropping ownership here, must be a better way to handle this
         //
-        drop(state);
+        drop(jobs);
 
         trace!("sync");
-        Ok(self.sync()?)
+        Ok(self
+            .state
+            .do_send(UpdateState::service(System::Engine, state)))
     }
 
     /// Load authentication data
@@ -278,7 +278,7 @@ impl Engine {
     #[cfg(unix)]
     pub fn config_path() -> PathBuf {
         let homedir = home_dir().unwrap();
-        let def: PathBuf = makepath!(homedir, BASEDIR, "drone-utils");
+        let def: PathBuf = makepath!(homedir, ".config", "drone-utils");
         def
     }
 
@@ -302,18 +302,6 @@ impl Engine {
     ///
     pub fn sources(&self) -> Arc<Sources> {
         Arc::clone(&self.sources)
-    }
-
-    /// Return an `Arc::clone` of the Engine storage areas
-    ///
-    pub fn storage(&self) -> Arc<Storage> {
-        Arc::clone(&self.store)
-    }
-
-    /// Returns a list of all defined storage areas
-    ///
-    pub fn list_storage(&self) -> Result<String> {
-        self.store.list()
     }
 
     /// Return a description of all supported sources

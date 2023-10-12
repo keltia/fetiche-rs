@@ -39,9 +39,17 @@ strum.workspace = true
 tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
+tracing-subscriber.workspace = true
 
 csv = "1.2"
+opentelemetry = { version = "0.20.0", features = ["rt-tokio", "logs", "metrics"] }
+opentelemetry-jaeger = { version = "0.19.0", features = ["rt-tokio"] }
 percent-encoding = "2.2"
+parquet = { version = "47.0", features = ["json", "async", "cli"] }
+parquet_derive = "47.0"
+tokio = { version = "1.32.0", features = ["full"] }
+tracing-tree = { version = "0.2", features = ["time"] }
+tracing-opentelemetry = "0.21.0"
 
 [dev-dependencies]
 rstest.workspace = true

@@ -17,4 +17,5 @@ target/
 # Rest
 *.json
 *.csv
+*.parquet
 data

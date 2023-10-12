@@ -33,7 +33,6 @@ impl Job {
     /// NOTE: No //EOJ
     ///
     #[tracing::instrument]
-    #[inline]
     pub fn new(name: &str) -> Self {
         trace!("Job::new()");
         Self {
@@ -46,7 +45,6 @@ impl Job {
     /// Create job with a specific ID
     ///
     #[tracing::instrument]
-    #[inline]
     pub fn new_with_id(name: &str, id: usize) -> Self {
         trace!("job({}) with id {}", name, id);
         Self {
@@ -58,7 +56,7 @@ impl Job {
 
     /// Add a task to the queue
     ///
-    #[inline]
+    #[tracing::instrument]
     pub fn add(&mut self, t: Box<dyn Runnable>) -> &mut Self {
         trace!("Job::add({t:?}");
         let _ = &self.list.push_back(t);
@@ -78,6 +76,7 @@ impl Job {
     /// By using only channels between all threads, we should avoid any issues with passing something
     /// more complicated like we did with `out`.
     ///
+    #[tracing::instrument(skip(out))]
     pub fn run(&mut self, out: &mut dyn Write) -> Result<()> {
         let span = span!(Level::TRACE, "job::run");
         let _ = span.enter();

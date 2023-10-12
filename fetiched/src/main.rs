@@ -17,11 +17,12 @@ use tokio::time::sleep;
 use tracing::error;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::EnvFilter;
+use tracing_tree::HierarchicalLayer;
 
 use fetiched::{
-    ConfigActor, ConfigKeys, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param,
-    StateActor, StorageActor, Submit,
+    Bus, ConfigActor, ConfigKeys, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param,
+    StateActor, StorageActor, Submit, Sync,
 };
 
 use crate::cli::{Opts, SubCommand};
@@ -42,11 +43,18 @@ async fn main() -> Result<()> {
 
     // Initialise logging early
     //
-    let fmt = fmt::layer()
-        .with_thread_ids(true)
-        .with_thread_names(true)
-        .with_target(false)
-        .compact();
+    let tree = HierarchicalLayer::new(2)
+        .with_targets(true)
+        .with_bracketed_fields(true);
+
+    // Setup Open Telemetry with Jaeger
+    //
+    let tracer = opentelemetry_jaeger::new_agent_pipeline()
+        .with_auto_split_batch(true)
+        .with_max_packet_size(9_216)
+        .with_service_name(NAME)
+        .install_batch(opentelemetry::runtime::Tokio)?;
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
     //
@@ -54,7 +62,11 @@ async fn main() -> Result<()> {
 
     // Combine filter & specific format
     //
-    tracing_subscriber::registry().with(filter).with(fmt).init();
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(tree)
+        .with(telemetry)
+        .init();
     trace!("Logging initialised.");
 
     info!("This is {} starting up…", version());
@@ -83,8 +95,7 @@ async fn main() -> Result<()> {
     }
 
     if opts.debug {
-        info!("Debug mode, no detaching.");
-        let pid = std::process::id();
+        info!("Debug mode, no detaching, PID={}", std::process::id());
     } else {
         #[cfg(unix)]
         if let Err(err) = start_daemon(&pid_file) {
@@ -92,35 +103,37 @@ async fn main() -> Result<()> {
         }
     }
 
+    // System agents
+
     trace!("Starting configuration agent");
     let config = ConfigActor::default().start();
 
     trace!("Starting storage agent");
-    let storage = StorageActor::new(&workdir).start();
+    let store = StorageActor::new(&workdir).start();
 
     trace!("Starting state agent");
     let state = StateActor::new(&workdir).start();
 
-    trace!("Starting engine agent");
-    let engine = EngineActor::new(&workdir, &config, &storage).start();
-
-    trace!("Creating bus");
+    trace!("Creating communication bus");
     let bus = Bus {
-        config,
-        storage,
-        state,
+        config: config.clone(),
+        state: state.clone(),
+        store: store.clone(),
     };
 
     trace!("Init done, serving.");
 
-    let r = match engine.send(GetVersion).await {
-        Ok(res) => res,
-        Err(e) => {
-            error!("dead actor: {}", e.to_string());
-            e.to_string()
-        }
-    };
+    // Main agent
 
+    trace!("Starting engine");
+    let engine = EngineActor::new(&workdir, &bus).await.start();
+
+    state.do_send(Sync);
+
+    let r = engine.send(GetVersion).await?;
+
+    // Register our version
+    //
     config.do_send(ConfigSet {
         name: "fetiche".to_string(),
         value: Param::String(r.clone()),
@@ -172,18 +185,13 @@ async fn main() -> Result<()> {
     sleep(Duration::from_secs(10)).await;
 
     trace!("Finished.");
+    state.do_send(Sync);
+
     if !opts.debug {
         let _ = fs::remove_file(&pid_file).await;
     }
     System::current().stop();
     Ok(())
-}
-
-#[derive(Debug)]
-pub struct Bus {
-    pub config: Addr<ConfigActor>,
-    pub store: Addr<StorageActor>,
-    pub state: Addr<StateActor>,
 }
 
 /// UNIX-specific detach from terminal if -D/--debug is not specified
@@ -216,5 +224,5 @@ fn start_daemon(pid: &PathBuf) -> Result<()> {
 
 /// Announce ourselves
 pub(crate) fn version() -> String {
-    format!("{}/{} ({})", NAME, VERSION, fetiche_engine::version(),)
+    format!("{}/{}", NAME, VERSION)
 }

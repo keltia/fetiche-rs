@@ -14,7 +14,7 @@ use log::trace;
 use std::path::PathBuf;
 use tracing::info;
 
-use crate::{engine, parse_job, version, Cmds, ConfigActor, Engine, StorageActor};
+use crate::{engine, parse_job, response_for, version, Bus, Cmds, Engine, Sync};
 
 // ---- Commands
 
@@ -33,25 +33,15 @@ pub struct EngineStatus {
     pub jobs: usize,
 }
 
-impl<A, M> MessageResponse<A, M> for EngineStatus
-where
-    A: Actor,
-    M: Message<Result = EngineStatus>,
-{
-    fn handle(self, _ctx: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
-        if let Some(tx) = tx {
-            let _ = tx.send(self);
-        }
-    }
-}
+response_for!(EngineStatus);
 
 impl Handler<GetStatus> for EngineActor {
     type Result = EngineStatus;
 
     /// Return the current status of the engine
     ///
-    #[tracing::instrument(skip(self, msg))]
-    fn handle(&mut self, msg: GetStatus, _: &mut Self::Context) -> Self::Result {
+    #[tracing::instrument(skip(self))]
+    fn handle(&mut self, _msg: GetStatus, _: &mut Self::Context) -> Self::Result {
         info!("{} {}", "EngineActor", version());
 
         EngineStatus {
@@ -70,8 +60,8 @@ impl Handler<GetVersion> for EngineActor {
 
     /// Return a string representing the engine version
     ///
-    #[tracing::instrument(skip(self, msg))]
-    fn handle(&mut self, msg: GetVersion, _: &mut Self::Context) -> Self::Result {
+    #[tracing::instrument(skip(self))]
+    fn handle(&mut self, _msg: GetVersion, _: &mut Self::Context) -> Self::Result {
         version()
     }
 }
@@ -124,6 +114,12 @@ impl Handler<Submit> for EngineActor {
 
         let res = String::from_utf8(data).unwrap();
 
+        trace!("Remove job({})", job.id);
+        self.e.remove_job(job);
+
+        trace!("Sync.");
+        let _ = self.e.state.do_send(Sync);
+
         trace!("handle:res={}", res);
         res
     }
@@ -137,9 +133,9 @@ pub struct EngineActor {
 }
 
 impl EngineActor {
-    #[tracing::instrument]
-    pub fn new(workdir: &PathBuf, config: Addr<ConfigActor>, store: Addr<StorageActor>) -> Self {
-        let e = Engine::new(workdir, config, store);
+    #[tracing::instrument(skip(bus))]
+    pub async fn new(workdir: &PathBuf, bus: &Bus) -> Self {
+        let e = Engine::new(workdir, &bus).await;
         EngineActor { e }
     }
 }
@@ -181,9 +177,7 @@ storage "hourly" {
   rotation = "1h"
 }"##;
         let cfg: fetiche_engine::EngineConfig = hcl::from_str(str)?;
-        let e = Engine::from_cfg(&cfg);
-        let e = EngineActor { e };
-        let e = EngineActor::default().start();
+        let e = EngineActor::new(str).await;
 
         let v = e.send(GetVersion).await?;
         assert_eq!(fetiche_engine::version(), v);

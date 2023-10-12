@@ -3,14 +3,14 @@
 //!
 
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::drone::DronePoint;
 use crate::{to_feet, to_knots, Bool, Cat129, Cat21, Position, TodCalculated, DEF_SAC, DEF_SIC};
 
 /// Our input structure from the csv file coming out of the aeroscope as CSV
 ///
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Aeroscope {
     // $1
     #[serde(rename = "aeroscope_id")]
