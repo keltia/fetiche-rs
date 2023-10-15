@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use actix::prelude::*;
+use actix_storage::Storage;
+use actix_storage_dashmap::DashMapStore;
 use clap::Parser;
 use eyre::{eyre, Result};
 use tokio::fs;
@@ -102,6 +104,12 @@ async fn main() -> Result<()> {
             panic!("Can not detach: {}", err.to_string());
         }
     }
+
+    // XXX see issue #26
+    //
+    let dms = DashMapStore::new();
+    let cfg = Storage::build().store(dms).finish();
+    cfg.set("version", &VERSION.to_string()).await;
 
     // System agents
 
