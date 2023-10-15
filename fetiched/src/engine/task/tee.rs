@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use eyre::Result;
 use tracing::trace;
 
-use engine_macros::RunnableDerive;
+use fetiche_macros::RunnableDerive;
 
 use crate::{Runnable, IO};
 

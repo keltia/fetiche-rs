@@ -10,9 +10,10 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::EnvFilter, fmt};
 
 use acutectl::{
-    convert_from_to, fetch_from_site, stream_from_site, Config, ImportSubCommand, ListSubCommand,
-    Opts, SubCommand,
+    convert_from_to, fetch_from_site, stream_from_site, Config, Engine, ImportSubCommand,
+    ListSubCommand, Opts, SubCommand,
 };
+use fetiche_formats::Format;
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");

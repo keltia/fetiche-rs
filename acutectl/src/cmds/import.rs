@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use eyre::Result;
 use tracing::{info, trace};
 
-use fetiche_engine::{Engine, Format};
-use fetiche_formats::{Asd, DronePoint};
+use crate::Engine;
+use fetiche_formats::{Asd, DronePoint, Format};
 
 #[tracing::instrument]
 pub fn import_data(_engine: &Engine, data: &str, _fmt: Format) -> Result<()> {

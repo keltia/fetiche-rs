@@ -4,11 +4,11 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use eyre::{eyre, Result};
+use fetiche_formats::Format;
+use fetiche_sources::{Filter, Flow, Site};
 use tracing::{info, trace};
 
-use fetiche_engine::{Convert, Engine, Fetch, Filter, Flow, Format, Site, Tee};
-
-use crate::FetchOpts;
+use crate::{Convert, Engine, Fetch, FetchOpts};
 
 /// Actual fetching of data from a given site
 ///

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use eyre::{eyre, Result};
 use tracing::trace;
 
-use engine_macros::RunnableDerive;
+use fetiche_macros::RunnableDerive;
 use fetiche_sources::{Filter, Flow, Site, Sources};
 
 use crate::{Runnable, IO};
