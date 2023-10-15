@@ -25,7 +25,7 @@ pub fn runnable(input: TokenStream) -> TokenStream {
 
                 let mut src = self.clone();
                 let h = ::std::thread::spawn(move || {
-                    ::log::trace!("Runnable({})", stringify!(#klass));
+                    ::tracing::trace!("Runnable({})", stringify!(#klass));
 
                     // Add our message
                     //
