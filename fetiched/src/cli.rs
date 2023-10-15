@@ -22,6 +22,9 @@ pub struct Opts {
     /// debug mode (no fork & detach).
     #[clap(short = 'D', long = "debug", default_value = "true")]
     pub debug: bool,
+    /// Demo mode, no interaction
+    #[clap(long)]
+    pub demo: bool,
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
     pub verbose: u8,

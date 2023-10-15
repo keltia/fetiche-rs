@@ -162,28 +162,29 @@ async fn main() -> Result<()> {
         }
     };
 
-    // Mica is a cat = mika wa neko desu
-    //
-    let job = Submit::new("message \"ミカは猫です\"");
+    if opts.demo {
+        // Mica is a nice cat = mika wa umai neko desu
+        //
+        let job = Submit::new("message \"ミカはうまい猫です\"");
 
-    trace!("job = {:?}", job);
+        trace!("job = {:?}", job);
 
-    let res = engine.send(job).await;
+        let res = engine.send(job).await;
 
-    let res = match res {
-        Ok(res) => res,
-        Err(e) => {
-            error!("Can not send: {}", e.to_string());
-            std::process::exit(1);
-        }
-    };
+        let res = match res {
+            Ok(res) => res,
+            Err(e) => {
+                error!("Can not send: {}", e.to_string());
+                std::process::exit(1);
+            }
+        };
 
-    println!("Res = {}", res);
+        println!("Res = {}", res);
 
-    assert_eq!("ミカは猫です", res);
+        assert_eq!("ミカはうまい猫です", res);
 
-    sleep(Duration::from_secs(10)).await;
-
+        sleep(Duration::from_secs(10)).await;
+    }
     trace!("Finished.");
     state.do_send(Sync);
 

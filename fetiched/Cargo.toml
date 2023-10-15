@@ -44,6 +44,9 @@ tracing-tree = { version = "0.2", features = ["time"] }
 tracing-opentelemetry = "0.21.0"
 
 engine-macros = { version = "0", path = "macros" }
+actix-storage = "0.3"
+actix-storage-dashmap = { version = "0.3.0", features = ["actor", "delay-queue"] }
+dashmap = { version = "5.5.3", features = ["rayon", "arbitrary"] }
 
 [target.'cfg(unix)'.dependencies]
 daemonize = "0.5"
