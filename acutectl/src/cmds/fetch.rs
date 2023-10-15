@@ -8,7 +8,7 @@ use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 use tracing::{info, trace};
 
-use crate::{Convert, Engine, Fetch, FetchOpts};
+use crate::{Convert, Engine, Fetch, FetchOpts, Tee};
 
 /// Actual fetching of data from a given site
 ///
