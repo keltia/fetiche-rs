@@ -240,8 +240,8 @@ dependencies = [
  "env_logger 0.10.0",
  "eyre",
  "fetiche-formats",
-    "fetiche-macros",
-    "fetiche-sources",
+ "fetiche-macros",
+ "fetiche-sources",
  "hcl-rs",
  "home",
  "httpmock",
@@ -258,6 +258,7 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
+ "tracing-tree",
  "uuid",
 ]
 
@@ -1559,9 +1560,9 @@ dependencies = [
 name = "fetiche-macros"
 version = "0.1.0"
 dependencies = [
-    "eyre",
-    "quote",
-    "syn 2.0.31",
+ "eyre",
+ "quote",
+ "syn 2.0.31",
 ]
 
 [[package]]
@@ -1616,7 +1617,7 @@ dependencies = [
  "env_logger 0.10.0",
  "eyre",
  "fetiche-formats",
-    "fetiche-macros",
+ "fetiche-macros",
  "fetiche-sources",
  "hcl-rs",
  "home",
@@ -1637,7 +1638,6 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "tracing-tree",
- "uuid",
 ]
 
 [[package]]

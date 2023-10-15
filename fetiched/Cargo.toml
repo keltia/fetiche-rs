@@ -24,6 +24,8 @@ hcl-rs.workspace = true
 home.workspace = true
 log.workspace = true
 nom.workspace = true
+opentelemetry.workspace = true
+opentelemetry-jaeger.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -31,22 +33,19 @@ strum.workspace = true
 tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
+tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
+tracing-tree.workspace = true
 
 actix = "0.13"
 actix-rt = "2.8"
-tmpdir = "1.0"
-tokio = { version = "1", features = ["full"] }
-uuid = { version = "1.3", features = ["v4", "v7"] }
-opentelemetry = { version = "0.20", features = ["rt-tokio", "logs", "metrics"] }
-opentelemetry-jaeger = { version = "0.19", features = ["rt-tokio"] }
-tracing-tree = { version = "0.2", features = ["time"] }
-tracing-opentelemetry = "0.21.0"
-
-fetiche-macros = { version = "0", path = "../macros" }
 actix-storage = "0.3"
 actix-storage-dashmap = { version = "0.3.0", features = ["actor", "delay-queue"] }
 dashmap = { version = "5.5.3", features = ["rayon", "arbitrary"] }
+tmpdir = "1.0"
+tokio = { version = "1", features = ["full"] }
+
+fetiche-macros = { version = "0", path = "../macros" }
 
 [target.'cfg(unix)'.dependencies]
 daemonize = "0.5"

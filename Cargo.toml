@@ -15,6 +15,8 @@ home = "0.5"
 influxdb = { version = "0.7", features = ["derive"] }
 log = { version = "0.4", features = ["serde", "std"] }
 nom = "7"
+opentelemetry = { version = "0.20", features = ["rt-tokio", "logs", "metrics"] }
+opentelemetry-jaeger = { version = "0.19", features = ["rt-tokio"] }
 progress = "0.2"
 reqwest = { version = "0.11", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
 rstest = "0.18"
@@ -26,4 +28,6 @@ strum = { version = "0", features = ["derive"] }
 tabled = "0.14"
 tracing = "0.1"
 tracing-log = { version = "0.1", features = ["env_logger"] }
+tracing-opentelemetry = "0.21.0"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
+tracing-tree = { version = "0.2", features = ["time"] }
