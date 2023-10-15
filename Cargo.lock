@@ -229,7 +229,7 @@ dependencies = [
 
 [[package]]
 name = "acutectl"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "assert_cmd",
  "chrono",
@@ -245,6 +245,7 @@ dependencies = [
  "hcl-rs",
  "home",
  "httpmock",
+ "nom",
  "percent-encoding",
  "progress",
  "quote",
@@ -254,12 +255,12 @@ dependencies = [
  "serde_repr",
  "strum",
  "syn 2.0.31",
+ "tabled",
  "tokio",
  "tracing",
  "tracing-log",
  "tracing-subscriber",
  "tracing-tree",
- "uuid",
 ]
 
 [[package]]
@@ -690,12 +691,6 @@ dependencies = [
  "quote",
  "syn 2.0.31",
 ]
-
-[[package]]
-name = "atomic"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c59bdb34bc650a32731b31bd8f0829cc15d24a708ee31559e0bb34f2bc320cba"
 
 [[package]]
 name = "atomic-waker"
@@ -4216,9 +4211,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.32.0"
+version = "1.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17ed6077ed6cd6c74735e21f37eb16dc3935f96878b1fe961074089cc80893f9"
+checksum = "4f38200e3ef7995e5ef13baec2f432a6da0aa9ac495b2c0e8f3b7eec2c92d653"
 dependencies = [
  "backtrace",
  "bytes",
@@ -4515,16 +4510,6 @@ name = "utf8parse"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
-
-[[package]]
-name = "uuid"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79daa5ed5740825c40b389c5e50312b9c86df53fccd33f281df655642b43869d"
-dependencies = [
- "atomic",
- "getrandom",
-]
 
 [[package]]
 name = "valuable"
