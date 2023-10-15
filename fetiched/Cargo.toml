@@ -1,6 +1,6 @@
 [package]
 name = "fetiched"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "Daemon component of Fetiche."
 
@@ -38,10 +38,10 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 actix = "0.13"
-actix-rt = "2.8"
+actix-rt = "2.9"
 actix-storage = "0.3"
 actix-storage-dashmap = { version = "0.3.0", features = ["actor", "delay-queue"] }
-dashmap = { version = "5.5.3", features = ["rayon", "arbitrary"] }
+dashmap = { version = "5.5", features = ["rayon", "arbitrary"] }
 tmpdir = "1.0"
 tokio = { version = "1", features = ["full"] }
 
