@@ -240,6 +240,8 @@ dependencies = [
  "env_logger 0.10.0",
  "eyre",
  "fetiche-formats",
+    "fetiche-macros",
+    "fetiche-sources",
  "hcl-rs",
  "home",
  "httpmock",
@@ -1429,15 +1431,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "engine-macros"
-version = "0.1.0"
-dependencies = [
- "eyre",
- "quote",
- "syn 2.0.31",
-]
-
-[[package]]
 name = "env_logger"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1563,6 +1556,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fetiche-macros"
+version = "0.1.0"
+dependencies = [
+    "eyre",
+    "quote",
+    "syn 2.0.31",
+]
+
+[[package]]
 name = "fetiche-sources"
 version = "0.11.0"
 dependencies = [
@@ -1611,10 +1613,10 @@ dependencies = [
  "clap",
  "daemonize",
  "dashmap",
- "engine-macros",
  "env_logger 0.10.0",
  "eyre",
  "fetiche-formats",
+    "fetiche-macros",
  "fetiche-sources",
  "hcl-rs",
  "home",

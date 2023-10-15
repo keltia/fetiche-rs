@@ -25,6 +25,7 @@ chrono.workspace = true
 clap.workspace = true
 env_logger.workspace = true
 fetiche-formats.workspace = true
+fetiche-sources.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
 progress.workspace = true
@@ -37,7 +38,7 @@ tracing.workspace = true
 tracing-log.workspace = true
 tracing-subscriber.workspace = true
 
-#async-std = "1.12"
+fetiche-macros = { version = "0", path = "../macros" }
 clap_complete = "4.3"
 csv = "1.2"
 dateparser = "0.2"
