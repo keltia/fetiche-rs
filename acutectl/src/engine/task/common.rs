@@ -11,7 +11,7 @@ use eyre::Result;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::IO;
+use crate::{Runnable, IO};
 
 // -----
 

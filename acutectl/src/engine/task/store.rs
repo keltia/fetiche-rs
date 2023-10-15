@@ -21,7 +21,7 @@ use tracing::trace;
 use fetiche_macros::RunnableDerive;
 use fetiche_sources::makepath;
 
-use crate::IO;
+use crate::{Runnable, IO};
 
 /// Struct describing the data for the `Store` task.
 ///

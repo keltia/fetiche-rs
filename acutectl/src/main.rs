@@ -14,6 +14,7 @@ use acutectl::{
     ListSubCommand, Opts, SubCommand,
 };
 use fetiche_formats::Format;
+use fetiche_sources::{Flow, Site};
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");

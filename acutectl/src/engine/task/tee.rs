@@ -14,8 +14,7 @@ use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::IO;
-
+use crate::{Runnable, IO};
 #[derive(Clone, Debug, RunnableDerive)]
 pub struct Tee {
     io: IO,
