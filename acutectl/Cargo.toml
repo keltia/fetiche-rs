@@ -29,6 +29,8 @@ fetiche-sources.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
 nom.workspace = true
+opentelemetry.workspace = true
+opentelemetry-jaeger.workspace = true
 progress.workspace = true
 reqwest.workspace = true
 serde.workspace = true
@@ -38,8 +40,10 @@ strum.workspace = true
 tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
+tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
+
 
 fetiche-macros = { version = "0", path = "../macros" }
 clap_complete = "4.4"

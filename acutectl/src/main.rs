@@ -6,8 +6,9 @@ use clap::{crate_authors, crate_description, crate_version, CommandFactory, Pars
 use clap_complete::generate;
 use eyre::{eyre, Result};
 use tracing::{info, trace};
+use tracing_subscriber::filter::EnvFilter;
 use tracing_subscriber::prelude::*;
-use tracing_subscriber::{filter::EnvFilter, fmt};
+use tracing_tree::HierarchicalLayer;
 
 use acutectl::{
     convert_from_to, fetch_from_site, stream_from_site, Config, Engine, ImportSubCommand,
@@ -27,13 +28,20 @@ fn main() -> Result<()> {
     let opts = Opts::parse();
     let cfn = opts.config.clone();
 
-    // Initialise logging.
+    // Initialise logging early
     //
-    let fmt = fmt::layer()
-        .with_thread_ids(true)
-        .with_thread_names(true)
-        .with_target(false)
-        .compact();
+    let tree = HierarchicalLayer::new(2)
+        .with_targets(true)
+        .with_bracketed_fields(true);
+
+    // Setup Open Telemetry with Jaeger
+    //
+    let tracer = opentelemetry_jaeger::new_agent_pipeline()
+        .with_auto_split_batch(true)
+        .with_max_packet_size(9_216)
+        .with_service_name(NAME)
+        .install_batch(opentelemetry::runtime::Tokio)?;
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
     //
@@ -41,7 +49,12 @@ fn main() -> Result<()> {
 
     // Combine filter & specific format
     //
-    tracing_subscriber::registry().with(filter).with(fmt).init();
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(tree)
+        .with(telemetry)
+        .init();
+    trace!("Logging initialised.");
 
     // Config only has the credentials for every source now.
     //
