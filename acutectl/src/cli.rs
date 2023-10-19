@@ -38,6 +38,7 @@ use std::path::PathBuf;
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser, ValueEnum};
 use clap_complete::shells::Shell;
+
 use fetiche_formats::Format;
 
 /// CLI options
@@ -121,8 +122,8 @@ pub struct FetchOpts {
     #[clap(long)]
     pub tee: Option<String>,
     /// Do we convert on streaming?
-    #[clap(long)]
-    pub into: Option<String>,
+    #[clap(long, value_parser)]
+    pub into: Option<Format>,
     /// Source name -- (see "list sources")
     pub site: String,
 }

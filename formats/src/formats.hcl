@@ -64,3 +64,10 @@ format "flightaware" {
   source      = "Flightaware"
   url         = "https://flightaware.com/commercial/firehose/documentation/summary"
 }
+
+format "parquet" {
+  type        = "drone"
+  description = "Apache Parquet export for drone data from ASD."
+  source      = "Apache"
+  url         = "https://parquet.apache.org/docs/file-format/"
+}

@@ -28,6 +28,7 @@ pub use avionix::*;
 pub use drone::*;
 pub use flightaware::*;
 pub use opensky::*;
+pub use parquet::*;
 pub use safesky::*;
 
 mod aeroscope;
@@ -37,6 +38,7 @@ mod avionix;
 mod drone;
 mod flightaware;
 mod opensky;
+mod parquet;
 mod safesky;
 
 /// Current formats.hcl version
@@ -92,6 +94,7 @@ pub enum Format {
     Flightaware,
     Opensky,
     PandaStateVector,
+    Parquet,
     Safesky,
 }
 
