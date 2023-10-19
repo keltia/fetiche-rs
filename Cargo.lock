@@ -248,6 +248,8 @@ dependencies = [
  "home",
  "httpmock",
  "nom",
+ "opentelemetry",
+ "opentelemetry-jaeger",
  "percent-encoding",
  "progress",
  "quote",
@@ -261,6 +263,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-log",
+ "tracing-opentelemetry",
  "tracing-subscriber",
  "tracing-tree",
 ]
