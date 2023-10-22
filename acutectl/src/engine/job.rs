@@ -145,6 +145,7 @@ impl Job {
         for msg in output {
             write!(out, "{}", msg)?;
         }
+        trace!("pipe finished.");
         Ok(out.flush()?)
     }
 }

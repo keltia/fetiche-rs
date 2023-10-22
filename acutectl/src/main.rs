@@ -32,6 +32,7 @@ fn main() -> Result<()> {
     //
     let tree = HierarchicalLayer::new(2)
         .with_targets(true)
+        .with_higher_precision(true)
         .with_bracketed_fields(true);
 
     // Setup Open Telemetry with Jaeger
@@ -64,6 +65,7 @@ fn main() -> Result<()> {
     //
     banner()?;
 
+    trace!("Engine starting.");
     // Instantiate Engine
     //
     let mut engine = Engine::new();
@@ -71,6 +73,8 @@ fn main() -> Result<()> {
     // Load auth data
     //
     engine.auth(cfg.site);
+
+    trace!("Engine initialised and running.");
 
     let subcmd = &opts.subcmd;
     handle_subcmd(&mut engine, subcmd)

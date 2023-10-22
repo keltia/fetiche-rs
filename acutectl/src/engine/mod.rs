@@ -62,8 +62,8 @@ const BASEDIR: &str = ".config";
 /// Configuration filename
 const ENGINE_CONFIG: &str = "engine.hcl";
 
-/// FIXME: Current running process ID — this will be handled by `fetiched` when operational
-const ENGINE_PID: &str = "fetiched.pid";
+/// Current running process ID — We have a separate forked engine
+const ENGINE_PID: &str = "acutectl.pid";
 
 /// Configuration file version
 const ENGINE_VERSION: usize = 2;
