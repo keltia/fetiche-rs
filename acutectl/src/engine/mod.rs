@@ -29,6 +29,7 @@ use eyre::Result;
 #[cfg(unix)]
 use home::home_dir;
 use serde::Deserialize;
+use strum::EnumString;
 use tracing::{debug, error, event, info, trace, warn, Level};
 
 pub use config::*;
@@ -39,7 +40,6 @@ pub use job::*;
 pub use parse::*;
 pub use state::*;
 pub use storage::*;
-use strum::EnumString;
 pub use task::*;
 
 mod config;
@@ -53,7 +53,7 @@ mod task;
 /// Engine signature
 ///
 pub fn version() -> String {
-    format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+    format!("{}/{}", "embedded-engine", env!("CARGO_PKG_VERSION"))
 }
 
 #[cfg(unix)]
@@ -180,7 +180,7 @@ impl Engine {
         let pid = std::process::id();
         let basedir: PathBuf = cfg.basedir.clone();
         let pidfile: PathBuf = makepath!(&basedir, ENGINE_PID);
-        fs::write(&pidfile, format!("{pid}")).expect("can not write fetiched.pid");
+        fs::write(&pidfile, format!("{pid}")).expect(&format!("can not write {}", ENGINE_PID));
 
         info!("PID {} written in {:?}", pid, pidfile);
 
@@ -208,7 +208,7 @@ impl Engine {
         //
         let (tx, rx) = channel::<EngineCtrl>();
 
-        // tx is not in an Arc because it is clonable
+        // tx is not in an Arc because it is cloneable
         //
         let mut engine = Engine {
             ctrl: tx,
@@ -310,7 +310,7 @@ impl Engine {
 
     /// Remove a job
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn remove_job(&mut self, job: Job) -> Result<()> {
         trace!("grab lock");
 
@@ -327,12 +327,13 @@ impl Engine {
 
     /// Load authentication data
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn auth(&mut self, db: BTreeMap<String, Auth>) -> &mut Self {
         // Generate a sources list with credentials
         //
         let mut srcs = BTreeMap::<String, Site>::new();
 
+        trace!("Patching db with authentication data");
         self.sources.values().for_each(|site: &Site| {
             let mut s = site.clone();
             if let Some(auth) = db.get(&s.name().unwrap()) {

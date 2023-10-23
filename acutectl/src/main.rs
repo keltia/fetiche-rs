@@ -80,6 +80,7 @@ fn main() -> Result<()> {
     handle_subcmd(&mut engine, subcmd)
 }
 
+#[tracing::instrument(skip(engine))]
 pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
     match subcmd {
         // Handle `fetch site`
@@ -189,8 +190,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         // Standalone `version` command
         //
         SubCommand::Version => {
-            eprintln!("Modules: ");
-            eprintln!("\t{}", engine.version());
+            eprintln!("Modules: \t{}", engine.version());
         }
     }
     Ok(())

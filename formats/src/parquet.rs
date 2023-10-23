@@ -20,9 +20,12 @@ use tracing::{info, trace};
 use crate::version;
 
 #[tracing::instrument(skip(data, out))]
-pub fn into_parquet<T>(data: Vec<T>, out: &mut (dyn Write + Send)) -> Result<()> {
+pub fn into_parquet<T, U>(data: &[U], out: &mut (dyn Write + Send)) -> Result<()>
+where
+    U: RecordWriter<T>,
+{
     trace!("{} records", data.len());
-    let schema: TypePtr = data.as_slice().schema()?;
+    let schema: TypePtr = data.schema()?;
 
     let props = WriterProperties::builder()
         .set_created_by(version())
@@ -34,7 +37,7 @@ pub fn into_parquet<T>(data: Vec<T>, out: &mut (dyn Write + Send)) -> Result<()>
     let mut row_group = writer.next_row_group()?;
 
     trace!("Writing data.");
-    let _ = data.as_slice().write_to_row_group(&mut row_group)?;
+    let _ = data.write_to_row_group(&mut row_group)?;
     trace!("Done.");
 
     Ok(())
