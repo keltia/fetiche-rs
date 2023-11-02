@@ -33,8 +33,8 @@ use strum::{EnumString, EnumVariantNames};
 #[derive(Debug, Deserialize, ParquetRecordWriter, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Avionix {
-    /// UNIX timestamp in milli-secs (u64)
-    pub uti: u64,
+    /// UNIX timestamp in milli-secs (i64)
+    pub uti: i64,
     /// ESRI timestamp e.g. 2015-07-26 07:36:51.657189000
     pub dat: String,
     /// SIC
