@@ -25,7 +25,7 @@ where
     U: RecordWriter<T>,
 {
     trace!("{} records", data.len());
-    let schema: TypePtr = data.schema()?;
+    let schema: TypePtr = data[0].schema()?;
 
     let props = WriterProperties::builder()
         .set_created_by(version())
@@ -37,7 +37,8 @@ where
     let mut row_group = writer.next_row_group()?;
 
     trace!("Writing data.");
-    let _ = data.write_to_row_group(&mut row_group)?;
+    data.iter()
+        .for_each(|line| line.write_to_row_group(&mut row_group).unwrap());
     trace!("Done.");
 
     Ok(())

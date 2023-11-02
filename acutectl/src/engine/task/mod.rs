@@ -5,6 +5,8 @@ use std::collections::BTreeMap;
 
 use eyre::Result;
 use serde::Deserialize;
+use strum::{EnumIter, EnumVariantNames};
+use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
 pub use common::*;
@@ -14,8 +16,6 @@ pub use read::*;
 pub use record::*;
 pub use store::*;
 pub use stream::*;
-use strum::{EnumIter, EnumVariantNames};
-use tabled::{builder::Builder, settings::Style};
 pub use tee::*;
 
 use crate::{Engine, IO};
@@ -33,16 +33,27 @@ mod tee;
 #[derive(Debug, strum::Display, EnumVariantNames, EnumIter, PartialEq)]
 #[strum(serialize_all = "PascalCase")]
 pub enum Cmds {
+    /// Convert into Cat21 data
     Convert,
+    /// Basic raw copy
     Copy,
+    /// Fetch a single dataset
     Fetch,
+    /// Display a message
     Message,
+    /// NOP
     Nothing,
+    /// Read a single file
     Read,
+    /// Save into a database
     Record,
+    /// Save a single dataset
     Save,
+    /// Store datasets into a organised directory
     Store,
+    /// Fetch a stream of data
     Stream,
+    /// Copy data and pass it along
     Tee,
 }
 

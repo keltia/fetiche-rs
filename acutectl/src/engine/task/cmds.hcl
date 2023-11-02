@@ -35,7 +35,7 @@ cmds "read" {
 
 cmds "record" {
   type        = "Consumer"
-  description = "Insert records into a database"
+  description = "Insert records into a database."
 }
 
 cmds "save" {

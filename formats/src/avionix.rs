@@ -5,9 +5,9 @@
 
 use std::fmt::{Display, Formatter};
 
+use parquet_derive::ParquetRecordWriter;
 use serde::{Deserialize, Serialize};
-
-use crate::ICAOString;
+use strum::{EnumString, EnumVariantNames};
 
 /// This format is sent through a CSV file and has the following fields:
 ///
@@ -30,7 +30,7 @@ use crate::ICAOString;
 /// - MPS: MOPS
 /// - NIC: NucP_NIC
 ///
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, ParquetRecordWriter, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Avionix {
     /// UNIX timestamp in milli-secs (u64)
@@ -42,7 +42,7 @@ pub struct Avionix {
     /// SAC
     pub sac: usize,
     /// ICAO 6 byte code for the aircraft
-    pub hex: ICAOString,
+    pub hex: String,
     /// Call-sign
     pub fli: String,
     /// Position latitude
@@ -50,9 +50,9 @@ pub struct Avionix {
     /// Position longitude
     pub lon: f32,
     /// Ground/Airborne status, A=Air, G=Ground
-    pub gda: Gda,
+    pub gda: String,
     /// Source of position, A=ADS-B, M=MLAT (always A in this case)
-    pub src: Src,
+    pub src: String,
     /// Altitude in feet
     pub alt: f32,
     /// Ground speed
@@ -73,7 +73,8 @@ pub struct Avionix {
 
 /// Special enum for airborne status
 ///
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, EnumVariantNames)]
+#[strum(serialize_all = "UPPERCASE")]
 pub enum Gda {
     /// Airborne
     A,
@@ -81,52 +82,12 @@ pub enum Gda {
     G,
 }
 
-impl Display for Gda {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let r = match self {
-            Gda::A => "A",
-            Gda::G => "G",
-        };
-        write!(f, "{}", r)
-    }
-}
-
-impl From<&str> for Gda {
-    fn from(value: &str) -> Self {
-        match value {
-            "A" => Gda::A,
-            "G" => Gda::G,
-            _ => Gda::A,
-        }
-    }
-}
-
 /// Special enum for type of source, always ADS-B for Avionix
 ///
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, EnumVariantNames)]
 pub enum Src {
     /// ADS-B
     A,
     /// MLAT
     M,
-}
-
-impl Display for Src {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let r = match self {
-            Src::A => "ADSB",
-            Src::M => "MLAT",
-        };
-        write!(f, "{}", r)
-    }
-}
-
-impl From<&str> for Src {
-    fn from(value: &str) -> Self {
-        match value {
-            "A" => Src::A,
-            "M" => Src::M,
-            _ => Src::A,
-        }
-    }
 }
