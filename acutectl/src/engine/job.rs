@@ -157,7 +157,8 @@ pub struct Jobs(BTreeMap<String, Job>);
 
 #[cfg(test)]
 mod tests {
-    use crate::{task, Engine, Message, Nothing};
+    use crate::engine::task;
+    use crate::{Engine, Message, Nothing};
 
     use super::*;
 
