@@ -34,6 +34,7 @@ impl Default for Record {
 }
 
 impl Record {
+    #[tracing::instrument]
     pub fn new(fmt: Format, db: String) -> Self {
         Record {
             fmt,
