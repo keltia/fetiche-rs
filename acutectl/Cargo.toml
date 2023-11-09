@@ -31,6 +31,7 @@ home.workspace = true
 nom.workspace = true
 opentelemetry.workspace = true
 opentelemetry-jaeger.workspace = true
+opentelemetry_sdk.workspace = true
 progress.workspace = true
 reqwest.workspace = true
 serde.workspace = true
@@ -57,6 +58,7 @@ quote = "1.0"
 syn = { version = "2.0", features = ["extra-traits"] }
 tokio = { version = "1.33", features = ["full"] }
 log = "0.4.20"
+bytes = "1.4.0"
 
 [dev-dependencies]
 assert_cmd = "2.0"
