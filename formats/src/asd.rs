@@ -43,7 +43,7 @@ pub struct Asd {
     // Altitude, can be either null or negative (?)
     pub altitude: Option<i16>,
     // Distance to ground (estimated every 15s)
-    pub elevation: Option<u32>,
+    pub elevation: Option<i32>,
     // Undocumented
     pub gps: Option<u32>,
     // Signal level (in dB)
