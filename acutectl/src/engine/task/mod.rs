@@ -14,6 +14,7 @@ pub use convert::*;
 pub use fetch::*;
 pub use read::*;
 pub use record::*;
+pub use save::*;
 pub use store::*;
 pub use stream::*;
 pub use tee::*;

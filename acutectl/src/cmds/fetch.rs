@@ -4,11 +4,12 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use eyre::{eyre, Result};
-use fetiche_formats::Format;
-use fetiche_sources::{Filter, Flow, Site};
 use tracing::{info, trace};
 
-use crate::{Convert, Engine, Fetch, FetchOpts, Tee};
+use fetiche_formats::Format;
+use fetiche_sources::{Filter, Flow, Site};
+
+use crate::{Convert, Engine, Fetch, FetchOpts, Save, Tee};
 
 /// Actual fetching of data from a given site
 ///
@@ -53,6 +54,27 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
         let mut convert = Convert::new();
         convert.from(site.format()).into(Format::Cat21);
         job.add(Box::new(convert));
+    };
+
+    // If a final write format is requested, insert a `Save` task
+    //
+    if let Some(write) = &fopts.write {
+        trace!("Write as {}", write);
+        // If this is requested, forbid stdout.
+        //
+        if let None = &fopts.output {
+            panic!("you must specify -o/--output");
+        }
+        if *write != Format::Parquet {
+            panic!("Only parquet supported");
+        }
+        let mut save = Save::new(
+            &fopts.output.as_ref().unwrap().to_string_lossy(),
+            site.format(),
+            Format::Parquet,
+        );
+        save.path(&fopts.output.as_ref().unwrap().to_string_lossy());
+        job.add(Box::new(save));
     };
 
     // Launch it now
