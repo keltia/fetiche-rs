@@ -124,6 +124,9 @@ pub struct FetchOpts {
     /// Do we convert on streaming?
     #[clap(long, value_parser)]
     pub into: Option<Format>,
+    /// Outpout format (if needed, like for parquet)
+    #[clap(long, value_parser)]
+    pub write: Option<Format>,
     /// Source name -- (see "list sources")
     pub site: String,
 }

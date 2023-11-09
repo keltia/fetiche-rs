@@ -41,7 +41,7 @@ fn main() -> Result<()> {
         .with_auto_split_batch(true)
         .with_max_packet_size(9_216)
         .with_service_name(NAME)
-        .install_batch(opentelemetry::runtime::Tokio)?;
+        .install_simple()?;
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment

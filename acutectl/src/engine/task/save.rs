@@ -1,17 +1,27 @@
 //! `Save` is a `Runnable` task as defined in the `engine`  crate.
 //!
+//! This is for saving data into a specific (or not) format like plain file (None) or Parquet.
+//!
 
 use std::fs;
-use std::io::{stdout, Write};
+use std::fs::File;
+use std::io::{stdout, BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
 use eyre::Result;
+use parquet::basic::{Compression, Encoding, ZstdLevel};
+use parquet::schema::types::TypePtr;
+use parquet::{
+    file::{properties::WriterProperties, writer::SerializedFileWriter},
+    record::RecordWriter,
+};
 use tracing::trace;
 
+use fetiche_formats::{Asd, Format};
 use fetiche_macros::RunnableDerive;
 
-use crate::{Runnable, IO};
+use crate::{version, Runnable, IO};
 
 /// The Save task
 ///
@@ -22,7 +32,11 @@ pub struct Save {
     /// name for the task
     pub name: String,
     /// File path
-    pub path: Option<PathBuf>,
+    pub path: Option<String>,
+    /// Input file format
+    pub inp: Format,
+    /// Output file format
+    pub out: Format,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
 }
@@ -31,12 +45,14 @@ impl Save {
     /// Initialize our environment
     ///
     #[tracing::instrument]
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &str, inp: Format, out: Format) -> Self {
         trace!("New Save {}", name);
         Save {
             io: IO::Consumer,
             name: name.to_owned(),
             path: None,
+            inp,
+            out,
             args: "".to_string(),
         }
     }
@@ -45,13 +61,13 @@ impl Save {
     ///
     pub fn path(&mut self, name: &str) -> &mut Self {
         trace!("Add path: {}", name);
-        self.path = Some(PathBuf::from(name));
+        self.path = Some(name.to_string());
         self
     }
 
     /// The heart of the matter: save data
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(data))]
     pub fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
         trace!("Save::execute()");
 
@@ -60,17 +76,51 @@ impl Save {
 
             Ok(write!(stdout(), "{}", data)?)
         } else {
-            let p = self.path.clone().unwrap();
-            trace!("... into {}", p.to_string_lossy());
+            let p = self.path.as_ref().unwrap();
+            trace!("... into {}", p);
 
-            Ok(fs::write(p, &data)?)
+            match self.out {
+                Format::Parquet => match self.inp {
+                    Format::Asd => {
+                        trace!("from asd to parquet");
+
+                        let data: Vec<Asd> = serde_json::from_str(&data)?;
+
+                        let fh = File::create(PathBuf::from(p)).expect("Can not create file");
+                        let pbuf = BufWriter::new(fh);
+
+                        trace!("{} records", data.len());
+                        let schema = data.as_slice().schema()?;
+
+                        let props = WriterProperties::builder()
+                            .set_created_by(version())
+                            .set_encoding(Encoding::PLAIN)
+                            .set_compression(Compression::ZSTD(ZstdLevel::default()))
+                            .build();
+
+                        let mut writer = SerializedFileWriter::new(pbuf, schema, props.into())?;
+                        let mut row_group = writer.next_row_group()?;
+
+                        trace!("Writing data.");
+                        let _ = data.as_slice().write_to_row_group(&mut row_group)?;
+                        trace!("Done.");
+                        let meta = row_group.close()?;
+                    }
+                    _ => unimplemented!(),
+                },
+                _ => {
+                    trace!("raw data");
+                    fs::write(PathBuf::from(p), &data)?
+                }
+            };
+            Ok(())
         }
     }
 }
 
 impl Default for Save {
     fn default() -> Self {
-        Save::new("default")
+        Save::new("default", Format::None, Format::None)
     }
 }
 
