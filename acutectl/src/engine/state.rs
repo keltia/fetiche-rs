@@ -73,6 +73,7 @@ impl Default for State {
 impl Engine {
     /// Returns the path of the default state file in basedir
     ///
+    #[inline]
     pub fn state_file(&self) -> PathBuf {
         self.home.join(STATE_FILE)
     }
