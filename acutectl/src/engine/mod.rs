@@ -17,20 +17,19 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::convert::Into;
 use std::fmt::Debug;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
-use std::time::Duration;
-use std::{fs, thread};
 
 use eyre::Result;
 #[cfg(unix)]
 use home::home_dir;
 use serde::Deserialize;
 use strum::EnumString;
-use tracing::{debug, error, event, info, trace, warn, Level};
+use tracing::{debug, event, info, trace, warn, Level};
 
 pub use config::*;
 pub use database::*;
@@ -226,41 +225,6 @@ impl Engine {
         //
         engine.sync().expect("can not sync");
 
-        // Launch the control channel thread
-        //
-        trace!("launching controller");
-
-        let e = engine.clone();
-        thread::spawn(move || {
-            while let Ok(msg) = rx.recv() {
-                trace!("engine::controller: command: {}", msg);
-
-                match msg {
-                    EngineCtrl::Sync => match e.sync() {
-                        Ok(_) => (),
-                        Err(e) => error!("engine::controller: sync failed: {}", e.to_string()),
-                    },
-                    _ => (),
-                };
-            }
-        });
-
-        // Launch the sync thread for state
-        //
-        trace!(
-            "launching syncer for {}, every {}s",
-            engine.state_file().to_string_lossy(),
-            TICK
-        );
-
-        let e = engine.clone();
-        thread::spawn(move || loop {
-            if let Err(err) = e.command(EngineCtrl::Sync) {
-                error!("engine::sync failed: {}", err.to_string());
-            }
-            thread::sleep(Duration::from_secs(TICK));
-        });
-
         engine
     }
 
@@ -302,8 +266,8 @@ impl Engine {
         //
         drop(state);
 
-        trace!("create_job with id: {}", nextid);
-        self.command(EngineCtrl::Sync).expect("can not sync");
+        trace!("job {} created.", nextid);
+        self.sync().expect("can not sync");
 
         job
     }

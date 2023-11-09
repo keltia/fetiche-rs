@@ -37,7 +37,7 @@ pub struct DronePoint {
     /// Altitude, can be either null or negative (?)
     pub altitude: Option<i16>,
     /// Distance to ground (estimated every 15s)
-    pub elevation: Option<u32>,
+    pub elevation: Option<i32>,
     /// $13 (actually f32)
     pub home_lat: Option<f32>,
     /// $13 (actually f32)
