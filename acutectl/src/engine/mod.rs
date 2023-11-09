@@ -73,16 +73,6 @@ pub(crate) const STATE_FILE: &str = "state";
 /// Tick is every 30s
 const TICK: u64 = 30;
 
-/// An `Engine` instance has a command channel for commands.
-///
-#[derive(Clone, Debug, strum::Display, EnumString)]
-pub enum EngineCtrl {
-    Start,
-    Stop,
-    Sync,
-    List,
-}
-
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
 #[derive(Clone, Debug)]
