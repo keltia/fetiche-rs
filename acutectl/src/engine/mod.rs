@@ -20,7 +20,7 @@ use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::Receiver;
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
@@ -87,8 +87,6 @@ pub enum EngineCtrl {
 ///
 #[derive(Clone, Debug)]
 pub struct Engine {
-    /// Command channel
-    pub ctrl: Sender<EngineCtrl>,
     /// Current process DI
     pub pid: u32,
     /// Next job ID
@@ -203,14 +201,7 @@ impl Engine {
 
         // Instantiate everything
         //
-        // Control channel first
-        //
-        let (tx, rx) = channel::<EngineCtrl>();
-
-        // tx is not in an Arc because it is cloneable
-        //
         let mut engine = Engine {
-            ctrl: tx,
             pid,
             next: Arc::new(AtomicUsize::new(state.last + 1)),
             home: Arc::new(basedir),
@@ -226,13 +217,6 @@ impl Engine {
         engine.sync().expect("can not sync");
 
         engine
-    }
-
-    /// Send a command to the engine
-    ///
-    #[tracing::instrument(skip(self))]
-    pub fn command(&self, cmd: EngineCtrl) -> Result<()> {
-        Ok(self.ctrl.send(cmd)?)
     }
 
     /// Create a new job queue
