@@ -8,19 +8,13 @@
 use std::sync::mpsc::Sender;
 
 use eyre::Result;
-use parquet::basic::{Compression, Encoding, ZstdLevel};
-use parquet::schema::types::TypePtr;
-use parquet::{
-    file::{properties::WriterProperties, writer::SerializedFileWriter},
-    record::RecordWriter,
-};
 use serde_json::json;
 use tracing::trace;
 
-use fetiche_formats::{prepare_csv, Asd, Cat21, Format, StateList};
+use fetiche_formats::{prepare_csv, Cat21, Format, StateList};
 use fetiche_macros::RunnableDerive;
 
-use crate::{version, Runnable, IO};
+use crate::{Runnable, IO};
 
 pub trait ConvertInto {
     fn convert(&self, into: Format) -> String;
@@ -59,8 +53,6 @@ impl Convert {
     /// This is the task here, converting between format from the previous stage
     /// of the pipeline and send it down to the next stage.
     ///
-    /// FIXME: only output Cat21 for now.
-    ///
     #[tracing::instrument(skip(self))]
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("into::execute");
@@ -93,33 +85,6 @@ impl Convert {
                 };
                 prepare_csv(res, false)?
             }
-            Format::Parquet => match self.from {
-                Format::Asd => {
-                    trace!("from asd to parquet");
-
-                    let data: &[Asd] = serde_json::from_str(&data)?;
-
-                    let mut res = String::new();
-                    trace!("{} records", data.len());
-                    let schema: TypePtr = data[0].schema()?;
-
-                    let props = WriterProperties::builder()
-                        .set_created_by(version())
-                        .set_encoding(Encoding::PLAIN)
-                        .set_compression(Compression::ZSTD(ZstdLevel::default()))
-                        .build();
-
-                    let mut writer = SerializedFileWriter::new(res, schema, props.into())?;
-                    let mut row_group = writer.next_row_group()?;
-
-                    trace!("Writing data.");
-                    data.iter()
-                        .for_each(|line| line.write_to_row_group(&mut row_group).unwrap());
-                    trace!("Done.");
-                    res.clone()
-                }
-                _ => unimplemented!(),
-            },
             _ => unimplemented!(),
         };
 
