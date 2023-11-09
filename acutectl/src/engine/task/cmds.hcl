@@ -40,7 +40,7 @@ cmds "record" {
 
 cmds "save" {
   type        = "Consumer"
-  description = "Save into a single file."
+  description = "Save into a single file, with possible a format change."
 }
 
 cmds "store" {
