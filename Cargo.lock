@@ -239,7 +239,7 @@ dependencies = [
  "clap_complete",
  "csv",
  "dateparser",
-    "env_logger",
+ "env_logger",
  "eyre",
  "fetiche-formats",
  "fetiche-macros",
@@ -249,9 +249,9 @@ dependencies = [
  "httpmock",
  "log",
  "nom",
-    "opentelemetry",
-    "opentelemetry-jaeger",
-    "opentelemetry_sdk",
+ "opentelemetry",
+ "opentelemetry-jaeger",
+ "opentelemetry_sdk",
  "parquet",
  "parquet_derive",
  "percent-encoding",
@@ -267,8 +267,8 @@ dependencies = [
  "tabled",
  "tokio",
  "tracing",
-    "tracing-log 0.2.0",
-    "tracing-opentelemetry",
+ "tracing-log 0.2.0",
+ "tracing-opentelemetry",
  "tracing-subscriber",
  "tracing-tree",
 ]
@@ -438,7 +438,7 @@ dependencies = [
  "arrow-data",
  "arrow-schema",
  "arrow-select",
-    "base64",
+ "base64",
  "chrono",
  "half 2.3.1",
  "lexical-core",
@@ -1425,7 +1425,7 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85cdab6a89accf66733ad5a1693a4dcced6aeff64602b634530dd73c1f3ee9f0"
 dependencies = [
-    "humantime",
+ "humantime",
  "is-terminal",
  "log",
  "regex",
@@ -1523,7 +1523,7 @@ dependencies = [
  "tabled",
  "tokio",
  "tracing",
-    "tracing-log 0.2.0",
+ "tracing-log 0.2.0",
  "tracing-subscriber",
 ]
 
@@ -1546,7 +1546,7 @@ dependencies = [
  "criterion",
  "csv",
  "dateparser",
-    "env_logger",
+ "env_logger",
  "eyre",
  "fetiche-formats",
  "hcl-rs",
@@ -1568,7 +1568,7 @@ dependencies = [
  "tabled",
  "tokio",
  "tracing",
-    "tracing-log 0.2.0",
+ "tracing-log 0.2.0",
  "tracing-subscriber",
 ]
 
@@ -1585,7 +1585,7 @@ dependencies = [
  "clap",
  "daemonize",
  "dashmap",
-    "env_logger",
+ "env_logger",
  "eyre",
  "fetiche-formats",
  "fetiche-macros",
@@ -1594,8 +1594,8 @@ dependencies = [
  "home",
  "log",
  "nom",
-    "opentelemetry",
-    "opentelemetry-jaeger",
+ "opentelemetry",
+ "opentelemetry-jaeger",
  "reqwest",
  "rstest",
  "serde",
@@ -1605,8 +1605,8 @@ dependencies = [
  "tmpdir",
  "tokio",
  "tracing",
-    "tracing-log 0.2.0",
-    "tracing-opentelemetry",
+ "tracing-log 0.2.0",
+ "tracing-opentelemetry",
  "tracing-subscriber",
  "tracing-tree",
 ]
@@ -2226,7 +2226,7 @@ version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eae7b9aee968036d54dce06cebaefd919e4472e753296daccd6d344e3e2df0c2"
 dependencies = [
-    "hermit-abi",
+ "hermit-abi",
  "libc",
  "windows-sys",
 ]
@@ -2243,7 +2243,7 @@ version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb0889898416213fab133e1d33a0e5858a48177452750691bde3666d0fdbaf8b"
 dependencies = [
-    "hermit-abi",
+ "hermit-abi",
  "rustix 0.38.11",
  "windows-sys",
 ]
@@ -2731,7 +2731,7 @@ version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
 dependencies = [
-    "hermit-abi",
+ "hermit-abi",
  "libc",
 ]
 
@@ -2784,7 +2784,7 @@ dependencies = [
  "serde_repr",
  "tabled",
  "tracing",
-    "tracing-log 0.2.0",
+ "tracing-log 0.2.0",
  "tracing-subscriber",
 ]
 
@@ -2857,7 +2857,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "http",
-    "opentelemetry",
+ "opentelemetry",
  "reqwest",
 ]
 
@@ -2872,10 +2872,10 @@ dependencies = [
  "futures-util",
  "headers",
  "http",
-    "opentelemetry",
+ "opentelemetry",
  "opentelemetry-http",
-    "opentelemetry-semantic-conventions",
-    "opentelemetry_sdk",
+ "opentelemetry-semantic-conventions",
+ "opentelemetry_sdk",
  "reqwest",
  "thrift",
  "tokio",
@@ -2887,7 +2887,7 @@ version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5774f1ef1f982ef2a447f6ee04ec383981a3ab99c8e77a1a7b30182e65bbc84"
 dependencies = [
-    "opentelemetry",
+ "opentelemetry",
 ]
 
 [[package]]
@@ -2903,7 +2903,7 @@ dependencies = [
  "futures-util",
  "glob",
  "once_cell",
-    "opentelemetry",
+ "opentelemetry",
  "ordered-float 4.1.1",
  "percent-encoding",
  "rand",
@@ -4358,8 +4358,8 @@ checksum = "c67ac25c5407e7b961fafc6f7e9aa5958fd297aada2d20fa2ae1737357e55596"
 dependencies = [
  "js-sys",
  "once_cell",
-    "opentelemetry",
-    "opentelemetry_sdk",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "smallvec",
  "tracing",
  "tracing-core",
