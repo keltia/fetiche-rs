@@ -31,7 +31,11 @@ fn main() -> Result<()> {
     // Initialise logging early
     //
     let tree = HierarchicalLayer::new(2)
+        .with_ansi(true)
+        .with_span_retrace(true)
         .with_targets(true)
+        .with_verbose_entry(true)
+        .with_verbose_exit(true)
         .with_higher_precision(true)
         .with_bracketed_fields(true);
 
@@ -193,6 +197,8 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
             eprintln!("Modules: \t{}", engine.version());
         }
     }
+    opentelemetry::global::shutdown_tracer_provider();
+
     Ok(())
 }
 
