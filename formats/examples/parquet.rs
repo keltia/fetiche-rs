@@ -49,6 +49,7 @@ async fn write_output(schema: TypePtr, data: &Vec<Asd>) -> eyre::Result<()> {
 
 const INPUT: &str = "asd.json";
 const OUTPUT: &str = "asd.parquet";
+const NAME: &str = "example.parquet";
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -65,8 +66,11 @@ async fn main() -> eyre::Result<()> {
 
     // Setup Open Telemetry with Jaeger
     //
-    let tracer =
-        opentelemetry_jaeger::new_agent_pipeline().install_batch(opentelemetry::runtime::Tokio)?;
+    let tracer = opentelemetry_jaeger::new_agent_pipeline()
+        .with_auto_split_batch(true)
+        .with_max_packet_size(9_216)
+        .with_service_name(NAME)
+        .install_simple()?;
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
