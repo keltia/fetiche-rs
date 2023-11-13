@@ -6,6 +6,7 @@ exclude = ["cat21conv"]
 [workspace.dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
+dateparser = "0.2"
 env_logger = "0.10"
 eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
 fetiche-formats = { version = "0", path = "formats" }
@@ -27,8 +28,9 @@ serde_repr = "0.1"
 serde_with = { version = "3", features = ["base64", "chrono", "json", "hex"] }
 strum = { version = "0", features = ["derive"] }
 tabled = "0.14"
+tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
-tracing-log = { version = "0.1", features = ["env_logger"] }
-tracing-opentelemetry = "0.22.0"
+tracing-log = "0.2"
+tracing-opentelemetry = "0.22"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
 tracing-tree = { version = "0.2", features = ["time"] }

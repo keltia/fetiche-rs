@@ -23,11 +23,13 @@ maintenance = { status = "actively-developed" }
 eyre.workspace = true
 chrono.workspace = true
 clap.workspace = true
+dateparser.workspace = true
 env_logger.workspace = true
 fetiche-formats.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
+log.workspace = true
 nom.workspace = true
 opentelemetry.workspace = true
 opentelemetry-jaeger.workspace = true
@@ -40,6 +42,7 @@ serde_repr.workspace = true
 serde_with.workspace = true
 strum.workspace = true
 tabled.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
 tracing-opentelemetry.workspace = true
@@ -49,16 +52,12 @@ tracing-tree.workspace = true
 
 fetiche-macros = { version = "0", path = "../macros" }
 clap_complete = "4.4"
-csv = "1.2"
-dateparser = "0.2"
-parquet = { version = "48.0", features = ["json", "async", "cli"] }
-parquet_derive = "48.0"
+csv = "1.3"
+parquet = { version = "49.0", features = ["json", "async", "cli"] }
+parquet_derive = "49.0"
 percent-encoding = "2.3"
 quote = "1.0"
 syn = { version = "2.0", features = ["extra-traits"] }
-tokio = { version = "1.33", features = ["full"] }
-log = "0.4.20"
-bytes = "1.4.0"
 
 [dev-dependencies]
 assert_cmd = "2.0"
