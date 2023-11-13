@@ -33,6 +33,7 @@ fn main() -> Result<()> {
     let tree = HierarchicalLayer::new(2)
         .with_ansi(true)
         .with_span_retrace(true)
+        .with_span_modes(true)
         .with_targets(true)
         .with_verbose_entry(true)
         .with_verbose_exit(true)

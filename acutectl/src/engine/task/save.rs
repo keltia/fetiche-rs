@@ -4,10 +4,11 @@
 //!
 
 use std::fs;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{stdout, BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 
 use eyre::Result;
 use parquet::basic::{Compression, Encoding, ZstdLevel};
@@ -16,7 +17,7 @@ use parquet::{
     file::{properties::WriterProperties, writer::SerializedFileWriter},
     record::RecordWriter,
 };
-use tracing::trace;
+use tracing::{debug, span, trace, Level};
 
 use fetiche_formats::{Asd, Format};
 use fetiche_macros::RunnableDerive;
@@ -86,8 +87,11 @@ impl Save {
 
                         let data: Vec<Asd> = serde_json::from_str(&data)?;
 
-                        let fh = File::create(PathBuf::from(p)).expect("Can not create file");
-                        let pbuf = BufWriter::new(fh);
+                        let fh = OpenOptions::new()
+                            .write(true)
+                            .create(true)
+                            .truncate(true)
+                            .open(p)?;
 
                         trace!("{} records", data.len());
                         let schema = data.as_slice().schema()?;
@@ -98,13 +102,17 @@ impl Save {
                             .set_compression(Compression::ZSTD(ZstdLevel::default()))
                             .build();
 
-                        let mut writer = SerializedFileWriter::new(pbuf, schema, props.into())?;
+                        let mut writer = SerializedFileWriter::new(fh, schema, props.into())?;
                         let mut row_group = writer.next_row_group()?;
 
-                        trace!("Writing data.");
+                        let span = span!(Level::TRACE, "save::parquet");
+                        let _ = span.enter();
+
                         let _ = data.as_slice().write_to_row_group(&mut row_group)?;
+                        let m = row_group.close()?;
                         trace!("Done.");
-                        let meta = row_group.close()?;
+
+                        trace!("written({:?})", m);
                     }
                     _ => unimplemented!(),
                 },
