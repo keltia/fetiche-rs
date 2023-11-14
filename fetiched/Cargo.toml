@@ -42,6 +42,8 @@ actix-rt = "2.9"
 actix-storage = { version = "0.3", features = ["serde", "serde-json", "serde-cbor"] }
 actix-storage-dashmap = { version = "0.3", features = ["actor", "delay-queue"] }
 dashmap = { version = "5.5", features = ["serde"] }
+parquet = { version = "49.0", features = ["json", "async", "cli"] }
+parquet_derive = "49.0"
 tmpdir = "1.0"
 tokio = { version = "1", features = ["full"] }
 
