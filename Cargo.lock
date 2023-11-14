@@ -1601,6 +1601,8 @@ dependencies = [
  "nom",
  "opentelemetry",
  "opentelemetry-jaeger",
+ "parquet",
+ "parquet_derive",
  "reqwest",
  "rstest",
  "serde",
