@@ -1510,6 +1510,9 @@ dependencies = [
  "influxdb",
  "log",
  "nom",
+ "opentelemetry",
+ "opentelemetry-jaeger",
+ "opentelemetry_sdk",
  "parquet",
  "parquet_derive",
  "percent-encoding",
@@ -1524,7 +1527,9 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-log 0.2.0",
+ "tracing-opentelemetry",
  "tracing-subscriber",
+ "tracing-tree",
 ]
 
 [[package]]
