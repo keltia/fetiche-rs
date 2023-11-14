@@ -161,6 +161,7 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~Add a `Store` module to handle long-running jobs and their output.~~
 - ~~Retrieve historical data from the [Opensky] site.~~
 - ~~Support for Flightaware AeroAPI and Firehose.~~
+- ~~Apache Parquet as output format.~~
 - build `fetiched` as the core daemon and making all other talk to it through gRPC.
 - link to HashiCorp Vault for storing credentials and tokens
 - Add more tests & benchmarks.
@@ -192,6 +193,8 @@ I use Git Flow for this package so please use something similar or the usual Git
 [Mozilla]: https://mozilla.org/
 
 [Opensky]: https://www.opensky-network.org/
+
+[Parquet]: https://parquet.apache.org/
 
 [RUST]: https://www.rust-lang.org/
 
