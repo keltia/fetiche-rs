@@ -4,11 +4,10 @@
 //!
 
 use std::fs;
-use std::fs::{File, OpenOptions};
-use std::io::{stdout, BufWriter, Write};
+use std::fs::OpenOptions;
+use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
-use std::sync::Arc;
 
 use eyre::Result;
 use parquet::basic::{Compression, Encoding, ZstdLevel};
@@ -17,12 +16,12 @@ use parquet::{
     file::{properties::WriterProperties, writer::SerializedFileWriter},
     record::RecordWriter,
 };
-use tracing::{debug, span, trace, Level};
+use tracing::{info, trace};
 
 use fetiche_formats::{Asd, Format};
 use fetiche_macros::RunnableDerive;
 
-use crate::{version, Runnable, IO};
+use crate::{Runnable, IO};
 
 /// The Save task
 ///
@@ -87,32 +86,10 @@ impl Save {
 
                         let data: Vec<Asd> = serde_json::from_str(&data)?;
 
-                        let fh = OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            .truncate(true)
-                            .open(p)?;
-
                         trace!("{} records", data.len());
                         let schema = data.as_slice().schema()?;
 
-                        let props = WriterProperties::builder()
-                            .set_created_by(version())
-                            .set_encoding(Encoding::PLAIN)
-                            .set_compression(Compression::ZSTD(ZstdLevel::default()))
-                            .build();
-
-                        let mut writer = SerializedFileWriter::new(fh, schema, props.into())?;
-                        let mut row_group = writer.next_row_group()?;
-
-                        let span = span!(Level::TRACE, "save::parquet");
-                        let _ = span.enter();
-
-                        let _ = data.as_slice().write_to_row_group(&mut row_group)?;
-                        let m = row_group.close()?;
-                        trace!("Done.");
-
-                        trace!("written({:?})", m);
+                        let _ = write_output(schema, &data, p);
                     }
                     _ => unimplemented!(),
                 },
@@ -124,6 +101,32 @@ impl Save {
             Ok(())
         }
     }
+}
+
+#[tracing::instrument(skip(data, schema))]
+fn write_output(schema: TypePtr, data: &Vec<Asd>, out: &str) -> eyre::Result<()> {
+    // Prepare output
+    //
+    let fh = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(out)?;
+
+    let props = WriterProperties::builder()
+        .set_created_by("fetiche".to_string())
+        .set_encoding(Encoding::PLAIN)
+        .set_compression(Compression::ZSTD(ZstdLevel::default()))
+        .build();
+
+    info!("Writing in {}", out);
+    let mut writer = SerializedFileWriter::new(fh, schema, props.into())?;
+    let mut row_group = writer.next_row_group()?;
+
+    trace!("Writing data.");
+    let _ = data.as_slice().write_to_row_group(&mut row_group)?;
+    trace!("Done.");
+    Ok(())
 }
 
 impl Default for Save {
