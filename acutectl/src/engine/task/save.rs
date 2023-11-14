@@ -77,9 +77,11 @@ impl Save {
             Ok(write!(stdout(), "{}", data)?)
         } else {
             let p = self.path.as_ref().unwrap();
-            trace!("... into {}", p);
+            info!("Writing into {}", p);
 
             match self.out {
+                // There we handle the combination of input & output formats
+                //
                 Format::Parquet => match self.inp {
                     Format::Asd => {
                         trace!("from asd to parquet");
@@ -103,8 +105,10 @@ impl Save {
     }
 }
 
+/// Write output from `Asd`  into proper `Parquet` file.
+///
 #[tracing::instrument(skip(data, schema))]
-fn write_output(schema: TypePtr, data: &Vec<Asd>, out: &str) -> eyre::Result<()> {
+fn write_output(schema: TypePtr, data: &Vec<Asd>, out: &str) -> Result<()> {
     // Prepare output
     //
     let fh = OpenOptions::new()
