@@ -68,9 +68,11 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
         if *write != Format::Parquet {
             panic!("Only parquet supported");
         }
+        // FIXME: If conversion was requested above, this is wrong
+        //
         let mut save = Save::new(
             &fopts.output.as_ref().unwrap().to_string_lossy(),
-            site.format(),
+            site.format(), // XXX
             Format::Parquet,
         );
         save.path(&fopts.output.as_ref().unwrap().to_string_lossy());
@@ -83,6 +85,8 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     let data = String::from_utf8(data)?;
 
+    // FIXME: Save should probably always be the last task
+    //
     if fopts.write.is_none() {
         trace!("we need to save here");
         match &fopts.output {
