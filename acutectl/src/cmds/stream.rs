@@ -3,9 +3,10 @@ use std::io::stdout;
 use std::sync::Arc;
 
 use eyre::{eyre, Result};
+use tracing::{info, trace};
+
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
-use tracing::{info, trace};
 
 use crate::{Convert, Engine, Store, Stream, StreamOpts, Tee};
 
@@ -54,6 +55,7 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
 
     // If split is required, add a consumer for it at the end.
     //
+    info!("Running job #{} with {} tasks.", job.id, job.list.len());
     if sopts.split.is_some() {
         let basedir = sopts.split.as_ref().unwrap();
 
@@ -62,14 +64,10 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
         let store = Store::new(basedir, job.id);
         job.add(Box::new(store));
 
-        info!("Running job #{} with {} tasks.", job.id, job.list.len());
-
         job.run(&mut stdout())?;
     } else {
         // Handle output if no consumer is present at the end
         //
-        info!("Running job #{} with {} tasks.", job.id, job.list.len());
-
         if let Some(out) = &sopts.output {
             let mut out = File::create(out)?;
 
