@@ -2,7 +2,7 @@ use std::fs;
 use std::io::{stdout, Write};
 use std::sync::Arc;
 
-use chrono::{DateTime, Datelike, TimeZone, Utc};
+use chrono::{Datelike, DateTime, TimeZone, Utc};
 use eyre::{eyre, Result};
 use tracing::{info, trace};
 
@@ -16,6 +16,10 @@ use crate::{Convert, Engine, Fetch, FetchOpts, Save, Tee};
 #[tracing::instrument(skip(engine))]
 pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
+
+    // By default we output raw files
+    //
+    let mut output = Format::None;
 
     check_args(fopts)?;
 
@@ -40,6 +44,7 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     let mut job = engine.create_job("fetch_from_site");
     job.add(Box::new(task));
+    output = site.format();
 
     // Do we want a copy of the raw data (often before converting it)
     //
@@ -54,6 +59,10 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
         let mut convert = Convert::new();
         convert.from(site.format()).into(Format::Cat21);
         job.add(Box::new(convert));
+
+        // FIXME: convert does only Cat21 for now
+        //
+        output = Format::Cat21;
     };
 
     // If a final write format is requested, insert a `Save` task
@@ -68,16 +77,25 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
         if *write != Format::Parquet {
             panic!("Only parquet supported");
         }
-        // FIXME: If conversion was requested above, this is wrong
+
+        // Handle input format as the currently defined output one
         //
         let mut save = Save::new(
             &fopts.output.as_ref().unwrap().to_string_lossy(),
-            site.format(), // XXX
+            output,
             Format::Parquet,
         );
         save.path(&fopts.output.as_ref().unwrap().to_string_lossy());
         job.add(Box::new(save));
-    };
+
+        // `Save` does its own stuff, the out from the pipe is irrelevant, hence `None`
+        //
+        output = Format::None;
+    } else {
+        trace!("No specific write format.");
+
+        let save = Save::new()
+    }
 
     // Launch it now
     //
