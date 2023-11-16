@@ -5,7 +5,6 @@
 
 use std::fs;
 use std::fs::OpenOptions;
-use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
@@ -42,7 +41,7 @@ pub struct Save {
 }
 
 impl Save {
-    /// Initialize our environment
+    /// Initialise our environment
     ///
     #[tracing::instrument]
     pub fn new(name: &str, inp: Format, out: Format) -> Self {
@@ -74,7 +73,7 @@ impl Save {
         if self.path.is_none() {
             trace!("...into stdout");
 
-            Ok(write!(stdout(), "{}", data)?)
+            Ok(println!("{}", data)?)
         } else {
             let p = self.path.as_ref().unwrap();
             info!("Writing into {}", p);
