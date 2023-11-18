@@ -1,8 +1,9 @@
-use std::fs;
-use std::io::{stdout, Write};
+//! This is the module handling the `fetch` sub-command.
+//!
+
 use std::sync::Arc;
 
-use chrono::{Datelike, DateTime, TimeZone, Utc};
+use chrono::{DateTime, Datelike, TimeZone, Utc};
 use eyre::{eyre, Result};
 use tracing::{info, trace};
 
@@ -16,10 +17,6 @@ use crate::{Convert, Engine, Fetch, FetchOpts, Save, Tee};
 #[tracing::instrument(skip(engine))]
 pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
-
-    // By default we output raw files
-    //
-    let mut output = Format::None;
 
     check_args(fopts)?;
 
@@ -44,7 +41,10 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     let mut job = engine.create_job("fetch_from_site");
     job.add(Box::new(task));
-    output = site.format();
+
+    // By default we output raw files
+    //
+    let mut output = site.format();
 
     // Do we want a copy of the raw data (often before converting it)
     //
@@ -67,73 +67,56 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     // If a final write format is requested, insert a `Save` task
     //
-    if let Some(write) = &fopts.write {
+    let fmt = if let Some(write) = &fopts.write {
         trace!("Write as {}", write);
+
         // If this is requested, forbid stdout.
         //
         if let None = &fopts.output {
-            panic!("you must specify -o/--output");
+            return Err(eyre!("you must specify -o/--output"));
         }
         if *write != Format::Parquet {
-            panic!("Only parquet supported");
+            return Err(eyre!("Only parquet supported"));
         }
 
         // Handle input format as the currently defined output one
         //
-        let mut save = Save::new(
-            &fopts.output.as_ref().unwrap().to_string_lossy(),
-            output,
-            Format::Parquet,
-        );
-        save.path(&fopts.output.as_ref().unwrap().to_string_lossy());
-        job.add(Box::new(save));
-
-        // `Save` does its own stuff, the out from the pipe is irrelevant, hence `None`
-        //
-        output = Format::None;
+        Format::Parquet
     } else {
         trace!("No specific write format.");
 
-        let save = Save::new()
-    }
+        output
+    };
+
+    // Are we writing to stdout?
+    //
+    let final_output = match &fopts.output {
+        Some(fname) => fname.as_str(),
+        None => "-",
+    };
+
+    trace!("Writing to {final_output}");
+
+    // Last task is `Save`
+    //
+    let mut save = Save::new(final_output, output, fmt);
+    save.path(final_output);
+    job.add(Box::new(save));
 
     // Launch it now
     //
     job.run(&mut data)?;
 
-    let data = String::from_utf8(data)?;
-
-    // FIXME: Save should probably always be the last task
-    //
-    if fopts.write.is_none() {
-        trace!("we need to save here");
-        match &fopts.output {
-            Some(output) => {
-                let mut p = progress::SpinningCircle::new();
-                p.set_job_title(&format!("Writing into {}", output.to_string_lossy()));
-
-                let err = fs::write(output, data);
-
-                p.jobs_done();
-            }
-            // stdout otherwise
-            //
-            _ => write!(stdout(), "{}", data)?,
-        }
-    }
-
     // Remove job from engine and state
     //
     trace!("Job({}) done, removing it.", job.id);
-    engine.remove_job(job)?;
-
-    Ok(())
+    Ok(engine.remove_job(job)?)
 }
 
 /// From the CLI options
 ///
 #[tracing::instrument]
-pub fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
+fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
     trace!("filter_from_opts");
 
     let t: DateTime<Utc> = Utc::now();
