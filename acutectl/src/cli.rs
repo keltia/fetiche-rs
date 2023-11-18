@@ -62,7 +62,7 @@ pub struct Opts {
     pub debug: bool,
     /// Output file.
     #[clap(short = 'o', long)]
-    pub output: Option<PathBuf>,
+    pub output: Option<String>,
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
     pub verbose: u8,
@@ -124,7 +124,7 @@ pub struct FetchOpts {
     //
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
-    pub output: Option<PathBuf>,
+    pub output: Option<String>,
     /// Create a copy of the raw file before any conversion
     #[clap(long)]
     pub tee: Option<String>,
