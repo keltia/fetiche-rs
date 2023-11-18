@@ -73,7 +73,7 @@ impl Save {
         if self.path.is_none() {
             trace!("...into stdout");
 
-            Ok(println!("{}", data)?)
+            println!("{}", data);
         } else {
             let p = self.path.as_ref().unwrap();
             info!("Writing into {}", p);
@@ -99,8 +99,8 @@ impl Save {
                     fs::write(PathBuf::from(p), &data)?
                 }
             };
-            Ok(())
         }
+        Ok(())
     }
 }
 
