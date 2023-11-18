@@ -1,5 +1,7 @@
 //! Library implementing common part of the transformations
 //!
+//! NOTE: this is a fork of the main `fetiche-engine` crate, simplified for a stand-alone CLI app.
+//!
 //! In the `Engine`, we run jobs.  `Jobs` are made from a list of `Task` and all tasks are put into
 //! a pipeline.  All tasks must be `Runnable` and the `RunnableDerive` proc-macro stitches everything
 //! together with channels.
@@ -70,9 +72,6 @@ const ENGINE_VERSION: usize = 2;
 /// Main state data file, will be created in `basedir`.
 pub(crate) const STATE_FILE: &str = "state";
 
-/// Tick is every 30s
-const TICK: u64 = 30;
-
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
 #[derive(Clone, Debug)]
@@ -137,7 +136,7 @@ impl Engine {
                 fname.to_string_lossy()
             );
         }
-        Self::from_cfg(&cfg).clone()
+        Self::from_cfg(&cfg)
     }
 
     /// Create a new instance from a EngineConfig struct
@@ -191,7 +190,7 @@ impl Engine {
 
         // Instantiate everything
         //
-        let mut engine = Engine {
+        let engine = Engine {
             pid,
             next: Arc::new(AtomicUsize::new(state.last + 1)),
             home: Arc::new(basedir),
