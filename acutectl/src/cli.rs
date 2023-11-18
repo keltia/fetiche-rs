@@ -35,11 +35,18 @@
 //!
 
 use std::path::PathBuf;
+use std::str::FromStr;
+use std::{fs, io};
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser, ValueEnum};
+use clap_complete::generate;
 use clap_complete::shells::Shell;
+use eyre::{eyre, Result};
+use tracing::{info, trace};
 
+use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
 use fetiche_formats::Format;
+use fetiche_sources::{Flow, Site};
 
 /// CLI options
 #[derive(Parser)]
@@ -272,4 +279,127 @@ pub struct ConvertOpts {
     pub infile: String,
     /// Output file
     pub outfile: String,
+}
+
+#[tracing::instrument(skip(engine))]
+pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
+    match subcmd {
+        // Handle `fetch site`
+        //
+        SubCommand::Fetch(fopts) => {
+            trace!("fetch");
+
+            fetch_from_site(engine, fopts)?;
+        }
+
+        // Handle `stream site`
+        //
+        SubCommand::Stream(sopts) => {
+            trace!("stream");
+
+            stream_from_site(engine, sopts)?;
+        }
+
+        // Handle `convert from to`
+        //
+        SubCommand::Convert(copts) => {
+            trace!("convert");
+
+            convert_from_to(engine, copts)?;
+        }
+
+        // Handle `import site`  and `import file`
+        // FIXME:
+        //
+        SubCommand::Import(opts) => {
+            trace!("import");
+
+            match &opts.subcmd {
+                ImportSubCommand::ImportSite(fopts) => {
+                    trace!("drone import site");
+
+                    let srcs = &engine.sources();
+                    let site = match Site::load(&fopts.site, srcs)? {
+                        Flow::Fetchable(s) => s,
+                        _ => return Err(eyre!("this site is not fetchable")),
+                    };
+                    let fmt = site.format();
+
+                    // FIXME
+                    let data: Vec<u8> = vec![];
+
+                    fetch_from_site(engine, fopts)?;
+
+                    //import_data(&cfg, &data, fmt)?;
+                }
+                ImportSubCommand::ImportFile(if_opts) => {
+                    trace!("drone import file");
+
+                    let data = fs::read_to_string(&if_opts.file)?;
+                    let fmt = Format::from_str(&if_opts.format.clone().unwrap())?;
+
+                    //import_data(&srcs, &data, fmt)?;
+                }
+            }
+        }
+
+        // Standalone completion generation
+        //
+        // NOTE: you can generate UNIX shells completion on Windows and vice-versa.  Not worth
+        //       trying to limit depending on the OS.
+        //
+        SubCommand::Completion(copts) => {
+            let generator = copts.shell;
+            generate(
+                generator,
+                &mut Opts::command(),
+                env!("CARGO_BIN_NAME"),
+                &mut io::stdout(),
+            );
+        }
+
+        // Standalone `list` command
+        //
+        SubCommand::List(lopts) => match lopts.cmd {
+            ListSubCommand::Commands => {
+                info!("Listing all commands:");
+
+                let str = engine.list_commands()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Sources => {
+                info!("Listing all sources:");
+
+                let str = engine.list_sources()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Formats => {
+                info!("Listing all formats:");
+
+                let str = engine.list_formats()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Tokens => {
+                info!("Listing all tokens:");
+
+                let str = engine.list_tokens()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Storage => {
+                info!("Listing all storage areas:");
+
+                let str = engine.list_storage()?;
+                eprintln!("{}", str);
+            }
+        },
+
+        // Standalone `version` command
+        //
+        SubCommand::Version => {
+            eprintln!("Modules: \t{}", engine.version());
+        }
+    }
+    opentelemetry::global::shutdown_tracer_provider();
+
+    Ok(())
 }
