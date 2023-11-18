@@ -56,7 +56,7 @@ impl Store {
         // We want to have `path/current` pointing to `path/ID`
         //
         let id = format!("{id}");
-        let base = path.clone();
+        let base = path;
         let path: PathBuf = makepath!(path, &id);
 
         // Base is PATH/ID/
@@ -85,7 +85,7 @@ impl Store {
     /// Store and rotate every hour for now.  We open/create and write every packet without
     /// trying to open first.  More syscalls but these are cheap.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, _stdout))]
     pub fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
         trace!("store::execute");
 
