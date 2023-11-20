@@ -53,6 +53,7 @@ datafusion = "32"
 percent-encoding = "2.3"
 parquet = { version = "49.0", features = ["json", "async", "cli"] }
 parquet_derive = "49.0"
+tap = "1.0"
 
 [dev-dependencies]
 rstest.workspace = true

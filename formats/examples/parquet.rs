@@ -2,14 +2,17 @@
 //!
 
 use std::fs::File;
+use std::path::Path;
 use std::string::ToString;
 
+use eyre::Result;
 use parquet::basic::{Compression, Encoding, ZstdLevel};
 use parquet::schema::types::TypePtr;
 use parquet::{
     file::{properties::WriterProperties, writer::SerializedFileWriter},
     record::RecordWriter,
 };
+use tap::Tap;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
@@ -18,8 +21,10 @@ use tracing_tree::HierarchicalLayer;
 use fetiche_formats::Asd;
 
 #[tracing::instrument]
-async fn read_data(fname: &str) -> eyre::Result<Vec<Asd>> {
+async fn read_data(fname: &str) -> Result<Vec<Asd>> {
     trace!("Read data.");
+    let fname = format!("{}.json", fname);
+    trace!("fname={:?}", fname);
     let str = tokio::fs::read_to_string(fname).await?;
     trace!("Decode data.");
     let data: Vec<Asd> = serde_json::from_str(&str)?;
@@ -27,32 +32,36 @@ async fn read_data(fname: &str) -> eyre::Result<Vec<Asd>> {
 }
 
 #[tracing::instrument(skip(data, schema))]
-async fn write_output(schema: TypePtr, data: &Vec<Asd>) -> eyre::Result<()> {
+async fn write_output(fname: &str, schema: TypePtr, data: &Vec<Asd>) -> Result<()> {
     // Prepare output
     //
-    let file = File::create(OUTPUT)?;
+    let fname = format!("{}.parquet", fname);
+    let file = File::create(&fname)?;
     let props = WriterProperties::builder()
         .set_created_by("fetiche".to_string())
         .set_encoding(Encoding::PLAIN)
         .set_compression(Compression::ZSTD(ZstdLevel::default()))
         .build();
 
-    info!("Writing in {}", OUTPUT);
+    info!("Writing in {}", fname);
     let mut writer = SerializedFileWriter::new(file, schema, props.into())?;
     let mut row_group = writer.next_row_group()?;
 
     trace!("Writing data.");
-    let _ = data.as_slice().write_to_row_group(&mut row_group)?;
+    let _ = data
+        .as_slice()
+        .tap(|e| trace!("e={:?}", e))
+        .write_to_row_group(&mut row_group)?;
+    //writer.close()?;
     trace!("Done.");
     Ok(())
 }
 
-const INPUT: &str = "asd.json";
-const OUTPUT: &str = "asd.parquet";
+const INPUT: &str = "asd";
 const NAME: &str = "example.parquet";
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
+async fn main() -> Result<()> {
     // Initialise logging early
     //
     let tree = HierarchicalLayer::new(2)
@@ -86,7 +95,9 @@ async fn main() -> eyre::Result<()> {
         .init();
     trace!("Logging initialised.");
 
-    let data = read_data(INPUT).await?;
+    let fname = std::env::args().nth(1).ok_or("small").unwrap();
+
+    let data = read_data(&fname).await?;
 
     info!("{} records read", data.len());
 
@@ -95,7 +106,7 @@ async fn main() -> eyre::Result<()> {
     let schema = data.as_slice().schema()?;
 
     trace!("Prepare output");
-    let _ = write_output(schema, &data).await;
+    let _ = write_output(&fname, schema, &data).await;
 
     opentelemetry::global::shutdown_tracer_provider();
     Ok(())
