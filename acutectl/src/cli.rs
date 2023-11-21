@@ -38,15 +38,18 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::{fs, io};
 
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser, ValueEnum};
-use clap_complete::generate;
+use clap::{
+    crate_authors, crate_description, crate_name, crate_version, CommandFactory, Parser, ValueEnum,
+};
 use clap_complete::shells::Shell;
+use clap_complete::{generate, Generator};
 use eyre::{eyre, Result};
 use tracing::{info, trace};
 
-use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
 use fetiche_formats::Format;
 use fetiche_sources::{Flow, Site};
+
+use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
 
 /// CLI options
 #[derive(Parser)]
@@ -350,12 +353,9 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         //
         SubCommand::Completion(copts) => {
             let generator = copts.shell;
-            generate(
-                generator,
-                &mut Opts::command(),
-                env!("CARGO_BIN_NAME"),
-                &mut io::stdout(),
-            );
+
+            let mut cmd = Opts::command();
+            generate(generator, &mut cmd, "acutectl", &mut io::stdout());
         }
 
         // Standalone `list` command
