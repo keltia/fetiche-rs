@@ -6,6 +6,7 @@ use std::string::ToString;
 
 use eyre::Result;
 use parquet::basic::{Compression, Encoding, ZstdLevel};
+use parquet::file::properties::EnabledStatistics;
 use parquet::file::{properties::WriterProperties, writer::SerializedFileWriter};
 use parquet::record::RecordWriter;
 use tap::Tap;
@@ -42,6 +43,7 @@ fn read_write_output(base: &str) -> Result<()> {
     let props = WriterProperties::builder()
         .set_created_by("fetiche".to_string())
         .set_encoding(Encoding::PLAIN)
+        .set_statistics_enabled(EnabledStatistics::Page)
         .set_compression(Compression::ZSTD(ZstdLevel::default()))
         .build();
 
@@ -55,7 +57,7 @@ fn read_write_output(base: &str) -> Result<()> {
         .tap(|e| trace!("e={:?}", e))
         .write_to_row_group(&mut row_group)?;
     let m = row_group.close()?;
-    info!("rows={}", m.num_rows());
+    info!("{} records written.", m.num_rows());
 
     writer.close()?;
 
