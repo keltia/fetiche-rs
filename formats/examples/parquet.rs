@@ -2,16 +2,12 @@
 //!
 
 use std::fs::File;
-use std::path::Path;
 use std::string::ToString;
 
 use eyre::Result;
 use parquet::basic::{Compression, Encoding, ZstdLevel};
-use parquet::schema::types::TypePtr;
-use parquet::{
-    file::{properties::WriterProperties, writer::SerializedFileWriter},
-    record::RecordWriter,
-};
+use parquet::file::{properties::WriterProperties, writer::SerializedFileWriter};
+use parquet::record::RecordWriter;
 use tap::Tap;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
@@ -21,22 +17,28 @@ use tracing_tree::HierarchicalLayer;
 use fetiche_formats::Asd;
 
 #[tracing::instrument]
-async fn read_data(fname: &str) -> Result<Vec<Asd>> {
+fn read_write_output(base: &str) -> Result<()> {
     trace!("Read data.");
-    let fname = format!("{}.json", fname);
-    trace!("fname={:?}", fname);
-    let str = tokio::fs::read_to_string(fname).await?;
-    trace!("Decode data.");
-    let data: Vec<Asd> = serde_json::from_str(&str)?;
-    Ok(data)
-}
 
-#[tracing::instrument(skip(data, schema))]
-async fn write_output(fname: &str, schema: TypePtr, data: &Vec<Asd>) -> Result<()> {
+    let fname = format!("{}.json", base);
+    trace!("fname={:?}", fname);
+
+    let str = std::fs::read_to_string(&fname)?;
+    trace!("Decode data.");
+
+    let data: Vec<Asd> = serde_json::from_str(&str)?;
+    info!("{} records read", data.len());
+
+    // Infer schema from data
+    //
+    let schema = data.as_slice().schema()?;
+    trace!("schema={:?}", schema);
+
     // Prepare output
     //
-    let fname = format!("{}.parquet", fname);
+    let fname = format!("{}.parquet", base);
     let file = File::create(&fname)?;
+
     let props = WriterProperties::builder()
         .set_created_by("fetiche".to_string())
         .set_encoding(Encoding::PLAIN)
@@ -44,7 +46,7 @@ async fn write_output(fname: &str, schema: TypePtr, data: &Vec<Asd>) -> Result<(
         .build();
 
     info!("Writing in {}", fname);
-    let mut writer = SerializedFileWriter::new(file, schema, props.into())?;
+    let mut writer = SerializedFileWriter::new(file, schema.clone(), props.into())?;
     let mut row_group = writer.next_row_group()?;
 
     trace!("Writing data.");
@@ -52,16 +54,18 @@ async fn write_output(fname: &str, schema: TypePtr, data: &Vec<Asd>) -> Result<(
         .as_slice()
         .tap(|e| trace!("e={:?}", e))
         .write_to_row_group(&mut row_group)?;
-    //writer.close()?;
-    trace!("Done.");
+    let m = row_group.close()?;
+    info!("rows={}", m.num_rows());
+
+    writer.close()?;
+
+    info!("Done.");
     Ok(())
 }
 
-const INPUT: &str = "asd";
 const NAME: &str = "example.parquet";
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     // Initialise logging early
     //
     let tree = HierarchicalLayer::new(2)
@@ -97,16 +101,7 @@ async fn main() -> Result<()> {
 
     let fname = std::env::args().nth(1).ok_or("small").unwrap();
 
-    let data = read_data(&fname).await?;
-
-    info!("{} records read", data.len());
-
-    // Infer schema from data
-    //
-    let schema = data.as_slice().schema()?;
-
-    trace!("Prepare output");
-    let _ = write_output(&fname, schema, &data).await;
+    let _ = read_write_output(&fname)?;
 
     opentelemetry::global::shutdown_tracer_provider();
     Ok(())
