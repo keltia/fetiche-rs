@@ -1,6 +1,6 @@
-use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
-use eyre::{eyre, Result};
-use tracing::{info, trace};
+use clap::{crate_authors, crate_description, crate_version, Parser};
+use eyre::Result;
+use tracing::trace;
 use tracing_subscriber::filter::EnvFilter;
 use tracing_subscriber::prelude::*;
 use tracing_tree::HierarchicalLayer;
