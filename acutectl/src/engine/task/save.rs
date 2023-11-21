@@ -10,11 +10,12 @@ use std::sync::mpsc::Sender;
 
 use eyre::Result;
 use parquet::basic::{Compression, Encoding, ZstdLevel};
-use parquet::schema::types::TypePtr;
+use parquet::file::properties::EnabledStatistics;
 use parquet::{
     file::{properties::WriterProperties, writer::SerializedFileWriter},
     record::RecordWriter,
 };
+use tap::Tap;
 use tracing::{info, trace};
 
 use fetiche_formats::{Asd, Format};
@@ -88,9 +89,7 @@ impl Save {
                         let data: Vec<Asd> = serde_json::from_str(&data)?;
 
                         trace!("{} records", data.len());
-                        let schema = data.as_slice().schema()?;
-
-                        let _ = write_output(schema, &data, p);
+                        let _ = write_output(&data, p);
                     }
                     _ => unimplemented!(),
                 },
@@ -106,8 +105,8 @@ impl Save {
 
 /// Write output from `Asd`  into proper `Parquet` file.
 ///
-#[tracing::instrument(skip(data, schema))]
-fn write_output(schema: TypePtr, data: &Vec<Asd>, out: &str) -> Result<()> {
+#[tracing::instrument(skip(data))]
+fn write_output(data: &Vec<Asd>, out: &str) -> Result<()> {
     // Prepare output
     //
     let fh = OpenOptions::new()
@@ -117,17 +116,27 @@ fn write_output(schema: TypePtr, data: &Vec<Asd>, out: &str) -> Result<()> {
         .open(out)?;
 
     let props = WriterProperties::builder()
-        .set_created_by("fetiche".to_string())
+        .set_created_by("acutectl".to_string())
         .set_encoding(Encoding::PLAIN)
         .set_compression(Compression::ZSTD(ZstdLevel::default()))
+        .set_statistics_enabled(EnabledStatistics::Page)
         .build();
 
+    let schema = data.as_slice().schema()?;
+
     info!("Writing in {}", out);
-    let mut writer = SerializedFileWriter::new(fh, schema, props.into())?;
+    let mut writer = SerializedFileWriter::new(fh, schema.clone(), props.into())?;
     let mut row_group = writer.next_row_group()?;
 
     trace!("Writing data.");
-    let _ = data.as_slice().write_to_row_group(&mut row_group)?;
+    let _ = data
+        .as_slice()
+        .tap(|&e| trace!("e={:?}", e))
+        .write_to_row_group(&mut row_group)?;
+    let m = row_group.close()?;
+    trace!("{} records written.", m.num_rows());
+    writer.close()?;
+
     trace!("Done.");
     Ok(())
 }
