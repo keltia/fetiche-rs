@@ -9,6 +9,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use eyre::Result;
 use parquet_derive::ParquetRecordWriter;
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 use tracing::debug;
 
 use crate::drone::DronePoint;
@@ -22,48 +23,55 @@ use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated};
 /// are apparently stored as DECIMAL in their database and not as FLOAT.  There are then
 /// exported as 6-digit floating strings.
 ///
+#[serde_as]
 #[derive(Debug, Deserialize, ParquetRecordWriter, Serialize)]
 pub struct Asd {
-    // Each record is part of a drone journey with a specific ID
+    /// Each record is part of a drone journey with a specific ID
     pub journey: u32,
-    // Identifier for the drone
+    /// Identifier for the drone
     pub ident: String,
-    // Model of the drone
+    /// Model of the drone
     pub model: Option<String>,
-    // Source ([see src/site/asd.rs]) of the data
+    /// Source ([see src/site/asd.rs]) of the data
     pub source: String,
-    // Point/record ID
+    /// Point/record ID
     pub location: u32,
-    // Date of event (in the non standard YYYY-MM-DD HH:MM:SS formats)
+    /// Date of event (in the non standard YYYY-MM-DD HH:MM:SS formats)
     pub timestamp: String,
-    // $7 (actually f32)
-    pub latitude: String,
-    // $8 (actually f32)
-    pub longitude: String,
-    // Altitude, can be either null or negative (?)
+    /// $7 (actually f32)
+    #[serde_as(as = "DisplayFromStr")]
+    pub latitude: f32,
+    /// $8 (actually f32)
+    #[serde_as(as = "DisplayFromStr")]
+    pub longitude: f32,
+    /// Altitude, can be either null or negative (?)
     pub altitude: Option<i16>,
-    // Distance to ground (estimated every 15s)
+    /// Distance to ground (estimated every 15s)
     pub elevation: Option<i32>,
-    // Undocumented
+    /// Undocumented
     pub gps: Option<u32>,
-    // Signal level (in dB)
+    /// Signal level (in dB)
     pub rssi: Option<i32>,
-    // $13 (actually f32)
-    pub home_lat: Option<String>,
-    // $14 (actually f32)
-    pub home_lon: Option<String>,
-    // Altitude from takeoff point
+    /// $13 (actually f32)
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub home_lat: Option<f32>,
+    /// $14 (actually f32)
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub home_lon: Option<f32>,
+    /// Altitude from takeoff point
     pub home_height: Option<f32>,
-    // Current speed
+    /// Current speed
     pub speed: f32,
-    // True heading
+    /// True heading
     pub heading: f32,
-    // Name of detecting point
+    /// Name of detecting point
     pub station_name: Option<String>,
-    // Latitude (actually f32)
-    pub station_lat: Option<String>,
-    // Longitude (actually f32)
-    pub station_lon: Option<String>,
+    /// Latitude (actually f32)
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub station_latitude: Option<f32>,
+    /// Longitude (actually f32)
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub station_longitude: Option<f32>,
 }
 
 convert_to!(from_asd, Asd, Cat21);
@@ -110,8 +118,8 @@ impl From<&Asd> for Cat21 {
             sac: 8,
             sic: 200,
             alt_geo_ft: to_feet(alt_geo_ft),
-            pos_lat_deg: line.latitude.parse::<f32>().unwrap(),
-            pos_long_deg: line.longitude.parse::<f32>().unwrap(),
+            pos_lat_deg: line.latitude,
+            pos_long_deg: line.longitude,
             alt_baro_ft: to_feet(alt_geo_ft),
             tod: 128 * (tod % 86400),
             rec_time_posix: tod,
@@ -146,9 +154,9 @@ impl From<&Asd> for Cat21 {
     }
 }
 
-fn safe_coord(s: Option<String>) -> Option<f32> {
+fn safe_coord(s: Option<f32>) -> Option<f32> {
     match s {
-        Some(s) => Some(s.parse::<f32>().unwrap()),
+        Some(s) => Some(s),
         None => Some(0.0),
     }
 }
@@ -168,8 +176,8 @@ impl From<&Asd> for DronePoint {
             model: value.model.clone(),
             source: value.source.clone(),
             location: value.location,
-            latitude: value.latitude.parse::<f32>().unwrap(),
-            longitude: value.longitude.parse::<f32>().unwrap(),
+            latitude: value.latitude,
+            longitude: value.longitude,
             altitude: value.altitude,
             elevation: value.elevation,
             home_lat: safe_coord(value.home_lat.clone()),
@@ -178,8 +186,8 @@ impl From<&Asd> for DronePoint {
             speed: value.speed,
             heading: value.heading,
             station_name: value.station_name.clone(),
-            station_lat: safe_coord(value.station_lat.clone()),
-            station_lon: safe_coord(value.station_lat.clone()),
+            station_lat: safe_coord(value.station_latitude.clone()),
+            station_lon: safe_coord(value.station_longitude.clone()),
         }
     }
 }
