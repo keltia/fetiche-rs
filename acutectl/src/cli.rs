@@ -41,8 +41,8 @@ use std::{fs, io};
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, CommandFactory, Parser, ValueEnum,
 };
+use clap_complete::generate;
 use clap_complete::shells::Shell;
-use clap_complete::{generate, Generator};
 use eyre::{eyre, Result};
 use tracing::{info, trace};
 
