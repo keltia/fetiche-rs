@@ -79,7 +79,7 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
 
     // Remove job from engine and state
     //
-    Ok(engine.remove_job(job)?)
+    engine.remove_job(job)
 }
 
 /// From the CLI options

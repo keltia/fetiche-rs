@@ -5,7 +5,7 @@
 //!
 //! JSON endpoint added later by ASD in Nov. 2022.
 
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::NaiveDateTime;
 use eyre::Result;
 use parquet_derive::ParquetRecordWriter;
 use serde::{Deserialize, Serialize};
@@ -168,7 +168,7 @@ impl From<&Asd> for DronePoint {
         // Transform the string into proper datetime
         //
         let tod = NaiveDateTime::parse_from_str(&value.timestamp, "%Y-%m-%d %H:%M:%S").unwrap();
-        let tod = DateTime::<Utc>::from_utc(tod, Utc);
+        let tod = tod.and_utc();
 
         DronePoint {
             time: tod,

@@ -4,9 +4,7 @@
 //! tag and needs to be flat (no inside struct, etc.).
 //!
 
-use std::fs::File;
 use std::io::Write;
-use std::string::ToString;
 
 use eyre::Result;
 use parquet::basic::{Compression, Encoding, ZstdLevel};
@@ -15,7 +13,7 @@ use parquet::{
     file::{properties::WriterProperties, writer::SerializedFileWriter},
     record::RecordWriter,
 };
-use tracing::{info, trace};
+use tracing::trace;
 
 use crate::version;
 

@@ -97,6 +97,6 @@ impl Message {
     #[inline]
     #[tracing::instrument]
     fn execute(&self, _data: String, stdout: Sender<String>) -> Result<()> {
-        Ok(stdout.send(format!("{}", self.msg))?)
+        Ok(stdout.send(self.msg.to_string())?)
     }
 }

@@ -3,8 +3,6 @@
 //! URL: http://www.avionix.pl
 //!
 
-use std::fmt::{Display, Formatter};
-
 use parquet_derive::ParquetRecordWriter;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, EnumVariantNames};

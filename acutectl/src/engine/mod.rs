@@ -166,7 +166,8 @@ impl Engine {
         let pid = std::process::id();
         let basedir: PathBuf = cfg.basedir.clone();
         let pidfile: PathBuf = makepath!(&basedir, ENGINE_PID);
-        fs::write(&pidfile, format!("{pid}")).expect(&format!("can not write {}", ENGINE_PID));
+        fs::write(&pidfile, format!("{pid}"))
+            .unwrap_or_else(|_| panic!("can not write {}", ENGINE_PID));
 
         info!("PID {} written in {:?}", pid, pidfile);
 
@@ -259,7 +260,7 @@ impl Engine {
         drop(state);
 
         trace!("sync");
-        Ok(self.sync()?)
+        self.sync()
     }
 
     /// Load authentication data

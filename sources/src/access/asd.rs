@@ -248,28 +248,29 @@ impl Fetchable for Asd {
     fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
         trace!("asd::fetch");
 
+        const DEF_SOURCES: &[Source] = &[Source::As, Source::Wi];
+
         let f: Filter = serde_json::from_str(args)?;
 
         // If we have a filter defined, extract times
         //
         let data = match f {
             Filter::Duration(d) => Param {
-                start_time: DateTime::<Utc>::from_utc(NaiveDateTime::default(), Utc),
-                end_time: DateTime::<Utc>::from_utc(
-                    NaiveDateTime::default().add(Duration::seconds(d as i64)),
-                    Utc,
-                ),
-                sources: vec![Source::As, Source::Wi],
+                start_time: NaiveDateTime::default().and_utc(),
+                end_time: NaiveDateTime::default()
+                    .and_utc()
+                    .add(Duration::seconds(d as i64)),
+                sources: DEF_SOURCES.to_vec(),
             },
             Filter::Interval { begin, end } => Param {
                 start_time: begin,
                 end_time: end,
-                sources: vec![Source::As, Source::Wi],
+                sources: DEF_SOURCES.to_vec(),
             },
             _ => Param {
                 start_time: DateTime::<Utc>::MIN_UTC,
                 end_time: DateTime::<Utc>::MIN_UTC,
-                sources: vec![Source::As, Source::Wi],
+                sources: DEF_SOURCES.to_vec(),
             },
         };
 

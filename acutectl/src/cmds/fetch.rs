@@ -72,7 +72,7 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
         // If this is requested, forbid stdout.
         //
-        if let None = &fopts.output {
+        if fopts.output.is_none() {
             return Err(eyre!("you must specify -o/--output"));
         }
         if *write != Format::Parquet {
@@ -110,7 +110,7 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     // Remove job from engine and state
     //
     trace!("Job({}) done, removing it.", job.id);
-    Ok(engine.remove_job(job)?)
+    engine.remove_job(job)
 }
 
 /// From the CLI options
