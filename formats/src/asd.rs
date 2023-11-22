@@ -154,6 +154,7 @@ impl From<&Asd> for Cat21 {
     }
 }
 
+#[inline]
 fn safe_coord(s: Option<f32>) -> Option<f32> {
     match s {
         Some(s) => Some(s),
@@ -180,14 +181,14 @@ impl From<&Asd> for DronePoint {
             longitude: value.longitude,
             altitude: value.altitude,
             elevation: value.elevation,
-            home_lat: safe_coord(value.home_lat.clone()),
-            home_lon: safe_coord(value.home_lon.clone()),
+            home_lat: safe_coord(value.home_lat),
+            home_lon: safe_coord(value.home_lon),
             home_height: value.home_height,
             speed: value.speed,
             heading: value.heading,
             station_name: value.station_name.clone(),
-            station_lat: safe_coord(value.station_latitude.clone()),
-            station_lon: safe_coord(value.station_longitude.clone()),
+            station_lat: safe_coord(value.station_latitude),
+            station_lon: safe_coord(value.station_longitude),
         }
     }
 }
