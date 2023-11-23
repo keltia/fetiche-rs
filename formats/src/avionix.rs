@@ -3,8 +3,10 @@
 //! URL: http://www.avionix.pl
 //!
 
+use chrono::{DateTime, Utc};
 use parquet_derive::ParquetRecordWriter;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use strum::{EnumString, EnumVariantNames};
 
 /// This format is sent through a CSV file and has the following fields:
@@ -28,13 +30,15 @@ use strum::{EnumString, EnumVariantNames};
 /// - MPS: MOPS
 /// - NIC: NucP_NIC
 ///
-#[derive(Debug, Deserialize, ParquetRecordWriter, Serialize)]
+#[serde_as]
+#[derive(Clone, Debug, Deserialize, ParquetRecordWriter, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Avionix {
     /// UNIX timestamp in milli-secs (i64)
     pub uti: i64,
     /// ESRI timestamp e.g. 2015-07-26 07:36:51.657189000
-    pub dat: String,
+    #[serde_as(as = "DisplayFromStr")]
+    pub dat: DateTime<Utc>,
     /// SIC
     pub sic: usize,
     /// SAC
