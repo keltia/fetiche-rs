@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 ///
 #[derive(Clone, Debug, Deserialize, InfluxDbWriteable, Serialize)]
 pub struct DronePoint {
-    pub time: DateTime<Utc>,
+    /// UNIX timestamp
+    pub time: i64,
     /// Each record is part of a drone journey with a specific ID
     #[influxdb(tag)]
     pub journey: u32,

@@ -23,9 +23,15 @@ use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated};
 /// are apparently stored as DECIMAL in their database and not as FLOAT.  There are then
 /// exported as 6-digit floating strings.
 ///
+/// `timestamp` format is NON-STANDARD so we had out own `tm` field which gets ignored when
+/// de-serialising and we fix it afterward
+///
 #[serde_as]
 #[derive(Debug, Deserialize, ParquetRecordWriter, Serialize)]
 pub struct Asd {
+    /// Hidden UNIX timestamp
+    #[serde(skip_deserializing)]
+    pub tm: i64,
     /// Each record is part of a drone journey with a specific ID
     pub journey: u32,
     /// Identifier for the drone
@@ -156,19 +162,16 @@ impl From<&Asd> for Cat21 {
 
 #[inline]
 fn safe_coord(s: Option<f32>) -> Option<f32> {
-    match s {
-        Some(s) => Some(s),
-        None => Some(0.0),
-    }
+    Some(s.unwrap_or(0.0))
 }
 
 impl From<&Asd> for DronePoint {
     #[tracing::instrument]
     fn from(value: &Asd) -> Self {
-        // Transform the string into proper datetime
+        // Transform the string into proper timestamp
         //
         let tod = NaiveDateTime::parse_from_str(&value.timestamp, "%Y-%m-%d %H:%M:%S").unwrap();
-        let tod = tod.and_utc();
+        let tod = tod.and_utc().timestamp();
 
         DronePoint {
             time: tod,
