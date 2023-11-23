@@ -27,7 +27,7 @@ use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated};
 /// de-serialising and we fix it afterward
 ///
 #[serde_as]
-#[derive(Debug, Deserialize, ParquetRecordWriter, Serialize)]
+#[derive(Clone, Debug, Deserialize, ParquetRecordWriter, Serialize)]
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
@@ -83,6 +83,16 @@ pub struct Asd {
 convert_to!(from_asd, Asd, Cat21);
 convert_to!(from_asd, Asd, DronePoint);
 
+/// Generate a proper timestamp from the non-standard string they emit.
+///
+#[inline]
+fn fix_tm(inp: Asd) -> Result<Asd> {
+    let tod = NaiveDateTime::parse_from_str(&inp.timestamp, "%Y-%m-%d %H:%M:%S")?.timestamp();
+    let mut out = inp.clone();
+    out.tm = tod;
+    Ok(out)
+}
+
 /// For privacy reasons, we truncate the drone ID value to something not unique
 ///
 #[cfg(feature = "privacy")]
@@ -101,7 +111,7 @@ impl From<&Asd> for Cat21 {
     /// The default values are arbitrary and taken from the original `aeroscope-CDG.sh` script
     /// by Marc Gravis.
     ///
-    /// The following fields are lost:
+    /// The following fields are **lost**:
     /// - journey
     /// - location
     /// - station_lat/lon
@@ -171,7 +181,7 @@ impl From<&Asd> for DronePoint {
         // Transform the string into proper timestamp
         //
         let tod = NaiveDateTime::parse_from_str(&value.timestamp, "%Y-%m-%d %H:%M:%S").unwrap();
-        let tod = tod.and_utc().timestamp();
+        let tod = tod.and_utc();
 
         DronePoint {
             time: tod,
