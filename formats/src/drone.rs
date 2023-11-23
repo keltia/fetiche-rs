@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
-use influxdb::InfluxDbWriteable;
+use influxdb::{InfluxDbWriteable, Timestamp};
+use parquet_derive::ParquetRecordWriter;
 use serde::{Deserialize, Serialize};
 
 /// This is derived from the Asd structure for convenience.
@@ -16,7 +17,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, InfluxDbWriteable, Serialize)]
 pub struct DronePoint {
     /// UNIX timestamp
-    pub time: i64,
+    pub time: DateTime<Utc>,
     /// Each record is part of a drone journey with a specific ID
     #[influxdb(tag)]
     pub journey: u32,
