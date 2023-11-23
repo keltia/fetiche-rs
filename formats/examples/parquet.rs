@@ -52,8 +52,7 @@ fn read_write_output(base: &str) -> Result<()> {
     let mut row_group = writer.next_row_group()?;
 
     trace!("Writing data.");
-    let _ = data
-        .as_slice()
+    data.as_slice()
         .tap(|e| trace!("e={:?}", e))
         .write_to_row_group(&mut row_group)?;
     let m = row_group.close()?;
