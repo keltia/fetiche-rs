@@ -116,13 +116,14 @@ fn write_output(data: Chunk<Box<dyn Array>>, schema: Schema, base: &str) -> Resu
         data_pagesize_limit: None,
     };
 
-    let encodings = schema
+    let encodings: Vec<_> = schema
         .fields
         .iter()
         .map(|f| transverse(&f.data_type, |_| Encoding::Plain))
         .collect();
     trace!("encodings len={}", encodings.len());
 
+    let iter = vec![Ok(data)];
     let row_groups = RowGroupIterator::try_new(iter.into_iter(), &schema, options, encodings)?;
 
     // Prepare output
