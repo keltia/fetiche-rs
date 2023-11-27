@@ -7,6 +7,7 @@ use std::fs::File;
 use std::vec;
 
 use arrow2::array::Array;
+use arrow2::datatypes::DataType;
 use arrow2::{
     chunk::Chunk,
     datatypes::Schema,
@@ -47,9 +48,11 @@ pub struct Asd {
     pub timestamp: String,
     /// $7 (actually f32)
     #[serde_as(as = "DisplayFromStr")]
+    #[arrow_field(type = "f32")]
     pub latitude: f32,
     /// $8 (actually f32)
     #[serde_as(as = "DisplayFromStr")]
+    #[arrow_field(type = "f32")]
     pub longitude: f32,
     /// Altitude, can be either null or negative (?)
     pub altitude: Option<i16>,
@@ -61,11 +64,14 @@ pub struct Asd {
     pub rssi: Option<i32>,
     /// $13 (actually f32)
     #[serde_as(as = "Option<DisplayFromStr>")]
+    #[arrow_field(type = "Option<f32>")]
     pub home_lat: Option<f32>,
     /// $14 (actually f32)
     #[serde_as(as = "Option<DisplayFromStr>")]
+    #[arrow_field(type = "Option<f32>")]
     pub home_lon: Option<f32>,
     /// Altitude from takeoff point
+    #[arrow_field(type = "Option<f32>")]
     pub home_height: Option<f32>,
     /// Current speed
     pub speed: f32,
@@ -75,9 +81,11 @@ pub struct Asd {
     pub station_name: Option<String>,
     /// Latitude (actually f32)
     #[serde_as(as = "Option<DisplayFromStr>")]
+    #[arrow_field(type = "Option<f32>")]
     pub station_latitude: Option<f32>,
     /// Longitude (actually f32)
     #[serde_as(as = "Option<DisplayFromStr>")]
+    #[arrow_field(type = "Option<f32>")]
     pub station_longitude: Option<f32>,
 }
 
@@ -96,13 +104,13 @@ fn read_json(base: &str) -> Result<Vec<Asd>> {
     trace!("Read data.");
 
     let fname = format!("{}.json", base);
-    trace!("fname={:?}", fname);
+    //trace!("fname={:?}", fname);
     let str = std::fs::read_to_string(&fname)?;
 
     trace!("Decode data.");
     let json: Vec<Asd> = serde_json::from_str(&str)?;
     let json = json.iter().map(|r| fix_tm(&r).unwrap()).collect();
-    debug!("json={:?}", json);
+    //debug!("json={:?}", json);
 
     Ok(json)
 }
@@ -126,6 +134,11 @@ fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
     let arrow_array: Box<dyn Array> = data.try_into_arrow().unwrap();
     debug!("arrow_array={:?}", arrow_array);
 
+    let dt: &DataType = arrow_array.data_type();
+    debug!("dt={:?}", dt);
+
+    // Into a concrete type
+    //
     let struct_array = arrow_array
         .as_any()
         .downcast_ref::<arrow2::array::StructArray>()
@@ -136,15 +149,20 @@ fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
     debug!("fields={:?}", fields);
 
     let schema = Schema::from(fields);
-    debug!("schema={:?}", schema);
+    debug!("schema2={:?}", schema);
 
-    let encodings = schema
+    let encodings: Vec<_> = schema
         .fields
         .iter()
         .map(|f| transverse(&f.data_type, |_| Encoding::Plain))
         .collect();
 
-    let iter = vec![Ok(Chunk::new(vec![struct_array.clone().boxed()]))];
+    let chunk = Chunk::new(vec![arrow_array.clone()]);
+    debug!("chunk={:?}", chunk);
+
+    //let iter = vec![Ok(Chunk::new(vec![struct_array.clone().boxed()]))];
+    let iter = vec![Ok(chunk)];
+
     let row_groups = RowGroupIterator::try_new(iter.into_iter(), &schema, options, encodings)?;
     let mut writer = FileWriter::try_new(file, schema, options)?;
 
