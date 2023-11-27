@@ -12,84 +12,19 @@ use arrow2::{
         transverse, CompressionOptions, FileWriter, RowGroupIterator, Version, WriteOptions,
     },
 };
-use chrono::NaiveDateTime;
 use eyre::Result;
+use parquet2::compression::ZstdLevel;
 use parquet2::encoding::Encoding;
-use serde::{Deserialize, Serialize};
 use serde_arrow::{
     arrow2::{serialize_into_arrays, serialize_into_fields},
     schema::TracingOptions,
 };
-use serde_with::serde_as;
-use serde_with::DisplayFromStr;
 use tracing::{debug, info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
-#[serde_as]
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Asd {
-    /// Hidden UNIX timestamp
-    #[serde(skip_deserializing)]
-    pub time: i64,
-    /// Each record is part of a drone journey with a specific ID
-    pub journey: u32,
-    /// Identifier for the drone
-    pub ident: String,
-    /// Model of the drone
-    pub model: Option<String>,
-    /// Source ([see src/site/asd.rs]) of the data
-    pub source: String,
-    /// Point/record ID
-    pub location: u32,
-    /// Date of event (in the non standard YYYY-MM-DD HH:MM:SS formats)
-    pub timestamp: String,
-    /// $7 (actually f32)
-    #[serde_as(as = "DisplayFromStr")]
-    pub latitude: f32,
-    /// $8 (actually f32)
-    #[serde_as(as = "DisplayFromStr")]
-    pub longitude: f32,
-    /// Altitude, can be either null or negative (?)
-    pub altitude: Option<i16>,
-    /// Distance to ground (estimated every 15s)
-    pub elevation: Option<i32>,
-    /// Undocumented
-    pub gps: Option<u32>,
-    /// Signal level (in dB)
-    pub rssi: Option<i32>,
-    /// $13 (actually f32)
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub home_lat: Option<f32>,
-    /// $14 (actually f32)
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub home_lon: Option<f32>,
-    /// Altitude from takeoff point
-    pub home_height: Option<f32>,
-    /// Current speed
-    pub speed: f32,
-    /// True heading
-    pub heading: f32,
-    /// Name of detecting point
-    pub station_name: Option<String>,
-    /// Latitude (actually f32)
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub station_latitude: Option<f32>,
-    /// Longitude (actually f32)
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub station_longitude: Option<f32>,
-}
-
-/// Generate a proper timestamp from the non-standard string they emit.
-///
-#[inline]
-fn fix_tm(inp: &Asd) -> Result<Asd> {
-    let tod = NaiveDateTime::parse_from_str(&inp.timestamp, "%Y-%m-%d %H:%M:%S")?.timestamp();
-    let mut out = inp.clone();
-    out.time = tod;
-    Ok(out)
-}
+use fetiche_formats::Asd;
 
 #[tracing::instrument]
 fn read_json(base: &str) -> Result<Vec<Asd>> {
@@ -101,11 +36,10 @@ fn read_json(base: &str) -> Result<Vec<Asd>> {
 
     trace!("Decode data.");
     let json: Vec<Asd> = serde_json::from_str(&str)?;
-    debug!("json={:?}", json);
 
     // Patch tm inside every record
     //
-    let json = json.iter().map(|r| fix_tm(&r).unwrap()).collect();
+    let json = json.iter().map(|r| r.fix_tm().unwrap()).collect();
 
     Ok(json)
 }
@@ -114,7 +48,7 @@ fn read_json(base: &str) -> Result<Vec<Asd>> {
 fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
     let options = WriteOptions {
         write_statistics: true,
-        compression: CompressionOptions::Zstd(None),
+        compression: CompressionOptions::Zstd(Some(ZstdLevel::default())),
         version: Version::V2,
         data_pagesize_limit: None,
     };
@@ -128,9 +62,10 @@ fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
     //
     let topts = TracingOptions::default()
         .allow_null_fields(true)
-        .map_as_struct(true)
         .guess_dates(true);
     let fields = serialize_into_fields(&data, topts)?;
+    trace!("fields={:?}", fields);
+
     let arrays = serialize_into_arrays(&fields, &data)?;
 
     let iter = vec![Ok(Chunk::new(arrays))];

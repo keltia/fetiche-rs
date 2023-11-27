@@ -28,6 +28,8 @@ fn read_write_output(base: &str) -> Result<()> {
     trace!("Decode data.");
 
     let data: Vec<Asd> = serde_json::from_str(&str)?;
+    let data: Vec<_> = data.iter().map(|r| r.fix_tm().unwrap()).collect();
+
     info!("{} records read", data.len());
 
     // Infer schema from data
