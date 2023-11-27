@@ -92,7 +92,7 @@ fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
     Ok(())
 }
 
-const NAME: &str = "example.parquet";
+const NAME: &str = "parquet2";
 
 fn main() -> Result<()> {
     // Initialise logging early
