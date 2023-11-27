@@ -83,14 +83,16 @@ pub struct Asd {
 convert_to!(from_asd, Asd, Cat21);
 convert_to!(from_asd, Asd, DronePoint);
 
-/// Generate a proper timestamp from the non-standard string they emit.
-///
-#[inline]
-fn fix_tm(inp: &Asd) -> Result<Asd> {
-    let tod = NaiveDateTime::parse_from_str(&inp.timestamp, "%Y-%m-%d %H:%M:%S")?.timestamp();
-    let mut out = inp.clone();
-    out.tm = tod;
-    Ok(out)
+impl Asd {
+    /// Generate a proper timestamp from the non-standard string they emit.
+    ///
+    #[inline]
+    pub fn fix_tm(&self) -> Result<Asd> {
+        let tod = NaiveDateTime::parse_from_str(&self.timestamp, "%Y-%m-%d %H:%M:%S")?.timestamp();
+        let mut out = self.clone();
+        out.time = tod;
+        Ok(out)
+    }
 }
 
 /// For privacy reasons, we truncate the drone ID value to something not unique
