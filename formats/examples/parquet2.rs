@@ -135,6 +135,7 @@ fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
 
     let iter = vec![Ok(Chunk::new(arrays))];
     let schema = Schema::from(fields);
+    debug!("schema={:?}", schema);
 
     let encodings = schema
         .fields
