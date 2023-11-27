@@ -4,6 +4,7 @@
 use std::fs::File;
 use std::string::ToString;
 
+use chrono::NaiveDateTime;
 use eyre::Result;
 use parquet::basic::{Compression, Encoding, ZstdLevel};
 use parquet::file::properties::EnabledStatistics;
@@ -17,6 +18,16 @@ use tracing_tree::HierarchicalLayer;
 
 use fetiche_formats::Asd;
 
+/// Generate a proper timestamp from the non-standard string they emit.
+///
+#[inline]
+fn fix_tm(inp: &Asd) -> Result<Asd> {
+    let tod = NaiveDateTime::parse_from_str(&inp.timestamp, "%Y-%m-%d %H:%M:%S")?.timestamp();
+    let mut out = inp.clone();
+    out.time = tod;
+    Ok(out)
+}
+
 #[tracing::instrument]
 fn read_write_output(base: &str) -> Result<()> {
     trace!("Read data.");
@@ -28,6 +39,8 @@ fn read_write_output(base: &str) -> Result<()> {
     trace!("Decode data.");
 
     let data: Vec<Asd> = serde_json::from_str(&str)?;
+    let data = data.iter().map(|r| fix_tm(&r).unwrap()).collect();
+
     info!("{} records read", data.len());
 
     // Infer schema from data

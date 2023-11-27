@@ -31,7 +31,7 @@ use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated};
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
-    pub tm: i64,
+    pub time: i64,
     /// Each record is part of a drone journey with a specific ID
     pub journey: u32,
     /// Identifier for the drone
