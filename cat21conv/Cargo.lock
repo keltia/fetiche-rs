@@ -257,26 +257,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59c468daea140b747d781a1da9f7db5f0a8e6636d4af20cc539e43d05b0604fa"
 dependencies = [
  "ahash",
- "bytemuck",
- "chrono",
- "dyn-clone",
- "either",
- "ethnum",
- "foreign_vec",
- "getrandom",
- "hash_hasher",
- "num-traits",
- "rustc_version",
- "simdutf8",
-]
-
-[[package]]
-name = "arrow2"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "963fef509b757bcbbf9e5ffa23bcb345614d99f4f6f531f97417b27b8604d389"
-dependencies = [
- "ahash",
  "arrow-format",
  "base64 0.21.2",
  "bytemuck",
@@ -289,7 +269,6 @@ dependencies = [
  "futures",
  "getrandom",
  "hash_hasher",
- "hashbrown 0.14.0",
  "hex",
  "indexmap 1.9.3",
  "json-deserializer",
@@ -310,7 +289,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e907cf50c3406c79e3a6f4c36d177df9ce99edb7e39ca448d947e6945725034e"
 dependencies = [
- "arrow2 0.17.4",
+ "arrow2",
  "arrow2_convert_derive",
  "chrono",
  "err-derive",
@@ -1285,7 +1264,7 @@ dependencies = [
 name = "fetiche-formats"
 version = "0.15.0"
 dependencies = [
- "arrow2 0.18.0",
+ "arrow2",
  "arrow2_convert",
  "chrono",
  "csv",
@@ -1304,6 +1283,7 @@ dependencies = [
  "percent-encoding",
  "reqwest",
  "serde",
+ "serde_arrow",
  "serde_json",
  "serde_repr",
  "serde_with",
@@ -1589,6 +1569,7 @@ version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc52e53916c08643f1b56ec082790d1e86a32e58dc5268f897f313fbae7b4872"
 dependencies = [
+ "bytemuck",
  "cfg-if",
  "crunchy",
  "num-traits",
@@ -1611,9 +1592,6 @@ name = "hashbrown"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c6201b9ff9fd90a5a3bac2e56a830d0caa509576f0e503818ee82c181b3437a"
-dependencies = [
- "ahash",
-]
 
 [[package]]
 name = "hcl-edit"
@@ -3277,6 +3255,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e8c8cf938e98f769bc164923b06dce91cea1751522f46f8466461af04c9027d"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde_arrow"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2d76aa4d71cc3139e15f52dbe647a28fda74c1722c07e983ec394cb2b939f59"
+dependencies = [
+ "arrow2",
+ "bytemuck",
+ "chrono",
+ "half",
+ "serde",
 ]
 
 [[package]]

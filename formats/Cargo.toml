@@ -48,8 +48,9 @@ tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
-arrow2 = { version = "0.18", features = ["io_json", "io_json_integration", "io_parquet"] }
+arrow2 = { version = "0.17", features = ["io_json", "io_json_integration", "io_parquet"] }
 arrow2_convert = "0.5"
+serde_arrow = { version = "0", features = ["arrow2-0-17"] }
 parquet2 = { version = "0.17", features = ["zstd"] }
 csv = "1.3"
 percent-encoding = "2.3"
