@@ -86,7 +86,7 @@ convert_to!(from_asd, Asd, DronePoint);
 /// Generate a proper timestamp from the non-standard string they emit.
 ///
 #[inline]
-fn fix_tm(inp: Asd) -> Result<Asd> {
+fn fix_tm(inp: &Asd) -> Result<Asd> {
     let tod = NaiveDateTime::parse_from_str(&inp.timestamp, "%Y-%m-%d %H:%M:%S")?.timestamp();
     let mut out = inp.clone();
     out.tm = tod;

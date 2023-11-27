@@ -5,17 +5,21 @@
 
 use std::fs::File;
 
-use arrow2::array::Array;
-use arrow2::chunk::Chunk;
-use arrow2::datatypes::Schema;
-use arrow2::io::json::read;
-use arrow2::io::json::read::infer;
-use arrow2::io::parquet::write::{
-    transverse, CompressionOptions, Encoding, FileWriter, RowGroupIterator, Version, WriteOptions,
+use arrow2::{
+    chunk::Chunk,
+    datatypes::Schema,
+    io::parquet::write::{
+        transverse, CompressionOptions, FileWriter, RowGroupIterator, Version, WriteOptions,
+    },
 };
 use chrono::NaiveDateTime;
 use eyre::Result;
+use parquet2::encoding::Encoding;
 use serde::{Deserialize, Serialize};
+use serde_arrow::{
+    arrow2::{serialize_into_arrays, serialize_into_fields},
+    schema::TracingOptions,
+};
 use serde_with::serde_as;
 use serde_with::DisplayFromStr;
 use tracing::{debug, info, trace};
@@ -28,7 +32,7 @@ use tracing_tree::HierarchicalLayer;
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
-    pub tm: i64,
+    pub time: i64,
     /// Each record is part of a drone journey with a specific ID
     pub journey: u32,
     /// Identifier for the drone
@@ -80,35 +84,34 @@ pub struct Asd {
 /// Generate a proper timestamp from the non-standard string they emit.
 ///
 #[inline]
-fn fix_tm(inp: Asd) -> Result<Asd> {
+fn fix_tm(inp: &Asd) -> Result<Asd> {
     let tod = NaiveDateTime::parse_from_str(&inp.timestamp, "%Y-%m-%d %H:%M:%S")?.timestamp();
     let mut out = inp.clone();
-    out.tm = tod;
+    out.time = tod;
     Ok(out)
 }
 
 #[tracing::instrument]
-fn read_json(base: &str) -> Result<(Box<dyn Array>, Schema)> {
+fn read_json(base: &str) -> Result<Vec<Asd>> {
     trace!("Read data.");
 
     let fname = format!("{}.json", base);
     trace!("fname={:?}", fname);
-    let str = std::fs::read(&fname)?;
+    let str = std::fs::read_to_string(&fname)?;
 
     trace!("Decode data.");
-    let json = read::json_deserializer::parse(&str).unwrap();
+    let json: Vec<Asd> = serde_json::from_str(&str)?;
     debug!("json={:?}", json);
 
-    let data_type = infer(&json)?;
+    // Patch tm inside every record
+    //
+    let json = json.iter().map(|r| fix_tm(&r).unwrap()).collect();
 
-    let schema = read::infer_records_schema(&json)?;
-    let res = read::deserialize(&json, data_type)?;
-
-    Ok((res, schema))
+    Ok(json)
 }
 
-#[tracing::instrument(skip(data, schema))]
-fn write_output(data: Chunk<Box<dyn Array>>, schema: Schema, base: &str) -> Result<()> {
+#[tracing::instrument(skip(data))]
+fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
     let options = WriteOptions {
         write_statistics: true,
         compression: CompressionOptions::Zstd(None),
@@ -116,27 +119,38 @@ fn write_output(data: Chunk<Box<dyn Array>>, schema: Schema, base: &str) -> Resu
         data_pagesize_limit: None,
     };
 
-    let encodings: Vec<_> = schema
-        .fields
-        .iter()
-        .map(|f| transverse(&f.data_type, |_| Encoding::Plain))
-        .collect();
-    trace!("encodings len={}", encodings.len());
-
-    let iter = vec![Ok(data)];
-    let row_groups = RowGroupIterator::try_new(iter.into_iter(), &schema, options, encodings)?;
-
     // Prepare output
     //
     let fname = format!("{}2.parquet", base);
     let file = File::create(&fname)?;
 
+    // Prepare data
+    //
+    let topts = TracingOptions::default()
+        .allow_null_fields(true)
+        .map_as_struct(true)
+        .guess_dates(true);
+    let fields = serialize_into_fields(&data, topts)?;
+    let arrays = serialize_into_arrays(&fields, &data)?;
+
+    let iter = vec![Ok(Chunk::new(arrays))];
+    let schema = Schema::from(fields);
+
+    let encodings = schema
+        .fields
+        .iter()
+        .map(|f| transverse(&f.data_type, |_| Encoding::Plain))
+        .collect();
+
+    let row_groups = RowGroupIterator::try_new(iter.into_iter(), &schema, options, encodings)?;
     let mut writer = FileWriter::try_new(file, schema, options)?;
 
     for group in row_groups {
         writer.write(group?)?;
     }
+
     let size = writer.end(None)?;
+    trace!("{} bytes written.", size);
 
     info!("Done.");
     Ok(())
@@ -180,13 +194,10 @@ fn main() -> Result<()> {
 
     let fname = std::env::args().nth(1).unwrap_or("small".to_string());
 
-    let (data, schema) = read_json(&fname)?;
+    let data = read_json(&fname)?;
     debug!("data={:?}", data);
-    debug!("schema={:?}", schema);
 
-    let data = Chunk::new(vec![data]);
-
-    let _ = write_output(data, schema, &fname)?;
+    let _ = write_chunk(data, &fname)?;
 
     opentelemetry::global::shutdown_tracer_provider();
     Ok(())
