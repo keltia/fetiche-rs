@@ -6,30 +6,31 @@
 use std::fs::File;
 use std::vec;
 
-use arrow2::array::Array;
-use arrow2::datatypes::DataType;
 use arrow2::{
+    array::Array,
     chunk::Chunk,
     datatypes::Schema,
     io::parquet::write::{
         transverse, CompressionOptions, FileWriter, RowGroupIterator, Version, WriteOptions,
     },
 };
+use arrow2_convert::deserialize::TryIntoCollection;
 use arrow2_convert::serialize::TryIntoArrow;
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use chrono::NaiveDateTime;
 use eyre::Result;
 use parquet2::encoding::Encoding;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
-use serde_with::DisplayFromStr;
+use serde_with::{serde_as, DisplayFromStr};
 use tracing::{debug, info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 #[serde_as]
-#[derive(ArrowField, ArrowSerialize, ArrowDeserialize, Clone, Debug, Deserialize, Serialize)]
+#[derive(
+    ArrowField, ArrowSerialize, ArrowDeserialize, Clone, Debug, Deserialize, Serialize, PartialEq,
+)]
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
@@ -48,11 +49,9 @@ pub struct Asd {
     pub timestamp: String,
     /// $7 (actually f32)
     #[serde_as(as = "DisplayFromStr")]
-    #[arrow_field(type = "f32")]
     pub latitude: f32,
     /// $8 (actually f32)
     #[serde_as(as = "DisplayFromStr")]
-    #[arrow_field(type = "f32")]
     pub longitude: f32,
     /// Altitude, can be either null or negative (?)
     pub altitude: Option<i16>,
@@ -64,14 +63,11 @@ pub struct Asd {
     pub rssi: Option<i32>,
     /// $13 (actually f32)
     #[serde_as(as = "Option<DisplayFromStr>")]
-    #[arrow_field(type = "Option<f32>")]
     pub home_lat: Option<f32>,
     /// $14 (actually f32)
     #[serde_as(as = "Option<DisplayFromStr>")]
-    #[arrow_field(type = "Option<f32>")]
     pub home_lon: Option<f32>,
     /// Altitude from takeoff point
-    #[arrow_field(type = "Option<f32>")]
     pub home_height: Option<f32>,
     /// Current speed
     pub speed: f32,
@@ -81,22 +77,22 @@ pub struct Asd {
     pub station_name: Option<String>,
     /// Latitude (actually f32)
     #[serde_as(as = "Option<DisplayFromStr>")]
-    #[arrow_field(type = "Option<f32>")]
     pub station_latitude: Option<f32>,
     /// Longitude (actually f32)
     #[serde_as(as = "Option<DisplayFromStr>")]
-    #[arrow_field(type = "Option<f32>")]
     pub station_longitude: Option<f32>,
 }
 
-/// Generate a proper timestamp from the non-standard string they emit.
-///
-#[inline]
-fn fix_tm(inp: &Asd) -> Result<Asd> {
-    let tod = NaiveDateTime::parse_from_str(&inp.timestamp, "%Y-%m-%d %H:%M:%S")?.timestamp();
-    let mut out = inp.clone();
-    out.time = tod;
-    Ok(out)
+impl Asd {
+    /// Generate a proper timestamp from the non-standard string they emit.
+    ///
+    #[inline]
+    pub fn fix_tm(&self) -> Result<Asd> {
+        let tod = NaiveDateTime::parse_from_str(&self.timestamp, "%Y-%m-%d %H:%M:%S")?.timestamp();
+        let mut out = self.clone();
+        out.time = tod;
+        Ok(out)
+    }
 }
 
 #[tracing::instrument]
@@ -104,13 +100,11 @@ fn read_json(base: &str) -> Result<Vec<Asd>> {
     trace!("Read data.");
 
     let fname = format!("{}.json", base);
-    //trace!("fname={:?}", fname);
     let str = std::fs::read_to_string(&fname)?;
 
     trace!("Decode data.");
     let json: Vec<Asd> = serde_json::from_str(&str)?;
-    let json = json.iter().map(|r| fix_tm(&r).unwrap()).collect();
-    //debug!("json={:?}", json);
+    let json = json.iter().map(|r| r.fix_tm().unwrap()).collect();
 
     Ok(json)
 }
@@ -154,10 +148,11 @@ fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
         .map(|f| transverse(&f.data_type, |_| Encoding::Plain))
         .collect();
 
-    let chunk = Chunk::new(vec![arrow_array.clone()]);
-    debug!("chunk={:?}", chunk);
+    //let chunk = Chunk::new(vec![arrow_array.clone()]);
+    //debug!("chunk={:?}", chunk);
 
     let iter = vec![Ok(Chunk::new(vec![struct_array.clone().boxed()]))];
+    debug!("iter={:?}", iter);
     //let iter = vec![Ok(chunk)];
 
     let row_groups = RowGroupIterator::try_new(iter.into_iter(), &schema, options, encodings)?;

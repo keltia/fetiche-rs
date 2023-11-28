@@ -4,7 +4,10 @@
 //!
 
 use std::fs::File;
+use std::io::{BufRead, BufReader, Seek};
 
+use arrow2::array::Array;
+use arrow2::io::ndjson::read;
 use arrow2::{
     chunk::Chunk,
     datatypes::Schema,
@@ -15,43 +18,60 @@ use arrow2::{
 use eyre::Result;
 use parquet2::compression::ZstdLevel;
 use parquet2::encoding::Encoding;
-use serde_arrow::{
-    arrow2::{serialize_into_arrays, serialize_into_fields},
-    schema::TracingOptions,
-};
+use serde_arrow::schema::TracingOptions;
 use tracing::{debug, info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
-use fetiche_formats::Asd;
+const BATCH: usize = 20;
 
 #[tracing::instrument]
-fn read_json(base: &str) -> Result<Vec<Asd>> {
+fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
     trace!("Read data.");
 
     let fname = format!("{}.json", base);
     trace!("fname={:?}", fname);
-    let str = std::fs::read_to_string(&fname)?;
+
+    let mut reader = BufReader::new(File::open(fname)?);
+
+    let dt = read::infer(&mut reader, None)?;
+    reader.rewind()?;
+    debug!("dt={:?}", dt);
+
+    let mut reader = read::FileReader::new(reader, vec!["".to_string(); BATCH], None);
+    let mut arrays = vec![];
+
+    while let Some(rows) = reader.next()? {
+        let array = read::deserialize(rows, dt.clone())?;
+        arrays.push(array);
+    }
 
     trace!("Decode data.");
-    let json: Vec<Asd> = serde_json::from_str(&str)?;
+
+    let schema = infer_records_schema(&dt)?;
+    debug!("schema={:?}", schema);
+
+    let json = read::deserialize(&json, dt)?;
+    debug!("json={:?}", json);
 
     // Patch tm inside every record
     //
-    let json = json.iter().map(|r| r.fix_tm().unwrap()).collect();
+    //let json = json.iter().map(|r| r.fix_tm().unwrap()).collect();
 
-    Ok(json)
+    Ok((schema, json))
 }
 
 #[tracing::instrument(skip(data))]
-fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
+fn write_chunk(schema: Schema, data: Box<dyn Array>, base: &str) -> Result<()> {
     let options = WriteOptions {
         write_statistics: true,
         compression: CompressionOptions::Zstd(Some(ZstdLevel::default())),
         version: Version::V2,
         data_pagesize_limit: None,
     };
+
+    debug!("data in={:?}", data);
 
     // Prepare output
     //
@@ -63,14 +83,12 @@ fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
     let topts = TracingOptions::default()
         .allow_null_fields(true)
         .guess_dates(true);
-    let fields = serialize_into_fields(&data, topts)?;
-    trace!("fields={:?}", fields);
 
-    let arrays = serialize_into_arrays(&fields, &data)?;
+    let dt = data.data_type();
+    debug!("dt={:?}", dt);
 
-    let iter = vec![Ok(Chunk::new(arrays))];
-    let schema = Schema::from(fields);
-    debug!("schema={:?}", schema);
+    let iter = vec![Ok(Chunk::new(vec![data]))];
+    debug!("iter={:?}", iter);
 
     let encodings = schema
         .fields
@@ -130,10 +148,10 @@ fn main() -> Result<()> {
 
     let fname = std::env::args().nth(1).unwrap_or("small".to_string());
 
-    let data = read_json(&fname)?;
+    let (schema, data) = read_json(&fname)?;
     debug!("data={:?}", data);
 
-    let _ = write_chunk(data, &fname)?;
+    let _ = write_chunk(schema, data, &fname)?;
 
     opentelemetry::global::shutdown_tracer_provider();
     Ok(())
