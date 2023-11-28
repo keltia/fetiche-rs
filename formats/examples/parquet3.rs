@@ -134,9 +134,6 @@ fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
     let arrow_array: Box<dyn Array> = data.try_into_arrow().unwrap();
     debug!("arrow_array={:?}", arrow_array);
 
-    let dt: &DataType = arrow_array.data_type();
-    debug!("dt={:?}", dt);
-
     // Into a concrete type
     //
     let struct_array = arrow_array
@@ -160,8 +157,8 @@ fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
     let chunk = Chunk::new(vec![arrow_array.clone()]);
     debug!("chunk={:?}", chunk);
 
-    //let iter = vec![Ok(Chunk::new(vec![struct_array.clone().boxed()]))];
-    let iter = vec![Ok(chunk)];
+    let iter = vec![Ok(Chunk::new(vec![struct_array.clone().boxed()]))];
+    //let iter = vec![Ok(chunk)];
 
     let row_groups = RowGroupIterator::try_new(iter.into_iter(), &schema, options, encodings)?;
     let mut writer = FileWriter::try_new(file, schema, options)?;
