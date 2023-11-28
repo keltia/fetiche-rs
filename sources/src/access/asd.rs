@@ -12,6 +12,7 @@
 //!
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
+//! [NDJSON]: https://en.wikipedia.org/wiki/NDJSON
 
 use std::ops::Add;
 use std::str::FromStr;
@@ -302,7 +303,14 @@ impl Fetchable for Asd {
             }
         }
 
+        // What we receive is an anonymous JSON array
+        //
         let resp = resp.text()?;
+
+        // Convert it into NDJSON
+        //
+        let resp = into_ndjson(&resp)?;
+        debug!("resp={}", resp);
         Ok(out.send(resp)?)
     }
 
@@ -311,6 +319,30 @@ impl Fetchable for Asd {
     fn format(&self) -> Format {
         Format::Asd
     }
+}
+
+/// ASD is sending us an anonymous JSON array
+///
+/// This is less easy to use later on so we convert it into [NDJSON]
+///
+/// This is analogous to running the following (without the `time` fix):
+/// ```text
+/// jq --compact-output '.[]' < today.json > lines.json
+/// ```
+///
+fn into_ndjson(resp: &str) -> Result<String> {
+    let data: Vec<fetiche_formats::Asd> = serde_json::from_str(resp)?;
+    let res = data
+        .iter()
+        .map(|r| {
+            // Fix timestamp while we are here
+            //
+            let r = r.fix_tm().unwrap();
+            json!(&r).to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    Ok(res)
 }
 
 /// Access token derived from username/password
