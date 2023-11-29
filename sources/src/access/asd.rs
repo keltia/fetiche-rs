@@ -310,7 +310,6 @@ impl Fetchable for Asd {
         // Convert it into NDJSON
         //
         let resp = into_ndjson(&resp)?;
-        debug!("resp={}", resp);
         Ok(out.send(resp)?)
     }
 
@@ -335,6 +334,7 @@ fn into_ndjson(resp: &str) -> Result<String> {
     let res = data
         .iter()
         .map(|r| {
+            debug!("r={:?}", r);
             // Fix timestamp while we are here
             //
             let r = r.fix_tm().unwrap();
