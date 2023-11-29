@@ -1,74 +1,58 @@
 //! Read some data as json and write it into a parquet file
 //!
 
-use std::fs::File;
-use std::string::ToString;
+use datafusion::prelude::*;
+use datafusion::{
+    dataframe::DataFrameWriteOptions,
+    parquet::{
+        basic::{Compression, Encoding, ZstdLevel},
+        file::properties::{EnabledStatistics, WriterProperties},
+    },
+};
 
 use eyre::Result;
-use parquet::basic::{Compression, Encoding, ZstdLevel};
-use parquet::file::properties::EnabledStatistics;
-use parquet::file::{properties::WriterProperties, writer::SerializedFileWriter};
-use parquet::record::RecordWriter;
-use tap::Tap;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
-use fetiche_formats::Asd;
-
 #[tracing::instrument]
-fn read_write_output(base: &str) -> Result<()> {
+async fn read_write_output(base: &str) -> Result<()> {
     trace!("Read data.");
 
     let fname = format!("{}.json", base);
     trace!("fname={:?}", fname);
 
-    let str = std::fs::read_to_string(&fname)?;
-    trace!("Decode data.");
+    let ctx = SessionContext::new();
 
-    let data: Vec<Asd> = serde_json::from_str(&str)?;
-    let data: Vec<_> = data.iter().map(|r| r.fix_tm().unwrap()).collect();
-
-    info!("{} records read", data.len());
-
-    // Infer schema from data
-    //
-    let schema = data.as_slice().schema()?;
-    trace!("schema={:?}", schema);
+    let df = ctx.read_json(&fname, NdJsonReadOptions::default()).await?;
+    info!("{} records read", df.clone().count().await?);
 
     // Prepare output
     //
     let fname = format!("{}.parquet", base);
-    let file = File::create(&fname)?;
+
+    let opts = DataFrameWriteOptions::default();
 
     let props = WriterProperties::builder()
-        .set_created_by("fetiche".to_string())
+        .set_created_by(NAME.to_string())
         .set_encoding(Encoding::PLAIN)
         .set_statistics_enabled(EnabledStatistics::Page)
         .set_compression(Compression::ZSTD(ZstdLevel::default()))
         .build();
 
     info!("Writing in {}", fname);
-    let mut writer = SerializedFileWriter::new(file, schema.clone(), props.into())?;
-    let mut row_group = writer.next_row_group()?;
+    let res = df.write_parquet(&fname, opts, Some(props)).await?;
 
-    trace!("Writing data.");
-    data.as_slice()
-        .tap(|e| trace!("e={:?}", e))
-        .write_to_row_group(&mut row_group)?;
-    let m = row_group.close()?;
-    info!("{} records written.", m.num_rows());
-
-    writer.close()?;
-
-    info!("Done.");
+    let count = res.iter().fold(0, |cnt, e| cnt + e.num_columns());
+    info!("Done, {} records written.", count);
     Ok(())
 }
 
-const NAME: &str = "example.parquet";
+const NAME: &str = "parquet";
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     // Initialise logging early
     //
     let tree = HierarchicalLayer::new(2)
@@ -104,7 +88,7 @@ fn main() -> Result<()> {
 
     let fname = std::env::args().nth(1).ok_or("small").unwrap();
 
-    let _ = read_write_output(&fname)?;
+    let _ = read_write_output(&fname).await?;
 
     opentelemetry::global::shutdown_tracer_provider();
     Ok(())
