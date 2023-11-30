@@ -5,23 +5,26 @@
 
 use std::fs;
 use std::fs::OpenOptions;
+use std::io::{BufReader, Seek};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 
+use arrow2;
+use arrow2::array::Array;
+use arrow2::io::ndjson::read;
+use arrow2::io::ndjson::read::FallibleStreamingIterator;
+use arrow2::io::parquet::write::{CompressionOptions, Version, WriteOptions, ZstdLevel};
 use eyre::Result;
-use parquet::basic::{Compression, Encoding, ZstdLevel};
-use parquet::file::properties::EnabledStatistics;
-use parquet::{
-    file::{properties::WriterProperties, writer::SerializedFileWriter},
-    record::RecordWriter,
-};
 use tap::Tap;
-use tracing::{info, trace};
+use tracing::{debug, info, trace};
 
-use fetiche_formats::{Asd, Format};
+use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
 use crate::{Runnable, IO};
+
+const BATCH: usize = 1024;
 
 /// The Save task
 ///
@@ -86,10 +89,24 @@ impl Save {
                     Format::Asd => {
                         trace!("from asd to parquet");
 
-                        let data: Vec<Asd> = serde_json::from_str(&data)?;
+                        let mut reader = BufReader::new(data);
 
-                        trace!("{} records", data.len());
-                        let _ = write_output(&data, p);
+                        let dt = Arc::new(read::infer(&mut reader, None)?);
+                        reader.rewind()?;
+                        debug!("dt={:?}", dt);
+
+                        let mut reader =
+                            read::FileReader::new(reader, vec!["".to_string(); BATCH], None);
+                        let mut arrays = vec![];
+
+                        while let Some(rows) = reader.next()? {
+                            let array = read::deserialize(rows, dt.into())?;
+                            arrays.push(array);
+                        }
+                        debug!("arrays={:?}", arrays);
+
+                        trace!("{} records", arrays.len());
+                        let _ = write_output(&arrays, p);
                     }
                     _ => unimplemented!(),
                 },
@@ -106,7 +123,7 @@ impl Save {
 /// Write output from `Asd`  into proper `Parquet` file.
 ///
 #[tracing::instrument(skip(data))]
-fn write_output(data: &Vec<Asd>, out: &str) -> Result<()> {
+fn write_output(data: &Vec<Box<dyn Array>>, out: &str) -> Result<()> {
     // Prepare output
     //
     let fh = OpenOptions::new()
@@ -115,12 +132,12 @@ fn write_output(data: &Vec<Asd>, out: &str) -> Result<()> {
         .truncate(true)
         .open(out)?;
 
-    let props = WriterProperties::builder()
-        .set_created_by("acutectl".to_string())
-        .set_encoding(Encoding::PLAIN)
-        .set_compression(Compression::ZSTD(ZstdLevel::default()))
-        .set_statistics_enabled(EnabledStatistics::Page)
-        .build();
+    let props = WriteOptions {
+        write_statistics: true,
+        compression: CompressionOptions::Zstd(Some(ZstdLevel::default())),
+        version: Version::V2,
+        data_pagesize_limit: None,
+    };
 
     let schema = data.as_slice().schema()?;
 
