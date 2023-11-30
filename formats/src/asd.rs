@@ -9,7 +9,7 @@ use chrono::NaiveDateTime;
 use eyre::Result;
 use parquet_derive::ParquetRecordWriter;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_with, DeserializeFromStr, DisplayFromStr};
+use serde_with::{serde_as, DisplayFromStr, PickFirst};
 use tracing::debug;
 
 use crate::drone::DronePoint;
@@ -26,7 +26,8 @@ use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated};
 /// `timestamp` format is NON-STANDARD so we had out own `tm` field which gets ignored when
 /// de-serialising and we fix it afterward
 ///
-#[derive(Clone, Debug, Deserialize, DeserializeFromStr, ParquetRecordWriter, Serialize)]
+#[serde_as]
+#[derive(Clone, Debug, Deserialize, ParquetRecordWriter, Serialize)]
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
@@ -44,10 +45,10 @@ pub struct Asd {
     /// Date of event (in the non standard YYYY-MM-DD HH:MM:SS formats)
     pub timestamp: String,
     /// $7 (actually f32)
-    #[serde_with]
+    #[serde_as(as = "PickFirst<(_, DisplayFromStr)>")]
     pub latitude: f32,
     /// $8 (actually f32)
-    #[serde_with]
+    #[serde_as(as = "PickFirst<(_, DisplayFromStr)>")]
     pub longitude: f32,
     /// Altitude, can be either null or negative (?)
     pub altitude: Option<i16>,
@@ -58,10 +59,10 @@ pub struct Asd {
     /// Signal level (in dB)
     pub rssi: Option<i32>,
     /// $13 (actually f32)
-    #[serde_with]
+    #[serde_as(as = "PickFirst<(Option<_>, Option<DisplayFromStr>)>")]
     pub home_lat: Option<f32>,
     /// $14 (actually f32)
-    #[serde_with]
+    #[serde_as(as = "PickFirst<(Option<_>, Option<DisplayFromStr>)>")]
     pub home_lon: Option<f32>,
     /// Altitude from takeoff point
     pub home_height: Option<f32>,
@@ -72,10 +73,10 @@ pub struct Asd {
     /// Name of detecting point
     pub station_name: Option<String>,
     /// Latitude (actually f32)
-    #[serde_with]
+    #[serde_as(as = "PickFirst<(Option<_>, Option<DisplayFromStr>)>")]
     pub station_latitude: Option<f32>,
     /// Longitude (actually f32)
-    #[serde_with]
+    #[serde_as(as = "PickFirst<(Option<_>, Option<DisplayFromStr>)>")]
     pub station_longitude: Option<f32>,
 }
 
