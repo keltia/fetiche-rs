@@ -14,14 +14,13 @@ use arrow2::{
         transverse, CompressionOptions, FileWriter, RowGroupIterator, Version, WriteOptions,
     },
 };
-use arrow2_convert::deserialize::TryIntoCollection;
 use arrow2_convert::serialize::TryIntoArrow;
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use chrono::NaiveDateTime;
 use eyre::Result;
 use parquet2::encoding::Encoding;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::{serde_as, DisplayFromStr, PickFirst};
 use tracing::{debug, info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
@@ -48,10 +47,10 @@ pub struct Asd {
     /// Date of event (in the non standard YYYY-MM-DD HH:MM:SS formats)
     pub timestamp: String,
     /// $7 (actually f32)
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde_as(as = "PickFirst<(_, DisplayFromStr)>")]
     pub latitude: f32,
     /// $8 (actually f32)
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde_as(as = "PickFirst<(_, DisplayFromStr)>")]
     pub longitude: f32,
     /// Altitude, can be either null or negative (?)
     pub altitude: Option<i16>,
@@ -62,10 +61,10 @@ pub struct Asd {
     /// Signal level (in dB)
     pub rssi: Option<i32>,
     /// $13 (actually f32)
-    #[serde_as(as = "Option<DisplayFromStr>")]
+    #[serde_as(as = "PickFirst<(Option<_>, Option<DisplayFromStr>)>")]
     pub home_lat: Option<f32>,
     /// $14 (actually f32)
-    #[serde_as(as = "Option<DisplayFromStr>")]
+    #[serde_as(as = "PickFirst<(Option<_>, Option<DisplayFromStr>)>")]
     pub home_lon: Option<f32>,
     /// Altitude from takeoff point
     pub home_height: Option<f32>,
@@ -76,10 +75,10 @@ pub struct Asd {
     /// Name of detecting point
     pub station_name: Option<String>,
     /// Latitude (actually f32)
-    #[serde_as(as = "Option<DisplayFromStr>")]
+    #[serde_as(as = "PickFirst<(Option<_>, Option<DisplayFromStr>)>")]
     pub station_latitude: Option<f32>,
     /// Longitude (actually f32)
-    #[serde_as(as = "Option<DisplayFromStr>")]
+    #[serde_as(as = "PickFirst<(Option<_>, Option<DisplayFromStr>)>")]
     pub station_longitude: Option<f32>,
 }
 
@@ -87,7 +86,7 @@ impl Asd {
     /// Generate a proper timestamp from the non-standard string they emit.
     ///
     #[inline]
-    pub fn fix_tm(&self) -> Result<Asd> {
+    pub fn fix_tm(&self) -> Result<Self> {
         let tod = NaiveDateTime::parse_from_str(&self.timestamp, "%Y-%m-%d %H:%M:%S")?.timestamp();
         let mut out = self.clone();
         out.time = tod;
@@ -96,21 +95,29 @@ impl Asd {
 }
 
 #[tracing::instrument]
-fn read_json(base: &str) -> Result<Vec<Asd>> {
+fn read_json(base: &str) -> Result<Box<dyn Array>> {
     trace!("Read data.");
 
     let fname = format!("{}.json", base);
-    let str = std::fs::read_to_string(&fname)?;
+    let data = std::fs::read_to_string(&fname)?;
+    let str = data.as_str().lines();
 
     trace!("Decode data.");
-    let json: Vec<Asd> = serde_json::from_str(&str)?;
-    let json = json.iter().map(|r| r.fix_tm().unwrap()).collect();
+    let data: Vec<Asd> = str
+        .map(|l| {
+            debug!("l = {}", l);
+            let r: Asd = serde_json::from_str(l).unwrap();
+            r.fix_tm().unwrap()
+        })
+        .collect();
 
-    Ok(json)
+    let data: Box<dyn Array> = data.try_into_arrow()?;
+
+    Ok(data)
 }
 
 #[tracing::instrument(skip(data))]
-fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
+fn write_chunk(data: Box<dyn Array>, base: &str) -> Result<()> {
     let options = WriteOptions {
         write_statistics: true,
         compression: CompressionOptions::Zstd(None),
@@ -125,12 +132,11 @@ fn write_chunk(data: Vec<Asd>, base: &str) -> Result<()> {
 
     // Prepare data
     //
-    let arrow_array: Box<dyn Array> = data.try_into_arrow().unwrap();
-    debug!("arrow_array={:?}", arrow_array);
+    debug!("arrow_array={:?}", data);
 
     // Into a concrete type
     //
-    let struct_array = arrow_array
+    let struct_array = data
         .as_any()
         .downcast_ref::<arrow2::array::StructArray>()
         .unwrap();

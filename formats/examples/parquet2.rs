@@ -3,11 +3,11 @@
 //! Alternative version using `arrow2` instead of arrow/parquet:etc.
 //!
 
+use std::fs;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Seek};
 
 use arrow2::array::Array;
-use arrow2::io::ndjson::read;
+use arrow2::io::json::write::FallibleStreamingIterator;
 use arrow2::{
     chunk::Chunk,
     datatypes::Schema,
@@ -18,11 +18,14 @@ use arrow2::{
 use eyre::Result;
 use parquet2::compression::ZstdLevel;
 use parquet2::encoding::Encoding;
+use serde_arrow::arrow2::{serialize_into_arrays, serialize_into_fields};
 use serde_arrow::schema::TracingOptions;
 use tracing::{debug, info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
+
+use fetiche_formats::Asd;
 
 const BATCH: usize = 20;
 
@@ -33,37 +36,27 @@ fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
     let fname = format!("{}.json", base);
     trace!("fname={:?}", fname);
 
-    let mut reader = BufReader::new(File::open(fname)?);
+    let topts = TracingOptions::default()
+        .guess_dates(true)
+        .allow_null_fields(true);
 
-    let dt = read::infer(&mut reader, None)?;
-    reader.rewind()?;
-    debug!("dt={:?}", dt);
+    let data = fs::read_to_string(fname)?;
+    let json: Vec<Asd> = serde_json::from_str(&data)?;
 
-    let mut reader = read::FileReader::new(reader, vec!["".to_string(); BATCH], None);
-    let mut arrays = vec![];
+    let fields = serialize_into_fields(&json, topts)?;
+    trace!("fields={:?}", fields);
 
-    while let Some(rows) = reader.next()? {
-        let array = read::deserialize(rows, dt.clone())?;
-        arrays.push(array);
-    }
-
-    trace!("Decode data.");
-
-    let schema = infer_records_schema(&dt)?;
+    let schema = Schema::from(fields.clone());
     debug!("schema={:?}", schema);
 
-    let json = read::deserialize(&json, dt)?;
-    debug!("json={:?}", json);
+    let arrays = serialize_into_arrays(&fields, &data)?;
+    debug!("arrays={:?}", arrays);
 
-    // Patch tm inside every record
-    //
-    //let json = json.iter().map(|r| r.fix_tm().unwrap()).collect();
-
-    Ok((schema, json))
+    Ok((schema, arrays))
 }
 
 #[tracing::instrument(skip(data))]
-fn write_chunk(schema: Schema, data: Box<dyn Array>, base: &str) -> Result<()> {
+fn write_chunk(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Result<()> {
     let options = WriteOptions {
         write_statistics: true,
         compression: CompressionOptions::Zstd(Some(ZstdLevel::default())),
@@ -78,16 +71,7 @@ fn write_chunk(schema: Schema, data: Box<dyn Array>, base: &str) -> Result<()> {
     let fname = format!("{}2.parquet", base);
     let file = File::create(&fname)?;
 
-    // Prepare data
-    //
-    let topts = TracingOptions::default()
-        .allow_null_fields(true)
-        .guess_dates(true);
-
-    let dt = data.data_type();
-    debug!("dt={:?}", dt);
-
-    let iter = vec![Ok(Chunk::new(vec![data]))];
+    let iter = vec![Ok(Chunk::new(data))];
     debug!("iter={:?}", iter);
 
     let encodings = schema
