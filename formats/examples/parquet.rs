@@ -9,7 +9,6 @@ use datafusion::{
         file::properties::{EnabledStatistics, WriterProperties},
     },
 };
-
 use eyre::Result;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
@@ -32,7 +31,7 @@ async fn read_write_output(base: &str) -> Result<()> {
     //
     let fname = format!("{}.parquet", base);
 
-    let opts = DataFrameWriteOptions::default();
+    let opts = DataFrameWriteOptions::default().with_single_file_output(true);
 
     let props = WriterProperties::builder()
         .set_created_by(NAME.to_string())
@@ -44,8 +43,7 @@ async fn read_write_output(base: &str) -> Result<()> {
     info!("Writing in {}", fname);
     let res = df.write_parquet(&fname, opts, Some(props)).await?;
 
-    let count = res.iter().fold(0, |cnt, e| cnt + e.num_columns());
-    info!("Done, {} records written.", count);
+    info!("Done.");
     Ok(())
 }
 
