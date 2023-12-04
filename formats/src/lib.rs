@@ -168,9 +168,8 @@ macro_rules! convert_to {
                 let res: Vec<_> = res
                     .filter(|l| l.is_ok())
                     .enumerate()
-                    .inspect(|(n, f)| debug!("f={:?}-{:?}", n, f))
+                    .inspect(|(n, f)| debug!("cnt={}/{:?}", n, f.as_ref().unwrap()))
                     .map(|(cnt, rec)| {
-                        debug!("cnt={}/rec={:?}", cnt, rec.as_ref().unwrap());
                         $to::from(&rec.unwrap())
                     })
                     .collect();
