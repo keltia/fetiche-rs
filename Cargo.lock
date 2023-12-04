@@ -231,7 +231,7 @@ dependencies = [
 
 [[package]]
 name = "acutectl"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "arrow2",
  "assert_cmd",
@@ -2169,7 +2169,7 @@ checksum = "6999dc1837253364c2ebb0704ba97994bd874e8f195d665c50b7548f6ea92764"
 
 [[package]]
 name = "fetiche-formats"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "arrow2",
  "arrow2_convert",
@@ -2219,7 +2219,7 @@ dependencies = [
 
 [[package]]
 name = "fetiche-sources"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "base64_light",
  "chrono",
