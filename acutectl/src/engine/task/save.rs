@@ -3,23 +3,28 @@
 //! This is for saving data into a specific (or not) format like plain file (None) or Parquet.
 //!
 
-use std::fs;
-use std::fs::OpenOptions;
+use std::fs::File;
 use std::io::{BufReader, Seek};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
-use std::sync::Arc;
 
 use arrow2;
 use arrow2::array::Array;
-use arrow2::io::ndjson::read;
+use arrow2::chunk::Chunk;
+use arrow2::datatypes::Schema;
 use arrow2::io::ndjson::read::FallibleStreamingIterator;
-use arrow2::io::parquet::write::{CompressionOptions, Version, WriteOptions, ZstdLevel};
+use arrow2::io::parquet::write::{
+    transverse, CompressionOptions, Encoding, FileWriter, RowGroupIterator, Version, WriteOptions,
+    ZstdLevel,
+};
 use eyre::Result;
+use serde_arrow::arrow2::{serialize_into_arrays, serialize_into_fields};
+use serde_arrow::schema::TracingOptions;
+use serde_json::Deserializer;
 use tap::Tap;
 use tracing::{debug, info, trace};
 
-use fetiche_formats::Format;
+use fetiche_formats::{Asd, Format};
 use fetiche_macros::RunnableDerive;
 
 use crate::{Runnable, IO};
@@ -89,24 +94,26 @@ impl Save {
                     Format::Asd => {
                         trace!("from asd to parquet");
 
-                        let mut reader = BufReader::new(data);
+                        let topts = TracingOptions::default()
+                            .guess_dates(true)
+                            .allow_null_fields(true);
 
-                        let dt = Arc::new(read::infer(&mut reader, None)?);
-                        reader.rewind()?;
-                        debug!("dt={:?}", dt);
+                        let reader = BufReader::new(data.as_bytes());
+                        let json = Deserializer::from_reader(reader).into_iter::<Asd>();
 
-                        let mut reader =
-                            read::FileReader::new(reader, vec!["".to_string(); BATCH], None);
-                        let mut arrays = vec![];
+                        let data: Vec<Asd> = json.map(|e| e.unwrap().fix_tm().unwrap()).collect();
 
-                        while let Some(rows) = reader.next()? {
-                            let array = read::deserialize(rows, dt.into())?;
-                            arrays.push(array);
-                        }
+                        let fields = serialize_into_fields(&data, topts)?;
+                        trace!("fields={:?}", fields);
+
+                        let schema = Schema::from(fields.clone());
+                        debug!("schema={:?}", schema);
+
+                        let arrays = serialize_into_arrays(&fields, &data)?;
                         debug!("arrays={:?}", arrays);
 
                         trace!("{} records", arrays.len());
-                        let _ = write_output(&arrays, p);
+                        let _ = write_output(schema, arrays, p);
                     }
                     _ => unimplemented!(),
                 },
@@ -123,37 +130,41 @@ impl Save {
 /// Write output from `Asd`  into proper `Parquet` file.
 ///
 #[tracing::instrument(skip(data))]
-fn write_output(data: &Vec<Box<dyn Array>>, out: &str) -> Result<()> {
-    // Prepare output
-    //
-    let fh = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(out)?;
-
-    let props = WriteOptions {
+fn write_output(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Result<()> {
+    let options = WriteOptions {
         write_statistics: true,
         compression: CompressionOptions::Zstd(Some(ZstdLevel::default())),
         version: Version::V2,
         data_pagesize_limit: None,
     };
 
-    let schema = data.as_slice().schema()?;
+    debug!("data in={:?}", data);
 
-    info!("Writing in {}", out);
-    let mut writer = SerializedFileWriter::new(fh, schema.clone(), props.into())?;
-    let mut row_group = writer.next_row_group()?;
+    // Prepare output
+    //
+    let fname = format!("{}2.parquet", base);
+    let file = File::create(&fname)?;
 
-    trace!("Writing data.");
-    data.as_slice()
-        .tap(|&e| trace!("e={:?}", e))
-        .write_to_row_group(&mut row_group)?;
-    let m = row_group.close()?;
-    trace!("{} records written.", m.num_rows());
-    writer.close()?;
+    let iter = vec![Ok(Chunk::new(data))];
+    debug!("iter={:?}", iter);
 
-    trace!("Done.");
+    let encodings = schema
+        .fields
+        .iter()
+        .map(|f| transverse(&f.data_type, |_| Encoding::Plain))
+        .collect();
+
+    let row_groups = RowGroupIterator::try_new(iter.into_iter(), &schema, options, encodings)?;
+    let mut writer = FileWriter::try_new(file, schema, options)?;
+
+    for group in row_groups {
+        writer.write(group?)?;
+    }
+
+    let size = writer.end(None)?;
+    trace!("{} bytes written.", size);
+
+    info!("Done.");
     Ok(())
 }
 
