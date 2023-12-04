@@ -26,6 +26,7 @@ pub use asd::*;
 pub use asterix::*;
 pub use avionix::*;
 pub use drone::*;
+#[cfg(feature = "flightaware")]
 pub use flightaware::*;
 pub use opensky::*;
 pub use parquet::*;
@@ -36,6 +37,7 @@ mod asd;
 mod asterix;
 mod avionix;
 mod drone;
+#[cfg(feature = "flightaware")]
 mod flightaware;
 mod opensky;
 mod parquet;

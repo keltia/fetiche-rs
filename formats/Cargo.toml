@@ -13,6 +13,7 @@ keywords = ["asterix", "drones", "aeronautical-data", "ads-b"]
 [features]
 default = ["privacy"]
 privacy = []
+flightaware = []
 
 [package.metadata.docs.rs]
 all-features = true
