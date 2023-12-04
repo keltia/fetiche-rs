@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::io::Read;
+use std::io::{BufReader, Read};
 
 use csv::{Reader, WriterBuilder};
 use eyre::Result;
@@ -162,15 +162,16 @@ macro_rules! convert_to {
             #[tracing::instrument]
             pub fn $name(input: &str) -> Result<Vec<$to>> {
                 debug!("IN={:?}", input);
-                let res: Vec<$from> = serde_json::from_str(&input)?;
-                debug!("rec={:?}", res);
+                let stream = ::std::io::BufReader::new(input.as_bytes());
+                let res = ::serde_json::Deserializer::from_reader(stream).into_iter::<$from>();
+
                 let res: Vec<_> = res
-                    .iter()
+                    .filter(|l| l.is_ok())
                     .enumerate()
                     .inspect(|(n, f)| debug!("f={:?}-{:?}", n, f))
                     .map(|(cnt, rec)| {
-                        debug!("cnt={}/rec={:?}", cnt, rec);
-                        $to::from(rec)
+                        debug!("cnt={}/rec={:?}", cnt, rec.as_ref().unwrap());
+                        $to::from(&rec.unwrap())
                     })
                     .collect();
                 debug!("res={:?}", res);
