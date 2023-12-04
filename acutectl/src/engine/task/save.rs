@@ -3,6 +3,7 @@
 //! This is for saving data into a specific (or not) format like plain file (None) or Parquet.
 //!
 
+use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Seek};
 use std::path::PathBuf;
@@ -28,8 +29,6 @@ use fetiche_formats::{Asd, Format};
 use fetiche_macros::RunnableDerive;
 
 use crate::{Runnable, IO};
-
-const BATCH: usize = 1024;
 
 /// The Save task
 ///
@@ -85,7 +84,7 @@ impl Save {
             println!("{}", data);
         } else {
             let p = self.path.as_ref().unwrap();
-            info!("Writing into {}", p);
+            trace!("Writing into {}", p);
 
             match self.out {
                 // There we handle the combination of input & output formats
@@ -113,7 +112,7 @@ impl Save {
                         debug!("arrays={:?}", arrays);
 
                         trace!("{} records", arrays.len());
-                        let _ = write_output(schema, arrays, p);
+                        let _ = write_parquet(schema, arrays, p);
                     }
                     _ => unimplemented!(),
                 },
@@ -129,8 +128,8 @@ impl Save {
 
 /// Write output from `Asd`  into proper `Parquet` file.
 ///
-#[tracing::instrument(skip(data))]
-fn write_output(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Result<()> {
+#[tracing::instrument(skip(schema, data))]
+fn write_parquet(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Result<()> {
     let options = WriteOptions {
         write_statistics: true,
         compression: CompressionOptions::Zstd(Some(ZstdLevel::default())),
@@ -142,8 +141,7 @@ fn write_output(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Result
 
     // Prepare output
     //
-    let fname = format!("{}2.parquet", base);
-    let file = File::create(&fname)?;
+    let file = File::create(base)?;
 
     let iter = vec![Ok(Chunk::new(data))];
     debug!("iter={:?}", iter);
@@ -164,7 +162,7 @@ fn write_output(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Result
     let size = writer.end(None)?;
     trace!("{} bytes written.", size);
 
-    info!("Done.");
+    info!("Writing, done.");
     Ok(())
 }
 

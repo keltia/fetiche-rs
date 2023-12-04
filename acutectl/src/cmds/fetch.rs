@@ -95,7 +95,7 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
         None => "-",
     };
 
-    trace!("Writing to {final_output}");
+    info!("Writing to {final_output}");
 
     // Last task is `Save`
     //
