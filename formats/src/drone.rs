@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
-use influxdb::{InfluxDbWriteable, Timestamp};
-use parquet_derive::ParquetRecordWriter;
+use influxdb::InfluxDbWriteable;
 use serde::{Deserialize, Serialize};
 
 /// This is derived from the Asd structure for convenience.
