@@ -39,7 +39,6 @@ fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
 
     let topts = TracingOptions::default()
         .guess_dates(true)
-        .map_as_struct(true)
         .allow_null_fields(true);
 
     let buf = BufReader::new(File::open(&fname)?);
