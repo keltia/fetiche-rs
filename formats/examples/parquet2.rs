@@ -3,8 +3,8 @@
 //! Alternative version using `arrow2` instead of arrow/parquet:etc.
 //!
 
-use std::fs;
 use std::fs::File;
+use std::io::BufReader;
 
 use arrow2::array::Array;
 use arrow2::io::json::write::FallibleStreamingIterator;
@@ -20,6 +20,7 @@ use parquet2::compression::ZstdLevel;
 use parquet2::encoding::Encoding;
 use serde_arrow::arrow2::{serialize_into_arrays, serialize_into_fields};
 use serde_arrow::schema::TracingOptions;
+use serde_json::Deserializer;
 use tracing::{debug, info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
@@ -27,7 +28,7 @@ use tracing_tree::HierarchicalLayer;
 
 use fetiche_formats::Asd;
 
-const BATCH: usize = 20;
+const BATCH: usize = 200;
 
 #[tracing::instrument]
 fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
@@ -38,12 +39,15 @@ fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
 
     let topts = TracingOptions::default()
         .guess_dates(true)
+        .map_as_struct(true)
         .allow_null_fields(true);
 
-    let data = fs::read_to_string(fname)?;
-    let json: Vec<Asd> = serde_json::from_str(&data)?;
+    let buf = BufReader::new(File::open(&fname)?);
+    let json = Deserializer::from_reader(buf).into_iter::<Asd>();
 
-    let fields = serialize_into_fields(&json, topts)?;
+    let data: Vec<Asd> = json.map(|e| e.unwrap().fix_tm().unwrap()).collect();
+
+    let fields = serialize_into_fields(&data, topts)?;
     trace!("fields={:?}", fields);
 
     let schema = Schema::from(fields.clone());
