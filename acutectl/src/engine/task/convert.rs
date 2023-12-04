@@ -76,6 +76,7 @@ impl Convert {
 
                         Cat21::from_asd(&data)?
                     }
+                    #[cfg(feature = "flightaware")]
                     Format::Flightaware => {
                         trace!("flightaware:json to cat21: {}", data);
 
