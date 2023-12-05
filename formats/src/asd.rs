@@ -7,7 +7,7 @@
 
 use chrono::NaiveDateTime;
 use eyre::Result;
-use parquet_derive::ParquetRecordWriter;
+use influxdb::InfluxDbWriteable;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr, PickFirst};
 use tracing::debug;
@@ -27,14 +27,16 @@ use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated};
 /// de-serialising and we fix it afterward
 ///
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, ParquetRecordWriter, Serialize)]
+#[derive(Clone, Debug, Deserialize, InfluxDbWriteable, Serialize)]
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
     pub time: i64,
     /// Each record is part of a drone journey with a specific ID
+    #[influxdb(tag)]
     pub journey: u32,
     /// Identifier for the drone
+    #[influxdb(tag)]
     pub ident: String,
     /// Model of the drone
     pub model: Option<String>,
