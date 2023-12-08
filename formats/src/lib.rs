@@ -184,6 +184,8 @@ impl Format {
     /// Process each record coming from the input source, apply `Cat::from()` onto it
     /// and return the list.  This is used when reading from the csv files.
     ///
+    /// TODO: use arrow2 & serde_arrow instead.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn from_csv<R>(self, rdr: &mut Reader<R>) -> Result<Vec<Cat21>>
     where
