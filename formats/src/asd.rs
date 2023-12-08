@@ -5,7 +5,7 @@
 //!
 //! JSON endpoint added later by ASD in Nov. 2022.
 
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use eyre::Result;
 use influxdb::InfluxDbWriteable;
 use serde::{Deserialize, Serialize};
@@ -21,17 +21,19 @@ use crate::{convert_to, to_feet, to_knots, Cat21, TodCalculated};
 ///
 /// NOTE: Some fields are String and not the actual type (f32 for example) because there
 /// are apparently stored as DECIMAL in their database and not as FLOAT.  There are then
-/// exported as 6-digit floating strings.
+/// exported as 6-digit floating strings. `serde_as` is used to properly handle these.
 ///
-/// `timestamp` format is NON-STANDARD so we had out own `tm` field which gets ignored when
-/// de-serialising and we fix it afterward
+/// `timestamp` format is NON-STANDARD so we had our own `time` field which gets ignored when
+/// de-serialising and we fix it afterward.  We use `DateTime<Utc>` from `chrono` because plain
+/// `i64` is not supported by InfluxDB as it is.
 ///
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, InfluxDbWriteable, Serialize)]
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
-    pub time: i64,
+    #[serde_as(as = "PickFirst<(_, DisplayFromStr)>")]
+    pub time: DateTime<Utc>,
     /// Each record is part of a drone journey with a specific ID
     #[influxdb(tag)]
     pub journey: u32,
@@ -90,9 +92,9 @@ impl Asd {
     ///
     #[inline]
     pub fn fix_tm(&self) -> Result<Asd> {
-        let tod = NaiveDateTime::parse_from_str(&self.timestamp, "%Y-%m-%d %H:%M:%S")?.timestamp();
+        let tod = NaiveDateTime::parse_from_str(&self.timestamp, "%Y-%m-%d %H:%M:%S")?;
         let mut out = self.clone();
-        out.time = tod;
+        out.time = tod.and_utc();
         Ok(out)
     }
 }
@@ -129,9 +131,7 @@ impl From<&Asd> for Cat21 {
     ///
     #[tracing::instrument]
     fn from(line: &Asd) -> Self {
-        let tod = NaiveDateTime::parse_from_str(&line.timestamp, "%Y-%m-%d %H:%M:%S")
-            .unwrap()
-            .timestamp();
+        let tod = line.time.timestamp();
         let alt_geo_ft = line.altitude.unwrap_or(0i16);
         let alt_geo_ft: f32 = alt_geo_ft.into();
         Cat21 {
