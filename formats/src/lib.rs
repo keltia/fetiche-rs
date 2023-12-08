@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::io::{BufReader, Read};
+use std::io::Read;
 
 use csv::{Reader, WriterBuilder};
 use eyre::Result;

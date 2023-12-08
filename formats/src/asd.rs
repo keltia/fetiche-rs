@@ -13,7 +13,7 @@ use serde_with::{serde_as, DisplayFromStr, PickFirst};
 use tracing::debug;
 
 use crate::drone::DronePoint;
-use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated};
+use crate::{convert_to, to_feet, to_knots, Cat21, TodCalculated};
 
 /// Our input structure from the json file coming out of the main ASD site
 ///

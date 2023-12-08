@@ -13,7 +13,6 @@ use arrow2;
 use arrow2::array::Array;
 use arrow2::chunk::Chunk;
 use arrow2::datatypes::Schema;
-use arrow2::io::ndjson::read::FallibleStreamingIterator;
 use arrow2::io::parquet::write::{
     transverse, CompressionOptions, Encoding, FileWriter, RowGroupIterator, Version, WriteOptions,
     ZstdLevel,
@@ -22,7 +21,6 @@ use eyre::Result;
 use serde_arrow::arrow2::{serialize_into_arrays, serialize_into_fields};
 use serde_arrow::schema::TracingOptions;
 use serde_json::Deserializer;
-use tap::Tap;
 use tracing::{debug, info, trace};
 
 use fetiche_formats::{Asd, Format};
