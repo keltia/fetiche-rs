@@ -5,7 +5,7 @@
 
 use std::fs;
 use std::fs::File;
-use std::io::{BufReader, Seek};
+use std::io::BufReader;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
