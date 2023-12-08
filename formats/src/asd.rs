@@ -143,20 +143,7 @@ impl From<&Asd> for Cat21 {
             alt_baro_ft: to_feet(alt_geo_ft),
             tod: 128 * (tod % 86400),
             rec_time_posix: tod,
-            rec_time_ms: 0,
             emitter_category: 13,
-            differential_correction: Bool::N,
-            ground_bit: Bool::N,
-            simulated_target: Bool::N,
-            test_target: Bool::N,
-            from_ft: Bool::N,
-            selected_alt_capability: Bool::N,
-            spi: Bool::N,
-            link_technology_cddi: Bool::N,
-            link_technology_mds: Bool::N,
-            link_technology_uat: Bool::N,
-            link_technology_vdl: Bool::N,
-            link_technology_other: Bool::N,
             descriptor_atp: 1,
             alt_reporting_capability_ft: 0,
             target_addr: 623615,
@@ -170,6 +157,7 @@ impl From<&Asd> for Cat21 {
             groundspeed_kt: to_knots(line.speed),
             track_angle_deg: line.heading,
             rec_num: 1,
+            ..Cat21::default()
         }
     }
 }
