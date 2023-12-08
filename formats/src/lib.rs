@@ -169,7 +169,7 @@ macro_rules! convert_to {
                     .filter(|l| l.is_ok())
                     .enumerate()
                     .inspect(|(n, f)| debug!("cnt={}/{:?}", n, f.as_ref().unwrap()))
-                    .map(|(cnt, rec)| {
+                    .map(|(_cnt, rec)| {
                         $to::from(&rec.unwrap())
                     })
                     .collect();
