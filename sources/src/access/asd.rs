@@ -25,7 +25,7 @@ use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{debug, trace, warn};
+use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
 
@@ -210,10 +210,11 @@ impl Fetchable for Asd {
                 // Should we delete it?
                 //
                 warn!("Stored token in {:?} has expired, deleting!", fname);
-                return match Sources::purge_token(&fname) {
-                    Ok(()) => Ok("done".to_string()),
-                    Err(e) => Err(e),
+                match Sources::purge_token(&fname) {
+                    Ok(()) => (),
+                    Err(e) => error!("Can not remove token: {}", e.to_string()),
                 };
+                return Err(Report::from(TokenError::Expired));
             }
             trace!("token is valid");
             token.token
@@ -365,6 +366,19 @@ struct Token {
     email: String,
     airspace_admin: Option<String>,
     homepage: String,
+}
+
+use eyre::Report;
+use snafu::prelude::*;
+
+/// Custom error type for tokens, allow us to differentiate between errors.
+///
+#[derive(Debug, PartialEq, Snafu)]
+pub enum TokenError {
+    #[snafu(display("Token expired"))]
+    Expired,
+    #[snafu(display("Invalid token"))]
+    Invalid,
 }
 
 impl Default for Token {
