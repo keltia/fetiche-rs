@@ -169,10 +169,15 @@ pub enum ImportSubCommand {
 
 #[derive(Debug, Parser)]
 pub struct ImportFileOpts {
+    /// Database to send the data into
+    #[clap(short = 'd', long)]
+    pub db: String,
+    /// URL to connect to (see `config.hcl`)
+    pub url: Option<String>,
     /// Format must be specified if looking at a file.
-    #[clap(short = 'F', long)]
+    #[clap(short = 'F', long, default_value = "csv")]
     pub format: Option<String>,
-    /// File name (json expected)
+    /// File name (json/csv/parquet expected)
     pub file: PathBuf,
 }
 
