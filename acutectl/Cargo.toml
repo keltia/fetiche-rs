@@ -62,3 +62,5 @@ tap = "1"
 [dev-dependencies]
 assert_cmd = "2.0"
 httpmock = "0.6"
+rstest = "0.18"
+

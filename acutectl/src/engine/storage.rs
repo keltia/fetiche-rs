@@ -2,8 +2,6 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use eyre::Result;
-use tracing::{debug, trace};
-
 use nom::{
     character::complete::{i8, one_of},
     combinator::map,
@@ -13,6 +11,7 @@ use nom::{
 use strum::EnumString;
 use tabled::builder::Builder;
 use tabled::settings::Style;
+use tracing::{debug, trace};
 
 use crate::StorageConfig;
 
@@ -134,6 +133,8 @@ impl Storage {
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
+
+    use crate::Storage;
 
     #[rstest]
     #[case("42s", 42_u32)]

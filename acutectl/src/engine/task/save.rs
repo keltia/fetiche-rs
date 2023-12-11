@@ -172,6 +172,8 @@ impl Default for Save {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::*;
 
     #[test]
@@ -184,19 +186,19 @@ mod tests {
 
     #[test]
     fn test_write_stdout() {
-        let mut t = Save::new("foo");
+        let mut t = Save::new("foo", Format::None, Format::None);
         t.path("/nonexistent");
 
         assert_eq!("foo", t.name);
-        assert_eq!(PathBuf::from("/nonexistent"), t.path.unwrap());
+        assert_eq!(PathBuf::from("/nonexistent"), t.path.unwrap().into());
     }
 
     #[test]
     fn test_write_file() {
-        let mut t = Save::new("foo");
+        let mut t = Save::new("foo", Format::None, Format::None);
         t.path("../Cargo.toml");
 
         assert_eq!("foo", t.name);
-        assert_eq!(PathBuf::from("../Cargo.toml"), t.path.unwrap());
+        assert_eq!(Path::new("../Cargo.toml"), t.path.unwrap().into());
     }
 }
