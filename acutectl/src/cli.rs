@@ -49,7 +49,7 @@ use tracing::{info, trace};
 use fetiche_formats::Format;
 use fetiche_sources::{Flow, Site};
 
-use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
+use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine, FileInput};
 
 /// CLI options
 #[derive(Parser)]
@@ -175,8 +175,8 @@ pub struct ImportFileOpts {
     /// URL to connect to (see `config.hcl`)
     pub url: Option<String>,
     /// Format must be specified if looking at a file.
-    #[clap(short = 'F', long, default_value = "csv")]
-    pub format: Option<String>,
+    #[clap(short = 'F', long, default_value = "csv", value_parser)]
+    pub format: Option<FileInput>,
     /// File name (json/csv/parquet expected)
     pub file: PathBuf,
 }
@@ -343,10 +343,11 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
                     //import_data(&cfg, &data, fmt)?;
                 }
                 ImportSubCommand::ImportFile(if_opts) => {
-                    trace!("drone import file");
+                    trace!("db import file");
 
+                    let db = &if_opts.db;
                     let data = fs::read_to_string(&if_opts.file)?;
-                    let fmt = Format::from_str(&if_opts.format.clone().unwrap())?;
+                    let fmt = Format::from_str(&if_opts.format.unwrap().to_string())?;
 
                     //import_data(&srcs, &data, fmt)?;
                 }
