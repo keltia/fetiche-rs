@@ -32,6 +32,8 @@ pub enum StoreArea {
     Cache { url: String },
     /// In the local filesystem
     Directory { path: PathBuf, rotation: u32 },
+    /// HIVE-based sharding
+    Hive { path: PathBuf },
 }
 
 impl Storage {
@@ -67,6 +69,16 @@ impl Storage {
                 StorageConfig::Cache { url } => {
                     b.insert(name.to_string(), StoreArea::Cache { url: url.clone() });
                 }
+                // Future HIVE support
+                //
+                StorageConfig::Hive { path } => {
+                    if !path.exists() {
+                        std::fs::create_dir_all(path).unwrap_or_else(|_| {
+                            panic!("storage::init::create_dir_all failed: {:?}", path)
+                        });
+                    }
+                    b.insert(name.to_string(), StoreArea::Hive { path: path.clone() });
+                }
             }
         }
         debug!("b={:?}", b);
@@ -90,6 +102,10 @@ impl Storage {
                     let path = path.to_string_lossy();
                     row.push(path.to_string());
                     row.push(format!("{}s", rotation));
+                }
+                StoreArea::Hive { path } => {
+                    let path = path.to_string_lossy();
+                    row.push(path.to_string());
                 }
             };
             builder.push_record(row);

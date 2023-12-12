@@ -22,4 +22,6 @@ pub enum StorageConfig {
     Cache { url: String },
     /// In the local filesystem
     Directory { path: PathBuf, rotation: String },
+    /// HIVE-based sharding
+    Hive { path: PathBuf },
 }
