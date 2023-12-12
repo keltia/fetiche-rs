@@ -68,8 +68,6 @@ mod tests {
 
     #[test]
     fn test_parse_string_utf8() {
-        env_logger::init();
-
         let s = r##""ねこ""##;
         let r = parse_string(s);
 

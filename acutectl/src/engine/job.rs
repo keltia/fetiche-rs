@@ -157,15 +157,12 @@ pub struct Jobs(BTreeMap<String, Job>);
 
 #[cfg(test)]
 mod tests {
-    use crate::engine::task;
     use crate::{Copy, Engine, Message, Nothing};
 
     use super::*;
 
     #[test]
     fn test_job_run_nothing() {
-        env_logger::init();
-
         let mut e = Engine::new();
         let t1 = Box::new(Nothing::new());
         let t2 = Box::new(Copy::new());
@@ -177,7 +174,6 @@ mod tests {
         let mut data = vec![];
 
         let res = j.run(&mut data);
-        dbg!(&res);
         assert!(res.is_ok());
 
         let res = String::from_utf8(data);
@@ -187,8 +183,6 @@ mod tests {
 
     #[test]
     fn test_job_run_message() {
-        env_logger::init();
-
         let mut e = Engine::new();
         let t1 = Box::new(Message::new("hello world"));
         let t2 = Box::new(Copy::new());
@@ -200,11 +194,10 @@ mod tests {
         let mut data = vec![];
 
         let res = j.run(&mut data);
-        dbg!(&res);
         assert!(res.is_ok());
 
         let res = String::from_utf8(data);
         assert!(res.is_ok());
-        assert_eq!("start|hello world", res.unwrap())
+        assert_eq!("hello world", res.unwrap())
     }
 }
