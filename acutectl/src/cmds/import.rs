@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::Path;
 use std::str::FromStr;
@@ -7,13 +6,13 @@ use eyre::Result;
 use strum::EnumVariantNames;
 use tracing::trace;
 
-use fetiche_formats::{Asd, DronePoint, Format};
+use fetiche_formats::{Asd, Format};
 
 use crate::Engine;
 
 /// Input file format, can be CSV, JSON or Parquet
 ///
-#[derive(Debug, strum::Display, EnumVariantNames, PartialEq)]
+#[derive(Clone, Copy, Debug, strum::Display, EnumVariantNames, PartialEq)]
 #[strum(serialize_all = "lowercase")]
 pub enum FileInput {
     /// CSV with limited schema support
@@ -50,11 +49,7 @@ impl FromStr for FileInput {
 pub fn import_data(_engine: &Engine, data: &str, _fmt: Format) -> Result<()> {
     trace!("import_data");
 
-    // Transform into our `Drone` struct and sort it by "journey"
-    //
     let data: Vec<Asd> = serde_json::from_str(data)?;
-
-    let _journeys = BTreeMap::<u32, Vec<DronePoint>>::new();
 
     Ok(())
 }
