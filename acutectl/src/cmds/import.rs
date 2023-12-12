@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::ffi::OsString;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -12,7 +13,8 @@ use crate::Engine;
 
 /// Input file format, can be CSV, JSON or Parquet
 ///
-#[derive(Debug, strum::Display, EnumVariantNames)]
+#[derive(Debug, strum::Display, EnumVariantNames, PartialEq)]
+#[strum(serialize_all = "lowercase")]
 pub enum FileInput {
     /// CSV with limited schema support
     Csv,
@@ -30,13 +32,15 @@ impl FromStr for FileInput {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         // value is a pathname
         //
-        let ext = Path::new(s).extension().unwrap().to_ascii_lowercase();
-
+        let ext = match Path::new(s).extension() {
+            Some(ext) => ext.to_ascii_lowercase(),
+            None => OsString::new(),
+        };
         let ext = String::from_utf8(ext.as_encoded_bytes().to_vec()).unwrap();
         Ok(match ext.as_str() {
-            ".json" => FileInput::Json,
-            ".csv" => FileInput::Csv,
-            ".parquet" | ".pq" => FileInput::Parquet,
+            "json" => FileInput::Json,
+            "csv" => FileInput::Csv,
+            "parquet" | "pq" => FileInput::Parquet,
             _ => FileInput::Invalid,
         })
     }
@@ -66,8 +70,14 @@ mod tests {
     #[case("foo.CSv", FileInput::Csv)]
     #[case("foo.json", FileInput::Json)]
     #[case("foo.parquet", FileInput::Parquet)]
-    fn test_fileinput_from(#[case] inp: &str, #[case] out: FileInput) -> Result<()> {
-        assert_eq!(out, FileInput::from_str(inp));
-        Ok(())
+    #[case("bar.pq", FileInput::Parquet)]
+    #[case("whatever", FileInput::Invalid)]
+    #[case("whatever.", FileInput::Invalid)]
+    #[case("whatever.nope", FileInput::Invalid)]
+    fn test_fileinput_from(#[case] inp: &str, #[case] out: FileInput) {
+        let r = FileInput::from_str(inp);
+        assert!(r.is_ok());
+        let r = r.unwrap();
+        assert_eq!(out, r);
     }
 }
