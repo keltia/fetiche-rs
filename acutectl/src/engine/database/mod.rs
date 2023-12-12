@@ -2,13 +2,13 @@ use std::collections::BTreeMap;
 
 use eyre::Result;
 use serde::Deserialize;
+use strum::{EnumIter, EnumVariantNames};
+use tabled::builder::Builder;
+use tabled::settings::Style;
 use tracing::trace;
 
 pub use influxdb::*;
 pub use mysql::*;
-use strum::{EnumIter, EnumVariantNames};
-use tabled::builder::Builder;
-use tabled::settings::Style;
 
 use crate::Engine;
 
@@ -49,7 +49,7 @@ pub struct DatabaseFile {
     /// Version
     pub version: usize,
     /// Ordered list of format metadata
-    pub dbs: BTreeMap<String, DatabaseDescr>,
+    pub db: BTreeMap<String, DatabaseDescr>,
 }
 
 impl Engine {
@@ -57,7 +57,7 @@ impl Engine {
     ///
     #[tracing::instrument]
     pub fn list_databases(&self) -> Result<String> {
-        trace!("list all commands");
+        trace!("list all databases");
 
         let data = include_str!("databases.hcl");
         let dbs: DatabaseFile = hcl::from_str(data)?;
@@ -66,27 +66,29 @@ impl Engine {
         //
         assert_eq!(dbs.version, DVERSION);
 
-        let header = vec!["Name", "Type", "Description"];
+        let header = vec!["Name", "Type", "URL", "Description"];
 
         let mut builder = Builder::default();
         builder.set_header(header);
 
-        dbs.dbs
+        dbs.db
             .iter()
             .for_each(|(db, db_desc): (&String, &DatabaseDescr)| {
                 let mut row = vec![];
 
                 let name = db.clone();
                 let dtype = db_desc.dtype.clone().to_string();
+                let url = db_desc.url.clone();
                 let descr = db_desc.description.clone();
                 row.push(name);
                 row.push(dtype);
+                row.push(url);
                 row.push(descr);
                 builder.push_record(row);
             });
 
         let allc = builder.build().with(Style::modern()).to_string();
-        let str = format!("List all commands:\n{allc}");
+        let str = format!("List all databases:\n{allc}");
 
         Ok(str)
     }

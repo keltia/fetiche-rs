@@ -210,6 +210,8 @@ pub struct ListOpts {
 pub enum ListSubCommand {
     /// List all commands in `Engine`
     Commands,
+    /// List all supported DB
+    Databases,
     /// List all formats in `formats`
     Formats,
     /// List all sources from `sources.hcl`
@@ -370,6 +372,12 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
                 info!("Listing all commands:");
 
                 let str = engine.list_commands()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Databases => {
+                info!("Listing all databases:");
+
+                let str = engine.list_databases()?;
                 eprintln!("{}", str);
             }
             ListSubCommand::Sources => {

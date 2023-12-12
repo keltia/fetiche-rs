@@ -1,13 +1,13 @@
 version = 1
 
 db "local" {
-  type        = "influxdb"
+  type = "InfluxDB"
   url         = ""
   description = "Influx Time-series DB local instance."
 }
 
 db "drone2" {
-  type        = "mysql"
+  type = "Mysql"
   url         = ""
   description = "MariaDB for acute."
 }
