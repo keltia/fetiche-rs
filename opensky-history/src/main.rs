@@ -12,6 +12,10 @@
 //! [Impala Shell]: https://opensky-network.org/data/impala
 //!
 
+use arrow2::array::Array;
+use arrow2::chunk::Chunk;
+use arrow2::io::csv::read;
+use arrow2::io::csv::read::deserialize_batch;
 use std::collections::BTreeMap;
 use std::fs;
 
@@ -160,7 +164,6 @@ fn main() -> Result<()> {
                 seg = 'tm
                 bb = 'bb
                 q = "SELECT * FROM state_vectors_data4 \
-
                 WHERE lat >= {} AND lat <= {} AND lon >= {} AND lon <= {} AND hour={}{};\
                 ".format(bb[1], bb[3], bb[0], bb[2], seg, 'icao)
 
@@ -183,28 +186,42 @@ fn main() -> Result<()> {
 
     trace!("now merging {} csv segments", data.len());
 
-    // data is a Vec<String> with each component a CSV "file"
-    //
-    let mut p = progress::Bar::new();
-    p.set_job_title("Merging csv");
-    let step = 100 / data.len() as i32;
-
-    let data: Vec<Cat21> = data
+    #[cfg(feature = "arrow2")]
+    let data: Vec<_> = data
         .iter()
-        .flat_map(|seg| {
-            let mut rdr = ReaderBuilder::new()
-                .flexible(true)
-                .has_headers(true)
-                .from_reader(seg.as_bytes());
-            p.add_percent(step);
-            format.from_csv(&mut rdr).unwrap()
+        .map(|seg| {
+            let data = read_segment(seg).unwrap();
+            data
         })
         .collect();
-    p.reach_percent(100);
-    p.jobs_done();
 
-    let data = prepare_csv(data, true)?;
+    dbg!(&data);
 
+    #[cfg(not(feature = "arrow2"))]
+    let data = {
+        // data is a Vec<String> with each component a CSV "file"
+        //
+        let mut p = progress::Bar::new();
+        p.set_job_title("Merging csv");
+        let step = 100 / data.len() as i32;
+
+        let data: Vec<Cat21> = data
+            .iter()
+            .flat_map(|seg| {
+                let mut rdr = ReaderBuilder::new()
+                    .flexible(true)
+                    .has_headers(true)
+                    .from_reader(seg.as_bytes());
+                p.add_percent(step);
+                format.from_csv(&mut rdr).unwrap()
+            })
+            .collect();
+        p.reach_percent(100);
+        p.jobs_done();
+
+        let data = prepare_csv(data, true)?;
+        data
+    };
     // Manage output
     //
     match opts.output {
@@ -213,6 +230,21 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Read the csv segment
+///
+fn read_segment(seg: &str) -> Result<Chunk<Box<dyn Array>>> {
+    use seek_bufread::BufReader;
+
+    let buf = BufReader::new(seg.as_bytes());
+    let mut reader = ReaderBuilder::new().from_reader(buf);
+    let (fields, _) = read::infer_schema(&mut reader, None, true, &read::infer)?;
+    let mut rows = vec![read::ByteRecord::default(); 100];
+    let rows_read = read::read_rows(&mut reader, 0, &mut rows)?;
+    let rows = &rows[..rows_read];
+    let r = deserialize_batch(rows, &fields, None, 0, read::deserialize_column)?;
+    Ok(r)
 }
 
 /// Calculate the list of 1h segments necessary for a given time interval
