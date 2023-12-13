@@ -122,8 +122,7 @@ List all formats:
 └─────────────┴───────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The reason for the different categories is to give the engine a hint on how to process the data. Drone data will be
-transformed into our `DronePoint` and `Journey` types for post-processing.
+The reason for the different categories is to give the engine a hint on how to process the data. 
 
 </details>
 

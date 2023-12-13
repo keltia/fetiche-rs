@@ -165,7 +165,6 @@ pub struct StateVector {
 }
 
 convert_to!(from_opensky, StateVector, Cat21);
-//convert_to!(from_opensky, StateList, DronePoint);
 
 /// Definition of a state vector as stored in [Impala]
 ///

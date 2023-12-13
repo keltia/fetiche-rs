@@ -123,10 +123,10 @@ More details in the specific [Fetiched README.md](fetiched/README.md).
 ### Data Model
 
 Each source has its own data model which complicates things, apart from [ASTERIX] with Cat129 for drone data, each
-company/service provider use their own data model. To ease managing drone data, I have defined `DronePoint` as a common
-data model (extracted from the data sent by [ASD] with some fields with different types -- like actual `f32` instead of
-the string format) and real timestamp. These can be grouped into a `Journey` type which is a state vector with all the
-points in the trajectory.
+company/service provider use their own data model. To ease managing drone data, I started to define my own `DronePoint` 
+as a common data model (extracted from the data sent by [ASD] with some fields with different types -- like actual `f32`
+instead of the string format) and real timestamp. In fact, now that I have fixed `Asd` struct fields handling and types,
+it is not needed.
 
 See the `fetiche-formats` crate for more details.
 

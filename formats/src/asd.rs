@@ -12,7 +12,6 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr, PickFirst};
 use tracing::debug;
 
-use crate::drone::DronePoint;
 use crate::{convert_to, to_feet, to_knots, Cat21, TodCalculated};
 
 /// Our input structure from the json file coming out of the main ASD site
@@ -85,7 +84,6 @@ pub struct Asd {
 }
 
 convert_to!(from_asd, Asd, Cat21);
-convert_to!(from_asd, Asd, DronePoint);
 
 impl Asd {
     /// Generate a proper timestamp from the non-standard string they emit.
@@ -158,42 +156,6 @@ impl From<&Asd> for Cat21 {
             track_angle_deg: line.heading,
             rec_num: 1,
             ..Cat21::default()
-        }
-    }
-}
-
-#[inline]
-fn safe_coord(s: Option<f32>) -> Option<f32> {
-    Some(s.unwrap_or(0.0))
-}
-
-impl From<&Asd> for DronePoint {
-    #[tracing::instrument]
-    fn from(value: &Asd) -> Self {
-        // Transform the string into proper timestamp
-        //
-        let tod = NaiveDateTime::parse_from_str(&value.timestamp, "%Y-%m-%d %H:%M:%S").unwrap();
-        let tod = tod.and_utc();
-
-        DronePoint {
-            time: tod,
-            journey: value.journey,
-            drone_id: get_drone_id(&value.ident),
-            model: value.model.clone(),
-            source: value.source.clone(),
-            location: value.location,
-            latitude: value.latitude,
-            longitude: value.longitude,
-            altitude: value.altitude,
-            elevation: value.elevation,
-            home_lat: safe_coord(value.home_lat),
-            home_lon: safe_coord(value.home_lon),
-            home_height: value.home_height,
-            speed: value.speed,
-            heading: value.heading,
-            station_name: value.station_name.clone(),
-            station_lat: safe_coord(value.station_latitude),
-            station_lon: safe_coord(value.station_longitude),
         }
     }
 }

@@ -17,10 +17,6 @@
 //! Depending on the datatype for each source during `import`, `acutectl` does different processes.
 //! We have a common format for drone data:
 //!
-//! Every drone source is converted into state vectors of `DronePoint` with a timestamp suitable for
-//! import into a time-series DB.  ADS-B data will use a different format with more fields related
-//! to planes.
-//!
 //! `version` display all modules' version.
 //!
 //! `import` convert data into a data format suitable for importing into a database

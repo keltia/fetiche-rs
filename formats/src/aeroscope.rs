@@ -5,7 +5,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::drone::DronePoint;
 use crate::{to_feet, to_knots, Bool, Cat129, Cat21, Position, TodCalculated, DEF_SAC, DEF_SIC};
 
 /// Our input structure from the csv file coming out of the aeroscope as CSV
@@ -129,11 +128,5 @@ impl From<&Aeroscope> for Cat129 {
             ground_speed: to_knots(line.speed),
             vert_speed: 1.0,
         }
-    }
-}
-
-impl From<&Aeroscope> for DronePoint {
-    fn from(_value: &Aeroscope) -> Self {
-        todo!()
     }
 }
