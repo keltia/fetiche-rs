@@ -28,7 +28,6 @@ pub use avionix::*;
 #[cfg(feature = "flightaware")]
 pub use flightaware::*;
 pub use opensky::*;
-pub use parquet::*;
 pub use safesky::*;
 
 mod aeroscope;
@@ -38,7 +37,6 @@ mod avionix;
 #[cfg(feature = "flightaware")]
 mod flightaware;
 mod opensky;
-mod parquet;
 mod safesky;
 
 /// Current formats.hcl version
