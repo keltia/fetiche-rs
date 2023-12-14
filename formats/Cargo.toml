@@ -51,7 +51,6 @@ tracing-tree.workspace = true
 
 datafusion = { version = "32", features = ["async-compression", "compression"] }
 arrow2 = { version = "0.17", features = ["io_json", "io_json_integration", "io_parquet"] }
-arrow2_convert = "0.5"
 serde_arrow = { version = "0.8", features = ["arrow2-0-17"] }
 parquet2 = { version = "0.17", features = ["zstd"] }
 csv = "1.3"
