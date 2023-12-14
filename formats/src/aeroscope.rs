@@ -5,7 +5,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::{to_feet, to_knots, Bool, Cat129, Cat21, Position, TodCalculated, DEF_SAC, DEF_SIC};
+use crate::{to_feet, to_knots, Cat129, Cat21, Position, TodCalculated};
 
 /// Our input structure from the csv file coming out of the aeroscope as CSV
 ///
@@ -59,8 +59,6 @@ impl From<&Aeroscope> for Cat21 {
             "null".to_owned()
         };
         Cat21 {
-            sac: DEF_SAC,
-            sic: DEF_SIC,
             alt_geo_ft: to_feet(line.altitude),
             pos_lat_deg: line.coordinate.latitude,
             pos_long_deg: line.coordinate.longitude,
@@ -69,18 +67,6 @@ impl From<&Aeroscope> for Cat21 {
             rec_time_posix: tod,
             rec_time_ms: 0,
             emitter_category: 13,
-            differential_correction: Bool::N,
-            ground_bit: Bool::N,
-            simulated_target: Bool::N,
-            test_target: Bool::N,
-            from_ft: Bool::N,
-            selected_alt_capability: Bool::N,
-            spi: Bool::N,
-            link_technology_cddi: Bool::N,
-            link_technology_mds: Bool::N,
-            link_technology_uat: Bool::N,
-            link_technology_vdl: Bool::N,
-            link_technology_other: Bool::N,
             descriptor_atp: 1,
             alt_reporting_capability_ft: 0,
             target_addr: 623615,
@@ -94,6 +80,7 @@ impl From<&Aeroscope> for Cat21 {
             groundspeed_kt: to_knots(line.speed),
             track_angle_deg: line.azimuth,
             rec_num: 1,
+            ..Cat21::default()
         }
     }
 }
@@ -112,10 +99,6 @@ impl From<&Aeroscope> for Cat129 {
         };
         Cat129 {
             // XXX This is obviously wrong
-            sac: DEF_SAC,
-            sic: DEF_SIC,
-            dac: DEF_SAC,
-            dic: DEF_SIC,
             uas_manufacturer_id: "DJI".to_string(),
             uas_model_id: line.drone_type.to_owned(),
             uas_serial: lid,
@@ -127,6 +110,7 @@ impl From<&Aeroscope> for Cat129 {
             gnss_acc: 1.0,
             ground_speed: to_knots(line.speed),
             vert_speed: 1.0,
+            ..Cat129::default()
         }
     }
 }
