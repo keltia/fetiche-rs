@@ -259,7 +259,7 @@ dependencies = [
  "reqwest",
  "rstest",
  "serde",
- "serde_arrow",
+ "serde_arrow 0.8.0",
  "serde_json",
  "serde_repr",
  "serde_with",
@@ -2206,7 +2206,7 @@ dependencies = [
  "reqwest",
  "rstest",
  "serde",
- "serde_arrow",
+ "serde_arrow 0.9.0-rc.1",
  "serde_json",
  "serde_repr",
  "serde_with",
@@ -4644,6 +4644,19 @@ name = "serde_arrow"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2d76aa4d71cc3139e15f52dbe647a28fda74c1722c07e983ec394cb2b939f59"
+dependencies = [
+ "arrow2",
+ "bytemuck",
+ "chrono",
+ "half 2.3.1",
+ "serde",
+]
+
+[[package]]
+name = "serde_arrow"
+version = "0.9.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "846ecc9701661d714feaa69f5360d09d722ad65c63b6a546e3d20542a8aa2185"
 dependencies = [
  "arrow2",
  "bytemuck",
