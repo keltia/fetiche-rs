@@ -3,7 +3,8 @@
 //! URL: http://www.avionix.pl
 //!
 
-use parquet_derive::ParquetRecordWriter;
+use chrono::{DateTime, Utc};
+use influxdb::InfluxDbWriteable;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use strum::{EnumString, EnumVariantNames};
@@ -30,17 +31,18 @@ use strum::{EnumString, EnumVariantNames};
 /// - NIC: NucP_NIC
 ///
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, ParquetRecordWriter, Serialize)]
+#[derive(Clone, Debug, Deserialize, InfluxDbWriteable, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Avionix {
     /// UNIX timestamp in milli-secs (i64)
-    pub uti: i64,
+    #[serde(rename = "uti")]
+    pub time: DateTime<Utc>,
     /// ESRI timestamp e.g. 2015-07-26 07:36:51.657189000
     pub dat: String,
     /// SIC
-    pub sic: usize,
+    pub sic: u8,
     /// SAC
-    pub sac: usize,
+    pub sac: u8,
     /// ICAO 6 byte code for the aircraft
     pub hex: String,
     /// Call-sign
@@ -66,9 +68,9 @@ pub struct Avionix {
     /// Vertical Rate
     pub vrt: f32,
     /// MOPS
-    pub mps: usize,
+    pub mps: u32,
     /// NucP_NIC
-    pub nic: usize,
+    pub nic: u32,
 }
 
 /// Special enum for airborne status
