@@ -7,7 +7,6 @@ use std::fs::File;
 use std::io::BufReader;
 
 use arrow2::array::Array;
-use arrow2::io::json::write::FallibleStreamingIterator;
 use arrow2::{
     chunk::Chunk,
     datatypes::Schema,
@@ -18,8 +17,7 @@ use arrow2::{
 use eyre::Result;
 use parquet2::compression::ZstdLevel;
 use parquet2::encoding::Encoding;
-use serde_arrow::arrow2::{serialize_into_arrays, serialize_into_fields};
-use serde_arrow::schema::TracingOptions;
+use serde_arrow::schema::{SerdeArrowSchema, TracingOptions};
 use serde_json::Deserializer;
 use tracing::{debug, info, trace};
 use tracing_subscriber::prelude::*;
@@ -27,8 +25,6 @@ use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 use fetiche_formats::Asd;
-
-const BATCH: usize = 200;
 
 #[tracing::instrument]
 fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
@@ -46,13 +42,13 @@ fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
 
     let data: Vec<Asd> = json.map(|e| e.unwrap().fix_tm().unwrap()).collect();
 
-    let fields = serialize_into_fields(&data, topts)?;
+    let fields = SerdeArrowSchema::from_samples(&data, topts)?.to_arrow2_fields()?;
     trace!("fields={:?}", fields);
 
     let schema = Schema::from(fields.clone());
     debug!("schema={:?}", schema);
 
-    let arrays = serialize_into_arrays(&fields, &data)?;
+    let arrays = serde_arrow::to_arrow2(&fields, &data)?;
     debug!("arrays={:?}", arrays);
 
     Ok((schema, arrays))
@@ -71,7 +67,7 @@ fn write_chunk(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Result<
 
     // Prepare output
     //
-    let fname = format!("{}2.parquet", base);
+    let fname = format!("{}25.parquet", base);
     let file = File::create(&fname)?;
 
     let iter = vec![Ok(Chunk::new(data))];
