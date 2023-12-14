@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use tracing::{debug, trace};
 
-use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
+use crate::{convert_to, to_feet, to_knots, Cat21, TodCalculated};
 
 /// Origin of state's position
 ///
