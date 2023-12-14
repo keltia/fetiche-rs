@@ -1,6 +1,6 @@
 //! Read some data as json and write it into a parquet file
 //!
-//! Alternative version using `arrow2` instead of arrow/parquet:etc.
+//! Alternative version using `arrow2_convert` instead of doing it through `arrow2` directly.
 //!
 
 use std::fs::File;
@@ -16,7 +16,7 @@ use arrow2::{
 };
 use arrow2_convert::serialize::TryIntoArrow;
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use eyre::Result;
 use parquet2::encoding::Encoding;
 use serde::{Deserialize, Serialize};
@@ -33,7 +33,7 @@ use tracing_tree::HierarchicalLayer;
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
-    pub time: i64,
+    pub time: DateTime<Utc>,
     /// Each record is part of a drone journey with a specific ID
     pub journey: u32,
     /// Identifier for the drone
