@@ -133,8 +133,6 @@ impl From<&Asd> for Cat21 {
         let alt_geo_ft = line.altitude.unwrap_or(0i16);
         let alt_geo_ft: f32 = alt_geo_ft.into();
         Cat21 {
-            sac: 8,
-            sic: 200,
             alt_geo_ft: to_feet(alt_geo_ft),
             pos_lat_deg: line.latitude,
             pos_long_deg: line.longitude,
