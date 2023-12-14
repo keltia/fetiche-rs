@@ -1095,6 +1095,7 @@ version = "0.17.0"
 dependencies = [
  "arrow2",
  "chrono",
+ "csv",
  "dateparser",
  "eyre",
  "hcl-rs",

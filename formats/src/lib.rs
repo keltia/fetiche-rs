@@ -13,7 +13,6 @@ use std::io::Read;
 
 use csv::{Reader, WriterBuilder};
 use eyre::Result;
-use parquet_derive::ParquetRecordWriter;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
 use tabled::{builder::Builder, settings::Style};
@@ -119,7 +118,7 @@ macro_rules! into_cat21 {
                     }
                 };
                 Cat21::from(&l)
-            },
+            }
         )+
             _ => panic!("unknown format"),
         }
@@ -267,7 +266,7 @@ impl Format {
 /// In CSV files, the two fields are merged into this struct on deserialization
 /// and used as-is when coming from JSON.
 ///
-#[derive(Copy, Clone, Debug, Deserialize, ParquetRecordWriter, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Position {
     // Latitude in degrees
     pub latitude: f32,
