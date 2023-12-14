@@ -50,6 +50,7 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 arrow2 = { version = "0.17", features = ["io_json", "io_json_integration", "io_parquet"] }
+csv = "1.3"
 parquet2 = { version = "0.17", features = ["zstd"] }
 percent-encoding = "2.3"
 serde_arrow = { version = "0.8", features = ["arrow2-0-17"] }
