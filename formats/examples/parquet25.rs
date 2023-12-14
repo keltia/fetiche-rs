@@ -29,6 +29,14 @@
 //! ```
 //! Size: 2943996
 //!
+//! For fun:
+//! Zstd, max compression level 22
+//! ```text
+//! Benchmark 1: cargo run --example parquet25 2023-jul-nov2
+//!   Time (mean ± σ):     35.282 s ±  0.304 s    [User: 33.202 s, System: 1.802 s]
+//!   Range (min … max):   35.044 s … 36.099 s    10 runs
+//! ```
+//! Size: 2048914
 
 use std::fs::File;
 use std::io::BufReader;
@@ -85,7 +93,7 @@ fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
 fn write_chunk(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Result<()> {
     let options = WriteOptions {
         write_statistics: true,
-        compression: CompressionOptions::Zstd(Some(ZstdLevel::default())),
+        compression: CompressionOptions::Zstd(Some(ZstdLevel::try_new(22)?)),
         version: Version::V2,
         data_pagesize_limit: None,
     };
