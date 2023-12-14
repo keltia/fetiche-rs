@@ -28,8 +28,6 @@ use tracing_tree::HierarchicalLayer;
 
 use fetiche_formats::Asd;
 
-const BATCH: usize = 200;
-
 #[tracing::instrument]
 fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
     trace!("Read data.");
