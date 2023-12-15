@@ -75,8 +75,11 @@ fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
     let buf = BufReader::new(File::open(&fname)?);
     let json = Deserializer::from_reader(buf).into_iter::<Asd>();
 
-    let data: Vec<Asd> = json.map(|e| e.unwrap().fix_tm().unwrap()).collect();
+    let data: Vec<_> = json
+        .map(|e| e.unwrap().fix_tm().unwrap())
+        .collect::<Vec<_>>();
 
+    let data = data.as_slice();
     let fields = SerdeArrowSchema::from_samples(&data, topts)?.to_arrow2_fields()?;
     trace!("fields={:?}", fields);
 
@@ -93,7 +96,7 @@ fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
 fn write_chunk(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Result<()> {
     let options = WriteOptions {
         write_statistics: true,
-        compression: CompressionOptions::Zstd(Some(ZstdLevel::try_new(22)?)),
+        compression: CompressionOptions::Zstd(Some(ZstdLevel::try_new(8)?)),
         version: Version::V2,
         data_pagesize_limit: None,
     };
