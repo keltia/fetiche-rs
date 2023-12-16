@@ -37,7 +37,7 @@ async fn read_write_output(base: &str) -> Result<()> {
         .set_created_by(NAME.to_string())
         .set_encoding(Encoding::PLAIN)
         .set_statistics_enabled(EnabledStatistics::Page)
-        .set_compression(Compression::ZSTD(ZstdLevel::default()))
+        .set_compression(Compression::ZSTD(ZstdLevel::try_new(8)?))
         .build();
 
     info!("Writing in {}", fname);
