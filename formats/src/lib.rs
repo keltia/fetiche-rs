@@ -82,16 +82,27 @@ pub struct FormatFile {
 pub enum Format {
     #[default]
     None,
+    /// Special cut-down version of ADS-B, limited to specific fields
     Adsb21,
+    /// DJI Aeroscope-specific data, coming from the antenna
     Aeroscope,
+    /// Consolidated drone data, from airspacedrone.com (ASD)
     Asd,
+    /// ADS-B data friom the Avionix appliance
     Avionix,
+    /// ECTL Asteric Cat21 flattened CSV
     Cat21,
+    /// ECTL Drone specific Asteric Cat129
     Cat129,
+    /// Flightaware API v4 Position data
     Flightaware,
+    /// ADS-B data from the Opensky API
     Opensky,
+    /// Opensky data from the Impala historical DB
     PandaStateVector,
+    /// Apache Parquet (not really a format per se)
     Parquet,
+    /// ADS-B data  from the Safesky API
     Safesky,
 }
 
