@@ -66,8 +66,8 @@ format "flightaware" {
 }
 
 format "parquet" {
-  type        = "drone"
-  description = "Apache Parquet export for drone data from ASD."
+  type        = "write"
+  description = "Apache Parquet export for drone/ADS-B data."
   source      = "Apache"
   url         = "https://parquet.apache.org/docs/file-format/"
 }
