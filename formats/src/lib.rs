@@ -95,6 +95,23 @@ pub enum Format {
     Safesky,
 }
 
+/// This struct holds the different output/write formats that we support.
+///
+#[derive(
+    Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, strum::Display, EnumString, Serialize,
+)]
+#[strum(serialize_all = "lowercase")]
+pub enum Write {
+    /// Annotated CSV with embedded schema like in InfluxDB
+    ACSV,
+    /// Plain CSV, no schema
+    CSV,
+    /// Arrow Flight
+    Flight,
+    /// Apache Parquet
+    Parquet,
+}
+
 /// This is the special hex string for ICAO codes
 ///
 pub type ICAOString = [u8; 6];
