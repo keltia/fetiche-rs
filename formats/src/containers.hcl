@@ -9,13 +9,6 @@ format "ACSV" {
   url         = "https://docs.influxdata.com/influxdb/cloud/reference/syntax/annotated-csv/"
 }
 
-format "Avro" {
-  type        = "write"
-  description = "Row-oriented tabular format from Apache Arrow."
-  source      = "Apache"
-  url         = "https://avro.apache.org/"
-}
-
 format "CSV" {
   type        = "write"
   description = "Comma Separated Values aka your friend CSV."

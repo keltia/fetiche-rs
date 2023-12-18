@@ -17,6 +17,12 @@ framework.
 - [Avionix] - another variation on a flattened Cat21-like format
 - Safesky (WIP)
 
+There are also so-called output formats (or containers) when you fetch data and write it into files:
+
+- Plain CSV
+- Annotated CSV, like in InfluxDB
+- [Parquet], a columnar compressed data format from Apache
+
 ### Features
 
 There is one feature enabled by default, called `privacy`. This is for truncating the drone ID to a less-easily
@@ -50,8 +56,8 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 
 * Unix (tested on FreeBSD, Linux and macOS)
 * Windows
-  * cmd.exe
-  * Powershell
+    * cmd.exe
+    * Powershell
 
 ## TODO
 
@@ -60,8 +66,9 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 - ~~fetch and analyse from Asd~~
 - ~~Support for [Opensky]~~
 - ~~Support for [Flightaware]~~
-- Add more tests & benchmarks.
+- ~~Support for Apache Parquet~~
 - support for Safesky
+- Add more tests & benchmarks.
 
 [ASD]: https://airspacedrone.com/
 
@@ -84,3 +91,5 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 [Avionix]: http://www.avionix.pl/
 
 [Flightaware]: https://www.flightaware.com/firehose/documentation
+
+[Parquet]: https://parquet.apache.org/docs/file-format/

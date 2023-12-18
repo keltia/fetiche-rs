@@ -127,11 +127,7 @@ pub enum Write {
     /// Annotated CSV with embedded schema like in InfluxDB
     ACSV,
     /// Apache Avro
-    Avro,
-    /// Plain CSV, no schema
     CSV,
-    /// Arrow Flight
-    Flight,
     /// Apache Parquet
     Parquet,
     /// RAW Files
