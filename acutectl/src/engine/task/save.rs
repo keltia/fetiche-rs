@@ -109,9 +109,6 @@ impl Save {
                         let schema = Schema::from(fields.clone());
                         debug!("schema={:?}", schema);
 
-                        let schema = Schema::from(fields.clone());
-                        debug!("schema={:?}", schema);
-
                         let arrays = serde_arrow::to_arrow2(&fields, &data)?;
                         trace!("{} records", arrays.len());
 
