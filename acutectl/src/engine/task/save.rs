@@ -18,8 +18,7 @@ use arrow2::io::parquet::write::{
     ZstdLevel,
 };
 use eyre::Result;
-use serde_arrow::arrow2::{serialize_into_arrays, serialize_into_fields};
-use serde_arrow::schema::TracingOptions;
+use serde_arrow::schema::{SerdeArrowSchema, TracingOptions};
 use serde_json::Deserializer;
 use tracing::{debug, info, trace};
 
@@ -98,18 +97,24 @@ impl Save {
                         let reader = BufReader::new(data.as_bytes());
                         let json = Deserializer::from_reader(reader).into_iter::<Asd>();
 
-                        let data: Vec<Asd> = json.map(|e| e.unwrap().fix_tm().unwrap()).collect();
+                        let data: Vec<_> = json
+                            .map(|e| e.unwrap().fix_tm().unwrap())
+                            .collect::<Vec<_>>();
 
-                        let fields = serialize_into_fields(&data, topts)?;
+                        let data = data.as_slice();
+                        let fields =
+                            SerdeArrowSchema::from_samples(&data, topts)?.to_arrow2_fields()?;
                         trace!("fields={:?}", fields);
 
                         let schema = Schema::from(fields.clone());
                         debug!("schema={:?}", schema);
 
-                        let arrays = serialize_into_arrays(&fields, &data)?;
-                        debug!("arrays={:?}", arrays);
+                        let schema = Schema::from(fields.clone());
+                        debug!("schema={:?}", schema);
 
+                        let arrays = serde_arrow::to_arrow2(&fields, &data)?;
                         trace!("{} records", arrays.len());
+
                         let _ = write_parquet(schema, arrays, p);
                     }
                     _ => unimplemented!(),
@@ -130,7 +135,7 @@ impl Save {
 fn write_parquet(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Result<()> {
     let options = WriteOptions {
         write_statistics: true,
-        compression: CompressionOptions::Zstd(Some(ZstdLevel::default())),
+        compression: CompressionOptions::Zstd(Some(ZstdLevel::try_new(8)?)),
         version: Version::V2,
         data_pagesize_limit: None,
     };
