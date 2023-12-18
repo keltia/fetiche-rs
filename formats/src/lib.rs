@@ -14,7 +14,7 @@ use std::io::Read;
 use csv::{Reader, WriterBuilder};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use strum::EnumString;
+use strum::{EnumString, EnumVariantNames};
 use tabled::{builder::Builder, settings::Style};
 use tracing::{debug, trace};
 
@@ -73,12 +73,25 @@ pub struct FormatFile {
     pub format: BTreeMap<String, FormatDescr>,
 }
 
+/// WWe distinguish between the site-specific data formats and general ADS-B
+///
+#[derive(Clone, Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
+#[strum(serialize_all = "lowercase")]
+pub enum DataType {
+    /// ADS-B data
+    Adsb,
+    /// Drone data, site-specific
+    Drone,
+    /// Write formats
+    Write,
+}
+
 /// This struct holds the different data formats that we support.
 ///
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, strum::Display, EnumString, Serialize,
 )]
-#[strum(serialize_all = "lowercase")]
+#[strum(serialize_all = "lowercase", ascii_case_insensitive)]
 pub enum Format {
     #[default]
     None,
@@ -88,11 +101,11 @@ pub enum Format {
     Aeroscope,
     /// Consolidated drone data, from airspacedrone.com (ASD)
     Asd,
-    /// ADS-B data friom the Avionix appliance
+    /// ADS-B data from the Avionix appliance
     Avionix,
-    /// ECTL Asteric Cat21 flattened CSV
+    /// ECTL Asterix Cat21 flattened CSV
     Cat21,
-    /// ECTL Drone specific Asteric Cat129
+    /// ECTL Drone specific Asterix Cat129
     Cat129,
     /// Flightaware API v4 Position data
     Flightaware,
@@ -100,27 +113,30 @@ pub enum Format {
     Opensky,
     /// Opensky data from the Impala historical DB
     PandaStateVector,
-    /// Apache Parquet (not really a format per se)
-    Parquet,
     /// ADS-B data  from the Safesky API
     Safesky,
 }
 
-/// This struct holds the different output/write formats that we support.
+/// This struct holds the different container formats that we support.
 ///
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, strum::Display, EnumString, Serialize,
 )]
-#[strum(serialize_all = "lowercase")]
+#[strum(serialize_all = "PascalCase", ascii_case_insensitive)]
 pub enum Write {
     /// Annotated CSV with embedded schema like in InfluxDB
     ACSV,
+    /// Apache Avro
+    Avro,
     /// Plain CSV, no schema
     CSV,
     /// Arrow Flight
     Flight,
     /// Apache Parquet
     Parquet,
+    /// RAW Files
+    #[default]
+    Raw,
 }
 
 /// This is the special hex string for ICAO codes
@@ -257,6 +273,7 @@ impl Format {
             let url = entry.url.clone();
 
             let row_text = format!("{}\nSource: {} -- URL: {}", description, source, url);
+            let dtype = dtype.to_string();
             row.push(&name);
             row.push(&dtype);
             row.push(&row_text);
@@ -285,6 +302,44 @@ impl Format {
             .collect::<Vec<_>>()
             .join("\n\n");
         let str = format!("List all formats:\n\n{allf}");
+        Ok(str)
+    }
+}
+
+impl Write {
+    /// List all supported container formats into a string using `tabled`.
+    ///
+    pub fn list() -> Result<String> {
+        let descr = include_str!("containers.hcl");
+        let fstr: FormatFile = hcl::from_str(descr)?;
+
+        // Safety checks
+        //
+        assert_eq!(fstr.version, FVERSION);
+
+        let header = vec!["Name", "Type", "Description"];
+
+        let mut builder = Builder::default();
+        builder.set_header(header);
+
+        fstr.format.iter().for_each(|(name, entry)| {
+            let mut row = vec![];
+
+            let name = name.clone();
+            let dtype = entry.dtype.clone();
+            let description = entry.description.clone();
+            let source = entry.source.clone();
+            let url = entry.url.clone();
+
+            let row_text = format!("{}\nSource: {} -- URL: {}", description, source, url);
+            let dtype = dtype.to_string();
+            row.push(&name);
+            row.push(&dtype);
+            row.push(&row_text);
+            builder.push_record(row);
+        });
+        let allf = builder.build().with(Style::modern()).to_string();
+        let str = format!("List all formats:\n{allf}");
         Ok(str)
     }
 }
