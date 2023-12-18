@@ -32,8 +32,6 @@ Options:
 
 </details>
 
-More detailed information in the specific [Aacutectl README.md](acutectl/README.md).
-
 As seen, there are different sub-commands. You can use `acutectl help <sub-command>`  to get description of the
 different parameters.
 
