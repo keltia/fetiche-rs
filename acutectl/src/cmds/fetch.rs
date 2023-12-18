@@ -7,7 +7,7 @@ use chrono::{DateTime, Datelike, TimeZone, Utc};
 use eyre::{eyre, Result};
 use tracing::{info, trace};
 
-use fetiche_formats::Format;
+use fetiche_formats::{Format, Write};
 use fetiche_sources::{Filter, Flow, Site};
 
 use crate::{Convert, Engine, Fetch, FetchOpts, Save, Tee};
@@ -44,7 +44,7 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     // By default we output raw files
     //
-    let mut output = site.format();
+    let mut output = Write::default();
 
     // Do we want a copy of the raw data (often before converting it)
     //
@@ -55,14 +55,16 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     // If a conversion is requested, insert it
     //
-    if let Some(_into) = &fopts.into {
+    let input = if let Some(_into) = &fopts.into {
         let mut convert = Convert::new();
         convert.from(site.format()).into(Format::Cat21);
         job.add(Box::new(convert));
 
         // FIXME: convert does only Cat21 for now
         //
-        output = Format::Cat21;
+        Format::Cat21
+    } else {
+        site.format()
     };
 
     // If a final write format is requested, insert a `Save` task
@@ -75,17 +77,17 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
         if fopts.output.is_none() {
             return Err(eyre!("you must specify -o/--output"));
         }
-        if *write != Format::Parquet {
+        if *write != Write::Parquet {
             return Err(eyre!("Only parquet supported"));
         }
 
         // Handle input format as the currently defined output one
         //
-        Format::Parquet
+        Write::Parquet
     } else {
         trace!("No specific write format.");
 
-        output
+        Write::Raw
     };
 
     // Are we writing to stdout?
@@ -99,7 +101,7 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     // Last task is `Save`
     //
-    let mut save = Save::new(final_output, output, fmt);
+    let mut save = Save::new(final_output, input, fmt);
     save.path(final_output);
     job.add(Box::new(save));
 
@@ -176,9 +178,8 @@ fn check_args(opts: &FetchOpts) -> Result<()> {
     if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
         return Err(eyre!("Can not specify --today and -B/-E"));
     }
-
-    if (opts.begin.is_some() && opts.end.is_none()) || (opts.begin.is_none() && opts.end.is_some())
-    {
+    // (a & ^b) | (^a & b) => xor
+    if opts.begin.is_some() ^ opts.end.is_some() {
         return Err(eyre!("We need both -B/-E or none"));
     }
 

@@ -42,7 +42,7 @@ use clap_complete::shells::Shell;
 use eyre::{eyre, Result};
 use tracing::{info, trace};
 
-use fetiche_formats::Format;
+use fetiche_formats::{Format, Write};
 use fetiche_sources::{Flow, Site};
 
 use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine, FileInput};
@@ -132,7 +132,7 @@ pub struct FetchOpts {
     pub into: Option<Format>,
     /// Output format (if needed, like for parquet)
     #[clap(long, value_parser)]
-    pub write: Option<Format>,
+    pub write: Option<Write>,
     /// Source name -- (see "list sources")
     pub site: String,
 }
@@ -206,6 +206,8 @@ pub struct ListOpts {
 pub enum ListSubCommand {
     /// List all commands in `Engine`
     Commands,
+    /// Lists all supported write/container formats.
+    Containers,
     /// List all supported DB
     Databases,
     /// List all formats in `formats`
@@ -369,6 +371,12 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
                 info!("Listing all commands:");
 
                 let str = engine.list_commands()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Containers => {
+                info!("Listing all container formats:");
+
+                let str = engine.list_containers()?;
                 eprintln!("{}", str);
             }
             ListSubCommand::Databases => {

@@ -23,7 +23,7 @@ use serde_arrow::schema::TracingOptions;
 use serde_json::Deserializer;
 use tracing::{debug, info, trace};
 
-use fetiche_formats::{Asd, Format};
+use fetiche_formats::{Asd, Format, Write};
 use fetiche_macros::RunnableDerive;
 
 use crate::{Runnable, IO};
@@ -41,7 +41,7 @@ pub struct Save {
     /// Input file format
     pub inp: Format,
     /// Output file format
-    pub out: Format,
+    pub out: Write,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
 }
@@ -50,7 +50,7 @@ impl Save {
     /// Initialise our environment
     ///
     #[tracing::instrument]
-    pub fn new(name: &str, inp: Format, out: Format) -> Self {
+    pub fn new(name: &str, inp: Format, out: Write) -> Self {
         trace!("New Save {}", name);
         Save {
             io: IO::Consumer,
@@ -87,7 +87,7 @@ impl Save {
             match self.out {
                 // There we handle the combination of input & output formats
                 //
-                Format::Parquet => match self.inp {
+                Write::Parquet => match self.inp {
                     Format::Asd => {
                         trace!("from asd to parquet");
 
@@ -166,7 +166,7 @@ fn write_parquet(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Resul
 
 impl Default for Save {
     fn default() -> Self {
-        Save::new("default", Format::None, Format::None)
+        Save::new("default", Format::None, Write::default())
     }
 }
 
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_write_new() {
-        let t = Save::new("foo", Format::None, Format::None);
+        let t = Save::new("foo", Format::None, Write::default());
 
         assert_eq!("foo", t.name);
         assert!(t.path.is_none());
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn test_write_stdout() {
-        let mut t = Save::new("foo", Format::None, Format::None);
+        let mut t = Save::new("foo", Format::None, Write::default());
         t.path("/nonexistent");
 
         assert_eq!("foo", t.name);
@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn test_write_file() {
-        let mut t = Save::new("foo", Format::None, Format::None);
+        let mut t = Save::new("foo", Format::None, Write::default());
         t.path("../Cargo.toml");
 
         assert_eq!("foo", t.name);

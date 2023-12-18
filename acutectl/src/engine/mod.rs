@@ -36,6 +36,7 @@ use tracing::{debug, event, info, trace, warn, Level};
 pub use config::*;
 pub use database::*;
 pub use fetiche_formats::Format;
+use fetiche_formats::Write;
 pub use fetiche_sources::{makepath, Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
 pub use job::*;
 pub use parse::*;
@@ -337,6 +338,12 @@ impl Engine {
     ///
     pub fn list_formats(&self) -> Result<String> {
         Format::list()
+    }
+
+    /// Return a descriptions of all supported container formats
+    ///
+    pub fn list_containers(&self) -> Result<String> {
+        Write::list()
     }
 
     /// Return a list of all currently available authentication tokens
