@@ -1,4 +1,4 @@
-use datafusion::arrow::array::RecordBatch;
+use datafusion::arrow::array::{Array, RecordBatch};
 use datafusion::prelude::*;
 use eyre::Result;
 use tracing::trace;
@@ -27,22 +27,31 @@ async fn read_and_generate_journeys(fname: &str) -> Result<Vec<RecordBatch>> {
     ctx.register_parquet("asd", &fname, ParquetReadOptions::default())
         .await?;
 
-    let c = ctx.sql("SELECT DISTINCT journey FROM asd").await?;
+    // Get all sorted unique journey ids
+    //
+    let c = ctx
+        .sql("SELECT DISTINCT journey FROM asd ORDER BY journey")
+        .await?;
     eprintln!("{} records read", c.clone().count().await?);
 
-    let _ = c.show().await?;
+    let _ = c.clone().show().await?;
 
-    // Read all records GROUP BY journey
-    //
-    let journeys = ctx.sql("SELECT * FROM asd ORDER BY journey").await?;
-
+    let journeys = c.collect().await?;
     dbg!(&journeys);
 
-    let res = journeys.clone().collect().await?;
+    journeys.iter().for_each(|rb| {
+        let col = rb.column_by_name("journey");
+        dbg!(&col);
+        match col {
+            Some(col) => {
+                let col = col.as_any().downcast_ref::<Vec<i64>>();
+                dbg!(&col);
+            }
+            None => (),
+        };
+    });
 
-    dbg!(&res);
-
-    Ok(res)
+    Ok(vec![])
 }
 
 #[tokio::main]
