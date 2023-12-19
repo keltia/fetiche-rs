@@ -68,6 +68,7 @@ pub struct Cat21 {
     pub I250: Option<I250>,
     pub I260: Option<I260>,
     pub I400: I400,
+    #[serde(flatten)]
     pub I295: I295,
     pub Ire: IRE,
 }
@@ -283,7 +284,9 @@ pub struct I400 {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
-pub struct I295 {}
+pub struct I295 {
+    pub tid: f32,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
