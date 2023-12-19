@@ -1,4 +1,4 @@
-use datafusion::arrow::array::{Array, RecordBatch};
+use datafusion::arrow::array::{Array, Int32Array, RecordBatch};
 use datafusion::prelude::*;
 use eyre::Result;
 use tracing::trace;
@@ -40,15 +40,8 @@ async fn read_and_generate_journeys(fname: &str) -> Result<Vec<RecordBatch>> {
     dbg!(&journeys);
 
     journeys.iter().for_each(|rb| {
-        let col = rb.column_by_name("journey");
-        dbg!(&col);
-        match col {
-            Some(col) => {
-                let col = col.as_any().downcast_ref::<Vec<i64>>();
-                dbg!(&col);
-            }
-            None => (),
-        };
+        let list = rb.column(0).as_any().downcast_ref::<Int32Array>();
+        dbg!(&list);
     });
 
     Ok(vec![])
