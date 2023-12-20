@@ -150,6 +150,8 @@ dependencies = [
  "base64 0.21.2",
  "bytemuck",
  "chrono",
+ "csv",
+ "csv-core",
  "dyn-clone",
  "either",
  "ethnum",
