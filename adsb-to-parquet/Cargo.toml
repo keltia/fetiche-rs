@@ -1,0 +1,64 @@
+[package]
+name = "fetiche-formats"
+version = "0.17.0"
+edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "Various input file formats for the Fetiche framework."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/fetiche-rs"
+categories = ["aerospace::drones"]
+keywords = ["asterix", "drones", "aeronautical-data", "ads-b"]
+
+[features]
+default = ["privacy"]
+privacy = []
+flightaware = []
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arrow2.workspace = true
+chrono.workspace = true
+dateparser.workspace = true
+eyre.workspace = true
+hcl-rs.workspace = true
+influxdb.workspace = true
+log.workspace = true
+nom.workspace = true
+opentelemetry.workspace = true
+opentelemetry-jaeger.workspace = true
+opentelemetry_sdk.workspace = true
+parquet2.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_arrow.workspace = true
+serde_json.workspace = true
+serde_repr.workspace = true
+serde_with.workspace = true
+strum.workspace = true
+tabled.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true
+
+csv = "1.3"
+percent-encoding = "2.3"
+tap = "1.0"
+zstd = "0.13"
+
+[dev-dependencies]
+datafusion = { version = "32", features = ["async-compression", "compression"] }
+parquet = { version = "49.0", features = ["json", "async", "cli"] }
+parquet_derive = "49.0"
+rstest.workspace = true

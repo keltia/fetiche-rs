@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["acutectl", "fetiched", "formats", "sources", "opensky-history"]
+members = ["acutectl", "adsb-to-parquet", "fetiched", "formats", "sources", "opensky-history"]
 exclude = ["cat21conv"]
 
 [workspace.dependencies]

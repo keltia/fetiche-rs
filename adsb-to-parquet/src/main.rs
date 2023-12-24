@@ -28,7 +28,7 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
-const BATCH_SIZE: usize = 10000;
+const BATCH_SIZE: usize = 500000;
 
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Deserialize, Serialize)]
@@ -130,7 +130,7 @@ fn write_chunk(schema: Schema, data: Vec<Chunk<Box<dyn Array>>>, base: &str) -> 
 
     // Prepare output
     //
-    let fname = format!("{}2.parquet", base);
+    let fname = format!("{}.parquet", base);
     let file = File::create(&fname)?;
 
     let iter: Vec<_> = data.iter().map(|e| Ok(e.clone())).collect();
