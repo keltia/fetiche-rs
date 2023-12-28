@@ -5,5 +5,5 @@ foreach ($file in $files)
 {
     $fn = $Path + "\" + $file.Basename
     echo $fn
-    adsb-ff $fn
+    adsb-to-parquet $fn
 }
