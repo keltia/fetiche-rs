@@ -110,7 +110,7 @@ impl Sources {
         let header = vec!["Name", "Type", "Format", "URL", "Auth", "Ops"];
 
         let mut builder = Builder::default();
-        builder.set_header(header);
+        builder.push_record(header);
 
         self.0.iter().for_each(|(n, s)| {
             let mut row = vec![];
@@ -214,7 +214,7 @@ impl Sources {
         let header = vec!["Path", "Created at"];
 
         let mut builder = Builder::default();
-        builder.set_header(header);
+        builder.push_record(header);
 
         let p = Self::token_path();
         if let Ok(dir) = fs::read_dir(p) {

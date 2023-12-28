@@ -99,7 +99,7 @@ impl Engine {
         let header = vec!["Name", "Type", "Description"];
 
         let mut builder = Builder::default();
-        builder.set_header(header);
+        builder.push_record(header);
 
         allcmds
             .cmds

@@ -257,7 +257,7 @@ impl Format {
         let header = vec!["Name", "Type", "Description"];
 
         let mut builder = Builder::default();
-        builder.set_header(header);
+        builder.push_record(header);
 
         fstr.format.iter().for_each(|(name, entry)| {
             let mut row = vec![];
@@ -316,7 +316,7 @@ impl Write {
         let header = vec!["Name", "Type", "Description"];
 
         let mut builder = Builder::default();
-        builder.set_header(header);
+        builder.push_record(header);
 
         fstr.format.iter().for_each(|(name, entry)| {
             let mut row = vec![];

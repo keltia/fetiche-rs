@@ -1,6 +1,6 @@
 version = 2
 
-basedir = "/var/run/acute"
+basedir = "/var/db/acute"
 
 // Describe a local directory tree used to store files
 //

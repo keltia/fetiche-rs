@@ -89,7 +89,7 @@ impl Storage {
         let header = vec!["Name", "Path/URL", "Rotation"];
 
         let mut builder = Builder::default();
-        builder.set_header(header);
+        builder.push_record(header);
 
         self.0.iter().for_each(|(n, s)| {
             let mut row = vec![];

@@ -69,7 +69,7 @@ impl Engine {
         let header = vec!["Name", "Type", "URL", "Description"];
 
         let mut builder = Builder::default();
-        builder.set_header(header);
+        builder.push_record(header);
 
         dbs.db
             .iter()
