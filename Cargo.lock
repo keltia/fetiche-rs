@@ -296,7 +296,7 @@ version = "0.1.0"
 dependencies = [
  "arrow2",
  "chrono",
- "csv",
+ "clap",
  "dateparser",
  "eyre",
  "log",
@@ -304,7 +304,6 @@ dependencies = [
  "opentelemetry-jaeger",
  "opentelemetry_sdk",
  "parquet2",
- "percent-encoding",
  "rstest",
  "serde",
  "serde_arrow",

@@ -6,6 +6,8 @@
 //!
 
 use std::fs::File;
+use std::path::Path;
+use std::time::Instant;
 
 use arrow2::{
     array::Array,
@@ -19,31 +21,41 @@ use arrow2::{
         transverse, CompressionOptions, FileWriter, RowGroupIterator, Version, WriteOptions,
     },
 };
-
+use clap::Parser;
 use eyre::Result;
 use parquet2::{compression::ZstdLevel, encoding::Encoding};
-use serde::{Deserialize, Serialize};
 use tracing::{debug, info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
+use crate::cli::Opts;
+
+mod cli;
 mod types;
 
 const BATCH_SIZE: usize = 500000;
 
+#[derive(Debug)]
+struct Options {
+    pub delim: u8,
+    pub header: bool,
+}
+
 #[tracing::instrument]
-fn read_csv(base: &str) -> Result<(Schema, Vec<Chunk<Box<dyn Array>>>)> {
+fn read_csv(base: &str, opt: Options) -> Result<(Schema, Vec<Chunk<Box<dyn Array>>>)> {
     trace!("Read data.");
 
     let fname = format!("{}.csv", base);
     trace!("fname={:?}", fname);
 
-    let mut reader = ReaderBuilder::new().from_path(&fname)?;
-    let (fields, _) = infer_schema(&mut reader, None, true, &infer)?;
+    let mut reader = ReaderBuilder::new()
+        .delimiter(opt.delim)
+        .from_path(&fname)?;
+    let (fields, _) = infer_schema(&mut reader, None, opt.header, &infer)?;
     let schema = Schema::from(fields.clone());
 
-    // Batch size = 10000
+    // Read in batches of `BATCH_SIZE` elements.
     //
     let mut size = 1;
     let mut data = vec![];
@@ -67,7 +79,7 @@ fn read_csv(base: &str) -> Result<(Schema, Vec<Chunk<Box<dyn Array>>>)> {
 }
 
 #[tracing::instrument(skip(data))]
-fn write_chunk(schema: Schema, data: Vec<Chunk<Box<dyn Array>>>, base: &str) -> Result<()> {
+fn write_chunk(schema: Schema, data: Vec<Chunk<Box<dyn Array>>>, base: &str) -> Result<u64> {
     let options = WriteOptions {
         write_statistics: true,
         compression: CompressionOptions::Zstd(Some(ZstdLevel::try_new(8)?)),
@@ -82,6 +94,7 @@ fn write_chunk(schema: Schema, data: Vec<Chunk<Box<dyn Array>>>, base: &str) -> 
     let fname = format!("{}.parquet", base);
     let file = File::create(&fname)?;
 
+    let start = Instant::now();
     let iter: Vec<_> = data.iter().map(|e| Ok(e.clone())).collect();
     debug!("iter={:?}", iter);
 
@@ -101,13 +114,15 @@ fn write_chunk(schema: Schema, data: Vec<Chunk<Box<dyn Array>>>, base: &str) -> 
     let size = writer.end(None)?;
     info!("{} bytes written.", size);
 
-    info!("Done.");
-    Ok(())
+    let tm = Instant::now() - start;
+    Ok(tm.as_millis() as u64)
 }
 
 const NAME: &str = "adsb-ff";
 
 fn main() -> Result<()> {
+    let opts: Opts = Opts::parse();
+
     // Initialise logging early
     //
     let tree = HierarchicalLayer::new(2)
@@ -141,12 +156,34 @@ fn main() -> Result<()> {
         .init();
     trace!("Logging initialised.");
 
-    let fname = std::env::args().nth(1).unwrap_or("test".to_string());
+    // Generate our basename
+    //
+    let fname = if opts.name.ends_with(".csv") {
+        String::from(Path::new(&opts.name).file_name().unwrap().to_string_lossy())
+    } else {
+        opts.name
+    };
+    trace!("Using {} as basename", fname);
 
-    let (schema, data) = read_csv(&fname)?;
+    // nh = no header line (default = false which means has header line).
+    //
+    let header = !opts.nh;
+    let delim = opts.delim.clone().as_bytes()[0];
+    let opt = Options { delim, header };
+
+    eprintln!(
+        "Reading {}.csv with {} as delimiter",
+        fname,
+        String::from_utf8(vec![opt.delim])?
+    );
+    let (schema, data) = read_csv(&fname, opt)?;
     debug!("data={:?}", data);
 
-    let _ = write_chunk(schema, data, &fname)?;
+    let fname = opts.output.unwrap_or(fname);
+
+    eprintln!("Writing to {}.parquet", fname);
+    let tm = write_chunk(schema, data, &fname)?;
+    eprintln!("Done in {}ms.", tm);
 
     opentelemetry::global::shutdown_tracer_provider();
     Ok(())
