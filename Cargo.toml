@@ -30,10 +30,10 @@ serde_json = "1.0"
 serde_repr = "0.1"
 serde_with = { version = "3", features = ["base64", "chrono_0_4", "json", "hex"] }
 strum = { version = "0", features = ["derive"] }
-tabled = "0.14"
+tabled = "0.15"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-log = "0.2"
 tracing-opentelemetry = "0.22"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
-tracing-tree = { version = "0.2", features = ["time"] }
+tracing-tree = { version = "0.3", features = ["time"] }
