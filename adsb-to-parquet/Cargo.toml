@@ -22,7 +22,6 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 chrono.workspace = true
 clap.workspace = true
-dateparser.workspace = true
 eyre.workspace = true
 log.workspace = true
 opentelemetry.workspace = true
@@ -30,21 +29,10 @@ opentelemetry-jaeger.workspace = true
 opentelemetry_sdk.workspace = true
 parquet2.workspace = true
 serde.workspace = true
-serde_arrow.workspace = true
-serde_json.workspace = true
-serde_repr.workspace = true
-serde_with.workspace = true
-strum.workspace = true
-tabled.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
-arrow2 = { version = "0.17", features = ["io_csv", "io_json", "io_json_integration", "io_parquet", "simd"] }
-tap = "1.0"
-zstd = "0.13"
-
-[dev-dependencies]
-rstest.workspace = true
+arrow2 = { version = "0.18", features = ["io_csv", "io_json", "io_json_integration", "io_parquet", "simd"] }
