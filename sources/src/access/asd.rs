@@ -25,6 +25,7 @@ use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use strum::{EnumString, EnumVariantNames};
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
@@ -38,8 +39,8 @@ const DEF_TOKEN: &str = "asd_default_token";
 
 /// Different types of source
 ///
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(untagged, into = "String")]
+#[derive(Clone, Debug, Deserialize, Serialize, EnumString, strum::Display, EnumVariantNames)]
+#[strum(serialize_all = "lowercase")]
 enum Source {
     /// ADS-B
     Ab,
@@ -53,22 +54,6 @@ enum Source {
     Ad,
     /// ASD (mobile app)
     Mo,
-}
-
-impl From<Source> for String {
-    /// For serialization into json
-    ///
-    fn from(s: Source) -> Self {
-        match s {
-            Source::Ab => "ab",
-            Source::Og => "og",
-            Source::Wi => "wi",
-            Source::As => "as",
-            Source::Ad => "ad",
-            Source::Mo => "mo",
-        }
-        .to_string()
-    }
 }
 
 /// Credentials to submit to the site to get the token
