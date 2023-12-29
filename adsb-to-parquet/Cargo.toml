@@ -17,6 +17,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 [badges]
 maintenance = { status = "actively-developed" }
 
+[[bench]]
+name = "csv-to-parquet"
+harness = false
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -39,3 +43,6 @@ arrow2 = { version = "0.18", features = ["io_csv", "io_json", "io_json_integrati
 datafusion = { version = "34.0", features = ["simd", "compression", "parquet"] }
 rayon = "1.8"
 tokio = { version = "1.35", features = ["full"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["async_tokio"] }
