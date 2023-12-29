@@ -136,7 +136,7 @@ fn write_chunk(schema: Schema, data: Vec<Chunk<Box<dyn Array>>>, base: &str) -> 
     Ok(tm.as_millis() as u64)
 }
 
-const NAME: &str = "adsb-ff";
+const NAME: &str = "adsb-to-parquet";
 
 fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
