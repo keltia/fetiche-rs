@@ -11,7 +11,7 @@ pub struct Opts {
     /// Output file (default is stdout).
     #[clap(short = 'o', long)]
     pub output: Option<String>,
-    /// Delimiter for csv files, default is ','.
+    /// Delimiter for csv files.
     #[clap(short, default_value = ",")]
     pub delim: String,
     /// Filename, can be just the basename and .csv/.parquet are implied
