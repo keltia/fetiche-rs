@@ -14,8 +14,7 @@ use arrow2::{
     chunk::Chunk,
     datatypes::Schema,
     io::csv::read::{
-        deserialize_batch, deserialize_column, infer, infer_schema, read_rows, ByteRecord,
-        ReaderBuilder,
+        deserialize_column, infer, infer_schema, read_rows, ByteRecord, ReaderBuilder,
     },
     io::parquet::write::{
         transverse, CompressionOptions, FileWriter, RowGroupIterator, Version, WriteOptions,
@@ -24,6 +23,7 @@ use arrow2::{
 use clap::Parser;
 use eyre::Result;
 use parquet2::{compression::ZstdLevel, encoding::Encoding};
+use rayon::prelude::*;
 use tracing::{debug, info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
@@ -57,30 +57,46 @@ fn read_csv(base: &str, opt: Options) -> Result<(Schema, Vec<Chunk<Box<dyn Array
 
     // Read in batches of `BATCH_SIZE` elements.
     //
-    let mut size = 1;
     let mut total = 0;
     let mut data = vec![];
-    while size > 0 {
+
+    // Fill in with input data
+    //
+    loop {
         let mut rows = vec![ByteRecord::default(); BATCH_SIZE];
         let rows_read = read_rows(&mut reader, 0, &mut rows)?;
-        info!("{} rows read.", rows_read);
 
+        // Are we finished?
+        if rows_read == 0 {
+            break;
+        }
         let rows = &rows[..rows_read];
-        size = rows.len();
+
+        // Count by lines, not bytes.
+        //
+        let size = rows.len();
+
         total += size;
 
-        if size > 0 {
-            let chunk = deserialize_batch(rows, &fields, None, 0, deserialize_column)?;
-            debug!("arrays={:?}", chunk);
+        // Now process all columns in parallel
+        //
+        let arrays: Vec<Box<dyn Array>> = fields
+            .par_iter()
+            .enumerate()
+            .map(|(n, field)| deserialize_column(rows, n, field.data_type.clone(), 0).unwrap())
+            .collect();
 
-            data.push(chunk)
-        }
+        let chunk = Chunk::new(arrays);
+        debug!("arrays={:?}", chunk);
+
+        data.push(chunk);
     }
     info!("{} lines in {} batches.", total, data.len());
+
     Ok((schema, data))
 }
 
-#[tracing::instrument(skip(data))]
+#[tracing::instrument(skip(schema, data))]
 fn write_chunk(schema: Schema, data: Vec<Chunk<Box<dyn Array>>>, base: &str) -> Result<u64> {
     let options = WriteOptions {
         write_statistics: true,

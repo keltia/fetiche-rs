@@ -36,3 +36,4 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 arrow2 = { version = "0.18", features = ["io_csv", "io_json", "io_json_integration", "io_parquet", "simd"] }
+rayon = "1.8"
