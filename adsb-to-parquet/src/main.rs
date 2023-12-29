@@ -58,6 +58,7 @@ fn read_csv(base: &str, opt: Options) -> Result<(Schema, Vec<Chunk<Box<dyn Array
     // Read in batches of `BATCH_SIZE` elements.
     //
     let mut size = 1;
+    let mut total = 0;
     let mut data = vec![];
     while size > 0 {
         let mut rows = vec![ByteRecord::default(); BATCH_SIZE];
@@ -66,6 +67,7 @@ fn read_csv(base: &str, opt: Options) -> Result<(Schema, Vec<Chunk<Box<dyn Array
 
         let rows = &rows[..rows_read];
         size = rows.len();
+        total += size;
 
         if size > 0 {
             let chunk = deserialize_batch(rows, &fields, None, 0, deserialize_column)?;
@@ -74,7 +76,7 @@ fn read_csv(base: &str, opt: Options) -> Result<(Schema, Vec<Chunk<Box<dyn Array
             data.push(chunk)
         }
     }
-    info!("{} batches.", data.len());
+    info!("{} lines in {} batches.", total, data.len());
     Ok((schema, data))
 }
 
