@@ -40,7 +40,7 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 arrow2 = { version = "0.18", features = ["io_csv", "io_json", "io_json_integration", "io_parquet", "simd"] }
-datafusion = { version = "34.0", features = ["simd", "compression", "parquet"] }
+datafusion = { version = "34.0", features = ["simd"] }
 rayon = "1.8"
 tokio = { version = "1.35", features = ["full"] }
 
