@@ -46,11 +46,13 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
         let begin = NaiveDate::from_ymd_opt(t.year(), t.month(), t.day())
             .unwrap()
             .and_hms_opt(0, 0, 0)
-            .unwrap();
+            .unwrap()
+            .and_utc();
         let end = NaiveDate::from_ymd_opt(t.year(), t.month(), t.day())
             .unwrap()
             .and_hms_opt(23, 59, 59)
-            .unwrap();
+            .unwrap()
+            .and_utc();
 
         Ok(Filter::interval(begin, end))
     } else if opts.begin.is_some() {
@@ -59,11 +61,11 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
         // We have to parse both arguments ourselves because it uses its own formats
         //
         let begin = match &opts.begin {
-            Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?,
+            Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?.and_utc(),
             None => return Err(eyre!("bad -B parameter")),
         };
         let end = match &opts.end {
-            Some(end) => NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S")?,
+            Some(end) => NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S")?.and_utc(),
             None => return Err(eyre!("Bad -E parameter")),
         };
 
