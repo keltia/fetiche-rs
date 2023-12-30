@@ -5,6 +5,9 @@ use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 #[clap(name = crate_name!(), about = crate_description!())]
 #[clap(version = crate_version!(), author = crate_authors!())]
 pub struct Opts {
+    /// Use arrow2 instead of datafusion?
+    #[clap(short = 'A', long)]
+    pub arrow2: bool,
     /// Has headers or not?
     #[clap(short = 'N', long = "no-header")]
     pub nh: bool,

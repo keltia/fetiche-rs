@@ -37,6 +37,7 @@ pub struct Cat21 {
     pub r: Option<SGV>,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SGV {
     #[serde(rename = "STP")]
