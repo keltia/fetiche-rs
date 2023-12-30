@@ -1,6 +1,9 @@
 //! This is the [Rust] version of `aeroscope.sh` written by Marc Gravis for the ACUTE Project.
+//!
 //! Now it tries to include features from `aeroscope-CDG.sh` and will support fetching from
 //! the Skysafe site as well.
+//!
+//! NOTE: Deprecated by the `acutectl` utility which supports more formats and sources.
 //!
 //! It can load from either a server or from a file (easier for offline tests). It uses
 //! a configuration file  from `$HOME/.config/drone-utils` or `%LOCALAPPDATA%/drone-utils` on
@@ -10,7 +13,7 @@
 //! The respective formats for the other sources are in the files inside the `formats` module.
 //!
 //! Author: Ollivier Robert <ollivier.robert@eurocontrol.int> for the EIH
-//! Copyright: (c) 2022 by Ollivier Robert
+//! Copyright: (c) 2022, 2023, 2024 by Ollivier Robert
 //!
 //! [Rust]: https://rust-lang.org/
 //!
