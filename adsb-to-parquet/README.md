@@ -31,8 +31,8 @@ Options:
 ## Performance
 
 The current version of `adsb-to-parquet` uses `arrow2` to read and write CSV/Parquets files. For small to medium
-size files it is fast enough but for larger files (over a few dozens megabytes), the `datafusion`-based version
-(see in `df-csv.rs`) is much faster, esp for reading the large input file.
+size files it is fast enough but for larger files (over a few dozens megabytes or 20k lines), the `datafusion`-based
+version (see in `df-csv.rs`) is much faster, esp for reading the large input file.
 
 ## NOTE
 
