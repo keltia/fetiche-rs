@@ -23,16 +23,16 @@ def gen_bb(lat, lon, dist):
 dist = 25.0
 
 with open('locations.hcl', 'r') as file:
-    list = hcl.load(file)
+    locations = hcl.load(file)
 
 # Now, for all of our locations, generate the bounding box and save as GeoJSON
 #
-all = []
-for (location, coord) in list['location'].items():
+glocs = []
+for (location, coord) in locations['location'].items():
     lat = coord['lat']
     lon = coord['lon']
     bb = gen_bb(lat, lon, dist)
-    all.append(Feature(geometry=bb, properties={'name': location}))
+    glocs.append(Feature(geometry=bb, properties={'name': location}))
 
-res = FeatureCollection(all)
+res = FeatureCollection(glocs)
 print(res)
