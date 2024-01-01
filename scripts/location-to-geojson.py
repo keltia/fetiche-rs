@@ -1,5 +1,11 @@
 #! /usr/bin/env python3
 #
+# Result can be imported into DuckDB with:
+# ```text
+# D  create table locations as select * from ST_read('all.json');
+# ```
+# NOTE: `spatial` extension must be loaded into DuckDB prior to this.
+#
 import hcl
 from geojson import Point, Polygon, Feature, FeatureCollection
 
@@ -22,6 +28,8 @@ def gen_bb(lat, lon, dist):
 #
 dist = 25.0
 
+# Read our HCL file
+#
 with open('locations.hcl', 'r') as file:
     locations = hcl.load(file)
 
