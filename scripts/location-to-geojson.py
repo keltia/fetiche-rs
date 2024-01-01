@@ -14,9 +14,13 @@ one_deg_nm = (40_000. / 1.852) / 360.
 
 def gen_bb(lat, lon, dist):
     """Generate a `Polygon` 50nm wide around the specified point."""
-    dist = dist / one_deg_nm
-    (min_lat, max_lat) = (lat - dist, lat + dist)
-    (min_lon, max_lon) = (lon - dist, lon + dist)
+
+    # Convert into degrees
+    #
+    ddist = dist / one_deg_nm
+
+    (min_lat, max_lat) = (lat - ddist, lat + ddist)
+    (min_lon, max_lon) = (lon - ddist, lon + ddist)
     x0y0 = Point((min_lon, min_lat))
     x1y0 = Point((max_lon, min_lat))
     x1y1 = Point((max_lon, max_lat))
