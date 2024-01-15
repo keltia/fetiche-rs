@@ -1,0 +1,39 @@
+{
+    "_meta": {
+        "hash": {
+            "sha256": "5564894379e82de926eb4164072beaa0f56d2bb98631831171c795169b2282e6"
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_full_version": "3.9.6",
+            "python_version": "3.9"
+        },
+        "sources": [
+            {
+                "name": "pypi",
+                "url": "https://pypi.org/simple",
+                "verify_ssl": true
+            }
+        ]
+    },
+    "default": {
+        "geojson": {
+            "hashes": [
+                "sha256:58a7fa40727ea058efc28b0e9ff0099eadf6d0965e04690830208d3ef571adac",
+                "sha256:68a9771827237adb8c0c71f8527509c8f5bef61733aa434cefc9c9d4f0ebe8f3"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.7'",
+            "version": "==3.1.0"
+        },
+        "pyhcl": {
+            "hashes": [
+                "sha256:30ee337d330d1f90c9f5ed8f49c468f66c8e6e43192bdc7c6ece1420beb3070c",
+                "sha256:c47293a51ccdd25e18bb5c8c0ab0ffe355b37c87f8d6f9d3280dc41efd4740bc"
+            ],
+            "index": "pypi",
+            "version": "==0.4.5"
+        }
+    },
+    "develop": {}
+}
