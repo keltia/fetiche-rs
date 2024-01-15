@@ -1,8 +1,11 @@
 #! /usr/bin/env python3
 #
+# Take our HCL files with the ACUTE antennas locations and convert it into a
+# GeoJSON file for DuckDB:
+#
 # Result can be imported into DuckDB with:
 # ```text
-# D  create table locations as select * from ST_read('all.json');
+# D  create table locations as select * from ST_read('locations.json');
 # ```
 # NOTE: `spatial` extension must be loaded into DuckDB prior to this.
 #
@@ -34,7 +37,7 @@ def gen_bb(lat, lon, dist):
 #
 parser = argparse.ArgumentParser(
     prog='location-to-geojson',
-    description='Generate JeoJSON from an HCL file.')
+    description='Generate GeoJSON from an HCL file.')
 
 parser.add_argument('file')
 parser.add_argument('-d', '--distance', type=float, default=50.0)
