@@ -6,6 +6,8 @@
 # ```
 # NOTE: `spatial` extension must be loaded into DuckDB prior to this.
 #
+import argparse
+
 import hcl
 from geojson import Point, Polygon, Feature, FeatureCollection
 
@@ -28,14 +30,28 @@ def gen_bb(lat, lon, dist):
     return Polygon([[x0y0, x1y0, x1y1, x0y1]])
 
 
-# bounding box is 25nm wide
+# Setup arguments
 #
-dist = 25.0
+parser = argparse.ArgumentParser(
+    prog='location-to-geojson',
+    description='Generate JeoJSON from an HCL file.')
+
+parser.add_argument('file')
+parser.add_argument('-d', '--distance', type=float, default=50.0)
+
+args = parser.parse_args()
 
 # Read our HCL file
 #
-with open('locations.hcl', 'r') as file:
+with open(args.file, 'r') as file:
     locations = hcl.load(file)
+
+# bounding box is 25nm wide or whatever was supplied
+#
+dist = args.distance
+
+print("File: ", args.file)
+print("Distance: ", args.distance, "nm\n")
 
 # Now, for all of our locations, generate the bounding box and save as GeoJSON
 #
