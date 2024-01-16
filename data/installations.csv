@@ -1,0 +1,8 @@
+ID,SITE_ID,ANTENNA_ID,START_AT,END_AT,COMMENT
+1,1,1,"2021-07-20","","Start of ACUTE project"
+2,2,2,"2022-06-14","","Loan then buy of the CDG antenna."
+3,3,2,,"","1st installation on ECTL premises."
+4,4,3,"2023-06-20","HQ antenna."
+5,6,4,"","","Access to data from BDX."
+6,5,1,"","","Belfast."
+7,7,1,"","","Belfast to London."
