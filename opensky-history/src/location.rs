@@ -107,7 +107,7 @@ pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<St
     let header = vec!["Location", "Plus Code", "Lat/Lon", "Polygon"];
 
     let mut builder = Builder::default();
-    builder.set_header(header);
+    builder.push_record(header);
 
     data.keys().for_each(|name| {
         let mut row = vec![];
