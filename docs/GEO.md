@@ -1,6 +1,47 @@
 ## DuckDB and Geospatial
 
-- import data from parquet
+### Tables
+
+Manually managed tables:
+
+```sql
+-- Store the site's data incl Aeroscope ID and time interval
+--
+CREATE TABLE sites
+(
+    id        INTEGER PRIMARY KEY,
+    name      VARCHAR NOT NULL,
+    code      VARCHAR NOT NULL,
+    latitude  FLOAT   NOT NULL,
+    longitude FLOAT   NOT NULL,
+);
+
+-- Store one antenna
+--
+CREATE TABLE antennas
+(
+    id          INTEGER PRIMARY KEY,
+    type        VARCHAR,
+    name        VARCHAR NOT NULL,
+    owned       BOOLEAN,
+    description VARCHAR,
+);
+
+-- Store one installation of one antenna on one site 1:1
+--
+CREATE TABLE installations
+(
+    id         INTEGER PRIMARY KEY,
+    site_id    INTEGER,
+    antenna_id INTEGER,
+    start_at   TIMESTAMP_NS NOT NULL,
+    end_at     TIMESTAMP_NS NOT NULL,
+    FOREIGN KEY (site_id) REFERENCES sites (id),
+    FOREIGN KEY (antenna_id) REFERENCES antennas (id),
+);
+```
+
+### import data from parquet
 
 ```text
 create table luxemburg as select * from read_parquet(['Lux*.parquet']);
