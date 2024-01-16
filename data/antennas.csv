@@ -1,6 +1,6 @@
 ID, TYPE, NAME, OWNED, DESCRIPTION
-1,AEROSCOPEv1,,true,"Original antenna from EIH."
-2,AEROSCOPEv2,,true,"From CDG."
-3,AEROSCOPEv2,,true,"3rd bought."
-4,AEROSCOPEv2,,false,"In BDX."
-5,AEROSCOPEv2,,true,"4th bought."
+1,AEROSCOPEv1,0QRDE8F0010496,true,"Original antenna from EIH."
+2,AEROSCOPEv2,0QRDJCAR037P0N,true,"From CDG."
+3,AEROSCOPEv2,0QRDKC2R03J32P,true,"3rd bought."
+4,AEROSCOPEv2,0QRDKC2R038370,false,"In BDX."
+5,AEROSCOPEv2,NONE,true,"4th bought."
