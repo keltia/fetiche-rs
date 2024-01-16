@@ -1,3 +1,8 @@
+//! Location related module
+//!
+//! v1: basic format, only Lat, Lon
+//! v2: added [Plus Code](https://plus.codes/)
+//!
 use std::collections::BTreeMap;
 use std::fs;
 
@@ -14,6 +19,8 @@ const ONE_DEG_NM: f32 = (40_000. / 1.852) / 360.;
 ///
 #[derive(Debug, Deserialize)]
 pub struct Location {
+    /// Plus code encoded location
+    pub code: String,
     /// Latitude
     pub lat: f32,
     /// Longitude
@@ -59,7 +66,7 @@ impl BB {
 }
 
 /// Current location file version
-const LOCATION_FILE_VER: usize = 1;
+const LOCATION_FILE_VER: usize = 2;
 
 /// On-disk structure for the locations file
 ///
@@ -97,7 +104,7 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
 #[tracing::instrument]
 pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<String> {
     trace!("enter");
-    let header = vec!["Location", "Lat/Lon", "Polygon"];
+    let header = vec!["Location", "Plus Code", "Lat/Lon", "Polygon"];
 
     let mut builder = Builder::default();
     builder.set_header(header);
@@ -106,6 +113,7 @@ pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<St
         let mut row = vec![];
 
         let loc = data.get(name).unwrap();
+        let code = loc.code.clone();
         let poly = BB::from_location(loc, dist);
         let point = format!("{:.2}, {:.2}", loc.lat, loc.lon);
         let poly = format!(
@@ -113,6 +121,7 @@ pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<St
             poly.min_lat, poly.min_lon, poly.max_lat, poly.max_lon
         );
         row.push(name);
+        row.push(&code);
         row.push(&point);
         row.push(&poly);
         builder.push_record(row);
@@ -129,6 +138,7 @@ mod tests {
     #[test]
     fn test_bb_from_location_belfast() -> Result<()> {
         let loc = Location {
+            code: "9C6MMRX2+X2".to_string(),
             lat: 54.7,
             lon: -6.2,
         };
@@ -144,6 +154,7 @@ mod tests {
     #[test]
     fn test_bb_from_location_bxl() -> Result<()> {
         let loc = Location {
+            code: "9F26RC22+22".to_string(),
             lat: 50.8,
             lon: 4.4,
         };

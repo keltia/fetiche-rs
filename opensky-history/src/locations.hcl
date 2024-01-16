@@ -1,28 +1,56 @@
-version = 1
+version = 2
 
-default = "Belfast"
-
-location "BDX-Merignac" {
-  lat = 44.8
-  lon = -0.7
+location "BDX" {
+  code = "8CPXR822+22"
+  lat  = 44.8
+  lon  = -0.7
 }
 
-location "Belfast" {
-  lat = 54.7
-  lon = -6.2
+location "BEL" {
+  code = "9C6MMRX2+X2"
+  lat  = 54.7
+  lon  = -6.2
 }
 
-location "HQ" {
-  lat = 50.8
-  lon = 4.4
+location "BRU" {
+  code = "9F26RC22+22"
+  lat  = 50.8
+  lon  = 4.4
 }
 
-location "ILUX" {
-  lat = 49.6
-  lon = 6.2
+location "LUX" {
+  code = "8FX8H5XX+XX"
+  lat  = 49.6
+  lon  = 6.2
 }
 
-location "London" {
-  lat = 51.52
-  lon = -0.05
+location "LON" {
+  code = "9C3X5WXX+XX"
+  lat  = 51.52
+  lon  = -0.05
 }
+
+location "EIH" {
+  code = "8FW4H8XX+XX"
+  lat  = 48.6
+  lon  = 2.35
+}
+
+location "CYP" {
+  code = "8G7M575J+X2"
+  lat  = 35.16
+  lon  = 33.28
+}
+
+location "CDG" {
+  code = "8FX42H52+X2"
+  lat  = 49.01
+  lon  = 2.55
+}
+
+location "BUC" {
+  code = ""
+  lat  = 44.57
+  lon  = 26.1
+}
+
