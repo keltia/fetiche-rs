@@ -61,9 +61,13 @@ async fn main() -> Result<()> {
     info!("Connecting to {}", opts.database);
     let dbh = duckdb::Connection::open(&opts.database)?;
 
+    trace!("execute");
+    let r = dbh.execute("show tables;", [])?;
+    eprintln!("res = {}", r);
     // Finish
     //
     opentelemetry::global::shutdown_tracer_provider();
     trace!("Closing DB.");
-    Ok(dbh.close()?)
+    let _ = dbh.close();
+    Ok(())
 }
