@@ -49,7 +49,7 @@ location "CDG" {
 }
 
 location "BUC" {
-  code = ""
+  code = "8GP8H39X+XX"
   lat  = 44.57
   lon  = 26.1
 }
