@@ -1,0 +1,45 @@
+[package]
+name = "process-data"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "Implement different processing of data."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/fetiche-rs"
+categories = ["aerospace::drones"]
+keywords = ["parquet", "drones", "aeronautical-data", "ads-b"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono.workspace = true
+clap.workspace = true
+eyre.workspace = true
+log.workspace = true
+opentelemetry.workspace = true
+opentelemetry-jaeger.workspace = true
+opentelemetry_sdk.workspace = true
+parquet2.workspace = true
+serde.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true
+
+datafusion = { version = "34.0", features = ["simd"] }
+duckdb = { version = "0.9", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
+rayon = "1.8"
+tokio = { version = "1.35", features = ["full"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["async_tokio"] }
+
