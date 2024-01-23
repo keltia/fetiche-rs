@@ -6,7 +6,6 @@ use duckdb::arrow::record_batch::RecordBatch;
 use duckdb::arrow::util::pretty::print_batches;
 use duckdb::Config;
 use eyre::Result;
-use geo::Geometry;
 use tokio::time::Instant;
 use tracing::{info, trace};
 use tracing_subscriber::layer::SubscriberExt;
