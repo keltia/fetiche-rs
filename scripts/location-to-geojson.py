@@ -13,6 +13,7 @@ import argparse
 
 import hcl
 from geojson import Point, Polygon, Feature, FeatureCollection
+from pluscodes import encode
 
 one_deg_nm = (40_000. / 1.852) / 360.
 
@@ -63,7 +64,8 @@ for (location, coord) in locations['location'].items():
     lat = coord['lat']
     lon = coord['lon']
     bb = gen_bb(lat, lon, dist)
-    glocs.append(Feature(geometry=bb, properties={'name': location}))
+    code = encode(lat, lon)
+    glocs.append(Feature(geometry=bb, properties={'name': location, "code": code}))
 
 res = FeatureCollection(glocs)
 print(res)
