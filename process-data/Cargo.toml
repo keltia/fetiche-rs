@@ -37,6 +37,7 @@ tracing-tree.workspace = true
 
 datafusion = { version = "34.0", features = ["simd"] }
 duckdb = { version = "0.9", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
+rust-3d = "0.34"
 rayon = "1.8"
 tokio = { version = "1.35", features = ["full"] }
 
