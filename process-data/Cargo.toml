@@ -23,6 +23,7 @@ maintenance = { status = "actively-developed" }
 chrono.workspace = true
 clap.workspace = true
 eyre.workspace = true
+hcl-rs.workspace = true
 log.workspace = true
 opentelemetry.workspace = true
 opentelemetry-jaeger.workspace = true
