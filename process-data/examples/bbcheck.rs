@@ -2,7 +2,7 @@
 //! is inside or outside our BB.
 //!
 
-use rust_3d::{BoundingBox2D, BoundingBox3D, Point2D, Point3D};
+use rust_3d::{BoundingBox2D, BoundingBox3D, FilterOutlier3D, Point2D, Point3D, Positive};
 
 #[derive(Debug)]
 struct Site {
@@ -63,6 +63,9 @@ fn main() -> rust_3d::Result<()> {
 
     let hundred = 100. / ONE_DEG_NM;
     let mut outside = Point3D::from(inside);
+
+    // Move ourselves
+    //
     outside.x += hundred;
     outside.y += hundred / 2.;
 
@@ -71,6 +74,9 @@ fn main() -> rust_3d::Result<()> {
     } else {
         println!("{:?} is NOT inside {:?}", outside, bb3);
     }
+
+    let ray = Positive::new(DEF_DIST / ONE_DEG_NM)?;
+    let filter = FilterOutlier3D::new(&Point3D::new(lux.lon, lux.lat, 0.), ray, 1)?;
 
     Ok(())
 }
