@@ -21,7 +21,7 @@
     * dist_3d(point_d, point_a)
     * dist_3d(point_d, point_h)
     * dist_3d(point_d, point_o)
-      select minimum distance -> encouter
+      select minimum distance -> encounter
 
 - for an encounter:
   record encounter data:
