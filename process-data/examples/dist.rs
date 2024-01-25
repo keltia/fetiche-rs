@@ -1,8 +1,17 @@
+use clap::Parser;
 use geo::point;
 use geo::prelude::*;
 
 /// Earth radius in meters
 const R: f64 = 6_371_088.0;
+
+#[derive(Debug, Parser)]
+pub struct Opts {
+    pub lat1: f64,
+    pub lon1: f64,
+    pub lat2: f64,
+    pub lon2: f64,
+}
 
 #[derive(Debug)]
 struct Point {
@@ -44,14 +53,16 @@ impl Point {
 
 // 48.573174 2.319671 48.566757 2.303015
 fn main() -> eyre::Result<()> {
+    let opts: Opts = Opts::parse();
+
     let point1 = Point {
-        latitude: 48.573174,
-        longitude: 2.319671,
-    }; // San Francisco, CA
+        latitude: opts.lat1,
+        longitude: opts.lon1,
+    };
     let point2 = Point {
-        latitude: 48.566757,
-        longitude: 2.303015,
-    }; // Los Angeles, CA
+        latitude: opts.lat2,
+        longitude: opts.lon2,
+    };
 
     let d_h = point1.haversine_distance(&point2);
     let d_s = point1.spherical_law_of_cosines_distance(&point2);
