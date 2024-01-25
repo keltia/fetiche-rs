@@ -7,8 +7,8 @@
 //!
 //! Assume table was modified as follows:
 //! ```sql
-//! ALTER drones ADD COLUMN home_distance_2d FLOAT;
-//! ALTER drones ADD COLUMN home_distance_3d FLOAT;
+//! ALTER TABLE drones ADD COLUMN home_distance_2d FLOAT;
+//! ALTER TABLE drones ADD COLUMN home_distance_3d FLOAT;
 //! ```
 //!
 
@@ -36,7 +36,7 @@ fn calculate_3d_distance(p1: &Point3D, p2: &Point3D) -> f64 {
 
     // Return in METERS
     //
-    (tmp * R)
+    tmp * R
 }
 
 /// Update the given table with calculus of the distance between a drone and its operator
@@ -53,7 +53,6 @@ FROM
   drones
 WHERE
   home_distance_2d IS NULL OR home_distance_3d IS NULL
-LIMIT 10
     "##,
     )?;
 
