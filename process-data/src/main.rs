@@ -4,19 +4,18 @@
 use clap::{crate_authors, crate_version, Parser};
 use duckdb::Config;
 use eyre::Result;
-use std::env::Args;
 use tracing::{info, trace};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
+use tasks::distance_calculation;
+
 use crate::cli::{Opts, SubCommand};
 
 mod cli;
 mod tasks;
-
-use tasks::distance_calculation;
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -74,6 +73,9 @@ async fn main() -> Result<()> {
     match opts.subcmd {
         SubCommand::Distances => {
             let _ = distance_calculation(&dbh)?;
+        }
+        SubCommand::List => {
+            todo!()
         }
         SubCommand::Various => {
             todo!()

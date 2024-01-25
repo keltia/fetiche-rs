@@ -18,10 +18,12 @@ pub struct Opts {
 
 #[derive(Debug, Parser)]
 pub enum SubCommand {
-    /// Convert between formats
+    /// Convert between formats.
     Distances,
-    /// Various commands
+    /// List all available modules.
+    List,
+    /// Various commands.
     Various,
-    /// List all package versions
+    /// List all package versions.
     Version,
 }
