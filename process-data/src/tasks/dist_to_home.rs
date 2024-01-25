@@ -7,6 +7,7 @@
 use duckdb::{params, Connection};
 use eyre::Result;
 use geo::{point, *};
+use parquet2::FallibleStreamingIterator;
 
 /// Update the given table with calculus of the distance between a drone and its operator
 ///
@@ -51,15 +52,18 @@ WHERE
 "##;
 
     let mut stmt = tx.prepare(sql_update)?;
+    let mut p = progress::SpinningCircle::new();
+    p.set_job_title("updating");
     list_items.for_each(|row| {
         match row {
-            Ok((dist, time, journey)) => {
-                let _ = stmt.execute(params![dist, time, journey]);
-                eprint!(".");
+            Ok((time, journey, dist)) => {
+                let r = stmt.execute(params![dist, time, journey]);
+                p.tick();
             }
             Err(_) => (),
         };
     });
+    p.jobs_done();
     let _ = tx.commit()?;
     Ok(())
 }

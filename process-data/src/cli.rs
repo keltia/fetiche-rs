@@ -11,6 +11,17 @@ pub struct Opts {
     /// Output file (default is stdout).
     #[clap(short = 'o', long)]
     pub output: Option<String>,
-    /// Filename, can be just the basename and .csv/.parquet are implied
-    pub name: String,
+    /// Sub-commands (see below).
+    #[clap(subcommand)]
+    pub subcmd: SubCommand,
+}
+
+#[derive(Debug, Parser)]
+pub enum SubCommand {
+    /// Convert between formats
+    Distances,
+    /// Various commands
+    Various,
+    /// List all package versions
+    Version,
 }
