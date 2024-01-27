@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 pyhcl = "*"
+geohash2 = "*"
 geojson = "*"
 pluscodes = "*"
 
