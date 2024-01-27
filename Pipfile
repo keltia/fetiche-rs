@@ -8,6 +8,7 @@ pyhcl = "*"
 geohash2 = "*"
 geojson = "*"
 pluscodes = "*"
+pyopensky = "*"
 
 [dev-packages]
 
