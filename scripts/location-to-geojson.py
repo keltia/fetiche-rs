@@ -13,9 +13,10 @@ import argparse
 
 import hcl
 import geohash2
+import pluscodes
 from geojson import Point, Polygon, Feature, FeatureCollection
-from pluscodes import encode
 
+# approximate
 one_deg_nm = (40_000. / 1.852) / 360.
 
 
@@ -51,7 +52,7 @@ args = parser.parse_args()
 with open(args.file, 'r') as file:
     locations = hcl.load(file)
 
-# bounding box is 25nm wide or whatever was supplied
+# bounding box is 50 nm wide or whatever was supplied
 #
 dist = args.distance
 
@@ -65,7 +66,7 @@ for (location, coord) in locations['location'].items():
     lat = coord['lat']
     lon = coord['lon']
     bb = gen_bb(lat, lon, dist)
-    code = encode(lat, lon)
+    code = pluscodes.encode(lat, lon)
     hash = geohash2.encode(lat, lon, precision=9)
     glocs.append(Feature(geometry=bb, properties={'name': location, "code": code, "hash": hash}))
 
