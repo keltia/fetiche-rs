@@ -12,6 +12,7 @@
 import argparse
 
 import hcl
+import geohash2
 from geojson import Point, Polygon, Feature, FeatureCollection
 from pluscodes import encode
 
@@ -65,7 +66,8 @@ for (location, coord) in locations['location'].items():
     lon = coord['lon']
     bb = gen_bb(lat, lon, dist)
     code = encode(lat, lon)
-    glocs.append(Feature(geometry=bb, properties={'name': location, "code": code}))
+    hash = geohash2.encode(lat, lon, precision=9)
+    glocs.append(Feature(geometry=bb, properties={'name': location, "code": code, "hash": hash}))
 
 res = FeatureCollection(glocs)
 print(res)
