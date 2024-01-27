@@ -107,7 +107,7 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
 #[tracing::instrument]
 pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<String> {
     trace!("enter");
-    let header = vec!["Location", "Plus Code", "Lat/Lon", "Polygon"];
+    let header = vec!["Location", "Plus Code", "GeoHash", "Lat/Lon", "Polygon"];
 
     let mut builder = Builder::default();
     builder.push_record(header);
@@ -117,6 +117,7 @@ pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<St
 
         let loc = data.get(name).unwrap();
         let code = loc.code.clone();
+        let hash = loc.hash.clone();
         let poly = BB::from_location(loc, dist);
         let point = format!("{:.2}, {:.2}", loc.lat, loc.lon);
         let poly = format!(
@@ -125,6 +126,7 @@ pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<St
         );
         row.push(name);
         row.push(&code);
+        row.push(&hash);
         row.push(&point);
         row.push(&poly);
         builder.push_record(row);
