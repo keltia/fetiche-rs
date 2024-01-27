@@ -12,29 +12,26 @@
 //! [Impala Shell]: https://opensky-network.org/data/impala
 //!
 
-use arrow2::array::Array;
-use arrow2::chunk::Chunk;
-use arrow2::io::csv::read;
-use arrow2::io::csv::read::deserialize_batch;
 use std::collections::BTreeMap;
 use std::fs;
 
 use chrono::prelude::*;
-use clap::{crate_authors, crate_description, crate_version, Parser};
-use csv::ReaderBuilder;
+use clap::{crate_authors, crate_version, Parser};
 use eyre::{eyre, Result};
 use inline_python::{python, Context};
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-use fetiche_formats::{prepare_csv, Cat21, Format};
+use fetiche_formats::Format;
 
-use crate::cli::Opts;
+use crate::cli::{banner, Opts};
 use crate::location::{list_locations, load_locations, Location, BB};
+use crate::segment::{extract_segments, read_segment};
 
 mod cli;
 mod location;
+mod segment;
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -230,79 +227,4 @@ fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Read the csv segment
-///
-fn read_segment(seg: &str) -> Result<Chunk<Box<dyn Array>>> {
-    use seek_bufread::BufReader;
-
-    let buf = BufReader::new(seg.as_bytes());
-    let mut reader = ReaderBuilder::new().from_reader(buf);
-    let (fields, _) = read::infer_schema(&mut reader, None, true, &read::infer)?;
-    let mut rows = vec![read::ByteRecord::default(); 100];
-    let rows_read = read::read_rows(&mut reader, 0, &mut rows)?;
-    let rows = &rows[..rows_read];
-    let r = deserialize_batch(rows, &fields, None, 0, read::deserialize_column)?;
-    Ok(r)
-}
-
-/// Calculate the list of 1h segments necessary for a given time interval
-///
-/// Algorithm for finding which segments are interesting otherwise Impala takes forever to
-/// retrieve data
-///
-/// All timestamps are UNIX-epoch kind of timestamp.
-///
-/// start = NNNNNN
-/// stop = MMMMMM
-///
-/// i(0) => beg_hour = NNNNNN
-/// i(N) => end_hour = MMMMMM - (MMMMMM mod 3600)
-///
-/// N =  (MMMMMM - NNNNNN) / 3600
-///
-/// thus
-///
-/// [beg_hour <= start] ... [end_hour <= stop]
-/// i(0)                ... i(N)
-///
-/// N requests
-///
-#[tracing::instrument]
-pub fn extract_segments(start: i32, stop: i32) -> Result<Vec<i32>> {
-    trace!("enter");
-
-    let beg_hour = start - (start % 3600);
-    let end_hour = stop - (stop % 3600);
-
-    let mut v = vec![];
-    let mut i = beg_hour;
-    while i <= end_hour {
-        v.push(i);
-        i += 3600;
-    }
-    Ok(v)
-}
-
-/// Return our version number
-///
-#[inline]
-pub fn version() -> String {
-    format!("{}/{}", NAME, VERSION)
-}
-
-/// Display banner
-///
-fn banner() -> Result<()> {
-    Ok(eprintln!(
-        r##"
-{}/{} by {}
-{}
-"##,
-        NAME,
-        VERSION,
-        AUTHORS,
-        crate_description!()
-    ))
 }

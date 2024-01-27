@@ -1,3 +1,4 @@
+use crate::{AUTHORS, NAME, VERSION};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 
 #[derive(Parser)]
@@ -24,4 +25,26 @@ pub struct Opts {
     pub start: Option<String>,
     /// End date (YYYY-MM-DD).
     pub end: Option<String>,
+}
+
+/// Return our version number
+///
+#[inline]
+pub fn version() -> String {
+    format!("{}/{}", NAME, VERSION)
+}
+
+/// Display banner
+///
+pub fn banner() -> eyre::Result<()> {
+    Ok(eprintln!(
+        r##"
+{}/{} by {}
+{}
+"##,
+        NAME,
+        VERSION,
+        AUTHORS,
+        crate_description!()
+    ))
 }
