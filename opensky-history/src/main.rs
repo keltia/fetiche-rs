@@ -12,22 +12,26 @@
 //! [Impala Shell]: https://opensky-network.org/data/impala
 //!
 
+use datafusion::prelude::*;
 use std::collections::BTreeMap;
-use std::fs;
+use std::io::Write;
 
 use chrono::prelude::*;
 use clap::{crate_authors, crate_version, Parser};
+use datafusion::common::arrow::csv::WriterBuilder as CsvOpts;
+use datafusion::dataframe::DataFrameWriteOptions;
+use datafusion::parquet::basic::{Compression, Encoding, ZstdLevel};
+use datafusion::parquet::file::properties::{EnabledStatistics, WriterProperties};
 use eyre::{eyre, Result};
 use inline_python::{python, Context};
+use tempfile::NamedTempFile;
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-use fetiche_formats::Format;
-
-use crate::cli::{banner, Opts};
+use crate::cli::{banner, version, Opts, Otype};
 use crate::location::{list_locations, load_locations, Location, BB};
-use crate::segment::{extract_segments, read_segment};
+use crate::segment::extract_segments;
 
 mod cli;
 mod location;
@@ -40,8 +44,9 @@ pub const VERSION: &str = crate_version!();
 /// Authors
 pub const AUTHORS: &str = crate_authors!();
 
+#[tokio::main]
 #[tracing::instrument]
-fn main() -> Result<()> {
+async fn main() -> Result<()> {
     trace!("enter");
 
     let opts = Opts::parse();
@@ -62,6 +67,11 @@ fn main() -> Result<()> {
     //
     banner()?;
 
+    if opts.version {
+        eprintln!("{}", version());
+        std::process::exit(0);
+    }
+
     trace!("read locations");
     let loc: BTreeMap<String, Location> = load_locations(opts.config)?;
 
@@ -69,16 +79,19 @@ fn main() -> Result<()> {
 
     // List loaded locations if nothing is specified, neither name nor location
     //
-    if opts.name.is_none() {
-        let dist = opts.range;
-        let str = list_locations(&loc, dist)?;
-        eprintln!("{}", str);
-        return Ok(());
-    }
+    let site = match opts.name {
+        Some(name) => name,
+        None => {
+            let dist = opts.range;
+            let str = list_locations(&loc, dist)?;
+            eprintln!("{}", str);
+            return Ok(());
+        }
+    };
 
     // Get arguments, parse anything as a date
     //
-    let start = match opts.start {
+    let start = match opts.begin {
         Some(start) => dateparser::parse(&start),
         None => Ok(Utc::now()),
     }
@@ -108,11 +121,8 @@ fn main() -> Result<()> {
     info!("{} segments", v.len());
     trace!("{:?}", v);
 
-    let bb = match opts.name {
-        Some(name) => match loc.get(&name) {
-            Some(loc) => loc,
-            None => return Err(eyre!("Unknown location")),
-        },
+    let bb = match loc.get(&site) {
+        Some(loc) => loc,
         None => return Err(eyre!("You must specify a location")),
     };
 
@@ -128,7 +138,7 @@ fn main() -> Result<()> {
     //
     let bb = BB::from_location(bb, opts.range);
     let bb = [bb.min_lon, bb.min_lat, bb.max_lon, bb.max_lat];
-
+    trace!("BB={:?}", bb);
     // Initialise our embedded Python environment
     //
     trace!("initialise python");
@@ -141,90 +151,42 @@ fn main() -> Result<()> {
 
         print("From: ", 'start, "To: ", 'end, "BB=", 'bb)
         print("Segments: ", len('v1))
+        start = 'start
+        end = 'end
+        bb = 'bb
+
+        df = impala.history(start, end, bounds=bb)
+        if df is None:
+            data = ""
+        else:
+            data = df.to_csv()
     };
-
-    // Now for each segment, use the python code to fetch and return the DataFrames in CSV format
-    //
-    trace!("fetch segments");
-
-    let mut p = progress::Bar::new();
-    p.set_job_title("Fetching segments");
-
-    let step = 100 / v.len() as i32;
-
-    let data: Vec<_> = v
-        .iter()
-        .inspect(|&tm| trace!("Fetching segment {}", tm))
-        .map(|&tm| {
-            let icao = icao.clone();
-            ctx.run(python! {
-                seg = 'tm
-                bb = 'bb
-                q = "SELECT * FROM state_vectors_data4 \
-                WHERE lat >= {} AND lat <= {} AND lon >= {} AND lon <= {} AND hour={}{};\
-                ".format(bb[1], bb[3], bb[0], bb[2], seg, 'icao)
-
-                df = impala.history()
-                if df is None:
-                    data = ""
-                else:
-                    data = df.to_csv()
-            });
-            p.add_percent(step);
-            ctx.get::<String>("data")
-        })
-        .collect();
-    p.reach_percent(100);
-    p.jobs_done();
+    let data = ctx.get::<String>("data");
+    let mut tmpf = NamedTempFile::new()?;
+    let _ = tmpf.write(data.as_bytes())?;
 
     // End of the Python part thanks $DEITY! (and @m_ou_se on Twitter)
     //
-    let format = Format::PandaStateVector;
-
-    trace!("now merging {} csv segments", data.len());
-
-    #[cfg(feature = "arrow2")]
-    let data: Vec<_> = data
-        .iter()
-        .map(|seg| {
-            let data = read_segment(seg).unwrap();
-            data
-        })
-        .collect();
-
     dbg!(&data);
 
-    #[cfg(not(feature = "arrow2"))]
-    let data = {
-        // data is a Vec<String> with each component a CSV "file"
-        //
-        let mut p = progress::Bar::new();
-        p.set_job_title("Merging csv");
-        let step = 100 / data.len() as i32;
+    let ctx = SessionContext::new();
+    let fname = tmpf.path().to_string_lossy().to_string();
+    let df = ctx.read_csv(fname, CsvReadOptions::default()).await?;
+    let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
 
-        let data: Vec<Cat21> = data
-            .iter()
-            .flat_map(|seg| {
-                let mut rdr = ReaderBuilder::new()
-                    .flexible(true)
-                    .has_headers(true)
-                    .from_reader(seg.as_bytes());
-                p.add_percent(step);
-                format.from_csv(&mut rdr).unwrap()
-            })
-            .collect();
-        p.reach_percent(100);
-        p.jobs_done();
+    let output = opts.output;
 
-        let data = prepare_csv(data, true)?;
-        data
-    };
-    // Manage output
-    //
-    match opts.output {
-        Some(output) => fs::write(output, data)?,
-        _ => println!("{:?}", data),
+    if opts.otype == Otype::Parquet {
+        let props = WriterProperties::builder()
+            .set_created_by(NAME.to_string())
+            .set_encoding(Encoding::PLAIN)
+            .set_statistics_enabled(EnabledStatistics::Page)
+            .set_compression(Compression::ZSTD(ZstdLevel::try_new(8)?))
+            .build();
+        let _ = df.write_parquet(&output, dfopts, Some(props)).await?;
+    } else {
+        let props = CsvOpts::default();
+        let _ = df.write_csv(&output, dfopts, Some(props)).await?;
     }
-
     Ok(())
 }
