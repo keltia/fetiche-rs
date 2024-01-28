@@ -23,7 +23,7 @@ pub struct Location {
     /// Plus code encoded location
     pub code: String,
     /// GeoHash string
-    pub hash: String,
+    pub hash: Option<String>,
     /// Latitude
     pub lat: f32,
     /// Longitude
@@ -117,7 +117,7 @@ pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<St
 
         let loc = data.get(name).unwrap();
         let code = loc.code.clone();
-        let hash = loc.hash.clone();
+        let hash = loc.hash.clone().unwrap_or("Unknown".to_string());
         let poly = BB::from_location(loc, dist);
         let point = format!("{:.2}, {:.2}", loc.lat, loc.lon);
         let poly = format!(
@@ -144,7 +144,7 @@ mod tests {
     fn test_bb_from_location_belfast() -> Result<()> {
         let loc = Location {
             code: "9C6MMRX2+X2".to_string(),
-            hash: "gcex4vv69".to_string(),
+            hash: Some("gcex4vv69".to_string()),
             lat: 54.7,
             lon: -6.2,
         };
@@ -161,7 +161,7 @@ mod tests {
     fn test_bb_from_location_bxl() -> Result<()> {
         let loc = Location {
             code: "9F26RC22+22".to_string(),
-            hash: "u150upggr".to_string(),
+            hash: Some("u150upggr".to_string()),
             lat: 50.8,
             lon: 4.4,
         };
