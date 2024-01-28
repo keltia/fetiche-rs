@@ -1,4 +1,4 @@
-version = 2
+version = 3
 
 location "BDX" {
   code = "8CPXR822+22"
@@ -8,12 +8,14 @@ location "BDX" {
 
 location "BEL" {
   code = "9C6MMRX2+X2"
+  hash = "gcex4vv69"
   lat  = 54.7
   lon  = -6.2
 }
 
 location "BRU" {
   code = "9F26RC22+22"
+  hash = "u150upggr"
   lat  = 50.8
   lon  = 4.4
 }
