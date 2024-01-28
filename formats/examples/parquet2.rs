@@ -42,6 +42,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 use arrow2::array::Array;
+use arrow2::datatypes::Field;
 use arrow2::{
     chunk::Chunk,
     datatypes::Schema,
@@ -51,7 +52,7 @@ use arrow2::{
 };
 use eyre::Result;
 use parquet2::{compression::ZstdLevel, encoding::Encoding};
-use serde_arrow::schema::{SerdeArrowSchema, TracingOptions};
+use serde_arrow::schema::{SchemaLike, TracingOptions};
 use serde_json::Deserializer;
 use tracing::{debug, info, trace};
 use tracing_subscriber::prelude::*;
@@ -79,7 +80,7 @@ fn read_json(base: &str) -> Result<(Schema, Vec<Box<dyn Array>>)> {
         .collect::<Vec<_>>();
 
     let data = data.as_slice();
-    let fields = SerdeArrowSchema::from_samples(&data, topts)?.to_arrow2_fields()?;
+    let fields = Vec::<Field>::from_samples(&data, topts)?;
     trace!("fields={:?}", fields);
 
     let schema = Schema::from(fields.clone());
