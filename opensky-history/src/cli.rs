@@ -19,7 +19,7 @@ pub struct Opts {
     #[clap(short = 'o', long)]
     pub output: Option<String>,
     /// Detection range in nautical miles.
-    #[clap(short = 'R', long, default_value = "25")]
+    #[clap(short = 'R', long, default_value = "70")]
     pub range: u32,
     /// Start date (YYYY-MM-DD).
     pub start: Option<String>,
