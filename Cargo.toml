@@ -8,7 +8,7 @@ arrow2 = { version = "0.17", features = ["io_csv", "io_json", "io_json_integrati
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 dateparser = "0.2"
-env_logger = "0.10"
+env_logger = "0.11"
 eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
 fetiche-formats = { version = "0", path = "formats" }
 fetiche-sources = { version = "0", path = "sources" }
@@ -25,7 +25,7 @@ progress = "0.2"
 reqwest = { version = "0.11", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
 rstest = "0.18"
 serde = { version = "1.0", features = ["derive"] }
-serde_arrow = { version = "0.9.0-rc.1", features = ["arrow2-0-17"] }
+serde_arrow = { version = "0.9.1", features = ["arrow2-0-17"] }
 serde_json = "1.0"
 serde_repr = "0.1"
 serde_with = { version = "3", features = ["base64", "chrono_0_4", "json", "hex"] }
