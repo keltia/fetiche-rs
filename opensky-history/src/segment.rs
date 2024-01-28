@@ -1,25 +1,6 @@
-use arrow2::array::Array;
-use arrow2::chunk::Chunk;
-use arrow2::io::csv::read;
-use arrow2::io::csv::read::deserialize_batch;
-use csv::ReaderBuilder;
-use seek_bufread::BufReader;
 use tracing::trace;
 
 const ONE_HOUR: i32 = 3_600;
-
-/// Read the csv segment
-///
-pub fn read_segment(seg: &str) -> eyre::Result<Chunk<Box<dyn Array>>> {
-    let buf = BufReader::new(seg.as_bytes());
-    let mut reader = ReaderBuilder::new().from_reader(buf);
-    let (fields, _) = read::infer_schema(&mut reader, None, true, &read::infer)?;
-    let mut rows = vec![read::ByteRecord::default(); 100];
-    let rows_read = read::read_rows(&mut reader, 0, &mut rows)?;
-    let rows = &rows[..rows_read];
-    let r = deserialize_batch(rows, &fields, None, 0, read::deserialize_column)?;
-    Ok(r)
-}
 
 /// Calculate the list of 1h segments necessary for a given time interval
 ///
@@ -65,10 +46,12 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    #[case(3600,  3650, &[0])]
-    #[case(3600,  7200, &[0, 1])]
-    #[case(3610,  7200, &[0, 1])]
+    #[case(3600, 3650, & [3600])]
+    #[case(3600, 7200, & [3600, 7200])]
+    #[case(3610, 7200, & [3600, 7200])]
+    #[case(3610, 7230, & [3600, 7200])]
+    #[case(3610, 11000, & [3600, 7200, 10800])]
     fn test_extract_segment(#[case] fr: i32, #[case] to: i32, #[case] res: &[i32]) {
-        assert_eq!(res, extract_segments(fr, to)?);
+        assert_eq!(res, extract_segments(fr, to).unwrap());
     }
 }
