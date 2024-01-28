@@ -47,6 +47,9 @@ dateparser = "0.2"
 inline-python = "0.12"
 seek_bufread = "1.2"
 
+[dev-dependencies]
+rstest.workspace = true
+
 [dependencies.pyo3]
 version = "0.19"
 features = ["auto-initialize"]
