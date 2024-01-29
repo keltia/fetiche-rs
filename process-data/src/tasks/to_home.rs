@@ -41,7 +41,7 @@ fn calculate_3d_distance(p1: &Point3D, p2: &Point3D) -> f64 {
 
 /// Update the given table with calculus of the distance between a drone and its operator
 ///
-pub fn distance_calculation(dbh: &Connection) -> Result<()> {
+pub fn home_calculation(dbh: &Connection) -> Result<()> {
     let mut dbh = dbh.try_clone()?;
 
     let tx = dbh.transaction()?;

@@ -1,5 +1,6 @@
-mod dist_to_home;
-mod various;
+pub use to_home::*;
+pub use to_planes::*;
 
-pub use dist_to_home::*;
-pub use various::*;
+mod to_home;
+mod to_planes;
+mod various;

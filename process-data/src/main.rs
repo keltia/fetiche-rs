@@ -10,9 +10,8 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
-use tasks::distance_calculation;
-
 use crate::cli::{Opts, SubCommand};
+use crate::tasks::{home_calculation, planes_calculation};
 
 mod cli;
 mod tasks;
@@ -71,8 +70,11 @@ async fn main() -> Result<()> {
     )?;
 
     match opts.subcmd {
-        SubCommand::Distances => {
-            let _ = distance_calculation(&dbh)?;
+        SubCommand::ToPlanes(popts) => {
+            let _ = planes_calculation(&dbh, popts)?;
+        }
+        SubCommand::ToHome => {
+            let _ = home_calculation(&dbh)?;
         }
         SubCommand::List => {
             todo!()
