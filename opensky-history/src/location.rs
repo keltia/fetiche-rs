@@ -14,7 +14,7 @@ use tabled::settings::Style;
 use tracing::trace;
 
 /// one degree is circumference of earth / 360°, convert into nautical miles
-const ONE_DEG_NM: f32 = (40_000. / 1.852) / 360.;
+const ONE_DEG_NM: f64 = (40_000. / 1.852) / 360.;
 
 /// Actual location
 ///
@@ -25,21 +25,21 @@ pub struct Location {
     /// GeoHash string
     pub hash: Option<String>,
     /// Latitude
-    pub lat: f32,
+    pub lat: f64,
     /// Longitude
-    pub lon: f32,
+    pub lon: f64,
 }
 
 #[derive(Debug)]
 pub struct BB {
     /// Longitude - X0
-    pub min_lon: f32,
+    pub min_lon: f64,
     /// Latitude - Y0
-    pub min_lat: f32,
+    pub min_lat: f64,
     /// Longitude - X1
-    pub max_lon: f32,
+    pub max_lon: f64,
     /// Latitude - Y1
-    pub max_lat: f32,
+    pub max_lat: f64,
 }
 
 impl BB {
@@ -52,7 +52,7 @@ impl BB {
     pub fn from_location(value: &Location, dist: u32) -> Self {
         // How many degree do we want?
         //
-        let dist = dist as f32 / ONE_DEG_NM;
+        let dist = dist as f64 / ONE_DEG_NM;
 
         // Calculate the four corners
         //
