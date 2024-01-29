@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 
 #[derive(Parser)]
@@ -18,12 +19,25 @@ pub struct Opts {
 
 #[derive(Debug, Parser)]
 pub enum SubCommand {
-    /// Convert between formats.
-    Distances,
+    /// drone to planes distance
+    ToPlanes(PlanesOpts),
     /// List all available modules.
     List,
+    /// 2D/3D drone to operator distance.
+    ToHome,
     /// Various commands.
     Various,
     /// List all package versions.
     Version,
+}
+
+#[derive(Debug, Parser)]
+pub struct PlanesOpts {
+    /// Do calculation on this date (day).
+    pub date: DateTime<Utc>,
+    /// Do calculations around this station.
+    pub location: String,
+    /// Distance in nm
+    #[clap(default_value = 70)]
+    pub distance: f64,
 }
