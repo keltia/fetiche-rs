@@ -12,13 +12,13 @@ use std::sync::mpsc::Sender;
 use arrow2;
 use arrow2::array::Array;
 use arrow2::chunk::Chunk;
-use arrow2::datatypes::Schema;
+use arrow2::datatypes::{Field, Schema};
 use arrow2::io::parquet::write::{
     transverse, CompressionOptions, Encoding, FileWriter, RowGroupIterator, Version, WriteOptions,
     ZstdLevel,
 };
 use eyre::Result;
-use serde_arrow::schema::{SerdeArrowSchema, TracingOptions};
+use serde_arrow::schema::{SchemaLike, TracingOptions};
 use serde_json::Deserializer;
 use tracing::{debug, info, trace};
 
@@ -94,6 +94,7 @@ impl Save {
                             .guess_dates(true)
                             .allow_null_fields(true);
 
+                        debug!("data={:?}", data);
                         let reader = BufReader::new(data.as_bytes());
                         let json = Deserializer::from_reader(reader).into_iter::<Asd>();
 
@@ -101,9 +102,9 @@ impl Save {
                             .map(|e| e.unwrap().fix_tm().unwrap())
                             .collect::<Vec<_>>();
 
+                        debug!("data={:?}", data);
                         let data = data.as_slice();
-                        let fields =
-                            SerdeArrowSchema::from_samples(&data, topts)?.to_arrow2_fields()?;
+                        let fields = Vec::<Field>::from_samples(&data, topts)?;
                         trace!("fields={:?}", fields);
 
                         let schema = Schema::from(fields.clone());
