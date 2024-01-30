@@ -114,7 +114,7 @@ FROM
 WHERE 
   pt > to_timestamp(dt-2) AND 
   pt < to_timestamp(dt+2) AND
-  (@(pz - dz) < 5500)  
+  (@(pz - dz) < 5500.0)  
     "##;
 }
 
