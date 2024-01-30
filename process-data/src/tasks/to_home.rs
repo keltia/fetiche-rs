@@ -14,30 +14,10 @@
 
 use duckdb::{params, Connection};
 use eyre::Result;
-use geo::{point, *};
-use rust_3d::Point3D;
+use rust_3d::{Point2D, Point3D};
 
 /// 1 deg = 59.9952 nm or 111.1111 km
 const R: f64 = 111_111.11;
-
-/// Calculate the 3D distance from home to drone in METERS
-///
-/// 2D dist is √(Δx𝟤 + Δy𝟤)
-/// 3D dist is √(Δx𝟤 + Δy𝟤 + Δz𝟤)
-///
-fn calculate_3d_distance(p1: &Point3D, p2: &Point3D) -> f64 {
-    // Normalise in degrees
-    //
-    let drone_elev = (p1.z - p2.z) / R;
-
-    // 3D distance
-    //
-    let tmp = (drone_elev.powi(2) + (p1.x - p2.x).powi(2) + (p1.y - p2.y).powi(2)).sqrt();
-
-    // Return in METERS
-    //
-    tmp * R
-}
 
 /// Update the given table with calculus of the distance between a drone and its operator
 ///
@@ -68,12 +48,14 @@ WHERE
         let home_lon: f64 = row.get(6).unwrap_or(0.);
         let home_height: f64 = row.get(7).unwrap_or(0.);
 
-        let drone = point!(x: longitude, y: latitude);
-        let home = point!(x: home_lon, y: home_lat);
+        let drone = Point2D::new(longitude, latitude);
+        let home = Point2D::new(home_lon, home_lat);
 
         // 2D projected distance in METERS
         //
-        let dist2d = drone.geodesic_distance(&home);
+        /// 2D dist is √(Δx𝟤 + Δy𝟤), cache Δx𝟤 + Δy𝟤 for later
+        ///
+        let a2b2 = (drone.x - home.x).powi(2) + (drone.y - home.y).powi(2);
 
         // 3D distance
         //
@@ -85,9 +67,16 @@ WHERE
         let drone = Point3D::new(longitude, latitude, altitude);
         let home = Point3D::new(home_lon, home_lat, home_height);
 
-        // In METERS
+        /// Calculate the 3D distance from home to drone in METERS
+        ///
+        /// 3D dist is √(Δx𝟤 + Δy𝟤 + Δz𝟤)
+        ///
+        let dist3d = (a2b2 + (altitude - home_height).powi(2)).sqrt();
+
+        // Transform into meters
         //
-        let dist3d = calculate_3d_distance(&drone, &home);
+        let dist2d = a2b2.sqrt() * R;
+        let dist3d = dist3d * R;
 
         Ok((time, journey, dist2d, dist3d))
     })?;
