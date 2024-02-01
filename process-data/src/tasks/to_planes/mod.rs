@@ -10,6 +10,22 @@ use crate::tasks::to_planes::location::{load_locations, Location};
 
 mod location;
 
+/// These are the options we pass to this command
+///
+#[derive(Debug, Parser)]
+pub struct PlanesOpts {
+    /// Do calculation on this date (day).
+    pub date: DateTime<Utc>,
+    /// Do calculations around this station.
+    pub name: String,
+    /// Distance in nm
+    #[clap(default_value = "70.")]
+    pub distance: f64,
+}
+
+/// One degree in *kilometers*
+const ONE_DEG: f64 = 40_000. / 360.;
+
 /// This is the struct in which we store the context of a given day work.
 ///
 struct Context {
