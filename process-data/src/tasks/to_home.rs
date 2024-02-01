@@ -17,7 +17,7 @@ use eyre::Result;
 use rust_3d::{Point2D, Point3D};
 
 /// 1 deg = 59.9952 nm or 111.1111 km
-const R: f64 = 111_111.11;
+const R: f64 = 40_000_000. / 360.;
 
 /// Update the given table with calculus of the distance between a drone and its operator
 ///
@@ -53,8 +53,8 @@ WHERE
 
         // 2D projected distance in METERS
         //
-        /// 2D dist is √(Δx𝟤 + Δy𝟤), cache Δx𝟤 + Δy𝟤 for later
-        ///
+        // 2D dist is √(Δx𝟤 + Δy𝟤), cache Δx𝟤 + Δy𝟤 for later
+        //
         let a2b2 = (drone.x - home.x).powi(2) + (drone.y - home.y).powi(2);
 
         // 3D distance
@@ -67,10 +67,10 @@ WHERE
         let drone = Point3D::new(longitude, latitude, altitude);
         let home = Point3D::new(home_lon, home_lat, home_height);
 
-        /// Calculate the 3D distance from home to drone in METERS
-        ///
-        /// 3D dist is √(Δx𝟤 + Δy𝟤 + Δz𝟤)
-        ///
+        // Calculate the 3D distance from home to drone in METERS
+        //
+        // 3D dist is √(Δx𝟤 + Δy𝟤 + Δz𝟤)
+        //
         let dist3d = (a2b2 + (altitude - home_height).powi(2)).sqrt();
 
         // Transform into meters
