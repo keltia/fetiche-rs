@@ -16,7 +16,7 @@ const ONE_DEG_NM: f64 = (40_000. / 1.852) / 360.;
 
 /// Actual location
 ///
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Location {
     /// Plus code encoded location
     pub code: String,
