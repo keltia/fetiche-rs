@@ -14,7 +14,7 @@
 
 use duckdb::{params, Connection};
 use eyre::Result;
-use rust_3d::{Point2D, Point3D};
+use rust_3d::Point2D;
 
 /// 1 deg = 59.9952 nm or 111.1111 km
 const R: f64 = 40_000_000. / 360.;
@@ -63,9 +63,6 @@ WHERE
         //
         let altitude = altitude / R;
         let home_height = home_height / R;
-
-        let drone = Point3D::new(longitude, latitude, altitude);
-        let home = Point3D::new(home_lon, home_lat, home_height);
 
         // Calculate the 3D distance from home to drone in METERS
         //
