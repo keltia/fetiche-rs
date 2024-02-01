@@ -69,6 +69,10 @@ async fn main() -> Result<()> {
             .enable_autoload_extension(true)?,
     )?;
 
+    // Load our extensions
+    //
+    let _ = dbh.execute("LOAD spatial", [])?;
+
     match opts.subcmd {
         SubCommand::ToPlanes(popts) => {
             let _ = planes_calculation(&dbh, popts)?;
