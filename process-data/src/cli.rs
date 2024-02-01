@@ -1,5 +1,6 @@
-use chrono::{DateTime, Utc};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+
+use crate::tasks::PlanesOpts;
 
 #[derive(Parser)]
 #[command(disable_version_flag = true)]
@@ -29,15 +30,4 @@ pub enum SubCommand {
     Various,
     /// List all package versions.
     Version,
-}
-
-#[derive(Debug, Parser)]
-pub struct PlanesOpts {
-    /// Do calculation on this date (day).
-    pub date: DateTime<Utc>,
-    /// Do calculations around this station.
-    pub location: String,
-    /// Distance in nm
-    #[clap(default_value = 70)]
-    pub distance: f64,
 }
