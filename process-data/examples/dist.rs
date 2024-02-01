@@ -35,8 +35,6 @@ impl Point {
     }
 
     fn spherical_law_of_cosines_distance(&self, other: &Point) -> f64 {
-        const R: f64 = 6_371_088.0; // Earth radius in meters
-
         let d_lat = other.latitude.to_radians() - self.latitude.to_radians();
         let d_lon = other.longitude.to_radians() - self.longitude.to_radians();
 
