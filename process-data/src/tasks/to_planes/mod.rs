@@ -9,7 +9,9 @@ use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
 use eyre::{eyre, Result};
-use geo::prelude::*;
+use rayon::prelude::*;
+use rust_3d::{Point2D, Point3D};
+use tracing::{info, trace};
 
 use crate::tasks::to_planes::location::{load_locations, Location};
 
@@ -238,6 +240,85 @@ ORDER BY
     fn calculate_distances(&self, dbh: &Connection) -> Result<usize> {
         // Do calculations over all points in `today_close`.
         //
+        trace!("add column dist_drone_plane");
+        let _ = dbh.execute(
+            r##"
+ALTER TABLE today_close
+ADD COLUMN dist_drone_plane TYPE float
+"##,
+            [],
+        )?;
+
+        let r = r##"
+SELECT *
+FROM today_close
+ORDER BY (time, journey)
+        "##;
+        let mut stmt = dbh.prepare(r)?;
+        let list = stmt.query_map([], |row| {
+            let time: u32 = row.get_unwrap(0);
+            let journey: u32 = row.get_unwrap(1);
+
+            let dx: f64 = row.get_unwrap(4);
+            let dy: f64 = row.get_unwrap(5);
+            let dz: f64 = row.get_unwrap(6);
+
+            let px: f64 = row.get_unwrap(10);
+            let py: f64 = row.get_unwrap(11);
+            let pz: f64 = row.get_unwrap(12);
+
+            let drone = Point2D::new(dx, dy);
+            let plane = Point2D::new(px, py);
+
+            // 2D projected distance in METERS
+            //
+            // 2D dist is √(Δx𝟤 + Δy𝟤), cache Δx𝟤 + Δy𝟤 for later
+            //
+            let a2b2 = (plane.x - drone.x).powi(2) + (plane.y - drone.y).powi(2);
+
+            // 3D distance
+            //
+            // Into degrees
+            //
+            let plane_z = pz / (1_000. * ONE_DEG);
+            let drone_z = dz / (1_000. * ONE_DEG);
+
+            // Calculate the 3D distance from plane to drone in METERS
+            //
+            // 3D dist is √(Δx𝟤 + Δy𝟤 + Δz𝟤)
+            //
+            let dist3d = (a2b2 + (plane_z - drone_z).powi(2)).sqrt();
+
+            // Transform into meters
+            //
+            let dist3d = dist3d * (1_000. * ONE_DEG);
+
+            Ok((time, journey, dist3d))
+        })?;
+
+        // Now update table with the distance
+        //
+        let sql_update = r##"
+UPDATE
+  today_close
+SET
+  dist_drone_plane = ?
+WHERE
+  time = ? AND journey = ?
+        "##;
+
+        let mut stmt = dbh.prepare(sql_update)?;
+        let mut p = progress::SpinningCircle::new();
+        p.set_job_title("updating plane-drone distances");
+        list.for_each(|row| match row {
+            Ok((time, journey, dist3d)) => {
+                let _ = stmt.execute(params![dist3d, time, journey]).unwrap();
+                p.tick();
+            }
+            Err(_) => (),
+        });
+        p.jobs_done();
+
         Ok(0)
     }
 }
@@ -288,6 +369,8 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<()> {
 
     // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
     //
+    let _ = ctx.calculate_distances(&dbh)?;
 
+    info!("Done.");
     Ok(())
 }
