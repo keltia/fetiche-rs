@@ -244,7 +244,7 @@ ORDER BY
         let _ = dbh.execute(
             r##"
 ALTER TABLE today_close
-ADD COLUMN dist_drone_plane TYPE float
+ADD COLUMN dist_drone_plane FLOAT
 "##,
             [],
         )?;
