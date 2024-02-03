@@ -264,14 +264,11 @@ ORDER BY (dt, journey)
             let py: f64 = row.get_unwrap(11);
             let pz: f64 = row.get_unwrap(12);
 
-            let drone = Point2D::new(dx, dy);
-            let plane = Point2D::new(px, py);
-
             // 2D projected distance in METERS
             //
             // 2D dist is √(Δx𝟤 + Δy𝟤), cache Δx𝟤 + Δy𝟤 for later
             //
-            let a2b2 = (plane.x - drone.x).powi(2) + (plane.y - drone.y).powi(2);
+            let a2b2 = (px - dx).powi(2) + (py - dy).powi(2);
 
             // 3D distance
             //
