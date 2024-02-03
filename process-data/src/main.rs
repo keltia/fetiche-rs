@@ -11,7 +11,7 @@ use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 use crate::cli::{Opts, SubCommand};
-use crate::tasks::{home_calculation, planes_calculation};
+use crate::tasks::{home_calculation, planes_calculation, setup_acute_environment};
 
 mod cli;
 mod tasks;
@@ -69,15 +69,19 @@ async fn main() -> Result<()> {
             .enable_autoload_extension(true)?,
     )?;
 
-    // Load our extensions
+    // Set up various things, add macros, etc.
     //
-    let _ = dbh.execute("LOAD spatial", [])?;
+    trace!("Setup ACUTE environment.");
+    let _ = setup_acute_environment(&dbh)?;
 
+    trace!("Execute commands.");
     match opts.subcmd {
         SubCommand::ToPlanes(popts) => {
+            println!("Calculate 3D distance between drones and surrounding planes.");
             let _ = planes_calculation(&dbh, popts)?;
         }
         SubCommand::ToHome => {
+            println!("Add 2D and 3D distance between drones and operator.");
             let _ = home_calculation(&dbh)?;
         }
         SubCommand::List => {
@@ -87,7 +91,7 @@ async fn main() -> Result<()> {
             todo!()
         }
         SubCommand::Version => {
-            eprintln!("{} v{}", NAME, VERSION);
+            println!("{} v{}", NAME, VERSION);
         }
     }
     // Finish
