@@ -315,6 +315,29 @@ WHERE
 
         Ok(0)
     }
+
+    fn display_calculations(&self, dbh: &Connection) -> Result<()> {
+        trace!("filter calculations, take min()");
+
+        let r = r##"
+SELECT
+  journey, ident, model, callsign, MIN(dist_drone_plane)
+FROM today_close
+WHERE
+  dist_drone_plane < 1852
+GROUP BY
+  (journey, ident, model, callsign, ident)
+ORDER BY
+  journey
+        "##;
+
+        let mut stmt = dbh.prepare(r)?;
+        let list = stmt.query_map([], |row| Ok(()))?;
+
+        // select distinct journey,ident,"ident:1",callsign from today_close where journey=37234 and dist_drone_plane=1199.2344;
+
+        Ok(())
+    }
 }
 
 pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<()> {
@@ -364,6 +387,10 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<()> {
     // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
     //
     let _ = ctx.calculate_distances(&dbh)?;
+
+    // Now we have the distance calculated.
+    //
+    let _ = ctx.display_calculations(&dbh)?;
 
     info!("Done.");
     Ok(())
