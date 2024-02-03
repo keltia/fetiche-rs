@@ -24,13 +24,49 @@ SELECT *
 FROM read_parquet('/Users/acute/data/drones/**/*.parquet', hive_partitioning = true);
 ```
 
-create the two additional columns:
+## See `process-data/src/tasks/setup.rs` for the wrappers.
+
+Create the two additional columns:
 
 ```sql
 ALTER TABLE drones
   ADD COLUMN home_distance_2d FLOAT;
 ALTER TABLE drones
   ADD COLUMN home_distance_3d FLOAT;
+```
+
+We will add some macros/functions as well
+
+2D (without using `spatial`)
+
+```sql
+CREATE
+MACRO dist_2d(px, py, dx, dy) AS
+  sqrt(pow((px - dx),2) + pow((py - dy), 2));
+```
+
+3D
+
+```sql
+CREATE
+MACRO dist_3d(px, py, pz, dx, dy, dz) AS
+  sqrt(pow((px - dx),2) + pow((py - dy), 2) + pow((pz - dz), 2));
+```
+
+Conversion from nautical miles to deg
+
+```sql
+CREATE
+MACRO nm_to_deg(nm) AS
+  nm * 1.852 / 111111.11;
+```
+
+Conversion from deg to meters
+
+```sql
+CREATE
+MACRO deg_to_m(deg) AS
+  deg * 111111.11;
 ```
 
 ## List of calculations
