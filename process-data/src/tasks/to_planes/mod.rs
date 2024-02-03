@@ -10,7 +10,6 @@ use clap::Parser;
 use duckdb::{params, Connection};
 use eyre::{eyre, Result};
 use rayon::prelude::*;
-use rust_3d::{Point2D, Point3D};
 use tracing::{info, trace};
 
 use crate::tasks::to_planes::location::{load_locations, Location};
