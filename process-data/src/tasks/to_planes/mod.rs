@@ -92,7 +92,7 @@ impl Context {
 CREATE TABLE today AS
 SELECT
   TimeRecPosition AS time,
-  AircraftAddress AS ident,
+  AircraftAddress AS addr,
   Callsign AS callsign,
   Longitude AS px,
   Latitude AS py,
@@ -196,12 +196,12 @@ CREATE TABLE today_close AS
 SELECT
   c.time AS dt,
   c.journey,
-  c.ident,
+  c.ident AS drone_id,
   c.model,
   c.longitude AS dx,
   c.latitude AS dy,
   c.altitude AS dz,
-  t.ident,
+  t.ident AS addr,
   t.callsign,
   t.time AS pt,
   t.px AS px,
@@ -249,7 +249,7 @@ ADD COLUMN dist_drone_plane FLOAT
         let r = r##"
 SELECT *
 FROM today_close
-ORDER BY (time, journey)
+ORDER BY (dt, journey)
         "##;
         let mut stmt = dbh.prepare(r)?;
         let list = stmt.query_map([], |row| {
@@ -301,7 +301,7 @@ UPDATE
 SET
   dist_drone_plane = ?
 WHERE
-  time = ? AND journey = ?
+  dt = ? AND journey = ?
         "##;
 
         let mut stmt = dbh.prepare(sql_update)?;
