@@ -157,7 +157,7 @@ FROM drones
 WHERE
   to_timestamp(time) <= make_timestamp(?,?,? + 1,0,0,0.0) AND
   to_timestamp(time) >= make_timestamp(?,?,?,0,0,0.0) AND
-  ST_DWithin(ST_point(?, ?), ST_Point(longitude, latitude), ?) = TRUE
+  ST_DWithin(ST_point(?, ?), ST_Point(longitude, latitude), ?)
 ORDER BY
   (time,journey)
     "##;
@@ -206,8 +206,8 @@ SELECT
   t.time AS pt,
   t.px AS px,
   t.py AS py,
-  t.pz as pz,
-  st_distance(st_point(dx,dy),st_point(px,py)) * 111111 AS dist2d,
+  t.pz AS pz,
+  st_distance(st_point(dx,dy),st_point(px,py)) * 111111.11 AS dist2d,
   @(pz - dz) AS diff_alt
 FROM
   today AS t,
