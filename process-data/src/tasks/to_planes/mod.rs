@@ -5,6 +5,7 @@
 
 use std::ops::Add;
 
+use crate::tasks::ONE_DEG;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
@@ -28,9 +29,6 @@ pub struct PlanesOpts {
     #[clap(default_value = "70.")]
     pub distance: f64,
 }
-
-/// One degree in *kilometers*
-const ONE_DEG: f64 = 40_000. / 360.;
 
 /// This is the struct in which we store the context of a given day work.
 ///
