@@ -24,6 +24,9 @@ pub struct PlanesOpts {
     /// Distance around the site in Nautical Miles.
     #[clap(short = 'D', long, default_value = "70.")]
     pub distance: f64,
+    /// Proximity in Meters.
+    #[clap(short = 'p', long, default_value = "5500.")]
+    pub separation: f64,
 }
 
 /// This is the struct in which we store the context of a given day work.
@@ -37,6 +40,8 @@ struct Context {
     pub dist: f64,
     /// Specific day
     pub date: DateTime<Utc>,
+    /// proximity
+    pub separation: f64,
 }
 
 impl Context {
@@ -211,14 +216,15 @@ FROM
 WHERE
   pt > to_timestamp(dt-2) AND
   pt < to_timestamp(dt+2) AND
-  dist2d <= 5500.0 AND
-  diff_alt < 5500.0
+  dist2d <= ? AND
+  diff_alt < ?
 ORDER BY
   (dt, c.journey)
     "##;
 
+        let proximity = self.separation;
         let mut stmt = dbh.prepare(r)?;
-        let _ = stmt.query([])?;
+        let _ = stmt.query(params![proximity, proximity])?;
 
         // Check how many
         //
@@ -300,6 +306,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<()> {
         loc: current.clone(),
         dist: opts.distance,
         date: day,
+        separation: opts.separation,
     };
 
     // Create table `today` with all identified plane points with the specified range
