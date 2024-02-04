@@ -5,13 +5,12 @@
 
 use std::ops::Add;
 
+use crate::location::{load_locations, Location};
 use crate::tasks::ONE_DEG;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
 use eyre::{eyre, Result};
-use process_data::load_locations;
-use rayon::prelude::*;
 use tracing::{info, trace};
 
 /// These are the options we pass to this command
@@ -22,8 +21,8 @@ pub struct PlanesOpts {
     pub date: DateTime<Utc>,
     /// Do calculations around this station.
     pub name: String,
-    /// Distance in nm
-    #[clap(default_value = "70.")]
+    /// Distance around the site in Nautical Miles.
+    #[clap(short = 'D', long, default_value = "70.")]
     pub distance: f64,
 }
 
@@ -232,84 +231,27 @@ ORDER BY
     }
 
     fn calculate_distances(&self, dbh: &Connection) -> Result<usize> {
+        // drop column if present
+        //
+        match dbh.execute("SELECT dist_drone_plane FROM today_close", []) {
+            Ok(_) => {
+                let _ = dbh.execute("ALTER TABLE today_close DROP dist_drone_plane", [])?;
+            }
+            Err(_) => (),
+        }
+
         // Do calculations over all points in `today_close`.
         //
         trace!("add column dist_drone_plane");
-        let _ = dbh.execute(
+        let _ = dbh.execute_batch(
             r##"
 ALTER TABLE today_close
-ADD COLUMN dist_drone_plane FLOAT
+ADD COLUMN dist_drone_plane FLOAT;
+UPDATE today_close
+SET dist_drone_plane = 
+  deg_to_m(dist_3d(px, py, m_to_deg(pz), dx, dy, m_to_deg(dz)))
 "##,
-            [],
         )?;
-
-        let r = r##"
-SELECT *
-FROM today_close
-ORDER BY (dt, journey)
-        "##;
-        let mut stmt = dbh.prepare(r)?;
-        let list = stmt.query_map([], |row| {
-            let time: u32 = row.get_unwrap(0);
-            let journey: u32 = row.get_unwrap(1);
-
-            let dx: f64 = row.get_unwrap(4);
-            let dy: f64 = row.get_unwrap(5);
-            let dz: f64 = row.get_unwrap(6);
-
-            let px: f64 = row.get_unwrap(10);
-            let py: f64 = row.get_unwrap(11);
-            let pz: f64 = row.get_unwrap(12);
-
-            // 2D projected distance in METERS
-            //
-            // 2D dist is √(Δx𝟤 + Δy𝟤), cache Δx𝟤 + Δy𝟤 for later
-            //
-            let a2b2 = (px - dx).powi(2) + (py - dy).powi(2);
-
-            // 3D distance
-            //
-            // Into degrees
-            //
-            let plane_z = pz / (1_000. * ONE_DEG);
-            let drone_z = dz / (1_000. * ONE_DEG);
-
-            // Calculate the 3D distance from plane to drone in METERS
-            //
-            // 3D dist is √(Δx𝟤 + Δy𝟤 + Δz𝟤)
-            //
-            let dist3d = (a2b2 + (plane_z - drone_z).powi(2)).sqrt();
-
-            // Transform into meters
-            //
-            let dist3d = dist3d * (1_000. * ONE_DEG);
-
-            Ok((time, journey, dist3d))
-        })?;
-
-        // Now update table with the distance
-        //
-        let sql_update = r##"
-UPDATE
-  today_close
-SET
-  dist_drone_plane = ?
-WHERE
-  dt = ? AND journey = ?
-        "##;
-
-        let mut stmt = dbh.prepare(sql_update)?;
-        let mut p = progress::SpinningCircle::new();
-        p.set_job_title("updating plane-drone distances");
-        list.for_each(|row| match row {
-            Ok((time, journey, dist3d)) => {
-                let _ = stmt.execute(params![dist3d, time, journey]).unwrap();
-                p.tick();
-            }
-            Err(_) => (),
-        });
-        p.jobs_done();
-
         Ok(0)
     }
 
@@ -323,7 +265,7 @@ FROM today_close
 WHERE
   dist_drone_plane < 1852
 GROUP BY
-  (journey, ident, model, callsign, ident)
+  ALL
 ORDER BY
   journey
         "##;
