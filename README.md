@@ -30,14 +30,21 @@ Licensed under the [MIT](LICENSE) license.
 utilities for Aeronautical data about drones and aircraft.
 
 This is now divided into different crates with libraries (`fetiche-engine`, `fetiche-formats`, `fetiche-sources`) shared
-by the binary crates (`acutectl` and `opensky-history`).
+by the binary crates (`acutectl`, `opensky-history` and now `process-data`).
 
 Binary crates include command-line utilities (`acutectl` and `opensky-history`) to perform import from a file or
-fetch data from different sites.
+fetch data from different sites. There is now `process-data` which include several task aimed at gathering statistics
+and metrics about our drone and flight data.
+
+`acutectl` is the main data fetching utility, relaying the `fetiche-sources` and `fetiche-formats` crates to provide
+a single interface to multi sources.
 
 `opensky-history` is for retrieving historical data from [Opensky]. This access is managed through an SSH-based shell to
 the Impala database. This is for everything older than 1h of real-time data which does complicate things. This utility
 use the [pyopensky] Python module (embedded through the `inline-python` crate).
+
+`process-data`  works on the drones and flights data through [DuckDB] and does various SQL-backed procedures to gather
+and calculates metrics including distances (2D and 3D).
 
 ## Installation
 
@@ -54,17 +61,17 @@ This is intentionally *not* a run-time option but a compile-time one.
 
 ## Usage
 
-For the moment, there are two binaries called `acutectl` (with `.exe` on Windows) and `opensky-history`. The former is
-used to fetch data into their native format (csv, json) or import said data into a database. It uses
-`fetiche-engine` for all the code related to accessing, authenticating and fetching data in various ways.
+For the moment, there are 3 binaries called `acutectl` (with `.exe` on Windows), `opensky-history` and `process-data`.
+The former is used to fetch data into their native format (csv, json). It uses `fetiche-engine` for all the code related
+to accessing, authenticating and fetching data in various ways.
 
 Right now, `acutectl` use blocking HTTP calls and is not using any `async` features.
 
 However, while working on streaming support for Opensky, I have been experimenting with [tokio] for async support and
 `acutectl` might eventually become fully-async. It does help for some stuff including signal (read ^C) support.
 
-All the commands are described in more details in the [acutectl README.md](acutectl/README.md) and
-[opensky-history README.md](opensky-history/README.md) files.
+All the commands are described in more details in the [acutectl README.md](acutectl/README.md),
+[opensky-history README.md](opensky-history/README.md) and [process-data](process-data/README.md) files.
 
 ## Structure and Design
 
@@ -215,3 +222,5 @@ I use Git Flow for this package so please use something similar or the usual Git
 [Nushell]: https://nushell.sh/
 
 [Actix]: https://actix.rs/
+
+[DuckDB]: https://duckdb.org/
