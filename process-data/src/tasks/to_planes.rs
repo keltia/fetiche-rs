@@ -10,12 +10,9 @@ use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
 use eyre::{eyre, Result};
+use process_data::load_locations;
 use rayon::prelude::*;
 use tracing::{info, trace};
-
-use crate::tasks::to_planes::location::{load_locations, Location};
-
-mod location;
 
 /// These are the options we pass to this command
 ///
@@ -391,7 +388,6 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<()> {
     // Now we have the distance calculated.
     //
     let _ = ctx.display_calculations(&dbh)?;
-
     info!("Done.");
     Ok(())
 }
