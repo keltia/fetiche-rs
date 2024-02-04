@@ -14,6 +14,8 @@ use crate::cli::{Opts, SubCommand};
 use crate::tasks::{home_calculation, planes_calculation, setup_acute_environment};
 
 mod cli;
+mod helpers;
+mod location;
 mod tasks;
 
 /// Binary name, using a different binary name
