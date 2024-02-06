@@ -73,7 +73,7 @@ async fn main() -> Result<()> {
 
     // Set up various things, add macros, etc.
     //
-    trace!("Setup ACUTE environment.");
+    info!("Setup ACUTE environment.");
     let _ = setup_acute_environment(&dbh)?;
 
     trace!("Execute commands.");
@@ -99,7 +99,7 @@ async fn main() -> Result<()> {
     // Finish
     //
     opentelemetry::global::shutdown_tracer_provider();
-    trace!("Closing DB.");
+    info!("Closing DB.");
     let _ = dbh.close();
     Ok(())
 }
