@@ -30,7 +30,7 @@ SET
   home_distance_2d = 
     deg_to_m(dist_2d(longitude, latitude, home_lon, home_lat)),
   home_distance_3d = 
-    deg_to_m(dist_3d(longitude, latitude, altitude / 111111.11, home_lon, home_lat, home_height / 111111.11))
+    deg_to_m(dist_3d(longitude, latitude, m_to_deg(altitude), home_lon, home_lat, m_to_deg(home_height)))
 "##;
 
     let _ = dbh.execute(sql_update, [])?;
