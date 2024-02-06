@@ -5,13 +5,14 @@
 
 use std::ops::Add;
 
-use crate::location::{load_locations, Location};
-use crate::tasks::ONE_DEG;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
 use eyre::{eyre, Result};
 use tracing::{info, trace};
+
+use crate::location::{load_locations, Location};
+use crate::tasks::ONE_DEG;
 
 /// These are the options we pass to this command
 ///
@@ -187,7 +188,7 @@ ORDER BY
         }
 
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
-        // altitude diff is less than 3 nm.
+        // altitude diff is less than 3 nm. (parameter is `separation`).
         //
         // $1,$2 = lon,lat of site
         // $3 = timestamp of drone point
@@ -208,7 +209,7 @@ SELECT
   t.px AS px,
   t.py AS py,
   t.pz AS pz,
-  st_distance(st_point(dx,dy),st_point(px,py)) * 111111.11 AS dist2d,
+  deg_to_m(st_distance(st_point(dx,dy),st_point(px,py))) AS dist2d,
   @(pz - dz) AS diff_alt
 FROM
   today AS t,
@@ -261,25 +262,46 @@ SET dist_drone_plane =
         Ok(0)
     }
 
-    fn display_calculations(&self, dbh: &Connection) -> Result<()> {
+    /// For each considered drone point, export the list of nearby planes (regardless of whether within 3 nm)
+    ///
+    fn export_nearby_planes(&self, dbh: &Connection) -> Result<()> {
+        Ok(())
+    }
+
+    fn save_encounters(&self, dbh: &Connection) -> Result<()> {
         trace!("filter calculations, take min()");
 
-        let r = r##"
-SELECT
-  journey, ident, model, callsign, MIN(dist_drone_plane)
-FROM today_close
-WHERE
-  dist_drone_plane < 1852
-GROUP BY
-  ALL
-ORDER BY
-  journey
+        // We use a GROUP BY() clause to get the point where the distance between this drone and any surrounding planes
+        // is minimal.  Gather more information about the encounter, `any_value()` is used to avoid "duplicates".
+        // Then the result of this sub-query is inserted (or replaced if we re-ran the calculation) in the
+        // `encounters` table.
+
+        // Insert data into table `encounters`
+        //
+        let ins = r##"
+INSERT INTO encounters
+BY NAME (
+    SELECT
+      any_value(dt) AS dt,
+      journey, 
+      any_value(drone_id) AS drone_id, 
+      model, 
+      callsign, 
+      addr, 
+      MIN(dist_drone_plane) AS distance,
+      encounter(dt, journey, nextval('id_encounter')) AS en_id
+    FROM today_close
+    WHERE
+      dist_drone_plane < 1852
+    GROUP BY ALL
+)
+ON CONFLICT (dt, journey)
+DO UPDATE
+SET distance = EXCLUDED.distance
         "##;
 
         let mut stmt = dbh.prepare(r)?;
         let list = stmt.query_map([], |row| Ok(()))?;
-
-        // select distinct journey,ident,"ident:1",callsign from today_close where journey=37234 and dist_drone_plane=1199.2344;
 
         Ok(())
     }
@@ -336,7 +358,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<()> {
 
     // Now we have the distance calculated.
     //
-    let _ = ctx.display_calculations(&dbh)?;
+    let _ = ctx.save_encounters(&dbh)?;
     info!("Done.");
     Ok(())
 }

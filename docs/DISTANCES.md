@@ -35,7 +35,41 @@ ALTER TABLE drones
   ADD COLUMN home_distance_3d FLOAT;
 ```
 
-We will add some macros/functions as well
+During the calculations, tables will be created to store the intermediate selections for drones and airplanes. These
+will be named `today` for the planes and `candidates` for the drones. The results will be store into a general table
+called `today_close` from which we will derive our final results for the minimal distance (`encounters`) and the list of
+planes nearby each drone point.
+
+The `encounters` table looks like this:
+
+```sql
+DROP SEQUENCE IF EXISTS id_encounter;
+CREATE SEQUENCE id_encounter;
+CREATE TABLE encounters
+(
+  id       INT DEFAULT nextval('id_encounter'),
+  en_id    VARCHAR,
+  dt       BIGINT,
+  journey  INT,
+  drone_id VARCHAR,
+  model    VARCHAR,
+  callsign VARCHAR,
+  addr     VARCHAR,
+  distance FLOAT,
+  PRIMARY KEY (dt, journey)
+)
+```
+
+The `en_id` field is a unique ID generated from the date and the sequence number with the `YYYYMMDD_(journey)_(id)`
+format.
+
+```sql
+CREATE
+MACRO encounter(tm, journey, id) AS
+  printf("%04d%02d%02d_%d_%d", year(CAST(tm AS DATE)), month(CAST(tm AS DATE)), day(CAST(tm AS DATE)), journey, id);
+```
+
+We will add some more macros/functions as well
 
 2D (without using `spatial`)
 

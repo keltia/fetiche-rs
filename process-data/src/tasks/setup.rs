@@ -17,6 +17,8 @@ CREATE MACRO deg_to_m(deg) AS
   deg * 111111.11;
 CREATE MACRO m_to_deg(m) AS
   m / 111111.11;
+CREATE MACRO encounter(tm, journey, id) AS
+  printf("%04d%02d%02d_%d_%d", year(CAST(tm AS DATE)), month(CAST(tm AS DATE)), day(CAST(tm AS DATE)), journey, id);
     "##;
 
     Ok(dbh.execute_batch(r)?)
@@ -52,15 +54,15 @@ CREATE SEQUENCE id_encounter
     let r = r##"
 CREATE TABLE encounters (
   id INT DEFAULT nextval('id_encounter'),
-  uuid VARCHAR DEFAULT uuid(),
-  dt TIMESTAMP_MS,    
+  uuid VARCHAR,
+  dt BIGINT,    
   journey INT, 
-  drone_id VARCHAR, 
-  model VARCHAR, 
+  drone_id VARCHAR,
+  model VARCHAR,
   callsign VARCHAR, 
   addr VARCHAR, 
   distance FLOAT,
-  planes INT,  
+  PRIMARY KEY (dt, journey)
 )
     "##;
 
