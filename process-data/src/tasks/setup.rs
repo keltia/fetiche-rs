@@ -41,6 +41,44 @@ ALTER TABLE drones
     Ok(())
 }
 
+/// Create the `encounters` table to store short air-prox points
+///
+fn add_encounters_table(dbh: &Connection) -> Result<()> {
+    let sq = r##"
+DROP SEQUENCE IF EXISTS id_encounter;
+CREATE SEQUENCE id_encounter
+    "##;
+
+    let r = r##"
+CREATE TABLE encounters (
+  id INT DEFAULT nextval('id_encounter'),
+  uuid VARCHAR DEFAULT uuid(),
+  dt TIMESTAMP_MS,    
+  journey INT, 
+  drone_id VARCHAR, 
+  model VARCHAR, 
+  callsign VARCHAR, 
+  addr VARCHAR, 
+  distance FLOAT,
+  planes INT,  
+)
+    "##;
+
+    match dbh.execute("SELECT id FROM encounters LIMIT 1", []) {
+        Ok(_) => (),
+        Err(_) => {
+            // create sequence
+            //
+            let _ = dbh.execute(sq, [])?;
+
+            // create table
+            //
+            let _ = dbh.execute(r, [])?;
+        }
+    }
+    Ok(())
+}
+
 fn load_extensions(dbh: &Connection) -> Result<()> {
     // Load our extensions
     //
@@ -52,5 +90,7 @@ pub fn setup_acute_environment(dbh: &Connection) -> Result<()> {
     let _ = load_extensions(dbh)?;
     let _ = add_macros(dbh)?;
     let _ = add_columns_to_drones(dbh)?;
+    let _ = add_encounters_table(dbh)?;
+
     Ok(())
 }
