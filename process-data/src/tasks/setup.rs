@@ -15,6 +15,8 @@ CREATE MACRO nm_to_deg(nm) AS
   nm * 1.852 / 111111.11;
 CREATE MACRO deg_to_m(deg) AS
   deg * 111111.11;
+CREATE MACRO m_to_deg(m) AS
+  m / 111111.11;
     "##;
 
     Ok(dbh.execute_batch(r)?)
