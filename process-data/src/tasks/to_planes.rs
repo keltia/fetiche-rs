@@ -20,7 +20,7 @@ use crate::tasks::ONE_DEG;
 #[derive(Debug, Parser)]
 pub struct PlanesOpts {
     /// Do calculation on this date (day).
-    pub date: DateTime<Utc>,
+    pub date: String,
     /// Do calculations around this station.
     pub name: String,
     /// Distance around the site in Nautical Miles.
@@ -170,7 +170,7 @@ ORDER BY time
 
         let r2 = r##"
 CREATE TABLE candidates AS
-SELECT time,journey,ident,model,latitude,longitude,altitude,home_lat,home_lon,home_distance_2d,home_distance_3d
+SELECT time,journey,ident,model,timestamp,latitude,longitude,altitude,home_lat,home_lon,home_distance_2d,home_distance_3d
 FROM drones
 WHERE
   to_timestamp(time) <= make_timestamp(?,?,? + 1,0,0,0.0) AND
@@ -217,6 +217,7 @@ SELECT
   c.journey,
   c.ident AS drone_id,
   c.model,
+  c.timestamp as timestamp,
   c.longitude AS dx,
   c.latitude AS dy,
   c.altitude AS dz,
@@ -268,16 +269,23 @@ ORDER BY
         // Do calculations over all points in `today_close`.
         //
         trace!("add column dist_drone_plane");
-        let _ = dbh.execute_batch(
+        let _ = dbh.execute(
             r##"
 ALTER TABLE today_close
 ADD COLUMN dist_drone_plane FLOAT;
+"##,
+            [],
+        )?;
+
+        let count = dbh.execute(
+            r##" 
 UPDATE today_close
 SET dist_drone_plane = 
   deg_to_m(dist_3d(px, py, m_to_deg(pz), dx, dy, m_to_deg(dz)))
 "##,
+            [],
         )?;
-        Ok(0)
+        Ok(count)
     }
 
     #[tracing::instrument(skip(dbh))]
@@ -299,8 +307,9 @@ BY NAME (
       journey, 
       any_value(drone_id) AS drone_id, 
       model, 
+      timestamp AS time,
       callsign, 
-      addr, 
+      addr,
       MIN(dist_drone_plane) AS distance,
       encounter(dt, journey, nextval('id_encounter')) AS en_id
     FROM today_close
@@ -325,7 +334,11 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     // Load locations
     //
     let list = load_locations(None)?;
-    let day = opts.date;
+    let tm = dateparser::parse(&opts.date).unwrap();
+    let day = Utc
+        .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
+        .unwrap();
+    info!("Running calculations for {}:", day);
 
     // Load parameters
     //
