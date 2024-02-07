@@ -24,6 +24,19 @@ CREATE MACRO encounter(tm, journey, id) AS
     Ok(dbh.execute_batch(r)?)
 }
 
+fn remove_macros(dbh: &Connection) -> Result<()> {
+    let r = r##"
+DROP MACRO dist_2d;
+DROP MACRO dist_3d;
+DROP MACRO nm_to_deg;
+DROP MACRO deg_to_m;
+DROP MACRO m_to_deg;
+DROP MACRO encounter;
+    "##;
+
+    Ok(dbh.execute_batch(r)?)
+}
+
 fn add_columns_to_drones(dbh: &Connection) -> Result<()> {
     let r = r##"
 ALTER TABLE drones
@@ -73,7 +86,7 @@ CREATE TABLE encounters (
         Err(_) => {
             // create sequence
             //
-            let _ = dbh.execute(sq, [])?;
+            let _ = dbh.execute_batch(sq)?;
 
             // create table
             //
@@ -83,7 +96,7 @@ CREATE TABLE encounters (
     Ok(())
 }
 
-fn load_extensions(dbh: &Connection) -> Result<()> {
+pub fn load_extensions(dbh: &Connection) -> Result<()> {
     // Load our extensions
     //
     let _ = dbh.execute("LOAD spatial", [])?;
@@ -95,6 +108,12 @@ pub fn setup_acute_environment(dbh: &Connection) -> Result<()> {
     let _ = add_macros(dbh)?;
     let _ = add_columns_to_drones(dbh)?;
     let _ = add_encounters_table(dbh)?;
+
+    Ok(())
+}
+
+pub fn cleanup_environment(dbh: &Connection) -> Result<()> {
+    let _ = remove_macros(dbh)?;
 
     Ok(())
 }
