@@ -8,7 +8,8 @@ use std::ops::Add;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
-use eyre::{eyre, Result};
+use eyre::Result;
+use thiserror::Error;
 use tracing::{info, trace};
 
 use crate::location::{load_locations, Location};
@@ -28,6 +29,18 @@ pub struct PlanesOpts {
     /// Proximity in Meters.
     #[clap(short = 'p', long, default_value = "5500.")]
     pub separation: f64,
+}
+
+#[derive(Debug, Error)]
+pub enum CalcError {
+    #[error("No planes were found around site {0} at this date")]
+    NoPlanesFound(String),
+    #[error("No drones in the {0} area")]
+    NoDronesFound(String),
+    #[error("No encounters found in the {0} area")]
+    NoEncounters(String),
+    #[error("Invalid site name {0}")]
+    UnknownSite(String),
 }
 
 /// This is the struct in which we store the context of a given day work.
@@ -336,21 +349,21 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     //
     let count = ctx.select_planes(&dbh)?;
     if count == 0 {
-        return Err(eyre!("No planes found around {}.", &opts.name));
+        return Err(CalcError::NoPlanesFound(name).into());
     }
 
     // Create table `candidates` with all designated drone points
     //
     let count = ctx.select_drones(&dbh)?;
     if count == 0 {
-        return Err(eyre!("No drones found around {}.", &opts.name));
+        return Err(CalcError::NoDronesFound(name).into());
     }
 
     // Create table `today_close` with all designated drone points and airplanes in proximity
     //
     let count = ctx.find_close(&dbh)?;
     if count == 0 {
-        return Err(eyre!("Potential encounters {}.", count));
+        return Err(CalcError::NoEncounters(name).into());
     }
 
     // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
@@ -359,7 +372,11 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Now we have the distance calculated.
     //
-    let _ = ctx.save_encounters(&dbh)?;
+    let count = ctx.save_encounters(&dbh)?;
+    if count == 0 {
+        return Err(CalcError::NoEncounters(name).into());
+    }
+
     info!("Done.");
-    Ok(())
+    Ok(count)
 }
