@@ -1,6 +1,6 @@
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 
-use crate::tasks::PlanesOpts;
+use crate::tasks::{ExportOpts, PlanesOpts};
 
 #[derive(Parser)]
 #[command(disable_version_flag = true)]
@@ -20,12 +20,18 @@ pub struct Opts {
 
 #[derive(Debug, Parser)]
 pub enum SubCommand {
+    /// Remove macros and other stuff.
+    Cleanup,
+    /// Prepare the database environment with some tables and macros.
+    Setup,
     /// drone to planes distance
     ToPlanes(PlanesOpts),
     /// List all available modules.
     List,
     /// 2D/3D drone to operator distance.
     ToHome,
+    /// Export results as CSV.
+    Export(ExportOpts),
     /// Various commands.
     Various,
     /// List all package versions.

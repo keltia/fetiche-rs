@@ -11,7 +11,10 @@ use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 use crate::cli::{Opts, SubCommand};
-use crate::tasks::{home_calculation, planes_calculation, setup_acute_environment};
+use crate::tasks::{
+    cleanup_environment, export_results, home_calculation, load_extensions, planes_calculation,
+    setup_acute_environment,
+};
 
 mod cli;
 mod helpers;
@@ -71,13 +74,21 @@ async fn main() -> Result<()> {
             .enable_autoload_extension(true)?,
     )?;
 
+    println!("Load extensions.");
+    let _ = load_extensions(&dbh)?;
+
     // Set up various things, add macros, etc.
     //
-    info!("Setup ACUTE environment.");
-    let _ = setup_acute_environment(&dbh)?;
-
     trace!("Execute commands.");
     match opts.subcmd {
+        SubCommand::Setup => {
+            println!("Setup ACUTE environment.");
+            let _ = setup_acute_environment(&dbh)?;
+        }
+        SubCommand::Cleanup => {
+            println!("Remove ACUTE specific macros and stuff.");
+            let _ = cleanup_environment(&dbh)?;
+        }
         SubCommand::ToPlanes(popts) => {
             println!("Calculate 3D distance between drones and surrounding planes.");
             let _ = planes_calculation(&dbh, popts)?;
@@ -85,6 +96,10 @@ async fn main() -> Result<()> {
         SubCommand::ToHome => {
             println!("Add 2D and 3D distance between drones and operator.");
             let _ = home_calculation(&dbh)?;
+        }
+        SubCommand::Export(opts) => {
+            println!("Exporting data for day {}.", opts.date);
+            let _ = export_results(&dbh, opts)?;
         }
         SubCommand::List => {
             todo!()
