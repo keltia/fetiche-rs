@@ -32,6 +32,7 @@ pub struct PlanesOpts {
 
 /// This is the struct in which we store the context of a given day work.
 ///
+#[derive(Debug)]
 struct Context {
     /// Name of site
     pub name: String,
@@ -51,6 +52,7 @@ impl Context {
     /// - 1st criteria date and time (unit is a given day)
     /// - define a bounding box around a specific site (default is 70nm) and use it as a filter
     ///
+    #[tracing::instrument(skip(dbh))]
     fn select_planes(&self, dbh: &Connection) -> Result<usize> {
         let site = self.name.clone();
         let day = self.date.day();
@@ -122,6 +124,7 @@ ORDER BY time
         Ok(count)
     }
 
+    #[tracing::instrument(skip(dbh))]
     fn select_drones(&self, dbh: &Connection) -> Result<usize> {
         // All drone points for the same day
         //
@@ -177,6 +180,7 @@ ORDER BY
         Ok(count)
     }
 
+    #[tracing::instrument(skip(dbh))]
     fn find_close(&self, dbh: &Connection) -> Result<usize> {
         // Cleanup if needed
         //
@@ -237,6 +241,7 @@ ORDER BY
         Ok(count)
     }
 
+    #[tracing::instrument(skip(dbh))]
     fn calculate_distances(&self, dbh: &Connection) -> Result<usize> {
         // drop column if present
         //
@@ -262,13 +267,8 @@ SET dist_drone_plane =
         Ok(0)
     }
 
-    /// For each considered drone point, export the list of nearby planes (regardless of whether within 3 nm)
-    ///
-    fn export_nearby_planes(&self, dbh: &Connection) -> Result<()> {
-        Ok(())
-    }
-
-    fn save_encounters(&self, dbh: &Connection) -> Result<()> {
+    #[tracing::instrument(skip(dbh))]
+    fn save_encounters(&self, dbh: &Connection) -> Result<usize> {
         trace!("filter calculations, take min()");
 
         // We use a GROUP BY() clause to get the point where the distance between this drone and any surrounding planes
@@ -307,7 +307,8 @@ SET distance = EXCLUDED.distance
     }
 }
 
-pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<()> {
+#[tracing::instrument(skip(dbh))]
+pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     // Load locations
     //
     let list = load_locations(None)?;
