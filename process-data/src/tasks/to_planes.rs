@@ -129,10 +129,11 @@ ORDER BY time
 
         // Check how many
         //
-        let count = dbh.query_row("SELECT COUNT(*) FROM today", [], |row| {
-            let r: usize = row.get_unwrap(0);
-            Ok(r)
-        })?;
+        let count = dbh.query_row(
+            "SELECT COUNT(*) FROM today",
+            [],
+            |row| Ok(row.get_unwrap(0)),
+        )?;
         println!("Total number of planes: {}\n", count);
         Ok(count)
     }
@@ -221,7 +222,7 @@ SELECT
   c.longitude AS dx,
   c.latitude AS dy,
   c.altitude AS dz,
-  t.ident AS addr,
+  t.addr AS addr,
   t.callsign,
   t.time AS pt,
   t.px AS px,
@@ -311,21 +312,42 @@ BY NAME (
       callsign, 
       addr,
       MIN(dist_drone_plane) AS distance,
-      encounter(dt, journey, nextval('id_encounter')) AS en_id
     FROM today_close
     WHERE
       dist_drone_plane < 1852
     GROUP BY ALL
 )
 ON CONFLICT (dt, journey)
-DO UPDATE
-SET distance = EXCLUDED.distance
+  DO NOTHING
         "##;
 
-        let mut stmt = dbh.prepare(r)?;
-        let list = stmt.query_map([], |row| Ok(()))?;
+        let count = dbh.execute(ins, [])?;
+        info!("Inserted {} new encounters", count);
 
-        Ok(())
+        if count == 0 {
+            info!("No new encounters.");
+            return Ok(count);
+        }
+
+        info!("Generate en_id");
+        let name = self.name.clone();
+        let upd = r##"
+UPDATE encounters AS old_e
+SET en_id = (
+    SELECT 
+      encounter(CAST(old_e.time AS DATE), journey, id) AS en_id
+    FROM
+      encounters AS new_e
+    WHERE
+      old_e.dt = new_e.dt AND old_e.journey = new_e.journey
+),
+site = ?
+WHERE en_id IS NULL OR site IS NULL
+        "##;
+
+        let count = dbh.execute(upd, [name])?;
+
+        Ok(count)
     }
 }
 
@@ -342,16 +364,17 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Load parameters
     //
-    let current = if list.get(&opts.name).is_none() {
-        return Err(eyre!("Unknown location: {}", opts.name));
+    let name = opts.name.clone();
+    let current = if list.get(&name).is_none() {
+        return Err(CalcError::UnknownSite(name).into());
     } else {
-        list.get(&opts.name).unwrap().to_owned()
+        list.get(&name).unwrap().to_owned()
     };
 
     // Store our context
     //
     let ctx = Context {
-        name: opts.name.clone(),
+        name: name.clone(),
         loc: current.clone(),
         dist: opts.distance,
         date: day,
