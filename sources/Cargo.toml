@@ -32,6 +32,7 @@ harness = false
 eyre.workspace = true
 chrono.workspace = true
 clap.workspace = true
+dateparser.workspace = true
 env_logger.workspace = true
 fetiche-formats.workspace = true
 hcl-rs.workspace = true
@@ -50,7 +51,6 @@ tracing-log.workspace = true
 tracing-subscriber.workspace = true
 
 csv = "1.2"
-dateparser = "0.2"
 mini-moka = "0.10"
 native-tls = "0.2"
 percent-encoding = "2.2"
