@@ -19,7 +19,7 @@ use eyre::Result;
 /// Update the given table with calculus of the distance between a drone and its operator
 ///
 pub fn home_calculation(dbh: &Connection) -> Result<()> {
-    let mut dbh = dbh.try_clone()?;
+    let dbh = dbh.try_clone()?;
 
     // Simple update now.
     //
