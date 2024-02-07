@@ -26,6 +26,7 @@ harness = false
 [dependencies]
 chrono.workspace = true
 clap.workspace = true
+dateparser.workspace = true
 eyre.workspace = true
 hcl-rs.workspace = true
 log.workspace = true
@@ -35,6 +36,7 @@ opentelemetry_sdk.workspace = true
 parquet2.workspace = true
 progress.workspace = true
 serde.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
 tracing-opentelemetry.workspace = true
@@ -45,8 +47,6 @@ datafusion = { version = "34.0", features = ["simd"] }
 duckdb = { version = "0.9", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
 geo = "0.27"
 rust-3d = "0.34"
-rayon = "1.8"
-tokio = { version = "1.35", features = ["full"] }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
