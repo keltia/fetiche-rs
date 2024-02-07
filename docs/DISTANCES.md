@@ -50,11 +50,13 @@ CREATE TABLE encounters
   id       INT DEFAULT nextval('id_encounter'),
   en_id    VARCHAR,
   dt       BIGINT,
+  time VARCHAR,
   journey  INT,
   drone_id VARCHAR,
   model    VARCHAR,
   callsign VARCHAR,
   addr     VARCHAR,
+  site VARCHAR,
   distance FLOAT,
   PRIMARY KEY (dt, journey)
 )
