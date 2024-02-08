@@ -31,8 +31,10 @@ pub struct PlanesOpts {
     pub separation: f64,
 }
 
+// -----
+
 #[derive(Debug, Error)]
-pub enum CalcError {
+pub enum CalcStatus {
     #[error("No planes were found around site {0} at this date")]
     NoPlanesFound(String),
     #[error("No drones in the {0} area")]
@@ -40,8 +42,46 @@ pub enum CalcError {
     #[error("No encounters found in the {0} area")]
     NoEncounters(String),
     #[error("Invalid site name {0}")]
-    UnknownSite(String),
+    ErrUnknownSite(String),
 }
+
+// -----
+
+/// Every time we run a calculation for any given day, we store the statistics for the run.
+///
+#[derive(Debug)]
+struct Stats {
+    /// Specific date
+    pub day: DateTime<Utc>,
+    /// Number of plane points
+    pub planes: usize,
+    /// Number of drone points
+    pub drones: usize,
+    /// Number of potential encounters
+    pub potential: usize,
+    /// Effective number of encounters after calculations
+    pub encounters: usize,
+    /// Distance used for calculations
+    pub distance: f64,
+    /// Proximity used for calculations
+    pub proximity: f64,
+}
+
+impl Default for Stats {
+    fn default() -> Self {
+        Self {
+            day: chrono::DateTime::UNIX_EPOCH,
+            planes: 0,
+            drones: 0,
+            potential: 0,
+            encounters: 0,
+            distance: 0.,
+            proximity: 0.,
+        }
+    }
+}
+
+// -----
 
 /// This is the struct in which we store the context of a given day work.
 ///
@@ -366,10 +406,16 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     //
     let name = opts.name.clone();
     let current = if list.get(&name).is_none() {
-        return Err(CalcError::UnknownSite(name).into());
+        return Err(CalcStatus::ErrUnknownSite(name).into());
     } else {
         list.get(&name).unwrap().to_owned()
     };
+
+    // Create our stat struct
+    //
+    let mut stats = Stats::default();
+    stats.distance = opts.distance;
+    stats.proximity = opts.separation;
 
     // Store our context
     //
@@ -384,22 +430,24 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     // Create table `today` with all identified plane points with the specified range
     //
     let count = ctx.select_planes(&dbh)?;
+    stats.planes = count;
+
     if count == 0 {
-        return Err(CalcError::NoPlanesFound(name).into());
+        return Err(CalcStatus::NoPlanesFound(name).into());
     }
 
     // Create table `candidates` with all designated drone points
     //
     let count = ctx.select_drones(&dbh)?;
     if count == 0 {
-        return Err(CalcError::NoDronesFound(name).into());
+        return Err(CalcStatus::NoDronesFound(name).into());
     }
 
     // Create table `today_close` with all designated drone points and airplanes in proximity
     //
     let count = ctx.find_close(&dbh)?;
     if count == 0 {
-        return Err(CalcError::NoEncounters(name).into());
+        return Err(CalcStatus::NoEncounters(name).into());
     }
 
     // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
@@ -410,7 +458,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     //
     let count = ctx.save_encounters(&dbh)?;
     if count == 0 {
-        return Err(CalcError::NoEncounters(name).into());
+        return Err(CalcStatus::NoEncounters(name).into());
     }
 
     info!("Done.");
