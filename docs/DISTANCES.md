@@ -2,11 +2,14 @@
 
 ## Dataset
 
+### Main static data (stored in parquet files)
+
 - Parquet files for ASD data from 2021/7 to 2024/1      (490k entries)
 - Parquet files for ADS-B from 2023/1 to 2024/1 for different sites (2.9g entries)
-- DuckDB tables for sites, antennas and time intervals for installations of each antenna
 
-## Other tables
+### Tables
+
+DuckDB tables for sites, antennas and time intervals for installations of each antenna
 
 - all ADS-B points from the parquet files into a specific `airplanes` view:
 
@@ -24,7 +27,7 @@ SELECT *
 FROM read_parquet('/Users/acute/data/drones/**/*.parquet', hive_partitioning = true);
 ```
 
-## See `process-data/src/tasks/setup.rs` for the wrappers.
+> NOTE: See `process-data/src/tasks/setup.rs` for the wrappers.
 
 Create the two additional columns:
 
@@ -50,20 +53,20 @@ CREATE TABLE encounters
   id       INT DEFAULT nextval('id_encounter'),
   en_id    VARCHAR,
   dt       BIGINT,
-  time VARCHAR,
+  time     VARCHAR,
   journey  INT,
   drone_id VARCHAR,
   model    VARCHAR,
   callsign VARCHAR,
   addr     VARCHAR,
-  site VARCHAR,
+  site     VARCHAR,
   distance FLOAT,
   PRIMARY KEY (dt, journey)
 )
 ```
 
 The `en_id` field is a unique ID generated from the date and the sequence number with the `YYYYMMDD_(journey)_(id)`
-format.
+format, and we use a macro for this:
 
 ```sql
 CREATE
@@ -71,7 +74,22 @@ MACRO encounter(tm, journey, id) AS
   printf("%04d%02d%02d_%d_%d", year(CAST(tm AS DATE)), month(CAST(tm AS DATE)), day(CAST(tm AS DATE)), journey, id);
 ```
 
-We will add some more macros/functions as well
+We keep a table for statistics, updated each time we do a calculation for any given day.
+
+```sql
+CREATE TABLE daily_stats
+(
+  date       DATE,
+  planes     BIGINT,
+  drones     BIGINT,
+  potential  INT,
+  encounters INT,
+  distance   FLOAT,
+  proximity  FLOAT,
+)
+```
+
+### Support Macros
 
 2D (without using `spatial`)
 
@@ -125,7 +143,7 @@ MACRO deg_to_m(deg) AS
 - for an encounter:
   record encounter data:
     * timestamp
-    * distances
+  * distance
     * site
 
   record drone data:
