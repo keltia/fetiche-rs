@@ -4876,6 +4876,7 @@ dependencies = [
  "progress",
  "rust-3d",
  "serde",
+ "strum",
  "thiserror",
  "tokio",
  "tracing",
