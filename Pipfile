@@ -9,6 +9,7 @@ geohash2 = "*"
 geojson = "*"
 pluscodes = "*"
 pyopensky = "*"
+geopy = "*"
 
 [dev-packages]
 
