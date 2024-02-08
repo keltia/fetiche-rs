@@ -35,15 +35,12 @@ mod roberto {
         Ok(())
     }
 
-    pub fn method_1(p1: &Point3D, p2: &Point3D) -> rust_3d::Result<()> {
+    pub fn method_1(drone: &Point3D, home: &Point3D) -> rust_3d::Result<()> {
         println!("===== roberto =====");
         println!("Geo & 3D stuff in real:");
 
         // Real lat/lon
         //
-        let drone = Point3D::new(p1.x, p1.y, p1.z / R);
-        let home = Point3D::new(p2.x, p2.y, p2.z / R);
-
         println!("  A={:?}", drone);
         println!("  B={:?}", home);
 
@@ -53,17 +50,16 @@ mod roberto {
         //
         let d2calc = (drone.x - home.x).powi(2) + (drone.y - home.y).powi(2);
         let dcalc = d2calc.sqrt() * R;
-        println!("  Basic 2D dist = {:.2}", dcalc);
 
-        // Geo stuff
+        // Geo stuff, distances are in meters
         //
         let drone2 = point!(x: drone.x, y: drone.y);
         let home2 = point!(x: home.x, y: home.y);
-        let dcalc2 = drone2.geodesic_distance(&home2);
+        let dcalc2g = drone2.geodesic_distance(&home2);
         let dcalc2h = drone2.haversine_distance(&home2);
         println!(
-            "  Geo 2D dist = {:.2} m / haversine =  {:.2} m",
-            dcalc2, dcalc2h
+            "  Basic 2D = {:.2} m / Geo 2D dist = {:.2} m / haversine =  {:.2} m",
+            dcalc, dcalc2g, dcalc2h
         );
 
         println!("-----");
@@ -72,18 +68,15 @@ mod roberto {
         //
         let drone_alt = drone.z - home.z;
 
-        // In deg.
-        //
-        let drone_alt = drone_alt / 111_111.1;
-
         // We have the 2D distance on one side and the elevation relative to home on the other
         // calculate √(x^2 + y^2 + z^2)
         //
-        let tmp = (drone_alt.powi(2) + (dcalc2 / 111_111.1).powi(2)).sqrt() * 111_111.1;
+        let dist3d = (drone_alt.powi(2) + dcalc.powi(2)).sqrt();
+        let dist3dg = (drone_alt.powi(2) + dcalc2g.powi(2)).sqrt();
 
         println!(
-            "  Dist(drone, home) = 2D=({:.2}) or 3D=({:.2})",
-            dcalc2, tmp
+            "  Dist(drone, home) = 3D=({:.2}) or 3Dgeo=({:.2})",
+            dist3d, dist3dg
         );
         println!("=====");
 
@@ -122,7 +115,9 @@ mod gravis {
         let lat = pt.lat * std::f64::consts::PI / 180.;
         let lon = pt.lon * std::f64::consts::PI / 180.;
         let radius = earth_radius(lat);
+        println!("radius={}", radius);
         let clat = geocentric_latitude(lat);
+        println!("geocentric_lat={}", clat);
 
         let nx = lat.cos() * lon.cos();
         let ny = lat.cos() * lon.sin();
@@ -158,6 +153,8 @@ mod gravis {
         let home = location_to_point(pt2)?;
         println!("calc home = {}", home);
 
+        // Regular trig. distances
+        //
         let dist2d = ((drone.x - home.x).powi(2) + (drone.y - home.y).powi(2)).sqrt();
         let dist3d = (dist2d.powi(2) + (drone.z - home.z).powi(2)).sqrt();
 
