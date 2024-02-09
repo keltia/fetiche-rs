@@ -129,7 +129,7 @@ mod gravis {
 
         let x = x + (pt.alt * nx);
         let y = y + (pt.alt * ny);
-        let y = z + (pt.alt * nz);
+        let z = z + (pt.alt * nz);
         Ok(Point3D::new(x, y, z))
     }
 
