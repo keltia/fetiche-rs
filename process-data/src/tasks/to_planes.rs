@@ -268,7 +268,7 @@ SELECT
   t.px AS px,
   t.py AS py,
   t.pz AS pz,
-  deg_to_m(st_distance(st_point(dx,dy),st_point(px,py))) AS dist2d,
+  dist_2d(dx,dy, px,py) AS dist2d,
   @(pz - dz) AS diff_alt
 FROM
   today AS t,
@@ -321,8 +321,7 @@ ADD COLUMN dist_drone_plane FLOAT;
         let count = dbh.execute(
             r##" 
 UPDATE today_close
-SET dist_drone_plane = 
-  deg_to_m(dist_3d(px, py, m_to_deg(pz), dx, dy, m_to_deg(dz)))
+SET dist_drone_plane = dist_3d(px, py, pz, dx, dy, dz)
 "##,
             [],
         )?;
