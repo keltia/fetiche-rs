@@ -8,9 +8,9 @@ use eyre::Result;
 fn add_macros(dbh: &Connection) -> Result<()> {
     let r = r##"
 CREATE MACRO dist_2d(px, py, dx, dy) AS
-  sqrt(pow((px - dx),2) + pow((py - dy), 2));
+  ST_Distance(ST_Point(px, py), ST_Point(dx, dy));
 CREATE MACRO dist_3d(px, py, pz, dx, dy, dz) AS
-  sqrt(pow((px - dx),2) + pow((py - dy), 2) + pow((pz - dz), 2));
+  sqrt(pow(dist_2d(px, py, dx, dy), 2) + pow((pz - dz), 2));
 CREATE MACRO nm_to_deg(nm) AS
   nm * 1.852 / 111111.11;
 CREATE MACRO deg_to_m(deg) AS
