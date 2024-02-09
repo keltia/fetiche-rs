@@ -10,6 +10,7 @@ geojson = "*"
 pluscodes = "*"
 pyopensky = "*"
 geopy = "*"
+numpy = "*"
 
 [dev-packages]
 
