@@ -1,7 +1,24 @@
 use geo::{GeodesicDistance, HaversineDistance};
-use rust_3d::{IsTransFormableTo2D, Point3D};
+
+// Point3D is ( x = lon, y = lat, z = alt )
+// Point is ( lat, lon alt )
+// point! is ( x = lon, y = lat )
+
+#[derive(Copy, Clone, Debug)]
+pub struct Point {
+    pub lat: f64,
+    pub lon: f64,
+    pub alt: f64,
+}
+
+impl Point {
+    pub fn new(lat: f64, lon: f64, alt: f64) -> Self {
+        Self { lat, lon, alt }
+    }
+}
 
 mod roberto {
+    use crate::Point;
     use geo::{point, GeodesicDistance, HaversineDistance};
     use rust_3d::{dist_2d, dist_3d, IsTransFormableTo2D, Point2D, Point3D};
 
@@ -35,9 +52,8 @@ mod roberto {
         Ok(())
     }
 
-    pub fn method_1(drone: &Point3D, home: &Point3D) -> rust_3d::Result<()> {
+    pub fn distances(drone: Point, home: Point) -> eyre::Result<()> {
         println!("===== roberto =====");
-        println!("Geo & 3D stuff in real:");
 
         // Real lat/lon
         //
@@ -48,13 +64,13 @@ mod roberto {
 
         // Basic trig.
         //
-        let d2calc = (drone.x - home.x).powi(2) + (drone.y - home.y).powi(2);
+        let d2calc = (drone.lon - home.lon).powi(2) + (drone.lat - home.lat).powi(2);
         let dcalc = d2calc.sqrt() * R;
 
         // Geo stuff, distances are in meters
         //
-        let drone2 = point!(x: drone.x, y: drone.y);
-        let home2 = point!(x: home.x, y: home.y);
+        let drone2 = point!(x: drone.lon, y: drone.lat);
+        let home2 = point!(x: home.lon, y: home.lat);
         let dcalc2g = drone2.geodesic_distance(&home2);
         let dcalc2h = drone2.haversine_distance(&home2);
         println!(
@@ -66,7 +82,7 @@ mod roberto {
 
         // alt diff in meters
         //
-        let drone_alt = drone.z - home.z;
+        let drone_alt = drone.alt - home.alt;
 
         // We have the 2D distance on one side and the elevation relative to home on the other
         // calculate √(x^2 + y^2 + z^2)
@@ -85,13 +101,8 @@ mod roberto {
 }
 
 mod gravis {
+    use crate::Point;
     use rust_3d::Point3D;
-
-    struct Point {
-        pub lat: f64,
-        pub lon: f64,
-        pub alt: f64,
-    }
 
     fn earth_radius(lat: f64) -> f64 {
         const eqR: f64 = 6378137.0;
@@ -115,9 +126,7 @@ mod gravis {
         let lat = pt.lat * std::f64::consts::PI / 180.;
         let lon = pt.lon * std::f64::consts::PI / 180.;
         let radius = earth_radius(lat);
-        println!("radius={}", radius);
         let clat = geocentric_latitude(lat);
-        println!("geocentric_lat={}", clat);
 
         let nx = lat.cos() * lon.cos();
         let ny = lat.cos() * lon.sin();
@@ -133,25 +142,13 @@ mod gravis {
         Ok(Point3D::new(x, y, z))
     }
 
-    pub fn method_2(p1: &Point3D, p2: &Point3D) -> eyre::Result<()> {
+    pub fn distances(p1: Point, p2: Point) -> eyre::Result<()> {
         println!("===== gravis =====");
-        println!("Geo & 3D stuff in real:");
 
-        let pt1 = Point {
-            lon: p1.x,
-            lat: p1.y,
-            alt: p1.z,
-        };
-        let pt2 = Point {
-            lon: p2.x,
-            lat: p2.y,
-            alt: p2.z,
-        };
-
-        let drone = location_to_point(pt1)?;
-        println!("calc drone = {}", drone);
-        let home = location_to_point(pt2)?;
-        println!("calc home = {}", home);
+        let drone = location_to_point(p1)?;
+        println!("  calc drone = {}", drone);
+        let home = location_to_point(p2)?;
+        println!("  calc home = {}", home);
 
         // Regular trig. distances
         //
@@ -159,8 +156,8 @@ mod gravis {
         let dist3d = (dist2d.powi(2) + (drone.z - home.z).powi(2)).sqrt();
 
         println!("----- dist -----");
-        println!(" Dist 2D = {:.2}", dist2d);
-        println!(" Dist 3D = {:.2}", dist3d);
+        println!("  Dist 2D = {:.2}", dist2d);
+        println!("  Dist 3D = {:.2}", dist3d);
 
         Ok(())
     }
@@ -169,30 +166,30 @@ mod gravis {
 fn main() {
     let _ = roberto::basic();
 
-    let p1 = Point3D::new(35.3524, 135.0302, 100.);
-    let p2 = Point3D::new(35.3532, 135.0305, 500.);
+    let p1 = Point::new(35.3524, 135.0302, 100.);
+    let p2 = Point::new(35.3532, 135.0305, 500.);
 
-    let _ = roberto::method_1(&p1, &p2);
-    let _ = gravis::method_2(&p1, &p2);
-
-    println!("\n******\n");
-    let drone = Point3D::new(2.373384, 48.670105, 190.);
-    let home = Point3D::new(2.369467, 48.66939, 115.);
-
-    let _ = roberto::method_1(&drone, &home);
-    let _ = gravis::method_2(&drone, &home);
+    let _ = roberto::distances(p1, p2);
+    let _ = gravis::distances(p1, p2);
 
     println!("\n******\n");
-    let nyc = Point3D::new(-74.006, 40.7128, 0.);
-    let lon = Point3D::new(-0.1278, 51.5074, 0.);
+    let drone = Point::new(48.670105, 2.373384, 190.);
+    let home = Point::new(48.66939, 2.369467, 115.);
 
-    let _ = roberto::method_1(&nyc, &lon);
-    let _ = gravis::method_2(&nyc, &lon);
+    let _ = roberto::distances(drone, home);
+    let _ = gravis::distances(drone, home);
 
     println!("\n******\n");
-    let p1 = Point3D::new(49.607872, 6.127652, 333.75600000000003);
-    let p2 = Point3D::new(49.6001510620117, 6.14083766937256, 625.);
+    let nyc = Point::new(40.7128, -74.006, 0.);
+    let lon = Point::new(51.5074, -0.1278, 0.);
 
-    let _ = roberto::method_1(&p1, &p2);
-    let _ = gravis::method_2(&p1, &p2);
+    let _ = roberto::distances(nyc, lon);
+    let _ = gravis::distances(nyc, lon);
+
+    println!("\n******\n");
+    let p1 = Point::new(49.607872, 6.127652, 333.75600000000003);
+    let p2 = Point::new(49.6001510620117, 6.14083766937256, 625.);
+
+    let _ = roberto::distances(p1, p2);
+    let _ = gravis::distances(p1, p2);
 }
