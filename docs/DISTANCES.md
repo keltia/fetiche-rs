@@ -91,20 +91,20 @@ CREATE TABLE daily_stats
 
 ### Support Macros
 
-2D (without using `spatial`)
+2D (using `spatial`)
 
 ```sql
 CREATE
 MACRO dist_2d(px, py, dx, dy) AS
-  sqrt(pow((px - dx),2) + pow((py - dy), 2));
+  ST_Distance(ST_Point(px, py), ST_Point(dx, dy));
 ```
 
-3D
+3D (classical Euclidean)
 
 ```sql
 CREATE
 MACRO dist_3d(px, py, pz, dx, dy, dz) AS
-  sqrt(pow((px - dx),2) + pow((py - dy), 2) + pow((pz - dz), 2));
+  sqrt(pow(dist_2d(px, py, dx, dy), 2) + pow((pz - dz), 2));
 ```
 
 Conversion from nautical miles to deg
