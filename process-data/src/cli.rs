@@ -1,6 +1,6 @@
+use crate::cmds::{AcuteOpts, DistOpts, ExportOpts};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
-
-use crate::tasks::{ExportOpts, PlanesOpts};
+use clap_complete::Shell;
 
 #[derive(Parser)]
 #[command(disable_version_flag = true)]
@@ -9,10 +9,7 @@ use crate::tasks::{ExportOpts, PlanesOpts};
 pub struct Opts {
     /// Database file to use
     #[clap(short = 'd', long)]
-    pub database: String,
-    /// Output file (default is stdout).
-    #[clap(short = 'o', long)]
-    pub output: Option<String>,
+    pub database: Option<String>,
     /// Sub-commands (see below).
     #[clap(subcommand)]
     pub subcmd: SubCommand,
@@ -20,20 +17,24 @@ pub struct Opts {
 
 #[derive(Debug, Parser)]
 pub enum SubCommand {
+    /// Display data about Acute sites, etc.
+    Acute(AcuteOpts),
+    /// Distance-related calculations.
+    Distances(DistOpts),
+    /// Export results as CSV.
+    Export(ExportOpts),
     /// Remove macros and other stuff.
     Cleanup,
     /// Prepare the database environment with some tables and macros.
     Setup,
-    /// drone to planes distance
-    ToPlanes(PlanesOpts),
-    /// List all available modules.
-    List,
-    /// 2D/3D drone to operator distance.
-    ToHome,
-    /// Export results as CSV.
-    Export(ExportOpts),
-    /// Various commands.
-    Various,
+    /// Generation completion stuff for shells.
+    Completion(CompOpts),
     /// List all package versions.
     Version,
+}
+
+#[derive(Debug, Parser)]
+pub struct CompOpts {
+    #[clap(value_parser)]
+    pub shell: Shell,
 }

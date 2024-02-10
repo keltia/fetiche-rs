@@ -9,15 +9,14 @@ use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
 use eyre::Result;
-use thiserror::Error;
 use tracing::{info, trace};
 
-use crate::location::{load_locations, Location};
-use crate::tasks::ONE_DEG;
+use crate::cmds::{Status, ONE_DEG};
+use crate::helpers::{load_locations, Location};
 
 /// These are the options we pass to this command
 ///
-#[derive(Debug, Parser)]
+#[derive(Clone, Debug, Parser)]
 pub struct PlanesOpts {
     /// Do calculation on this date (day).
     pub date: String,
@@ -29,20 +28,6 @@ pub struct PlanesOpts {
     /// Proximity in Meters.
     #[clap(short = 'p', long, default_value = "5500.")]
     pub separation: f64,
-}
-
-// -----
-
-#[derive(Debug, Error)]
-pub enum CalcStatus {
-    #[error("No planes were found around site {0} at this date")]
-    NoPlanesFound(String),
-    #[error("No drones in the {0} area")]
-    NoDronesFound(String),
-    #[error("No encounters found in the {0} area")]
-    NoEncounters(String),
-    #[error("Invalid site name {0}")]
-    ErrUnknownSite(String),
 }
 
 // -----
@@ -405,7 +390,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     //
     let name = opts.name.clone();
     let current = if list.get(&name).is_none() {
-        return Err(CalcStatus::ErrUnknownSite(name).into());
+        return Err(Status::ErrUnknownSite(name).into());
     } else {
         list.get(&name).unwrap().to_owned()
     };
@@ -432,21 +417,21 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     stats.planes = count;
 
     if count == 0 {
-        return Err(CalcStatus::NoPlanesFound(name).into());
+        return Err(Status::NoPlanesFound(name).into());
     }
 
     // Create table `candidates` with all designated drone points
     //
     let count = ctx.select_drones(&dbh)?;
     if count == 0 {
-        return Err(CalcStatus::NoDronesFound(name).into());
+        return Err(Status::NoDronesFound(name).into());
     }
 
     // Create table `today_close` with all designated drone points and airplanes in proximity
     //
     let count = ctx.find_close(&dbh)?;
     if count == 0 {
-        return Err(CalcStatus::NoEncounters(name).into());
+        return Err(Status::NoEncounters(name).into());
     }
 
     // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
@@ -457,7 +442,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     //
     let count = ctx.save_encounters(&dbh)?;
     if count == 0 {
-        return Err(CalcStatus::NoEncounters(name).into());
+        return Err(Status::NoEncounters(name).into());
     }
 
     info!("Done.");

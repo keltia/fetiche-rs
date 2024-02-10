@@ -1,10 +1,10 @@
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
-use strum::{EnumString, EnumVariantNames};
+use strum::{EnumString, VariantNames};
 use tracing::info;
 
-#[derive(Clone, Copy, Debug, EnumString, EnumVariantNames, strum::Display)]
+#[derive(Clone, Copy, Debug, EnumString, VariantNames, strum::Display)]
 #[strum(serialize_all = "lowercase")]
 pub(crate) enum Format {
     /// Classic CSV.
@@ -15,6 +15,9 @@ pub(crate) enum Format {
 
 #[derive(Debug, Parser)]
 pub struct ExportOpts {
+    /// Database file to use
+    #[clap(short = 'd', long)]
+    pub database: String,
     /// Export results for this site
     pub name: String,
     /// Day to export

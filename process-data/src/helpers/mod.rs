@@ -1,6 +1,10 @@
 use chrono::{DateTime, Utc};
 use rust_3d::Point3D;
 
+pub use location::*;
+
+mod location;
+
 /// What we read as plane positions
 ///
 #[derive(Debug)]

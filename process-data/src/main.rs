@@ -1,9 +1,10 @@
 //! Utility implement different processing tasks over our locally stored data.
 //!
 
-use clap::{crate_authors, crate_version, Parser};
-use duckdb::Config;
+use clap::{crate_authors, crate_version, CommandFactory, Parser};
+use clap_complete::generate;
 use eyre::Result;
+use std::io;
 use tracing::{info, trace};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -11,15 +12,14 @@ use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 use crate::cli::{Opts, SubCommand};
-use crate::tasks::{
-    cleanup_environment, export_results, home_calculation, load_extensions, planes_calculation,
-    setup_acute_environment,
+use crate::cmds::{
+    cleanup_environment, connect_db, export_results, home_calculation, planes_calculation,
+    run_acute_cmd, setup_acute_environment, DistSubcommand,
 };
 
 mod cli;
+mod cmds;
 mod helpers;
-mod location;
-mod tasks;
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -66,46 +66,63 @@ async fn main() -> Result<()> {
         .init();
     trace!("Logging initialised.");
 
-    info!("Connecting to {}", opts.database);
-    let dbh = duckdb::Connection::open_with_flags(
-        &opts.database,
-        Config::default()
-            .allow_unsigned_extensions()?
-            .enable_autoload_extension(true)?,
-    )?;
-
-    println!("Load extensions.");
-    let _ = load_extensions(&dbh)?;
-
     // Set up various things, add macros, etc.
     //
     trace!("Execute commands.");
     match opts.subcmd {
+        SubCommand::Distances(opts) => {
+            let dbh = connect_db(&opts.database)?;
+
+            match opts.subcmd {
+                DistSubcommand::Home => {
+                    println!("Add 2D and 3D distance between drones and operator.");
+                    let _ = home_calculation(&dbh)?;
+                }
+                DistSubcommand::Planes(popts) => {
+                    println!("Calculate 3D distance between drones and surrounding planes.");
+                    let _ = planes_calculation(&dbh, popts)?;
+                }
+            }
+            info!("Closing DB.");
+            let _ = dbh.close();
+        }
+        SubCommand::Export(opts) => {
+            println!("Exporting data.");
+            let dbh = connect_db(&opts.database)?;
+
+            let _ = export_results(&dbh, opts)?;
+            info!("Closing DB.");
+            let _ = dbh.close();
+        }
         SubCommand::Setup => {
             println!("Setup ACUTE environment.");
+            let dbh = connect_db(&opts.database.unwrap())?;
+
             let _ = setup_acute_environment(&dbh)?;
+            info!("Closing DB.");
+            let _ = dbh.close();
         }
         SubCommand::Cleanup => {
             println!("Remove ACUTE specific macros and stuff.");
+            let dbh = connect_db(&opts.database.unwrap())?;
+
             let _ = cleanup_environment(&dbh)?;
+            info!("Closing DB.");
+            let _ = dbh.close();
         }
-        SubCommand::ToPlanes(popts) => {
-            println!("Calculate 3D distance between drones and surrounding planes.");
-            let _ = planes_calculation(&dbh, popts)?;
+        SubCommand::Acute(opts) => {
+            println!("ACUTE specific commands.");
+            let dbh = connect_db(&opts.database)?;
+
+            let _ = run_acute_cmd(&dbh, opts);
+            info!("Closing DB.");
+            let _ = dbh.close();
         }
-        SubCommand::ToHome => {
-            println!("Add 2D and 3D distance between drones and operator.");
-            let _ = home_calculation(&dbh)?;
-        }
-        SubCommand::Export(opts) => {
-            println!("Exporting data for day {}.", opts.date);
-            let _ = export_results(&dbh, opts)?;
-        }
-        SubCommand::List => {
-            todo!()
-        }
-        SubCommand::Various => {
-            todo!()
+        SubCommand::Completion(copts) => {
+            let generator = copts.shell;
+
+            let mut cmd = Opts::command();
+            generate(generator, &mut cmd, "acutectl", &mut io::stdout());
         }
         SubCommand::Version => {
             println!("{} v{}", NAME, VERSION);
@@ -114,7 +131,5 @@ async fn main() -> Result<()> {
     // Finish
     //
     opentelemetry::global::shutdown_tracer_provider();
-    info!("Closing DB.");
-    let _ = dbh.close();
     Ok(())
 }
