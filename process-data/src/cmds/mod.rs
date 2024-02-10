@@ -1,9 +1,9 @@
 pub use acute::*;
 pub use distances::*;
-use duckdb::{Config, Connection};
 pub use export::*;
 pub use setup::*;
 
+use duckdb::{Config, Connection};
 use thiserror::Error;
 use tracing::info;
 
