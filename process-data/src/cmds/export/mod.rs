@@ -2,8 +2,11 @@
 //!
 
 mod distances;
+mod drones;
 
-use chrono::{DateTime, Datelike, TimeZone, Utc};
+pub use distances::*;
+pub use drones::*;
+
 use clap::Parser;
 use strum::{EnumString, VariantNames};
 
@@ -31,32 +34,4 @@ pub enum ExportSubcommand {
     Distances(ExpDistOpts),
     /// Export daily or weekly stats for drones
     Drones(ExpDroneOpts),
-}
-
-#[derive(Debug, Parser)]
-pub struct ExpDistOpts {
-    /// Export results for this site
-    pub name: String,
-    /// Day to export
-    pub date: String,
-    /// Output format
-    #[clap(short = 'F', long, default_value = "csv")]
-    pub format: Format,
-    /// Output file
-    #[clap(short = 'o', long)]
-    pub output: Option<String>,
-}
-
-#[derive(Debug, Parser)]
-pub struct ExpDroneOpts {
-    /// Specific day.
-    pub day: Option<DateTime<Utc>>,
-    /// Specific week number
-    pub week: Option<usize>,
-    /// Output format
-    #[clap(short = 'F', long, default_value = "csv")]
-    pub format: Format,
-    /// Output file
-    #[clap(short = 'o', long)]
-    pub output: Option<String>,
 }
