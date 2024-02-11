@@ -5001,6 +5001,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
+ "clap_complete",
  "criterion",
  "datafusion 34.0.0",
  "dateparser",

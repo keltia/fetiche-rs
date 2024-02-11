@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "30970fd51a07e3643bed888aaea661fbb0a95865490dbeb755bea666db5c844d"
+            "sha256": "ee97138c3e0a305c6eea3e197194f372f442678825f8a71a8a9813d7babd8a05"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -420,6 +420,13 @@
             ],
             "version": "==7.2.3"
         },
+        "multipledispatch": {
+            "hashes": [
+                "sha256:0c53cd8b077546da4e48869f49b13164bebafd0c2a5afceb6bb6a316e7fb46e4",
+                "sha256:5c839915465c68206c3e9c473357908216c28383b425361e5d144594bf85a7e0"
+            ],
+            "version": "==1.0.0"
+        },
         "numpy": {
             "hashes": [
                 "sha256:03a8c78d01d9781b28a6989f6fa1bb2c4f2d51201cf99d3dd875df6fbd96b23b",
@@ -513,6 +520,14 @@
             "index": "pypi",
             "markers": "python_version >= '3.10'",
             "version": "==2022.1.3"
+        },
+        "py-hcl": {
+            "hashes": [
+                "sha256:3b809d33498b3c0edbb3158e3b29495d5f635986d565e13871de008a53e242dc"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.6'",
+            "version": "==0.1.2"
         },
         "pyarrow": {
             "hashes": [
@@ -729,11 +744,11 @@
         },
         "tqdm": {
             "hashes": [
-                "sha256:d302b3c5b53d47bce91fea46679d9c3c6508cf6332229aa1e7d8653723793386",
-                "sha256:d88e651f9db8d8551a62556d3cff9e3034274ca5d66e93197cf2490e2dcb69c7"
+                "sha256:1ee4f8a893eb9bef51c6e35730cebf234d5d0b6bd112b0271e10ed7c24a02bd9",
+                "sha256:6cd52cdf0fef0e0f543299cfc96fec90d7b8a7e88745f411ec33eb44d5ed3531"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==4.66.1"
+            "version": "==4.66.2"
         },
         "trino": {
             "extras": [

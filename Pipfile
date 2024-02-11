@@ -11,6 +11,7 @@ pluscodes = "*"
 pyopensky = "*"
 geopy = "*"
 numpy = "*"
+py-hcl = "*"
 
 [dev-packages]
 
