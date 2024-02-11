@@ -398,6 +398,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     // Create our stat struct
     //
     let mut stats = Stats::default();
+    stats.day = tm;
     stats.distance = opts.distance;
     stats.proximity = opts.separation;
 
@@ -423,6 +424,8 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     // Create table `candidates` with all designated drone points
     //
     let count = ctx.select_drones(&dbh)?;
+    stats.drones = count;
+
     if count == 0 {
         return Err(Status::NoDronesFound(name).into());
     }
@@ -430,6 +433,8 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     // Create table `today_close` with all designated drone points and airplanes in proximity
     //
     let count = ctx.find_close(&dbh)?;
+    stats.potential = count;
+
     if count == 0 {
         return Err(Status::NoEncounters(name).into());
     }
@@ -441,9 +446,13 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
     // Now we have the distance calculated.
     //
     let count = ctx.save_encounters(&dbh)?;
+    stats.encounters = count;
+
     if count == 0 {
         return Err(Status::NoEncounters(name).into());
     }
+
+    println!("Stats:\n{:?}", stats);
 
     info!("Done.");
     Ok(count)
