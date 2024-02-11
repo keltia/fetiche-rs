@@ -3,7 +3,6 @@ use duckdb::arrow::array::RecordBatch;
 use duckdb::arrow::util::pretty::print_batches;
 use duckdb::Connection;
 use eyre::Result;
-use tokio::time::Instant;
 use tracing::trace;
 
 #[derive(Debug, Parser)]
@@ -30,6 +29,7 @@ pub enum AcuteSubCommand {
 
 // -----
 
+#[tracing::instrument(skip(dbh))]
 pub fn run_acute_cmd(dbh: &Connection, opts: AcuteOpts) -> Result<()> {
     trace!("execute");
 
