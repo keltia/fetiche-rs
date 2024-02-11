@@ -111,11 +111,8 @@ impl Context {
 
         // Cleanup if needed
         //
-        match dbh.execute("SHOW TABLE today", []) {
-            Ok(_) => {
-                let _ = dbh.execute("DROP TABLE today", [])?;
-            }
-            Err(_) => (),
+        if dbh.execute("SHOW TABLE today", []).is_ok() {
+            let _ = dbh.execute("DROP TABLE today", [])?;
         }
 
         // All flights for a given day in a table
@@ -187,11 +184,8 @@ ORDER BY time
 
         // Cleanup if needed
         //
-        match dbh.execute("SHOW TABLE candidates", []) {
-            Ok(_) => {
-                let _ = dbh.execute("DROP TABLE candidates", [])?;
-            }
-            Err(_) => (),
+        if dbh.execute("SHOW TABLE candidates", []).is_ok() {
+            let _ = dbh.execute("DROP TABLE candidates", [])?;
         }
 
         let r2 = r##"
@@ -223,11 +217,8 @@ ORDER BY
     fn find_close(&self, dbh: &Connection) -> Result<usize> {
         // Cleanup if needed
         //
-        match dbh.execute("SHOW TABLE today_close", []) {
-            Ok(_) => {
-                let _ = dbh.execute("DROP TABLE today_close", [])?;
-            }
-            Err(_) => (),
+        if dbh.execute("SHOW TABLE today_close", []).is_ok() {
+            let _ = dbh.execute("DROP TABLE today_close", [])?;
         }
 
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
@@ -285,11 +276,11 @@ ORDER BY
     fn calculate_distances(&self, dbh: &Connection) -> Result<usize> {
         // drop column if present
         //
-        match dbh.execute("SELECT dist_drone_plane FROM today_close", []) {
-            Ok(_) => {
-                let _ = dbh.execute("ALTER TABLE today_close DROP dist_drone_plane", [])?;
-            }
-            Err(_) => (),
+        if dbh
+            .execute("SELECT dist_drone_plane FROM today_close LIMIT 1", [])
+            .is_ok()
+        {
+            let _ = dbh.execute("ALTER TABLE today_close DROP dist_drone_plane", [])?;
         }
 
         // Do calculations over all points in `today_close`.
@@ -397,10 +388,12 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Create our stat struct
     //
-    let mut stats = Stats::default();
-    stats.day = tm;
-    stats.distance = opts.distance;
-    stats.proximity = opts.separation;
+    let mut stats = Stats {
+        day: tm,
+        distance: opts.distance,
+        proximity: opts.separation,
+        ..Default::default()
+    };
 
     // Store our context
     //
@@ -414,7 +407,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Create table `today` with all identified plane points with the specified range
     //
-    let count = ctx.select_planes(&dbh)?;
+    let count = ctx.select_planes(dbh)?;
     stats.planes = count;
 
     if count == 0 {
@@ -423,7 +416,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Create table `candidates` with all designated drone points
     //
-    let count = ctx.select_drones(&dbh)?;
+    let count = ctx.select_drones(dbh)?;
     stats.drones = count;
 
     if count == 0 {
@@ -432,7 +425,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Create table `today_close` with all designated drone points and airplanes in proximity
     //
-    let count = ctx.find_close(&dbh)?;
+    let count = ctx.find_close(dbh)?;
     stats.potential = count;
 
     if count == 0 {
@@ -441,11 +434,11 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
     //
-    let _ = ctx.calculate_distances(&dbh)?;
+    let _ = ctx.calculate_distances(dbh)?;
 
     // Now we have the distance calculated.
     //
-    let count = ctx.save_encounters(&dbh)?;
+    let count = ctx.save_encounters(dbh)?;
     stats.encounters = count;
 
     if count == 0 {

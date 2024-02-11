@@ -53,7 +53,7 @@ ALTER TABLE drones
     match dbh.execute("SELECT home_distance_2d FROM drones LIMIT 1", []) {
         Ok(_) => (),
         Err(_) => {
-            let _ = dbh.execute(r, [])?;
+            dbh.execute(r, [])?;
         }
     }
     Ok(())
@@ -90,11 +90,11 @@ CREATE TABLE encounters (
         Err(_) => {
             // create sequence
             //
-            let _ = dbh.execute_batch(sq)?;
+            dbh.execute_batch(sq)?;
 
             // create table
             //
-            let _ = dbh.execute(r, [])?;
+            dbh.execute(r, [])?;
         }
     }
     Ok(())
@@ -104,23 +104,23 @@ CREATE TABLE encounters (
 pub fn load_extensions(dbh: &Connection) -> Result<()> {
     // Load our extensions
     //
-    let _ = dbh.execute("LOAD spatial", [])?;
+    dbh.execute("LOAD spatial", [])?;
     Ok(())
 }
 
 #[tracing::instrument(skip(dbh))]
 pub fn setup_acute_environment(dbh: &Connection) -> Result<()> {
-    let _ = load_extensions(dbh)?;
-    let _ = add_macros(dbh)?;
-    let _ = add_columns_to_drones(dbh)?;
-    let _ = add_encounters_table(dbh)?;
+    load_extensions(dbh)?;
+    add_macros(dbh)?;
+    add_columns_to_drones(dbh)?;
+    add_encounters_table(dbh)?;
 
     Ok(())
 }
 
 #[tracing::instrument(skip(dbh))]
 pub fn cleanup_environment(dbh: &Connection) -> Result<()> {
-    let _ = remove_macros(dbh)?;
+    remove_macros(dbh)?;
 
     Ok(())
 }

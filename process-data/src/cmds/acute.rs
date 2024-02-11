@@ -40,7 +40,7 @@ pub fn run_acute_cmd(dbh: &Connection, opts: AcuteOpts) -> Result<()> {
             let mut stmt = dbh.prepare("select * from antennas;")?;
 
             let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
-            let _ = print_batches(&rbs)?;
+            print_batches(&rbs)?;
         }
         AcuteSubCommand::Installations => {
             // Find all installations with sites' name and antenna's ID
@@ -62,7 +62,7 @@ ORDER BY start_at
             )?;
 
             let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
-            let _ = print_batches(&rbs)?;
+            print_batches(&rbs)?;
         }
         AcuteSubCommand::Sites => {
             // Fetch sites

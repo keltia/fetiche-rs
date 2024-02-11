@@ -33,13 +33,13 @@ pub enum Status {
 pub fn connect_db(name: &str) -> eyre::Result<Connection> {
     info!("Connecting to {}", name);
     let dbh = Connection::open_with_flags(
-        &name,
+        name,
         Config::default()
             .allow_unsigned_extensions()?
             .enable_autoload_extension(true)?,
     )?;
 
     println!("Load extensions.");
-    let _ = load_extensions(&dbh)?;
+    load_extensions(&dbh)?;
     Ok(dbh)
 }

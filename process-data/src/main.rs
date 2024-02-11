@@ -76,11 +76,11 @@ async fn main() -> Result<()> {
             match opts.subcmd {
                 DistSubcommand::Home => {
                     println!("Add 2D and 3D distance between drones and operator.");
-                    let _ = home_calculation(&dbh)?;
+                    home_calculation(&dbh)?;
                 }
                 DistSubcommand::Planes(popts) => {
                     println!("Calculate 3D distance between drones and surrounding planes.");
-                    let _ = planes_calculation(&dbh, popts)?;
+                    planes_calculation(&dbh, popts)?;
                 }
             }
             info!("Closing DB.");
@@ -93,12 +93,12 @@ async fn main() -> Result<()> {
                 ExportSubCommand::Distances(opts) => {
                     println!("Exporting calculated distances.");
 
-                    let _ = export_results(&dbh, opts)?;
+                    export_results(&dbh, opts)?;
                 }
                 ExportSubCommand::Drones(opts) => {
                     println!("Exporting drone data.");
 
-                    let _ = export_drone_stats(&dbh, opts)?;
+                    export_drone_stats(&dbh, opts)?;
                 }
             }
             info!("Closing DB.");
@@ -108,7 +108,7 @@ async fn main() -> Result<()> {
             println!("Setup ACUTE environment.");
             let dbh = connect_db(&opts.database.unwrap())?;
 
-            let _ = setup_acute_environment(&dbh)?;
+            setup_acute_environment(&dbh)?;
             info!("Closing DB.");
             let _ = dbh.close();
         }
@@ -116,7 +116,7 @@ async fn main() -> Result<()> {
             println!("Remove ACUTE specific macros and stuff.");
             let dbh = connect_db(&opts.database.unwrap())?;
 
-            let _ = cleanup_environment(&dbh)?;
+            cleanup_environment(&dbh)?;
             info!("Closing DB.");
             let _ = dbh.close();
         }
@@ -124,7 +124,7 @@ async fn main() -> Result<()> {
             println!("ACUTE specific commands.");
             let dbh = connect_db(&opts.database)?;
 
-            let _ = run_acute_cmd(&dbh, opts);
+            run_acute_cmd(&dbh, opts)?;
             info!("Closing DB.");
             let _ = dbh.close();
         }

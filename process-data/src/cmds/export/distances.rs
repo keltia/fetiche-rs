@@ -97,8 +97,8 @@ pub fn export_results(dbh: &Connection, opts: ExpDistOpts) -> eyre::Result<()> {
     match &opts.output {
         Some(fname) => {
             let count = match opts.format {
-                Format::Csv => export_distances(&dbh, &name, day, fname)?,
-                Format::Parquet => export_distances_parquet(&dbh, &name, day, fname)?,
+                Format::Csv => export_distances(dbh, &name, day, fname)?,
+                Format::Parquet => export_distances_parquet(dbh, &name, day, fname)?,
             };
             println!("Exported {} records to {}", count, fname);
         }
