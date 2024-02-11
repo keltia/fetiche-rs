@@ -29,6 +29,7 @@ pub enum Status {
 
 /// Connect to database.
 ///
+#[tracing::instrument]
 pub fn connect_db(name: &str) -> eyre::Result<Connection> {
     info!("Connecting to {}", name);
     let dbh = Connection::open_with_flags(

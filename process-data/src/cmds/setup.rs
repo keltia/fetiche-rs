@@ -5,6 +5,7 @@
 use duckdb::Connection;
 use eyre::Result;
 
+#[tracing::instrument]
 fn add_macros(dbh: &Connection) -> Result<()> {
     let r = r##"
 CREATE MACRO dist_2d(px, py, dx, dy) AS
@@ -24,6 +25,7 @@ CREATE MACRO encounter(tm, journey, id) AS
     Ok(dbh.execute_batch(r)?)
 }
 
+#[tracing::instrument]
 fn remove_macros(dbh: &Connection) -> Result<()> {
     let r = r##"
 DROP MACRO dist_2d;
@@ -37,6 +39,7 @@ DROP MACRO encounter;
     Ok(dbh.execute_batch(r)?)
 }
 
+#[tracing::instrument]
 fn add_columns_to_drones(dbh: &Connection) -> Result<()> {
     let r = r##"
 ALTER TABLE drones
@@ -58,6 +61,7 @@ ALTER TABLE drones
 
 /// Create the `encounters` table to store short air-prox points
 ///
+#[tracing::instrument]
 fn add_encounters_table(dbh: &Connection) -> Result<()> {
     let sq = r##"
 DROP SEQUENCE IF EXISTS id_encounter;
@@ -96,6 +100,7 @@ CREATE TABLE encounters (
     Ok(())
 }
 
+#[tracing::instrument]
 pub fn load_extensions(dbh: &Connection) -> Result<()> {
     // Load our extensions
     //
@@ -103,6 +108,7 @@ pub fn load_extensions(dbh: &Connection) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument]
 pub fn setup_acute_environment(dbh: &Connection) -> Result<()> {
     let _ = load_extensions(dbh)?;
     let _ = add_macros(dbh)?;
@@ -112,6 +118,7 @@ pub fn setup_acute_environment(dbh: &Connection) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument]
 pub fn cleanup_environment(dbh: &Connection) -> Result<()> {
     let _ = remove_macros(dbh)?;
 
