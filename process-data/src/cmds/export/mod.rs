@@ -25,11 +25,11 @@ pub struct ExportOpts {
     #[clap(short = 'd', long)]
     pub database: String,
     #[clap(subcommand)]
-    pub subcmd: ExportSubcommand,
+    pub subcmd: ExportSubCommand,
 }
 
 #[derive(Debug, Parser)]
-pub enum ExportSubcommand {
+pub enum ExportSubCommand {
     /// Export the distance calculations
     Distances(ExpDistOpts),
     /// Export daily or weekly stats for drones
