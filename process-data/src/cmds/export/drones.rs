@@ -22,6 +22,6 @@ pub struct ExpDroneOpts {
 }
 
 #[tracing::instrument(skip(dbh))]
-pub fn export_drone_stats(dnh: &Connection, opts: ExpDroneOpts) -> eyre::Result<()> {
+pub fn export_drone_stats(dbh: &Connection, opts: ExpDroneOpts) -> eyre::Result<()> {
     Ok(())
 }
