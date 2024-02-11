@@ -13,8 +13,8 @@ use tracing_tree::HierarchicalLayer;
 
 use crate::cli::{Opts, SubCommand};
 use crate::cmds::{
-    cleanup_environment, connect_db, export_results, home_calculation, planes_calculation,
-    run_acute_cmd, setup_acute_environment, DistSubcommand,
+    cleanup_environment, connect_db, export_drone_stats, export_results, home_calculation,
+    planes_calculation, run_acute_cmd, setup_acute_environment, DistSubcommand, ExportSubcommand,
 };
 
 mod cli;
@@ -87,10 +87,20 @@ async fn main() -> Result<()> {
             let _ = dbh.close();
         }
         SubCommand::Export(opts) => {
-            println!("Exporting data.");
             let dbh = connect_db(&opts.database)?;
 
-            let _ = export_results(&dbh, opts)?;
+            match opts.subcmd {
+                ExportSubcommand::Distances(opts) => {
+                    println!("Exporting calculated distances.");
+
+                    let _ = export_results(&dbh, opts)?;
+                }
+                ExportSubcommand::Drones(opts) => {
+                    println!("Exporting drone data.");
+
+                    let _ = export_drone_stats(&dbh, opts)?;
+                }
+            }
             info!("Closing DB.");
             let _ = dbh.close();
         }
