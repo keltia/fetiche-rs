@@ -104,19 +104,19 @@ async fn main() -> Result<()> {
             info!("Closing DB.");
             let _ = dbh.close();
         }
-        SubCommand::Setup => {
+        SubCommand::Setup(sopts) => {
             println!("Setup ACUTE environment.");
             let dbh = init_runtime(&opts.database.unwrap())?;
 
-            setup_acute_environment(&dbh)?;
+            setup_acute_environment(&dbh, sopts)?;
             info!("Closing DB.");
             let _ = dbh.close();
         }
-        SubCommand::Cleanup => {
-            println!("Remove ACUTE specific macros and stuff.");
-            let dbh = connect_db(&opts.database.unwrap())?;
+        SubCommand::Cleanup(copts) => {
+            println!("Remove ACUTE specific macros.");
+            let dbh = init_runtime(&opts.database.unwrap())?;
 
-            cleanup_environment(&dbh)?;
+            cleanup_environment(&dbh, copts)?;
             info!("Closing DB.");
             let _ = dbh.close();
         }

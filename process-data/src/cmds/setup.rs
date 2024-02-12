@@ -2,8 +2,25 @@
 //! to set our work environment up.
 //!
 
+use clap::Parser;
 use duckdb::Connection;
 use eyre::Result;
+
+#[derive(Debug, Parser)]
+pub struct SetupOpts {
+    /// Add only macros.
+    #[clap(short = 'M', long)]
+    pub macros: bool,
+    /// Add columns to table drones.
+    #[clap(short = 'C', long)]
+    pub columns: bool,
+    /// Create encounters table
+    #[clap(short = 'E', long)]
+    pub encounters: bool,
+    /// Everything.
+    #[clap(short = 'a', long, default_value = "true")]
+    pub all: bool,
+}
 
 #[tracing::instrument(skip(dbh))]
 fn add_macros(dbh: &Connection) -> Result<()> {
@@ -50,11 +67,33 @@ ALTER TABLE drones
 
     // Assume that if home_distance_2d doesn't exist, then home_distance_3d doesn't either.
     //
-    match dbh.execute("SELECT home_distance_2d FROM drones LIMIT 1", []) {
-        Ok(_) => (),
-        Err(_) => {
-            dbh.execute(r, [])?;
-        }
+    if dbh
+        .execute("SELECT home_distance_2d FROM drones LIMIT 1", [])
+        .is_err()
+    {
+        dbh.execute(r, [])?;
+    }
+    Ok(())
+}
+
+/// Remove the two calculated columns.
+///
+#[tracing::instrument(skip(dbh))]
+fn remove_columns_to_drones(dbh: &Connection) -> Result<()> {
+    let r = r##"
+ALTER TABLE drones
+  DROP COLUMN home_distance_2d;
+ALTER TABLE drones
+  DROP COLUMN home_distance_3d;
+    "##;
+
+    // Assume that if home_distance_2d doesn't exist, then home_distance_3d doesn't either.
+    //
+    if dbh
+        .execute("SELECT home_distance_2d FROM drones LIMIT 1", [])
+        .is_ok()
+    {
+        dbh.execute(r, [])?;
     }
     Ok(())
 }
@@ -65,10 +104,7 @@ ALTER TABLE drones
 fn add_encounters_table(dbh: &Connection) -> Result<()> {
     let sq = r##"
 DROP SEQUENCE IF EXISTS id_encounter;
-CREATE SEQUENCE id_encounter
-    "##;
-
-    let r = r##"
+CREATE SEQUENCE id_encounter;
 CREATE TABLE encounters (
   id INT DEFAULT nextval('id_encounter'),
   en_id VARCHAR,
@@ -85,41 +121,67 @@ CREATE TABLE encounters (
 )
     "##;
 
-    match dbh.execute("SELECT id FROM encounters LIMIT 1", []) {
-        Ok(_) => (),
-        Err(_) => {
-            // create sequence
-            //
-            dbh.execute_batch(sq)?;
+    if dbh
+        .execute("SELECT id FROM encounters LIMIT 1", [])
+        .is_err()
+    {
+        // Create sequence & table.
+        //
+        dbh.execute_batch(sq)?;
+    }
+    Ok(())
+}
 
-            // create table
-            //
-            dbh.execute(r, [])?;
+/// Remove the `encounters` table to store short air-prox points
+///
+#[tracing::instrument(skip(dbh))]
+fn drop_encounters_table(dbh: &Connection) -> Result<()> {
+    let sq = r##"
+DROP SEQUENCE IF EXISTS id_encounter;
+DROP TABLE encounters IF EXISTS encounters;
+    "##;
+
+    dbh.execute_batch(sq)?;
+    Ok(())
+}
+
+#[tracing::instrument(skip(dbh))]
+pub fn setup_acute_environment(dbh: &Connection, opts: SetupOpts) -> Result<()> {
+    if opts.all {
+        add_macros(dbh)?;
+        add_columns_to_drones(dbh)?;
+        add_encounters_table(dbh)?;
+    } else {
+        if opts.macros {
+            add_macros(dbh)?;
+        }
+        if opts.columns {
+            add_columns_to_drones(dbh)?;
+        }
+        if opts.encounters {
+            add_encounters_table(dbh)?;
         }
     }
     Ok(())
 }
 
 #[tracing::instrument(skip(dbh))]
-pub fn load_extensions(dbh: &Connection) -> Result<()> {
-    // Load our extensions
-    //
-    dbh.execute("LOAD spatial", [])?;
-    Ok(())
-}
-
-#[tracing::instrument(skip(dbh))]
-pub fn setup_acute_environment(dbh: &Connection) -> Result<()> {
-    load_extensions(dbh)?;
-    add_macros(dbh)?;
-    add_columns_to_drones(dbh)?;
-    add_encounters_table(dbh)?;
-
-    Ok(())
-}
-
-#[tracing::instrument(skip(dbh))]
-pub fn cleanup_environment(dbh: &Connection) -> Result<()> {
+pub fn cleanup_environment(dbh: &Connection, opts: SetupOpts) -> Result<()> {
+    if opts.all {
+        remove_macros(dbh)?;
+        remove_columns_to_drones(dbh)?;
+        drop_encounters_table(dbh)?;
+    } else {
+        if opts.macros {
+            remove_macros(dbh)?;
+        }
+        if opts.columns {
+            remove_columns_to_drones(dbh)?;
+        }
+        if opts.encounters {
+            drop_encounters_table(dbh)?;
+        }
+    }
     remove_macros(dbh)?;
 
     Ok(())

@@ -1,4 +1,4 @@
-use crate::cmds::{AcuteOpts, DistOpts, ExportOpts};
+use crate::cmds::{AcuteOpts, DistOpts, ExportOpts, SetupOpts};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use clap_complete::Shell;
 
@@ -24,9 +24,9 @@ pub enum SubCommand {
     /// Export results as CSV.
     Export(ExportOpts),
     /// Remove macros and other stuff.
-    Cleanup,
+    Cleanup(SetupOpts),
     /// Prepare the database environment with some tables and macros.
-    Setup,
+    Setup(SetupOpts),
     /// Generation completion stuff for shells.
     Completion(CompOpts),
     /// List all package versions.
