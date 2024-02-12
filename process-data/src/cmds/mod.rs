@@ -27,10 +27,10 @@ pub enum Status {
     ErrUnknownSite(String),
 }
 
-/// Connect to database.
+/// Connect to database and load the extensions.
 ///
 #[tracing::instrument]
-pub fn connect_db(name: &str) -> eyre::Result<Connection> {
+pub fn init_runtime(name: &str) -> eyre::Result<Connection> {
     info!("Connecting to {}", name);
     let dbh = Connection::open_with_flags(
         name,
@@ -42,4 +42,14 @@ pub fn connect_db(name: &str) -> eyre::Result<Connection> {
     println!("Load extensions.");
     load_extensions(&dbh)?;
     Ok(dbh)
+}
+
+/// We need these extensions all the time.
+///
+#[tracing::instrument(skip(dbh))]
+pub fn load_extensions(dbh: &Connection) -> eyre::Result<()> {
+    // Load our extensions
+    //
+    dbh.execute("LOAD spatial", [])?;
+    Ok(())
 }

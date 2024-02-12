@@ -13,7 +13,7 @@ use tracing_tree::HierarchicalLayer;
 
 use crate::cli::{Opts, SubCommand};
 use crate::cmds::{
-    cleanup_environment, connect_db, export_drone_stats, export_results, home_calculation,
+    cleanup_environment, export_drone_stats, export_results, home_calculation, init_runtime,
     planes_calculation, run_acute_cmd, setup_acute_environment, DistSubcommand, ExportSubCommand,
 };
 
@@ -71,7 +71,7 @@ async fn main() -> Result<()> {
     trace!("Execute commands.");
     match opts.subcmd {
         SubCommand::Distances(opts) => {
-            let dbh = connect_db(&opts.database)?;
+            let dbh = init_runtime(&opts.database)?;
 
             match opts.subcmd {
                 DistSubcommand::Home => {
@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
             let _ = dbh.close();
         }
         SubCommand::Export(opts) => {
-            let dbh = connect_db(&opts.database)?;
+            let dbh = init_runtime(&opts.database)?;
 
             match opts.subcmd {
                 ExportSubCommand::Distances(opts) => {
@@ -106,7 +106,7 @@ async fn main() -> Result<()> {
         }
         SubCommand::Setup => {
             println!("Setup ACUTE environment.");
-            let dbh = connect_db(&opts.database.unwrap())?;
+            let dbh = init_runtime(&opts.database.unwrap())?;
 
             setup_acute_environment(&dbh)?;
             info!("Closing DB.");
@@ -122,7 +122,7 @@ async fn main() -> Result<()> {
         }
         SubCommand::Acute(opts) => {
             println!("ACUTE specific commands.");
-            let dbh = connect_db(&opts.database)?;
+            let dbh = init_runtime(&opts.database)?;
 
             run_acute_cmd(&dbh, opts)?;
             info!("Closing DB.");
