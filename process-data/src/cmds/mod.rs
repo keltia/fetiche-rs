@@ -1,4 +1,5 @@
 pub use acute::*;
+pub use config::*;
 pub use distances::*;
 pub use export::*;
 pub use setup::*;
@@ -8,6 +9,7 @@ use thiserror::Error;
 use tracing::info;
 
 mod acute;
+mod config;
 mod distances;
 mod export;
 mod setup;

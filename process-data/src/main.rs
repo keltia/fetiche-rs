@@ -14,11 +14,13 @@ use tracing_tree::HierarchicalLayer;
 use crate::cli::{Opts, SubCommand};
 use crate::cmds::{
     cleanup_environment, export_drone_stats, export_results, home_calculation, init_runtime,
-    planes_calculation, run_acute_cmd, setup_acute_environment, DistSubcommand, ExportSubCommand,
+    planes_calculation, run_acute_cmd, run_config_cmd, setup_acute_environment, DistSubcommand,
+    ExportSubCommand,
 };
 
 mod cli;
 mod cmds;
+mod config;
 mod helpers;
 
 /// Binary name, using a different binary name
@@ -103,6 +105,11 @@ async fn main() -> Result<()> {
             }
             info!("Closing DB.");
             let _ = dbh.close();
+        }
+        SubCommand::Config(opts) => {
+            println!("Configuration ACUTE environment.");
+
+            run_config_cmd(opts)?;
         }
         SubCommand::Setup(sopts) => {
             println!("Setup ACUTE environment.");
