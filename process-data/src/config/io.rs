@@ -73,7 +73,15 @@ impl ConfigFile {
             _ => Self::default_file(),
         };
 
-        let data = fs::read_to_string(fname)?;
+        let data = fs::read_to_string(fname)
+            .map_err(|_| {
+                eprintln!(
+                    "No configuration file, use -d or create {:?}",
+                    Self::default_file()
+                );
+                std::process::exit(1);
+            })
+            .unwrap();
         let data: ConfigFile = hcl::from_str(&data)?;
 
         if data.version != CVERSION {
