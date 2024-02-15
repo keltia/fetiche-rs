@@ -1,5 +1,5 @@
 use actix::Addr;
-use strum::{EnumString, EnumVariantNames};
+use strum::EnumString;
 
 pub use config::*;
 pub use engine::*;
@@ -26,7 +26,7 @@ pub struct Bus {
 
 /// Current registered sub-systems
 ///
-#[derive(Debug, EnumString, strum::Display, EnumVariantNames)]
+#[derive(Debug, EnumString, strum::Display, strum::VariantNames)]
 #[strum(serialize_all = "lowercase")]
 pub enum System {
     Config,

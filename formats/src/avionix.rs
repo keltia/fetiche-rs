@@ -4,10 +4,9 @@
 //!
 
 use chrono::{DateTime, Utc};
-use influxdb::InfluxDbWriteable;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use strum::{EnumString, EnumVariantNames};
+use strum::EnumString;
 
 /// This format is sent through a CSV file and has the following fields:
 ///
@@ -31,7 +30,7 @@ use strum::{EnumString, EnumVariantNames};
 /// - NIC: NucP_NIC
 ///
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, InfluxDbWriteable, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Avionix {
     /// UNIX timestamp in milli-secs (i64)
@@ -75,7 +74,7 @@ pub struct Avionix {
 
 /// Special enum for airborne status
 ///
-#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, EnumVariantNames)]
+#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum Gda {
     /// Airborne
@@ -86,7 +85,7 @@ pub enum Gda {
 
 /// Special enum for type of source, always ADS-B for Avionix
 ///
-#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, EnumVariantNames)]
+#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
 pub enum Src {
     /// ADS-B
     A,

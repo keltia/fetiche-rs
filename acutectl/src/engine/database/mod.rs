@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use eyre::Result;
 use serde::Deserialize;
-use strum::{EnumIter, EnumVariantNames};
+use strum::{EnumIter, EnumString};
 use tabled::builder::Builder;
 use tabled::settings::Style;
 use tracing::trace;
@@ -17,7 +17,9 @@ mod mysql;
 
 /// All supported databases
 ///
-#[derive(Clone, Debug, Default, Deserialize, strum::Display, EnumVariantNames, EnumIter)]
+#[derive(
+    Clone, Debug, Default, Deserialize, strum::Display, strum::VariantNames, EnumIter, EnumString,
+)]
 #[strum(serialize_all = "PascalCase")]
 pub enum DB {
     #[default]

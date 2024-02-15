@@ -1,7 +1,7 @@
 use eyre::Result;
-use strum::{EnumString, EnumVariantNames};
+use strum::{strum::VariantNames, EnumString};
 
-#[derive(Debug, strum::Display, EnumVariantNames, EnumString)]
+#[derive(Debug, strum::Display, strum::VariantNames, EnumString)]
 enum Cmd<'a> {
     Bare,
     String(&'a str),

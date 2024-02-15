@@ -15,7 +15,7 @@
 use eyre::Result;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
-use strum::{EnumString, EnumVariantNames};
+use strum::{strum::VariantNames, EnumString};
 use tracing::debug;
 
 pub use location::*;
@@ -24,7 +24,7 @@ use crate::{convert_to, to_feet, Adsb21, Bool, Cat21, TodCalculated, DEF_SAC, DE
 
 mod location;
 
-#[derive(Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
+#[derive(Debug, Deserialize, strum::Display, EnumString, strum::VariantNames)]
 #[strum(serialize_all = "lowercase")]
 pub enum FeedType {
     Airborne,
@@ -32,7 +32,7 @@ pub enum FeedType {
     Weather,
 }
 
-#[derive(Clone, Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
+#[derive(Clone, Debug, Deserialize, strum::Display, EnumString, strum::VariantNames)]
 #[strum(serialize_all = "lowercase")]
 pub enum TimeType {
     Actual,
@@ -182,7 +182,7 @@ pub struct LocationExit {}
 #[derive(Debug)]
 pub struct PowerOn {}
 
-#[derive(Debug, Deserialize, EnumString, strum::Display, EnumVariantNames)]
+#[derive(Debug, Deserialize, EnumString, strum::Display, strum::VariantNames)]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum Update {
     /// ADS-B
@@ -203,7 +203,7 @@ pub enum Update {
     S,
 }
 
-#[derive(Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
+#[derive(Debug, Deserialize, strum::Display, EnumString, strum::VariantNames)]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum AirGround {
     /// in Air

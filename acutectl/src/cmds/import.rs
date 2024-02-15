@@ -3,7 +3,7 @@ use std::path::Path;
 use std::str::FromStr;
 
 use eyre::Result;
-use strum::EnumVariantNames;
+use strum::EnumString;
 use tracing::trace;
 
 use fetiche_formats::{Asd, Format};
@@ -12,7 +12,7 @@ use crate::Engine;
 
 /// Input file format, can be CSV, JSON or Parquet
 ///
-#[derive(Clone, Copy, Debug, strum::Display, EnumVariantNames, PartialEq)]
+#[derive(Clone, Copy, Debug, strum::Display, strum::VariantNames, EnumString, PartialEq)]
 #[strum(serialize_all = "lowercase")]
 pub enum FileInput {
     /// CSV with limited schema support

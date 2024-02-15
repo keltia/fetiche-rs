@@ -3,9 +3,9 @@ use std::str::FromStr;
 use actix::dev::{MessageResponse, OneshotSender};
 use actix::{Actor, Message};
 use serde::Serialize;
-use strum::EnumVariantNames;
+use strum::EnumString;
 
-#[derive(Clone, Debug, strum::Display, EnumVariantNames, Serialize)]
+#[derive(Clone, Debug, strum::Display, EnumString, strum::VariantNames, Serialize)]
 pub enum Param {
     Integer(i32),
     String(String),

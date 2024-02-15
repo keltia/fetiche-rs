@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use eyre::Result;
 use serde::Deserialize;
-use strum::{EnumIter, EnumVariantNames};
+use strum::{strum::VariantNames, EnumIter};
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
@@ -31,7 +31,7 @@ mod store;
 mod stream;
 mod tee;
 
-#[derive(Debug, strum::Display, EnumVariantNames, EnumIter, PartialEq)]
+#[derive(Debug, strum::Display, strum::VariantNames, EnumIter, PartialEq)]
 #[strum(serialize_all = "PascalCase")]
 pub enum Cmds {
     /// Convert into Cat21 data
