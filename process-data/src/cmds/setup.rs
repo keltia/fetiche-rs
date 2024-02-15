@@ -27,7 +27,7 @@ pub struct SetupOpts {
 fn add_macros(dbh: &Connection) -> Result<()> {
     let r = r##"
 CREATE MACRO dist_2d(px, py, dx, dy) AS
-  ST_Distance(ST_Point(px, py), ST_Point(dx, dy));
+  deg_to_m(ST_Distance(ST_Point(px, py), ST_Point(dx, dy)));
 CREATE MACRO dist_3d(px, py, pz, dx, dy, dz) AS
   sqrt(pow(dist_2d(px, py, dx, dy), 2) + pow((pz - dz), 2));
 CREATE MACRO nm_to_deg(nm) AS
