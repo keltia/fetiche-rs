@@ -37,7 +37,7 @@ CREATE MACRO deg_to_m(deg) AS
 CREATE MACRO m_to_deg(m) AS
   m / 111111.11;
 CREATE MACRO dist_2d(px, py, dx, dy) AS
-  ST_Distance_Spheroid(ST_Point(px, py), ST_Point(dx, dy)));
+  ST_Distance_Spheroid(ST_Point(px, py), ST_Point(dx, dy));
 CREATE MACRO dist_3d(px, py, pz, dx, dy, dz) AS
   sqrt(pow(dist_2d(px, py, dx, dy), 2) + pow((pz - dz), 2));
 CREATE MACRO encounter(tm, journey, id) AS
