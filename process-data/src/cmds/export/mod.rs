@@ -1,14 +1,14 @@
 //! This is the `export` command module
 //!
 
-mod distances;
-mod drones;
+use clap::Parser;
+use strum::{EnumString, VariantNames};
 
 pub use distances::*;
 pub use drones::*;
 
-use clap::Parser;
-use strum::{EnumString, VariantNames};
+mod distances;
+mod drones;
 
 #[derive(Clone, Copy, Debug, EnumString, VariantNames, strum::Display)]
 #[strum(serialize_all = "lowercase")]
@@ -17,13 +17,15 @@ pub(crate) enum Format {
     Csv,
     /// Parquet compressed format.
     Parquet,
+    /// Text for stdout
+    Text,
 }
 
 #[derive(Debug, Parser)]
 pub struct ExportOpts {
     /// Database file to use
     #[clap(short = 'd', long)]
-    pub database: String,
+    pub database: Option<String>,
     #[clap(subcommand)]
     pub subcmd: ExportSubCommand,
 }
