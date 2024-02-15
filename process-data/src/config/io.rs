@@ -1,8 +1,10 @@
-use eyre::eyre;
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
+
+use eyre::eyre;
+use home::home_dir;
+use serde::{Deserialize, Serialize};
 use tracing::trace;
 
 use crate::makepath;
@@ -23,6 +25,8 @@ pub struct ConfigFile {
     pub version: usize,
     /// Database name or path.
     pub database: Option<String>,
+    /// Directory holding the parquet files for the datalake.
+    pub datalake: Option<String>,
 }
 
 impl Default for ConfigFile {
@@ -30,6 +34,7 @@ impl Default for ConfigFile {
         ConfigFile {
             version: CVERSION,
             database: None,
+            datalake: None,
         }
     }
 }
