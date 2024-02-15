@@ -6,17 +6,10 @@ use clap_complete::generate;
 use eyre::Result;
 use std::io;
 use tracing::{info, trace};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
-use tracing_tree::HierarchicalLayer;
 
 use crate::cli::{Opts, SubCommand};
-use crate::cmds::{
-    cleanup_environment, export_drone_stats, export_results, home_calculation, init_runtime,
-    planes_calculation, run_acute_cmd, run_config_cmd, setup_acute_environment, DistSubcommand,
-    ExportSubCommand,
-};
+use crate::cmds::handle_cmds;
+use crate::config::{finish_runtime, init_runtime};
 
 mod cli;
 mod cmds;
@@ -34,107 +27,12 @@ pub const AUTHORS: &str = crate_authors!();
 async fn main() -> Result<()> {
     let opts = Opts::parse();
 
-    // Initialise logging early
+    // Initialise our context including logging.
     //
-    let tree = HierarchicalLayer::new(2)
-        .with_ansi(true)
-        .with_span_retrace(true)
-        .with_span_modes(true)
-        .with_targets(true)
-        .with_verbose_entry(true)
-        .with_verbose_exit(true)
-        .with_higher_precision(true)
-        .with_bracketed_fields(true);
+    let ctx = init_runtime(&opts)?;
 
-    // Setup Open Telemetry with Jaeger
-    //
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_auto_split_batch(true)
-        .with_max_packet_size(9_216)
-        .with_service_name(NAME)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-
-    // Load filters from environment
-    //
-    let filter = EnvFilter::from_default_env();
-
-    // Combine filter & specific format
-    //
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(tree)
-        .with(telemetry)
-        .init();
-    trace!("Logging initialised.");
-
-    // Set up various things, add macros, etc.
-    //
     trace!("Execute commands.");
-    match opts.subcmd {
-        SubCommand::Distances(opts) => {
-            let dbh = init_runtime(&opts.database)?;
-
-            match opts.subcmd {
-                DistSubcommand::Home => {
-                    println!("Add 2D and 3D distance between drones and operator.");
-                    home_calculation(&dbh)?;
-                }
-                DistSubcommand::Planes(popts) => {
-                    println!("Calculate 3D distance between drones and surrounding planes.");
-                    planes_calculation(&dbh, popts)?;
-                }
-            }
-            info!("Closing DB.");
-            let _ = dbh.close();
-        }
-        SubCommand::Export(opts) => {
-            let dbh = init_runtime(&opts.database)?;
-
-            match opts.subcmd {
-                ExportSubCommand::Distances(opts) => {
-                    println!("Exporting calculated distances.");
-
-                    export_results(&dbh, opts)?;
-                }
-                ExportSubCommand::Drones(opts) => {
-                    println!("Exporting drone data.");
-
-                    export_drone_stats(&dbh, opts)?;
-                }
-            }
-            info!("Closing DB.");
-            let _ = dbh.close();
-        }
-        SubCommand::Config(opts) => {
-            println!("Configuration ACUTE environment.");
-
-            run_config_cmd(opts)?;
-        }
-        SubCommand::Setup(sopts) => {
-            println!("Setup ACUTE environment.");
-            let dbh = init_runtime(&opts.database.unwrap())?;
-
-            setup_acute_environment(&dbh, sopts)?;
-            info!("Closing DB.");
-            let _ = dbh.close();
-        }
-        SubCommand::Cleanup(copts) => {
-            println!("Remove ACUTE specific macros.");
-            let dbh = init_runtime(&opts.database.unwrap())?;
-
-            cleanup_environment(&dbh, copts)?;
-            info!("Closing DB.");
-            let _ = dbh.close();
-        }
-        SubCommand::Acute(opts) => {
-            println!("ACUTE specific commands.");
-            let dbh = init_runtime(&opts.database)?;
-
-            run_acute_cmd(&dbh, opts)?;
-            info!("Closing DB.");
-            let _ = dbh.close();
-        }
+    match &opts.subcmd {
         SubCommand::Completion(copts) => {
             let generator = copts.shell;
 
@@ -144,9 +42,10 @@ async fn main() -> Result<()> {
         SubCommand::Version => {
             println!("{} v{}", NAME, VERSION);
         }
+        _ => handle_cmds(&ctx, &opts)?,
     }
+
     // Finish
     //
-    opentelemetry::global::shutdown_tracer_provider();
-    Ok(())
+    Ok(finish_runtime()?)
 }
