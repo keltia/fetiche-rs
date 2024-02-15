@@ -1,8 +1,8 @@
-use crate::cmds::{AcuteOpts, ConfOpts, DistOpts, ExportOpts, SetupOpts};
+use crate::cmds::{AcuteOpts, DistOpts, ExportOpts, SetupOpts};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use clap_complete::Shell;
 
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 #[command(disable_version_flag = true)]
 #[clap(name = crate_name!(), about = crate_description!())]
 #[clap(version = crate_version!(), author = crate_authors!())]
@@ -23,8 +23,6 @@ pub enum SubCommand {
     Distances(DistOpts),
     /// Export results as CSV.
     Export(ExportOpts),
-    /// Configuration.
-    Config(ConfOpts),
     /// Remove macros and other stuff
     Cleanup(SetupOpts),
     /// Prepare the database environment with some tables and macros.
