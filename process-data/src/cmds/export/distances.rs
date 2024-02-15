@@ -1,12 +1,14 @@
 //! Export the distances calculated by the `distances` module.
 //!
 
-use crate::cmds::Format;
-use crate::config::Context;
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
+use duckdb::arrow::util::pretty::print_batches;
 use duckdb::{params, Connection};
 use tracing::info;
+
+use crate::cmds::Format;
+use crate::config::Context;
 
 #[derive(Debug, Parser)]
 pub struct ExpDistOpts {
@@ -49,6 +51,25 @@ COPY (
     let count = stmt.execute(params![name, day, day])?;
 
     Ok(count)
+}
+
+/// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
+///
+#[tracing::instrument(skip(dbh))]
+fn export_distances_text(dbh: &Connection, name: &str, day: DateTime<Utc>) -> eyre::Result<usize> {
+    let r = r##"
+  SELECT * FROM encounters
+  WHERE
+    site = ? AND
+    CAST(time AS DATE) >= CAST(? AS DATE) AND
+    CAST(time AS DATE) < date_add(CAST(? AS DATE), INTERVAL 1 DAY)
+    ORDER BY time
+"##;
+    let mut stmt = dbh.prepare(&r)?;
+    let rbs: Vec<_> = stmt.query_arrow(params![name, day, day])?.collect();
+    print_batches(&rbs)?;
+
+    Ok(rbs.len())
 }
 
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
@@ -102,10 +123,13 @@ pub fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
             let count = match opts.format {
                 Format::Csv => export_distances(&dbh, &name, day, fname)?,
                 Format::Parquet => export_distances_parquet(&dbh, &name, day, fname)?,
+                _ => 0,
             };
             println!("Exported {} records to {}", count, fname);
         }
-        None => (),
+        None => {
+            let _ = export_distances_text(&dbh, &name, day)?;
+        }
     }
 
     info!("Done.");
