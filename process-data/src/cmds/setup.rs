@@ -72,7 +72,7 @@ ALTER TABLE drones
         .execute("SELECT home_distance_2d FROM drones LIMIT 1", [])
         .is_err()
     {
-        dbh.execute(r, [])?;
+        dbh.execute_batch(r)?;
     }
     Ok(())
 }
@@ -139,7 +139,7 @@ CREATE TABLE encounters (
 fn drop_encounters_table(dbh: &Connection) -> Result<()> {
     let sq = r##"
 DROP SEQUENCE IF EXISTS id_encounter;
-DROP TABLE encounters IF EXISTS encounters;
+DROP TABLE IF EXISTS encounters;
     "##;
 
     dbh.execute_batch(sq)?;
