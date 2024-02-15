@@ -12,7 +12,7 @@ use crate::Engine;
 
 /// Input file format, can be CSV, JSON or Parquet
 ///
-#[derive(Clone, Copy, Debug, strum::Display, strum::VariantNames, EnumString, PartialEq)]
+#[derive(Clone, Copy, Debug, strum::Display, strum::VariantNames, PartialEq)]
 #[strum(serialize_all = "lowercase")]
 pub enum FileInput {
     /// CSV with limited schema support
