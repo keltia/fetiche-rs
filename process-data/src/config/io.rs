@@ -1,5 +1,6 @@
 use eyre::eyre;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
 use tracing::trace;
@@ -62,10 +63,13 @@ impl ConfigFile {
     /// Load either file specified as parameter or the default file if `None`.
     ///
     #[tracing::instrument]
-    pub fn load(fname: Option<PathBuf>) -> eyre::Result<ConfigFile> {
+    pub fn load<T>(fname: Option<T>) -> eyre::Result<ConfigFile>
+    where
+        T: Into<PathBuf> + Debug,
+    {
         trace!("loading config");
-        let fname = match fname {
-            Some(fname) => fname,
+        let fname: PathBuf = match fname {
+            Some(fname) => fname.into(),
             _ => Self::default_file(),
         };
 

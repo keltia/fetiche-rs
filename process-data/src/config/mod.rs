@@ -81,7 +81,8 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     // We must operate on a database.
     //
-    let cfg = ConfigFile::load(None)?;
+    let cnf = opts.config.clone();
+    let cfg = ConfigFile::load(cnf)?;
     let def = ConfigFile::default_file().to_string_lossy().to_string();
 
     if opts.database.is_none() && cfg.database.is_none() {

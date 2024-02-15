@@ -7,6 +7,9 @@ use clap_complete::Shell;
 #[clap(name = crate_name!(), about = crate_description!())]
 #[clap(version = crate_version!(), author = crate_authors!())]
 pub struct Opts {
+    /// Alternate Configuration file
+    #[clap(short = 'c', long)]
+    pub config: Option<String>,
     /// Database file to use
     #[clap(short = 'd', long)]
     pub database: Option<String>,
