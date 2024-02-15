@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use eyre::Result;
 use serde::Deserialize;
-use strum::{strum::VariantNames, EnumIter};
+use strum::EnumIter;
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
