@@ -1,10 +1,7 @@
+use eyre::eyre;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-
-use eyre::{eyre, Result};
-#[cfg(unix)]
-use home::home_dir;
-use serde::Deserialize;
 use tracing::trace;
 
 use crate::makepath;
@@ -19,15 +16,24 @@ const CVERSION: usize = 1;
 
 /// Configuration for the CLI tool
 ///
-#[derive(Debug, Deserialize)]
-pub struct Config {
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ConfigFile {
     /// Version in the file MUST match `CVERSION`
     pub version: usize,
-    /// Each site credentials
+    /// Database name or path.
     pub database: Option<String>,
 }
 
-impl Config {
+impl Default for ConfigFile {
+    fn default() -> Self {
+        ConfigFile {
+            version: CVERSION,
+            database: None,
+        }
+    }
+}
+
+impl ConfigFile {
     /// Returns the path of the default config directory
     ///
     #[cfg(unix)]
@@ -56,7 +62,7 @@ impl Config {
     /// Load either file specified as parameter or the default file if `None`.
     ///
     #[tracing::instrument]
-    pub fn load(fname: Option<PathBuf>) -> Result<Config> {
+    pub fn load(fname: Option<PathBuf>) -> eyre::Result<ConfigFile> {
         trace!("loading config");
         let fname = match fname {
             Some(fname) => fname,
@@ -64,20 +70,11 @@ impl Config {
         };
 
         let data = fs::read_to_string(fname)?;
-        let data: Config = hcl::from_str(&data)?;
+        let data: ConfigFile = hcl::from_str(&data)?;
 
         if data.version != CVERSION {
             return Err(eyre!("bad file version: {}", data.version));
         }
         Ok(data)
-    }
-
-    /// Serialise the struct into HCL and write it.
-    ///
-    #[tracing::instrument]
-    pub fn save(&self) -> Result<()> {
-        let data = hcl::to_string(&self)?;
-        let _ = fs::write(Self::default_file(), &data);
-        Ok(())
     }
 }
