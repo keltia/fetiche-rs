@@ -29,6 +29,7 @@ clap.workspace = true
 dateparser.workspace = true
 eyre.workspace = true
 hcl-rs.workspace = true
+home.workspace = true
 log.workspace = true
 opentelemetry.workspace = true
 opentelemetry-jaeger.workspace = true
@@ -46,7 +47,7 @@ tracing-tree.workspace = true
 
 clap_complete = "4.5"
 datafusion = { version = "34.0", features = ["simd"] }
-duckdb = { version = "0.9", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
+duckdb = { version = "0.10", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
 geo = "0.27"
 rust-3d = "0.34"
 thiserror = "1.0.56"
