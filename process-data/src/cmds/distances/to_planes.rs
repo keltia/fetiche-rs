@@ -194,8 +194,8 @@ CREATE TABLE candidates AS
 SELECT time,journey,ident,model,timestamp,latitude,longitude,altitude,home_lat,home_lon,home_distance_2d,home_distance_3d
 FROM drones
 WHERE
-  to_timestamp(time) <= make_timestamp(?,?,? + 1,0,0,0.0) AND
-  to_timestamp(time) >= make_timestamp(?,?,?,0,0,0.0) AND
+  CAST(to_timestamp(time) AS TIMESTAMP) <= make_timestamp(?,?,? + 1,0,0,0.0) AND
+  CAST(to_timestamp(time) AS TIMESTAMP) >= make_timestamp(?,?,?,0,0,0.0) AND
   ST_DWithin(ST_point(?, ?), ST_Point(longitude, latitude), ?)
 ORDER BY
   (time,journey)
@@ -251,8 +251,8 @@ FROM
   today AS t,
   candidates AS c
 WHERE
-  pt > to_timestamp(dt-2) AND
-  pt < to_timestamp(dt+2) AND
+  pt > CAST(to_timestamp(dt-2) AS TIMESTAMP) AND
+  pt < CAST(to_timestamp(dt+2) AS TIMESTAMP) AND
   dist2d <= ? AND
   diff_alt < ?
 ORDER BY
@@ -344,7 +344,7 @@ BY NAME (
             return Ok(count);
         }
 
-        info!("Generate en_id");
+        trace!("Generate en_id");
         let name = self.name.clone();
         let upd = r##"
 UPDATE encounters AS old_e
