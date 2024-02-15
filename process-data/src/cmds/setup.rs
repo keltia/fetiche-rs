@@ -94,7 +94,7 @@ ALTER TABLE drones
         .execute("SELECT home_distance_2d FROM drones LIMIT 1", [])
         .is_ok()
     {
-        dbh.execute(r, [])?;
+        dbh.execute_batch(r)?;
     }
     Ok(())
 }
