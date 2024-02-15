@@ -1,3 +1,6 @@
+//! This is the main driver module for all the different commands.
+//!
+
 pub use acute::*;
 pub use distances::*;
 pub use export::*;
