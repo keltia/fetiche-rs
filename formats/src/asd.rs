@@ -7,7 +7,6 @@
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use eyre::Result;
-use influxdb::InfluxDbWriteable;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr, PickFirst};
 use tracing::debug;
@@ -27,17 +26,15 @@ use crate::{convert_to, to_feet, to_knots, Cat21, TodCalculated};
 /// `i64` is not supported by InfluxDB as it is.
 ///
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, InfluxDbWriteable, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
     #[serde_as(as = "PickFirst<(_, DisplayFromStr)>")]
     pub time: DateTime<Utc>,
     /// Each record is part of a drone journey with a specific ID
-    #[influxdb(tag)]
     pub journey: u32,
     /// Identifier for the drone
-    #[influxdb(tag)]
     pub ident: String,
     /// Model of the drone
     pub model: Option<String>,
