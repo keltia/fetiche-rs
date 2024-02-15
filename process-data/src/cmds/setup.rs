@@ -19,7 +19,7 @@ pub struct SetupOpts {
     #[clap(short = 'E', long)]
     pub encounters: bool,
     /// Everything.
-    #[clap(short = 'a', long, default_value = "true")]
+    #[clap(short = 'a', long)]
     pub all: bool,
 }
 
