@@ -14,7 +14,6 @@
 //!
 
 use crate::config::Context;
-use duckdb::Connection;
 use eyre::Result;
 
 /// Update the given table with calculus of the distance between a drone and its operator
