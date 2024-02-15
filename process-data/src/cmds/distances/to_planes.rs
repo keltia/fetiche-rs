@@ -318,7 +318,7 @@ SET dist_drone_plane = dist_3d(px, py, pz, dx, dy, dz)
         // Insert data into table `encounters`
         //
         let ins = r##"
-INSERT INTO encounters
+INSERT OR IGNORE INTO encounters
 BY NAME (
     SELECT
       any_value(dt) AS dt,
@@ -326,16 +326,14 @@ BY NAME (
       any_value(drone_id) AS drone_id, 
       model, 
       timestamp AS time,
-      callsign, 
-      addr,
+      any_value(callsign) as callsign,
+      any_value(addr) as addr,
       MIN(dist_drone_plane) AS distance,
     FROM today_close
     WHERE
       dist_drone_plane < 1852
     GROUP BY ALL
 )
-ON CONFLICT (dt, journey)
-  DO NOTHING
         "##;
 
         let count = dbh.execute(ins, [])?;
