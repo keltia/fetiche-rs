@@ -18,9 +18,10 @@ impl Point {
 }
 
 mod roberto {
-    use crate::Point;
     use geo::{point, GeodesicDistance, HaversineDistance};
     use rust_3d::{dist_2d, dist_3d, IsTransFormableTo2D, Point2D, Point3D};
+
+    use crate::Point;
 
     /// 1 deg = 59.9952 nm or 111.1111 km
     const R: f64 = 111_111.11;
@@ -101,8 +102,9 @@ mod roberto {
 }
 
 mod gravis {
-    use crate::Point;
     use rust_3d::Point3D;
+
+    use crate::Point;
 
     fn earth_radius(lat: f64) -> f64 {
         const eqR: f64 = 6378137.0;
@@ -163,33 +165,33 @@ mod gravis {
     }
 }
 
+fn for_points(p1: Point, p2: Point) {
+    let _ = roberto::distances(p1, p2);
+    let _ = gravis::distances(p1, p2);
+
+    println!("\n******\n");
+}
+
 fn main() {
     let _ = roberto::basic();
 
     let p1 = Point::new(35.3524, 135.0302, 100.);
     let p2 = Point::new(35.3532, 135.0305, 500.);
 
-    let _ = roberto::distances(p1, p2);
-    let _ = gravis::distances(p1, p2);
+    for_points(p1, p2);
 
-    println!("\n******\n");
     let drone = Point::new(48.670105, 2.373384, 190.);
     let home = Point::new(48.66939, 2.369467, 115.);
 
-    let _ = roberto::distances(drone, home);
-    let _ = gravis::distances(drone, home);
+    for_points(drone, home);
 
-    println!("\n******\n");
     let nyc = Point::new(40.7128, -74.006, 0.);
     let lon = Point::new(51.5074, -0.1278, 0.);
 
-    let _ = roberto::distances(nyc, lon);
-    let _ = gravis::distances(nyc, lon);
+    for_points(nyc, lon);
 
-    println!("\n******\n");
     let p1 = Point::new(49.607872, 6.127652, 333.75600000000003);
     let p2 = Point::new(49.6001510620117, 6.14083766937256, 625.);
 
-    let _ = roberto::distances(p1, p2);
-    let _ = gravis::distances(p1, p2);
+    for_points(p1, p2);
 }
