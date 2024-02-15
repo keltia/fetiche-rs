@@ -8,9 +8,6 @@ mod to_planes;
 
 #[derive(Debug, Parser)]
 pub(crate) struct DistOpts {
-    /// Database file to use
-    #[clap(short = 'd', long)]
-    pub database: String,
     /// Output file (default is stdout).
     #[clap(short = 'o', long)]
     pub output: Option<String>,
