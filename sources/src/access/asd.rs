@@ -12,6 +12,8 @@
 //!
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
+//! Switched from JSON to CSV to work around the size limit from the API ~50 MB
+//!
 //! [NDJSON]: https://en.wikipedia.org/wiki/NDJSON
 
 use std::ops::Add;
@@ -20,11 +22,13 @@ use std::sync::mpsc::Sender;
 
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use clap::{crate_name, crate_version};
+use eyre::Report;
 use eyre::{eyre, Result};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use snafu::prelude::*;
 use strum::EnumString;
 use tracing::{debug, error, trace, warn};
 
@@ -153,6 +157,17 @@ impl Default for Asd {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// CSV payload from `.../filteredlocation`
+///
+#[derive(Debug, Deserialize)]
+struct Payload {
+    /// Filename if one need to fetch as a file.
+    #[serde(rename = "fileName")]
+    filename: String,
+    /// CSV content is here already.
+    content: String,
 }
 
 impl Fetchable for Asd {
@@ -289,14 +304,13 @@ impl Fetchable for Asd {
             }
         }
 
-        // What we receive is an anonymous JSON array
+        // What we receive is an anonymous JSON object containing the filename and CSV content.
         //
         let resp = resp.text()?;
+        let data: Payload = serde_json::from_str(&resp)?;
 
-        // Convert it into NDJSON
-        //
-        let resp = into_ndjson(&resp)?;
-        Ok(out.send(resp)?)
+        trace!("Fetched {}", data.filename);
+        Ok(out.send(data.content)?)
     }
 
     /// Return the site's input formats
@@ -352,9 +366,6 @@ struct Token {
     airspace_admin: Option<String>,
     homepage: String,
 }
-
-use eyre::Report;
-use snafu::prelude::*;
 
 /// Custom error type for tokens, allow us to differentiate between errors.
 ///
