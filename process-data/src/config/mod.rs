@@ -93,7 +93,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         return Err(Status::ErrNoDatabase(def).into());
     }
 
-    let name = opts.database.clone().unwrap();
+    let name = opts.database.clone().unwrap_or(cfg.database.unwrap());
 
     info!("Connecting to {}", name);
     let dbh = Connection::open_with_flags(
