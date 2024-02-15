@@ -6,6 +6,7 @@ use crate::config::Context;
 use clap::Parser;
 use duckdb::Connection;
 use eyre::Result;
+use tracing::info;
 
 #[derive(Debug, Parser)]
 pub struct SetupOpts {
@@ -25,6 +26,8 @@ pub struct SetupOpts {
 
 #[tracing::instrument(skip(dbh))]
 fn add_macros(dbh: &Connection) -> Result<()> {
+    info!("Adding macros.");
+
     let r = r##"
 CREATE MACRO nm_to_deg(nm) AS
   nm * 1.852 / 111111.11;
@@ -45,6 +48,8 @@ CREATE MACRO encounter(tm, journey, id) AS
 
 #[tracing::instrument(skip(dbh))]
 fn remove_macros(dbh: &Connection) -> Result<()> {
+    info!("Removing macros.");
+
     let r = r##"
 DROP MACRO dist_2d;
 DROP MACRO dist_3d;
@@ -59,6 +64,8 @@ DROP MACRO encounter;
 
 #[tracing::instrument(skip(dbh))]
 fn add_columns_to_drones(dbh: &Connection) -> Result<()> {
+    info!("Adding distance columns from drones.");
+
     let r = r##"
 ALTER TABLE drones
   ADD COLUMN home_distance_2d FLOAT;
@@ -81,6 +88,8 @@ ALTER TABLE drones
 ///
 #[tracing::instrument(skip(dbh))]
 fn remove_columns_to_drones(dbh: &Connection) -> Result<()> {
+    info!("Removing calculated columns from drones.");
+
     let r = r##"
 ALTER TABLE drones
   DROP COLUMN home_distance_2d;
@@ -103,6 +112,8 @@ ALTER TABLE drones
 ///
 #[tracing::instrument(skip(dbh))]
 fn add_encounters_table(dbh: &Connection) -> Result<()> {
+    info!("Adding encounters table.");
+
     let sq = r##"
 DROP SEQUENCE IF EXISTS id_encounter;
 CREATE SEQUENCE id_encounter;
@@ -137,6 +148,8 @@ CREATE TABLE encounters (
 ///
 #[tracing::instrument(skip(dbh))]
 fn drop_encounters_table(dbh: &Connection) -> Result<()> {
+    info!("Removing encounters table.");
+
     let sq = r##"
 DROP SEQUENCE IF EXISTS id_encounter;
 DROP TABLE IF EXISTS encounters;

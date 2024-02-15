@@ -295,6 +295,7 @@ ADD COLUMN dist_drone_plane FLOAT;
             [],
         )?;
 
+        trace!("Do the math.");
         let count = dbh.execute(
             r##" 
 UPDATE today_close
