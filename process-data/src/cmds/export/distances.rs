@@ -2,6 +2,7 @@
 //!
 
 use crate::cmds::Format;
+use crate::config::Context;
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
@@ -80,8 +81,10 @@ COPY (
     Ok(count)
 }
 
-#[tracing::instrument(skip(dbh))]
-pub fn export_results(dbh: &Connection, opts: ExpDistOpts) -> eyre::Result<()> {
+#[tracing::instrument(skip(ctx))]
+pub fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
+    let dbh = ctx.db();
+
     let tm = dateparser::parse(&opts.date).unwrap();
     let day = Utc
         .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
@@ -97,8 +100,8 @@ pub fn export_results(dbh: &Connection, opts: ExpDistOpts) -> eyre::Result<()> {
     match &opts.output {
         Some(fname) => {
             let count = match opts.format {
-                Format::Csv => export_distances(dbh, &name, day, fname)?,
-                Format::Parquet => export_distances_parquet(dbh, &name, day, fname)?,
+                Format::Csv => export_distances(&dbh, &name, day, fname)?,
+                Format::Parquet => export_distances_parquet(&dbh, &name, day, fname)?,
             };
             println!("Exported {} records to {}", count, fname);
         }

@@ -2,6 +2,7 @@
 //! to set our work environment up.
 //!
 
+use crate::config::Context;
 use clap::Parser;
 use duckdb::Connection;
 use eyre::Result;
@@ -145,44 +146,46 @@ DROP TABLE encounters IF EXISTS encounters;
     Ok(())
 }
 
-#[tracing::instrument(skip(dbh))]
-pub fn setup_acute_environment(dbh: &Connection, opts: SetupOpts) -> Result<()> {
+#[tracing::instrument(skip(ctx))]
+pub fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
+    let dbh = ctx.db();
     if opts.all {
-        add_macros(dbh)?;
-        add_columns_to_drones(dbh)?;
-        add_encounters_table(dbh)?;
+        add_macros(&dbh)?;
+        add_columns_to_drones(&dbh)?;
+        add_encounters_table(&dbh)?;
     } else {
         if opts.macros {
-            add_macros(dbh)?;
+            add_macros(&dbh)?;
         }
         if opts.columns {
-            add_columns_to_drones(dbh)?;
+            add_columns_to_drones(&dbh)?;
         }
         if opts.encounters {
-            add_encounters_table(dbh)?;
+            add_encounters_table(&dbh)?;
         }
     }
     Ok(())
 }
 
-#[tracing::instrument(skip(dbh))]
-pub fn cleanup_environment(dbh: &Connection, opts: SetupOpts) -> Result<()> {
+#[tracing::instrument(skip(ctx))]
+pub fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
+    let dbh = ctx.db();
     if opts.all {
-        remove_macros(dbh)?;
-        remove_columns_to_drones(dbh)?;
-        drop_encounters_table(dbh)?;
+        remove_macros(&dbh)?;
+        remove_columns_to_drones(&dbh)?;
+        drop_encounters_table(&dbh)?;
     } else {
         if opts.macros {
-            remove_macros(dbh)?;
+            remove_macros(&dbh)?;
         }
         if opts.columns {
-            remove_columns_to_drones(dbh)?;
+            remove_columns_to_drones(&dbh)?;
         }
         if opts.encounters {
-            drop_encounters_table(dbh)?;
+            drop_encounters_table(&dbh)?;
         }
     }
-    remove_macros(dbh)?;
+    remove_macros(&dbh)?;
 
     Ok(())
 }

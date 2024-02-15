@@ -1,15 +1,15 @@
 pub use acute::*;
-pub use config::*;
 pub use distances::*;
 pub use export::*;
 pub use setup::*;
 
-use duckdb::{Config, Connection};
 use thiserror::Error;
 use tracing::info;
 
+use crate::cli::{Opts, SubCommand};
+use crate::config::Context;
+
 mod acute;
-mod config;
 mod distances;
 mod export;
 mod setup;
@@ -27,31 +27,54 @@ pub enum Status {
     NoEncounters(String),
     #[error("Invalid site name {0}")]
     ErrUnknownSite(String),
+    #[error("No database specified anywhere (config: {0}")]
+    ErrNoDatabase(String),
 }
 
-/// Connect to database and load the extensions.
-///
-#[tracing::instrument]
-pub fn init_runtime(name: &str) -> eyre::Result<Connection> {
-    info!("Connecting to {}", name);
-    let dbh = Connection::open_with_flags(
-        name,
-        Config::default()
-            .allow_unsigned_extensions()?
-            .enable_autoload_extension(true)?,
-    )?;
+#[tracing::instrument(skip(ctx))]
+pub fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
+    match &opts.subcmd {
+        SubCommand::Distances(dopts) => match &dopts.subcmd {
+            DistSubcommand::Home => {
+                println!("Add 2D and 3D distance between drones and operator.");
+                home_calculation(&ctx)?;
+            }
+            DistSubcommand::Planes(popts) => {
+                println!("Calculate 3D distance between drones and surrounding planes.");
+                planes_calculation(&ctx, popts)?;
+            }
+        },
+        SubCommand::Export(eopts) => match &eopts.subcmd {
+            ExportSubCommand::Distances(opts) => {
+                println!("Exporting calculated distances.");
 
-    println!("Load extensions.");
-    load_extensions(&dbh)?;
-    Ok(dbh)
-}
+                export_results(&ctx, opts)?;
+            }
+            ExportSubCommand::Drones(opts) => {
+                println!("Exporting drone data.");
 
-/// We need these extensions all the time.
-///
-#[tracing::instrument(skip(dbh))]
-pub fn load_extensions(dbh: &Connection) -> eyre::Result<()> {
-    // Load our extensions
-    //
-    dbh.execute("LOAD spatial", [])?;
+                export_drone_stats(&ctx, opts)?;
+            }
+        },
+        SubCommand::Setup(sopts) => {
+            println!("Setup ACUTE environment.");
+            setup_acute_environment(&ctx, &sopts)?;
+        }
+        SubCommand::Cleanup(copts) => {
+            println!("Remove ACUTE specific macros.");
+            cleanup_environment(&ctx, &copts)?;
+        }
+        SubCommand::Acute(aopts) => {
+            println!("ACUTE specific commands.");
+            run_acute_cmd(&ctx, &aopts)?;
+        }
+        // These are done already.
+        //
+        _ => (),
+    }
+
+    info!("Closing DB.");
+    let _ = ctx.finish();
+
     Ok(())
 }

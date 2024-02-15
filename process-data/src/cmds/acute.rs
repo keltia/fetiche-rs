@@ -1,3 +1,4 @@
+use crate::config::Context;
 use clap::Parser;
 use duckdb::arrow::array::RecordBatch;
 use duckdb::arrow::util::pretty::print_batches;
@@ -29,10 +30,11 @@ pub enum AcuteSubCommand {
 
 // -----
 
-#[tracing::instrument(skip(dbh))]
-pub fn run_acute_cmd(dbh: &Connection, opts: AcuteOpts) -> Result<()> {
+#[tracing::instrument(skip(ctx))]
+pub fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
     trace!("execute");
 
+    let dbh = ctx.db();
     match opts.subcmd {
         AcuteSubCommand::Antennas => {
             // Fetch antennas as Arrow

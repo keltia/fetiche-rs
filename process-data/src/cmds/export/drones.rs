@@ -3,9 +3,9 @@
 
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use duckdb::Connection;
 
 use crate::cmds::Format;
+use crate::config::Context;
 
 #[derive(Debug, Parser)]
 pub struct ExpDroneOpts {
@@ -21,7 +21,7 @@ pub struct ExpDroneOpts {
     pub output: Option<String>,
 }
 
-#[tracing::instrument(skip(dbh))]
-pub fn export_drone_stats(dbh: &Connection, opts: ExpDroneOpts) -> eyre::Result<()> {
+#[tracing::instrument(skip(ctx))]
+pub fn export_drone_stats(ctx: &Context, opts: &ExpDroneOpts) -> eyre::Result<()> {
     Ok(())
 }

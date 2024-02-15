@@ -12,6 +12,7 @@ use eyre::Result;
 use tracing::{info, trace};
 
 use crate::cmds::{Status, ONE_DEG};
+use crate::config::Context;
 use crate::helpers::{load_locations, Location};
 
 /// These are the options we pass to this command
@@ -71,7 +72,7 @@ impl Default for Stats {
 /// This is the struct in which we store the context of a given day work.
 ///
 #[derive(Debug)]
-struct Context {
+struct Work {
     /// Name of site
     pub name: String,
     /// Coordinates of site
@@ -84,7 +85,7 @@ struct Context {
     pub separation: f64,
 }
 
-impl Context {
+impl Work {
     /// Select a list of airplanes positions we will consider for distance calculations
     ///
     /// - 1st criteria date and time (unit is a given day)
@@ -366,8 +367,10 @@ WHERE en_id IS NULL OR site IS NULL
     }
 }
 
-#[tracing::instrument(skip(dbh))]
-pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
+#[tracing::instrument(skip(ctx))]
+pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<usize> {
+    let dbh = ctx.db();
+
     // Load locations
     //
     let list = load_locations(None)?;
@@ -397,7 +400,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Store our context
     //
-    let ctx = Context {
+    let work = Work {
         name: name.clone(),
         loc: current.clone(),
         dist: opts.distance,
@@ -407,7 +410,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Create table `today` with all identified plane points with the specified range
     //
-    let count = ctx.select_planes(dbh)?;
+    let count = work.select_planes(&dbh)?;
     stats.planes = count;
 
     if count == 0 {
@@ -416,7 +419,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Create table `candidates` with all designated drone points
     //
-    let count = ctx.select_drones(dbh)?;
+    let count = work.select_drones(&dbh)?;
     stats.drones = count;
 
     if count == 0 {
@@ -425,7 +428,7 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Create table `today_close` with all designated drone points and airplanes in proximity
     //
-    let count = ctx.find_close(dbh)?;
+    let count = work.find_close(&dbh)?;
     stats.potential = count;
 
     if count == 0 {
@@ -434,11 +437,11 @@ pub fn planes_calculation(dbh: &Connection, opts: PlanesOpts) -> Result<usize> {
 
     // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
     //
-    let _ = ctx.calculate_distances(dbh)?;
+    let _ = work.calculate_distances(&dbh)?;
 
     // Now we have the distance calculated.
     //
-    let count = ctx.save_encounters(dbh)?;
+    let count = work.save_encounters(&dbh)?;
     stats.encounters = count;
 
     if count == 0 {

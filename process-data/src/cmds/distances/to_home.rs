@@ -13,13 +13,15 @@
 //! NOTE: This is like 1s of runtime compared to the *several minutes* of the previous version.
 //!
 
+use crate::config::Context;
 use duckdb::Connection;
 use eyre::Result;
 
 /// Update the given table with calculus of the distance between a drone and its operator
 ///
-pub fn home_calculation(dbh: &Connection) -> Result<()> {
-    let dbh = dbh.try_clone()?;
+#[tracing::instrument(skip(ctx))]
+pub fn home_calculation(ctx: &Context) -> Result<()> {
+    let dbh = ctx.db();
 
     // Simple update now.
     //
