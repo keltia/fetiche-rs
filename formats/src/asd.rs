@@ -15,7 +15,7 @@ use crate::{convert_to, to_feet, to_knots, Cat21, TodCalculated};
 
 /// Our input structure from the json file coming out of the main ASD site
 ///
-/// Data can be obtained either in CSV or JSON formats, we prefer the latter.
+/// Data can be obtained in CSV or JSON formats, we prefer the former for size-related reasons.
 ///
 /// NOTE: Some fields are String and not the actual type (f32 for example) because there
 /// are apparently stored as DECIMAL in their database and not as FLOAT.  There are then
