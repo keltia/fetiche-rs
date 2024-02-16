@@ -2,13 +2,6 @@
 //
 version = 2
 
-format "ACSV" {
-  type        = "write"
-  description = "Annotated CSV, created by InfluxDB."
-  source      = "InfluxData"
-  url         = "https://docs.influxdata.com/influxdb/cloud/reference/syntax/annotated-csv/"
-}
-
 format "CSV" {
   type        = "write"
   description = "Comma Separated Values aka your friend CSV."
