@@ -297,16 +297,16 @@ impl Fetchable for Asd {
                 use percent_encoding::percent_decode;
                 trace!("error resp={:?}", resp);
                 let h = resp.headers();
-                let errtxt = percent_decode(h["x-debug-exception"].as_bytes())
-                    .decode_utf8()
-                    .unwrap();
-                return Err(eyre!("Error({}): {}", code, errtxt));
+                let errtxt = percent_decode(h["x-debug-exception"].as_bytes()).decode_utf8();
+                debug!("errtxt={:?}", errtxt);
+                return Err(eyre!("Error({}): {}", code, errtxt.unwrap()));
             }
         }
 
         // What we receive is an anonymous JSON object containing the filename and CSV content.
         //
         let resp = resp.text()?;
+        debug!("resp={}", resp);
         let data: Payload = serde_json::from_str(&resp)?;
 
         trace!("Fetched {}", data.filename);
