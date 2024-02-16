@@ -3,13 +3,14 @@
 //! XXX be extra careful when dealing with degrees, meters and nautical miles.
 //!
 
+use std::env;
 use std::ops::Add;
 
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
 use eyre::Result;
-use tracing::{info, trace};
+use tracing::{debug, info, trace};
 
 use crate::cmds::{Status, ONE_DEG};
 use crate::config::Context;
@@ -378,6 +379,13 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<usize> {
         .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
         .unwrap();
     info!("Running calculations for {}:", day);
+
+    // Move ourselves to the datalake.
+    //
+    let datalake = ctx.config.get("datalake").unwrap();
+    debug!("datalake is there: {}", datalake);
+
+    env::set_current_dir(datalake)?;
 
     // Load parameters
     //
