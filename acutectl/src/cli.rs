@@ -106,6 +106,9 @@ pub struct FetchOpts {
     /// We want today only
     #[clap(long)]
     pub today: bool,
+    /// We want yesterday only
+    #[clap(long)]
+    pub yesterday: bool,
     /// Start date - YYYY-MM-DD HH:MM:SS -- optional
     #[clap(short = 'B', long)]
     pub begin: Option<String>,
