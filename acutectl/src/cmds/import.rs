@@ -1,9 +1,11 @@
+//! WIP for the `import` command.
+//!
+
 use std::ffi::OsString;
 use std::path::Path;
 use std::str::FromStr;
 
 use eyre::Result;
-use strum::EnumString;
 use tracing::trace;
 
 use fetiche_formats::{Asd, Format};
@@ -49,6 +51,7 @@ impl FromStr for FileInput {
 pub fn import_data(_engine: &Engine, data: &str, _fmt: Format) -> Result<()> {
     trace!("import_data");
 
+    // FIXME
     let data: Vec<Asd> = serde_json::from_str(data)?;
 
     Ok(())
