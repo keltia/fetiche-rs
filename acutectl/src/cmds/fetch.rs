@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use chrono::{DateTime, Datelike, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Days, TimeZone, Utc};
 use eyre::{eyre, Result};
 use tracing::{info, trace};
 
@@ -121,17 +121,33 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
     trace!("filter_from_opts");
 
+    // Start of today
+    //
     let t: DateTime<Utc> = Utc::now();
+    let t = Utc
+        .with_ymd_and_hms(t.year(), t.month(), t.day(), 0, 0, 0)
+        .unwrap();
+
+    // Calculate yesterday
+    //
+    let y = t.checked_sub_days(Days::new(1)).unwrap();
+
+    // Calculate tomorrow
+    //
+    let tmr = t.checked_add_days(Days::new(1)).unwrap();
 
     if opts.today {
-        // Build our own begin, end
+        // Build our own beginning & end
         //
-        let begin: DateTime<Utc> = Utc
-            .with_ymd_and_hms(t.year(), t.month(), t.day(), 0, 0, 0)
-            .unwrap();
-        let end: DateTime<Utc> = Utc
-            .with_ymd_and_hms(t.year(), t.month(), t.day(), 23, 59, 59)
-            .unwrap();
+        let begin = t;
+        let end = tmr;
+
+        Ok(Filter::interval(begin, end))
+    } else if opts.yesterday {
+        // Build our own beginning & end
+        //
+        let begin = y;
+        let end = t;
 
         Ok(Filter::interval(begin, end))
     } else if opts.begin.is_some() {
@@ -173,12 +189,17 @@ fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
 fn check_args(opts: &FetchOpts) -> Result<()> {
     trace!("check_args");
 
-    // Do we have options for filter
+    // Do we have options for filter?
     //
+    if opts.today && opts.yesterday {
+        return Err(eyre!("Can not specify --today and --yesterday"));
+    }
     if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
         return Err(eyre!("Can not specify --today and -B/-E"));
     }
+
     // (a & ^b) | (^a & b) => xor
+    //
     if opts.begin.is_some() ^ opts.end.is_some() {
         return Err(eyre!("We need both -B/-E or none"));
     }
