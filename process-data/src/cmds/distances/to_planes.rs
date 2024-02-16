@@ -337,11 +337,11 @@ BY NAME (
         "##;
 
         let count = dbh.execute(ins, [])?;
-        info!("Inserted {} new encounters", count);
-
         if count == 0 {
             info!("No new encounters.");
             return Ok(count);
+        } else {
+            info!("Inserted {} new encounters", count);
         }
 
         trace!("Generate en_id");
