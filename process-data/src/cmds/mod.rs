@@ -32,6 +32,8 @@ pub enum Status {
     ErrUnknownSite(String),
     #[error("No database specified anywhere (config: {0}")]
     ErrNoDatabase(String),
+    #[error("No datalake specified in {0}")]
+    ErrNoDatalake(String),
 }
 
 #[tracing::instrument(skip(ctx))]

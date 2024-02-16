@@ -93,7 +93,13 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         return Err(Status::ErrNoDatabase(def).into());
     }
 
+    if cfg.datalake.is_none() {
+        eprintln!("Error: you must define datalake.");
+        return Err(Status::ErrNoDatalake(def).into());
+    }
+
     let name = opts.database.clone().unwrap_or(cfg.database.unwrap());
+    let datalake = cfg.datalake.unwrap();
 
     info!("Connecting to {}", name);
     let dbh = Connection::open_with_flags(
@@ -107,7 +113,11 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     load_extensions(&dbh)?;
 
     let ctx = Context {
-        config: HashMap::from([("database".to_string(), name.clone())]).into(),
+        config: HashMap::from([
+            ("database".to_string(), name.clone()),
+            ("datalake".to_string(), datalake.clone()),
+        ])
+        .into(),
         dbh: dbh.into(),
     };
     Ok(ctx)

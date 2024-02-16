@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use eyre::eyre;
 use home::home_dir;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use tracing::trace;
 
@@ -88,6 +89,7 @@ impl ConfigFile {
             })
             .unwrap();
         let data: ConfigFile = hcl::from_str(&data)?;
+        debug!("config: {:?}", data);
 
         if data.version != CVERSION {
             return Err(eyre!("bad file version: {}", data.version));
