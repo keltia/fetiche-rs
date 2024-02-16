@@ -30,7 +30,6 @@ chrono.workspace = true
 dateparser.workspace = true
 eyre.workspace = true
 hcl-rs.workspace = true
-influxdb.workspace = true
 log.workspace = true
 nom.workspace = true
 opentelemetry.workspace = true

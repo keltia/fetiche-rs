@@ -14,7 +14,6 @@ fetiche-formats = { version = "0", path = "formats" }
 fetiche-sources = { version = "0", path = "sources" }
 hcl-rs = "0.16"
 home = "0.5"
-influxdb = { version = "0.7", features = ["derive"] }
 log = { version = "0.4", features = ["serde", "std"] }
 nom = "7"
 opentelemetry = { version = "0.21", features = ["logs", "metrics"] }

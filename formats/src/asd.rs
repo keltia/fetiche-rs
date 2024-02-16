@@ -7,7 +7,6 @@
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use eyre::Result;
-use influxdb::InfluxDbWriteable;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr, PickFirst};
 use tracing::debug;
@@ -16,7 +15,7 @@ use crate::{convert_to, to_feet, to_knots, Cat21, TodCalculated};
 
 /// Our input structure from the json file coming out of the main ASD site
 ///
-/// Data can be obtained either in CSV or JSON formats, we prefer the latter.
+/// Data can be obtained in CSV or JSON formats, we prefer the former for size-related reasons.
 ///
 /// NOTE: Some fields are String and not the actual type (f32 for example) because there
 /// are apparently stored as DECIMAL in their database and not as FLOAT.  There are then
@@ -27,17 +26,15 @@ use crate::{convert_to, to_feet, to_knots, Cat21, TodCalculated};
 /// `i64` is not supported by InfluxDB as it is.
 ///
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, InfluxDbWriteable, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
     #[serde_as(as = "PickFirst<(_, DisplayFromStr)>")]
     pub time: DateTime<Utc>,
     /// Each record is part of a drone journey with a specific ID
-    #[influxdb(tag)]
     pub journey: u32,
     /// Identifier for the drone
-    #[influxdb(tag)]
     pub ident: String,
     /// Model of the drone
     pub model: Option<String>,

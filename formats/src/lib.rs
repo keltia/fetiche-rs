@@ -14,7 +14,7 @@ use std::io::Read;
 use csv::{Reader, WriterBuilder};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use strum::{EnumString, EnumVariantNames};
+use strum::EnumString;
 use tabled::{builder::Builder, settings::Style};
 use tracing::{debug, trace};
 
@@ -75,7 +75,7 @@ pub struct FormatFile {
 
 /// WWe distinguish between the site-specific data formats and general ADS-B
 ///
-#[derive(Clone, Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
+#[derive(Clone, Debug, Deserialize, strum::Display, EnumString, strum::VariantNames)]
 #[strum(serialize_all = "lowercase")]
 pub enum DataType {
     /// ADS-B data

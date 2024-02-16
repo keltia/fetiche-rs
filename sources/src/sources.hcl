@@ -20,7 +20,7 @@ site "asd" {
   base_url = "https://eur.airspacedrone.com/api"
   auth     = "token"
   routes   = {
-    get = "/journeys/filteredlocations/json"
+    get = "/journeys/filteredlocations"
   }
 }
 

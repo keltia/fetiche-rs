@@ -34,7 +34,6 @@ use strum::EnumString;
 use tracing::{debug, event, info, trace, warn, Level};
 
 pub use config::*;
-pub use database::*;
 pub use fetiche_formats::Format;
 use fetiche_formats::Write;
 pub use fetiche_sources::{makepath, Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
@@ -45,7 +44,6 @@ pub use storage::*;
 pub use task::*;
 
 mod config;
-mod database;
 mod job;
 mod parse;
 mod state;

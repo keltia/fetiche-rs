@@ -1,6 +1,6 @@
 use crate::{AUTHORS, NAME, VERSION};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
-use strum::{EnumString, EnumVariantNames};
+use strum::{strum::VariantNames, EnumString};
 
 #[derive(Parser)]
 #[command(disable_version_flag = true)]
@@ -39,7 +39,7 @@ pub struct Opts {
     pub name: Option<String>,
 }
 
-#[derive(Clone, Debug, Default, strum::Display, EnumString, EnumVariantNames, PartialEq)]
+#[derive(Clone, Debug, Default, strum::Display, EnumString, strum::VariantNames, PartialEq)]
 #[strum(serialize_all = "lowercase")]
 pub enum Otype {
     Csv,
