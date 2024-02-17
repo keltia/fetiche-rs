@@ -36,7 +36,7 @@ use fetiche_formats::Format;
 
 use crate::filter::Filter;
 use crate::site::Site;
-use crate::{http_post, http_post_auth, Auth, Capability, Fetchable, Sources};
+use crate::{http_post, Auth, Capability, Fetchable, Sources};
 
 /// Default token
 const DEF_TOKEN: &str = "asd_default_token";
