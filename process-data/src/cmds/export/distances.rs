@@ -91,7 +91,7 @@ COPY (
     CAST(time AS DATE) >= CAST(? AS DATE) AND
     CAST(time AS DATE) < date_add(CAST(? AS DATE), INTERVAL 1 DAY)
     ORDER BY time
-) TO '{}' WITH (FORMAT 'parquet', COMPRESSION 'zstd' true, ROW_GROUP_SIZE 1048576);
+) TO '{}' WITH (FORMAT 'parquet', COMPRESSION 'zstd', ROW_GROUP_SIZE 1048576);
         "##,
         fname
     );
