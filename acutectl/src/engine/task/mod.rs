@@ -13,7 +13,6 @@ pub use common::*;
 pub use convert::*;
 pub use fetch::*;
 pub use read::*;
-pub use record::*;
 pub use save::*;
 pub use store::*;
 pub use stream::*;
@@ -25,7 +24,6 @@ mod common;
 mod convert;
 mod fetch;
 mod read;
-mod record;
 mod save;
 mod store;
 mod stream;
@@ -46,8 +44,6 @@ pub enum Cmds {
     Nothing,
     /// Read a single file
     Read,
-    /// Save into a database
-    Record,
     /// Save a single dataset
     Save,
     /// Store datasets into a organised directory
