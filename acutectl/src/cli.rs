@@ -41,7 +41,7 @@ use clap_complete::shells::Shell;
 use eyre::Result;
 use tracing::{info, trace};
 
-use fetiche_formats::{Format, Write};
+use fetiche_formats::{Container, Format};
 
 use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
 
@@ -131,7 +131,7 @@ pub struct FetchOpts {
     pub into: Option<Format>,
     /// Output format (if needed, like for parquet)
     #[clap(long, value_parser)]
-    pub write: Option<Write>,
+    pub write: Option<Container>,
     /// Source name -- (see "list sources")
     pub site: String,
 }

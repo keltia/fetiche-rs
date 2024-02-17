@@ -7,7 +7,7 @@ use chrono::{DateTime, Datelike, Days, TimeZone, Utc};
 use eyre::{eyre, Result};
 use tracing::{info, trace};
 
-use fetiche_formats::{Format, Write};
+use fetiche_formats::{Container, Format};
 use fetiche_sources::{Filter, Flow, Site};
 
 use crate::{Convert, Engine, Fetch, FetchOpts, Save, Tee};
@@ -73,17 +73,17 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
         if fopts.output.is_none() {
             return Err(eyre!("you must specify -o/--output"));
         }
-        if *write != Write::Parquet {
+        if *write != Container::Parquet {
             return Err(eyre!("Only parquet supported"));
         }
 
         // Handle input format as the currently defined output one
         //
-        Write::Parquet
+        Container::Parquet
     } else {
         trace!("No specific write format.");
 
-        Write::Raw
+        Container::Raw
     };
 
     // Are we writing to stdout?
