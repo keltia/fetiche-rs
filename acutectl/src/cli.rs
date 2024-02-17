@@ -87,8 +87,6 @@ pub enum SubCommand {
     Convert(ConvertOpts),
     /// Fetch data from specified site
     Fetch(FetchOpts),
-    /// Import into InfluxDB (WIP)
-    Import(ImportOpts),
     /// List information about formats and sources
     List(ListOpts),
     /// Stream from a source
@@ -138,46 +136,6 @@ pub struct FetchOpts {
     pub write: Option<Write>,
     /// Source name -- (see "list sources")
     pub site: String,
-}
-
-// ------
-
-/// This contain only the `import` sub-commands.
-///
-#[derive(Debug, Parser)]
-pub struct ImportOpts {
-    /// Sub-commands
-    #[clap(subcommand)]
-    pub subcmd: ImportSubCommand,
-}
-
-// ------
-
-/// All `import` sub-commands:
-///
-/// `import file {-F format] path`
-/// `import site [-B date] [-E date] [--today] site`
-///
-#[derive(Debug, Parser)]
-pub enum ImportSubCommand {
-    /// Import from file
-    ImportFile(ImportFileOpts),
-    /// Import from site, using options as fetch
-    ImportSite(FetchOpts),
-}
-
-#[derive(Debug, Parser)]
-pub struct ImportFileOpts {
-    /// Database to send the data into
-    #[clap(short = 'd', long)]
-    pub db: String,
-    /// URL to connect to (see `config.hcl`)
-    pub url: Option<String>,
-    /// Format must be specified if looking at a file.
-    #[clap(short = 'F', long, default_value = "csv", value_parser)]
-    pub format: Option<FileInput>,
-    /// File name (json/csv/parquet expected)
-    pub file: PathBuf,
 }
 
 // ------
@@ -315,42 +273,6 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
             trace!("convert");
 
             convert_from_to(engine, copts)?;
-        }
-
-        // Handle `import site`  and `import file`
-        // FIXME:
-        //
-        SubCommand::Import(opts) => {
-            trace!("import");
-
-            match &opts.subcmd {
-                ImportSubCommand::ImportSite(fopts) => {
-                    trace!("drone import site");
-
-                    let srcs = &engine.sources();
-                    let site = match Site::load(&fopts.site, srcs)? {
-                        Flow::Fetchable(s) => s,
-                        _ => return Err(eyre!("this site is not fetchable")),
-                    };
-                    let fmt = site.format();
-
-                    // FIXME
-                    let data: Vec<u8> = vec![];
-
-                    fetch_from_site(engine, fopts)?;
-
-                    //import_data(&cfg, &data, fmt)?;
-                }
-                ImportSubCommand::ImportFile(if_opts) => {
-                    trace!("db import file");
-
-                    let db = &if_opts.db;
-                    let data = fs::read_to_string(&if_opts.file)?;
-                    let fmt = Format::from_str(&if_opts.format.unwrap().to_string())?;
-
-                    //import_data(&srcs, &data, fmt)?;
-                }
-            }
         }
 
         // Standalone completion generation
