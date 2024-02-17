@@ -28,7 +28,7 @@ serde_arrow = { version = "0.9.1", features = ["arrow2-0-17"] }
 serde_json = "1.0"
 serde_repr = "0.1"
 serde_with = { version = "3", features = ["base64", "chrono_0_4", "json", "hex"] }
-strum = { version = "0", features = ["derive"] }
+strum = { version = "0.26", features = ["derive"] }
 tabled = "0.15"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
