@@ -123,7 +123,7 @@ pub enum Format {
     Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, strum::Display, EnumString, Serialize,
 )]
 #[strum(serialize_all = "PascalCase", ascii_case_insensitive)]
-pub enum Write {
+pub enum Container {
     /// Annotated CSV with embedded schema like in InfluxDB
     ACSV,
     /// Apache Avro
@@ -302,7 +302,7 @@ impl Format {
     }
 }
 
-impl Write {
+impl Container {
     /// List all supported container formats into a string using `tabled`.
     ///
     pub fn list() -> Result<String> {
