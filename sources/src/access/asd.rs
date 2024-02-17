@@ -27,9 +27,8 @@ use eyre::{eyre, Result};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use snafu::prelude::*;
-use strum::EnumString;
+use strum::{EnumString, VariantNames};
 use tap::Tap;
 use tracing::{debug, error, trace, warn};
 
@@ -44,7 +43,7 @@ const DEF_TOKEN: &str = "asd_default_token";
 
 /// Different types of source
 ///
-#[derive(Clone, Debug, Deserialize, Serialize, EnumString, strum::Display, strum::VariantNames)]
+#[derive(Clone, Debug, Deserialize, Serialize, EnumString, strum::Display, VariantNames)]
 #[strum(serialize_all = "lowercase")]
 enum Source {
     /// ADS-B

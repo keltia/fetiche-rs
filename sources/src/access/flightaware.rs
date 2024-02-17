@@ -28,6 +28,7 @@ use native_tls::{TlsConnector, TlsStream};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
+use strum::VariantNames;
 use tracing::trace;
 
 use fetiche_formats::Format;
@@ -79,7 +80,7 @@ struct Param {
     pub events: Option<Vec<Events>>,
 }
 
-#[derive(Debug, Deserialize, strum::Display, EnumString, strum::VariantNames, Serialize)]
+#[derive(Debug, Deserialize, strum::Display, EnumString, VariantNames, Serialize)]
 #[strum(serialize_all = "lowercase")]
 pub enum Compress {
     Compress,
@@ -91,9 +92,7 @@ pub enum Compress {
 ///
 /// see `formats/src/flightaware/mod.rs` for details
 ///
-#[derive(
-    Debug, Default, Deserialize, strum::Display, EnumString, strum::VariantNames, Serialize,
-)]
+#[derive(Debug, Default, Deserialize, strum::Display, EnumString, VariantNames, Serialize)]
 #[strum(serialize_all = "snake_case")]
 pub enum Events {
     // Airborne
