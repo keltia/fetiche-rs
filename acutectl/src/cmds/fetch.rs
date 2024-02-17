@@ -42,10 +42,6 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     let mut job = engine.create_job("fetch_from_site");
     job.add(Box::new(task));
 
-    // By default we output raw files
-    //
-    let mut output = Write::default();
-
     // Do we want a copy of the raw data (often before converting it)
     //
     if let Some(tee) = &fopts.tee {
