@@ -30,22 +30,20 @@
 //! [InfluxDB]: https://www.influxdata.com/
 //!
 
+use std::io;
 use std::path::PathBuf;
-use std::str::FromStr;
-use std::{fs, io};
 
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, CommandFactory, Parser, ValueEnum,
 };
 use clap_complete::generate;
 use clap_complete::shells::Shell;
-use eyre::{eyre, Result};
+use eyre::Result;
 use tracing::{info, trace};
 
 use fetiche_formats::{Format, Write};
-use fetiche_sources::{Flow, Site};
 
-use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine, FileInput};
+use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
 
 /// CLI options
 #[derive(Parser)]
