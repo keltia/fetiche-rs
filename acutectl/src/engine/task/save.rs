@@ -4,25 +4,23 @@
 //!
 
 use std::fs;
-use std::fs::File;
-use std::io::BufReader;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
-use arrow2;
-use arrow2::array::Array;
-use arrow2::chunk::Chunk;
-use arrow2::datatypes::{Field, Schema};
-use arrow2::io::parquet::write::{
-    transverse, CompressionOptions, Encoding, FileWriter, RowGroupIterator, Version, WriteOptions,
-    ZstdLevel,
+use datafusion::dataframe::DataFrameWriteOptions;
+use datafusion::parquet::{
+    basic::{Compression, Encoding, ZstdLevel},
+    file::properties::{EnabledStatistics, WriterProperties},
 };
-use eyre::Result;
-use serde_arrow::schema::{SchemaLike, TracingOptions};
-use serde_json::Deserializer;
-use tracing::{debug, info, trace};
+use datafusion::prelude::{CsvReadOptions, SessionContext};
 
-use fetiche_formats::{Asd, Format, Write};
+use eyre::{eyre, Result};
+use tempfile::Builder;
+use tokio::runtime::Runtime;
+use tracing::{info, trace};
+
+use fetiche_formats::{Container, Format};
 use fetiche_macros::RunnableDerive;
 
 use crate::{Runnable, IO};
@@ -40,7 +38,7 @@ pub struct Save {
     /// Input file format
     pub inp: Format,
     /// Output file format
-    pub out: Write,
+    pub out: Container,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
 }
@@ -49,7 +47,7 @@ impl Save {
     /// Initialise our environment
     ///
     #[tracing::instrument]
-    pub fn new(name: &str, inp: Format, out: Write) -> Self {
+    pub fn new(name: &str, inp: Format, out: Container) -> Self {
         trace!("New Save {}", name);
         Save {
             io: IO::Consumer,
@@ -86,90 +84,59 @@ impl Save {
             match self.out {
                 // There we handle the combination of input & output formats
                 //
-                Write::Parquet => match self.inp {
+                Container::Parquet => match self.inp {
                     Format::Asd => {
-                        trace!("from asd to parquet");
+                        trace!("from asd(csv) to parquet");
 
-                        let topts = TracingOptions::default()
-                            .guess_dates(true)
-                            .allow_null_fields(true);
+                        // Write into temporary file.
+                        //
+                        let mut tmpf = Builder::new().suffix(".csv").tempfile()?;
+                        let _ = tmpf.write(data.as_bytes())?;
 
-                        debug!("data={:?}", data);
-                        let reader = BufReader::new(data.as_bytes());
-                        let json = Deserializer::from_reader(reader).into_iter::<Asd>();
+                        let fname = tmpf.path().to_string_lossy().to_string();
+                        info!("fname={}, p={}", fname, p);
 
-                        let data: Vec<_> = json
-                            .map(|e| e.unwrap().fix_tm().unwrap())
-                            .collect::<Vec<_>>();
+                        // Create tokio runtime
+                        //
+                        let rt = Runtime::new()?;
 
-                        debug!("data={:?}", data);
-                        let data = data.as_slice();
-                        let fields = Vec::<Field>::from_samples(&data, topts)?;
-                        trace!("fields={:?}", fields);
-
-                        let schema = Schema::from(fields.clone());
-                        debug!("schema={:?}", schema);
-
-                        let arrays = serde_arrow::to_arrow2(&fields, &data)?;
-                        trace!("{} records", arrays.len());
-
-                        let _ = write_parquet(schema, arrays, p);
+                        rt.block_on(async {
+                            let _ = write_parquet(&fname, &p).await.unwrap();
+                        });
                     }
-                    _ => unimplemented!(),
+                    _ => return Err(eyre!("Error: only Asd is supported as input.")),
                 },
                 _ => {
                     trace!("raw data");
                     fs::write(PathBuf::from(p), &data)?
                 }
-            };
+            }
         }
         Ok(())
     }
 }
 
-/// Write output from `Asd`  into proper `Parquet` file.
+/// Write parquet through datafusion.
 ///
-#[tracing::instrument(skip(schema, data))]
-fn write_parquet(schema: Schema, data: Vec<Box<dyn Array>>, base: &str) -> Result<()> {
-    let options = WriteOptions {
-        write_statistics: true,
-        compression: CompressionOptions::Zstd(Some(ZstdLevel::try_new(8)?)),
-        version: Version::V2,
-        data_pagesize_limit: None,
-    };
+#[tracing::instrument]
+async fn write_parquet(from: &str, to: &str) -> Result<()> {
+    let ctx = SessionContext::new();
+    let df = ctx.read_csv(from, CsvReadOptions::default()).await?;
+    let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
 
-    debug!("data in={:?}", data);
-
-    // Prepare output
-    //
-    let file = File::create(base)?;
-
-    let iter = vec![Ok(Chunk::new(data))];
-    debug!("iter={:?}", iter);
-
-    let encodings = schema
-        .fields
-        .iter()
-        .map(|f| transverse(&f.data_type, |_| Encoding::Plain))
-        .collect();
-
-    let row_groups = RowGroupIterator::try_new(iter.into_iter(), &schema, options, encodings)?;
-    let mut writer = FileWriter::try_new(file, schema, options)?;
-
-    for group in row_groups {
-        writer.write(group?)?;
-    }
-
-    let size = writer.end(None)?;
-    trace!("{} bytes written.", size);
-
-    info!("Writing, done.");
+    let props = WriterProperties::builder()
+        .set_created_by("acutectl/save".to_string())
+        .set_encoding(Encoding::PLAIN)
+        .set_statistics_enabled(EnabledStatistics::Page)
+        .set_compression(Compression::ZSTD(ZstdLevel::try_new(8).unwrap()))
+        .build();
+    let _ = df.write_parquet(&to, dfopts, Some(props)).await?;
     Ok(())
 }
 
 impl Default for Save {
     fn default() -> Self {
-        Save::new("default", Format::None, Write::default())
+        Save::new("default", Format::None, Container::default())
     }
 }
 
@@ -179,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_write_new() {
-        let t = Save::new("foo", Format::None, Write::default());
+        let t = Save::new("foo", Format::None, Container::default());
 
         assert_eq!("foo", t.name);
         assert!(t.path.is_none());
@@ -187,7 +154,7 @@ mod tests {
 
     #[test]
     fn test_write_stdout() {
-        let mut t = Save::new("foo", Format::None, Write::default());
+        let mut t = Save::new("foo", Format::None, Container::default());
         t.path("/nonexistent");
 
         assert_eq!("foo", t.name);
@@ -196,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_write_file() {
-        let mut t = Save::new("foo", Format::None, Write::default());
+        let mut t = Save::new("foo", Format::None, Container::default());
         t.path("../Cargo.toml");
 
         assert_eq!("foo", t.name);
