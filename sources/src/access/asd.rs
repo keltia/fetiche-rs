@@ -30,6 +30,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use snafu::prelude::*;
 use strum::EnumString;
+use tap::Tap;
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
@@ -170,6 +171,17 @@ struct Payload {
     content: String,
 }
 
+/// ASD is very sensitive to the date format, needs milli-secs.
+///
+fn prepare_asd_data(data: Param) -> String {
+    let d_start = data.start_time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
+    let d_end = data.end_time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
+    format!(
+        "{{\"startTime\":\"{}\",\"endTime\":\"{}\",\"sources\":[\"as\",\"wi\"]}}",
+        d_start, d_end
+    )
+}
+
 impl Fetchable for Asd {
     fn name(&self) -> String {
         self.site.to_string()
@@ -276,16 +288,31 @@ impl Fetchable for Asd {
             },
         };
 
-        debug!("json={}", json!(&data));
+        let data = prepare_asd_data(data);
+        debug!("data={}", &data);
 
         // use token
         //
         let url = format!("{}{}", self.base_url, self.get);
         trace!("Fetching data through {}…", url);
 
-        let resp = http_post_auth!(self, url, token, &data)?;
+        // http_post_auth!() macro seems to be disturbing it.
+        //
+        let resp = self
+            .client
+            .clone()
+            .post(url)
+            .header(
+                "user-agent",
+                format!("{}/{}", crate_name!(), crate_version!()),
+            )
+            .header("content-type", "application/json")
+            .header("authorization", format!("Bearer {}", token))
+            .body(data)
+            .tap(|r| debug!("req={:?}", r))
+            .send()?;
 
-        debug!("{:?}", &resp);
+        debug!("raw resp={:?}", &resp);
 
         // Check status
         //
@@ -330,6 +357,7 @@ impl Fetchable for Asd {
 /// jq --compact-output '.[]' < today.json > lines.json
 /// ```
 ///
+#[cfg(feature = "json")]
 fn into_ndjson(resp: &str) -> Result<String> {
     let data: Vec<fetiche_formats::Asd> = serde_json::from_str(resp)?;
     let res = data

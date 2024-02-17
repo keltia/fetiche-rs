@@ -55,6 +55,7 @@ mini-moka = "0.10"
 native-tls = "0.2"
 percent-encoding = "2.2"
 signal-hook = "0.3"
+tap = "1"
 base64_light = "0.1"
 snafu = { version = "0.7", features = ["backtrace", "rust_1_61", "backtraces"] }
 
