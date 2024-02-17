@@ -55,3 +55,6 @@ thiserror = "1.0.56"
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
 
+[target.'cfg(unix)'.dependencies]
+pprof = { version = "0.13", features = ["criterion", "flamegraph"] }
+
