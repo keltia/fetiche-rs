@@ -1,30 +1,32 @@
 #! /usr/bin/env python3
 #
-# This is `opensky-history` in pure Python
-#
-# usage: fetch-opensky [-h] [-o OUTPUT] [-B BEGIN] [-E END] [-P] [--today] [--yesterday] file location
-#
-# Fetch OpenSky historical ADS-B data.
-#
-# positional arguments:
-#   file                  HCL file with station locations.
-#   location              Location like BRU or LUX.
-#
-# options:
-#   -h, --help            show this help message and exit
-#   -o OUTPUT, --output OUTPUT
-#                         Output file.
-#   -B BEGIN, --begin BEGIN
-#                         Start of time period.
-#   -E END, --end END     End of time period.
-#   -P, --parquet         Parquet output.
-#   --today               Only traffic for today.
-#   --yesterday           Only traffic for yesterday.
 
 # Outputs: CSV or Parquet
 # Deps:
 #   py-hcl
 #
+"""
+This is `opensky-history` in pure Python
+
+usage: fetch-opensky [-h] [-o OUTPUT] [-B BEGIN] [-E END] [-P] [--today] [--yesterday] file location
+
+Fetch OpenSky historical ADS-B data.
+
+positional arguments:
+   file                  HCL file with station locations.
+   location              Location like BRU or LUX.
+
+options:
+   -h, --help            show this help message and exit
+   -o OUTPUT, --output OUTPUT
+                         Output file.
+   -B BEGIN, --begin BEGIN
+                         Start of time period.
+   -E END, --end END     End of time period.
+   -P, --parquet         Parquet output.
+   --today               Only traffic for today.
+   --yesterday           Only traffic for yesterday.
+"""
 
 import argparse
 from datetime import datetime, timedelta
