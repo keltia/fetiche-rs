@@ -27,8 +27,7 @@ use datafusion::{
     },
 };
 use eyre::{eyre, Result};
-use inline_python::{python, Context};
-use tempfile::NamedTempFile;
+use tempfile::{Builder, NamedTempFile};
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
@@ -166,12 +165,15 @@ async fn main() -> Result<()> {
             data = df.to_csv()
     };
     let data = ctx.get::<String>("data");
-    let mut tmpf = NamedTempFile::new()?;
-    let _ = tmpf.write(data.as_bytes())?;
 
     // End of the Python part thanks $DEITY! (and @m_ou_se on Twitter)
     //
     dbg!(&data);
+
+    // Write into temporary file.
+    //
+    let mut tmpf = Builder::new().suffix(".csv").tempfile()?;
+    let _ = tmpf.write(data.as_bytes())?;
 
     let ctx = SessionContext::new();
     let fname = tmpf.path().to_string_lossy().to_string();
