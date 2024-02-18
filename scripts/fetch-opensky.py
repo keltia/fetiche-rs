@@ -2,6 +2,26 @@
 #
 # This is `opensky-history` in pure Python
 #
+# usage: fetch-opensky [-h] [-o OUTPUT] [-B BEGIN] [-E END] [-P] [--today] [--yesterday] file location
+#
+# Fetch OpenSky historical ADS-B data.
+#
+# positional arguments:
+#   file                  HCL file with station locations.
+#   location              Location like BRU or LUX.
+#
+# options:
+#   -h, --help            show this help message and exit
+#   -o OUTPUT, --output OUTPUT
+#                         Output file.
+#   -B BEGIN, --begin BEGIN
+#                         Start of time period.
+#   -E END, --end END     End of time period.
+#   -P, --parquet         Parquet output.
+#   --today               Only traffic for today.
+#   --yesterday           Only traffic for yesterday.
+
+# Outputs: CSV or Parquet
 # Deps:
 #   py-hcl
 #
@@ -61,14 +81,14 @@ parser = argparse.ArgumentParser(
     prog='fetch-opensky',
     description='Fetch OpenSky historical ADS-B data.')
 
-parser.add_argument('file')
-parser.add_argument('location')
-parser.add_argument('-o', '--output', type=str)
-parser.add_argument('-B', '--begin', type=str)
-parser.add_argument('-E', '--end', type=str)
-parser.add_argument('-P', '--parquet', action='store_true')
-parser.add_argument('--today', action='store_true')
-parser.add_argument('--yesterday', action='store_true')
+parser.add_argument('file', help='HCL file with station locations.')
+parser.add_argument('location', help='Location like BRU or LUX.')
+parser.add_argument('-o', '--output', type=str, help='Output file.')
+parser.add_argument('-B', '--begin', type=str, help='Start of time period.')
+parser.add_argument('-E', '--end', type=str, help='End of time period.')
+parser.add_argument('-P', '--parquet', action='store_true', help='Parquet output.')
+parser.add_argument('--today', action='store_true', help='Only traffic for today.')
+parser.add_argument('--yesterday', action='store_true', help='Only traffic for yesterday.')
 args = parser.parse_args()
 
 # What is now
