@@ -13,7 +13,25 @@ This utility uses DuckDB and the tables/SQL as explained in [GEO.md](../docs/GEO
 <summary>`process-data --help`</summary>
 
 ```text
-```
+Implement different processing of data.
+
+Usage: process-data [OPTIONS] <COMMAND>
+
+Commands:
+  acute       Display data about Acute sites, etc
+  distances   Distance-related calculations
+  export      Export results as CSV
+  cleanup     Remove macros and other stuff
+  setup       Prepare the database environment with some tables and macros
+  completion  Generation completion stuff for shells
+  version     List all package versions
+  help        Print this message or the help of the given subcommand(s)
+
+Options:
+  -c, --config <CONFIG>      Alternate Configuration file
+  -d, --database <DATABASE>  Database file to use
+  -h, --help                 Print help
+  ```
 
 </details>
 
@@ -30,12 +48,57 @@ For a given site, process data and calculate
 - Number of encounters below 1nm, between 1 and 3 nm
 - Save data about each encounter for both drone & airplane
 
+```text
+Distance-related calculations
+
+Usage: process-data distances [OPTIONS] <COMMAND>
+
+Commands:
+  home    2D/3D drone to operator distance
+  planes  drone to planes distance
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+  -o, --output <OUTPUT>  Output file (default is stdout)
+  -h, --help             Print help
+```
+
 ### Data selection
 
-- drones
+- sites, antennas, etc.
 
-```sql
+```text
+Display data about Acute sites, etc
 
+Usage: process-data acute [OPTIONS] --database <DATABASE> <COMMAND>
+
+Commands:
+  antennas       Display all antennas
+  installations  Fetch which antenna was on a site and when
+  sites          Display all sites
+  help           Print this message or the help of the given subcommand(s)
+
+Options:
+  -d, --database <DATABASE>  Database file to use
+  -o, --output <OUTPUT>      Output file (default is stdout)
+  -h, --help                 Print help
+```
+
+We export weekly statistics about drone traffic for each site we have an antenna.
+
+```text
+Export results as CSV
+
+Usage: process-data export [OPTIONS] <COMMAND>
+
+Commands:
+  distances  Export the distance calculations
+  drones     Export daily or weekly stats for drones
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+  -d, --database <DATABASE>  Database file to use
+  -h, --help                 Print help
 ```
 
 ## Trajectory categorisation
