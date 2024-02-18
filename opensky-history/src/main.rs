@@ -27,6 +27,7 @@ use datafusion::{
     },
 };
 use eyre::{eyre, Result};
+use inline_python::{python, Context};
 use tempfile::{Builder, NamedTempFile};
 use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
