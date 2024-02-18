@@ -12,16 +12,20 @@
 //! [Impala Shell]: https://opensky-network.org/data/impala
 //!
 
-use datafusion::prelude::*;
 use std::collections::BTreeMap;
 use std::io::Write;
 
 use chrono::prelude::*;
 use clap::{crate_authors, crate_version, Parser};
-use datafusion::common::arrow::csv::WriterBuilder as CsvOpts;
-use datafusion::dataframe::DataFrameWriteOptions;
-use datafusion::parquet::basic::{Compression, Encoding, ZstdLevel};
-use datafusion::parquet::file::properties::{EnabledStatistics, WriterProperties};
+use datafusion::prelude::*;
+use datafusion::{
+    common::arrow::csv::WriterBuilder as CsvOpts,
+    dataframe::DataFrameWriteOptions,
+    parquet::{
+        basic::{Compression, Encoding, ZstdLevel},
+        file::properties::{EnabledStatistics, WriterProperties},
+    },
+};
 use eyre::{eyre, Result};
 use inline_python::{python, Context};
 use tempfile::NamedTempFile;
