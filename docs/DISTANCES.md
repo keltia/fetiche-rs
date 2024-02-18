@@ -66,13 +66,7 @@ CREATE TABLE encounters
 ```
 
 The `en_id` field is a unique ID generated from the date and the sequence number with the `YYYYMMDD_(journey)_(id)`
-format, and we use a macro for this:
-
-```sql
-CREATE
-MACRO encounter(tm, journey, id) AS
-  printf("%04d%02d%02d_%d_%d", year(CAST(tm AS DATE)), month(CAST(tm AS DATE)), day(CAST(tm AS DATE)), journey, id);
-```
+format, and we use a macro for this, see below.
 
 We keep a table for statistics, updated each time we do a calculation for any given day.
 
@@ -96,8 +90,10 @@ CREATE TABLE daily_stats
 ```sql
 CREATE
 MACRO dist_2d(px, py, dx, dy) AS
-  ST_Distance(ST_Point(px, py), ST_Point(dx, dy));
+  ST_Distance_Spheroid(ST_Point(px, py), ST_Point(dx, dy));
 ```
+
+> NOTE: ST_Distance_Spheroid() is undocumented, it was merged in
 
 3D (classical Euclidean)
 
@@ -121,6 +117,14 @@ Conversion from deg to meters
 CREATE
 MACRO deg_to_m(deg) AS
   deg * 111111.11;
+```
+
+Generate a unique ID for a given encounter
+
+```sql
+CREATE
+MACRO encounter(tm, journey, id) AS
+  printf('%04d%02d%02d_%d_%d', datepart('year', CAST(tm AS DATE)), datepart('month', CAST(tm AS DATE)), datepart('day', CAST(tm AS DATE)), journey, id);
 ```
 
 ## List of calculations
