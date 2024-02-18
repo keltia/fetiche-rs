@@ -29,6 +29,13 @@ Preliminary list of possible modules.
 - CLI control interface to daemon/tasks
 - API ?
 
+The current design has its pros and cons. It has the disadvantage of requiring modifying several crates when something
+new like a site is introduced. We need to add code in `sources`  to implement operations like `fetch`, `formats`  to
+implement encoding/decoding and conversion, etc. and teach `acutectl` and possibly others about these.
+
+We may go for "all batteries included" crates where each one implement the various traits (let's call it module or
+plugin) but that's longer term work.
+
 ### Sources Configuration
 
 Starting with a [HCL] configuration file like the one we have in the `sources` crate, we can either define a new one or
@@ -91,7 +98,8 @@ language, a symbol table, etc. In the latter case, like in `format-specs`.
 
 Either we have a file per task, or we define everything in a single file and use naming to select one or the other.
 
-There are several possibilities to define tasks, filters and such.  Either we have our own language, but it could get complicated depending on how far we want to go, or we embed a language like Typescript or Lua.
+There are several possibilities to define tasks, filters and such. Either we have our own language, but it could get
+complicated depending on how far we want to go, or we embed a language like Typescript or Lua.
 
 ### Homegrown
 
