@@ -45,7 +45,7 @@ tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
-datafusion = { version = "35.0", features = ["simd"] }
+datafusion = { version = "35.0", features = ["zstd"] }
 inline-python = "0.12"
 seek_bufread = "1.2"
 seekable_reader = "0.1"

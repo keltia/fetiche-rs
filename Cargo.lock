@@ -4884,14 +4884,16 @@ version = "0.2.0"
 dependencies = [
  "chrono",
  "clap",
- "csv",
- "datafusion 34.0.0",
+ "datafusion 35.0.0",
  "dateparser",
  "eyre",
  "fetiche-formats",
  "hcl-rs",
  "home",
  "inline-python",
+ "opentelemetry",
+ "opentelemetry-jaeger",
+ "opentelemetry_sdk",
  "progress",
  "pyo3",
  "rstest",
@@ -4905,7 +4907,9 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-log",
+ "tracing-opentelemetry",
  "tracing-subscriber",
+ "tracing-tree",
 ]
 
 [[package]]
@@ -5579,7 +5583,6 @@ dependencies = [
  "hcl-rs",
  "home",
  "log",
- "nom",
  "opentelemetry",
  "opentelemetry-jaeger",
  "opentelemetry_sdk",
@@ -6172,9 +6175,9 @@ dependencies = [
 
 [[package]]
 name = "serde_arrow"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "780fed1f6221613ad2f65f0e05a0eb99f0e48ab730b925a76675abf72b6de1b2"
+checksum = "99e774f158723ad8fe05b884fd2f89355934599a11817edd0dc854cb1ef0e42a"
 dependencies = [
  "arrow2 0.17.4",
  "bytemuck",
