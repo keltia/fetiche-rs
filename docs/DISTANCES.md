@@ -93,7 +93,8 @@ MACRO dist_2d(px, py, dx, dy) AS
   ST_Distance_Spheroid(ST_Point(px, py), ST_Point(dx, dy));
 ```
 
-> NOTE: ST_Distance_Spheroid() is undocumented, it was merged in
+> NOTE: ST_Distance_Spheroid() is undocumented, it was merged
+> in [this PR](https://github.com/duckdb/duckdb_spatial/pull/74).
 
 3D (classical Euclidean)
 
