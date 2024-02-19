@@ -58,6 +58,7 @@ thiserror = "1.0.56"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
+rstest.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 pprof = { version = "0.13", features = ["criterion", "flamegraph"] }
