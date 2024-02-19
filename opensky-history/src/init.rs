@@ -1,4 +1,5 @@
 use eyre::Result;
+use tracing::trace;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
@@ -36,7 +37,6 @@ pub(crate) fn init_runtime(name: &str) -> Result<()> {
         .with(tree)
         .with(telemetry)
         .init();
-    use tracing::trace;
     trace!("Logging initialised.");
 
     Ok(())
