@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use geo::point;
 use geo::prelude::*;
 
@@ -58,7 +58,7 @@ fn self_haversines(c: &mut Criterion) {
 
     c.bench_function("self::haversines", move |b| {
         b.iter(|| {
-            d = point1.haversine_distance(&point2);
+            black_box(point1.haversine_distance(&point2));
         })
     });
     let _ = d;
@@ -71,7 +71,7 @@ fn self_cosinuses(c: &mut Criterion) {
 
     c.bench_function("self::sincosines", |b| {
         b.iter(|| {
-            d = point1.spherical_law_of_cosines_distance(&point2);
+            black_box(point1.spherical_law_of_cosines_distance(&point2));
         })
     });
     let _ = d;
@@ -87,7 +87,7 @@ fn geo_geodesic(c: &mut Criterion) {
 
     c.bench_function("geo::geodesic", |b| {
         b.iter(|| {
-            d = p1.geodesic_distance(&p2);
+            black_box(p1.geodesic_distance(&p2));
         })
     });
     let _ = d;
@@ -103,7 +103,7 @@ fn geo_haversines(c: &mut Criterion) {
 
     c.bench_function("geo::haversines", |b| {
         b.iter(|| {
-            d = p1.haversine_distance(&p2);
+            black_box(p1.haversine_distance(&p2));
         })
     });
     let _ = d;
@@ -119,7 +119,7 @@ fn geo_vincenty(c: &mut Criterion) {
 
     c.bench_function("geo::vincenty", |b| {
         b.iter(|| {
-            d = p1.vincenty_distance(&p2).unwrap();
+            black_box(p1.vincenty_distance(&p2).unwrap());
         })
     });
     let _ = d;
