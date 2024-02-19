@@ -10,9 +10,9 @@ use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use clap::Parser;
 use duckdb::{params, Connection};
 use eyre::Result;
-use tracing::{debug, info, trace};
+use tracing::{info, trace};
 
-use crate::cmds::{Status, ONE_DEG};
+use crate::cmds::{Stats, Status, ONE_DEG};
 use crate::config::Context;
 use crate::helpers::{load_locations, Location};
 
@@ -30,42 +30,6 @@ pub struct PlanesOpts {
     /// Proximity in Meters.
     #[clap(short = 'p', long, default_value = "5500.")]
     pub separation: f64,
-}
-
-// -----
-
-/// Every time we run a calculation for any given day, we store the statistics for the run.
-///
-#[derive(Debug)]
-struct Stats {
-    /// Specific date
-    pub day: DateTime<Utc>,
-    /// Number of plane points
-    pub planes: usize,
-    /// Number of drone points
-    pub drones: usize,
-    /// Number of potential encounters
-    pub potential: usize,
-    /// Effective number of encounters after calculations
-    pub encounters: usize,
-    /// Distance used for calculations
-    pub distance: f64,
-    /// Proximity used for calculations
-    pub proximity: f64,
-}
-
-impl Default for Stats {
-    fn default() -> Self {
-        Self {
-            day: chrono::DateTime::UNIX_EPOCH,
-            planes: 0,
-            drones: 0,
-            potential: 0,
-            encounters: 0,
-            distance: 0.,
-            proximity: 0.,
-        }
-    }
 }
 
 // -----
@@ -368,7 +332,7 @@ WHERE en_id IS NULL OR site IS NULL
 }
 
 #[tracing::instrument(skip(ctx))]
-pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<usize> {
+pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     let dbh = ctx.db();
 
     // Load locations
@@ -383,7 +347,7 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<usize> {
     // Move ourselves to the datalake.
     //
     let datalake = ctx.config.get("datalake").unwrap();
-    debug!("datalake is there: {}", datalake);
+    info!("Datalake: {}", datalake);
 
     env::set_current_dir(datalake)?;
 
@@ -394,15 +358,6 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<usize> {
         return Err(Status::ErrUnknownSite(name).into());
     } else {
         list.get(&name).unwrap().to_owned()
-    };
-
-    // Create our stat struct
-    //
-    let mut stats = Stats {
-        day: tm,
-        distance: opts.distance,
-        proximity: opts.separation,
-        ..Default::default()
     };
 
     // Store our context
@@ -417,28 +372,25 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<usize> {
 
     // Create table `today` with all identified plane points with the specified range
     //
-    let count = work.select_planes(&dbh)?;
-    stats.planes = count;
+    let c_planes = work.select_planes(&dbh)?;
 
-    if count == 0 {
+    if c_planes == 0 {
         return Err(Status::NoPlanesFound(name).into());
     }
 
     // Create table `candidates` with all designated drone points
     //
-    let count = work.select_drones(&dbh)?;
-    stats.drones = count;
+    let c_drones = work.select_drones(&dbh)?;
 
-    if count == 0 {
+    if c_drones == 0 {
         return Err(Status::NoDronesFound(name).into());
     }
 
     // Create table `today_close` with all designated drone points and airplanes in proximity
     //
-    let count = work.find_close(&dbh)?;
-    stats.potential = count;
+    let c_potential = work.find_close(&dbh)?;
 
-    if count == 0 {
+    if c_potential == 0 {
         return Err(Status::NoEncounters(name).into());
     }
 
@@ -448,15 +400,24 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<usize> {
 
     // Now we have the distance calculated.
     //
-    let count = work.save_encounters(&dbh)?;
-    stats.encounters = count;
+    let c_encounters = work.save_encounters(&dbh)?;
 
-    if count == 0 {
+    if c_encounters == 0 {
         return Err(Status::NoEncounters(name).into());
     }
 
-    println!("Stats:\n{:?}", stats);
+    // Create our stat struct
+    //
+    let stats = Stats::Planes {
+        day: tm,
+        distance: opts.distance,
+        proximity: opts.separation,
+        planes: c_planes,
+        drones: c_drones,
+        potential: c_potential,
+        encounters: c_encounters,
+    };
 
     info!("Done.");
-    Ok(count)
+    Ok(stats)
 }

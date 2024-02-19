@@ -1,13 +1,14 @@
 //! This is the main driver module for all the different commands.
 //!
 
+use thiserror::Error;
+use tracing::info;
+
 pub use acute::*;
 pub use distances::*;
 pub use export::*;
 pub use setup::*;
-
-use thiserror::Error;
-use tracing::info;
+pub use stats::*;
 
 use crate::cli::{Opts, SubCommand};
 use crate::config::Context;
@@ -16,6 +17,7 @@ mod acute;
 mod distances;
 mod export;
 mod setup;
+mod stats;
 
 /// One degree in *kilometers*
 const ONE_DEG: f64 = 40_000. / 360.;
@@ -36,17 +38,23 @@ pub enum Status {
     ErrNoDatalake(String),
 }
 
+// -----
+
 #[tracing::instrument(skip(ctx))]
 pub fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
     match &opts.subcmd {
         SubCommand::Distances(dopts) => match &dopts.subcmd {
             DistSubcommand::Home => {
                 println!("Add 2D and 3D distance between drones and operator.");
-                home_calculation(&ctx)?;
+
+                let stats = home_calculation(&ctx)?;
+                println!("Stats:\n{:?}", stats);
             }
             DistSubcommand::Planes(popts) => {
                 println!("Calculate 3D distance between drones and surrounding planes.");
-                planes_calculation(&ctx, popts)?;
+
+                let stats = planes_calculation(&ctx, popts)?;
+                println!("Stats:\n{:?}", stats);
             }
         },
         SubCommand::Export(eopts) => match &eopts.subcmd {
