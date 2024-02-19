@@ -28,16 +28,16 @@ use datafusion::{
 };
 use eyre::{eyre, Result};
 use inline_python::{python, Context};
-use tempfile::{Builder, NamedTempFile};
+use tempfile::Builder;
 use tracing::{info, trace};
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
 
 use crate::cli::{banner, version, Opts, Otype};
+use crate::init::init_runtime;
 use crate::location::{list_locations, load_locations, Location, BB};
 use crate::segment::extract_segments;
 
 mod cli;
+mod init;
 mod location;
 mod segment;
 
@@ -57,15 +57,7 @@ async fn main() -> Result<()> {
 
     // Initialise logging.
     //
-    let fmt = fmt::layer().with_target(false).compact();
-
-    // Load filters from environment
-    //
-    let filter = EnvFilter::from_default_env();
-
-    // Combine filter & specific format
-    //
-    tracing_subscriber::registry().with(filter).with(fmt).init();
+    init_runtime(NAME)?;
 
     // Banner
     //
