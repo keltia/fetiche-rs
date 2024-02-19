@@ -1,3 +1,27 @@
+//! Configuration module
+//!
+//! This is where most of the initialisation code lies.  We start the logging process, open
+//! the database, etc.
+//!
+
+use std::collections::HashMap;
+use std::sync::Arc;
+
+#[cfg(feature = "duckdb")]
+use duckdb::Connection;
+use eyre::Result;
+use tracing::{info, trace};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
+use tracing_tree::HierarchicalLayer;
+
+pub use io::*;
+
+use crate::cli::Opts;
+use crate::cmds::Status;
+use crate::NAME;
+
 mod io;
 
 pub use io::*;
