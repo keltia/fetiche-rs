@@ -17,6 +17,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 [badges]
 maintenance = { status = "actively-developed" }
 
+[features]
+default = ["duckdb"]
+duckdb = []
+
 [[bench]]
 name = "distances"
 harness = false
