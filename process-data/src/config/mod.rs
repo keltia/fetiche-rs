@@ -24,25 +24,6 @@ use crate::NAME;
 
 mod io;
 
-pub use io::*;
-use std::collections::HashMap;
-
-use duckdb::Connection;
-use std::fs;
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use crate::cli::Opts;
-use crate::cmds::Status;
-
-use crate::NAME;
-use eyre::Result;
-use tracing::{info, trace};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
-use tracing_tree::HierarchicalLayer;
-
 /// This holds our context, meaning common stuff
 ///
 #[derive(Debug)]
@@ -58,6 +39,7 @@ impl Context {
         self.dbh.clone()
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn finish(&self) -> Result<()> {
         let dbh = self.dbh.as_ref().try_clone()?;
         let _ = dbh.close();
@@ -126,6 +108,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     let datalake = cfg.datalake.unwrap();
 
     info!("Connecting to {}", name);
+    #[cfg(feature = "duckdb")]
     let dbh = Connection::open_with_flags(
         name.as_str(),
         duckdb::Config::default()
@@ -149,6 +132,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
 /// Finish everything.
 ///
+#[tracing::instrument]
 pub fn finish_runtime() -> Result<()> {
     opentelemetry::global::shutdown_tracer_provider();
     Ok(())
