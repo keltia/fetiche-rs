@@ -124,7 +124,7 @@ async fn main() -> Result<()> {
 
     // If the --icao option is specified, add the parameter to the query string.
     //
-    let icao = if opts.icao.is_some() {
+    let _icao = if opts.icao.is_some() {
         format!(" AND CALLSIGN = '{}'", opts.icao.unwrap())
     } else {
         String::new()
