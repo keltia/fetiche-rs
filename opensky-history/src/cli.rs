@@ -1,6 +1,6 @@
 use crate::{AUTHORS, NAME, VERSION};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
-use strum::{strum::VariantNames, EnumString};
+use strum::EnumString;
 
 #[derive(Parser)]
 #[command(disable_version_flag = true)]
