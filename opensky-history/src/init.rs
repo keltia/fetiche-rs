@@ -4,6 +4,7 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
+#[tracing::instrument]
 pub(crate) fn init_runtime(name: &str) -> Result<()> {
     // Initialise logging early
     //

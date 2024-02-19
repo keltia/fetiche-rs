@@ -161,7 +161,7 @@ async fn main() -> Result<()> {
 
     // End of the Python part thanks $DEITY! (and @m_ou_se on Twitter)
     //
-    dbg!(&data);
+    trace!("data={}", &data);
 
     // Write into temporary file.
     //
