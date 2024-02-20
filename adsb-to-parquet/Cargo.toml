@@ -26,6 +26,7 @@ harness = false
 [dependencies]
 chrono.workspace = true
 clap.workspace = true
+datafusion.workspace = true
 eyre.workspace = true
 log.workspace = true
 opentelemetry.workspace = true
@@ -39,8 +40,7 @@ tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
-arrow2 = { version = "0.18", features = ["io_csv", "io_parquet", "simd"] }
-datafusion = { version = "34.0", features = ["simd"] }
+arrow2 = { version = "0.18", features = ["io_csv", "io_parquet"] }
 rayon = "1.8"
 tokio = { version = "1.35", features = ["full"] }
 
