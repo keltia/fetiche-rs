@@ -77,7 +77,7 @@ SELECT
   code,
   ST_Point2D(2.35, 48.6) AS ref,
   ST_Point2D(longitude, latitude) AS here,
-  deg_to_m(ST_Distance(ref, here)) / 1000 AS distance,
+  ST_Distance_Spheroid(ref, here) / 1000 AS distance,
 FROM sites
 ORDER BY
   name
