@@ -30,6 +30,7 @@ harness = false
 [dependencies]
 chrono.workspace = true
 clap.workspace = true
+datafusion.workspace = true
 dateparser.workspace = true
 eyre.workspace = true
 hcl-rs.workspace = true
@@ -50,7 +51,6 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 clap_complete = "4.5"
-datafusion = { version = "34.0", features = ["simd"] }
 duckdb = { version = "0.10", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
 geo = "0.27"
 rust-3d = "0.34"
