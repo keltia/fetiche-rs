@@ -1,9 +1,36 @@
+//! Main driver for fetching various data from sites and API.
+//!
+//! Usage:
+//!
+//! ```text
+//! CLI utility to fetch data.
+//
+// Usage: acutectl.exe [OPTIONS] <COMMAND>
+//
+// Commands:
+//   completion  Generate Completion stuff
+//   convert     Convert between formats
+//   fetch       Fetch data from specified site
+//   list        List information about formats and sources
+//   stream      Stream from a source
+//   version     List all package versions
+//   help        Print this message or the help of the given subcommand(s)
+//
+// Options:
+//   -c, --config <CONFIG>  configuration file
+//   -D, --debug            debug mode
+//   -o, --output <OUTPUT>  Output file
+//   -v, --verbose...       Verbose mode
+//   -h, --help             Print help
+//! ```
+
+mod init;
+
 use clap::{crate_authors, crate_description, crate_version, Parser};
 use eyre::Result;
 use tracing::trace;
-use tracing_subscriber::filter::EnvFilter;
-use tracing_subscriber::prelude::*;
-use tracing_tree::HierarchicalLayer;
+
+use crate::init::init_runtime;
 
 use acutectl::{handle_subcmd, Config, Engine, Opts};
 
@@ -18,39 +45,9 @@ fn main() -> Result<()> {
     let opts = Opts::parse();
     let cfn = opts.config.clone();
 
-    // Initialise logging early
+    // Initialise tracing.
     //
-    let tree = HierarchicalLayer::new(2)
-        .with_ansi(true)
-        .with_span_retrace(true)
-        .with_span_modes(true)
-        .with_targets(true)
-        .with_verbose_entry(true)
-        .with_verbose_exit(true)
-        .with_higher_precision(true)
-        .with_bracketed_fields(true);
-
-    // Setup Open Telemetry with Jaeger
-    //
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_auto_split_batch(true)
-        .with_max_packet_size(9_216)
-        .with_service_name(NAME)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-
-    // Load filters from environment
-    //
-    let filter = EnvFilter::from_default_env();
-
-    // Combine filter & specific format
-    //
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(tree)
-        .with(telemetry)
-        .init();
-    trace!("Logging initialised.");
+    init_runtime(NAME)?;
 
     // Config only has the credentials for every source now.
     //
