@@ -34,6 +34,7 @@ opentelemetry-jaeger.workspace = true
 opentelemetry_sdk.workspace = true
 parquet2.workspace = true
 serde.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
 tracing-opentelemetry.workspace = true
@@ -42,7 +43,6 @@ tracing-tree.workspace = true
 
 arrow2 = { version = "0.18", features = ["io_csv", "io_parquet"] }
 rayon = "1.8"
-tokio = { version = "1.35", features = ["full"] }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
