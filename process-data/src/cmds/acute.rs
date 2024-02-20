@@ -1,4 +1,3 @@
-use crate::config::Context;
 use clap::Parser;
 use duckdb::arrow::array::RecordBatch;
 use duckdb::arrow::util::pretty::print_batches;
@@ -6,11 +5,13 @@ use duckdb::Connection;
 use eyre::Result;
 use tracing::trace;
 
+use crate::config::Context;
+
 #[derive(Debug, Parser)]
 pub struct AcuteOpts {
     /// Database file to use
     #[clap(short = 'd', long)]
-    pub database: String,
+    pub database: Option<String>,
     /// Output file (default is stdout).
     #[clap(short = 'o', long)]
     pub output: Option<String>,
