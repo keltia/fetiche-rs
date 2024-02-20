@@ -5,6 +5,13 @@ This is a CLI utility to load csv file containing ADS-B data and save them as Pa
 It is used to load and convert CSV files from the EMIT surveillance network into smaller and more usable [Parquet]
 files.
 
+> NOTE: as much as I like my own code, [bdt] does this and more, although you will need my patch to align it with the
+> current `adsb-to-parquet` in terms of control of the options and the output-as-a-single-file one.
+
+> UPDATE: my pull-request was merged by Andy Grove on 2024/02/19 so github and next version will have it, yeah.
+
+This means I might just replace `adsb-to-parquet` with bdt :)
+
 ## USAGE
 
 <details>
@@ -118,6 +125,8 @@ An alternative way is to use [qsv] as a command-line utility for this although s
 the writing part which makes it much bigger.
 
 [arrow2]: https://crates.io/crates/arrow2
+
+[bdt]: https://github.com/datafusion-contrib/bdt
 
 [datafusion]: https://crates.io/crates/arrow-datafusion
 
