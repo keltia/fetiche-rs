@@ -1,11 +1,11 @@
 //! Utility implement different processing tasks over our locally stored data.
 //!
 
-use clap::{crate_authors, crate_version, CommandFactory, Parser};
+use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
 use clap_complete::generate;
 use eyre::Result;
 use std::io;
-use tracing::{info, trace};
+use tracing::trace;
 
 use crate::cli::{Opts, SubCommand};
 use crate::cmds::handle_cmds;
@@ -31,6 +31,8 @@ async fn main() -> Result<()> {
     //
     let ctx = init_runtime(&opts)?;
 
+    let _ = banner()?;
+
     trace!("Execute commands.");
     match &opts.subcmd {
         SubCommand::Completion(copts) => {
@@ -48,4 +50,19 @@ async fn main() -> Result<()> {
     // Finish
     //
     Ok(finish_runtime()?)
+}
+
+/// Display banner
+///
+fn banner() -> Result<()> {
+    Ok(eprintln!(
+        r##"
+{}/{} by {}
+{}
+"##,
+        NAME,
+        VERSION,
+        AUTHORS,
+        crate_description!()
+    ))
 }
