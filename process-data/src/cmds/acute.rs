@@ -1,7 +1,6 @@
 use clap::Parser;
 use duckdb::arrow::array::RecordBatch;
 use duckdb::arrow::util::pretty::print_batches;
-use duckdb::Connection;
 use eyre::Result;
 use tracing::trace;
 
