@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use eyre::eyre;
+#[cfg(unix)]
 use home::home_dir;
 use log::debug;
 use serde::{Deserialize, Serialize};
