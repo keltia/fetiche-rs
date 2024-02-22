@@ -1,3 +1,8 @@
+//! Module dealing with various ACUTE-specific data like our antennas, sites, etc.
+//!
+//! This provide a CRUD-like interface with subcommands like `add` & `delete`.
+//!
+
 use clap::Parser;
 use duckdb::arrow::array::RecordBatch;
 use duckdb::arrow::util::pretty::print_batches;
@@ -5,6 +10,14 @@ use eyre::Result;
 use tracing::trace;
 
 use crate::config::Context;
+
+pub(crate) use antennas::*;
+pub(crate) use install::*;
+pub(crate) use sites::*;
+
+mod antennas;
+mod install;
+mod sites;
 
 #[derive(Debug, Parser)]
 pub struct AcuteOpts {
@@ -21,14 +34,33 @@ pub struct AcuteOpts {
 #[derive(Debug, Parser)]
 pub enum AcuteSubCommand {
     /// Display all antennas.
-    Antennas,
+    Antennas(AntennasOpts),
     /// Fetch which antenna was on a site and when.
-    Installations,
+    Install(InstOpts),
     /// Display all sites.
-    Sites,
+    Sites(SiteOpts),
 }
 
-// -----
+// Specific sub-commands for "acute"
+//
+
+// Sub-commands for all the categories.
+//
+
+#[derive(Debug, Default, Parser)]
+pub enum CrudSubCommand {
+    /// Add a something
+    Add,
+    /// Modify a something
+    Modify,
+    /// Remove a something
+    Remove,
+    /// Default is listing the somethings
+    #[default]
+    List,
+}
+
+// ----- Dispatching
 
 #[tracing::instrument(skip(ctx))]
 pub fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
@@ -36,15 +68,16 @@ pub fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
 
     let dbh = ctx.db();
     match opts.subcmd {
-        AcuteSubCommand::Antennas => {
+        AcuteSubCommand::Antennas(_) => {
             // Fetch antennas as Arrow
             //
             let mut stmt = dbh.prepare("select * from antennas;")?;
 
+            println!("Listing all antennas:");
             let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
             print_batches(&rbs)?;
         }
-        AcuteSubCommand::Installations => {
+        AcuteSubCommand::Install(_) => {
             // Find all installations with sites' name and antenna's ID
             //
             let mut stmt = dbh.prepare(
@@ -63,10 +96,11 @@ ORDER BY start_at
         "##,
             )?;
 
+            println!("Listing all installations:");
             let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
             print_batches(&rbs)?;
         }
-        AcuteSubCommand::Sites => {
+        AcuteSubCommand::Sites(_) => {
             // Fetch sites
             //
             let mut stmt = dbh.prepare(
@@ -83,6 +117,7 @@ ORDER BY
     "##,
             )?;
 
+            println!("Listing all sites:");
             let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
             print_batches(&rbs)?;
         }
