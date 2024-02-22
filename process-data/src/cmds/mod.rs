@@ -45,13 +45,13 @@ pub fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
     match &opts.subcmd {
         SubCommand::Distances(dopts) => match &dopts.subcmd {
             DistSubcommand::Home => {
-                println!("Add 2D and 3D distance between drones and operator.");
+                println!("Add 2D and 3D distance between drones and operator.\n");
 
                 let stats = home_calculation(&ctx)?;
                 println!("Stats:\n{:?}", stats);
             }
             DistSubcommand::Planes(popts) => {
-                println!("Calculate 3D distance between drones and surrounding planes.");
+                println!("Calculate 3D distance between drones and surrounding planes.\n");
 
                 let stats = planes_calculation(&ctx, popts)?;
                 println!("Stats:\n{:?}", stats);
@@ -59,26 +59,26 @@ pub fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
         },
         SubCommand::Export(eopts) => match &eopts.subcmd {
             ExportSubCommand::Distances(opts) => {
-                println!("Exporting calculated distances.");
+                println!("Exporting calculated distances.\n");
 
                 export_results(&ctx, opts)?;
             }
             ExportSubCommand::Drones(opts) => {
-                println!("Exporting drone data.");
+                println!("Exporting drone data.\n");
 
                 export_drone_stats(&ctx, opts)?;
             }
         },
         SubCommand::Setup(sopts) => {
-            println!("Setup ACUTE environment.");
+            println!("Setup ACUTE environment.\n");
             setup_acute_environment(&ctx, &sopts)?;
         }
         SubCommand::Cleanup(copts) => {
-            println!("Remove ACUTE specific macros.");
+            println!("Remove ACUTE specific macros.\n");
             cleanup_environment(&ctx, &copts)?;
         }
         SubCommand::Acute(aopts) => {
-            println!("ACUTE specific commands.");
+            println!("ACUTE specific commands.\n");
             run_acute_cmd(&ctx, &aopts)?;
         }
         // These are done already.
