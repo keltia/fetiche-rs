@@ -1,6 +1,6 @@
 //! Module dealing with various ACUTE-specific data like our antennas, sites, etc.
 //!
-//! This provide a CRUD-like interface with subcommands like `add` & `delete`.
+//! This provides a CRUD-like interface with subcommands like `add` & `delete`.
 //!
 
 use clap::Parser;
@@ -9,11 +9,11 @@ use duckdb::arrow::util::pretty::print_batches;
 use eyre::Result;
 use tracing::trace;
 
-use crate::config::Context;
-
 pub(crate) use antennas::*;
 pub(crate) use install::*;
 pub(crate) use sites::*;
+
+use crate::config::Context;
 
 mod antennas;
 mod install;
@@ -41,9 +41,6 @@ pub enum AcuteSubCommand {
     Sites(SiteOpts),
 }
 
-// Specific sub-commands for "acute"
-//
-
 // Sub-commands for all the categories.
 //
 
@@ -55,7 +52,7 @@ pub enum CrudSubCommand {
     Modify,
     /// Remove a something
     Remove,
-    /// Default is listing the somethings
+    /// Default is listing everything
     #[default]
     List,
 }
