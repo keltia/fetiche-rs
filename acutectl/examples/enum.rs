@@ -3,7 +3,8 @@
 
 use chrono::{DateTime, Datelike, Days, TimeDelta, TimeZone, Utc};
 use clap::Parser;
-use eyre::bail;
+use thiserror::Error;
+
 use std::ops::{Add, Sub};
 
 #[derive(Debug, Parser)]
@@ -15,7 +16,6 @@ struct Opts {
 #[derive(Debug, Parser)]
 enum Cmd {
     Fetch(FetchOpts),
-    Compute(CompOpts),
 }
 
 #[derive(Debug, Parser)]
@@ -24,6 +24,8 @@ struct FetchOpts {
     opts: DateOpts,
 }
 
+/// Enum of supported options for the date formats.
+///
 #[derive(Clone, Debug, Parser)]
 enum DateOpts {
     /// Basic from to
@@ -38,17 +40,17 @@ enum DateOpts {
     Yesterday,
 }
 
-#[derive(Debug, Parser)]
-struct CompOpts {
-    #[clap(long)]
-    pub now: bool,
+#[derive(Debug, Error)]
+pub enum ErrDateOpts {
+    #[error("bad date: {0}")]
+    BadDate(String),
 }
 
-fn main() -> eyre::Result<()> {
-    let opts: Opts = Opts::parse();
-
-    match opts.cmd {
-        Cmd::Fetch(opts) => match opts.opts {
+impl DateOpts {
+    /// Parse options and return a time interval
+    ///
+    pub fn parse(opts: Self) -> Result<(DateTime<Utc>, DateTime<Utc>), ErrDateOpts> {
+        Ok(match opts {
             DateOpts::Today => {
                 eprintln!("got today true");
                 let today = Utc::now();
@@ -57,6 +59,7 @@ fn main() -> eyre::Result<()> {
                     .unwrap();
                 let end = begin.add(Days::new(1));
                 eprintln!("today gives from {} to {}", begin, end);
+                (begin, end)
             }
             DateOpts::Yesterday => {
                 eprintln!("got yesterday true");
@@ -69,39 +72,54 @@ fn main() -> eyre::Result<()> {
                     .with_ymd_and_hms(today.year(), today.month(), today.day(), 0, 0, 0)
                     .unwrap();
                 eprintln!("yesterday gives from {} to {}", begin, end);
+                (begin, end)
             }
             DateOpts::Day { date } => {
                 let begin = match dateparser::parse(&date) {
                     Ok(date) => date,
-                    Err(_) => return bail!("Bad date."),
+                    Err(_) => return Err(ErrDateOpts::BadDate(date)),
                 };
                 let begin = Utc
                     .with_ymd_and_hms(begin.year(), begin.month(), begin.day(), 0, 0, 0)
                     .unwrap();
                 let end = begin.add(Days::new(1));
                 eprintln!("this day={} gives from {} to {}", date, begin, end);
+                (begin, end)
             }
             DateOpts::Week { num } => {
+                if num >= 53 {
+                    return Err(ErrDateOpts::BadDate(num.to_string()));
+                }
                 let week = Utc::now();
                 let begin: DateTime<Utc> =
                     Utc.with_ymd_and_hms(week.year(), 1, 1, 0, 0, 0).unwrap();
-                let target = begin.checked_add_signed(TimeDelta::weeks(num - 1)).unwrap();
-                eprintln!("this week={} is {}", num, target);
+                let begin = begin.checked_add_signed(TimeDelta::weeks(num - 1)).unwrap();
+                let end = begin.add(Days::new(7));
+                eprintln!("week={} is from {} to {}", num, begin, end);
+                (begin, end)
             }
             DateOpts::From { begin, end } => {
                 let begin = match dateparser::parse(&begin) {
                     Ok(date) => date,
-                    Err(_) => return bail!("Bad date."),
+                    Err(_) => return Err(ErrDateOpts::BadDate(begin)),
                 };
                 let end = match dateparser::parse(&end) {
                     Ok(date) => date,
-                    Err(_) => return bail!("Bad date."),
+                    Err(_) => return Err(ErrDateOpts::BadDate(end)),
                 };
                 eprintln!("begin={} end={}", begin, end);
+                (begin, end)
             }
-        },
-        Cmd::Compute(opts) => {
-            todo!()
+        })
+    }
+}
+
+fn main() -> eyre::Result<()> {
+    let opts: Opts = Opts::parse();
+
+    match opts.cmd {
+        Cmd::Fetch(opts) => {
+            let _ = DateOpts::parse(opts.opts)?;
         }
     }
     Ok(())
