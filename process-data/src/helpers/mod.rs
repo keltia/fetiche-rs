@@ -28,16 +28,3 @@ impl From<Position> for Point3D {
         Point3D::new(value.lon, value.lat, value.alt)
     }
 }
-
-/// Simple macro to generate PathBuf from a series of entries
-///
-#[macro_export]
-macro_rules! makepath {
-    ($($item:expr),+) => {
-        [
-        $(PathBuf::from($item),)+
-        ]
-        .iter()
-        .collect()
-    };
-}

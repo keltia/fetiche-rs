@@ -34,6 +34,7 @@ chrono.workspace = true
 clap.workspace = true
 dateparser.workspace = true
 env_logger.workspace = true
+fetiche-common.workspace = true
 fetiche-formats.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
@@ -64,4 +65,4 @@ rstest.workspace = true
 
 criterion = "0.5"
 httpmock = { version = "0.6", features = ["colored", "color", "clap"] }
-tokio = { version = "1.36", features = ["full"] }
+tokio.workspace = true

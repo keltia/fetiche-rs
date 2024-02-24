@@ -1719,6 +1719,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "fetiche-common"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "dateparser",
+ "eyre",
+ "hcl-rs",
+ "log",
+ "serde",
+ "strum 0.26.1",
+ "tabled",
+ "thiserror",
+ "tracing",
+ "tracing-log 0.2.0",
+]
+
+[[package]]
 name = "fetiche-formats"
 version = "0.17.0"
 dependencies = [
@@ -1765,6 +1783,7 @@ dependencies = [
  "dateparser",
  "env_logger 0.11.1",
  "eyre",
+ "fetiche-common",
  "fetiche-formats",
  "hcl-rs",
  "home",
