@@ -26,6 +26,7 @@ clap.workspace = true
 datafusion.workspace = true
 dateparser.workspace = true
 env_logger.workspace = true
+fetiche-common.workspace = true
 fetiche-formats.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
