@@ -41,6 +41,7 @@ use clap_complete::shells::Shell;
 use eyre::Result;
 use tracing::{info, trace};
 
+use fetiche_common::DateOpts;
 use fetiche_formats::{Container, Format};
 
 use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
@@ -99,18 +100,9 @@ pub enum SubCommand {
 ///
 #[derive(Debug, Parser)]
 pub struct FetchOpts {
-    /// We want today only
-    #[clap(long)]
-    pub today: bool,
-    /// We want yesterday only
-    #[clap(long)]
-    pub yesterday: bool,
-    /// Start date - YYYY-MM-DD HH:MM:SS -- optional
-    #[clap(short = 'B', long)]
-    pub begin: Option<String>,
-    /// End date - YYYY-MM-DD HH:MM:SS -- optional
-    #[clap(short = 'E', long)]
-    pub end: Option<String>,
+    /// Our different date options
+    #[clap(subcommand)]
+    pub dates: Option<DateOpts>,
     /// Duration in seconds (negative = back in time) -- optional
     #[clap(short = 'D', long)]
     pub since: Option<i32>,
