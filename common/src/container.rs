@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use strum::{EnumString, VariantNames};
 use tabled::{builder::Builder, settings::Style};
 
-/// Current formats.hcl version
+/// Current `containers.hcl` version (forked from `formats.hcl`).
 ///
 const CVERSION: usize = 2;
 
@@ -52,7 +52,7 @@ pub struct ContainerFile {
 )]
 #[strum(serialize_all = "PascalCase", ascii_case_insensitive)]
 pub enum Container {
-    /// Apache Avro
+    /// Common CSV format.
     CSV,
     /// Apache Parquet
     Parquet,
