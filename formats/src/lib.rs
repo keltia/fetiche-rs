@@ -14,7 +14,7 @@ use std::io::Read;
 use csv::{Reader, WriterBuilder};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use strum::EnumString;
+use strum::{EnumString, VariantNames};
 use tabled::{builder::Builder, settings::Style};
 use tracing::{debug, trace};
 
@@ -120,12 +120,19 @@ pub enum Format {
 /// This struct holds the different container formats that we support.
 ///
 #[derive(
-    Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, strum::Display, EnumString, Serialize,
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    PartialEq,
+    strum::Display,
+    EnumString,
+    Serialize,
+    VariantNames,
 )]
 #[strum(serialize_all = "PascalCase", ascii_case_insensitive)]
 pub enum Container {
-    /// Annotated CSV with embedded schema like in InfluxDB
-    ACSV,
     /// Apache Avro
     CSV,
     /// Apache Parquet
