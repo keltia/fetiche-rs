@@ -35,8 +35,8 @@ use clap_complete::shells::Shell;
 use eyre::Result;
 use tracing::{info, trace};
 
-use fetiche_common::DateOpts;
-use fetiche_formats::{Container, Format};
+use fetiche_common::{Container, DateOpts};
+use fetiche_formats::Format;
 
 use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
 

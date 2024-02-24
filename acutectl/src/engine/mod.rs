@@ -34,7 +34,7 @@ use strum::EnumString;
 use tracing::{debug, event, info, trace, warn, Level};
 
 pub use config::*;
-use fetiche_formats::Container;
+use fetiche_common::Container;
 pub use fetiche_formats::Format;
 pub use fetiche_sources::{makepath, Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
 pub use job::*;
