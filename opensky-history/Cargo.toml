@@ -28,6 +28,7 @@ clap.workspace = true
 datafusion.workspace = true
 dateparser.workspace = true
 eyre.workspace = true
+fetiche-common.workspace = true
 fetiche-formats.workspace = true
 hcl-rs.workspace = true
 home.workspace = true

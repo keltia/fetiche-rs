@@ -12,9 +12,10 @@ use duckdb::{params, Connection};
 use eyre::Result;
 use tracing::{info, trace};
 
+use fetiche_common::{load_locations, Location};
+
 use crate::cmds::{Stats, Status, ONE_DEG};
 use crate::config::Context;
-use crate::helpers::{load_locations, Location};
 
 /// These are the options we pass to this command
 ///
@@ -354,17 +355,17 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     // Load parameters
     //
     let name = opts.name.clone();
-    let current = if list.get(&name).is_none() {
+    let current: Location = if list.get(&name).is_none() {
         return Err(Status::ErrUnknownSite(name).into());
     } else {
-        list.get(&name).unwrap().to_owned()
+        list.get(&name).unwrap().clone()
     };
 
     // Store our context
     //
     let work = Work {
         name: name.clone(),
-        loc: current.clone(),
+        loc: current,
         dist: opts.distance,
         date: day,
         separation: opts.separation,

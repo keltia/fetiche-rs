@@ -4262,6 +4262,7 @@ dependencies = [
  "datafusion",
  "dateparser",
  "eyre",
+    "fetiche-common",
  "fetiche-formats",
  "hcl-rs",
  "home",

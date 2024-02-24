@@ -31,14 +31,14 @@ use inline_python::{python, Context};
 use tempfile::Builder;
 use tracing::{info, trace};
 
+use fetiche_common::{list_locations, load_locations, Location, BB};
+
 use crate::cli::{banner, version, Opts, Otype};
 use crate::init::init_runtime;
-use crate::location::{list_locations, load_locations, Location, BB};
 use crate::segment::extract_segments;
 
 mod cli;
 mod init;
-mod location;
 mod segment;
 
 /// Binary name, using a different binary name

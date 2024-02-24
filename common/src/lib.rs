@@ -3,8 +3,9 @@
 
 mod container;
 mod dateopts;
+mod location;
 mod macros;
 
 pub use container::*;
 pub use dateopts::*;
-pub use macros::*;
+pub use location::*;
