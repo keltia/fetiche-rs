@@ -63,7 +63,10 @@ impl Save {
     ///
     pub fn path(&mut self, name: &str) -> &mut Self {
         trace!("Add path: {}", name);
-        self.path = Some(name.to_string());
+        self.path = match name {
+            "-" => None,
+            _ => Some(name.to_string()),
+        };
         self
     }
 
