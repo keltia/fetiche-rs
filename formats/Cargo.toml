@@ -27,6 +27,7 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 arrow2.workspace = true
 chrono.workspace = true
+datafusion.workspace = true
 dateparser.workspace = true
 eyre.workspace = true
 hcl-rs.workspace = true
@@ -57,7 +58,4 @@ tap = "1.0"
 zstd = "0.13"
 
 [dev-dependencies]
-datafusion = { version = "32", features = ["async-compression", "compression"] }
-parquet = { version = "49.0", features = ["json", "async", "cli"] }
-parquet_derive = "49.0"
 rstest.workspace = true
