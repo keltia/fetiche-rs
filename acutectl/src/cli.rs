@@ -5,7 +5,6 @@
 //! - `completion`
 //! - `fetch`
 //! - `convert`
-//! - `import`
 //! - `list`
 //! - `stream`
 //! - `version`
@@ -19,15 +18,10 @@
 //!
 //! `version` display all modules' version.
 //!
-//! `import` convert data into a data format suitable for importing into a database
-//! ([InfluxDB] at the moment).
-//!
 //! `completion` is here just to configure the various shells completion system.
 //!
 //! A `Site` is a `Fetchable` or `Streamable`object with the corresponding trait methods (`authenticate()`
 //! & `fetch()`/`stream()`) from the `sources` crate.  File formats are from the `formats` crate.
-//!
-//! [InfluxDB]: https://www.influxdata.com/
 //!
 
 use std::io;
