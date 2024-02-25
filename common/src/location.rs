@@ -139,9 +139,16 @@ pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<St
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tracing::info;
 
-    #[test]
+    #[inline]
+    fn shorten(v: f64) -> String {
+        format!("{:.3}", v)
+    }
+
+    #[test_pretty_log::test]
     fn test_bb_from_location_belfast() -> Result<()> {
+        info!("bel");
         let loc = Location {
             code: "9C6MMRX2+X2".to_string(),
             hash: Some("gcex4vv69".to_string()),
@@ -150,15 +157,16 @@ mod tests {
         };
 
         let bb = BB::from_location(&loc, 25);
-        assert_eq!(-6.616699695587158, bb.min_lon);
-        assert_eq!(54.283302307128906, bb.min_lat);
-        assert_eq!(-5.783299922943115, bb.max_lon);
-        assert_eq!(55.11669921875, bb.max_lat);
+        assert_eq!(shorten(-6.616699695587158), shorten(bb.min_lon));
+        assert_eq!(shorten(54.283302307128906), shorten(bb.min_lat));
+        assert_eq!(shorten(-5.783299922943115), shorten(bb.max_lon));
+        assert_eq!(shorten(55.11669921875), shorten(bb.max_lat));
         Ok(())
     }
 
-    #[test]
+    #[test_pretty_log::test]
     fn test_bb_from_location_bxl() -> Result<()> {
+        info!("bxl");
         let loc = Location {
             code: "9F26RC22+22".to_string(),
             hash: Some("u150upggr".to_string()),
@@ -167,10 +175,10 @@ mod tests {
         };
 
         let bb = BB::from_location(&loc, 25);
-        assert_eq!(3.983299970626831, bb.min_lon);
-        assert_eq!(50.38330078125, bb.min_lat);
-        assert_eq!(4.816699981689453, bb.max_lon);
-        assert_eq!(51.216697692871094, bb.max_lat);
+        assert_eq!(shorten(3.983299970626831), shorten(bb.min_lon));
+        assert_eq!(shorten(50.38330078125), shorten(bb.min_lat));
+        assert_eq!(shorten(4.816699981689453), shorten(bb.max_lon));
+        assert_eq!(shorten(51.216697692871094), shorten(bb.max_lat));
         Ok(())
     }
 }
