@@ -33,9 +33,9 @@ use serde::Deserialize;
 use strum::EnumString;
 use tracing::{debug, event, info, trace, warn, Level};
 
-use fetiche_common::makepath;
+use fetiche_common::{makepath, Container};
 use fetiche_formats::Format;
-use fetiche_sources::{Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
+use fetiche_sources::{Auth, Site, Sources};
 
 pub use config::*;
 pub use job::*;
@@ -84,7 +84,7 @@ pub struct Engine {
     pub home: Arc<PathBuf>,
     /// Sources
     pub sources: Arc<Sources>,
-    /// Storage area for long running jobs
+    /// Storage area for long-running jobs
     pub storage: Arc<Storage>,
     /// Current state
     pub state: Arc<RwLock<State>>,
