@@ -1,13 +1,15 @@
 //! This is the module handling the `fetch` sub-command.
 //!
 
+use std::path::Path;
+use std::str::FromStr;
 use std::sync::Arc;
 
-use chrono::{DateTime, Datelike, Days, TimeZone, Utc};
 use eyre::{eyre, Result};
 use tracing::{info, trace};
 
-use fetiche_formats::{Container, Format};
+use fetiche_common::{Container, DateOpts};
+use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 
 use crate::{Convert, Engine, Fetch, FetchOpts, Save, Tee};
@@ -17,8 +19,6 @@ use crate::{Convert, Engine, Fetch, FetchOpts, Save, Tee};
 #[tracing::instrument(skip(engine))]
 pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
-
-    check_args(fopts)?;
 
     let name = &fopts.site;
     let srcs = Arc::clone(&engine.sources());
@@ -63,34 +63,27 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
         site.format()
     };
 
-    // If a final write format is requested, insert a `Save` task
-    //
-    let fmt = if let Some(write) = &fopts.write {
-        trace!("Write as {}", write);
-
-        // If this is requested, forbid stdout.
-        //
-        if fopts.output.is_none() {
-            return Err(eyre!("you must specify -o/--output"));
-        }
-        if *write != Container::Parquet {
-            return Err(eyre!("Only parquet supported"));
-        }
-
-        // Handle input format as the currently defined output one
-        //
-        Container::Parquet
-    } else {
-        trace!("No specific write format.");
-
-        Container::Raw
-    };
-
     // Are we writing to stdout?
     //
     let final_output = match &fopts.output {
         Some(fname) => fname.as_str(),
         None => "-",
+    };
+
+    // Deduce format from file name if specified, otherwise it is raw output to stdout.
+    //
+    let fmt = match &fopts.output {
+        Some(fname) => {
+            let fname = fname.to_lowercase();
+            let ext = Path::new(&fname)
+                .extension()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
+
+            Container::from_str(&ext)?
+        }
+        None => Container::default(),
     };
 
     info!("Writing to {final_output}");
@@ -117,88 +110,28 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
     trace!("filter_from_opts");
 
-    // Start of today
-    //
-    let t: DateTime<Utc> = Utc::now();
-    let t = Utc
-        .with_ymd_and_hms(t.year(), t.month(), t.day(), 0, 0, 0)
-        .unwrap();
+    match &opts.dates {
+        Some(dates) => {
+            let (begin, end) = DateOpts::parse(dates.clone())?;
+            Ok(Filter::Interval { begin, end })
+        }
+        None => {
+            if opts.keyword.is_some() {
+                let keyword = opts.keyword.clone().unwrap();
 
-    // Calculate yesterday
-    //
-    let y = t.checked_sub_days(Days::new(1)).unwrap();
+                let v: Vec<_> = keyword.split(':').collect();
+                let (k, v) = (v[0], v[1]);
+                Ok(Filter::Keyword {
+                    name: k.to_string(),
+                    value: v.to_string(),
+                })
+            } else if opts.since.is_some() {
+                let d = opts.since.unwrap();
 
-    // Calculate tomorrow
-    //
-    let tmr = t.checked_add_days(Days::new(1)).unwrap();
-
-    if opts.today {
-        // Build our own beginning & end
-        //
-        let begin = t;
-        let end = tmr;
-
-        Ok(Filter::interval(begin, end))
-    } else if opts.yesterday {
-        // Build our own beginning & end
-        //
-        let begin = y;
-        let end = t;
-
-        Ok(Filter::interval(begin, end))
-    } else if opts.begin.is_some() {
-        // Assume both are there, checked elsewhere
-        //
-        // We have to parse both arguments ourselves because it uses its own formats
-        //
-        let begin = match &opts.begin {
-            Some(begin) => dateparser::parse(begin).unwrap(),
-            None => return Err(eyre!("bad -B parameter")),
-        };
-        let end = match &opts.end {
-            Some(end) => dateparser::parse(end).unwrap(),
-            None => return Err(eyre!("Bad -E parameter")),
-        };
-
-        Ok(Filter::interval(begin, end))
-    } else if opts.keyword.is_some() {
-        let keyword = opts.keyword.clone().unwrap();
-
-        let v: Vec<_> = keyword.split(':').collect();
-        let (k, v) = (v[0], v[1]);
-        Ok(Filter::Keyword {
-            name: k.to_string(),
-            value: v.to_string(),
-        })
-    } else if opts.since.is_some() {
-        let d = opts.since.unwrap();
-
-        Ok(Filter::Duration(d))
-    } else {
-        Ok(Filter::default())
+                Ok(Filter::Duration(d))
+            } else {
+                Ok(Filter::default())
+            }
+        }
     }
-}
-
-/// Check the presence and validity of some of the arguments
-///
-#[tracing::instrument]
-fn check_args(opts: &FetchOpts) -> Result<()> {
-    trace!("check_args");
-
-    // Do we have options for filter?
-    //
-    if opts.today && opts.yesterday {
-        return Err(eyre!("Can not specify --today and --yesterday"));
-    }
-    if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
-        return Err(eyre!("Can not specify --today and -B/-E"));
-    }
-
-    // (a & ^b) | (^a & b) => xor
-    //
-    if opts.begin.is_some() ^ opts.end.is_some() {
-        return Err(eyre!("We need both -B/-E or none"));
-    }
-
-    Ok(())
 }

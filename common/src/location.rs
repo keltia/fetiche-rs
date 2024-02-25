@@ -9,6 +9,8 @@ use std::fs;
 
 use eyre::{eyre, Result};
 use serde::Deserialize;
+use tabled::builder::Builder;
+use tabled::settings::Style;
 use tracing::trace;
 
 /// one degree is circumference of earth / 360°, convert into nautical miles
@@ -100,12 +102,53 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
     Ok(loc.location)
 }
 
+/// List loaded locations
+///
+#[tracing::instrument]
+pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<String> {
+    trace!("enter");
+    let header = vec!["Location", "Plus Code", "GeoHash", "Lat/Lon", "Polygon"];
+
+    let mut builder = Builder::default();
+    builder.push_record(header);
+
+    data.keys().for_each(|name| {
+        let mut row = vec![];
+
+        let loc = data.get(name).unwrap();
+        let code = loc.code.clone();
+        let hash = loc.hash.clone().unwrap_or("Unknown".to_string());
+        let poly = BB::from_location(loc, dist);
+        let point = format!("{:.2}, {:.2}", loc.lat, loc.lon);
+        let poly = format!(
+            "{:.2}, {:.2}, {:.2}, {:.2}",
+            poly.min_lat, poly.min_lon, poly.max_lat, poly.max_lon
+        );
+        row.push(name);
+        row.push(&code);
+        row.push(&hash);
+        row.push(&point);
+        row.push(&poly);
+        builder.push_record(row);
+    });
+
+    let allf = builder.build().with(Style::modern()).to_string();
+    Ok(format!("List all locations ({dist} nm):\n{allf}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tracing::info;
 
-    #[test]
+    #[inline]
+    fn shorten(v: f64) -> String {
+        format!("{:.3}", v)
+    }
+
+    #[test_pretty_log::test]
     fn test_bb_from_location_belfast() -> Result<()> {
+        info!("bel");
         let loc = Location {
             code: "9C6MMRX2+X2".to_string(),
             hash: Some("gcex4vv69".to_string()),
@@ -114,15 +157,16 @@ mod tests {
         };
 
         let bb = BB::from_location(&loc, 25);
-        assert_eq!(-6.616699695587158, bb.min_lon);
-        assert_eq!(54.283302307128906, bb.min_lat);
-        assert_eq!(-5.783299922943115, bb.max_lon);
-        assert_eq!(55.11669921875, bb.max_lat);
+        assert_eq!(shorten(-6.616699695587158), shorten(bb.min_lon));
+        assert_eq!(shorten(54.283302307128906), shorten(bb.min_lat));
+        assert_eq!(shorten(-5.783299922943115), shorten(bb.max_lon));
+        assert_eq!(shorten(55.11669921875), shorten(bb.max_lat));
         Ok(())
     }
 
-    #[test]
+    #[test_pretty_log::test]
     fn test_bb_from_location_bxl() -> Result<()> {
+        info!("bxl");
         let loc = Location {
             code: "9F26RC22+22".to_string(),
             hash: Some("u150upggr".to_string()),
@@ -131,10 +175,10 @@ mod tests {
         };
 
         let bb = BB::from_location(&loc, 25);
-        assert_eq!(3.983299970626831, bb.min_lon);
-        assert_eq!(50.38330078125, bb.min_lat);
-        assert_eq!(4.816699981689453, bb.max_lon);
-        assert_eq!(51.216697692871094, bb.max_lat);
+        assert_eq!(shorten(3.983299970626831), shorten(bb.min_lon));
+        assert_eq!(shorten(50.38330078125), shorten(bb.min_lat));
+        assert_eq!(shorten(4.816699981689453), shorten(bb.max_lon));
+        assert_eq!(shorten(51.216697692871094), shorten(bb.max_lat));
         Ok(())
     }
 }

@@ -22,7 +22,9 @@ use tracing::{debug, trace};
 
 #[cfg(unix)]
 use crate::BASEDIR;
-use crate::{makepath, Auth, Site, CONFIG, CVERSION, TOKEN_BASE};
+use crate::{Auth, Site, CONFIG, CVERSION, TOKEN_BASE};
+
+use fetiche_common::makepath;
 
 /// List of sources, this is the only exposed struct from here.
 ///

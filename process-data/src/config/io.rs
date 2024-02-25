@@ -9,7 +9,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use tracing::trace;
 
-use crate::makepath;
+use fetiche_common::makepath;
 
 #[cfg(unix)]
 const BASEDIR: &str = ".config";

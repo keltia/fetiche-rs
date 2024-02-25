@@ -240,7 +240,7 @@ mod tests {
 
     use rstest::rstest;
 
-    use crate::makepath;
+    use fetiche_common::makepath;
 
     use super::*;
 

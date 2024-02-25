@@ -33,6 +33,7 @@ clap.workspace = true
 datafusion.workspace = true
 dateparser.workspace = true
 eyre.workspace = true
+fetiche-common.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
 log.workspace = true
@@ -43,6 +44,7 @@ parquet2.workspace = true
 progress.workspace = true
 serde.workspace = true
 strum.workspace = true
+thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
@@ -52,9 +54,8 @@ tracing-tree.workspace = true
 
 clap_complete = "4.5"
 duckdb = { version = "0.10", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
-geo = "0.27"
+geo = "0.28"
 rust-3d = "0.34"
-thiserror = "1.0"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }

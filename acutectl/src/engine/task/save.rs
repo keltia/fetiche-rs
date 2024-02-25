@@ -20,7 +20,8 @@ use tempfile::Builder;
 use tokio::runtime::Runtime;
 use tracing::{info, trace};
 
-use fetiche_formats::{Container, Format};
+use fetiche_common::Container;
+use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
 use crate::{Runnable, IO};
@@ -63,7 +64,10 @@ impl Save {
     ///
     pub fn path(&mut self, name: &str) -> &mut Self {
         trace!("Add path: {}", name);
-        self.path = Some(name.to_string());
+        self.path = match name {
+            "-" => None,
+            _ => Some(name.to_string()),
+        };
         self
     }
 

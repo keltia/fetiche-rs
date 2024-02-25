@@ -1,3 +1,5 @@
+// This file describe all the previous and current locations for ACUTE antennas.
+//
 version = 3
 
 location "BDX" {

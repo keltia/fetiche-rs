@@ -1,0 +1,38 @@
+[package]
+name = "fetiche-common"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "Common library for fetiche modules."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/fetiche-rs"
+categories = ["aerospace::drones"]
+keywords = ["asterix", "drones", "aeronautical-data"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono.workspace = true
+clap.workspace = true
+dateparser.workspace = true
+eyre.workspace = true
+hcl-rs.workspace = true
+log.workspace = true
+serde.workspace = true
+strum.workspace = true
+tabled.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true
+test-pretty-log = "0.6"

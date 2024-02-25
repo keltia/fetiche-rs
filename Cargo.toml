@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["acutectl", "adsb-to-parquet", "fetiched", "formats", "sources", "opensky-history", "process-data"]
+members = ["acutectl", "adsb-to-parquet", "common", "fetiched", "formats", "sources", "opensky-history", "process-data", "common"]
 exclude = ["cat21conv"]
 
 [workspace.dependencies]
@@ -11,6 +11,7 @@ datafusion = { version = "36.0", features = ["zstd", "async-compression", "serde
 dateparser = "0.2"
 env_logger = "0.11"
 eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
+fetiche-common = { version = "0", path = "common" }
 fetiche-formats = { version = "0", path = "formats" }
 fetiche-sources = { version = "0", path = "sources" }
 hcl-rs = "0.16"
@@ -31,6 +32,7 @@ serde_repr = "0.1"
 serde_with = { version = "3", features = ["base64", "chrono_0_4", "json", "hex"] }
 strum = { version = "0.26", features = ["derive"] }
 tabled = "0.15"
+thiserror = "1.0"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-log = "0.2"

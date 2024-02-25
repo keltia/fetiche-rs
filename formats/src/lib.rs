@@ -117,24 +117,6 @@ pub enum Format {
     Safesky,
 }
 
-/// This struct holds the different container formats that we support.
-///
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, strum::Display, EnumString, Serialize,
-)]
-#[strum(serialize_all = "PascalCase", ascii_case_insensitive)]
-pub enum Container {
-    /// Annotated CSV with embedded schema like in InfluxDB
-    ACSV,
-    /// Apache Avro
-    CSV,
-    /// Apache Parquet
-    Parquet,
-    /// RAW Files
-    #[default]
-    Raw,
-}
-
 /// This is the special hex string for ICAO codes
 ///
 pub type ICAOString = [u8; 6];
@@ -298,44 +280,6 @@ impl Format {
             .collect::<Vec<_>>()
             .join("\n\n");
         let str = format!("List all formats:\n\n{allf}");
-        Ok(str)
-    }
-}
-
-impl Container {
-    /// List all supported container formats into a string using `tabled`.
-    ///
-    pub fn list() -> Result<String> {
-        let descr = include_str!("containers.hcl");
-        let fstr: FormatFile = hcl::from_str(descr)?;
-
-        // Safety checks
-        //
-        assert_eq!(fstr.version, FVERSION);
-
-        let header = vec!["Name", "Type", "Description"];
-
-        let mut builder = Builder::default();
-        builder.push_record(header);
-
-        fstr.format.iter().for_each(|(name, entry)| {
-            let mut row = vec![];
-
-            let name = name.clone();
-            let dtype = entry.dtype.clone();
-            let description = entry.description.clone();
-            let source = entry.source.clone();
-            let url = entry.url.clone();
-
-            let row_text = format!("{}\nSource: {} -- URL: {}", description, source, url);
-            let dtype = dtype.to_string();
-            row.push(&name);
-            row.push(&dtype);
-            row.push(&row_text);
-            builder.push_record(row);
-        });
-        let allf = builder.build().with(Style::modern()).to_string();
-        let str = format!("List all formats:\n{allf}");
         Ok(str)
     }
 }

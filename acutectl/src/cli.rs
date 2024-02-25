@@ -5,7 +5,6 @@
 //! - `completion`
 //! - `fetch`
 //! - `convert`
-//! - `import`
 //! - `list`
 //! - `stream`
 //! - `version`
@@ -19,15 +18,10 @@
 //!
 //! `version` display all modules' version.
 //!
-//! `import` convert data into a data format suitable for importing into a database
-//! ([InfluxDB] at the moment).
-//!
 //! `completion` is here just to configure the various shells completion system.
 //!
 //! A `Site` is a `Fetchable` or `Streamable`object with the corresponding trait methods (`authenticate()`
 //! & `fetch()`/`stream()`) from the `sources` crate.  File formats are from the `formats` crate.
-//!
-//! [InfluxDB]: https://www.influxdata.com/
 //!
 
 use std::io;
@@ -41,7 +35,8 @@ use clap_complete::shells::Shell;
 use eyre::Result;
 use tracing::{info, trace};
 
-use fetiche_formats::{Container, Format};
+use fetiche_common::{Container, DateOpts};
+use fetiche_formats::Format;
 
 use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
 
@@ -99,18 +94,9 @@ pub enum SubCommand {
 ///
 #[derive(Debug, Parser)]
 pub struct FetchOpts {
-    /// We want today only
-    #[clap(long)]
-    pub today: bool,
-    /// We want yesterday only
-    #[clap(long)]
-    pub yesterday: bool,
-    /// Start date - YYYY-MM-DD HH:MM:SS -- optional
-    #[clap(short = 'B', long)]
-    pub begin: Option<String>,
-    /// End date - YYYY-MM-DD HH:MM:SS -- optional
-    #[clap(short = 'E', long)]
-    pub end: Option<String>,
+    /// Our different date options
+    #[clap(subcommand)]
+    pub dates: Option<DateOpts>,
     /// Duration in seconds (negative = back in time) -- optional
     #[clap(short = 'D', long)]
     pub since: Option<i32>,

@@ -8,7 +8,7 @@ files.
 > NOTE: as much as I like my own code, [bdt] does this and more, although you will need my patch to align it with the
 > current `adsb-to-parquet` in terms of control of the options and the output-as-a-single-file one.
 
-> UPDATE: my pull-request was merged by Andy Grove on 2024/02/19 so github and next version will have it, yeah.
+> UPDATE: my pull-request was merged by Andy Grove on 2024/02/19 so GitHub and next version will have it, yeah.
 
 This means I might just replace `adsb-to-parquet` with bdt :)
 
