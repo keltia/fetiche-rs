@@ -35,3 +35,4 @@ tracing-log.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true
+test-pretty-log = "0.6"
