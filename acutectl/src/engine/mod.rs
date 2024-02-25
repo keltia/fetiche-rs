@@ -33,7 +33,7 @@ use serde::Deserialize;
 use strum::EnumString;
 use tracing::{debug, event, info, trace, warn, Level};
 
-use fetiche_common::makepath;
+use fetiche_common::{makepath, Container};
 use fetiche_formats::Format;
 use fetiche_sources::{Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
 
