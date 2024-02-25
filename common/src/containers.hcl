@@ -1,4 +1,4 @@
-// Metadata file describing all the supported data models for `acutectl`
+// Metadata file describing all the supported data containers for `acutectl`
 //
 version = 2
 
