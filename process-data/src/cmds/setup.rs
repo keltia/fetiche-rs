@@ -130,6 +130,8 @@ CREATE TABLE encounters (
   callsign VARCHAR, 
   addr VARCHAR, 
   distance FLOAT,
+  distancelat FLOAT,
+  distancevert FLOAT,
   PRIMARY KEY (dt, journey)
 )
     "##;
