@@ -280,6 +280,8 @@ SET dist_drone_plane = dist_3d(px, py, pz, dx, dy, dz)
         // is minimal.  Gather more information about the encounter, `any_value()` is used to avoid "duplicates".
         // Then the result of this sub-query is inserted (or replaced if we re-ran the calculation) in the
         // `encounters` table.
+        //
+        // FIXME: conflicts are not handled, not sure why.
 
         // Insert data into table `encounters`
         //
@@ -332,6 +334,101 @@ WHERE en_id IS NULL OR site IS NULL
     }
 }
 
+/// Run the process for the given day.
+///
+#[tracing::instrument(skip(ctx))]
+fn calculate_one_day(dbh: &Connection, opts: &PlanesOpts) -> Result<PlanesStats> {
+    let dbh = ctx.db();
+
+    // Load locations
+    //
+    let list = load_locations(None)?;
+    let tm = dateparser::parse(&opts.date).unwrap();
+    let day = Utc
+        .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
+        .unwrap();
+    info!("Running calculations for {}:", day);
+
+    // Move ourselves to the datalake.
+    //
+    let datalake = ctx.config.get("datalake").unwrap();
+    info!("Datalake: {}", datalake);
+
+    env::set_current_dir(datalake)?;
+
+    // Load parameters
+    //
+    let name = opts.name.clone();
+    let current: Location = if list.get(&name).is_none() {
+        return Err(Status::ErrUnknownSite(name).into());
+    } else {
+        list.get(&name).unwrap().clone()
+    };
+
+    // Store our context
+    //
+    let work = Work {
+        name: name.clone(),
+        loc: current,
+        dist: opts.distance,
+        date: day,
+        separation: opts.separation,
+    };
+
+    // Create our stat struct
+    //
+    let stats = &mut PlanesStats::new(tm, opts.distance, opts.separation);
+
+    // Create table `today` with all identified plane points with the specified range
+    //
+    let c_planes = work.select_planes(&dbh)?;
+
+    if c_planes == 0 {
+        eprintln!("No planes found.");
+        return Ok(stats.clone());
+    }
+    stats.planes = c_planes;
+
+    // Create table `candidates` with all designated drone points
+    //
+    let c_drones = work.select_drones(&dbh)?;
+
+    if c_drones == 0 {
+        eprintln!("No drones found.");
+        return Ok(stats.clone());
+    }
+    stats.drones = c_drones;
+
+    // Create table `today_close` with all designated drone points and airplanes in proximity
+    //
+    let c_potential = work.find_close(&dbh)?;
+
+    if c_potential == 0 {
+        eprintln!("No potential airprox found.");
+        return Ok(stats.clone());
+    }
+    stats.potential = c_potential;
+
+    // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
+    //
+    let _ = work.calculate_distances(&dbh)?;
+
+    // Now we have the distance calculated.
+    //
+    let c_encounters = work.save_encounters(&dbh)?;
+
+    if c_encounters == 0 {
+        eprintln!("No close encounters of any kind found.");
+        return Ok(stats.clone());
+    }
+    stats.encounters = c_encounters;
+
+    info!("Done.");
+    Ok(stats.clone())
+}
+
+/// Handle the `distances planes` command.
+///
 #[tracing::instrument(skip(ctx))]
 pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<PlanesStats> {
     let dbh = ctx.db();
