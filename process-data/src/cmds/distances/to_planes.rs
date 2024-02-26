@@ -373,7 +373,7 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<PlanesStat
 
     // Create our stat struct
     //
-    let mut stats = &mut PlanesStats::new(tm, opts.distance, opts.separation);
+    let stats = &mut PlanesStats::new(tm, opts.distance, opts.separation);
 
     // Create table `today` with all identified plane points with the specified range
     //
