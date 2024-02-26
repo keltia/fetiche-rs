@@ -76,7 +76,6 @@ def move_one(fn, ftype, action):
             Path(fn).rename(final)
     else:
         print(f'Bad file pattern {fn}')
-        return
 
 
 # Setup arguments
