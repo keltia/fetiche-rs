@@ -20,6 +20,7 @@ clap.workspace = true
 env_logger.workspace = true
 fetiche-common.workspace = true
 fetiche-formats.workspace = true
+fetiche-macros.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
@@ -32,6 +33,7 @@ serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
 tabled.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
 tracing-opentelemetry.workspace = true
@@ -43,12 +45,9 @@ actix-rt = "2.9"
 actix-storage = { version = "0.3", features = ["serde", "serde-json", "serde-cbor"] }
 actix-storage-dashmap = { version = "0.3", features = ["actor", "delay-queue"] }
 dashmap = { version = "5.5", features = ["serde"] }
-parquet = { version = "49.0", features = ["json", "async", "cli"] }
-parquet_derive = "49.0"
+parquet = { version = "50.0", features = ["json", "async", "cli"] }
+parquet_derive = "50.0"
 tmpdir = "1.0"
-tokio = { version = "1", features = ["full"] }
-
-fetiche-macros = { version = "0", path = "../macros" }
 
 [target.'cfg(unix)'.dependencies]
 daemonize = "0.5"
