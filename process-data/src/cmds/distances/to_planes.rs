@@ -294,10 +294,10 @@ BY NAME (
       any_value(drone_id) AS drone_id, 
       model, 
       any_value(timestamp) AS time,
-      any_value(callsign) as callsign,
-      any_value(addr) as addr,
-      any_value(dist2d) as distancelat,
-      any_value(@(pz - dz)) as distancevert,
+      any_value(callsign) AS callsign,
+      any_value(addr) AS addr,
+      any_value(dist2d) AS distancelat,
+      any_value(@(pz - dz)) AS distancevert,
       MIN(dist_drone_plane) AS distance,
     FROM today_close
     WHERE
