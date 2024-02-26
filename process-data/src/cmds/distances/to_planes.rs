@@ -6,15 +6,15 @@
 use std::env;
 use std::ops::Add;
 
-use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
+use chrono::{Datelike, DateTime, Duration, TimeZone, Utc};
 use clap::Parser;
-use duckdb::{params, Connection};
+use duckdb::{Connection, params};
 use eyre::Result;
 use tracing::{info, trace};
 
 use fetiche_common::{load_locations, Location};
 
-use crate::cmds::{Stats, Status, ONE_DEG};
+use crate::cmds::{ONE_DEG, Stats, Status};
 use crate::config::Context;
 
 /// These are the options we pass to this command
@@ -291,7 +291,7 @@ BY NAME (
       journey, 
       any_value(drone_id) AS drone_id, 
       model, 
-      timestamp AS time,
+      any_value(timestamp) AS time,
       any_value(callsign) as callsign,
       any_value(addr) as addr,
       MIN(dist_drone_plane) AS distance,
