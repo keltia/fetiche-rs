@@ -15,7 +15,7 @@
 
 use eyre::Result;
 
-use crate::cmds::Stats;
+use crate::cmds::HomeStats;
 use crate::config::Context;
 
 /// Update the given table with calculus of the distance between a drone and its operator
@@ -24,8 +24,10 @@ use crate::config::Context;
 /// `dist_3d` has been updated to use `dist_2d`.
 ///
 #[tracing::instrument(skip(ctx))]
-pub fn home_calculation(ctx: &Context) -> Result<Stats> {
+pub fn home_calculation(ctx: &Context) -> Result<HomeStats> {
     let dbh = ctx.db();
+
+    let mut stats = HomeStats::new();
 
     // Simple update now.
     //
@@ -40,7 +42,7 @@ SET
 "##;
 
     let count = dbh.execute(sql_update, [])?;
+    stats.distances = count;
 
-    let stats = Stats::Home { distances: count };
-    Ok(stats)
+    Ok(stats.clone())
 }

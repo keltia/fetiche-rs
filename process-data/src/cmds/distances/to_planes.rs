@@ -14,7 +14,7 @@ use tracing::{info, trace};
 
 use fetiche_common::{load_locations, Location};
 
-use crate::cmds::{ONE_DEG, Stats, Status};
+use crate::cmds::{ONE_DEG, PlanesStats, Status};
 use crate::config::Context;
 
 /// These are the options we pass to this command
@@ -333,7 +333,7 @@ WHERE en_id IS NULL OR site IS NULL
 }
 
 #[tracing::instrument(skip(ctx))]
-pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
+pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<PlanesStats> {
     let dbh = ctx.db();
 
     // Load locations
@@ -371,29 +371,39 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
         separation: opts.separation,
     };
 
+    // Create our stat struct
+    //
+    let mut stats = &mut PlanesStats::new(tm, opts.distance, opts.separation);
+
     // Create table `today` with all identified plane points with the specified range
     //
     let c_planes = work.select_planes(&dbh)?;
 
     if c_planes == 0 {
-        return Err(Status::NoPlanesFound(name).into());
+        eprintln!("No planes found.");
+        return Ok(stats.clone());
     }
+    stats.planes = c_planes;
 
     // Create table `candidates` with all designated drone points
     //
     let c_drones = work.select_drones(&dbh)?;
 
     if c_drones == 0 {
-        return Err(Status::NoDronesFound(name).into());
+        eprintln!("No drones found.");
+        return Ok(stats.clone());
     }
+    stats.drones = c_drones;
 
     // Create table `today_close` with all designated drone points and airplanes in proximity
     //
     let c_potential = work.find_close(&dbh)?;
 
     if c_potential == 0 {
-        return Err(Status::NoEncounters(name).into());
+        eprintln!("No potential airprox found.");
+        return Ok(stats.clone());
     }
+    stats.potential = c_potential;
 
     // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
     //
@@ -404,21 +414,11 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     let c_encounters = work.save_encounters(&dbh)?;
 
     if c_encounters == 0 {
-        return Err(Status::NoEncounters(name).into());
+        eprintln!("No close encounters of any kind found.");
+        return Ok(stats.clone());
     }
-
-    // Create our stat struct
-    //
-    let stats = Stats::Planes {
-        day: tm,
-        distance: opts.distance,
-        proximity: opts.separation,
-        planes: c_planes,
-        drones: c_drones,
-        potential: c_potential,
-        encounters: c_encounters,
-    };
+    stats.encounters = c_encounters;
 
     info!("Done.");
-    Ok(stats)
+    Ok(stats.clone())
 }
