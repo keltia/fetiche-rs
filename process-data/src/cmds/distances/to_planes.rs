@@ -6,16 +6,16 @@
 use std::env;
 use std::ops::Add;
 
-use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
+use chrono::{Datelike, DateTime, Days, Duration, TimeZone, Utc};
 use clap::Parser;
-use duckdb::{params, Connection};
+use duckdb::{Connection, params};
 use eyre::Result;
 use rayon::prelude::*;
-use tracing::{info, trace};
+use tracing::{error, info, trace};
 
 use fetiche_common::{load_locations, Location};
 
-use crate::cmds::{HomeStats, PlanesStats, Status, ONE_DEG};
+use crate::cmds::{Batch, Calculate, HomeStats, ONE_DEG, PlanesStats, Stats, Status};
 use crate::config::Context;
 
 /// These are the options we pass to this command
@@ -36,30 +36,10 @@ pub struct PlanesOpts {
 
 // -----
 
-#[derive(Clone, Debug)]
-pub struct Batch<'a> {
-    inner: Vec<&'a WorkDay<'a>>,
-}
-
-impl<'a> Batch<'a> {
-    pub fn new() -> Self {
-        Self { inner: vec![] }
-    }
-
-    pub fn add(&mut self, task: &'a WorkDay) -> Self {
-        self.inner.push(&task);
-        self.clone()
-    }
-
-    pub fn execute(&mut self, dbh: &Connection) -> Result<()> {
-        self.inner.par_iter().map(|&e| e.calculate(dbh)).collect()
-    }
-}
-
 /// This is the struct in which we store the context of a given day work.
 ///
 #[derive(Debug)]
-pub struct WorkDay<'a> {
+pub struct PlaneDistance<'a> {
     /// Name of site
     pub name: &'a str,
     /// Coordinates of site
@@ -74,9 +54,9 @@ pub struct WorkDay<'a> {
     pub template: &'a str,
 }
 
-impl<'a> Default for WorkDay<'a> {
+impl<'a> Default for PlaneDistance<'a> {
     fn default() -> Self {
-        WorkDay {
+        PlaneDistance {
             name: "",
             date: Utc::now(),
             loc: Location::default(),
@@ -87,7 +67,7 @@ impl<'a> Default for WorkDay<'a> {
     }
 }
 
-impl<'a> WorkDay<'a> {
+impl<'a> PlaneDistance<'a> {
     pub fn new(name: &'a str, loc: Location, date: DateTime<Utc>) -> Self {
         Self {
             name,
@@ -96,6 +76,10 @@ impl<'a> WorkDay<'a> {
             ..Self::default()
         }
     }
+
+
+    // -- private
+
     /// Select a list of airplanes positions we will consider for distance calculations
     ///
     /// - 1st criteria date and time (unit is a given day)
@@ -377,11 +361,13 @@ WHERE en_id IS NULL OR site IS NULL
 
         Ok(count)
     }
+}
 
+impl Calculate for PlaneDistance<'_> {
     /// Run the process for the given day.
     ///
     #[tracing::instrument(skip(dbh))]
-    pub fn calculate(&self, dbh: &Connection) -> Result<PlanesStats> {
+    fn execute(&self, dbh: &Connection) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
 
         // Create our stat struct
@@ -394,7 +380,7 @@ WHERE en_id IS NULL OR site IS NULL
 
         if c_planes == 0 {
             eprintln!("No planes found.");
-            return Ok(stats.clone());
+            return Ok(Stats::Planes(stats.clone()));
         }
         stats.planes = c_planes;
 
@@ -404,7 +390,7 @@ WHERE en_id IS NULL OR site IS NULL
 
         if c_drones == 0 {
             eprintln!("No drones found.");
-            return Ok(stats.clone());
+            return Ok(Stats::Planes(stats.clone()));
         }
         stats.drones = c_drones;
 
@@ -414,7 +400,7 @@ WHERE en_id IS NULL OR site IS NULL
 
         if c_potential == 0 {
             eprintln!("No potential airprox found.");
-            return Ok(stats.clone());
+            return Ok(Stats::Planes(stats.clone()));
         }
         stats.potential = c_potential;
 
@@ -428,12 +414,12 @@ WHERE en_id IS NULL OR site IS NULL
 
         if c_encounters == 0 {
             eprintln!("No close encounters of any kind found.");
-            return Ok(stats.clone());
+            return Ok(Stats::Planes(stats.clone()));
         }
         stats.encounters = c_encounters;
 
         info!("Done.");
-        Ok(stats.clone())
+        Ok(Stats::Planes(stats.clone()))
     }
 }
 
@@ -470,10 +456,14 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<HomeStats>
 
     // Store our context
     //
-    let work = WorkDay::new(&name, current, day);
-    dbg!(&work);
-    let mut list = Batch::new().add(&work);
+    let work1 = PlaneDistance::new(&name, current.clone(), day);
+    let work2 = PlaneDistance::new(&name, current.clone(), day + Days::new(1));
+    dbg!(&work1);
+    dbg!(&work2);
+    let mut list = Batch::new(&dbh).add(Box::new(work1)).add(Box::new(work2));
     dbg!(&list);
+
+    let v: Vec<Stats> = list.execute()?;
 
     //let stats = work.calculate(&dbh)?;
 
@@ -481,3 +471,4 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<HomeStats>
     info!("Done.");
     Ok(stats.clone())
 }
+
