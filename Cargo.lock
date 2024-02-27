@@ -4838,6 +4838,7 @@ dependencies = [
  "parquet2",
  "pprof",
  "progress",
+ "rayon",
  "rstest",
  "rust-3d",
  "serde",
