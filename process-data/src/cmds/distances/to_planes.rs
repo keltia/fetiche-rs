@@ -6,15 +6,16 @@
 use std::env;
 use std::ops::Add;
 
-use chrono::{Datelike, DateTime, Duration, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use clap::Parser;
-use duckdb::{Connection, params};
+use duckdb::{params, Connection};
 use eyre::Result;
+use rayon::prelude::*;
 use tracing::{info, trace};
 
 use fetiche_common::{load_locations, Location};
 
-use crate::cmds::{ONE_DEG, PlanesStats, Status};
+use crate::cmds::{HomeStats, PlanesStats, Status, ONE_DEG};
 use crate::config::Context;
 
 /// These are the options we pass to this command
@@ -35,23 +36,66 @@ pub struct PlanesOpts {
 
 // -----
 
+#[derive(Clone, Debug)]
+pub struct Batch<'a> {
+    inner: Vec<&'a WorkDay<'a>>,
+}
+
+impl<'a> Batch<'a> {
+    pub fn new() -> Self {
+        Self { inner: vec![] }
+    }
+
+    pub fn add(&mut self, task: &'a WorkDay) -> Self {
+        self.inner.push(&task);
+        self.clone()
+    }
+
+    pub fn execute(&mut self, dbh: &Connection) -> Result<()> {
+        self.inner.par_iter().map(|&e| e.calculate(dbh)).collect()
+    }
+}
+
 /// This is the struct in which we store the context of a given day work.
 ///
 #[derive(Debug)]
-struct Work {
+pub struct WorkDay<'a> {
     /// Name of site
-    pub name: String,
+    pub name: &'a str,
     /// Coordinates of site
     pub loc: Location,
-    /// Max distance we want to consider
-    pub dist: f64,
     /// Specific day
     pub date: DateTime<Utc>,
+    /// Max distance we want to consider
+    pub distance: f64,
     /// proximity
     pub separation: f64,
+    /// table name template for a run
+    pub template: &'a str,
 }
 
-impl Work {
+impl<'a> Default for WorkDay<'a> {
+    fn default() -> Self {
+        WorkDay {
+            name: "",
+            date: Utc::now(),
+            loc: Location::default(),
+            distance: 0.,
+            separation: 0.,
+            template: "",
+        }
+    }
+}
+
+impl<'a> WorkDay<'a> {
+    pub fn new(name: &'a str, loc: Location, date: DateTime<Utc>) -> Self {
+        Self {
+            name,
+            loc,
+            date,
+            ..Self::default()
+        }
+    }
     /// Select a list of airplanes positions we will consider for distance calculations
     ///
     /// - 1st criteria date and time (unit is a given day)
@@ -59,7 +103,7 @@ impl Work {
     ///
     #[tracing::instrument(skip(dbh))]
     fn select_planes(&self, dbh: &Connection) -> Result<usize> {
-        let site = self.name.clone();
+        let site = self.name;
         let day = self.date.day();
         let month = self.date.month();
         let year = self.date.year();
@@ -68,8 +112,8 @@ impl Work {
 
         // Our distance in nm converted into degrees
         //
-        let dist = self.dist * 1.852 / ONE_DEG;
-        println!("{} nm as deg: {}", self.dist, dist);
+        let dist = self.distance * 1.852 / ONE_DEG;
+        println!("{} nm as deg: {}", self.distance, dist);
 
         let time_from = Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
         let time_to = time_from.add(Duration::days(1));
@@ -146,8 +190,8 @@ ORDER BY time
 
         // Our distance in nm converted into degrees
         //
-        let dist = self.dist * 1.852 / ONE_DEG;
-        println!("{} nm as deg: {}", self.dist, dist);
+        let dist = self.distance * 1.852 / ONE_DEG;
+        println!("{} nm as deg: {}", self.distance, dist);
 
         // Cleanup if needed
         //
@@ -315,7 +359,6 @@ BY NAME (
         }
 
         trace!("Generate en_id");
-        let name = self.name.clone();
         let upd = r##"
 UPDATE encounters AS old_e
 SET en_id = (
@@ -330,109 +373,74 @@ site = ?
 WHERE en_id IS NULL OR site IS NULL
         "##;
 
-        let count = dbh.execute(upd, [name])?;
+        let count = dbh.execute(upd, [self.name])?;
 
         Ok(count)
     }
-}
 
-/// Run the process for the given day.
-///
-#[tracing::instrument(skip(ctx))]
-fn calculate_one_day(dbh: &Connection, opts: &PlanesOpts) -> Result<PlanesStats> {
-    let dbh = ctx.db();
+    /// Run the process for the given day.
+    ///
+    #[tracing::instrument(skip(dbh))]
+    pub fn calculate(&self, dbh: &Connection) -> Result<PlanesStats> {
+        info!("Running calculations for {}:", self.date);
 
-    // Load locations
-    //
-    let list = load_locations(None)?;
-    let tm = dateparser::parse(&opts.date).unwrap();
-    let day = Utc
-        .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
-        .unwrap();
-    info!("Running calculations for {}:", day);
+        // Create our stat struct
+        //
+        let stats = &mut PlanesStats::new(self.date, self.distance, self.separation);
 
-    // Move ourselves to the datalake.
-    //
-    let datalake = ctx.config.get("datalake").unwrap();
-    info!("Datalake: {}", datalake);
+        // Create table `today` with all identified plane points with the specified range
+        //
+        let c_planes = self.select_planes(&dbh)?;
 
-    env::set_current_dir(datalake)?;
+        if c_planes == 0 {
+            eprintln!("No planes found.");
+            return Ok(stats.clone());
+        }
+        stats.planes = c_planes;
 
-    // Load parameters
-    //
-    let name = opts.name.clone();
-    let current: Location = if list.get(&name).is_none() {
-        return Err(Status::ErrUnknownSite(name).into());
-    } else {
-        list.get(&name).unwrap().clone()
-    };
+        // Create table `candidates` with all designated drone points
+        //
+        let c_drones = self.select_drones(&dbh)?;
 
-    // Store our context
-    //
-    let work = Work {
-        name: name.clone(),
-        loc: current,
-        dist: opts.distance,
-        date: day,
-        separation: opts.separation,
-    };
+        if c_drones == 0 {
+            eprintln!("No drones found.");
+            return Ok(stats.clone());
+        }
+        stats.drones = c_drones;
 
-    // Create our stat struct
-    //
-    let stats = &mut PlanesStats::new(tm, opts.distance, opts.separation);
+        // Create table `today_close` with all designated drone points and airplanes in proximity
+        //
+        let c_potential = self.find_close(&dbh)?;
 
-    // Create table `today` with all identified plane points with the specified range
-    //
-    let c_planes = work.select_planes(&dbh)?;
+        if c_potential == 0 {
+            eprintln!("No potential airprox found.");
+            return Ok(stats.clone());
+        }
+        stats.potential = c_potential;
 
-    if c_planes == 0 {
-        eprintln!("No planes found.");
-        return Ok(stats.clone());
+        // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
+        //
+        let _ = self.calculate_distances(&dbh)?;
+
+        // Now we have the distance calculated.
+        //
+        let c_encounters = self.save_encounters(&dbh)?;
+
+        if c_encounters == 0 {
+            eprintln!("No close encounters of any kind found.");
+            return Ok(stats.clone());
+        }
+        stats.encounters = c_encounters;
+
+        info!("Done.");
+        Ok(stats.clone())
     }
-    stats.planes = c_planes;
-
-    // Create table `candidates` with all designated drone points
-    //
-    let c_drones = work.select_drones(&dbh)?;
-
-    if c_drones == 0 {
-        eprintln!("No drones found.");
-        return Ok(stats.clone());
-    }
-    stats.drones = c_drones;
-
-    // Create table `today_close` with all designated drone points and airplanes in proximity
-    //
-    let c_potential = work.find_close(&dbh)?;
-
-    if c_potential == 0 {
-        eprintln!("No potential airprox found.");
-        return Ok(stats.clone());
-    }
-    stats.potential = c_potential;
-
-    // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
-    //
-    let _ = work.calculate_distances(&dbh)?;
-
-    // Now we have the distance calculated.
-    //
-    let c_encounters = work.save_encounters(&dbh)?;
-
-    if c_encounters == 0 {
-        eprintln!("No close encounters of any kind found.");
-        return Ok(stats.clone());
-    }
-    stats.encounters = c_encounters;
-
-    info!("Done.");
-    Ok(stats.clone())
 }
 
 /// Handle the `distances planes` command.
 ///
 #[tracing::instrument(skip(ctx))]
-pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<PlanesStats> {
+pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<HomeStats> {
     let dbh = ctx.db();
 
     // Load locations
@@ -462,62 +470,14 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<PlanesStat
 
     // Store our context
     //
-    let work = Work {
-        name: name.clone(),
-        loc: current,
-        dist: opts.distance,
-        date: day,
-        separation: opts.separation,
-    };
+    let work = WorkDay::new(&name, current, day);
+    dbg!(&work);
+    let mut list = Batch::new().add(&work);
+    dbg!(&list);
 
-    // Create our stat struct
-    //
-    let stats = &mut PlanesStats::new(tm, opts.distance, opts.separation);
+    //let stats = work.calculate(&dbh)?;
 
-    // Create table `today` with all identified plane points with the specified range
-    //
-    let c_planes = work.select_planes(&dbh)?;
-
-    if c_planes == 0 {
-        eprintln!("No planes found.");
-        return Ok(stats.clone());
-    }
-    stats.planes = c_planes;
-
-    // Create table `candidates` with all designated drone points
-    //
-    let c_drones = work.select_drones(&dbh)?;
-
-    if c_drones == 0 {
-        eprintln!("No drones found.");
-        return Ok(stats.clone());
-    }
-    stats.drones = c_drones;
-
-    // Create table `today_close` with all designated drone points and airplanes in proximity
-    //
-    let c_potential = work.find_close(&dbh)?;
-
-    if c_potential == 0 {
-        eprintln!("No potential airprox found.");
-        return Ok(stats.clone());
-    }
-    stats.potential = c_potential;
-
-    // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
-    //
-    let _ = work.calculate_distances(&dbh)?;
-
-    // Now we have the distance calculated.
-    //
-    let c_encounters = work.save_encounters(&dbh)?;
-
-    if c_encounters == 0 {
-        eprintln!("No close encounters of any kind found.");
-        return Ok(stats.clone());
-    }
-    stats.encounters = c_encounters;
-
+    let stats = HomeStats { distances: 0 };
     info!("Done.");
     Ok(stats.clone())
 }
