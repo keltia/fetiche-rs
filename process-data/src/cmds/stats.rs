@@ -1,6 +1,13 @@
 use std::fmt::{Display, Formatter};
+use std::ops::Add;
 
 use chrono::{DateTime, Utc};
+
+#[derive(Debug)]
+pub enum Stats {
+    Planes(PlanesStats),
+    Home(HomeStats),
+}
 
 #[derive(Clone, Debug)]
 pub struct PlanesStats {
@@ -45,12 +52,27 @@ impl PlanesStats {
     }
 }
 
-
 impl Display for PlanesStats {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = format!("Day {}:\n{} drones in potential airprox with {} planes, {} found within {}m in a {} nm radius.",
                           self.day, self.drones, self.planes, self.encounters, self.proximity, self.distance);
         write!(f, "{}", str)
+    }
+}
+
+impl Add for PlanesStats {
+    type Output = PlanesStats;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            day: self.day,
+            distance: self.distance,
+            proximity: self.proximity,
+            planes: self.planes + rhs.planes,
+            drones: self.drones + rhs.drones,
+            potential: self.potential + rhs.potential,
+            encounters: self.encounters + rhs.encounters,
+        }
     }
 }
 
@@ -76,10 +98,20 @@ impl HomeStats {
     }
 }
 
-
 impl Display for HomeStats {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = format!("Calculated {} distances between drone and operator.", self.distances);
         write!(f, "{}", str)
     }
 }
+
+impl Add for HomeStats {
+    type Output = HomeStats;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            distances: self.distances + rhs.distances,
+        }
+    }
+}
+
