@@ -30,6 +30,17 @@ pub struct Location {
     pub lon: f64,
 }
 
+impl Default for Location {
+    fn default() -> Self {
+        Location {
+            code: String::new(),
+            hash: None,
+            lat: 0.,
+            lon: 0.,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct BB {
     /// Longitude - X0
