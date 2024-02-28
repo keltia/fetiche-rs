@@ -1,7 +1,7 @@
 //! Module handling date ranges
 //!
 
-use chrono::{Datelike, DateTime, TimeZone, Utc};
+use chrono::{Datelike, DateTime, Duration, TimeZone, Utc};
 use eyre::{eyre, Result};
 
 pub fn parse_range(date: &str) -> Result<(String, String)> {
@@ -31,9 +31,9 @@ pub fn parse_range(date: &str) -> Result<(String, String)> {
     }
 }
 
+/// Parse and return both sides (or just the first twice)
+///
 pub fn parse_interval(date: &str) -> Result<(DateTime<Utc>, DateTime<Utc>)> {
-    // Parse and return both sides (or just the first twice)
-    //
     let (start, end) = parse_range(date)?;
 
     // Parse and validate date
@@ -53,8 +53,22 @@ pub fn parse_interval(date: &str) -> Result<(DateTime<Utc>, DateTime<Utc>)> {
     Ok((start, end))
 }
 
+/// Expand from begin to end with all days in between
+///
+pub fn expand_interval(begin: DateTime<Utc>, end: DateTime<Utc>) -> Result<Vec<DateTime<Utc>>> {
+    let mut d = begin;
+    let mut intv = vec![];
+
+    while d <= end {
+        intv.push(d);
+        d += Duration::days(1);
+    }
+    Ok(intv)
+}
+
 #[cfg(test)]
 mod tests {
+    use chrono::{NaiveDate, NaiveDateTime};
     use rstest::rstest;
 
     use super::*;
@@ -71,13 +85,30 @@ mod tests {
     #[rstest]
     #[should_panic]
     #[case("2024-65-01")]
+    #[should_panic]
     #[case("2024-02-01..787878787878-03-01")]
     fn test_parse_interval_bad(#[case] inp: &str) {
-        let r = parse_range(inp);
+        let r = parse_interval(inp);
         assert!(r.is_err());
-        let (b, e) = r.unwrap();
-        dbg!(&b, &e);
-        let b = dateparser::parse(&b).unwrap();
-        let e = dateparser::parse(&e).unwrap();
+    }
+
+    #[rstest]
+    #[case(("2024-02-01", "2024-02-01"), ["2024-02-01"].to_vec())]
+    #[case(("2024-02-01", "2024-02-02"), ["2024-02-01", "2024-02-02"].to_vec())]
+    #[case(("2024-02-01", "2024-02-03"), ["2024-02-01", "2024-02-02", "2024-02-03"].to_vec())]
+    fn test_expand_interval(#[case] b: (&str, &str), #[case] a: Vec<&str>) -> Result<()> {
+        let bb = dateparser::parse(b.0).unwrap();
+        let ee = dateparser::parse(b.1).unwrap();
+        let aa: Vec<_> = a
+            .iter()
+            .map(|e|
+                dateparser::parse(e).unwrap().date_naive())
+            .collect::<Vec<_>>();
+
+        let res = expand_interval(bb, ee);
+        assert!(res.is_ok());
+        let res = res.unwrap().iter().map(|e| e.date_naive()).collect::<Vec<_>>();
+        assert_eq!(aa, res);
+        Ok(())
     }
 }
