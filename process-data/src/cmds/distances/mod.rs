@@ -4,15 +4,14 @@ use std::sync::Arc;
 use clap::Parser;
 use duckdb::Connection;
 use eyre::Result;
-use tracing::error;
 
-pub use to_home::*;
-pub use to_planes::*;
+pub use home::*;
+pub use planes::*;
 
 use crate::cmds::{PlanesStats, Stats};
 
-mod to_home;
-mod to_planes;
+mod home;
+mod planes;
 
 #[derive(Debug, Parser)]
 pub(crate) struct DistOpts {
@@ -37,20 +36,23 @@ pub(crate) enum DistSubcommand {
 /// This trait define an object that can be calculated
 ///
 pub trait Calculate: Debug {
-    fn execute(&self, dbh: &Connection) -> Result<Stats>;
+    fn run(&self, dbh: &Connection) -> Result<Stats>;
 }
 
 // -----
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Batch<'a> {
     dbh: Arc<&'a Connection>,
     inner: Vec<Box<dyn Calculate>>,
 }
 
 impl<'a> Batch<'a> {
-    pub fn new(dbh: &Connection) -> Self {
-        Self { dbh: Arc::new(dbh.clone()), inner: vec![] }
+    pub fn new(dbh: &'a Connection) -> Self {
+        Self {
+            dbh: Arc::new(dbh),
+            inner: vec![],
+        }
     }
 
     #[tracing::instrument]
@@ -63,30 +65,101 @@ impl<'a> Batch<'a> {
     pub fn execute(&mut self) -> Result<Vec<Stats>> {
         let dbh = self.dbh.clone();
 
-        let all: Vec<Stats> = self.inner.iter().map(|&e| {
-            match e.calculate(dbh) {
-                Ok(stats) => stats,
-                Err(e) => error!("Error: {}", e),
-            }
-        }).collect::<Vec<_>>();
+        let list = self.inner.iter();
+
+        let (all, errors): (Vec<_>, Vec<_>) = list
+            .map(|e| {
+                e.run(&dbh)
+            })
+            .partition(|x| { x.is_ok() });
+
+        eprintln!("errors={:?}", errors);
+
+        let all = all.into_iter().map(|e| e.unwrap()).collect();
         Ok(all)
+    }
+
+    #[tracing::instrument]
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+impl<const N: usize> From<[Box<dyn Calculate>; N]> for Batch {
+    fn from(value: [Box<dyn Calculate>; N]) -> Self {
+        let a = Batch::new(&dbh)
+        value.iter().for_each()
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use rand::prelude::*;
     use super::*;
+
+    use crate::cmds::HomeStats;
+
+    #[derive(Debug)]
+    struct Task {}
+
+    impl Task {
+        fn new() -> Self {
+            Task {}
+        }
+    }
+
+    impl Calculate for Task {
+        fn run(&self, dbh: &Connection) -> Result<Stats> {
+            let mut r = thread_rng();
+            let val: u8 = r.gen();
+
+            let hs = HomeStats { distances: val as usize };
+            let s = Stats::Home(hs);
+            eprintln!("calculate");
+            Ok(s)
+        }
+    }
 
     #[test]
     fn test_batch_new() -> Result<()> {
         let dbh = Connection::open_in_memory()?;
 
-        let mut b = Batch::new(&dbh);
+        let b = Batch::new(&dbh);
         assert!(b.inner.is_empty());
+        Ok(())
+    }
 
-        let s: Vec<Stats> = b.execute()?;
+    #[test]
+    fn test_batch_add() -> Result<()> {
+        let dbh = Connection::open_in_memory()?;
+
+        let mut b = Batch::new(&dbh);
+        let t1 = Task::new();
+        let t2 = Task::new();
+
+        b.add(Box::new(t1));
+        b.add(Box::new(t2));
+        assert_eq!(2, b.len());
+        Ok(())
+    }
+
+    #[test]
+    fn test_batch_add() -> Result<()> {
+        let dbh = Connection::open_in_memory()?;
+
+        let mut b = Batch::new(&dbh);
+        let t1 = Task::new();
+        let t2 = Task::new();
+
+        b.add(Box::new(t1));
+        b.add(Box::new(t2));
+        assert_eq!(2, b.len());
+
+        let s = b.execute()?;
         dbg!(&s);
+        assert_eq!(2, s.len());
 
+        let summ = s.iter().fold(Stats::Home::de, ||)
         Ok(())
     }
 }

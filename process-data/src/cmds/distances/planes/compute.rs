@@ -1,47 +1,16 @@
-//! Module computing the distance from a drone to the various planes around
-//!
-//! XXX be extra careful when dealing with degrees, meters and nautical miles.
-//!
-
-use std::env;
 use std::ops::Add;
-
-use chrono::{Datelike, DateTime, Days, Duration, TimeZone, Utc};
-use clap::Parser;
+use chrono::{Datelike, DateTime, Duration, TimeZone, Utc};
 use duckdb::{Connection, params};
-use eyre::Result;
-use rayon::prelude::*;
-use tracing::{error, info, trace};
-
-use fetiche_common::{load_locations, Location};
-
-use crate::cmds::{Batch, Calculate, HomeStats, ONE_DEG, PlanesStats, Stats, Status};
-use crate::config::Context;
-
-/// These are the options we pass to this command
-///
-#[derive(Clone, Debug, Parser)]
-pub struct PlanesOpts {
-    /// Do calculation on this date (day).
-    pub date: String,
-    /// Do calculations around this station.
-    pub name: String,
-    /// Distance around the site in Nautical Miles.
-    #[clap(short = 'D', long, default_value = "70.")]
-    pub distance: f64,
-    /// Proximity in Meters.
-    #[clap(short = 'p', long, default_value = "5500.")]
-    pub separation: f64,
-}
-
-// -----
+use tracing::{info, trace};
+use fetiche_common::Location;
+use crate::cmds::{Calculate, ONE_DEG, PlanesStats, Stats};
 
 /// This is the struct in which we store the context of a given day work.
 ///
 #[derive(Debug)]
-pub struct PlaneDistance<'a> {
+pub struct PlaneDistance {
     /// Name of site
-    pub name: &'a str,
+    pub name: String,
     /// Coordinates of site
     pub loc: Location,
     /// Specific day
@@ -51,26 +20,26 @@ pub struct PlaneDistance<'a> {
     /// proximity
     pub separation: f64,
     /// table name template for a run
-    pub template: &'a str,
+    pub template: String,
 }
 
-impl<'a> Default for PlaneDistance<'a> {
+impl Default for PlaneDistance {
     fn default() -> Self {
         PlaneDistance {
-            name: "",
+            name: "".to_string(),
             date: Utc::now(),
             loc: Location::default(),
             distance: 0.,
             separation: 0.,
-            template: "",
+            template: "".to_string(),
         }
     }
 }
 
-impl<'a> PlaneDistance<'a> {
-    pub fn new(name: &'a str, loc: Location, date: DateTime<Utc>) -> Self {
+impl PlaneDistance {
+    pub fn new(name: &str, loc: Location, date: DateTime<Utc>) -> Self {
         Self {
-            name,
+            name: name.to_string(),
             loc,
             date,
             ..Self::default()
@@ -86,8 +55,8 @@ impl<'a> PlaneDistance<'a> {
     /// - define a bounding box around a specific site (default is 70nm) and use it as a filter
     ///
     #[tracing::instrument(skip(dbh))]
-    fn select_planes(&self, dbh: &Connection) -> Result<usize> {
-        let site = self.name;
+    fn select_planes(&self, dbh: &Connection) -> eyre::Result<usize> {
+        let site = self.name.clone();
         let day = self.date.day();
         let month = self.date.month();
         let year = self.date.year();
@@ -156,7 +125,7 @@ ORDER BY time
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn select_drones(&self, dbh: &Connection) -> Result<usize> {
+    fn select_drones(&self, dbh: &Connection) -> eyre::Result<usize> {
         // All drone points for the same day
         //
         // $1 = year
@@ -209,7 +178,7 @@ ORDER BY
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn find_close(&self, dbh: &Connection) -> Result<usize> {
+    fn find_close(&self, dbh: &Connection) -> eyre::Result<usize> {
         // Cleanup if needed
         //
         if dbh.execute("SHOW TABLE today_close", []).is_ok() {
@@ -268,7 +237,7 @@ ORDER BY
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn calculate_distances(&self, dbh: &Connection) -> Result<usize> {
+    fn calculate_distances(&self, dbh: &Connection) -> eyre::Result<usize> {
         // drop column if present
         //
         if dbh
@@ -291,7 +260,7 @@ ADD COLUMN dist_drone_plane FLOAT;
 
         trace!("Do the math.");
         let count = dbh.execute(
-            r##" 
+            r##"
 UPDATE today_close
 SET dist_drone_plane = dist_3d(px, py, pz, dx, dy, dz)
 "##,
@@ -301,7 +270,7 @@ SET dist_drone_plane = dist_3d(px, py, pz, dx, dy, dz)
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn save_encounters(&self, dbh: &Connection) -> Result<usize> {
+    fn save_encounters(&self, dbh: &Connection) -> eyre::Result<usize> {
         trace!("filter calculations, take min()");
 
         // We use a GROUP BY() clause to get the point where the distance between this drone and any surrounding planes
@@ -318,9 +287,9 @@ INSERT OR IGNORE INTO encounters
 BY NAME (
     SELECT
       any_value(dt) AS dt,
-      journey, 
-      any_value(drone_id) AS drone_id, 
-      model, 
+      journey,
+      any_value(drone_id) AS drone_id,
+      model,
       any_value(timestamp) AS time,
       any_value(callsign) AS callsign,
       any_value(addr) AS addr,
@@ -346,7 +315,7 @@ BY NAME (
         let upd = r##"
 UPDATE encounters AS old_e
 SET en_id = (
-    SELECT 
+    SELECT
       encounter(CAST(old_e.time AS DATE), journey, id) AS en_id
     FROM
       encounters AS new_e
@@ -357,17 +326,17 @@ site = ?
 WHERE en_id IS NULL OR site IS NULL
         "##;
 
-        let count = dbh.execute(upd, [self.name])?;
+        let count = dbh.execute(upd, [self.name.clone()])?;
 
         Ok(count)
     }
 }
 
-impl Calculate for PlaneDistance<'_> {
+impl Calculate for PlaneDistance {
     /// Run the process for the given day.
     ///
     #[tracing::instrument(skip(dbh))]
-    fn execute(&self, dbh: &Connection) -> Result<Stats> {
+    fn run(&self, dbh: &Connection) -> eyre::Result<Stats> {
         info!("Running calculations for {}:", self.date);
 
         // Create our stat struct
@@ -423,52 +392,4 @@ impl Calculate for PlaneDistance<'_> {
     }
 }
 
-/// Handle the `distances planes` command.
-///
-#[tracing::instrument(skip(ctx))]
-pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<HomeStats> {
-    let dbh = ctx.db();
-
-    // Load locations
-    //
-    let list = load_locations(None)?;
-    let tm = dateparser::parse(&opts.date).unwrap();
-    let day = Utc
-        .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
-        .unwrap();
-    info!("Running calculations for {}:", day);
-
-    // Move ourselves to the datalake.
-    //
-    let datalake = ctx.config.get("datalake").unwrap();
-    info!("Datalake: {}", datalake);
-
-    env::set_current_dir(datalake)?;
-
-    // Load parameters
-    //
-    let name = opts.name.clone();
-    let current: Location = if list.get(&name).is_none() {
-        return Err(Status::ErrUnknownSite(name).into());
-    } else {
-        list.get(&name).unwrap().clone()
-    };
-
-    // Store our context
-    //
-    let work1 = PlaneDistance::new(&name, current.clone(), day);
-    let work2 = PlaneDistance::new(&name, current.clone(), day + Days::new(1));
-    dbg!(&work1);
-    dbg!(&work2);
-    let mut list = Batch::new(&dbh).add(Box::new(work1)).add(Box::new(work2));
-    dbg!(&list);
-
-    let v: Vec<Stats> = list.execute()?;
-
-    //let stats = work.calculate(&dbh)?;
-
-    let stats = HomeStats { distances: 0 };
-    info!("Done.");
-    Ok(stats.clone())
-}
 
