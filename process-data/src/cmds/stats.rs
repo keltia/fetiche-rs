@@ -3,9 +3,10 @@ use std::ops::Add;
 
 use chrono::{DateTime, Utc};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum Stats {
     Planes(PlanesStats),
+    #[default]
     Home(HomeStats),
 }
 
