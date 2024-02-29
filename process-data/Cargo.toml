@@ -55,6 +55,9 @@ tracing-tree.workspace = true
 clap_complete = "4.5"
 duckdb = { version = "0.10", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
 geo = "0.28"
+itertools = "0.12"
+rand = "0"
+rayon = "1.8"
 rust-3d = "0.34"
 
 [dev-dependencies]
