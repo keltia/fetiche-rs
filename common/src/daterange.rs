@@ -59,7 +59,7 @@ pub fn expand_interval(begin: DateTime<Utc>, end: DateTime<Utc>) -> Result<Vec<D
     let mut d = begin;
     let mut intv = vec![];
 
-    while d <= end {
+    while d < end {
         intv.push(d);
         d += Duration::days(1);
     }
