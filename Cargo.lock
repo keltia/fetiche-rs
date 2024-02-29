@@ -4831,6 +4831,7 @@ dependencies = [
  "geo",
  "hcl-rs",
  "home",
+ "itertools 0.12.1",
  "log",
  "opentelemetry",
  "opentelemetry-jaeger",
