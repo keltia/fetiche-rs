@@ -42,12 +42,16 @@ pub trait Calculate: Debug {
 // -----
 
 #[derive(Debug)]
-pub struct Batch<'a> {
+pub struct Batch<'a, T>
+    where T: Debug + Calculate,
+{
     dbh: Arc<&'a Connection>,
-    inner: Vec<&'a Box<dyn Calculate>>,
+    inner: Vec<&'a T>,
 }
 
-impl<'a> Batch<'a> {
+impl<'a, T> Batch<'a, T>
+    where T: Debug + Calculate,
+{
     #[tracing::instrument]
     pub fn new(dbh: &'a Connection) -> Self {
         Self {
@@ -57,20 +61,25 @@ impl<'a> Batch<'a> {
     }
 
     #[tracing::instrument]
-    pub fn add(&mut self, task: &'a Box<dyn Calculate>) -> &mut Self {
+    pub fn add(&mut self, task: &'a T) -> &mut Self
+    {
         self.inner.push(task);
         self
     }
 
     #[tracing::instrument]
-    pub fn from_vec(dbh: &'a Connection, v: &'a [Box<dyn Calculate>]) -> Self {
+    pub fn from_vec(dbh: &'a Connection, v: &'a Vec<T>) -> Self
+        where T: Debug + Calculate,
+    {
         let mut b = Batch::new(&dbh);
         v.into_iter().for_each(|elem| { b.add(elem); });
         b
     }
 
     #[tracing::instrument]
-    pub fn execute(&mut self) -> Result<Vec<Stats>> {
+    pub fn execute(&mut self) -> Result<Vec<Stats>>
+        where T: Debug + Calculate,
+    {
         let dbh = self.dbh.clone();
 
         let all: Vec<_> = self.inner.iter()

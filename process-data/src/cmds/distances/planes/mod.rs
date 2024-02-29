@@ -13,7 +13,7 @@ use tracing::info;
 pub use compute::*;
 use fetiche_common::{DateOpts, expand_interval, load_locations, Location};
 
-use crate::cmds::{Batch, Stats, Status};
+use crate::cmds::{Batch, Calculate, Stats, Status};
 use crate::config::Context;
 
 mod compute;
@@ -22,10 +22,9 @@ mod compute;
 ///
 #[derive(Clone, Debug, Parser)]
 pub struct PlanesOpts {
+    /// Do calculation(s) on this/these day(s)
     #[clap(subcommand)]
     pub date: DateOpts,
-    /// Do calculation on this date (day).
-    //pub date: String,
     /// Do calculations around this station.
     pub name: String,
     /// Distance around the site in Nautical Miles.
@@ -87,7 +86,16 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     // Build our set of batches
     //
     let worklist: Vec<_> = dates.into_iter().map(|day| {
-        let work = PlaneDistance::new(&name, current.clone(), day);
+//        let work = PlaneDistance::new(&name, current.clone(), day).;
+
+        let work = PlaneDistanceBuilder::default()
+            .name(opts.name.clone())
+            .loc(current.clone())
+            .distance(opts.distance)
+            .date(day)
+            .separation(opts.separation)
+            .template("".to_string())
+            .build().unwrap();
         dbg!(&work);
 
         work
@@ -107,6 +115,8 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
 
 #[cfg(test)]
 mod tests {
+    use duckdb::Connection;
+
     use super::*;
 
     #[test]

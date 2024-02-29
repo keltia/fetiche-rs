@@ -1,6 +1,7 @@
 use std::ops::Add;
 
 use chrono::{Datelike, DateTime, Duration, TimeZone, Utc};
+use derive_builder::Builder;
 use duckdb::{Connection, params};
 use tracing::{info, trace};
 
@@ -10,7 +11,7 @@ use crate::cmds::{Calculate, ONE_DEG, PlanesStats, Stats};
 
 /// This is the struct in which we store the context of a given day work.
 ///
-#[derive(Debug)]
+#[derive(Builder, Debug)]
 pub struct PlaneDistance {
     /// Name of site
     pub name: String,
@@ -26,30 +27,8 @@ pub struct PlaneDistance {
     pub template: String,
 }
 
-impl Default for PlaneDistance {
-    fn default() -> Self {
-        PlaneDistance {
-            name: "".to_string(),
-            date: Utc::now(),
-            loc: Location::default(),
-            distance: 0.,
-            separation: 0.,
-            template: "".to_string(),
-        }
-    }
-}
 
 impl PlaneDistance {
-    pub fn new(name: &str, loc: Location, date: DateTime<Utc>) -> Box<dyn Calculate> {
-        Box::new(Self {
-            name: name.to_string(),
-            loc,
-            date,
-            ..Self::default()
-        })
-    }
-
-
     // -- private
 
     /// Select a list of airplanes positions we will consider for distance calculations
