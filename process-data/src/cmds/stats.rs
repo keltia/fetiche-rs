@@ -1,16 +1,75 @@
+//! Statistics manipulation module
+//!
+
 use std::fmt::{Display, Formatter};
 use std::ops::Add;
 
 use chrono::{DateTime, Utc};
+use itertools::fold;
 
-#[derive(Debug, Default)]
+/// All different statistics
+///
+#[derive(Clone, Copy, Debug)]
 pub enum Stats {
     Planes(PlanesStats),
-    #[default]
     Home(HomeStats),
 }
 
-#[derive(Clone, Debug)]
+impl Stats {
+    /// Gather all instances stats into one
+    ///
+    pub fn summarise(v: Vec<Stats>) -> Stats {
+        let first = v[0].clone();
+        if v.len() == 1 {
+            first
+        } else {
+            fold(v[1..].into_iter(), first, |a, &b| a + b)
+        }
+    }
+}
+
+impl Add for Stats {
+    type Output = Self;
+
+    /// Add two statistics
+    ///
+    fn add(self, rhs: Self) -> Self::Output {
+        match self {
+            Stats::Home(inner) => {
+                Stats::Home(inner + rhs.into())
+            }
+            Stats::Planes(inner) => {
+                Stats::Planes(inner + rhs.into())
+            }
+        }
+    }
+}
+
+/// Dereference `Stats` into inner `HomeStats`
+///
+impl From<Stats> for HomeStats {
+    fn from(value: Stats) -> Self {
+        match value {
+            Stats::Home(inner) => inner,
+            _ => panic!("bad type")
+        }
+    }
+}
+
+/// Dereference `Stats` into inner `PlaneStats`
+///
+impl From<Stats> for PlanesStats {
+    fn from(value: Stats) -> Self {
+        match value {
+            Stats::Planes(inner) => inner,
+            _ => panic!("bad type")
+        }
+    }
+}
+
+// -----
+
+#[derive(Clone, Copy, Debug)]
 pub struct PlanesStats {
     /// Specific date
     day: DateTime<Utc>,
@@ -79,7 +138,7 @@ impl Add for PlanesStats {
 
 // -----
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct HomeStats {
     /// Statistics for the home to drone calculations.
     pub distances: usize,
