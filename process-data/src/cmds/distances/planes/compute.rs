@@ -1,8 +1,11 @@
 use std::ops::Add;
+
 use chrono::{Datelike, DateTime, Duration, TimeZone, Utc};
 use duckdb::{Connection, params};
 use tracing::{info, trace};
+
 use fetiche_common::Location;
+
 use crate::cmds::{Calculate, ONE_DEG, PlanesStats, Stats};
 
 /// This is the struct in which we store the context of a given day work.
@@ -37,13 +40,13 @@ impl Default for PlaneDistance {
 }
 
 impl PlaneDistance {
-    pub fn new(name: &str, loc: Location, date: DateTime<Utc>) -> Self {
-        Self {
+    pub fn new(name: &str, loc: Location, date: DateTime<Utc>) -> Box<dyn Calculate> {
+        Box::new(Self {
             name: name.to_string(),
             loc,
             date,
             ..Self::default()
-        }
+        })
     }
 
 
