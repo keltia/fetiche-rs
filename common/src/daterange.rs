@@ -83,10 +83,9 @@ mod tests {
     }
 
     #[rstest]
-    #[should_panic]
     #[case("2024-65-01")]
-    #[should_panic]
     #[case("2024-02-01..787878787878-03-01")]
+    #[should_panic]
     fn test_parse_interval_bad(#[case] inp: &str) {
         let r = parse_interval(inp);
         assert!(r.is_err());
