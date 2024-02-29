@@ -8,7 +8,7 @@ use eyre::Result;
 pub use home::*;
 pub use planes::*;
 
-use crate::cmds::{PlanesStats, Stats};
+use crate::cmds::Stats;
 
 mod home;
 mod planes;
@@ -44,10 +44,11 @@ pub trait Calculate: Debug {
 #[derive(Debug)]
 pub struct Batch<'a> {
     dbh: Arc<&'a Connection>,
-    inner: Vec<Box<dyn Calculate>>,
+    inner: Vec<&'a Box<dyn Calculate>>,
 }
 
 impl<'a> Batch<'a> {
+    #[tracing::instrument]
     pub fn new(dbh: &'a Connection) -> Self {
         Self {
             dbh: Arc::new(dbh),
@@ -56,26 +57,35 @@ impl<'a> Batch<'a> {
     }
 
     #[tracing::instrument]
-    pub fn add(&mut self, task: Box<dyn Calculate>) -> &mut Self {
+    pub fn add(&mut self, task: &'a Box<dyn Calculate>) -> &mut Self {
         self.inner.push(task);
         self
+    }
+
+    #[tracing::instrument]
+    pub fn from_vec(dbh: &'a Connection, v: &'a [Box<dyn Calculate>]) -> Self {
+        let mut b = Batch::new(&dbh);
+        v.into_iter().for_each(|elem| { b.add(elem); });
+        b
     }
 
     #[tracing::instrument]
     pub fn execute(&mut self) -> Result<Vec<Stats>> {
         let dbh = self.dbh.clone();
 
-        let list = self.inner.iter();
+        let all: Vec<_> = self.inner.iter()
+            .filter_map(|e| {
+                let r = e.run(&dbh);
+                match r {
+                    Ok(r) => Some(r),
+                    Err(e) => {
+                        eprintln!("Error: {}", e.to_string());
+                        None
+                    }
+                }
+            }).collect();
 
-        let (all, errors): (Vec<_>, Vec<_>) = list
-            .map(|e| {
-                e.run(&dbh)
-            })
-            .partition(|x| { x.is_ok() });
-
-        eprintln!("errors={:?}", errors);
-
-        let all = all.into_iter().map(|e| e.unwrap()).collect();
+        dbg!(&all);
         Ok(all)
     }
 
@@ -85,26 +95,20 @@ impl<'a> Batch<'a> {
     }
 }
 
-impl<const N: usize> From<[Box<dyn Calculate>; N]> for Batch {
-    fn from(value: [Box<dyn Calculate>; N]) -> Self {
-        let a = Batch::new(&dbh)
-        value.iter().for_each()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use rand::prelude::*;
-    use super::*;
 
     use crate::cmds::HomeStats;
+
+    use super::*;
 
     #[derive(Debug)]
     struct Task {}
 
     impl Task {
-        fn new() -> Self {
-            Task {}
+        fn new() -> Box<dyn Calculate> {
+            Box::new(Task {})
         }
     }
 
@@ -137,29 +141,43 @@ mod tests {
         let t1 = Task::new();
         let t2 = Task::new();
 
-        b.add(Box::new(t1));
-        b.add(Box::new(t2));
+        b.add(&t1);
+        b.add(&t2);
         assert_eq!(2, b.len());
         Ok(())
     }
 
     #[test]
-    fn test_batch_add() -> Result<()> {
+    fn test_batch_from_vec() -> Result<()> {
         let dbh = Connection::open_in_memory()?;
 
-        let mut b = Batch::new(&dbh);
         let t1 = Task::new();
         let t2 = Task::new();
 
-        b.add(Box::new(t1));
-        b.add(Box::new(t2));
+        let tasks = [t1, t2];
+        let mut b = Batch::from_vec(&dbh, &tasks);
         assert_eq!(2, b.len());
+        Ok(())
+    }
 
-        let s = b.execute()?;
-        dbg!(&s);
-        assert_eq!(2, s.len());
+    #[test]
+    fn test_batch_execute() -> Result<()> {
+        let dbh = Connection::open_in_memory()?;
 
-        let summ = s.iter().fold(Stats::Home::de, ||)
+        let t1 = Task::new();
+        let t2 = Task::new();
+
+        let tasks = [t1, t2];
+        let mut b = Batch::from_vec(&dbh, &tasks);
+        dbg!(&b);
+
+        let v = b.execute()?;
+        dbg!(&v);
+        assert_eq!(2, v.len());
+
+        let summ = Stats::summarise(v);
+        dbg!(&summ);
+
         Ok(())
     }
 }
