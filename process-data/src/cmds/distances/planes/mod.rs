@@ -3,24 +3,20 @@
 //! XXX be extra careful when dealing with degrees, meters and nautical miles.
 //!
 
-mod compute;
+use std::env;
+
+use chrono::{Datelike, TimeZone, Utc};
+use clap::Parser;
+use eyre::Result;
+use tracing::info;
 
 pub use compute::*;
-
-use std::env;
-use std::ops::Add;
-
-use chrono::{Datelike, DateTime, Days, Duration, TimeZone, Utc};
-use clap::Parser;
-use duckdb::{Connection, params};
-use eyre::Result;
-use rayon::prelude::*;
-use tracing::{error, info, trace};
-
 use fetiche_common::{DateOpts, expand_interval, load_locations, Location};
 
-use crate::cmds::{Batch, Calculate, HomeStats, ONE_DEG, PlanesStats, Stats, Status};
+use crate::cmds::{Batch, Stats, Status};
 use crate::config::Context;
+
+mod compute;
 
 /// These are the options we pass to this command
 ///
@@ -48,17 +44,24 @@ pub struct PlanesOpts {
 pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     let dbh = ctx.db();
 
+    // Move ourselves to the datalake.
+    //
+    let datalake = ctx.config.get("datalake").unwrap();
+
+    info!("Datalake: {}", datalake);
+    env::set_current_dir(datalake)?;
+
     // Load locations
     //
     let list = load_locations(None)?;
 
-    let (begin, end) = match opts.date.parse() {
+    let (begin, end) = match DateOpts::parse(opts.date.clone()) {
         Ok((start, stop)) => {
             info!("We have an interval: from {} to {}", start, stop);
             (start, stop)
         }
         Err(_) => {
-            let tm = dateparser::parse(&opts.date).unwrap();
+            let tm = Utc::now();
             let day = Utc
                 .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
                 .unwrap();
@@ -70,13 +73,7 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
 
     let dates = expand_interval(begin, end)?;
     dbg!(&dates);
-
-    // Move ourselves to the datalake.
-    //
-    let datalake = ctx.config.get("datalake").unwrap();
-    info!("Datalake: {}", datalake);
-
-    env::set_current_dir(datalake)?;
+    info!("{} days to process.", dates.len());
 
     // Load parameters
     //
@@ -87,17 +84,25 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
         list.get(&name).unwrap().clone()
     };
 
-    let work1 = PlaneDistance::new(&name, current.clone(), begin);
-    dbg!(&work1);
-    let mut batches = Batch::new(&dbh);
+    // Build our set of batches
+    //
+    let worklist: Vec<_> = dates.into_iter().map(|day| {
+        let work = PlaneDistance::new(&name, current.clone(), day);
+        dbg!(&work);
 
-    batches.add(Box::new(work1));
+        work
+    }).collect();
+    dbg!(&worklist);
 
-    dbg!(&batches);
+    let mut batch = Batch::from_vec(&dbh, &worklist);
 
-    let v: Vec<Stats> = batches.execute()?;
+    // Gather stats for the run
+    //
+    let stats = batch.execute()?;
 
-    Ok(stats);
+    let stats = Stats::summarise(stats);
+
+    Ok(stats)
 }
 
 #[cfg(test)]
@@ -117,15 +122,14 @@ mod tests {
         let work2 = PlaneDistance::new(&name, current.clone(), day + Days::new(1));
         dbg!(&work1);
         dbg!(&work2);
-        let mut list = Batch::new(&dbh);
-
-        list.add(Box::new(work1)).add(Box::new(work2));
+        let tasks = [work1, work2];
+        let mut list = Batch::from_vec(&dbh, &tasks);
 
         dbg!(&list);
 
         let v: Vec<Stats> = list.execute()?;
 
-        //let stats = work.calculate(&dbh)?;
+        let stats = Stats::summarise(list.execute()?);
 
         Ok(())
     }
