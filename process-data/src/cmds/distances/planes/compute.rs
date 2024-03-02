@@ -1,32 +1,11 @@
 use std::ops::Add;
 
-use chrono::{Datelike, DateTime, Duration, TimeZone, Utc};
-use derive_builder::Builder;
+use chrono::{Datelike, Duration, TimeZone, Utc};
 use duckdb::{Connection, params};
 use tracing::{info, trace};
 
-use fetiche_common::Location;
-
-use crate::cmds::{Calculate, ONE_DEG, PlanesStats, Stats};
-
-/// This is the struct in which we store the context of a given day work.
-///
-#[derive(Builder, Debug)]
-pub struct PlaneDistance {
-    /// Name of site
-    pub name: String,
-    /// Coordinates of site
-    pub loc: Location,
-    /// Specific day
-    pub date: DateTime<Utc>,
-    /// Max distance we want to consider
-    pub distance: f64,
-    /// proximity
-    pub separation: f64,
-    /// table name template for a run
-    pub template: String,
-}
-
+use crate::cmds::{ONE_DEG, PlaneDistance, PlanesStats, Stats};
+use crate::cmds::batch::Calculate;
 
 impl PlaneDistance {
     // -- private

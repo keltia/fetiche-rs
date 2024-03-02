@@ -5,8 +5,9 @@
 
 use std::env;
 
-use chrono::{Datelike, TimeZone, Utc};
+use chrono::{Datelike, DateTime, TimeZone, Utc};
 use clap::Parser;
+use derive_builder::Builder;
 use eyre::Result;
 use tracing::info;
 
@@ -33,6 +34,29 @@ pub struct PlanesOpts {
     /// Proximity in Meters.
     #[clap(short = 'p', long, default_value = "5500.")]
     pub separation: f64,
+}
+
+// -----
+
+/// This is the struct in which we store the context of a given day work.
+///
+#[derive(Builder, Debug)]
+pub struct PlaneDistance {
+    /// Name of site
+    pub name: String,
+    /// Coordinates of site
+    pub loc: Location,
+    /// Specific day
+    pub date: DateTime<Utc>,
+    /// Max distance we want to consider
+    #[builder(default = "70.")]
+    pub distance: f64,
+    /// proximity
+    #[builder(default = "5500.")]
+    pub separation: f64,
+    /// table name template for a run
+    #[builder(setter(into, strip_option), default = "None")]
+    pub template: Option<String>,
 }
 
 // -----
