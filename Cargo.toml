@@ -21,6 +21,7 @@ log = { version = "0.4", features = ["serde", "std"] }
 nom = "7"
 opentelemetry = { version = "0.21", features = ["logs", "metrics"] }
 opentelemetry-jaeger = { version = "0.20", features = ["rt-tokio", "reqwest_blocking_collector_client"] }
+opentelemetry-otlp = "0.14"
 opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
 parquet2 = { version = "0.17", features = ["zstd"] }
 progress = "0.2"
