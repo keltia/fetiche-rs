@@ -39,6 +39,7 @@ home.workspace = true
 log.workspace = true
 opentelemetry.workspace = true
 opentelemetry-jaeger.workspace = true
+opentelemetry-otlp.workspace = true
 opentelemetry_sdk.workspace = true
 parquet2.workspace = true
 progress.workspace = true
@@ -58,7 +59,6 @@ duckdb = { version = "0.10", features = ["parquet", "chrono", "csv", "duckdb-loa
 geo = "0.28"
 itertools = "0.12"
 rand = "0"
-rayon = "1.8"
 rust-3d = "0.34"
 
 [dev-dependencies]
