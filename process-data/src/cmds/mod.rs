@@ -14,6 +14,7 @@ use crate::cli::{Opts, SubCommand};
 use crate::config::Context;
 
 mod acute;
+mod batch;
 mod distances;
 mod export;
 mod setup;
