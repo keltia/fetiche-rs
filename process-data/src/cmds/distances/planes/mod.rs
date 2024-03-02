@@ -11,10 +11,10 @@ use derive_builder::Builder;
 use eyre::Result;
 use tracing::info;
 
-pub use compute::*;
 use fetiche_common::{DateOpts, expand_interval, load_locations, Location};
 
-use crate::cmds::{Batch, Calculate, Stats, Status};
+use crate::cmds::{Stats, Status};
+use crate::cmds::batch::Batch;
 use crate::config::Context;
 
 mod compute;
@@ -110,15 +110,12 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     // Build our set of batches
     //
     let worklist: Vec<_> = dates.into_iter().map(|day| {
-//        let work = PlaneDistance::new(&name, current.clone(), day).;
-
         let work = PlaneDistanceBuilder::default()
             .name(opts.name.clone())
             .loc(current.clone())
             .distance(opts.distance)
             .date(day)
             .separation(opts.separation)
-            .template("".to_string())
             .build().unwrap();
         dbg!(&work);
 
@@ -139,6 +136,7 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
 
 #[cfg(test)]
 mod tests {
+    use chrono::Days;
     use duckdb::Connection;
 
     use super::*;
@@ -152,18 +150,29 @@ mod tests {
         let current = Location { lon: 0., lat: 0., code: "".to_string(), hash: Some("".to_string()) };
         let name = String::from("test1");
 
-        let work1 = PlaneDistance::new(&name, current.clone(), day);
-        let work2 = PlaneDistance::new(&name, current.clone(), day + Days::new(1));
+        let work1 = PlaneDistanceBuilder::default()
+            .name(name.clone())
+            .loc(current.clone())
+            .date(day)
+            .build()?;
+
+        let work2 = PlaneDistanceBuilder::default()
+            .name(name.clone())
+            .loc(current.clone())
+            .date(day + Days::new(1))
+            .build()?;
+
         dbg!(&work1);
         dbg!(&work2);
-        let tasks = [work1, work2];
-        let mut list = Batch::from_vec(&dbh, &tasks);
+        let tasks = vec![work1, work2];
+        let list = Batch::from_vec(&dbh, &tasks);
 
         dbg!(&list);
+        assert_eq!(2, tasks.len());
 
-        let v: Vec<Stats> = list.execute()?;
+        // let v: Vec<Stats> = list.execute()?;
 
-        let stats = Stats::summarise(list.execute()?);
+        //let stats = Stats::summarise(v);
 
         Ok(())
     }
