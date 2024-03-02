@@ -21,7 +21,7 @@ pub struct ExpDroneOpts {
     pub output: Option<String>,
 }
 
-#[tracing::instrument(skip(ctx))]
+#[tracing::instrument(skip(_ctx))]
 pub fn export_drone_stats(_ctx: &Context, _opts: &ExpDroneOpts) -> eyre::Result<()> {
     Ok(())
 }
