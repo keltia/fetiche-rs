@@ -20,7 +20,6 @@ pub use io::*;
 
 use crate::cli::Opts;
 use crate::cmds::Status;
-use crate::NAME;
 
 mod io;
 
@@ -65,10 +64,17 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     // Setup Open Telemetry with Jaeger
     //
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_auto_split_batch(true)
-        .with_max_packet_size(9_216)
-        .with_service_name(NAME)
+    // let tracer = opentelemetry_jaeger::new_agent_pipeline()
+    //     .with_auto_split_batch(true)
+    //     .with_max_packet_size(9_216)
+    //     .with_service_name(NAME)
+    //     .install_simple()?;
+    // let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
+    let exporter = opentelemetry_otlp::new_exporter().tonic();
+    let tracer = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(exporter)
         .install_simple()?;
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
@@ -109,7 +115,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     info!("Connecting to {}", name);
     #[cfg(feature = "duckdb")]
-    let dbh = Connection::open_with_flags(
+        let dbh = Connection::open_with_flags(
         name.as_str(),
         duckdb::Config::default()
             .allow_unsigned_extensions()?
@@ -124,7 +130,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
             ("database".to_string(), name.clone()),
             ("datalake".to_string(), datalake.clone()),
         ])
-        .into(),
+            .into(),
         dbh: dbh.into(),
     };
     Ok(ctx)
