@@ -14,28 +14,6 @@ pub trait Calculate: Debug {
 /// This is a batch, that is, a series on tasks that can be `Calculate`d using the corresponding
 /// trait.  It also stores the handle to the database.
 ///
-/// Example:
-/// ```no_run
-/// let mut batch = Batch::new(dbh);
-///
-/// let t1 = Task::new();
-/// let t2 = Task::new();
-/// batch.add(t1);
-/// batch.add(t2);
-///
-/// let stats: Vec<Stats> = batch.execute();
-/// ```
-/// or
-/// ```no_run
-/// let mut batch = Batch::new(dbh);
-///
-/// let t1 = Task::new();
-/// let t2 = Task::new();
-/// batch.from_vec(vec![t1, t2]);
-///
-/// let stats: Vec<Stats> = batch.execute();
-/// ```
-///
 #[derive(Debug)]
 pub struct Batch<'a, T>
     where T: Debug + Calculate,
@@ -47,6 +25,8 @@ pub struct Batch<'a, T>
 impl<'a, T> Batch<'a, T>
     where T: Debug + Calculate,
 {
+    /// Create a new empty batch
+    ///
     #[tracing::instrument]
     pub fn new(dbh: &'a Connection) -> Self {
         Self {
@@ -55,6 +35,18 @@ impl<'a, T> Batch<'a, T>
         }
     }
 
+    /// Add a single task t a batch
+    ///
+    /// Example:
+    /// ```no_run
+    /// let mut batch = Batch::new(dbh);
+    ///
+    /// let t1 = Task::new();
+    /// let t2 = Task::new();
+    /// batch.add(t1);
+    /// batch.add(t2);
+    /// ```
+    ///
     #[tracing::instrument]
     pub fn add(&mut self, task: &'a T) -> &mut Self
     {
@@ -62,6 +54,17 @@ impl<'a, T> Batch<'a, T>
         self
     }
 
+    /// Create a batch from a vector of tasks
+    ///
+    /// Example:
+    /// ```no_run
+    /// let mut batch = Batch::new(dbh);
+    ///
+    /// let t1 = Task::new();
+    /// let t2 = Task::new();
+    /// batch.from_vec(vec![t1, t2]);
+    /// ```
+    ///
     #[tracing::instrument]
     pub fn from_vec(dbh: &'a Connection, v: &'a Vec<T>) -> Self
         where T: Debug + Calculate,
@@ -71,6 +74,19 @@ impl<'a, T> Batch<'a, T>
         b
     }
 
+    /// Run all the tasks in sequence, gathering stats for each run in a vector.
+    ///
+    /// Example:
+    /// ```no_run
+    /// let mut batch = Batch::new(dbh);
+    ///
+    /// let t1 = Task::new();
+    /// let t2 = Task::new();
+    /// batch.from_vec(vec![t1, t2]);
+    ///
+    /// let stats: Vec<Stats> = batch.execute()?;
+    /// ```
+    ///
     #[tracing::instrument]
     pub fn execute(&mut self) -> eyre::Result<Vec<Stats>>
         where T: Debug + Calculate,
@@ -93,10 +109,17 @@ impl<'a, T> Batch<'a, T>
         Ok(all)
     }
 
+    /// Returns the length of the current batch.
+    ///
     #[tracing::instrument]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
+
+    /// Return whether a batch is empty.
+    ///
+    #[tracing::instrument]
+    pub fn is_empty(&self) -> bool { self.inner.is_empty() }
 }
 
 #[cfg(test)]
