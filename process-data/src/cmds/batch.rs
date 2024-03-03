@@ -11,6 +11,31 @@ pub trait Calculate: Debug {
 
 // -----
 
+/// This is a batch, that is, a series on tasks that can be `Calculate`d using the corresponding
+/// trait.  It also stores the handle to the database.
+///
+/// Example:
+/// ```no_run
+/// let mut batch = Batch::new(dbh);
+///
+/// let t1 = Task::new();
+/// let t2 = Task::new();
+/// batch.add(t1);
+/// batch.add(t2);
+///
+/// let stats: Vec<Stats> = batch.execute();
+/// ```
+/// or
+/// ```no_run
+/// let mut batch = Batch::new(dbh);
+///
+/// let t1 = Task::new();
+/// let t2 = Task::new();
+/// batch.from_vec(vec![t1, t2]);
+///
+/// let stats: Vec<Stats> = batch.execute();
+/// ```
+///
 #[derive(Debug)]
 pub struct Batch<'a, T>
     where T: Debug + Calculate,
