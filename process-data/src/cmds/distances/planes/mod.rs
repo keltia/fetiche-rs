@@ -9,7 +9,7 @@ use chrono::{Datelike, DateTime, TimeZone, Utc};
 use clap::Parser;
 use derive_builder::Builder;
 use eyre::Result;
-use tracing::info;
+use tracing::{info, trace};
 
 use fetiche_common::{DateOpts, expand_interval, load_locations, Location};
 
@@ -92,10 +92,10 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
             (tm, tm)
         }
     };
-    dbg!(begin, end);
+    trace!("From {} to {}", begin, end);
 
     let dates = expand_interval(begin, end)?;
-    dbg!(&dates);
+    trace!("all days: {:?}", dates);
     info!("{} days to process.", dates.len());
 
     // Load parameters
@@ -121,7 +121,7 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
 
         work
     }).collect();
-    dbg!(&worklist);
+    trace!("All tasks: {:?}", worklist);
 
     let mut batch = Batch::from_vec(&dbh, &worklist);
 
