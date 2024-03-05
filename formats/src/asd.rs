@@ -59,10 +59,10 @@ pub struct Asd {
     /// Signal level (in dB)
     pub rssi: Option<i32>,
     /// $13 (actually f32)
-    #[serde_as(as = "PickFirst<(Option<_>, Option<DisplayFromStr>)>")]
+    #[serde_as(as = "PickFirst<(_, Option<DisplayFromStr>)>")]
     pub home_lat: Option<f32>,
     /// $14 (actually f32)
-    #[serde_as(as = "PickFirst<(Option<_>, Option<DisplayFromStr>)>")]
+    #[serde_as(as = "PickFirst<(_, Option<DisplayFromStr>)>")]
     pub home_lon: Option<f32>,
     /// Altitude from takeoff point
     pub home_height: Option<f32>,

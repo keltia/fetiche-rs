@@ -16,12 +16,21 @@
 //!
 //! [NDJSON]: https://en.wikipedia.org/wiki/NDJSON
 
+use std::fs;
+use std::io::{BufReader, Write};
 use std::ops::Add;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use clap::{crate_name, crate_version};
+use datafusion::arrow::csv::WriterBuilder;
+use datafusion::arrow::util::pretty::print_batches;
+use datafusion::common::file_options::csv_writer::CsvWriterOptions;
+use datafusion::common::parsers::CompressionTypeVariant;
+use datafusion::dataframe::DataFrameWriteOptions;
+use datafusion::prelude::*;
 use eyre::Report;
 use eyre::{eyre, Result};
 use reqwest::blocking::Client;
@@ -30,9 +39,11 @@ use serde::{Deserialize, Serialize};
 use snafu::prelude::*;
 use strum::{EnumString, VariantNames};
 use tap::Tap;
+use tempfile::Builder;
+use tokio::runtime::Runtime;
 use tracing::{debug, error, trace, warn};
 
-use fetiche_formats::Format;
+use fetiche_formats::{Format, Asd as FAsd};
 
 use crate::filter::Filter;
 use crate::site::Site;
@@ -337,7 +348,41 @@ impl Fetchable for Asd {
         let data: Payload = serde_json::from_str(&resp)?;
 
         trace!("Fetched {}", data.filename);
-        Ok(out.send(data.content)?)
+
+        trace!("save {}", data.filename);
+        fs::write(&data.filename, &data.content)?;
+
+        // Create tokio runtime
+        //
+        let rt = Runtime::new()?;
+
+        let fname = data.filename.clone();
+
+        rt.block_on(async {
+            update_time(&fname).await.unwrap();
+        });
+        let res = fs::read_to_string(&fname)?;
+
+        /*        let reader = BufReader::new(data.content.as_bytes());
+                let mut csv = csv::ReaderBuilder::new().from_reader(reader);
+
+                let all = csv.deserialize().into_iter()
+                    .map(|row| {
+                        let mut r: FAsd = row.unwrap();
+                        r.time = dateparser::parse(&r.timestamp).unwrap();
+                        r
+                    })
+                    .inspect(|e| eprintln!("e={:?}", e))
+                    .collect::<Vec<_>>();
+
+                let mut write = csv::WriterBuilder::new().from_writer(vec![]);
+                all.iter().for_each(|row| { write.serialize(row); });
+
+                let data = String::from_utf8(write.into_inner()?)?;
+        */
+        // Now we must fixup the data by inserting the missing timestamp
+        //
+        Ok(out.send(res)?)
     }
 
     /// Return the site's input formats
@@ -346,6 +391,23 @@ impl Fetchable for Asd {
         Format::Asd
     }
 }
+
+async fn update_time(fname: &str) -> Result<()> {
+    // Load out file in datafusion
+    //
+    let ctx = SessionContext::new();
+    ctx.register_csv("drones", fname, CsvReadOptions::default()).await.unwrap();
+
+    let df = ctx.sql("SELECT *,to_timestamp(timestamp) AS time FROM drones").await.unwrap();
+
+    let new = Builder::new().suffix(".csv").tempfile().unwrap();
+    let a = df.write_csv(new.path().to_str().unwrap(), DataFrameWriteOptions::default(), None).await.unwrap();
+    dbg!(print_batches(&a).unwrap());
+
+    let _ = fs::rename(new.path(), fname)?;
+    Ok(())
+}
+
 
 /// ASD is sending us an anonymous JSON array
 ///
