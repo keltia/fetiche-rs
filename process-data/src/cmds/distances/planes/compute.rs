@@ -1,7 +1,12 @@
+//! This is where all the main calculations are done.
+//!
+//! FIXME: at the moment, the pipe uses fixed names for the intermediate tables (today,candidates, etc.).
+//!
 use std::ops::Add;
 
 use chrono::{Datelike, Duration, TimeZone, Utc};
 use duckdb::{Connection, params};
+use tokio::time::Instant;
 use tracing::{info, trace};
 
 use crate::cmds::{ONE_DEG, PlaneDistance, PlanesStats, Stats};
@@ -300,6 +305,7 @@ impl Calculate for PlaneDistance {
     fn run(&self, dbh: &Connection) -> eyre::Result<Stats> {
         info!("Running calculations for {}:", self.date);
 
+        let start = Instant::now();
         // Create our stat struct
         //
         let stats = &mut PlanesStats::new(self.date, self.distance, self.separation);
@@ -309,6 +315,7 @@ impl Calculate for PlaneDistance {
         let c_planes = self.select_planes(&dbh)?;
 
         if c_planes == 0 {
+            stats.time = (Instant::now() - start).as_millis();
             eprintln!("No planes found.");
             return Ok(Stats::Planes(stats.clone()));
         }
@@ -319,6 +326,7 @@ impl Calculate for PlaneDistance {
         let c_drones = self.select_drones(&dbh)?;
 
         if c_drones == 0 {
+            stats.time = (Instant::now() - start).as_millis();
             eprintln!("No drones found.");
             return Ok(Stats::Planes(stats.clone()));
         }
@@ -329,6 +337,7 @@ impl Calculate for PlaneDistance {
         let c_potential = self.find_close(&dbh)?;
 
         if c_potential == 0 {
+            stats.time = (Instant::now() - start).as_millis();
             eprintln!("No potential airprox found.");
             return Ok(Stats::Planes(stats.clone()));
         }
@@ -343,11 +352,14 @@ impl Calculate for PlaneDistance {
         let c_encounters = self.save_encounters(&dbh)?;
 
         if c_encounters == 0 {
+            stats.time = (Instant::now() - start).as_millis();
             eprintln!("No close encounters of any kind found.");
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.encounters = c_encounters;
+        stats.time = (Instant::now() - start).as_millis();
 
+        eprintln!("Stats for {}: {}", self.date, stats);
         info!("Done.");
         Ok(Stats::Planes(stats.clone()))
     }

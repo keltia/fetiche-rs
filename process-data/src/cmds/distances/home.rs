@@ -14,6 +14,7 @@
 //!
 
 use eyre::Result;
+use tokio::time::Instant;
 
 use crate::cmds::{HomeStats, Stats};
 use crate::config::Context;
@@ -29,6 +30,8 @@ pub fn home_calculation(ctx: &Context) -> Result<Stats> {
 
     let mut stats = HomeStats::new();
 
+    let start = Instant::now();
+
     // Simple update now.
     //
     let sql_update = r##"
@@ -39,10 +42,22 @@ SET
     dist_2d(longitude, latitude, home_lon, home_lat),
   home_distance_3d = 
     dist_3d(longitude, latitude, altitude, home_lon, home_lat, home_height)
+ WHERE
+   home_distance_2d IS NULL OR
+   home_distance_2d = 0
 "##;
 
     let count = dbh.execute(sql_update, [])?;
-    stats.distances = count;
+    stats.updated = count;
+
+    let count = dbh.query_row("SELECT COUNT(*) FROM drones", [], |row| {
+        let r: usize = row.get_unwrap(0);
+        Ok(r)
+    })?;
+    stats.total = count;
+    stats.time = (Instant::now() - start).as_millis();
+
+    eprintln!("{}", stats);
 
     Ok(Stats::Home(stats))
 }
