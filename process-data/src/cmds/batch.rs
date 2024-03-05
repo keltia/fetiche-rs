@@ -1,6 +1,9 @@
 use std::fmt::Debug;
 use std::sync::Arc;
+
 use duckdb::Connection;
+use tracing::trace;
+
 use crate::cmds::Stats;
 
 /// This trait define an object that can be calculated
@@ -105,7 +108,7 @@ impl<'a, T> Batch<'a, T>
                 }
             }).collect();
 
-        dbg!(&all);
+        trace!("all stats={:?}", all);
         Ok(all)
     }
 
@@ -143,8 +146,10 @@ mod tests {
         fn run(&self, dbh: &Connection) -> eyre::Result<Stats> {
             let mut r = thread_rng();
             let val: u8 = r.gen();
+            let upd: u8 = r.gen();
+            let tm: u8 = r.gen();
 
-            let hs = HomeStats { distances: val as usize };
+            let hs = HomeStats { total: val as usize, updated: upd as usize, time: tm as u128 };
             let s = Stats::Home(hs);
             eprintln!("calculate");
             Ok(s)
