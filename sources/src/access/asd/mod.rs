@@ -16,6 +16,8 @@
 //!
 //! [NDJSON]: https://en.wikipedia.org/wiki/NDJSON
 
+mod token;
+
 use std::fs;
 use std::io::{BufReader, Write};
 use std::ops::Add;
@@ -47,10 +49,7 @@ use fetiche_formats::{Format, Asd as FAsd};
 
 use crate::filter::Filter;
 use crate::site::Site;
-use crate::{http_post, Auth, Capability, Fetchable, Sources};
-
-/// Default token
-const DEF_TOKEN: &str = "asd_default_token";
+use crate::{http_post, Auth, Capability, Fetchable, Sources, Token};
 
 /// Different types of source
 ///
@@ -162,6 +161,29 @@ impl Asd {
         self.get = site.route("get").unwrap().to_owned();
         self
     }
+
+    pub fn fetch_token(&self) -> Result<AsdToken> {
+        trace!("fetching token from site");
+
+        // Prepare our submission data
+        //
+        let cred = Credentials {
+            email: self.login.clone(),
+            password: self.password.clone(),
+        };
+
+        // fetch token from site
+        //
+        let url = format!("{}{}", self.base_url, self.token);
+        trace!("Fetching token through {}…", url);
+        let resp = http_post!(self, url, &cred)?;
+        trace!("resp={:?}", resp);
+        let resp = resp.text()?;
+        let res: AsdToken = serde_json::from_str(&resp)?;
+        trace!("token={}", res.token);
+
+        Ok(res)
+    }
 }
 
 impl Default for Asd {
@@ -203,62 +225,19 @@ impl Fetchable for Asd {
     fn authenticate(&self) -> Result<String> {
         trace!("authenticate as ({:?})", &self.login);
 
-        // Prepare our submission data
-        //
-        let cred = Credentials {
-            email: self.login.clone(),
-            password: self.password.clone(),
-        };
-
         // Retrieve token from storage
         //
         // Use `<token>-<email>` to allow identity-based tokens
         //
-        let fname = format!("{}-{}", DEF_TOKEN, self.login);
-        let res = if let Ok(token) = Sources::get_token(&fname) {
-            // Load potential token data
-            //
-            trace!("load stored token");
-            let token: Token = match serde_json::from_str(&token) {
-                Ok(token) => token,
-                Err(_) => return Err(eyre!("Invalid/no token in {:?}", token)),
-            };
-
-            // Check stored token expiration date
-            //
-            let now: DateTime<Utc> = Utc::now();
-            let tok_time: DateTime<Utc> = Utc.timestamp_opt(token.expired_at, 0).unwrap();
-            if now > tok_time {
-                // Should we delete it?
-                //
-                warn!("Stored token in {:?} has expired, deleting!", fname);
-                match Sources::purge_token(&fname) {
-                    Ok(()) => (),
-                    Err(e) => error!("Can not remove token: {}", e.to_string()),
-                };
-                return Err(Report::from(TokenError::Expired));
+        let res = match Token::retrieve(&self.login) {
+            Ok(token) => {
+                token.token
             }
-            trace!("token is valid");
-            token.token
-        } else {
-            trace!("no token");
-
-            // fetch token from site
-            //
-            let url = format!("{}{}", self.base_url, self.token);
-            trace!("Fetching token through {}…", url);
-            let resp = http_post!(self, url, &cred)?;
-            trace!("resp={:?}", resp);
-            let resp = resp.text()?;
-            let res: Token = serde_json::from_str(&resp)?;
-            trace!("token={}", res.token);
-
-            // Write fetched token in `tokens` (unless it is during tests)
-            //
-            #[cfg(not(test))]
-            Sources::store_token(&fname, &resp)?;
-
-            res.token
+            Err(e) => {
+                let tok = self.fetch_token()?;
+                let _ = tok.store()?;
+                tok.token
+            }
         };
 
         // Return final token
@@ -430,146 +409,3 @@ fn into_ndjson(resp: &str) -> Result<String> {
     Ok(res)
 }
 
-/// Access token derived from username/password
-///
-#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Token {
-    /// The actual token
-    token: String,
-    /// Don't ask
-    gjrt: String,
-    /// Expiration date
-    expired_at: i64,
-    roles: Vec<String>,
-    /// Fullname
-    name: String,
-    supervision: Option<String>,
-    lang: String,
-    status: String,
-    email: String,
-    airspace_admin: Option<String>,
-    homepage: String,
-}
-
-/// Custom error type for tokens, allow us to differentiate between errors.
-///
-#[derive(Debug, PartialEq, Snafu)]
-pub enum TokenError {
-    #[snafu(display("Token expired"))]
-    Expired,
-    #[snafu(display("Invalid token"))]
-    Invalid,
-}
-
-impl Default for Token {
-    fn default() -> Self {
-        Token {
-            token: "".to_owned(),
-            gjrt: "".to_owned(),
-            expired_at: 0i64,
-            roles: vec![],
-            name: "John Doe".to_owned(),
-            supervision: None,
-            lang: "en".to_owned(),
-            status: "".to_owned(),
-            email: "john.doe@example.net".to_owned(),
-            airspace_admin: None,
-            homepage: "https://example.net".to_owned(),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use env_logger;
-    use httpmock::prelude::*;
-    use serde_json::json;
-
-    use super::*;
-
-    fn init() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn setup_asd(server: &MockServer) -> Asd {
-        init();
-        let client = Client::new();
-        Asd {
-            features: vec![Capability::Fetch],
-            site: "NONE".to_string(),
-            format: Format::Asd,
-            login: "user".to_string(),
-            password: "pass".to_string(),
-            token: "/api/security/login".to_string(),
-            base_url: server.base_url().clone(),
-            get: "/api/journeys/filteredlocations/json".to_string(),
-            client: client.clone(),
-        }
-    }
-
-    #[test]
-    fn test_get_asd_token() {
-        let server = MockServer::start();
-        let now = Utc::now().timestamp() + 3600i64;
-        let token = Token {
-            token: "FOOBAR".to_string(),
-            expired_at: now,
-            ..Default::default()
-        };
-
-        let jtok = json!(token).to_string();
-        let cred = Credentials {
-            email: "user".to_string(),
-            password: "pass".to_string(),
-        };
-        let cred = json!(cred).to_string();
-        let m = server.mock(|when, then| {
-            when.method(POST)
-                .header(
-                    "user-agent",
-                    format!("{}/{}", crate_name!(), crate_version!()),
-                )
-                .header("content-type", "application/json")
-                .body(&cred)
-                .path("/api/security/login");
-            then.status(200).body(&jtok);
-        });
-
-        let site = setup_asd(&server);
-        let t = site.authenticate();
-        dbg!(&t);
-        m.assert();
-        assert!(t.is_ok());
-        assert_eq!("FOOBAR", t.as_ref().unwrap());
-    }
-
-    // #[test]
-    // fn test_get_asd_fetch() {
-    //     let server = MockServer::start();
-    //     let filter = Filter::default();
-    //     let filter = "{}".to_string();
-    //     let token = "FOOBAR".to_string();
-    //     let m = server.mock(|when, then| {
-    //         when.method(POST)
-    //             .header(
-    //                 "user-agent",
-    //                 format!("{}/{}", crate_name!(), crate_version!()),
-    //             )
-    //             .header("content-type", "application/json")
-    //             .header("authorization", format!("Bearer {}", token))
-    //             .path("/api/journeys/filteredlocations/json")
-    //             .body(&filter);
-    //         then.status(200).body("");
-    //     });
-    //
-    //     let site = setup_asd(&server);
-    //     dbg!(&site);
-    //
-    //     let t = "FOOBAR";
-    //     let d = site.fetch(&t, &Filter::default().to_string());
-    //
-    //     m.assert();
-    //     assert!(d.is_ok());
-    // }
-}
