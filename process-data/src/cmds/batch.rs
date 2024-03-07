@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::sync::Arc;
 
 use duckdb::Connection;
 use tracing::trace;
@@ -21,7 +20,7 @@ pub trait Calculate: Debug {
 pub struct Batch<'a, T>
     where T: Debug + Calculate,
 {
-    dbh: Arc<&'a Connection>,
+    dbh: &'a Connection,
     inner: Vec<&'a T>,
 }
 
@@ -33,7 +32,7 @@ impl<'a, T> Batch<'a, T>
     #[tracing::instrument]
     pub fn new(dbh: &'a Connection) -> Self {
         Self {
-            dbh: Arc::new(dbh),
+            dbh,
             inner: vec![],
         }
     }
@@ -72,8 +71,8 @@ impl<'a, T> Batch<'a, T>
     pub fn from_vec(dbh: &'a Connection, v: &'a Vec<T>) -> Self
         where T: Debug + Calculate,
     {
-        let mut b = Batch::new(&dbh);
-        v.into_iter().for_each(|elem| { b.add(elem); });
+        let mut b = Batch::new(dbh);
+        v.iter().for_each(|elem| { b.add(elem); });
         b
     }
 
@@ -94,15 +93,15 @@ impl<'a, T> Batch<'a, T>
     pub fn execute(&mut self) -> eyre::Result<Vec<Stats>>
         where T: Debug + Calculate,
     {
-        let dbh = self.dbh.clone();
+        let dbh = self.dbh;
 
         let all: Vec<_> = self.inner.iter()
             .filter_map(|e| {
-                let r = e.run(&dbh);
+                let r = e.run(dbh);
                 match r {
                     Ok(r) => Some(r),
                     Err(e) => {
-                        eprintln!("Error: {}", e.to_string());
+                        eprintln!("Error: {}", e);
                         None
                     }
                 }
@@ -122,7 +121,9 @@ impl<'a, T> Batch<'a, T>
     /// Return whether a batch is empty.
     ///
     #[tracing::instrument]
-    pub fn is_empty(&self) -> bool { self.inner.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
 }
 
 #[cfg(test)]

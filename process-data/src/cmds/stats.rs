@@ -23,7 +23,7 @@ impl Stats {
         if v.len() == 1 {
             first
         } else {
-            fold(v[1..].into_iter(), first, |a, b| a + b.clone())
+            fold(v[1..].iter(), first, |a, b| a + b.clone())
         }
     }
 }
@@ -116,7 +116,7 @@ impl Add for PlanesStats {
 
     fn add(self, rhs: Self) -> Self::Output {
         let mut days = self.day.clone();
-        let added = rhs.day.get(0).unwrap().to_owned();
+        let added = rhs.day.first().unwrap().to_owned();
         days.push(added);
         Self {
             day: days.clone(),

@@ -102,12 +102,12 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
             "Error: You must specify a database, either CLI or in {}",
             def
         );
-        return Err(Status::ErrNoDatabase(def).into());
+        return Err(Status::NoDatabase(def).into());
     }
 
     if cfg.datalake.is_none() {
         eprintln!("Error: you must define datalake.");
-        return Err(Status::ErrNoDatalake(def).into());
+        return Err(Status::NoDatalake(def).into());
     }
 
     let name = opts.database.clone().unwrap_or(cfg.database.unwrap());

@@ -65,7 +65,7 @@ fn export_distances_text(dbh: &Connection, name: &str, day: DateTime<Utc>) -> ey
     CAST(time AS DATE) < date_add(CAST(? AS DATE), INTERVAL 1 DAY)
     ORDER BY time
 "##;
-    let mut stmt = dbh.prepare(&r)?;
+    let mut stmt = dbh.prepare(r)?;
     let rbs: Vec<_> = stmt.query_arrow(params![name, day, day])?.collect();
     print_batches(&rbs)?;
 

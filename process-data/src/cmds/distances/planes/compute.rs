@@ -280,7 +280,7 @@ impl Calculate for PlaneDistance {
 
         // Create table `today` with all identified plane points with the specified range
         //
-        let c_planes = self.select_planes(&dbh)?;
+        let c_planes = self.select_planes(dbh)?;
 
         if c_planes == 0 {
             stats.time = (Instant::now() - start).as_millis();
@@ -291,7 +291,7 @@ impl Calculate for PlaneDistance {
 
         // Create table `candidates` with all designated drone points
         //
-        let c_drones = self.select_drones(&dbh)?;
+        let c_drones = self.select_drones(dbh)?;
 
         if c_drones == 0 {
             stats.time = (Instant::now() - start).as_millis();
@@ -302,7 +302,7 @@ impl Calculate for PlaneDistance {
 
         // Create table `today_close` with all designated drone points and airplanes in proximity
         //
-        let c_potential = self.find_close(&dbh)?;
+        let c_potential = self.find_close(dbh)?;
 
         if c_potential == 0 {
             stats.time = (Instant::now() - start).as_millis();
@@ -313,7 +313,7 @@ impl Calculate for PlaneDistance {
 
         // Now we have the distance calculated.
         //
-        let c_encounters = self.save_encounters(&dbh)?;
+        let c_encounters = self.save_encounters(dbh)?;
 
         if c_encounters == 0 {
             stats.time = (Instant::now() - start).as_millis();

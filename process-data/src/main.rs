@@ -14,6 +14,7 @@ use crate::config::{finish_runtime, init_runtime};
 mod cli;
 mod cmds;
 mod config;
+
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
 /// Binary version
@@ -29,7 +30,7 @@ async fn main() -> Result<()> {
     //
     let ctx = init_runtime(&opts)?;
 
-    let _ = banner()?;
+    banner()?;
 
     trace!("Execute commands.");
     match &opts.subcmd {
@@ -47,7 +48,7 @@ async fn main() -> Result<()> {
 
     // Finish
     //
-    Ok(finish_runtime()?)
+    finish_runtime()
 }
 
 /// Display banner
