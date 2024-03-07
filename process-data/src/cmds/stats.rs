@@ -50,7 +50,6 @@ impl From<Stats> for PlanesStats {
     fn from(value: Stats) -> Self {
         match value {
             Stats::Planes(inner) => inner,
-            _ => panic!("bad type")
         }
     }
 }
