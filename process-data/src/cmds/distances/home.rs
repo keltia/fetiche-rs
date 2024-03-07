@@ -13,7 +13,7 @@
 //! NOTE: This is like 1s of runtime compared to the *several minutes* of the previous version.
 //!
 
-use eyre::Result;
+use eyre::{eyre, Result};
 use tokio::time::Instant;
 
 use crate::cmds::{HomeStats, Stats};
@@ -26,6 +26,8 @@ use crate::config::Context;
 ///
 #[tracing::instrument(skip(ctx))]
 pub fn home_calculation(ctx: &Context) -> Result<Stats> {
+    return Err(eyre!("DEPRECATED."));
+
     let dbh = ctx.db();
 
     let mut stats = HomeStats::new();
