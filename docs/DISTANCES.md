@@ -11,7 +11,7 @@
 
 - DuckDB tables for sites, antennas and time intervals for installations of each antenna
 
-- antennas
+- `antennas.csv`
 
 ```text
 ┌─────────────┬─────────────┬─────────┬─────────┬─────────┬─────────┐
@@ -26,7 +26,7 @@
 └─────────────┴─────────────┴─────────┴─────────┴─────────┴─────────┘
 ```
 
-- sites
+- `sites.csv`
 
 ```text
 ┌─────────────┬─────────────┬─────────┬─────────┬─────────┬─────────┐
@@ -41,7 +41,7 @@
 └─────────────┴─────────────┴─────────┴─────────┴─────────┴─────────┘
 ```
 
-- installations
+- `installations.csv`
 
 ```text
 ┌─────────────┬─────────────┬─────────┬─────────┬─────────┬─────────┐
@@ -62,10 +62,10 @@
 ```sql
 CREATE VIEW airplanes AS
 SELECT *
-FROM read_parquet('/Users/acute/data/adsb/**/*.parquet', hive_partitioning = true);
+FROM read_parquet('adsb/**/*.parquet', hive_partitioning = true);
 ```
 
-- View `drones` is created from the parquet files and updated by the distance to home task.
+- View `drones` is created from the parquet files and updated for the new columns:
 
 ```sql
 CREATE VIEW drones
@@ -76,7 +76,7 @@ select *,
            date_part('month', timestamp) as month,
            dist_2d(longitude, latitude, home_lon, home_lat) as home_distance_2d,
            dist_3d(longitude, latitude, altitude, home_lon, home_lat, home_height) as home_distance_3d
-FROM read_csv('drones_*.parquet'));
+FROM read_csv('drones/**/drones_*.parquet'));
 ```
 
 We can re-create the whole Hive tree with this command:
