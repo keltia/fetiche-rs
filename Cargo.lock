@@ -231,7 +231,7 @@ dependencies = [
 
 [[package]]
 name = "acutectl"
-version = "0.17.1"
+version = "0.20.0"
 dependencies = [
  "assert_cmd",
  "chrono",

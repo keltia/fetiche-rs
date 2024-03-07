@@ -21,9 +21,9 @@ use std::convert::Into;
 use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Receiver;
-use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
 use eyre::Result;
@@ -31,13 +31,12 @@ use eyre::Result;
 use home::home_dir;
 use serde::Deserialize;
 use strum::EnumString;
-use tracing::{debug, event, info, trace, warn, Level};
-
-use fetiche_common::{makepath, Container};
-use fetiche_formats::Format;
-use fetiche_sources::{Auth, Site, Sources};
+use tracing::{debug, event, info, Level, trace, warn};
 
 pub use config::*;
+use fetiche_common::{Container, makepath};
+use fetiche_formats::Format;
+use fetiche_sources::{Auth, Site, Sources};
 pub use job::*;
 pub use parse::*;
 pub use state::*;
@@ -110,8 +109,8 @@ impl Engine {
     ///
     #[tracing::instrument]
     pub fn load<T>(fname: T) -> Self
-    where
-        T: Into<PathBuf> + Debug,
+        where
+            T: Into<PathBuf> + Debug,
     {
         let fname = fname.into();
 
@@ -355,10 +354,11 @@ impl Engine {
     ///
     pub fn version(&self) -> String {
         format!(
-            "{} ({} {})",
+            "{} ({} {} {})",
             version(),
             fetiche_formats::version(),
-            fetiche_sources::version()
+            fetiche_sources::version(),
+            fetiche_common::version(),
         )
     }
 }
