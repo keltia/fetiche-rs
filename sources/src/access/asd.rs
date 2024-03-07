@@ -17,18 +17,13 @@
 //! [NDJSON]: https://en.wikipedia.org/wiki/NDJSON
 
 use std::fs;
-use std::io::{BufReader, Write};
 use std::ops::Add;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use clap::{crate_name, crate_version};
-use datafusion::arrow::csv::WriterBuilder;
-use datafusion::arrow::util::pretty::print_batches;
-use datafusion::common::file_options::csv_writer::CsvWriterOptions;
-use datafusion::common::parsers::CompressionTypeVariant;
 use datafusion::dataframe::DataFrameWriteOptions;
 use datafusion::prelude::*;
 use eyre::Report;
@@ -43,7 +38,7 @@ use tempfile::{Builder, tempdir};
 use tokio::runtime::Runtime;
 use tracing::{debug, error, trace, warn};
 
-use fetiche_formats::{Format, Asd as FAsd};
+use fetiche_formats::Format;
 
 use crate::filter::Filter;
 use crate::site::Site;
@@ -398,6 +393,7 @@ async fn update_time(fname: &str) -> Result<()> {
     let new = Builder::new().suffix(".csv").tempfile()?;
     debug!("Writing result into {}", new.path().to_str().unwrap());
     let a = df.write_csv(new.path().to_str().unwrap(), DataFrameWriteOptions::default(), None).await?;
+    trace!("Wrote {}", a.len());
 
     debug!("Rename into {}", fname);
     Ok(tokio::fs::rename(new.path(), fname).await?)
