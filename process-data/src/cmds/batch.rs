@@ -129,7 +129,7 @@ impl<'a, T> Batch<'a, T>
 mod tests {
     use rand::prelude::*;
 
-    use crate::cmds::HomeStats;
+    use crate::cmds::PlanesStats;
 
     use super::*;
 
@@ -149,8 +149,8 @@ mod tests {
             let upd: u8 = r.gen();
             let tm: u8 = r.gen();
 
-            let hs = HomeStats { total: val as usize, updated: upd as usize, time: tm as u128 };
-            let s = Stats::Home(hs);
+            let hs = PlanesStats::default();
+            let s = Stats::Planes(hs);
             eprintln!("calculate");
             Ok(s)
         }
