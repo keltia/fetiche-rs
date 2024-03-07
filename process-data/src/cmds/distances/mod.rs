@@ -2,10 +2,8 @@ use std::fmt::Debug;
 
 use clap::Parser;
 
-pub use home::*;
 pub use planes::*;
 
-mod home;
 mod planes;
 
 #[derive(Debug, Parser)]
@@ -20,8 +18,6 @@ pub(crate) struct DistOpts {
 
 #[derive(Clone, Debug, Parser)]
 pub(crate) enum DistSubcommand {
-    /// 2D/3D drone to operator distance.
-    Home,
     /// drone to planes distance
     Planes(PlanesOpts),
 }

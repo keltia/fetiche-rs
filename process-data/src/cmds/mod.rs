@@ -39,12 +39,6 @@ pub enum Status {
 pub fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
     match &opts.subcmd {
         SubCommand::Distances(dopts) => match &dopts.subcmd {
-            DistSubcommand::Home => {
-                println!("Add 2D and 3D distance between drones and operator.\n");
-
-                let stats = home_calculation(&ctx)?;
-                println!("Stats:\n{:?}", stats);
-            }
             DistSubcommand::Planes(popts) => {
                 println!("Calculate 3D distance between drones and surrounding planes.\n");
 
