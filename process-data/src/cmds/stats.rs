@@ -13,7 +13,6 @@ use itertools::fold;
 #[derive(Clone, Debug)]
 pub enum Stats {
     Planes(PlanesStats),
-    Home(HomeStats),
 }
 
 impl Stats {
@@ -36,9 +35,6 @@ impl Add for Stats {
     ///
     fn add(self, rhs: Self) -> Self::Output {
         match self {
-            Stats::Home(inner) => {
-                Stats::Home(inner + rhs.into())
-            }
             Stats::Planes(inner) => {
                 Stats::Planes(inner + rhs.into())
             }
@@ -47,17 +43,6 @@ impl Add for Stats {
 }
 
 // -----
-
-/// Dereference `Stats` into inner `HomeStats`
-///
-impl From<Stats> for HomeStats {
-    fn from(value: Stats) -> Self {
-        match value {
-            Stats::Home(inner) => inner,
-            _ => panic!("bad type")
-        }
-    }
-}
 
 /// Dereference `Stats` into inner `PlaneStats`
 ///
@@ -146,51 +131,3 @@ impl Add for PlanesStats {
         }
     }
 }
-
-// -----
-
-#[derive(Clone, Debug)]
-pub struct HomeStats {
-    /// Statistics for the home to drone calculations, all entries.
-    pub total: usize,
-    /// Updated for the current run
-    pub updated: usize,
-    /// Time for processing in ms
-    pub time: u128,
-}
-
-impl Default for HomeStats {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl HomeStats {
-    pub fn new() -> Self {
-        Self {
-            total: 0,
-            updated: 0,
-            time: 0,
-        }
-    }
-}
-
-impl Display for HomeStats {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let str = format!("Calculated {} distances between drone and operator.\nTotal entries: {} in {} ms", self.updated, self.total, self.time);
-        write!(f, "{}", str)
-    }
-}
-
-impl Add for HomeStats {
-    type Output = HomeStats;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            total: self.total + rhs.total,
-            updated: rhs.updated,
-            time: rhs.time,
-        }
-    }
-}
-
