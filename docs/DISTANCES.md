@@ -9,7 +9,53 @@
 
 ### Tables
 
-DuckDB tables for sites, antennas and time intervals for installations of each antenna
+- DuckDB tables for sites, antennas and time intervals for installations of each antenna
+
+- antennas
+
+```text
+┌─────────────┬─────────────┬─────────┬─────────┬─────────┬─────────┐
+│ column_name │ column_type │  null   │   key   │ default │  extra  │
+│   varchar   │   varchar   │ varchar │ varchar │ varchar │ varchar │
+├─────────────┼─────────────┼─────────┼─────────┼─────────┼─────────┤
+│ ID          │ BIGINT      │ NO      │ PRI     │         │         │
+│ TYPE        │ VARCHAR     │ YES     │         │         │         │
+│ NAME        │ VARCHAR     │ YES     │         │         │         │
+│ OWNED       │ BOOLEAN     │ YES     │         │         │         │
+│ DESCRIPTION │ VARCHAR     │ YES     │         │         │         │
+└─────────────┴─────────────┴─────────┴─────────┴─────────┴─────────┘
+```
+
+- sites
+
+```text
+┌─────────────┬─────────────┬─────────┬─────────┬─────────┬─────────┐
+│ column_name │ column_type │  null   │   key   │ default │  extra  │
+│   varchar   │   varchar   │ varchar │ varchar │ varchar │ varchar │
+├─────────────┼─────────────┼─────────┼─────────┼─────────┼─────────┤
+│ id          │ INTEGER     │ NO      │ PRI     │         │         │
+│ name        │ VARCHAR     │ NO      │         │         │         │
+│ code        │ VARCHAR     │ NO      │         │         │         │
+│ latitude    │ FLOAT       │ NO      │         │         │         │
+│ longitude   │ FLOAT       │ NO      │         │         │         │
+└─────────────┴─────────────┴─────────┴─────────┴─────────┴─────────┘
+```
+
+- installations
+
+```text
+┌─────────────┬─────────────┬─────────┬─────────┬─────────┬─────────┐
+│ column_name │ column_type │  null   │   key   │ default │  extra  │
+│   varchar   │   varchar   │ varchar │ varchar │ varchar │ varchar │
+├─────────────┼─────────────┼─────────┼─────────┼─────────┼─────────┤
+│ ID          │ BIGINT      │ YES     │         │         │         │
+│ SITE_ID     │ BIGINT      │ YES     │         │         │         │
+│ ANTENNA_ID  │ BIGINT      │ YES     │         │         │         │
+│ START_AT    │ DATE        │ YES     │         │         │         │
+│ END_AT      │ DATE        │ YES     │         │         │         │
+│ COMMENT     │ VARCHAR     │ YES     │         │         │         │
+└─────────────┴─────────────┴─────────┴─────────┴─────────┴─────────┘
+```
 
 - all ADS-B points from the parquet files into a specific `airplanes` view:
 
