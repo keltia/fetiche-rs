@@ -175,6 +175,7 @@ SELECT
   t.py AS py,
   t.pz AS pz,
   dist_2d(dx,dy, px,py) AS dist2d,
+  dist_3d(px, py, pz, dx, dy, dz) AS dist_drone_plane,
   @(pz - dz) AS diff_alt
 FROM
   today AS t,
@@ -199,39 +200,6 @@ ORDER BY
             Ok(r)
         })?;
         println!("Total number of potential encounters: {}", count);
-        Ok(count)
-    }
-
-    #[tracing::instrument(skip(dbh))]
-    fn calculate_distances(&self, dbh: &Connection) -> eyre::Result<usize> {
-        // drop column if present
-        //
-        if dbh
-            .execute("SELECT dist_drone_plane FROM today_close LIMIT 1", [])
-            .is_ok()
-        {
-            let _ = dbh.execute("ALTER TABLE today_close DROP dist_drone_plane", [])?;
-        }
-
-        // Do calculations over all points in `today_close`.
-        //
-        trace!("add column dist_drone_plane");
-        let _ = dbh.execute(
-            r##"
-ALTER TABLE today_close
-ADD COLUMN dist_drone_plane FLOAT;
-"##,
-            [],
-        )?;
-
-        trace!("Do the math.");
-        let count = dbh.execute(
-            r##"
-UPDATE today_close
-SET dist_drone_plane = dist_3d(px, py, pz, dx, dy, dz)
-"##,
-            [],
-        )?;
         Ok(count)
     }
 
@@ -342,10 +310,6 @@ impl Calculate for PlaneDistance {
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.potential = c_potential;
-
-        // Now, we have the `today_close`  table with all points within 3 nm of each-others in all dimensions
-        //
-        let _ = self.calculate_distances(&dbh)?;
 
         // Now we have the distance calculated.
         //
