@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use tracing::{debug, trace};
 
-use crate::{convert_to, to_feet, to_knots, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
+use crate::{convert_to, to_feet, to_knots, Cat21, TodCalculated};
 
 /// Origin of state's position
 ///
@@ -165,7 +165,6 @@ pub struct StateVector {
 }
 
 convert_to!(from_opensky, StateVector, Cat21);
-//convert_to!(from_opensky, StateList, DronePoint);
 
 /// Definition of a state vector as stored in [Impala]
 ///
@@ -212,8 +211,6 @@ impl From<&PandaStateVector> for Cat21 {
         let callsign = line.callsign.clone().unwrap_or("".to_string());
 
         Cat21 {
-            sac: DEF_SAC,
-            sic: DEF_SIC,
             alt_geo_ft: to_feet(line.geo_altitude.unwrap_or(0.0)),
             pos_lat_deg: line.latitude.unwrap_or(0.0),
             pos_long_deg: line.longitude.unwrap_or(0.0),
@@ -222,18 +219,6 @@ impl From<&PandaStateVector> for Cat21 {
             rec_time_posix: tod,
             rec_time_ms: 0,
             emitter_category: 13,
-            differential_correction: Bool::N,
-            ground_bit: Bool::N,
-            simulated_target: Bool::N,
-            test_target: Bool::N,
-            from_ft: Bool::N,
-            selected_alt_capability: Bool::N,
-            spi: Bool::N,
-            link_technology_cddi: Bool::N,
-            link_technology_mds: Bool::N,
-            link_technology_uat: Bool::N,
-            link_technology_vdl: Bool::N,
-            link_technology_other: Bool::N,
             descriptor_atp: 1,
             alt_reporting_capability_ft: 0,
             target_addr: 623615,
@@ -246,6 +231,7 @@ impl From<&PandaStateVector> for Cat21 {
             groundspeed_kt: to_knots(line.velocity.unwrap_or(0.0)),
             track_angle_deg: line.heading.unwrap_or(0.0),
             rec_num: 1,
+            ..Cat21::default()
         }
     }
 }
@@ -301,8 +287,6 @@ impl From<&StateVector> for Cat21 {
         let callsign = line.callsign.clone().unwrap_or("".to_string());
 
         Cat21 {
-            sac: DEF_SAC,
-            sic: DEF_SIC,
             alt_geo_ft: to_feet(line.geo_altitude.unwrap_or(0.0)),
             pos_lat_deg: line.latitude.unwrap_or(0.0),
             pos_long_deg: line.longitude.unwrap_or(0.0),
@@ -311,18 +295,6 @@ impl From<&StateVector> for Cat21 {
             rec_time_posix: tod,
             rec_time_ms: 0,
             emitter_category: 13,
-            differential_correction: Bool::N,
-            ground_bit: Bool::N,
-            simulated_target: Bool::N,
-            test_target: Bool::N,
-            from_ft: Bool::N,
-            selected_alt_capability: Bool::N,
-            spi: Bool::N,
-            link_technology_cddi: Bool::N,
-            link_technology_mds: Bool::N,
-            link_technology_uat: Bool::N,
-            link_technology_vdl: Bool::N,
-            link_technology_other: Bool::N,
             descriptor_atp: 1,
             alt_reporting_capability_ft: 0,
             target_addr: 623615,
@@ -335,6 +307,7 @@ impl From<&StateVector> for Cat21 {
             groundspeed_kt: to_knots(line.velocity.unwrap_or(0.0)),
             track_angle_deg: line.true_track.unwrap_or(0.0),
             rec_num: 1,
+            ..Cat21::default()
         }
     }
 }

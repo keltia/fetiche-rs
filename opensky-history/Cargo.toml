@@ -25,20 +25,35 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 chrono.workspace = true
 clap.workspace = true
+datafusion.workspace = true
+dateparser.workspace = true
 eyre.workspace = true
+fetiche-common.workspace = true
 fetiche-formats.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
+opentelemetry.workspace = true
+opentelemetry-jaeger.workspace = true
+opentelemetry_sdk.workspace = true
+progress.workspace = true
 serde.workspace = true
 serde_repr.workspace = true
+strum.workspace = true
 tabled.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
+tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
+tracing-tree.workspace = true
 
-csv = "1.2"
-dateparser = "0.2"
 inline-python = "0.12"
+seek_bufread = "1.2"
+seekable_reader = "0.1"
+tempfile = "3"
+
+[dev-dependencies]
+rstest.workspace = true
 
 [dependencies.pyo3]
 version = "0.19"

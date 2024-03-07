@@ -1,4 +1,3 @@
-
 # acutectl
 
 This is the main CLI interface to the Fetiche framework and engine.
@@ -33,8 +32,6 @@ Options:
 
 </details>
 
-More detailed information in the specific [Aacutectl README.md](acutectl/README.md).
-
 As seen, there are different sub-commands. You can use `acutectl help <sub-command>`  to get description of the
 different parameters.
 
@@ -53,24 +50,24 @@ can expect, `config.hcl`.
 version = 1
 
 site "local" {
-    username = "aeroscope"
-    password = "NOPE"
-    token    = "/login"
+  username = "aeroscope"
+  password = "NOPE"
+  token    = "/login"
 }
 
 site "big.site.aero" {
-    username = "SOMEONE"
-    password = "HIDDEN"
-    token = "/auth"
+  username = "SOMEONE"
+  password = "HIDDEN"
+  token    = "/auth"
 }
 
 site "opensky" {
-    login    = "someone"
-    password = "SECRET" 
+  login    = "someone"
+  password = "SECRET"
 }
 
 site "safesky" {
-    api_key = "FOOBAR"
+  api_key = "FOOBAR"
 }
 
 ```
@@ -122,8 +119,37 @@ List all formats:
 └─────────────┴───────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The reason for the different categories is to give the engine a hint on how to process the data. Drone data will be
-transformed into our `DronePoint` and `Journey` types for post-processing.
+The reason for the different categories is to give the engine a hint on how to process the data.
+</details>
+
+There is also the concept of output or container formats. When saving data fetched from a site or during a conversion,
+we can dump whatever is sent (JSON, CSV, etc.) or convert it into a container format like [Parquet].
+
+You can get the list of supported container formats with `list containers`:
+<details>
+<summary>acutectl list containers</summary>
+
+```text
+acutectl/0.16.0 by Ollivier Robert <ollivier.robert@eurocontrol.int>
+CLI utility to fetch data.
+
+List all formats:
+┌─────────┬───────┬───────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Name    │ Type  │ Description                                                                                           │
+├─────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ACSV    │ write │ Annotated CSV, created by InfluxDB.                                                                   │
+│         │       │ Source: InfluxData -- URL: https://docs.influxdata.com/influxdb/cloud/reference/syntax/annotated-csv/ │
+├─────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Avro    │ write │ Row-oriented tabular format from Apache Arrow.                                                        │
+│         │       │ Source: Apache -- URL: https://avro.apache.org/                                                       │
+├─────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ CSV     │ write │ Comma Separated Values aka your friend CSV.                                                           │
+│         │       │ Source: IBM -- URL: https://en.wikipedia.org/wiki/CSV                                                 │
+├─────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Parquet │ write │ Apache Parquet export for drone/ADS-B data.                                                           │
+│         │       │ Source: Apache -- URL: https://parquet.apache.org/docs/file-format/                                   │
+└─────────┴───────┴───────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 </details>
 
@@ -212,3 +238,4 @@ db "time" {
 
 </details>
 
+[Parquet]: https://parquet.apache.org/docs/file-format/

@@ -12,33 +12,50 @@
 //!
 //! This implement the `Fetchable` trait described in `site/lib`.
 //!
+//! Switched from JSON to CSV to work around the size limit from the API ~50 MB
+//!
+//! [NDJSON]: https://en.wikipedia.org/wiki/NDJSON
 
+use std::fs;
+use std::io::{BufReader, Write};
 use std::ops::Add;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use clap::{crate_name, crate_version};
+use datafusion::arrow::csv::WriterBuilder;
+use datafusion::arrow::util::pretty::print_batches;
+use datafusion::common::file_options::csv_writer::CsvWriterOptions;
+use datafusion::common::parsers::CompressionTypeVariant;
+use datafusion::dataframe::DataFrameWriteOptions;
+use datafusion::prelude::*;
+use eyre::Report;
 use eyre::{eyre, Result};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use tracing::{debug, trace, warn};
+use snafu::prelude::*;
+use strum::{EnumString, VariantNames};
+use tap::Tap;
+use tempfile::{Builder, tempdir};
+use tokio::runtime::Runtime;
+use tracing::{debug, error, trace, warn};
 
-use fetiche_formats::Format;
+use fetiche_formats::{Format, Asd as FAsd};
 
 use crate::filter::Filter;
 use crate::site::Site;
-use crate::{http_post, http_post_auth, Auth, Capability, Fetchable, Sources};
+use crate::{http_post, Auth, Capability, Fetchable, Sources};
 
 /// Default token
 const DEF_TOKEN: &str = "asd_default_token";
 
 /// Different types of source
 ///
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(untagged, into = "String")]
+#[derive(Clone, Debug, Deserialize, Serialize, EnumString, strum::Display, VariantNames)]
+#[strum(serialize_all = "lowercase")]
 enum Source {
     /// ADS-B
     Ab,
@@ -52,22 +69,6 @@ enum Source {
     Ad,
     /// ASD (mobile app)
     Mo,
-}
-
-impl From<Source> for String {
-    /// For serialization into json
-    ///
-    fn from(s: Source) -> Self {
-        match s {
-            Source::Ab => "ab",
-            Source::Og => "og",
-            Source::Wi => "wi",
-            Source::As => "as",
-            Source::Ad => "ad",
-            Source::Mo => "mo",
-        }
-        .to_string()
-    }
 }
 
 /// Credentials to submit to the site to get the token
@@ -169,6 +170,28 @@ impl Default for Asd {
     }
 }
 
+/// CSV payload from `.../filteredlocation`
+///
+#[derive(Debug, Deserialize)]
+struct Payload {
+    /// Filename if one need to fetch as a file.
+    #[serde(rename = "fileName")]
+    filename: String,
+    /// CSV content is here already.
+    content: String,
+}
+
+/// ASD is very sensitive to the date format, needs milli-secs.
+///
+fn prepare_asd_data(data: Param) -> String {
+    let d_start = data.start_time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
+    let d_end = data.end_time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
+    format!(
+        "{{\"startTime\":\"{}\",\"endTime\":\"{}\",\"sources\":[\"as\",\"wi\"]}}",
+        d_start, d_end
+    )
+}
+
 impl Fetchable for Asd {
     fn name(&self) -> String {
         self.site.to_string()
@@ -176,7 +199,7 @@ impl Fetchable for Asd {
 
     /// Authenticate to the site using the supplied credentials and get a token
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     fn authenticate(&self) -> Result<String> {
         trace!("authenticate as ({:?})", &self.login);
 
@@ -209,10 +232,11 @@ impl Fetchable for Asd {
                 // Should we delete it?
                 //
                 warn!("Stored token in {:?} has expired, deleting!", fname);
-                return match Sources::purge_token(&fname) {
-                    Ok(()) => Ok("done".to_string()),
-                    Err(e) => Err(e),
+                match Sources::purge_token(&fname) {
+                    Ok(()) => (),
+                    Err(e) => error!("Can not remove token: {}", e.to_string()),
                 };
+                return Err(Report::from(TokenError::Expired));
             }
             trace!("token is valid");
             token.token
@@ -244,9 +268,11 @@ impl Fetchable for Asd {
 
     /// Fetch actual data using the aforementioned token
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
         trace!("asd::fetch");
+
+        const DEF_SOURCES: &[Source] = &[Source::As, Source::Wi];
 
         let f: Filter = serde_json::from_str(args)?;
 
@@ -254,35 +280,49 @@ impl Fetchable for Asd {
         //
         let data = match f {
             Filter::Duration(d) => Param {
-                start_time: DateTime::<Utc>::from_utc(NaiveDateTime::default(), Utc),
-                end_time: DateTime::<Utc>::from_utc(
-                    NaiveDateTime::default().add(Duration::seconds(d as i64)),
-                    Utc,
-                ),
-                sources: vec![Source::As, Source::Wi],
+                start_time: NaiveDateTime::default().and_utc(),
+                end_time: NaiveDateTime::default()
+                    .and_utc()
+                    .add(Duration::seconds(d as i64)),
+                sources: DEF_SOURCES.to_vec(),
             },
             Filter::Interval { begin, end } => Param {
                 start_time: begin,
                 end_time: end,
-                sources: vec![Source::As, Source::Wi],
+                sources: DEF_SOURCES.to_vec(),
             },
             _ => Param {
                 start_time: DateTime::<Utc>::MIN_UTC,
                 end_time: DateTime::<Utc>::MIN_UTC,
-                sources: vec![Source::As, Source::Wi],
+                sources: DEF_SOURCES.to_vec(),
             },
         };
 
-        debug!("json={}", json!(&data));
+        let data = prepare_asd_data(data);
+        debug!("data={}", &data);
 
         // use token
         //
         let url = format!("{}{}", self.base_url, self.get);
         trace!("Fetching data through {}…", url);
 
-        let resp = http_post_auth!(self, url, token, &data)?;
+        // http_post_auth!() macro seems to be disturbing it.
+        //
+        let resp = self
+            .client
+            .clone()
+            .post(url)
+            .header(
+                "user-agent",
+                format!("{}/{}", crate_name!(), crate_version!()),
+            )
+            .header("content-type", "application/json")
+            .header("authorization", format!("Bearer {}", token))
+            .body(data)
+            .tap(|r| debug!("req={:?}", r))
+            .send()?;
 
-        debug!("{:?}", &resp);
+        debug!("raw resp={:?}", &resp);
 
         // Check status
         //
@@ -294,15 +334,42 @@ impl Fetchable for Asd {
                 use percent_encoding::percent_decode;
                 trace!("error resp={:?}", resp);
                 let h = resp.headers();
-                let errtxt = percent_decode(h["x-debug-exception"].as_bytes())
-                    .decode_utf8()
-                    .unwrap();
-                return Err(eyre!("Error({}): {}", code, errtxt));
+                let errtxt = percent_decode(h["x-debug-exception"].as_bytes()).decode_utf8()?;
+                let errfile =
+                    percent_decode(h["x-debug-exception-file"].as_bytes()).decode_utf8()?;
+                return Err(eyre!("Error({}): {} in {}", code, errtxt, errfile));
             }
         }
 
+        // What we receive is an anonymous JSON object containing the filename and CSV content.
+        //
         let resp = resp.text()?;
-        Ok(out.send(resp)?)
+        trace!("resp={}", resp);
+        let data: Payload = serde_json::from_str(&resp)?;
+
+        trace!("Fetched {}", data.filename);
+
+        // Save into a temp directory
+        //
+        let temp = tempdir()?;
+        trace!("save {} into {}", data.filename, temp.path().to_str().unwrap());
+        let fname = temp.path().join(PathBuf::from(data.filename));
+        fs::write(&fname, &data.content)?;
+
+        // Create tokio runtime
+        //
+        let rt = Runtime::new()?;
+
+        let fname = fname.clone().to_string_lossy().clone().to_string();
+
+        rt.block_on(async {
+            update_time(&fname).await.unwrap();
+        });
+        let res = fs::read_to_string(&fname)?;
+
+        // Now we must fixup the data by inserting the missing timestamp
+        //
+        Ok(out.send(res)?)
     }
 
     /// Return the site's input formats
@@ -310,6 +377,57 @@ impl Fetchable for Asd {
     fn format(&self) -> Format {
         Format::Asd
     }
+}
+
+/// This is an async function that read the csv downloaded from ASD, add the "time" column as a
+/// UNIX timestamp (u32) and save the resulting CSV.
+///
+/// Raw CSV will then be push to the next stage of the pipeline.
+///
+/// async because the datafusion API requires it.
+///
+async fn update_time(fname: &str) -> Result<()> {
+    // Load out file in datafusion
+    //
+    let ctx = SessionContext::new();
+    ctx.register_csv("drones", fname, CsvReadOptions::default()).await?;
+
+    debug!("Reading {}, adding column time", fname);
+    let df = ctx.sql("SELECT *,CAST(date_part('epoch', timestamp) AS int) AS time FROM drones").await?;
+
+    let new = Builder::new().suffix(".csv").tempfile()?;
+    debug!("Writing result into {}", new.path().to_str().unwrap());
+    let a = df.write_csv(new.path().to_str().unwrap(), DataFrameWriteOptions::default(), None).await?;
+
+    debug!("Rename into {}", fname);
+    Ok(tokio::fs::rename(new.path(), fname).await?)
+}
+
+
+/// ASD is sending us an anonymous JSON array
+///
+/// This is less easy to use later on so we convert it into [NDJSON]
+///
+/// This is analogous to running the following (without the `time` fix):
+/// ```text
+/// jq --compact-output '.[]' < today.json > lines.json
+/// ```
+///
+#[cfg(feature = "json")]
+fn into_ndjson(resp: &str) -> Result<String> {
+    let data: Vec<fetiche_formats::Asd> = serde_json::from_str(resp)?;
+    let res = data
+        .iter()
+        .map(|r| {
+            debug!("r={:?}", r);
+            // Fix timestamp while we are here
+            //
+            let r = r.fix_tm().unwrap();
+            json!(&r).to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    Ok(res)
 }
 
 /// Access token derived from username/password
@@ -332,6 +450,16 @@ struct Token {
     email: String,
     airspace_admin: Option<String>,
     homepage: String,
+}
+
+/// Custom error type for tokens, allow us to differentiate between errors.
+///
+#[derive(Debug, PartialEq, Snafu)]
+pub enum TokenError {
+    #[snafu(display("Token expired"))]
+    Expired,
+    #[snafu(display("Invalid token"))]
+    Invalid,
 }
 
 impl Default for Token {

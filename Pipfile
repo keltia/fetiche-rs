@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pyhcl = "*"
+geohash2 = "*"
+geojson = "*"
+pluscodes = "*"
+pyopensky = "*"
+geopy = "*"
+numpy = "*"
+py-hcl = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"

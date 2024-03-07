@@ -3,11 +3,10 @@
 //! URL: http://www.avionix.pl
 //!
 
-use std::fmt::{Display, Formatter};
-
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-
-use crate::ICAOString;
+use serde_with::serde_as;
+use strum::EnumString;
 
 /// This format is sent through a CSV file and has the following fields:
 ///
@@ -30,19 +29,21 @@ use crate::ICAOString;
 /// - MPS: MOPS
 /// - NIC: NucP_NIC
 ///
-#[derive(Debug, Deserialize, Serialize)]
+#[serde_as]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Avionix {
-    /// UNIX timestamp in milli-secs (u64)
-    pub uti: u64,
+    /// UNIX timestamp in milli-secs (i64)
+    #[serde(rename = "uti")]
+    pub time: DateTime<Utc>,
     /// ESRI timestamp e.g. 2015-07-26 07:36:51.657189000
     pub dat: String,
     /// SIC
-    pub sic: usize,
+    pub sic: u8,
     /// SAC
-    pub sac: usize,
+    pub sac: u8,
     /// ICAO 6 byte code for the aircraft
-    pub hex: ICAOString,
+    pub hex: String,
     /// Call-sign
     pub fli: String,
     /// Position latitude
@@ -50,9 +51,9 @@ pub struct Avionix {
     /// Position longitude
     pub lon: f32,
     /// Ground/Airborne status, A=Air, G=Ground
-    pub gda: Gda,
+    pub gda: String,
     /// Source of position, A=ADS-B, M=MLAT (always A in this case)
-    pub src: Src,
+    pub src: String,
     /// Altitude in feet
     pub alt: f32,
     /// Ground speed
@@ -66,14 +67,15 @@ pub struct Avionix {
     /// Vertical Rate
     pub vrt: f32,
     /// MOPS
-    pub mps: usize,
+    pub mps: u32,
     /// NucP_NIC
-    pub nic: usize,
+    pub nic: u32,
 }
 
 /// Special enum for airborne status
 ///
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
+#[strum(serialize_all = "UPPERCASE")]
 pub enum Gda {
     /// Airborne
     A,
@@ -81,52 +83,12 @@ pub enum Gda {
     G,
 }
 
-impl Display for Gda {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let r = match self {
-            Gda::A => "A",
-            Gda::G => "G",
-        };
-        write!(f, "{}", r)
-    }
-}
-
-impl From<&str> for Gda {
-    fn from(value: &str) -> Self {
-        match value {
-            "A" => Gda::A,
-            "G" => Gda::G,
-            _ => Gda::A,
-        }
-    }
-}
-
 /// Special enum for type of source, always ADS-B for Avionix
 ///
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
 pub enum Src {
     /// ADS-B
     A,
     /// MLAT
     M,
-}
-
-impl Display for Src {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let r = match self {
-            Src::A => "ADSB",
-            Src::M => "MLAT",
-        };
-        write!(f, "{}", r)
-    }
-}
-
-impl From<&str> for Src {
-    fn from(value: &str) -> Self {
-        match value {
-            "A" => Src::A,
-            "M" => Src::M,
-            _ => Src::A,
-        }
-    }
 }

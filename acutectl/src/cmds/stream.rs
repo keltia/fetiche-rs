@@ -5,9 +5,10 @@ use std::sync::Arc;
 use eyre::{eyre, Result};
 use tracing::{info, trace};
 
-use fetiche_engine::{Convert, Engine, Filter, Flow, Format, Site, Store, Stream, Tee};
+use fetiche_formats::Format;
+use fetiche_sources::{Filter, Flow, Site};
 
-use crate::StreamOpts;
+use crate::{Convert, Engine, Store, Stream, StreamOpts, Tee};
 
 /// Actual fetching of data from a given site
 ///
@@ -54,6 +55,7 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
 
     // If split is required, add a consumer for it at the end.
     //
+    info!("Running job #{} with {} tasks.", job.id, job.list.len());
     if sopts.split.is_some() {
         let basedir = sopts.split.as_ref().unwrap();
 
@@ -62,14 +64,10 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
         let store = Store::new(basedir, job.id);
         job.add(Box::new(store));
 
-        info!("Running job #{} with {} tasks.", job.id, job.list.len());
-
         job.run(&mut stdout())?;
     } else {
         // Handle output if no consumer is present at the end
         //
-        info!("Running job #{} with {} tasks.", job.id, job.list.len());
-
         if let Some(out) = &sopts.output {
             let mut out = File::create(out)?;
 
@@ -81,35 +79,34 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
 
     // Remove job from engine and state
     //
-    engine.remove_job(job)?;
-
-    Ok(())
+    engine.remove_job(job)
 }
 
 /// From the CLI options
 ///
 #[tracing::instrument]
-pub fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
+fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
     trace!("filter_from_opts");
 
     // FIXME: only one argument
     //
-    if opts.keyword.is_some() {
+    let filter = if opts.keyword.is_some() {
         let keyword = opts.keyword.clone().unwrap();
 
         let v: Vec<_> = keyword.split(':').collect();
         let (k, v) = (v[0], v[1]);
-        Ok(Filter::Keyword {
+        Filter::Keyword {
             name: k.to_string(),
             value: v.to_string(),
-        })
+        }
     } else {
         let duration = opts.duration;
         let delay = opts.delay;
         let from = opts.start.unwrap_or(0);
 
-        Ok(Filter::stream(from, duration, delay))
-    }
+        Filter::stream(from, duration, delay)
+    };
+    Ok(filter)
 }
 
 /// Check the presence and validity of some of the arguments

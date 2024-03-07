@@ -15,16 +15,16 @@
 use eyre::Result;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
-use strum::{EnumString, EnumVariantNames};
+use strum::{strum::VariantNames, EnumString};
 use tracing::debug;
 
 pub use location::*;
 
-use crate::{convert_to, to_feet, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
+use crate::{convert_to, to_feet, Adsb21, Bool, Cat21, TodCalculated, DEF_SAC, DEF_SIC};
 
 mod location;
 
-#[derive(Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
+#[derive(Debug, Deserialize, strum::Display, EnumString, strum::VariantNames)]
 #[strum(serialize_all = "lowercase")]
 pub enum FeedType {
     Airborne,
@@ -32,7 +32,7 @@ pub enum FeedType {
     Weather,
 }
 
-#[derive(Clone, Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
+#[derive(Clone, Debug, Deserialize, strum::Display, EnumString, strum::VariantNames)]
 #[strum(serialize_all = "lowercase")]
 pub enum TimeType {
     Actual,
@@ -182,7 +182,7 @@ pub struct LocationExit {}
 #[derive(Debug)]
 pub struct PowerOn {}
 
-#[derive(Debug, Deserialize, EnumString, strum::Display, EnumVariantNames)]
+#[derive(Debug, Deserialize, EnumString, strum::Display, strum::VariantNames)]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum Update {
     /// ADS-B
@@ -203,7 +203,7 @@ pub enum Update {
     S,
 }
 
-#[derive(Debug, Deserialize, strum::Display, EnumString, EnumVariantNames)]
+#[derive(Debug, Deserialize, strum::Display, EnumString, strum::VariantNames)]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum AirGround {
     /// in Air
@@ -360,6 +360,7 @@ struct Position {
 }
 
 convert_to!(from_flightaware, Position, Cat21);
+convert_to!(from_flightaware, Position, Adsb21);
 
 impl From<&Position> for Cat21 {
     fn from(line: &Position) -> Self {
@@ -413,6 +414,23 @@ impl From<&Position> for Cat21 {
             groundspeed_kt: line.gs.unwrap_or(0) as f32,
             track_angle_deg: line.heading.unwrap_or(0.0),
             rec_num: 1,
+        }
+    }
+}
+
+impl From<&Position> for Adsb21 {
+    fn from(line: &Position) -> Self {
+        let tod: i64 = line.clock as i64;
+        let callsign = line.ident.clone();
+
+        Adsb21 {
+            alt_geo_ft: to_feet(line.alt.unwrap_or(0) as f32),
+            pos_lat_deg: line.lat,
+            pos_long_deg: line.lon,
+            tod: 128 * (tod % 86400),
+            rec_time_posix: tod,
+            target_addr: 623615,
+            callsign,
         }
     }
 }

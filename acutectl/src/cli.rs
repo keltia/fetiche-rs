@@ -5,7 +5,6 @@
 //! - `completion`
 //! - `fetch`
 //! - `convert`
-//! - `import`
 //! - `list`
 //! - `stream`
 //! - `version`
@@ -17,29 +16,29 @@
 //! Depending on the datatype for each source during `import`, `acutectl` does different processes.
 //! We have a common format for drone data:
 //!
-//! Every drone source is converted into state vectors of `DronePoint` with a timestamp suitable for
-//! import into a time-series DB.  ADS-B data will use a different format with more fields related
-//! to planes.
-//!
 //! `version` display all modules' version.
-//!
-//! `import` convert data into a data format suitable for importing into a database
-//! ([InfluxDB] at the moment).
 //!
 //! `completion` is here just to configure the various shells completion system.
 //!
 //! A `Site` is a `Fetchable` or `Streamable`object with the corresponding trait methods (`authenticate()`
 //! & `fetch()`/`stream()`) from the `sources` crate.  File formats are from the `formats` crate.
 //!
-//! [InfluxDB]: https://www.influxdata.com/
-//!
 
+use std::io;
 use std::path::PathBuf;
 
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser, ValueEnum};
+use clap::{
+    crate_authors, crate_description, crate_name, crate_version, CommandFactory, Parser, ValueEnum,
+};
+use clap_complete::generate;
 use clap_complete::shells::Shell;
+use eyre::Result;
+use tracing::{info, trace};
 
-use fetiche_engine::Format;
+use fetiche_common::{Container, DateOpts};
+use fetiche_formats::Format;
+
+use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
 
 /// CLI options
 #[derive(Parser)]
@@ -55,7 +54,7 @@ pub struct Opts {
     pub debug: bool,
     /// Output file.
     #[clap(short = 'o', long)]
-    pub output: Option<PathBuf>,
+    pub output: Option<String>,
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
     pub verbose: u8,
@@ -81,8 +80,6 @@ pub enum SubCommand {
     Convert(ConvertOpts),
     /// Fetch data from specified site
     Fetch(FetchOpts),
-    /// Import into InfluxDB (WIP)
-    Import(ImportOpts),
     /// List information about formats and sources
     List(ListOpts),
     /// Stream from a source
@@ -97,15 +94,9 @@ pub enum SubCommand {
 ///
 #[derive(Debug, Parser)]
 pub struct FetchOpts {
-    /// We want today only
-    #[clap(long)]
-    pub today: bool,
-    /// Start date - YYYY-MM-DD HH:MM:SS -- optional
-    #[clap(short = 'B', long)]
-    pub begin: Option<String>,
-    /// End date - YYYY-MM-DD HH:MM:SS -- optional
-    #[clap(short = 'E', long)]
-    pub end: Option<String>,
+    /// Our different date options
+    #[clap(subcommand)]
+    pub dates: Option<DateOpts>,
     /// Duration in seconds (negative = back in time) -- optional
     #[clap(short = 'D', long)]
     pub since: Option<i32>,
@@ -117,50 +108,18 @@ pub struct FetchOpts {
     //
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
-    pub output: Option<PathBuf>,
+    pub output: Option<String>,
     /// Create a copy of the raw file before any conversion
     #[clap(long)]
     pub tee: Option<String>,
     /// Do we convert on streaming?
-    #[clap(long)]
-    pub into: Option<String>,
+    #[clap(long, value_parser)]
+    pub into: Option<Format>,
+    /// Output format (if needed, like for parquet)
+    #[clap(long, value_parser)]
+    pub write: Option<Container>,
     /// Source name -- (see "list sources")
     pub site: String,
-}
-
-// ------
-
-/// This contain only the `import` sub-commands.
-///
-#[derive(Debug, Parser)]
-pub struct ImportOpts {
-    /// Sub-commands
-    #[clap(subcommand)]
-    pub subcmd: ImportSubCommand,
-}
-
-// ------
-
-/// All `import` sub-commands:
-///
-/// `import file {-F format] path`
-/// `import site [-B date] [-E date] [--today] site`
-///
-#[derive(Debug, Parser)]
-pub enum ImportSubCommand {
-    /// Import from file
-    ImportFile(ImportFileOpts),
-    /// Import from site, using options as fetch
-    ImportSite(FetchOpts),
-}
-
-#[derive(Debug, Parser)]
-pub struct ImportFileOpts {
-    /// Format must be specified if looking at a file.
-    #[clap(short = 'F', long)]
-    pub format: Option<String>,
-    /// File name (json expected)
-    pub file: PathBuf,
 }
 
 // ------
@@ -192,6 +151,8 @@ pub struct ListOpts {
 pub enum ListSubCommand {
     /// List all commands in `Engine`
     Commands,
+    /// Lists all supported write/container formats.
+    Containers,
     /// List all formats in `formats`
     Formats,
     /// List all sources from `sources.hcl`
@@ -269,4 +230,95 @@ pub struct ConvertOpts {
     pub infile: String,
     /// Output file
     pub outfile: String,
+}
+
+#[tracing::instrument(skip(engine))]
+pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
+    match subcmd {
+        // Handle `fetch site`
+        //
+        SubCommand::Fetch(fopts) => {
+            trace!("fetch");
+
+            fetch_from_site(engine, fopts)?;
+        }
+
+        // Handle `stream site`
+        //
+        SubCommand::Stream(sopts) => {
+            trace!("stream");
+
+            stream_from_site(engine, sopts)?;
+        }
+
+        // Handle `convert from to`
+        //
+        SubCommand::Convert(copts) => {
+            trace!("convert");
+
+            convert_from_to(engine, copts)?;
+        }
+
+        // Standalone completion generation
+        //
+        // NOTE: you can generate UNIX shells completion on Windows and vice-versa.  Not worth
+        //       trying to limit depending on the OS.
+        //
+        SubCommand::Completion(copts) => {
+            let generator = copts.shell;
+
+            let mut cmd = Opts::command();
+            generate(generator, &mut cmd, "acutectl", &mut io::stdout());
+        }
+
+        // Standalone `list` command
+        //
+        SubCommand::List(lopts) => match lopts.cmd {
+            ListSubCommand::Commands => {
+                info!("Listing all commands:");
+
+                let str = engine.list_commands()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Containers => {
+                info!("Listing all container formats:");
+
+                let str = engine.list_containers()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Sources => {
+                info!("Listing all sources:");
+
+                let str = engine.list_sources()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Formats => {
+                info!("Listing all formats:");
+
+                let str = engine.list_formats()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Tokens => {
+                info!("Listing all tokens:");
+
+                let str = engine.list_tokens()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Storage => {
+                info!("Listing all storage areas:");
+
+                let str = engine.list_storage()?;
+                eprintln!("{}", str);
+            }
+        },
+
+        // Standalone `version` command
+        //
+        SubCommand::Version => {
+            eprintln!("Modules: \t{}", engine.version());
+        }
+    }
+    opentelemetry::global::shutdown_tracer_provider();
+
+    Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::{Bool, TodCalculated};
+use crate::{Bool, TodCalculated, DEF_SAC, DEF_SIC};
 
 use serde::Serialize;
 
@@ -96,8 +96,8 @@ impl Default for Cat21 {
     ///
     fn default() -> Self {
         Cat21 {
-            sac: 0,
-            sic: 0,
+            sac: DEF_SAC,
+            sic: DEF_SIC,
             alt_geo_ft: 0,
             pos_lat_deg: 0.0,
             pos_long_deg: 0.0,

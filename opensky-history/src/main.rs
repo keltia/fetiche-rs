@@ -13,24 +13,33 @@
 //!
 
 use std::collections::BTreeMap;
-use std::fs;
+use std::io::Write;
 
 use chrono::prelude::*;
-use clap::{crate_authors, crate_description, crate_version, Parser};
-use csv::ReaderBuilder;
+use clap::{crate_authors, crate_version, Parser};
+use datafusion::prelude::*;
+use datafusion::{
+    common::arrow::csv::WriterBuilder as CsvOpts,
+    dataframe::DataFrameWriteOptions,
+    parquet::{
+        basic::{Compression, Encoding, ZstdLevel},
+        file::properties::{EnabledStatistics, WriterProperties},
+    },
+};
 use eyre::{eyre, Result};
 use inline_python::{python, Context};
+use tempfile::Builder;
 use tracing::{info, trace};
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
 
-use fetiche_formats::{prepare_csv, Cat21, Format};
+use fetiche_common::{list_locations, load_locations, Location, BB};
 
-use crate::cli::Opts;
-use crate::location::{list_locations, load_locations, Location, BB};
+use crate::cli::{banner, version, Opts, Otype};
+use crate::init::init_runtime;
+use crate::segment::extract_segments;
 
 mod cli;
-mod location;
+mod init;
+mod segment;
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -39,27 +48,25 @@ pub const VERSION: &str = crate_version!();
 /// Authors
 pub const AUTHORS: &str = crate_authors!();
 
+#[tokio::main]
 #[tracing::instrument]
-fn main() -> Result<()> {
+async fn main() -> Result<()> {
     trace!("enter");
 
     let opts = Opts::parse();
 
     // Initialise logging.
     //
-    let fmt = fmt::layer().with_target(false).compact();
-
-    // Load filters from environment
-    //
-    let filter = EnvFilter::from_default_env();
-
-    // Combine filter & specific format
-    //
-    tracing_subscriber::registry().with(filter).with(fmt).init();
+    init_runtime(NAME)?;
 
     // Banner
     //
     banner()?;
+
+    if opts.version {
+        eprintln!("{}", version());
+        std::process::exit(0);
+    }
 
     trace!("read locations");
     let loc: BTreeMap<String, Location> = load_locations(opts.config)?;
@@ -68,16 +75,19 @@ fn main() -> Result<()> {
 
     // List loaded locations if nothing is specified, neither name nor location
     //
-    if opts.name.is_none() {
-        let dist = opts.range;
-        let str = list_locations(&loc, dist)?;
-        eprintln!("{}", str);
-        return Ok(());
-    }
+    let site = match opts.name {
+        Some(name) => name,
+        None => {
+            let dist = opts.range;
+            let str = list_locations(&loc, dist)?;
+            eprintln!("{}", str);
+            return Ok(());
+        }
+    };
 
     // Get arguments, parse anything as a date
     //
-    let start = match opts.start {
+    let start = match opts.begin {
         Some(start) => dateparser::parse(&start),
         None => Ok(Utc::now()),
     }
@@ -107,17 +117,14 @@ fn main() -> Result<()> {
     info!("{} segments", v.len());
     trace!("{:?}", v);
 
-    let bb = match opts.name {
-        Some(name) => match loc.get(&name) {
-            Some(loc) => loc,
-            None => return Err(eyre!("Unknown location")),
-        },
+    let bb = match loc.get(&site) {
+        Some(loc) => loc,
         None => return Err(eyre!("You must specify a location")),
     };
 
     // If the --icao option is specified, add the parameter to the query string.
     //
-    let icao = if opts.icao.is_some() {
+    let _icao = if opts.icao.is_some() {
         format!(" AND CALLSIGN = '{}'", opts.icao.unwrap())
     } else {
         String::new()
@@ -127,134 +134,58 @@ fn main() -> Result<()> {
     //
     let bb = BB::from_location(bb, opts.range);
     let bb = [bb.min_lon, bb.min_lat, bb.max_lon, bb.max_lat];
-
+    trace!("BB={:?}", bb);
     // Initialise our embedded Python environment
     //
     trace!("initialise python");
 
     let v1 = v.clone();
     let ctx: Context = python! {
-        from pyopensky import OpenskyImpalaWrapper
+        from pyopensky.impala import Impala
 
-        opensky = OpenskyImpalaWrapper()
+        impala = Impala()
 
         print("From: ", 'start, "To: ", 'end, "BB=", 'bb)
         print("Segments: ", len('v1))
+        start = 'start
+        end = 'end
+        bb = 'bb
+
+        df = impala.history(start, end, bounds=bb)
+        if df is None:
+            data = ""
+        else:
+            data = df.to_csv()
     };
-
-    // Now for each segment, use the python code to fetch and return the DataFrames in CSV format
-    //
-    trace!("fetch segments");
-
-    let data: Vec<_> = v
-        .iter()
-        .inspect(|&tm| trace!("Fetching segment {}", tm))
-        .map(|&tm| {
-            let icao = icao.clone();
-            ctx.run(python! {
-                seg = 'tm
-                bb = 'bb
-                q = "SELECT * FROM state_vectors_data4 \
-                WHERE lat >= {} AND lat <= {} AND lon >= {} AND lon <= {} AND hour={}{};\
-                ".format(bb[1], bb[3], bb[0], bb[2], seg, 'icao)
-
-                df = opensky.rawquery(q)
-                if df is None:
-                    data = ""
-                else:
-                    data = df.to_csv()
-            });
-            ctx.get::<String>("data")
-        })
-        .collect();
+    let data = ctx.get::<String>("data");
 
     // End of the Python part thanks $DEITY! (and @m_ou_se on Twitter)
     //
-    let format = Format::PandaStateVector;
+    trace!("data={}", &data);
 
-    trace!("now merging {} csv segments", data.len());
-
-    // data is a Vec<String> with each component a CSV "file"
+    // Write into temporary file.
     //
-    let data: Vec<Cat21> = data
-        .iter()
-        .flat_map(|seg| {
-            let mut rdr = ReaderBuilder::new()
-                .flexible(true)
-                .has_headers(true)
-                .from_reader(seg.as_bytes());
-            format.from_csv(&mut rdr).unwrap()
-        })
-        .collect();
+    let mut tmpf = Builder::new().suffix(".csv").tempfile()?;
+    let _ = tmpf.write(data.as_bytes())?;
 
-    let data = prepare_csv(data, true)?;
+    let ctx = SessionContext::new();
+    let fname = tmpf.path().to_string_lossy().to_string();
+    let df = ctx.read_csv(fname, CsvReadOptions::default()).await?;
+    let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
 
-    // Manage output
-    //
-    match opts.output {
-        Some(output) => fs::write(output, data)?,
-        _ => println!("{:?}", data),
+    let output = opts.output;
+
+    if opts.otype == Otype::Parquet {
+        let props = WriterProperties::builder()
+            .set_created_by(NAME.to_string())
+            .set_encoding(Encoding::PLAIN)
+            .set_statistics_enabled(EnabledStatistics::Page)
+            .set_compression(Compression::ZSTD(ZstdLevel::try_new(8)?))
+            .build();
+        let _ = df.write_parquet(&output, dfopts, Some(props)).await?;
+    } else {
+        let props = CsvOpts::default();
+        let _ = df.write_csv(&output, dfopts, Some(props)).await?;
     }
-
     Ok(())
-}
-
-/// Calculate the list of 1h segments necessary for a given time interval
-///
-/// Algorithm for finding which segments are interesting otherwise Impala takes forever to
-/// retrieve data
-///
-/// All timestamps are UNIX-epoch kind of timestamp.
-///
-/// start = NNNNNN
-/// stop = MMMMMM
-///
-/// i(0) => beg_hour = NNNNNN
-/// i(N) => end_hour = MMMMMM - (MMMMMM mod 3600)
-///
-/// N =  (MMMMMM - NNNNNN) / 3600
-///
-/// thus
-///
-/// [beg_hour <= start] ... [end_hour <= stop]
-/// i(0)                ... i(N)
-///
-/// N requests
-///
-#[tracing::instrument]
-pub fn extract_segments(start: i32, stop: i32) -> Result<Vec<i32>> {
-    trace!("enter");
-
-    let beg_hour = start - (start % 3600);
-    let end_hour = stop - (stop % 3600);
-
-    let mut v = vec![];
-    let mut i = beg_hour;
-    while i <= end_hour {
-        v.push(i);
-        i += 3600;
-    }
-    Ok(v)
-}
-
-/// Return our version number
-///
-#[inline]
-pub fn version() -> String {
-    format!("{}/{}", NAME, VERSION)
-}
-
-/// Display banner
-///
-fn banner() -> Result<()> {
-    Ok(eprintln!(
-        r##"
-{}/{} by {}
-{}
-"##,
-        NAME,
-        VERSION,
-        AUTHORS,
-        crate_description!()
-    ))
 }

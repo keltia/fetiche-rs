@@ -1,29 +1,43 @@
 [workspace]
 resolver = "2"
-members = ["acutectl", "engine", "fetiched", "formats", "sources", "opensky-history"]
+members = ["acutectl", "adsb-to-parquet", "common", "fetiched", "formats", "sources", "opensky-history", "process-data", "common"]
 exclude = ["cat21conv"]
 
 [workspace.dependencies]
+arrow2 = { version = "0.17", features = ["io_csv", "io_json", "io_json_integration", "io_parquet"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
-env_logger = "0.10"
+datafusion = { version = "36.0", features = ["zstd", "async-compression", "serde"] }
+dateparser = "0.2"
+env_logger = "0.11"
 eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
-fetiche-engine = { version = "0", path = "engine" }
+fetiche-common = { version = "0", path = "common" }
 fetiche-formats = { version = "0", path = "formats" }
+fetiche-macros = { version = "0", path = "macros" }
 fetiche-sources = { version = "0", path = "sources" }
 hcl-rs = "0.16"
 home = "0.5"
-influxdb = { version = "0.7", features = ["derive"] }
 log = { version = "0.4", features = ["serde", "std"] }
 nom = "7"
+opentelemetry = { version = "0.21", features = ["logs", "metrics"] }
+opentelemetry-jaeger = { version = "0.20", features = ["rt-tokio", "reqwest_blocking_collector_client"] }
+opentelemetry-otlp = "0.14"
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
+parquet2 = { version = "0.17", features = ["zstd"] }
+progress = "0.2"
 reqwest = { version = "0.11", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
 rstest = "0.18"
 serde = { version = "1.0", features = ["derive"] }
+serde_arrow = { version = "0.10", features = ["arrow2-0-17"] }
 serde_json = "1.0"
 serde_repr = "0.1"
-serde_with = { version = "3.3", features = ["base64", "chrono", "json", "hex"] }
-strum = { version = "0", features = ["derive"] }
-tabled = "0.13"
+serde_with = { version = "3", features = ["base64", "chrono_0_4", "json", "hex"] }
+strum = { version = "0.26", features = ["derive"] }
+tabled = "0.15"
+thiserror = "1.0"
+tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
-tracing-log = { version = "0.1", features = ["env_logger"] }
+tracing-log = "0.2"
+tracing-opentelemetry = "0.22"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
+tracing-tree = { version = "0.3", features = ["time"] }

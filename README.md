@@ -30,14 +30,21 @@ Licensed under the [MIT](LICENSE) license.
 utilities for Aeronautical data about drones and aircraft.
 
 This is now divided into different crates with libraries (`fetiche-engine`, `fetiche-formats`, `fetiche-sources`) shared
-by the binary crates (`acutectl` and `opensky-history`).
+by the binary crates (`acutectl`, `opensky-history` and now `process-data`).
 
 Binary crates include command-line utilities (`acutectl` and `opensky-history`) to perform import from a file or
-fetch data from different sites.
+fetch data from different sites. There is now `process-data` which include several task aimed at gathering statistics
+and metrics about our drone and flight data.
+
+`acutectl` is the main data fetching utility, relaying the `fetiche-sources` and `fetiche-formats` crates to provide
+a single interface to multi sources.
 
 `opensky-history` is for retrieving historical data from [Opensky]. This access is managed through an SSH-based shell to
-the Impala database. This is for everything older than 1h of real-time data which does complicate things. This utility 
+the Impala database. This is for everything older than 1h of real-time data which does complicate things. This utility
 use the [pyopensky] Python module (embedded through the `inline-python` crate).
+
+`process-data`  works on the drones and flights data through [DuckDB] and does various SQL-backed procedures to gather
+and calculates metrics including distances (2D and 3D).
 
 ## Installation
 
@@ -54,18 +61,17 @@ This is intentionally *not* a run-time option but a compile-time one.
 
 ## Usage
 
-For the moment, there are two binaries called `acutectl` (with `.exe` on Windows) and `opensky-history`. The former is
-used to fetch data into their native format (csv, json) or import said data into a database.  It uses 
-`fetiche-engine` for all the code related to accessing, authenticating and fetching data in various ways.
+For the moment, there are 3 binaries called `acutectl` (with `.exe` on Windows), `opensky-history` and `process-data`.
+The former is used to fetch data into their native format (csv, json). It uses `fetiche-engine` for all the code related
+to accessing, authenticating and fetching data in various ways.
 
-Right now, `acutectl` use blocking HTTP calls and is not using any
-`async` features.
+Right now, `acutectl` use blocking HTTP calls and is not using any `async` features.
 
 However, while working on streaming support for Opensky, I have been experimenting with [tokio] for async support and
 `acutectl` might eventually become fully-async. It does help for some stuff including signal (read ^C) support.
 
-All the commands are described in more details in the [acutectl README.md](acutectl/README.md) and
-[opensky-history README.md](opensky-history/README.md) files. 
+All the commands are described in more details in the [acutectl README.md](acutectl/README.md),
+[opensky-history README.md](opensky-history/README.md) and [process-data](process-data/README.md) files.
 
 ## Structure and Design
 
@@ -80,15 +86,18 @@ consumer or producer (notably `Fetch`, `Stream` and `Store`).
 
 This allows for filters to be inserted for conversion and in the future for DB export as well.
 
-More information on its internal design in [Engine README.md](engine/README.md).
+More information on its internal design in [Engine README.md](fetiched/README.md).
+
+There is also the beginning of a job/task description DSL to describe and submit jobs.
 
 > NOTE: this is a fast-changing WIP.
 
 ### Formats (managed in the `fetiche-formats` crate)
 
-This crate implement the various data models used by the different sources. Included are two [ASTERIX] formats --
-generic `Cat21` and drone-specific `Cat129` -- and formats used by different data providers like [Opensky] or [ASD].
-This library implement some methods of conversion between some of these formats.
+This crate implement the various data models used by the different sources. Included are three [ASTERIX]-like formats --
+generic `Cat21`, a cut-down version of `Cat21` for ADS-B data (dubbed `Adsb21`) and drone-specific `Cat129` -- and
+formats used by different data providers like [Opensky] or [ASD]. This library implement some methods of conversion
+between some of these formats.
 
 The default input format is the one used by the Aeroscope from ASD, but it will soon support the format used
 by [Opensky] site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
@@ -111,6 +120,9 @@ On UNIX systems, there is a new command called `fetiched`. It is a daemon runnin
 from the terminal and accepting requests through an [GRPC] interface. The Windows version will have to be run from a
 specific terminal with the `serve` command.
 
+In the near future, `fetiched` is evolving into an Actor-based subsystem (using [Actix] ) to manage
+orchestration between the internal modules. We do have an engine actor, a configuration actor, etc.
+
 More details in the specific [Fetiched README.md](fetiched/README.md).
 
 > NOTE: This is WIP
@@ -118,10 +130,10 @@ More details in the specific [Fetiched README.md](fetiched/README.md).
 ### Data Model
 
 Each source has its own data model which complicates things, apart from [ASTERIX] with Cat129 for drone data, each
-company/service provider use their own data model. To ease managing drone data, I have defined `DronePoint` as a common
-data model (extracted from the data sent by [ASD] with some fields with different types -- like actual `f32` instead of
-the string format) and real timestamp. These can be grouped into a `Journey` type which is a state vector with all the
-points in the trajectory.
+company/service provider use their own data model. To ease managing drone data, I started to define my own `DronePoint` 
+as a common data model (extracted from the data sent by [ASD] with some fields with different types -- like actual `f32`
+instead of the string format) and real timestamp. In fact, now that I have fixed `Asd` struct fields handling and types,
+it is not needed.
 
 See the `fetiche-formats` crate for more details.
 
@@ -133,8 +145,9 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 
 * Unix (tested on FreeBSD, Linux and macOS)
 * Windows
-  * cmd.exe
-  * Powershell (preferred)
+    * cmd.exe
+    * [Nushell]
+    * Powershell (preferred)
 
 ## TODO
 
@@ -154,12 +167,13 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~merge `import-adsb` and `cat21conv` into `acutectl`~~.
 - ~~Add a `Store` module to handle long-running jobs and their output.~~
 - ~~Retrieve historical data from the [Opensky] site.~~
-- rename `acutectl` into `fetichectl`.
+- ~~Support for Flightaware AeroAPI and Firehose.~~
+- ~~Apache Parquet as output format.~~
+- build `fetiched` as the core daemon and making all other talk to it through gRPC.
 - link to HashiCorp Vault for storing credentials and tokens
 - Add more tests & benchmarks.
 - support for Safesky for ADS-B data
 - Support for Sherlock formats and access methods
-- Support for Flightaware AeroAPI and Firehose.
 - Multicast output?
 
 ## Contributing
@@ -177,6 +191,8 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [ASD]: https://eur.airspacedrone.com/
 
+[Actix]: https://actix.rs/
+
 [ASTERIX]: https://www.eurocontrol.int/asterix/
 
 [fetiche-rs: 1.56+]: https://img.shields.io/badge/Rust%20version-1.56%2B-lightgrey
@@ -184,6 +200,8 @@ I use Git Flow for this package so please use something similar or the usual Git
 [Mozilla]: https://mozilla.org/
 
 [Opensky]: https://www.opensky-network.org/
+
+[Parquet]: https://parquet.apache.org/
 
 [RUST]: https://www.rust-lang.org/
 
@@ -199,4 +217,10 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [GRPC]: https://en.wikipedia.org/wiki/GRPC
 
-[pyopensky]: https://pypi.org/project/pyopensky/ 
+[pyopensky]: https://pypi.org/project/pyopensky/
+
+[Nushell]: https://nushell.sh/
+
+[Actix]: https://actix.rs/
+
+[DuckDB]: https://duckdb.org/

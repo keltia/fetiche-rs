@@ -9,7 +9,6 @@
 
 use std::collections::VecDeque;
 use std::fmt::Debug;
-use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::*;
@@ -117,9 +116,6 @@ impl Job {
             writeln!(out, "received: ({})", msg).unwrap();
             out.flush().unwrap();
         }
-        // for p in pids {
-        //     let _ = p.join().unwrap();
-        // }
     }
 }
 
@@ -146,41 +142,26 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    let stdout = File::create("/tmp/foo.out")?;
-    let stderr = File::create("/tmp/foo.err")?;
+    let mut stdout = io::stdout();
 
-    let daemon = daemonize::Daemonize::new()
-        .pid_file(&pid)
-        .working_directory("/tmp")
-        .stdout(stdout)
-        .stderr(stderr);
+    let t1 = Counter { cnt: 1 };
+    let t2 = Msg {
+        msg: "bnar".to_string(),
+    };
+    let t3 = Counter { cnt: 42 };
 
-    match daemon.start() {
-        Ok(_) => {
-            info!("In child, detached");
+    let mut j = Job::new("test");
 
-            let mut stdout = io::stdout();
+    j.add(Box::new(t1)).add(Box::new(t2)).add(Box::new(t3));
 
-            let t1 = Counter { cnt: 1 };
-            let t2 = Msg {
-                msg: "bnar".to_string(),
-            };
-            let t3 = Counter { cnt: 42 };
+    dbg!(&j);
 
-            let mut j = Job::new("test");
+    j.run(&mut stdout);
 
-            j.add(Box::new(t1)).add(Box::new(t2)).add(Box::new(t3));
+    let _ = stdout.flush()?;
 
-            dbg!(&j);
+    info!("sleep");
+    sleep(Duration::from_secs(60));
 
-            j.run(&mut stdout);
-
-            let _ = stdout.flush()?;
-
-            info!("sleep");
-            sleep(Duration::from_secs(60));
-        }
-        Err(e) => eprintln!("Error: {}", e),
-    }
     Ok(fs::remove_file(&pid)?)
 }

@@ -1,5 +1,7 @@
 //! This is the exposed part of the `fetiche-sources` API.
 //!
+//! FIXME: too many dependencies on being part of the binary and not from `fetiched`.
+//!
 
 use std::collections::btree_map::{IntoValues, Iter, IterMut, Keys, Values, ValuesMut};
 use std::collections::BTreeMap;
@@ -20,7 +22,9 @@ use tracing::{debug, trace};
 
 #[cfg(unix)]
 use crate::BASEDIR;
-use crate::{makepath, Auth, Site, CONFIG, CVERSION, TOKEN_BASE};
+use crate::{Auth, Site, CONFIG, CVERSION, TOKEN_BASE};
+
+use fetiche_common::makepath;
 
 /// List of sources, this is the only exposed struct from here.
 ///
@@ -108,7 +112,7 @@ impl Sources {
         let header = vec!["Name", "Type", "Format", "URL", "Auth", "Ops"];
 
         let mut builder = Builder::default();
-        builder.set_header(header);
+        builder.push_record(header);
 
         self.0.iter().for_each(|(n, s)| {
             let mut row = vec![];
@@ -212,7 +216,7 @@ impl Sources {
         let header = vec!["Path", "Created at"];
 
         let mut builder = Builder::default();
-        builder.set_header(header);
+        builder.push_record(header);
 
         let p = Self::token_path();
         if let Ok(dir) = fs::read_dir(p) {

@@ -1,6 +1,9 @@
 //! This is the [Rust] version of `aeroscope.sh` written by Marc Gravis for the ACUTE Project.
+//!
 //! Now it tries to include features from `aeroscope-CDG.sh` and will support fetching from
 //! the Skysafe site as well.
+//!
+//! NOTE: Deprecated by the `acutectl` utility which supports more formats and sources.
 //!
 //! It can load from either a server or from a file (easier for offline tests). It uses
 //! a configuration file  from `$HOME/.config/drone-utils` or `%LOCALAPPDATA%/drone-utils` on
@@ -10,7 +13,7 @@
 //! The respective formats for the other sources are in the files inside the `formats` module.
 //!
 //! Author: Ollivier Robert <ollivier.robert@eurocontrol.int> for the EIH
-//! Copyright: (c) 2022 by Ollivier Robert
+//! Copyright: (c) 2022, 2023, 2024 by Ollivier Robert
 //!
 //! [Rust]: https://rust-lang.org/
 //!
@@ -46,11 +49,13 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
         let begin = NaiveDate::from_ymd_opt(t.year(), t.month(), t.day())
             .unwrap()
             .and_hms_opt(0, 0, 0)
-            .unwrap();
+            .unwrap()
+            .and_utc();
         let end = NaiveDate::from_ymd_opt(t.year(), t.month(), t.day())
             .unwrap()
             .and_hms_opt(23, 59, 59)
-            .unwrap();
+            .unwrap()
+            .and_utc();
 
         Ok(Filter::interval(begin, end))
     } else if opts.begin.is_some() {
@@ -59,11 +64,11 @@ pub fn filter_from_opts(opts: &Opts) -> Result<Filter> {
         // We have to parse both arguments ourselves because it uses its own formats
         //
         let begin = match &opts.begin {
-            Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?,
+            Some(begin) => NaiveDateTime::parse_from_str(begin, "%Y-%m-%d %H:%M:%S")?.and_utc(),
             None => return Err(eyre!("bad -B parameter")),
         };
         let end = match &opts.end {
-            Some(end) => NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S")?,
+            Some(end) => NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S")?.and_utc(),
             None => return Err(eyre!("Bad -E parameter")),
         };
 

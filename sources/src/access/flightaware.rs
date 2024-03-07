@@ -27,7 +27,8 @@ use eyre::{eyre, Result};
 use native_tls::{TlsConnector, TlsStream};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use strum::{EnumString, EnumVariantNames};
+use strum::EnumString;
+use strum::VariantNames;
 use tracing::trace;
 
 use fetiche_formats::Format;
@@ -79,7 +80,7 @@ struct Param {
     pub events: Option<Vec<Events>>,
 }
 
-#[derive(Debug, Deserialize, strum::Display, EnumString, EnumVariantNames, Serialize)]
+#[derive(Debug, Deserialize, strum::Display, EnumString, VariantNames, Serialize)]
 #[strum(serialize_all = "lowercase")]
 pub enum Compress {
     Compress,
@@ -91,7 +92,7 @@ pub enum Compress {
 ///
 /// see `formats/src/flightaware/mod.rs` for details
 ///
-#[derive(Debug, Default, Deserialize, strum::Display, EnumString, EnumVariantNames, Serialize)]
+#[derive(Debug, Default, Deserialize, strum::Display, EnumString, VariantNames, Serialize)]
 #[strum(serialize_all = "snake_case")]
 pub enum Events {
     // Airborne
@@ -323,7 +324,7 @@ impl Fetchable for Flightaware {
         stream.write_all(req.as_bytes())?;
 
         let mut p = progress::SpinningCircle::new();
-        p.set_job_title("fetching...");
+        p.set_job_title("Fetching...");
 
         trace!("read answer, format as an array");
         let buf = BufReader::new(&mut stream);

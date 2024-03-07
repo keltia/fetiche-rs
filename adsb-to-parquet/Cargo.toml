@@ -1,0 +1,48 @@
+[package]
+name = "adsb-to-parquet"
+version = "0.2.0"
+edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "Load ADS-B data as CSV and save it as Parquet."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/fetiche-rs"
+categories = ["aerospace::drones"]
+keywords = ["parquet", "drones", "aeronautical-data", "ads-b"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[[bench]]
+name = "csv-to-parquet"
+harness = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono.workspace = true
+clap.workspace = true
+datafusion.workspace = true
+eyre.workspace = true
+log.workspace = true
+opentelemetry.workspace = true
+opentelemetry-jaeger.workspace = true
+opentelemetry_sdk.workspace = true
+parquet2.workspace = true
+serde.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true
+
+arrow2 = { version = "0.18", features = ["io_csv", "io_parquet"] }
+rayon = "1.8"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["async_tokio"] }

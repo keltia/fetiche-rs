@@ -20,7 +20,7 @@ site "asd" {
   base_url = "https://eur.airspacedrone.com/api"
   auth     = "token"
   routes   = {
-    get = "/journeys/filteredlocations/json"
+    get = "/journeys/filteredlocations"
   }
 }
 
@@ -48,7 +48,7 @@ site "opensky" {
 }
 
 site "fa-belfast" {
-  features = ["fetch", "stream"]
+  features = ["fetch"]
   type     = "adsb"
   format   = "flightaware"
   auth     = "login"

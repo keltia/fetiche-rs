@@ -24,7 +24,7 @@ pub use aeroscope::*;
 pub use asd::*;
 pub use asterix::*;
 pub use avionix::*;
-pub use drone::*;
+#[cfg(feature = "flightaware")]
 pub use flightaware::*;
 pub use opensky::*;
 pub use safesky::*;
@@ -33,7 +33,7 @@ mod aeroscope;
 mod asd;
 mod asterix;
 mod avionix;
-mod drone;
+#[cfg(feature = "flightaware")]
 mod flightaware;
 mod opensky;
 mod safesky;
@@ -73,23 +73,47 @@ pub struct FormatFile {
     pub format: BTreeMap<String, FormatDescr>,
 }
 
+/// WWe distinguish between the site-specific data formats and general ADS-B
+///
+#[derive(Clone, Debug, Deserialize, strum::Display, EnumString, strum::VariantNames)]
+#[strum(serialize_all = "lowercase")]
+pub enum DataType {
+    /// ADS-B data
+    Adsb,
+    /// Drone data, site-specific
+    Drone,
+    /// Write formats
+    Write,
+}
+
 /// This struct holds the different data formats that we support.
 ///
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, strum::Display, EnumString, Serialize,
 )]
-#[strum(serialize_all = "lowercase")]
+#[strum(serialize_all = "lowercase", ascii_case_insensitive)]
 pub enum Format {
     #[default]
     None,
+    /// Special cut-down version of ADS-B, limited to specific fields
+    Adsb21,
+    /// DJI Aeroscope-specific data, coming from the antenna
     Aeroscope,
+    /// Consolidated drone data, from airspacedrone.com (ASD)
     Asd,
+    /// ADS-B data from the Avionix appliance
     Avionix,
+    /// ECTL Asterix Cat21 flattened CSV
     Cat21,
+    /// ECTL Drone specific Asterix Cat129
     Cat129,
+    /// Flightaware API v4 Position data
     Flightaware,
+    /// ADS-B data from the Opensky API
     Opensky,
+    /// Opensky data from the Impala historical DB
     PandaStateVector,
+    /// ADS-B data  from the Safesky API
     Safesky,
 }
 
@@ -116,7 +140,7 @@ macro_rules! into_cat21 {
                     }
                 };
                 Cat21::from(&l)
-            },
+            }
         )+
             _ => panic!("unknown format"),
         }
@@ -155,15 +179,15 @@ macro_rules! convert_to {
             #[tracing::instrument]
             pub fn $name(input: &str) -> Result<Vec<$to>> {
                 debug!("IN={:?}", input);
-                let res: Vec<$from> = serde_json::from_str(&input)?;
-                debug!("rec={:?}", res);
+                let stream = ::std::io::BufReader::new(input.as_bytes());
+                let res = ::serde_json::Deserializer::from_reader(stream).into_iter::<$from>();
+
                 let res: Vec<_> = res
-                    .iter()
+                    .filter(|l| l.is_ok())
                     .enumerate()
-                    .inspect(|(n, f)| debug!("f={:?}-{:?}", n, f))
-                    .map(|(cnt, rec)| {
-                        debug!("cnt={}/rec={:?}", cnt, rec);
-                        $to::from(rec)
+                    .inspect(|(n, f)| debug!("cnt={}/{:?}", n, f.as_ref().unwrap()))
+                    .map(|(_cnt, rec)| {
+                        $to::from(&rec.unwrap())
                     })
                     .collect();
                 debug!("res={:?}", res);
@@ -176,6 +200,8 @@ macro_rules! convert_to {
 impl Format {
     /// Process each record coming from the input source, apply `Cat::from()` onto it
     /// and return the list.  This is used when reading from the csv files.
+    ///
+    /// TODO: use arrow2 & serde_arrow instead.
     ///
     #[tracing::instrument(skip(self))]
     pub fn from_csv<R>(self, rdr: &mut Reader<R>) -> Result<Vec<Cat21>>
@@ -213,7 +239,7 @@ impl Format {
         let header = vec!["Name", "Type", "Description"];
 
         let mut builder = Builder::default();
-        builder.set_header(header);
+        builder.push_record(header);
 
         fstr.format.iter().for_each(|(name, entry)| {
             let mut row = vec![];
@@ -225,6 +251,7 @@ impl Format {
             let url = entry.url.clone();
 
             let row_text = format!("{}\nSource: {} -- URL: {}", description, source, url);
+            let dtype = dtype.to_string();
             row.push(&name);
             row.push(&dtype);
             row.push(&row_text);

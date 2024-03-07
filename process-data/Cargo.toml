@@ -1,0 +1,70 @@
+[package]
+name = "process-data"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "Implement different processing of data."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/fetiche-rs"
+categories = ["aerospace::drones"]
+keywords = ["parquet", "drones", "aeronautical-data", "ads-b"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[features]
+default = ["duckdb"]
+duckdb = []
+
+[[bench]]
+name = "distances"
+harness = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono.workspace = true
+clap.workspace = true
+datafusion.workspace = true
+dateparser.workspace = true
+eyre.workspace = true
+fetiche-common.workspace = true
+hcl-rs.workspace = true
+home.workspace = true
+log.workspace = true
+opentelemetry.workspace = true
+opentelemetry-jaeger.workspace = true
+opentelemetry-otlp.workspace = true
+opentelemetry_sdk.workspace = true
+parquet2.workspace = true
+progress.workspace = true
+serde.workspace = true
+strum.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-log.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true
+
+clap_complete = "4.5"
+derive_builder = "0.20"
+duckdb = { version = "0.10", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
+geo = "0.28"
+itertools = "0.12"
+rand = "0"
+rust-3d = "0.34"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["async_tokio"] }
+rstest.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+pprof = { version = "0.13", features = ["criterion", "flamegraph"] }
+
