@@ -19,29 +19,35 @@ SELECT *
 FROM read_parquet('/Users/acute/data/adsb/**/*.parquet', hive_partitioning = true);
 ```
 
-- Table `drones` is create from the parquet files then updated by the distance to home task.
+- View `drones` is created from the parquet files and updated by the distance to home task.
 
 ```sql
-CREATE TABLE drones AS
-SELECT *
-FROM read_parquet('/Users/acute/data/drones/**/*.parquet', hive_partitioning = true);
+CREATE VIEW drones
+AS
+(
+select *,
+       date_part('year', timestamp) as year, 
+           date_part('month', timestamp) as month,
+           dist_2d(longitude, latitude, home_lon, home_lat) as home_distance_2d,
+           dist_3d(longitude, latitude, altitude, home_lon, home_lat, home_height) as home_distance_3d
+FROM read_csv('drones_*.parquet'));
+```
+
+We can re-create the whole Hive tree with this command:
+
+```sql
+COPY drones TO 'drones' (FORMAT parquet, PARTITION_BY (year, month), COMPRESSION 'zstd', FILENAME_PATTERN "drones_{i}");
 ```
 
 > NOTE: See `process-data/src/tasks/setup.rs` for the wrappers.
-
-Create the two additional columns:
-
-```sql
-ALTER TABLE drones
-  ADD COLUMN home_distance_2d FLOAT;
-ALTER TABLE drones
-  ADD COLUMN home_distance_3d FLOAT;
-```
 
 During the calculations, tables will be created to store the intermediate selections for drones and airplanes. These
 will be named `today` for the planes and `candidates` for the drones. The results will be store into a general table
 called `today_close` from which we will derive our final results for the minimal distance (`encounters`) and the list of
 planes nearby each drone point.
+
+> NOTE: This schema require all calculations to be made in sequence, not in parallel. A possible evolution could be to
+> allow for parallel processing by creating temporary tables named from the "year/month/day".
 
 The `encounters` table looks like this:
 
@@ -50,17 +56,19 @@ DROP SEQUENCE IF EXISTS id_encounter;
 CREATE SEQUENCE id_encounter;
 CREATE TABLE encounters
 (
-  id       INT DEFAULT nextval('id_encounter'),
-  en_id    VARCHAR,
-  dt       BIGINT,
-  time     VARCHAR,
-  journey  INT,
-  drone_id VARCHAR,
-  model    VARCHAR,
-  callsign VARCHAR,
-  addr     VARCHAR,
-  site     VARCHAR,
-  distance FLOAT,
+  id           INT DEFAULT nextval('id_encounter'),
+  en_id        VARCHAR,
+  dt           BIGINT,
+  time         VARCHAR,
+  journey      INT,
+  drone_id     VARCHAR,
+  model        VARCHAR,
+  callsign     VARCHAR,
+  addr         VARCHAR,
+  site         VARCHAR,
+  distance     FLOAT,
+  distancelat  FLOAT,
+  distancevert FLOAT,
   PRIMARY KEY (dt, journey)
 )
 ```
