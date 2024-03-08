@@ -1,6 +1,6 @@
 //! This is where all the main calculations are done.
 //!
-//! FIXME: at the moment, the pipe uses fixed names for the intermediate tables (today,candidates, etc.).
+//! FIXME: at the moment, the pipe uses fixed names for the intermediate tables (today, candidates, etc.).
 //!
 use std::ops::Add;
 
