@@ -61,6 +61,7 @@ impl PlaneDistance {
         let r1 = r##"
 CREATE TABLE today AS
 SELECT
+  site,
   TimeRecPosition AS time,
   AircraftAddress AS addr,
   Callsign AS callsign,
@@ -70,7 +71,7 @@ SELECT
 FROM
   airplanes
 WHERE
-  site=? AND
+  site = ? AND
   time >= ? AND
   time <= ? AND
   pz IS NOT NULL AND
@@ -169,6 +170,7 @@ SELECT
   c.longitude AS dx,
   c.latitude AS dy,
   c.altitude AS dz,
+  t.site,
   t.addr AS addr,
   t.callsign,
   t.time AS pt,
@@ -223,11 +225,11 @@ BY NAME (
     SELECT
       any_value(dt) AS dt,
       journey,
-      any_value(drone_id) AS drone_id,
-      model,
+      drone_id,
+      any_value(model) AS model,
       any_value(timestamp) AS time,
       any_value(callsign) AS callsign,
-      any_value(addr) AS addr,
+      addr,
       any_value(dist2d) AS distancelat,
       any_value(@(pz - dz)) AS distancevert,
       MIN(dist_drone_plane) AS distance,
