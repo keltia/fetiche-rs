@@ -6,6 +6,7 @@ use std::ops::Add;
 
 use chrono::{Datelike, Duration, TimeZone, Utc};
 use duckdb::{Connection, params};
+use eyre::Result;
 use tokio::time::Instant;
 use tracing::{info, trace};
 
@@ -21,7 +22,7 @@ impl PlaneDistance {
     /// - define a bounding box around a specific site (default is 70nm) and use it as a filter
     ///
     #[tracing::instrument(skip(dbh))]
-    fn select_planes(&self, dbh: &Connection) -> eyre::Result<usize> {
+    fn select_planes(&self, dbh: &Connection) -> Result<usize> {
         let site = self.name.clone();
         let day = self.date.day();
         let month = self.date.month();
@@ -91,7 +92,7 @@ ORDER BY time
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn select_drones(&self, dbh: &Connection) -> eyre::Result<usize> {
+    fn select_drones(&self, dbh: &Connection) -> Result<usize> {
         // All drone points for the same day
         //
         // $1 = year
@@ -144,7 +145,7 @@ ORDER BY
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn find_close(&self, dbh: &Connection) -> eyre::Result<usize> {
+    fn find_close(&self, dbh: &Connection) -> Result<usize> {
         // Cleanup if needed
         //
         if dbh.execute("SHOW TABLE today_close", []).is_ok() {
@@ -204,7 +205,7 @@ ORDER BY
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn save_encounters(&self, dbh: &Connection) -> eyre::Result<usize> {
+    fn save_encounters(&self, dbh: &Connection) -> Result<usize> {
         trace!("filter calculations, take min()");
 
         // We use a GROUP BY() clause to get the point where the distance between this drone and any surrounding planes
@@ -270,7 +271,7 @@ impl Calculate for PlaneDistance {
     /// Run the process for the given day.
     ///
     #[tracing::instrument(skip(dbh))]
-    fn run(&self, dbh: &Connection) -> eyre::Result<Stats> {
+    fn run(&self, dbh: &Connection) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
 
         let start = Instant::now();
