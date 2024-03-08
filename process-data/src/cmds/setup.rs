@@ -63,52 +63,6 @@ DROP MACRO encounter;
     Ok(dbh.execute_batch(r)?)
 }
 
-#[tracing::instrument(skip(dbh))]
-fn add_columns_to_drones(dbh: &Connection) -> Result<()> {
-    info!("Adding distance columns from drones.");
-
-    let r = r##"
-ALTER TABLE drones
-  ADD COLUMN home_distance_2d FLOAT;
-ALTER TABLE drones
-  ADD COLUMN home_distance_3d FLOAT;
-    "##;
-
-    // Assume that if home_distance_2d doesn't exist, then home_distance_3d doesn't either.
-    //
-    if dbh
-        .execute("SELECT home_distance_2d FROM drones LIMIT 1", [])
-        .is_err()
-    {
-        dbh.execute_batch(r)?;
-    }
-    Ok(())
-}
-
-/// Remove the two calculated columns.
-///
-#[tracing::instrument(skip(dbh))]
-fn remove_columns_to_drones(dbh: &Connection) -> Result<()> {
-    info!("Removing calculated columns from drones.");
-
-    let r = r##"
-ALTER TABLE drones
-  DROP COLUMN home_distance_2d;
-ALTER TABLE drones
-  DROP COLUMN home_distance_3d;
-    "##;
-
-    // Assume that if home_distance_2d doesn't exist, then home_distance_3d doesn't either.
-    //
-    if dbh
-        .execute("SELECT home_distance_2d FROM drones LIMIT 1", [])
-        .is_ok()
-    {
-        dbh.execute_batch(r)?;
-    }
-    Ok(())
-}
-
 /// Create the `encounters` table to store short air-prox points
 ///
 #[tracing::instrument(skip(dbh))]
@@ -167,14 +121,10 @@ pub fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
     let dbh = ctx.db();
     if opts.all {
         add_macros(&dbh)?;
-        add_columns_to_drones(&dbh)?;
         add_encounters_table(&dbh)?;
     } else {
         if opts.macros {
             add_macros(&dbh)?;
-        }
-        if opts.columns {
-            add_columns_to_drones(&dbh)?;
         }
         if opts.encounters {
             add_encounters_table(&dbh)?;
@@ -188,15 +138,12 @@ pub fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
     let dbh = ctx.db();
     if opts.all {
         remove_macros(&dbh)?;
-        remove_columns_to_drones(&dbh)?;
         drop_encounters_table(&dbh)?;
     } else {
         if opts.macros {
             remove_macros(&dbh)?;
         }
-        if opts.columns {
-            remove_columns_to_drones(&dbh)?;
-        }
+        if opts.columns {}
         if opts.encounters {
             drop_encounters_table(&dbh)?;
         }
