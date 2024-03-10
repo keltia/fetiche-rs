@@ -207,7 +207,7 @@ ORDER BY
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn save_encounters(&self, dbh: &Connection) -> Result<usize> {
+    fn select_encounters(&self, dbh: &Connection) -> Result<usize> {
         trace!("filter calculations, take min()");
 
         // We use a GROUP BY() clause to get the point where the distance between this drone and any surrounding planes
@@ -316,7 +316,7 @@ impl Calculate for PlaneDistance {
 
         // Now we have the distance calculated.
         //
-        let c_encounters = self.save_encounters(dbh)?;
+        let c_encounters = self.select_encounters(dbh)?;
 
         if c_encounters == 0 {
             stats.time = (Instant::now() - start).as_millis();
