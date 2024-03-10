@@ -318,13 +318,12 @@ impl Calculate for PlaneDistance {
         //
         let c_encounters = self.select_encounters(dbh)?;
 
+        stats.time = (Instant::now() - start).as_millis();
         if c_encounters == 0 {
-            stats.time = (Instant::now() - start).as_millis();
             eprintln!("No close encounters of any kind found.");
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.encounters = c_encounters;
-        stats.time = (Instant::now() - start).as_millis();
 
         eprintln!("Stats for {}: {}", self.date, stats);
         info!("Done.");
