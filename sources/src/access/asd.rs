@@ -278,7 +278,7 @@ impl Fetchable for Asd {
                 start_time: NaiveDateTime::default().and_utc(),
                 end_time: NaiveDateTime::default()
                     .and_utc()
-                    .add(Duration::seconds(d as i64)),
+                    .add(Duration::try_seconds(d as i64).unwrap()),
                 sources: DEF_SOURCES.to_vec(),
             },
             Filter::Interval { begin, end } => Param {

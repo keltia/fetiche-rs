@@ -68,13 +68,13 @@ impl DateOpts {
                 (begin, end)
             }
             DateOpts::Week { num } => {
-                if num >= 53 {
+                if num > 53 {
                     return Err(ErrDateOpts::BadDate(num.to_string()));
                 }
                 let week = Utc::now();
                 let begin: DateTime<Utc> =
                     Utc.with_ymd_and_hms(week.year(), 1, 1, 0, 0, 0).unwrap();
-                let begin = begin.checked_add_signed(TimeDelta::weeks(num - 1)).unwrap();
+                let begin = begin.checked_add_signed(TimeDelta::try_weeks(num - 1).unwrap()).unwrap();
                 let end = begin.add(Days::new(7));
                 eprintln!("week={} is from {} to {}", num, begin, end);
                 (begin, end)

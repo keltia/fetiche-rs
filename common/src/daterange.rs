@@ -61,7 +61,7 @@ pub fn expand_interval(begin: DateTime<Utc>, end: DateTime<Utc>) -> Result<Vec<D
 
     while d < end {
         intv.push(d);
-        d += Duration::days(1);
+        d += Duration::try_days(1).unwrap();
     }
     Ok(intv)
 }
