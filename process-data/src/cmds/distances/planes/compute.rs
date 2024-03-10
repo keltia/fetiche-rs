@@ -36,7 +36,7 @@ impl PlaneDistance {
         println!("{} nm as deg: {}", self.distance, dist);
 
         let time_from = Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
-        let time_to = time_from.add(Duration::days(1));
+        let time_to = time_from.add(Duration::try_days(1).unwrap());
 
         println!("From {} to {}.", time_from, time_to);
 
