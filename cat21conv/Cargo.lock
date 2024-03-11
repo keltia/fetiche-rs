@@ -1733,6 +1733,7 @@ dependencies = [
  "strum 0.26.1",
  "tabled",
  "thiserror",
+ "tokio",
  "tracing",
  "tracing-log 0.2.0",
 ]
