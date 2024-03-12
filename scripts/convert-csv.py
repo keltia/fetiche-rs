@@ -45,7 +45,7 @@ def convert_one(fn, action, delete):
     #
     if ext == ".csv":
         outp = f"{fname}.parquet"
-        print(fn, " -> ", outp)
+        print(fname, " -> ", outp)
         if action:
             os.system(f"bdt convert  -s -z {fn} {outp}")
         if delete:
