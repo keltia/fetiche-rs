@@ -3,9 +3,9 @@
 """
 Given a list of files on the command line, uncompress each file and convert from csv into parquet
 
-usage: convert-csv [-h] [--dry-run] [files ...]
+usage: convert-csv [-h] [--dry-run] [--delete] [files ...]
 
-Uncompress and convert into parquet every csv file.
+Uncompress and convert every csv file into parquet.
 
 positional arguments:
   files          List of files.
@@ -13,6 +13,7 @@ positional arguments:
 options:
   -h, --help     show this help message and exit
   --dry-run, -n  Do not actually move the file.
+  --delete, -d   Remove csv after conversion.
 
 """
 import argparse
@@ -58,7 +59,7 @@ def convert_one(fn, action, delete):
 #
 parser = argparse.ArgumentParser(
     prog='convert-csv',
-    description='Uncompress and convert into parquet every csv file.')
+    description='Uncompress and convert every csv file into parquet.')
 
 parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
 parser.add_argument('--delete', '-d', action='store_true', help="Remove csv after conversion.")
