@@ -61,7 +61,7 @@ parser = argparse.ArgumentParser(
     description='Uncompress and convert into parquet every csv file.')
 
 parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
-parser.add_argument('--delete', 'd', action='store_true', help="Remove csv after conversion.")
+parser.add_argument('--delete', '-d', action='store_true', help="Remove csv after conversion.")
 parser.add_argument('files', nargs='*', help='List of files.')
 args = parser.parse_args()
 
