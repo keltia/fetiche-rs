@@ -49,8 +49,8 @@ def convert_one(fn, action, delete):
         print(fname, " -> ", outp)
         if action:
             os.system(f"bdt convert  -s -z {fn} {outp}")
-        if delete:
-            os.remove(f"{fname}{ext}")
+            if delete:
+                os.remove(f"{fname}{ext}")
     else:
         print(fn, "ignored")
 
@@ -63,7 +63,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
 parser.add_argument('--delete', '-d', action='store_true', help="Remove csv after conversion.")
-parser.add_argument('files', nargs='*', help='List of files.')
+parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
 if args.dry_run:
@@ -78,5 +78,15 @@ else:
 
 files = args.files
 for file in files:
-    print(f"Looking at {file}")
-    convert_one(file, action, delete)
+    # We have a directory
+    #
+    if os.path.isdir(file):
+        print(f"Exploring {file}")
+        with os.scandir(file) as base:
+            for fn in base:
+                if fn.name.endswith(".csv") or fn.name.endswith(".csv.gz"):
+                    print(f"Looking at {fn}")
+                    convert_one(fn, action, delete)
+    else:
+        print(f"Just {file}")
+        convert_one(file, action, delete)
