@@ -21,6 +21,7 @@ options:
   --dry-run, -n        Do not actually move the file.
 """
 import argparse
+import os
 import re
 from pathlib import Path
 
@@ -105,4 +106,15 @@ else:
 
 files = args.files
 for file in files:
-    move_one(file, ftype, action)
+    # We have a directory
+    #
+    if os.path.isdir(file):
+        print(f"Exploring {file}")
+        with os.scandir(file) as base:
+            for fn in base:
+                if fn.name.endswith(".parquet"):
+                    print(f"Looking at {fn}")
+                    move_one(file, ftype, action)
+    else:
+        print(f"Just {file}")
+        move_one(file, ftype, action)
