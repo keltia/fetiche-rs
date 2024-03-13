@@ -8,7 +8,7 @@ usage: convert-csv [-h] [--dry-run] [--delete] [files ...]
 Uncompress and convert every csv file into parquet.
 
 positional arguments:
-  files          List of files.
+  files          List of files or directories.
 
 options:
   -h, --help     show this help message and exit

@@ -7,12 +7,12 @@ i.e. `Brussels_2024-02-14.parquet` should end up in `adsb/site=BRU/year=2024/mon
 
 This is using Hive partitioning.
 
-usage: dispatch-drops [-h] [--datalake DATALAKE] [--drones] [--dry-run] [files ...]
+usage: dispatch-drops [-h] [--datalake DIR] [--drones] [--dry-run] [files ...]
 
 Move each file in the right Hive directory for the given day.
 
 positional arguments:
-  files                List of files.
+  files                List of files or directories.
 
 options:
   -h, --help           show this help message and exit
@@ -88,7 +88,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--datalake', help='Datalake is here.')
 parser.add_argument('--drones', action='store_true', help='This is drone data.')
 parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
-parser.add_argument('files', nargs='*', help='List of files.')
+parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
 if args.datalake:
