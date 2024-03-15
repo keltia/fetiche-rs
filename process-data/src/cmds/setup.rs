@@ -91,8 +91,7 @@ CREATE SEQUENCE id_encounter;
 CREATE TABLE encounters (
   id INT DEFAULT nextval('id_encounter'),
   en_id VARCHAR,
-  dt INT,    
-  time VARCHAR,
+  time TIMESTAMP,
   site VARCHAR,
   journey INT, 
   drone_id VARCHAR,
@@ -102,7 +101,7 @@ CREATE TABLE encounters (
   distance FLOAT,
   distancelat FLOAT,
   distancevert FLOAT,
-  PRIMARY KEY (dt, journey)
+  PRIMARY KEY (time, journey)
 )
     "##;
 
