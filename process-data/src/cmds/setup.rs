@@ -56,8 +56,8 @@ CREATE MACRO dist_2d(px, py, dx, dy) AS
   ST_Distance_Spheroid(ST_Point(px, py), ST_Point(dx, dy));
 CREATE MACRO dist_3d(px, py, pz, dx, dy, dz) AS
   sqrt(pow(dist_2d(px, py, dx, dy), 2) + pow((pz - dz), 2));
-CREATE MACRO encounter(tm, journey, id) AS
-  printf('%04d%02d%02d_%d_%d', datepart('year', CAST(tm AS DATE)), datepart('month', CAST(tm AS DATE)), datepart('day', CAST(tm AS DATE)), journey, id);
+CREATE MACRO encounter(site, tm, journey, id) AS
+  printf('%s-%04d%02d%02d_%d_%d', site, datepart('year', CAST(tm AS DATE)), datepart('month', CAST(tm AS DATE)), datepart('day', CAST(tm AS DATE)), journey, id);
     "##;
 
     Ok(dbh.execute_batch(r)?)
