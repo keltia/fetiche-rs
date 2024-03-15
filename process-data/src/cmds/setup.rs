@@ -150,7 +150,7 @@ AS (
          date_part('month', timestamp) as month,
          dist_2d(longitude, latitude, home_lon, home_lat) as home_distance_2d,
          dist_3d(longitude, latitude, altitude, home_lon, home_lat, home_height) as home_distance_3d
-  FROM read_csv('drones/**/*.parquet')
+  FROM read_parquet('drones/**/*.parquet')
 );
     "##;
 
@@ -176,6 +176,11 @@ DROP VIEW drones;
 #[tracing::instrument(skip(ctx))]
 pub fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
     let dbh = ctx.db();
+
+    // Move here.
+    //
+    env::set_current_dir(&ctx.config["datalake"]);
+
     if opts.all {
         create_views(&dbh)?;
         add_macros(&dbh)?;
@@ -217,12 +222,6 @@ pub fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
 ///
 #[tracing::instrument(skip(ctx))]
 pub fn bootstrap(ctx: &Context) -> Result<()> {
-    let datalake = &ctx.config["datalake"];
-
-    // Move there
-    //
-    env::set_current_dir(datalake)?;
-
     // Remove everything
     //
     let opts = &SetupOpts { all: true, ..SetupOpts::default() };
