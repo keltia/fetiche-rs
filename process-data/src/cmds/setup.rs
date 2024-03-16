@@ -177,7 +177,7 @@ pub fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
 
     // Move here.
     //
-    env::set_current_dir(&ctx.config["datalake"]);
+    let _ = env::set_current_dir(&ctx.config["datalake"]);
 
     if opts.all {
         create_views(&dbh)?;
