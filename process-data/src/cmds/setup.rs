@@ -122,8 +122,8 @@ fn drop_encounters_table(dbh: &Connection) -> Result<()> {
     info!("Removing encounters table.");
 
     let sq = r##"
-DROP SEQUENCE IF EXISTS id_encounter;
 DROP TABLE IF EXISTS encounters;
+DROP SEQUENCE IF EXISTS id_encounter;
     "##;
 
     Ok(dbh.execute_batch(sq)?)
