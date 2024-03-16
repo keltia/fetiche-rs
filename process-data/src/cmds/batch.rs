@@ -49,7 +49,7 @@ impl<'a, T> Batch<'a, T>
     /// batch.add(t2);
     /// ```
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn add(&mut self, task: &'a T) -> &mut Self
     {
         self.inner.push(task);
@@ -67,7 +67,7 @@ impl<'a, T> Batch<'a, T>
     /// batch.from_vec(vec![t1, t2]);
     /// ```
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(dbh))]
     pub fn from_vec(dbh: &'a Connection, v: &'a Vec<T>) -> Self
         where T: Debug + Calculate,
     {
@@ -89,7 +89,7 @@ impl<'a, T> Batch<'a, T>
     /// let stats: Vec<Stats> = batch.execute()?;
     /// ```
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn execute(&mut self) -> eyre::Result<Vec<Stats>>
         where T: Debug + Calculate,
     {
@@ -113,14 +113,14 @@ impl<'a, T> Batch<'a, T>
 
     /// Returns the length of the current batch.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
     /// Return whether a batch is empty.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
