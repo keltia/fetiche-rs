@@ -106,7 +106,7 @@ impl PlanesStats {
 impl Display for PlanesStats {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = format!("Day {:?}:\n{} drones in potential airprox with {} planes, {} found within {}m in a {} nm radius.\n\
-        Time spent: {} ms",
+        Time spent: {} ms\n",
                           self.day, self.drones, self.planes, self.encounters, self.proximity, self.distance, self.time);
         write!(f, "{}", str)
     }
