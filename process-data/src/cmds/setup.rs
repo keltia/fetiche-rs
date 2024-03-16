@@ -146,8 +146,6 @@ FROM read_parquet('adsb/**/*.parquet', hive_partitioning = true);
 CREATE VIEW drones
 AS (
   SELECT *,
-         date_part('year', timestamp) as year,
-         date_part('month', timestamp) as month,
          dist_2d(longitude, latitude, home_lon, home_lat) as home_distance_2d,
          dist_3d(longitude, latitude, altitude, home_lon, home_lat, home_height) as home_distance_3d
   FROM read_parquet('drones/**/*.parquet')
