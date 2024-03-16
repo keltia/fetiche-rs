@@ -4,7 +4,7 @@
 //!
 use std::ops::Add;
 
-use chrono::{Datelike, Duration, TimeZone, Utc};
+use chrono::{Datelike, Days, Duration, TimeZone, Utc};
 use duckdb::{Connection, params};
 use eyre::Result;
 use tokio::time::Instant;
@@ -96,44 +96,47 @@ ORDER BY time
     fn select_drones(&self, dbh: &Connection) -> Result<usize> {
         // All drone points for the same day
         //
-        // $1 = year
-        // $2 = month
-        // $3 = day
-        // $4,$5 = (lon,lat) site
-        // $6 = distance in degrees
+        // $1 = date+1
+        // $2 = date
+        // $3,$4 = (lon,lat) site
+        // $5 = distance in degrees
         //
-        let year = self.date.year();
-        let month = self.date.month();
-        let day = self.date.day();
-
         let lat = self.loc.lat;
         let lon = self.loc.lon;
 
+        let pt1 = self.date;
+        let pt2 = self.date.checked_add_days(Days::new(1)).unwrap();
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
-        println!("{} nm as deg: {}", self.distance, dist);
-
-        // Cleanup if needed
-        //
-        if dbh.execute("SHOW TABLE candidates", []).is_ok() {
-            let _ = dbh.execute("DROP TABLE candidates", [])?;
-        }
+        debug!("{} nm as deg: {}", self.distance, dist);
 
         let r2 = r##"
-CREATE TABLE candidates AS
-SELECT time,journey,ident,model,timestamp,latitude,longitude,altitude,home_lat,home_lon,home_distance_2d,home_distance_3d
+CREATE OR REPLACE TABLE candidates AS
+SELECT
+    time,
+    journey,
+    ident,
+    model,
+    to_timestamp(timestamp) as timestamp,
+    latitude,
+    longitude,
+    altitude,
+    home_lat,
+    home_lon,
+    home_distance_2d,
+    home_distance_3d
 FROM drones
 WHERE
-  CAST(to_timestamp(time) AS TIMESTAMP) <= make_timestamp(?,?,? + 1,0,0,0.0) AND
-  CAST(to_timestamp(time) AS TIMESTAMP) >= make_timestamp(?,?,?,0,0,0.0) AND
+  CAST(to_timestamp(timestamp) AS TIMESTAMP) <= ? AND
+  CAST(to_timestamp(timestamp) AS TIMESTAMP) >= ? AND
   ST_DWithin(ST_point(?, ?), ST_Point(longitude, latitude), ?)
 ORDER BY
   (time,journey)
     "##;
 
         let mut stmt = dbh.prepare(r2)?;
-        let _ = stmt.query(params![year, month, day, year, month, day, lon, lat, dist])?;
+        let _ = stmt.query(params![pt2, pt1, lon, lat, dist])?;
 
         // Check how many
         //
@@ -147,11 +150,7 @@ ORDER BY
 
     #[tracing::instrument(skip(dbh))]
     fn find_close(&self, dbh: &Connection) -> Result<usize> {
-        // Cleanup if needed
-        //
-        if dbh.execute("SHOW TABLE today_close", []).is_ok() {
-            let _ = dbh.execute("DROP TABLE today_close", [])?;
-        }
+        trace!("Find close encounters.");
 
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
         // altitude diff is less than 3 nm. (parameter is `separation`).
@@ -160,13 +159,12 @@ ORDER BY
         // $3 = timestamp of drone point
         //
         let r = r##"
-CREATE TABLE today_close AS
+CREATE OR REPLACE TABLE today_close AS
 SELECT
-  c.time AS dt,
   c.journey,
   c.ident AS drone_id,
   c.model,
-  c.timestamp as timestamp,
+  c.timestamp AS time,
   c.longitude AS dx,
   c.latitude AS dy,
   c.altitude AS dz,
@@ -184,12 +182,12 @@ FROM
   today AS t,
   candidates AS c
 WHERE
-  pt > CAST(to_timestamp(dt-2) AS TIMESTAMP) AND
-  pt < CAST(to_timestamp(dt+2) AS TIMESTAMP) AND
+  pt > CAST(to_timestamp(c.time - 2) AS TIMESTAMP) AND
+  pt < CAST(to_timestamp(c.time + 2) AS TIMESTAMP) AND
   dist2d <= ? AND
   diff_alt < ?
 ORDER BY
-  (dt, c.journey)
+  (c.time, c.journey)
     "##;
 
         let proximity = self.separation;
@@ -223,11 +221,11 @@ ORDER BY
 INSERT OR IGNORE INTO encounters
 BY NAME (
     SELECT
-      any_value(dt) AS dt,
       journey,
       drone_id,
       any_value(model) AS model,
-      any_value(timestamp) AS time,
+      any_value(time) AS time,
+      any_value(site) AS site,
       any_value(callsign) AS callsign,
       addr,
       any_value(dist2d) AS distancelat,
@@ -253,17 +251,16 @@ BY NAME (
 UPDATE encounters AS old_e
 SET en_id = (
     SELECT
-      encounter(CAST(old_e.time AS DATE), journey, id) AS en_id
+      encounter(old_e.site, CAST(old_e.time AS DATE), journey, id) AS en_id
     FROM
       encounters AS new_e
     WHERE
-      old_e.dt = new_e.dt AND old_e.journey = new_e.journey
-),
-site = ?
-WHERE en_id IS NULL OR site IS NULL
+      old_e.time = new_e.time AND old_e.journey = new_e.journey
+)
+WHERE en_id IS NULL
         "##;
 
-        let count = dbh.execute(upd, [self.name.clone()])?;
+        let count = dbh.execute(upd, [])?;
 
         Ok(count)
     }
