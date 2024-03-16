@@ -4032,6 +4032,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ml-progress"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78fe99ae1d313e32355ad992482eba8cee77858de3bf6415b194c4d4df41bc13"
+dependencies = [
+ "parking_lot",
+ "readme-rustdocifier",
+ "terminal_size",
+]
+
+[[package]]
 name = "native-tls"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4957,6 +4968,7 @@ dependencies = [
  "home",
  "itertools 0.12.1",
  "log",
+ "ml-progress",
  "opentelemetry",
  "opentelemetry-jaeger",
  "opentelemetry-otlp",
@@ -5180,6 +5192,12 @@ dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
 ]
+
+[[package]]
+name = "readme-rustdocifier"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08ad765b21a08b1a8e5cdce052719188a23772bcbefb3c439f0baaf62c56ceac"
 
 [[package]]
 name = "redox_syscall"
