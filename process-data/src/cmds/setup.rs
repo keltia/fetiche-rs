@@ -210,7 +210,6 @@ pub fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
             drop_encounters_table(&dbh)?;
         }
     }
-    remove_macros(&dbh)?;
 
     Ok(())
 }
