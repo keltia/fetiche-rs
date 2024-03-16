@@ -46,17 +46,17 @@ fn add_macros(dbh: &Connection) -> Result<()> {
     info!("Adding macros.");
 
     let r = r##"
-CREATE MACRO nm_to_deg(nm) AS
+CREATE OR REPLACE MACRO nm_to_deg(nm) AS
   nm * 1.852 / 111111.11;
-CREATE MACRO deg_to_m(deg) AS
+CREATE OR REPLACE MACRO deg_to_m(deg) AS
   deg * 111111.11;
-CREATE MACRO m_to_deg(m) AS
+CREATE OR REPLACE MACRO m_to_deg(m) AS
   m / 111111.11;
-CREATE MACRO dist_2d(px, py, dx, dy) AS
+CREATE OR REPLACE MACRO dist_2d(px, py, dx, dy) AS
   ST_Distance_Spheroid(ST_Point(px, py), ST_Point(dx, dy));
-CREATE MACRO dist_3d(px, py, pz, dx, dy, dz) AS
+CREATE OR REPLACE MACRO dist_3d(px, py, pz, dx, dy, dz) AS
   sqrt(pow(dist_2d(px, py, dx, dy), 2) + pow((pz - dz), 2));
-CREATE MACRO encounter(site, tm, journey, id) AS
+CREATE OR REPLACE MACRO encounter(site, tm, journey, id) AS
   printf('%s-%04d%02d%02d_%d_%d', site, datepart('year', CAST(tm AS DATE)), datepart('month', CAST(tm AS DATE)), datepart('day', CAST(tm AS DATE)), journey, id);
     "##;
 
@@ -68,12 +68,12 @@ fn remove_macros(dbh: &Connection) -> Result<()> {
     info!("Removing macros.");
 
     let r = r##"
-DROP MACRO dist_2d;
-DROP MACRO dist_3d;
-DROP MACRO nm_to_deg;
-DROP MACRO deg_to_m;
-DROP MACRO m_to_deg;
-DROP MACRO encounter;
+DROP MACRO IF EXISTS dist_2d;
+DROP MACRO IF EXISTS dist_3d;
+DROP MACRO IF EXISTS nm_to_deg;
+DROP MACRO IF EXISTS deg_to_m;
+DROP MACRO IF EXISTS m_to_deg;
+DROP MACRO IF EXISTS encounter;
     "##;
 
     Ok(dbh.execute_batch(r)?)
@@ -86,9 +86,8 @@ fn add_encounters_table(dbh: &Connection) -> Result<()> {
     info!("Adding encounters table.");
 
     let sq = r##"
-DROP SEQUENCE IF EXISTS id_encounter;
-CREATE SEQUENCE id_encounter;
-CREATE TABLE encounters (
+CREATE OR REPLACE SEQUENCE id_encounter;
+CREATE OR REPLACE TABLE encounters (
   id INT DEFAULT nextval('id_encounter'),
   en_id VARCHAR,
   time TIMESTAMP,
@@ -140,7 +139,7 @@ fn create_views(dbh: &Connection) -> Result<()> {
     info!("Creating the airplanes and drones views.");
 
     let r = r##"
-CREATE VIEW airplanes AS
+CREATE OR REPLACE VIEW airplanes AS
 SELECT *
 FROM read_parquet('adsb/**/*.parquet', hive_partitioning = true);
 CREATE VIEW drones
@@ -162,8 +161,8 @@ fn drop_views(dbh: &Connection) -> Result<()> {
     info!("Dropping airplanes and drones views.");
 
     let rm = r##"
-DROP VIEW airplanes;
-DROP VIEW drones;
+DROP VIEW IF EXISTS airplanes;
+DROP VIEW IF EXISTS drones;
     "##;
 
     Ok(dbh.execute_batch(rm)?)
