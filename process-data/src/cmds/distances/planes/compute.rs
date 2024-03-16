@@ -275,6 +275,10 @@ impl Calculate for PlaneDistance {
     #[tracing::instrument(skip(dbh))]
     fn run(&self, dbh: &Connection) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
+        let bar = ml_progress::progress!(
+            4;
+            "[" percent "] " message_fill "(" eta_hms ")"
+        )?;
 
         let start = Instant::now();
         // Create our stat struct
@@ -283,47 +287,68 @@ impl Calculate for PlaneDistance {
 
         // Create table `today` with all identified plane points with the specified range
         //
+        bar.message("Select planes.");
         let c_planes = self.select_planes(dbh)?;
+        bar.inc(1);
 
         if c_planes == 0 {
             stats.time = (Instant::now() - start).as_millis();
-            eprintln!("No planes found.");
+            bar.message("No planes found.");
+            bar.finish();
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.planes = c_planes;
+        bar.message(format!("{} planes.", c_planes));
+        std::thread::sleep(std::time::Duration::from_millis(500));
 
         // Create table `candidates` with all designated drone points
         //
+        bar.message("Select drones.");
         let c_drones = self.select_drones(dbh)?;
+        bar.inc(1);
 
         if c_drones == 0 {
             stats.time = (Instant::now() - start).as_millis();
-            eprintln!("No drones found.");
+            bar.message("No drones found.");
+            bar.finish();
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.drones = c_drones;
+        bar.message(format!("{} drones.", c_drones));
+        std::thread::sleep(std::time::Duration::from_millis(500));
 
         // Create table `today_close` with all designated drone points and airplanes in proximity
         //
+        bar.message("Find close planes.");
         let c_potential = self.find_close(dbh)?;
+        bar.inc(1);
 
         if c_potential == 0 {
             stats.time = (Instant::now() - start).as_millis();
-            eprintln!("No potential airprox found.");
+            bar.message("No potential airprox found.");
+            bar.finish();
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.potential = c_potential;
+        bar.message(format!("{} potentials.", c_potential));
+        std::thread::sleep(std::time::Duration::from_millis(500));
 
         // Now we have the distance calculated.
         //
+        bar.message("Find encounters.");
         let c_encounters = self.select_encounters(dbh)?;
+        bar.inc(1);
 
         stats.time = (Instant::now() - start).as_millis();
         if c_encounters == 0 {
-            eprintln!("No close encounters of any kind found.");
+            bar.message("No close encounters of any kind found.");
+            bar.finish();
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.encounters = c_encounters;
+        bar.message(format!("{} encounters.", c_encounters));
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        bar.finish();
 
         eprintln!("Stats for {}: {}", self.date, stats);
         info!("Done.");
