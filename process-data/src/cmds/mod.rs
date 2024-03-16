@@ -59,11 +59,11 @@ pub fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
             }
         },
         SubCommand::Setup(sopts) => {
-            println!("Setup ACUTE environment.\n");
+            println!("Setup ACUTE environment in {}.\n", ctx.config["datalake"]);
             setup_acute_environment(ctx, sopts)?;
         }
         SubCommand::Cleanup(copts) => {
-            println!("Remove ACUTE specific macros.\n");
+            println!("Remove ACUTE environement in {}.\n", ctx.config["datalake"]);
             cleanup_environment(ctx, copts)?;
         }
         SubCommand::Acute(aopts) => {
