@@ -8,7 +8,7 @@ use chrono::{Datelike, Duration, TimeZone, Utc};
 use duckdb::{Connection, params};
 use eyre::Result;
 use tokio::time::Instant;
-use tracing::{info, trace};
+use tracing::{debug, info, trace};
 
 use crate::cmds::{ONE_DEG, PlaneDistance, PlanesStats, Stats};
 use crate::cmds::batch::Calculate;
@@ -33,7 +33,7 @@ impl PlaneDistance {
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
-        println!("{} nm as deg: {}", self.distance, dist);
+        debug!("{} nm as deg: {}", self.distance, dist);
 
         let time_from = Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
         let time_to = time_from.add(Duration::try_days(1).unwrap());
@@ -88,7 +88,7 @@ ORDER BY time
             [],
             |row| Ok(row.get_unwrap(0)),
         )?;
-        println!("Total number of planes: {}\n", count);
+        trace!("Total number of planes: {}\n", count);
         Ok(count)
     }
 
@@ -141,7 +141,7 @@ ORDER BY
             let r: usize = row.get_unwrap(0);
             Ok(r)
         })?;
-        println!("Total number of drones: {}", count);
+        trace!("Total number of drones: {}", count);
         Ok(count)
     }
 
@@ -202,7 +202,7 @@ ORDER BY
             let r: usize = row.get_unwrap(0);
             Ok(r)
         })?;
-        println!("Total number of potential encounters: {}", count);
+        trace!("Total number of potential encounters: {}", count);
         Ok(count)
     }
 
