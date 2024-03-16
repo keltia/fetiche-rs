@@ -117,7 +117,6 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
             .date(day)
             .separation(opts.separation)
             .build().unwrap();
-        dbg!(&work);
 
         work
     }).collect();
