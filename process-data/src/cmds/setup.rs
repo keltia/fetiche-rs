@@ -10,7 +10,7 @@ use tracing::info;
 
 use crate::config::Context;
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Default, Parser)]
 pub struct SetupOpts {
     /// Add only macros.
     #[clap(short = 'M', long)]
@@ -24,12 +24,6 @@ pub struct SetupOpts {
     /// Everything.
     #[clap(short = 'a', long)]
     pub all: bool,
-}
-
-impl Default for SetupOpts {
-    fn default() -> Self {
-        Self { macros: false, encounters: false, views: false, all: false }
-    }
 }
 
 /// Macros :
@@ -221,11 +215,11 @@ pub fn bootstrap(ctx: &Context) -> Result<()> {
     // Remove everything
     //
     let opts = &SetupOpts { all: true, ..SetupOpts::default() };
-    cleanup_environment(ctx, &opts)?;
+    cleanup_environment(ctx, opts)?;
 
     // Fiat Lux
     //
-    setup_acute_environment(ctx, &opts)?;
+    setup_acute_environment(ctx, opts)?;
 
     Ok(())
 }
