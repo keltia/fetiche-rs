@@ -136,7 +136,7 @@ fn create_views(dbh: &Connection) -> Result<()> {
 CREATE OR REPLACE VIEW airplanes AS
 SELECT *
 FROM read_parquet('adsb/**/*.parquet', hive_partitioning = true);
-CREATE VIEW drones
+CREATE OR REPLACE VIEW drones
 AS (
   SELECT *,
          dist_2d(longitude, latitude, home_lon, home_lat) as home_distance_2d,
