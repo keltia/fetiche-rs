@@ -113,8 +113,8 @@ for file in files:
         with os.scandir(file) as base:
             for fn in base:
                 if fn.name.endswith(".parquet"):
-                    print(f"Looking at {fn}")
-                    move_one(file, ftype, action)
+                    print(f"Looking at {fn.name}")
+                    move_one(fn.name, ftype, action)
     else:
         print(f"Just {file}")
         move_one(file, ftype, action)

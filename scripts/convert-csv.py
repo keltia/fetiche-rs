@@ -39,16 +39,20 @@ def convert_one(fn, action, delete):
     if ext == ".gz":
         print(f"Got a gzip file: {fn}")
         if action:
+            print(f"{fname}{ext} -> {fname}")
             os.system(f"gunzip {fn}")
         ext = Path(fname).suffix
 
     # Now we should have a csv, whether it has just been uncompressed or is a plain csv file should not matter
     #
     if ext == ".csv":
+        # Remove .csv
+        #
+        fname = Path(fname).stem
         outp = f"{fname}.parquet"
-        print(fname, " -> ", outp)
+        print(f"{fname}{ext} -> {outp}")
         if action:
-            os.system(f"bdt convert  -s -z {fn} {outp}")
+            os.system(f"bdt convert  -s -z {fname}{ext} {outp}")
             if delete:
                 os.remove(f"{fname}{ext}")
     else:
@@ -86,7 +90,7 @@ for file in files:
             for fn in base:
                 if fn.name.endswith(".csv") or fn.name.endswith(".csv.gz"):
                     print(f"Looking at {fn}")
-                    convert_one(fn, action, delete)
+                    convert_one(fn.name, action, delete)
     else:
         print(f"Just {file}")
         convert_one(file, action, delete)
