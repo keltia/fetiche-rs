@@ -184,20 +184,22 @@ MACRO encounter(tm, journey, id) AS
 
 ## List of calculations
 
-- for a given day or week or month
-  do calculations for each site
+- when creating the view on the drone points, 2D and 3D distances between drone and operator are automatically
+  calculated
 
-- for a site:
-  get all drone points, grouped by journey
-  filter all ADS-B positions with a BB of 75nm around site
+- for a given day or week or month
+  do calculations for each site on a given day
+
+- get all plane points with a 70nm BB around site
+- get all drone points, grouped by journey also in a 70nm BB around site
 
 - for a drone point:
   get all ADS-B positions with 3nm of said point +-2s out of the filtered list
   do calculation for plane/home/operator if any:
     * dist_3d(point_d, point_a)
-    * dist_3d(point_d, point_h)
-    * dist_3d(point_d, point_o)
       select minimum distance -> encounter
+
+an encounter is the (drone-plane-journey) tuple.
 
 - for an encounter:
   record encounter data:
