@@ -1,4 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use duckdb::{Connection, params};
 use geo::point;
 use geo::prelude::*;
 
@@ -115,10 +116,29 @@ fn geo_vincenty(c: &mut Criterion) {
     });
 }
 
+fn duckdb_calc(dbh: &Connection, p1: &Pt, p2: &Pt) {
+    dbh.execute("SELECT ST_Distance_Spheroid(ST_Point(?, ?), ST_Point(?, ?))",
+                params![p1.latitude, p1.longitude, p2.latitude, p2.longitude]).unwrap();
+}
+
+fn duckdb_spheroid(c: &mut Criterion) {
+    eprint!("duckdb");
+    let (point1, point2) = setup();
+
+    let dbh = duckdb::Connection::open_in_memory().unwrap();
+    dbh.execute("LOAD spatial", []).unwrap();
+
+    c.bench_function("duckdb_spheroid", |b| {
+        b.iter(|| {
+            black_box(duckdb_calc(&dbh, &point1, &point2))
+        })
+    });
+}
+
 criterion_group! {
     name = benches;
     config = Criterion::default();
-    targets = self_haversines, self_cosinuses, geo_geodesic, geo_haversines, geo_vincenty
+    targets = self_haversines, self_cosinuses, geo_geodesic, geo_haversines, geo_vincenty, duckdb_spheroid
 }
 
 criterion_main!(benches);
