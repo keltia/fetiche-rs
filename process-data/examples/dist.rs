@@ -76,7 +76,7 @@ fn main() -> eyre::Result<()> {
     dbh.execute("LOAD spatial", [])?;
 
     let distduck: f64 = dbh.query_row("SELECT ST_Distance_Spheroid(ST_Point(?, ?), ST_Point(?, ?))",
-                                      params![point1.longitude, point1.latitude, point2.longitude, point2.latitude], |row| {
+                                      params![point1.latitude, point1.longitude, point2.latitude, point2.longitude], |row| {
             Ok(row.get_unwrap(0))
         },
     )?;
