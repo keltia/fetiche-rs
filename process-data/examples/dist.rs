@@ -1,4 +1,5 @@
 use clap::Parser;
+use duckdb::params;
 use geo::point;
 use geo::prelude::*;
 
@@ -26,9 +27,9 @@ impl Point {
 
         let a = (d_lat / 2.0).sin() * (d_lat / 2.0).sin()
             + self.latitude.to_radians().cos()
-                * other.latitude.to_radians().cos()
-                * (d_lon / 2.0).sin()
-                * (d_lon / 2.0).sin();
+            * other.latitude.to_radians().cos()
+            * (d_lon / 2.0).sin()
+            * (d_lon / 2.0).sin();
 
         let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
         R * c
@@ -40,8 +41,8 @@ impl Point {
 
         let a = (self.latitude.to_radians()).sin() * (other.latitude.to_radians()).sin()
             + (self.latitude.to_radians()).cos()
-                * (other.latitude.to_radians()).cos()
-                * d_lon.cos();
+            * (other.latitude.to_radians()).cos()
+            * d_lon.cos();
 
         let c = a.acos();
 
@@ -71,6 +72,16 @@ fn main() -> eyre::Result<()> {
     let geo_h = p1.haversine_distance(&p2);
     let geo_vin = p1.vincenty_distance(&p2)?;
 
+    let dbh = duckdb::Connection::open_in_memory()?;
+    dbh.execute("LOAD spatial", [])?;
+
+    let distduck: f64 = dbh.query_row("SELECT ST_Distance_Spheroid(ST_Point(?, ?), ST_Point(?, ?))",
+                                      params![point1.longitude, point1.latitude, point2.longitude, point2.latitude], |row| {
+            Ok(row.get_unwrap(0))
+        },
+    )?;
+
+
     println!("Distance between\n  {:?}\nand\n  {:?}", p1, p2);
     println!(
         "Distances:\n\
@@ -78,8 +89,9 @@ fn main() -> eyre::Result<()> {
         {:.2} m (sin/cos)\n\
         {:.2} m geo::geodesic\n\
         {:.2} m geo::haversines\n\
-        {:.2} m geo::vincenty\n",
-        d_h, d_s, geo_g, geo_h, geo_vin
+        {:.2} m geo::vincenty\n\
+        {:.2} m duckdb:speh\n",
+        d_h, d_s, geo_g, geo_h, geo_vin, distduck
     );
     Ok(())
 }
