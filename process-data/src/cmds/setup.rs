@@ -140,7 +140,7 @@ CREATE OR REPLACE VIEW drones
 AS (
   SELECT *,
          dist_2d(longitude, latitude, home_lon, home_lat) as home_distance_2d,
-         dist_3d(longitude, latitude, altitude, home_lon, home_lat, home_height) as home_distance_3d
+         dist_3d(longitude, latitude, height, home_lon, home_lat, home_height) as home_distance_3d
   FROM read_parquet('drones/**/*.parquet')
 );
     "##;
