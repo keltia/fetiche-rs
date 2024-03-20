@@ -18,6 +18,9 @@ pub struct SetupOpts {
     /// Create encounters table
     #[clap(short = 'E', long)]
     pub encounters: bool,
+    /// Create sequences
+    #[clap(short = 'S', long)]
+    pub sequences: bool,
     /// Create views
     #[clap(short = 'V', long)]
     pub views: bool,
@@ -123,6 +126,32 @@ DROP SEQUENCE IF EXISTS id_encounter;
     Ok(dbh.execute_batch(sq)?)
 }
 
+/// Add the sequences we need
+///
+#[tracing::instrument]
+fn add_sequences(dbh: &Connection) -> Result<()> {
+    info!("Adding sequences");
+
+    let seq = r##"
+CREATE OR REPLACE SEQUENCE id_encounter;
+    "##;
+
+    Ok(dbh.execute_batch(seq)?)
+}
+
+/// Add the sequences we need
+///
+#[tracing::instrument]
+fn drop_sequences(dbh: &Connection) -> Result<()> {
+    info!("Adding sequences");
+
+    let seq = r##"
+DROP SEQUENCE IF EXISTS id_encounter;
+    "##;
+
+    Ok(dbh.execute_batch(seq)?)
+}
+
 /// Create the two main views
 ///
 /// Assume that the current directory is the datalake so that we use relative paths
@@ -173,10 +202,14 @@ pub fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
     let _ = env::set_current_dir(&ctx.config["datalake"]);
 
     if opts.all {
+        add_sequences(&dbh)?;
         create_views(&dbh)?;
         add_macros(&dbh)?;
         add_encounters_table(&dbh)?;
     } else {
+        if opts.sequences {
+            add_sequences(&dbh)?;
+        }
         if opts.macros {
             add_macros(&dbh)?;
         }
@@ -195,13 +228,21 @@ pub fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
     if opts.all {
         remove_macros(&dbh)?;
         drop_encounters_table(&dbh)?;
+        remove_macros(&dbh)?;
         drop_views(&dbh)?;
+        drop_sequences(&dbh)?;
     } else {
         if opts.macros {
             remove_macros(&dbh)?;
         }
         if opts.encounters {
             drop_encounters_table(&dbh)?;
+        }
+        if opts.views {
+            drop_views(&dbh)?;
+        }
+        if opts.sequences {
+            drop_sequences(&dbh)?;
         }
     }
 
