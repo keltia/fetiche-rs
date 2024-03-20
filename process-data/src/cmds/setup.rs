@@ -83,33 +83,30 @@ fn add_encounters_table(dbh: &Connection) -> Result<()> {
     info!("Adding encounters table.");
 
     let sq = r##"
-CREATE OR REPLACE SEQUENCE id_encounter;
-CREATE OR REPLACE TABLE encounters (
-  id INT DEFAULT nextval('id_encounter'),
+CREATE OR REPLACE TABLE airplane_prox (
+  site VARCHAR,
   en_id VARCHAR,
   time TIMESTAMP,
-  site VARCHAR,
-  journey INT, 
+  journey INT,
   drone_id VARCHAR,
   model VARCHAR,
+  dx FLOAT,
+  dy FLOAT,
+  dz FLOAT,
+  dh FLOAT,
   callsign VARCHAR, 
-  addr VARCHAR, 
+  addr VARCHAR,
+  px FLOAT,
+  py FLOAT,
   distance FLOAT,
   distancelat FLOAT,
   distancevert FLOAT,
-  PRIMARY KEY (time, journey)
+  distancehome FLOAT,
+  PRIMARY KEY (en_id),
 )
     "##;
 
-    if dbh
-        .execute("SELECT id FROM encounters LIMIT 1", [])
-        .is_err()
-    {
-        // Create sequence & table.
-        //
-        dbh.execute_batch(sq)?;
-    }
-    Ok(())
+    Ok(dbh.execute_batch(sq)?)
 }
 
 /// Remove the `encounters` table to store short air-prox points
@@ -119,8 +116,7 @@ fn drop_encounters_table(dbh: &Connection) -> Result<()> {
     info!("Removing encounters table.");
 
     let sq = r##"
-DROP TABLE IF EXISTS encounters;
-DROP SEQUENCE IF EXISTS id_encounter;
+DROP TABLE IF EXISTS airplane_prox;
     "##;
 
     Ok(dbh.execute_batch(sq)?)
