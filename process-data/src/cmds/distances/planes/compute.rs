@@ -222,9 +222,12 @@ ORDER BY
         // Insert data into table `encounters`
         //
         let ins = r##"
-INSERT OR IGNORE INTO encounters
+INSERT OR IGNORE INTO airplane_prox
 BY NAME (
     SELECT
+      any_value(site) AS site,
+      any_value(encounter(site, CAST(CAST(time AS TIMESTAMP) AS DATE), journey)) AS en_id,
+      any_value(time) AS time,
       journey,
       drone_id,
       any_value(model) AS model,
@@ -254,23 +257,6 @@ BY NAME (
         } else {
             info!("Inserted {} new encounters", count);
         }
-
-        trace!("Generate en_id");
-        let upd = r##"
-UPDATE encounters AS old_e
-SET en_id = (
-    SELECT
-      encounter(old_e.site, CAST(old_e.time AS DATE), journey, id) AS en_id
-    FROM
-      encounters AS new_e
-    WHERE
-      old_e.time = new_e.time AND old_e.journey = new_e.journey
-)
-WHERE en_id IS NULL
-        "##;
-
-        let count = dbh.execute(upd, [])?;
-
         Ok(count)
     }
 }
