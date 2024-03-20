@@ -222,7 +222,6 @@ pub fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
 pub fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
     let dbh = ctx.db();
     if opts.all {
-        remove_macros(&dbh)?;
         drop_encounters_table(&dbh)?;
         remove_macros(&dbh)?;
         drop_views(&dbh)?;
