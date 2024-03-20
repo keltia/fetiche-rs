@@ -64,7 +64,7 @@ SELECT
   site,
   TimeRecPosition AS time,
   AircraftAddress AS addr,
-  Callsign AS callsign,
+  regexp_extract(Callsign, '([0-9A-Z]+)') AS callsign,
   Longitude AS px,
   Latitude AS py,
   CAST(GeometricAltitude AS DOUBLE) * 0.305 AS pz
