@@ -32,15 +32,16 @@ planes nearby each drone point.
   get all ADS-B positions with 3nm of said point +-2s out of the filtered list
   do calculation for plane/home/operator if any:
     * dist_3d(point_d, point_a)
-      select minimum distance -> encounter
-
-an encounter is the (drone-plane-journey) tuple.
+      now we have all planes in prox of a given drone
+      select all such points where the 3d distance between the 2 points are below 1nm aka 1852m
+      save it into table airplane_prox with an encounter id
+      an encounter is the (drone-plane-journey) tuple.
 
 - for an encounter:
   record encounter data:
     * timestamp
   * distance
-    * site
+      * site
 
   record drone data:
     * ID
