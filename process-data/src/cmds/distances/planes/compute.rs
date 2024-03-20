@@ -210,7 +210,7 @@ ORDER BY
 
     #[tracing::instrument(skip(dbh))]
     fn select_encounters(&self, dbh: &Connection) -> Result<usize> {
-        trace!("filter calculations, take min()");
+        trace!("select and record close points. ");
 
         // We use a GROUP BY() clause to get the point where the distance between this drone and any surrounding planes
         // is minimal.  Gather more information about the encounter, `any_value()` is used to avoid "duplicates".
