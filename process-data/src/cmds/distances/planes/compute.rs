@@ -214,42 +214,72 @@ ORDER BY
         // FIXME: conflicts are not handled, not sure why.
 
         let day_name = self.date.format("%Y%m%d").to_string();
-        let seq_name = format!("encid_{}", day_name);
-        let mac_name = format!("mac_{}", day_name);
+
         // Insert data into table `encounters`
         //
+        // - create sequence
+        // - create table for ids
+        // - select unique encounter for id generation
+        // - insert ids
+        // - join today_close and ids to get all points with the right en_id
+        //
+
         let ins = format!(r##"
-CREATE OR REPLACE SEQUENCE {seq_name};
-CREATE OR REPLACE MACRO {mac_name}(site, tm, journey) AS
-    printf('%s-%04d%02d%02d-%d-%d', site, datepart('year', CAST(tm AS DATE)), datepart('month', CAST(tm AS DATE)), datepart('day', CAST(tm AS DATE)), journey, nextval('{seq_name}'));
-INSERT OR IGNORE INTO airplane_prox
-BY NAME (
+CREATE OR REPLACE SEQUENCE seq_ids;
+CREATE OR REPLACE TABLE ids (
+    id INT DEFAULT nextval('seq_ids'),
+    site STRING,
+    date STRING,
+    drone_id STRING,
+    callsign STRING,
+    journey INT,
+    en_id STRING,
+);
+INSERT INTO ids BY NAME (
     SELECT
       any_value(site) AS site,
-      any_value({mac_name}(site, CAST(CAST(time AS TIMESTAMP) AS DATE), journey)) AS en_id,
-      any_value(time) AS time,
+      '{day_name}' AS date,
       journey,
       drone_id,
+      callsign,
+    FROM today_close
+    WHERE
+      dist_drone_plane < 1852
+    GROUP BY ALL
+);
+UPDATE ids SET en_id = printf('%s-%s-%d-%d', site, date, journey, id);
+INSERT INTO airplane_prox
+BY NAME (
+    SELECT
+      ids.en_id,
+      any_value(tc.site) AS site,
+      any_value(time) AS time,
+      tc.journey,
+      tc.drone_id,
       any_value(model) AS model,
       any_value(px) AS dx,
       any_value(py) AS dy,
       any_value(dz) AS dz,
       any_value(dh) AS dh,
-      any_value(callsign) AS callsign,
+      any_value(tc.callsign) AS callsign,
       addr,
       any_value(px) AS px,
       any_value(py) AS py,
       any_value(dist2d) AS distancelat,
       any_value(@(pz - dz)) AS distancevert,
       any_value(hdist2d) as distancehome,
-      MIN(dist_drone_plane) AS distance,
-    FROM today_close
+      dist_drone_plane AS distance,
+    FROM today_close AS tc, ids
     WHERE
       dist_drone_plane < 1852
+    AND
+      ids.journey = tc.journey
+    AND
+      ids.callsign = tc.callsign
     GROUP BY ALL
 );
-DROP MACRO {seq_name};
-DROP SEQUENCE {seq_name};
+DROP TABLE ids;
+DROP SEQUENCE seq_ids;
         "##);
 
         let _ = dbh.execute_batch(&ins)?;
