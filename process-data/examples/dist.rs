@@ -2,12 +2,16 @@ use clap::Parser;
 use duckdb::params;
 use geo::point;
 use geo::prelude::*;
+use clickhouse_rs::{Pool, types::Block};
+use parquet2::FallibleStreamingIterator;
 
 /// Earth radius in meters
 const R: f64 = 6_371_088.0;
 
 #[derive(Debug, Parser)]
 pub struct Opts {
+    #[clap(short = 'p', long)]
+    pub password: Option<String>,
     pub lat1: f64,
     pub lon1: f64,
     pub lat2: f64,
@@ -50,7 +54,8 @@ impl Point {
     }
 }
 
-fn main() -> eyre::Result<()> {
+#[tokio::main]
+async fn main() -> eyre::Result<()> {
     let opts: Opts = Opts::parse();
 
     let point1 = Point {
@@ -79,6 +84,25 @@ fn main() -> eyre::Result<()> {
             Ok(row.get_unwrap(0))
         },
     )?;
+
+    let url = format!("tcp://default:{}@100.92.250.113:9000/default?compression=lz4&readonly=1", opts.password.unwrap());
+    let pool = Pool::new(url);
+    let query = format!("SELECT geoDistance({},{},{},{}) AS dist", point1.longitude, point1.latitude, point2.longitude, point2.latitude);
+
+    let r = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+
+    let done = pool
+        .get_handle()
+        .and_then(move |c| c.query(query).fetch_all())
+        .and_then(move |(_, block)| {
+            let dist = block.rows().into_iter().for_each(|r| {
+                let dist: f64 = r.get("dist")?;
+                eprintln!("dist = {}", dist);
+                Ok(dist)
+            }
+            Ok(dist)
+        })
+        .map_err(|err| eprintln!("DB error: {}", err))?;
 
 
     println!("Distance between\n  {:?}\nand\n  {:?}", p1, p2);
