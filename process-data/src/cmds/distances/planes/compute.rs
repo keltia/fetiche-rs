@@ -261,6 +261,8 @@ BY NAME (
     }
 }
 
+const DELAY: u64 = 300;
+
 impl Calculate for PlaneDistance {
     /// Run the process for the given day.
     ///
@@ -291,7 +293,7 @@ impl Calculate for PlaneDistance {
         }
         stats.planes = c_planes;
         bar.message(format!("{} planes.", c_planes));
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        std::thread::sleep(std::time::Duration::from_millis(DELAY));
 
         // Create table `candidates` with all designated drone points
         //
@@ -307,7 +309,7 @@ impl Calculate for PlaneDistance {
         }
         stats.drones = c_drones;
         bar.message(format!("{} drones.", c_drones));
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        std::thread::sleep(std::time::Duration::from_millis(DELAY));
 
         // Create table `today_close` with all designated drone points and airplanes in proximity
         //
@@ -323,7 +325,7 @@ impl Calculate for PlaneDistance {
         }
         stats.potential = c_potential;
         bar.message(format!("{} potentials.", c_potential));
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        std::thread::sleep(std::time::Duration::from_millis(DELAY));
 
         // Now we have the distance calculated.
         //
@@ -339,7 +341,7 @@ impl Calculate for PlaneDistance {
         }
         stats.encounters = c_encounters;
         bar.message(format!("{} encounters.", c_encounters));
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        std::thread::sleep(std::time::Duration::from_millis(DELAY));
         bar.finish();
 
         eprintln!("Stats for {}: {}", self.date, stats);
