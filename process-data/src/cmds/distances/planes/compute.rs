@@ -213,14 +213,20 @@ ORDER BY
         //
         // FIXME: conflicts are not handled, not sure why.
 
+        let day_name = self.date.format("%Y%m%d").to_string();
+        let seq_name = format!("encid_{}", day_name);
+        let mac_name = format!("mac_{}", day_name);
         // Insert data into table `encounters`
         //
-        let ins = r##"
+        let ins = format!(r##"
+CREATE OR REPLACE SEQUENCE {seq_name};
+CREATE OR REPLACE MACRO {mac_name}(site, tm, journey) AS
+    printf('%s-%04d%02d%02d-%d-%d', site, datepart('year', CAST(tm AS DATE)), datepart('month', CAST(tm AS DATE)), datepart('day', CAST(tm AS DATE)), journey, nextval('{seq_name}'));
 INSERT OR IGNORE INTO airplane_prox
 BY NAME (
     SELECT
       any_value(site) AS site,
-      any_value(encounter(site, CAST(CAST(time AS TIMESTAMP) AS DATE), journey)) AS en_id,
+      any_value({mac_name}(site, CAST(CAST(time AS TIMESTAMP) AS DATE), journey)) AS en_id,
       any_value(time) AS time,
       journey,
       drone_id,
@@ -241,10 +247,19 @@ BY NAME (
     WHERE
       dist_drone_plane < 1852
     GROUP BY ALL
-)
-        "##;
+);
+DROP MACRO {seq_name};
+DROP SEQUENCE {seq_name};
+        "##);
 
-        let count = dbh.execute(ins, [])?;
+        let _ = dbh.execute_batch(&ins)?;
+
+        // Now check how many
+        //
+        let count = dbh.query_row(&format!("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE '%{}%'", day_name), [], |row| {
+            let r: usize = row.get_unwrap(0);
+            Ok(r)
+        })?;
         if count == 0 {
             info!("No new encounters.");
             return Ok(count);
