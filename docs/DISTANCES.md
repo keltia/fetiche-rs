@@ -33,15 +33,16 @@ planes nearby each drone point.
   do calculation for plane/home/operator if any:
     * dist_3d(point_d, point_a)
       now we have all planes in prox of a given drone
-      select all such points where the 3d distance between the 2 points are below 1nm aka 1852m
-      save it into table airplane_prox with an encounter id
-      an encounter is the (drone-plane-journey) tuple.
+      select all such points where the 3d distance between the 2 points are below 1nm aka 1852m into airplane_prox
+    * for all these points, group them to generate a unique id for the (drone-plane-journey) tuple and insert it
+      into the airplane_prox table.
+    * we can extract the summary of a given day with `export distances -S`
 
 - for an encounter:
   record encounter data:
     * timestamp
   * distance
-      * site
+  * site
 
   record drone data:
     * ID
@@ -51,6 +52,6 @@ planes nearby each drone point.
 
   record plane data:
     * callsign
-    * mode-s
+  * mode-s addr
     * position
 
