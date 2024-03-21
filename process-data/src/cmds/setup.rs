@@ -53,8 +53,6 @@ CREATE OR REPLACE MACRO dist_2d(px, py, dx, dy) AS
   ST_Distance_Spheroid(ST_Point(py, px), ST_Point(dy, dx));
 CREATE OR REPLACE MACRO dist_3d(px, py, pz, dx, dy, dz) AS
   sqrt(pow(dist_2d(px, py, dx, dy), 2) + pow((pz - dz), 2));
-CREATE OR REPLACE MACRO encounter(site, tm, journey, id) AS
-  printf('%s-%04d%02d%02d-%d-%d', site, datepart('year', CAST(tm AS DATE)), datepart('month', CAST(tm AS DATE)), datepart('day', CAST(tm AS DATE)), journey, nextval('id_encounter'));
     "##;
 
     Ok(dbh.execute_batch(r)?)
@@ -70,7 +68,6 @@ DROP MACRO IF EXISTS dist_3d;
 DROP MACRO IF EXISTS nm_to_deg;
 DROP MACRO IF EXISTS deg_to_m;
 DROP MACRO IF EXISTS m_to_deg;
-DROP MACRO IF EXISTS encounter;
     "##;
 
     Ok(dbh.execute_batch(r)?)
