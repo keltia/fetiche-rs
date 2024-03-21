@@ -3,6 +3,7 @@
 //!
 
 use std::env;
+
 use clap::Parser;
 use duckdb::Connection;
 use eyre::Result;
@@ -99,7 +100,6 @@ CREATE OR REPLACE TABLE airplane_prox (
   distancelat FLOAT,
   distancevert FLOAT,
   distancehome FLOAT,
-  PRIMARY KEY (en_id),
 )
     "##;
 
