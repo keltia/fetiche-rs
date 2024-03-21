@@ -40,12 +40,6 @@ impl PlaneDistance {
 
         println!("From {} to {}.", time_from, time_to);
 
-        // Cleanup if needed
-        //
-        if dbh.execute("SHOW TABLE today", []).is_ok() {
-            let _ = dbh.execute("DROP TABLE today", [])?;
-        }
-
         // All flights for a given day in a table
         //
         // $1 = site
@@ -59,7 +53,7 @@ impl PlaneDistance {
         //
         //
         let r1 = r##"
-CREATE TABLE today AS
+CREATE OR REPLACE TABLE today AS
 SELECT
   site,
   TimeRecPosition AS time,
