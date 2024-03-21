@@ -50,7 +50,6 @@ impl Point {
     }
 }
 
-// 48.573174 2.319671 48.566757 2.303015
 fn main() -> eyre::Result<()> {
     let opts: Opts = Opts::parse();
 
