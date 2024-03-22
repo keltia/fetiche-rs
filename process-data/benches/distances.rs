@@ -1,6 +1,7 @@
+use clickhouse::Client;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use duckdb::{Connection, params};
-use geo::point;
+use geo::{point, Point};
 use geo::prelude::*;
 
 struct Pt {
@@ -53,7 +54,6 @@ fn setup() -> (Pt, Pt) {
 }
 
 fn self_haversines(c: &mut Criterion) {
-    eprintln!("haversines");
     let (point1, point2) = setup();
 
     c.bench_function("self::haversines", move |b| {
@@ -64,7 +64,6 @@ fn self_haversines(c: &mut Criterion) {
 }
 
 fn self_cosinuses(c: &mut Criterion) {
-    eprintln!("cosinuses");
     let (point1, point2) = setup();
 
     c.bench_function("self::sincosines", |b| {
@@ -75,7 +74,6 @@ fn self_cosinuses(c: &mut Criterion) {
 }
 
 fn geo_geodesic(c: &mut Criterion) {
-    eprintln!("geodesic");
     let (point1, point2) = setup();
 
     let p1 = point!(x: point1.longitude, y: point1.latitude);
@@ -89,7 +87,6 @@ fn geo_geodesic(c: &mut Criterion) {
 }
 
 fn geo_haversines(c: &mut Criterion) {
-    eprintln!("haversines");
     let (point1, point2) = setup();
 
     let p1 = point!(x: point1.longitude, y: point1.latitude);
@@ -103,7 +100,6 @@ fn geo_haversines(c: &mut Criterion) {
 }
 
 fn geo_vincenty(c: &mut Criterion) {
-    eprintln!("vincenty");
     let (point1, point2) = setup();
 
     let p1 = point!(x: point1.longitude, y: point1.latitude);
@@ -122,7 +118,6 @@ fn duckdb_calc(dbh: &Connection, p1: &Pt, p2: &Pt) {
 }
 
 fn duckdb_spheroid(c: &mut Criterion) {
-    eprint!("duckdb");
     let (point1, point2) = setup();
 
     let dbh = duckdb::Connection::open_in_memory().unwrap();
@@ -135,10 +130,39 @@ fn duckdb_spheroid(c: &mut Criterion) {
     });
 }
 
+async fn ch_calc_distance(client: Client, point1: &Pt, point2: &Pt) -> f32 {
+    let mut res = client.query("SELECT geoDistance(?,?,?,?) AS dist")
+        .bind(point1.longitude)
+        .bind(point1.latitude)
+        .bind(point2.longitude)
+        .bind(point2.latitude)
+        .fetch::<f32>().unwrap();
+
+    let val: f32 = res.next().await.unwrap().unwrap_or_else(|| 0.);
+    val
+}
+
+fn ch_geodistance(c: &mut Criterion) {
+    let (point1, point2) = setup();
+
+    let url = format!("http://100.92.250.113:8123");
+    let client = Client::default().with_url(url).with_option("wait_end_of_query", "1");
+
+    c.bench_function("clickhouse", |b| {
+        b.to_async(
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap(),
+        )
+            .iter(|| async { let _ = ch_calc_distance(client.clone(), &point1, &point2).await; });
+    });
+}
+
 criterion_group! {
     name = benches;
     config = Criterion::default();
-    targets = self_haversines, self_cosinuses, geo_geodesic, geo_haversines, geo_vincenty, duckdb_spheroid
+    targets = self_haversines, self_cosinuses, geo_geodesic, geo_haversines, geo_vincenty, duckdb_spheroid, ch_geodistance
 }
 
 criterion_main!(benches);
