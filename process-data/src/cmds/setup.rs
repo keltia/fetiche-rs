@@ -51,9 +51,9 @@ CREATE OR REPLACE MACRO deg_to_m(deg) AS
 CREATE OR REPLACE MACRO m_to_deg(m) AS
   m / 111111.11;
 CREATE OR REPLACE MACRO dist_2d(px, py, dx, dy) AS
-  ST_Distance_Spheroid(ST_Point(py, px), ST_Point(dy, dx));
+  CEIL(ST_Distance_Spheroid(ST_Point(py, px), ST_Point(dy, dx)));
 CREATE OR REPLACE MACRO dist_3d(px, py, pz, dx, dy, dz) AS
-  sqrt(pow(dist_2d(px, py, dx, dy), 2) + pow((pz - dz), 2));
+  CEIL(SQRT(POW(dist_2d(px, py, dx, dy), 2) + POW((pz - dz), 2)));
     "##;
 
     Ok(dbh.execute_batch(r)?)
