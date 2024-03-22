@@ -54,7 +54,7 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 clap_complete = "4.5"
-clickhouse-rs = "0.1"
+clickhouse = { version = "0.11", features = ["time", "watch", "tls"] }
 derive_builder = "0.20"
 duckdb = { version = "0.10", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
 geo = "0.28"
