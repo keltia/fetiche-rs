@@ -19,6 +19,8 @@ planes nearby each drone point.
 
 ## List of calculations
 
+See [dist.rs](../process-data/src/cmds/distances/planes/compute.rs) for all details.
+
 - when creating the view on the drone points, 2D and 3D distances between drone and operator are automatically
   calculated
 
@@ -41,8 +43,8 @@ planes nearby each drone point.
 - for an encounter:
   record encounter data:
     * timestamp
-  * distance
-  * site
+    * distance
+    * site
 
   record drone data:
     * ID
@@ -52,6 +54,6 @@ planes nearby each drone point.
 
   record plane data:
     * callsign
-  * mode-s addr
-    * position
+    * mode-s addr
+        * position
 
