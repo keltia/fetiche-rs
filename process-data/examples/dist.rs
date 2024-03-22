@@ -2,8 +2,7 @@ use clap::Parser;
 use duckdb::params;
 use geo::point;
 use geo::prelude::*;
-use clickhouse_rs::{Pool, types::Block};
-use parquet2::FallibleStreamingIterator;
+use clickhouse::{Client, Row};
 
 /// Earth radius in meters
 const R: f64 = 6_371_088.0;
@@ -18,7 +17,7 @@ pub struct Opts {
     pub lon2: f64,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 struct Point {
     latitude: f64,
     longitude: f64,
@@ -54,6 +53,33 @@ impl Point {
     }
 }
 
+async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
+    let url = format!("http://100.92.250.113:8123");
+    let client = Client::default().with_url(url).with_option("wait_end_of_query", "1");
+
+    let mut res = client.query("SELECT geoDistance(?,?,?,?)")
+        .bind(point1.longitude)
+        .bind(point1.latitude)
+        .bind(point2.longitude)
+        .bind(point2.latitude)
+        .fetch::<f64>()?;
+
+    let val = res.next().await?.unwrap_or_else(|| 0.);
+    Ok(val)
+}
+
+async fn dd_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
+    let dbh = duckdb::Connection::open_in_memory()?;
+    dbh.execute("LOAD spatial", [])?;
+
+    let dist_duck: f64 = dbh.query_row("SELECT ST_Distance_Spheroid(ST_Point(?, ?), ST_Point(?, ?))",
+                                       params![point1.latitude, point1.longitude, point2.latitude, point2.longitude], |row| {
+            Ok(row.get_unwrap(0))
+        },
+    )?;
+    Ok(dist_duck)
+}
+
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let opts: Opts = Opts::parse();
@@ -76,34 +102,8 @@ async fn main() -> eyre::Result<()> {
     let geo_h = p1.haversine_distance(&p2);
     let geo_vin = p1.vincenty_distance(&p2)?;
 
-    let dbh = duckdb::Connection::open_in_memory()?;
-    dbh.execute("LOAD spatial", [])?;
-
-    let distduck: f64 = dbh.query_row("SELECT ST_Distance_Spheroid(ST_Point(?, ?), ST_Point(?, ?))",
-                                      params![point1.latitude, point1.longitude, point2.latitude, point2.longitude], |row| {
-            Ok(row.get_unwrap(0))
-        },
-    )?;
-
-    let url = format!("tcp://default:{}@100.92.250.113:9000/default?compression=lz4&readonly=1", opts.password.unwrap());
-    let pool = Pool::new(url);
-    let query = format!("SELECT geoDistance({},{},{},{}) AS dist", point1.longitude, point1.latitude, point2.longitude, point2.latitude);
-
-    let r = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
-
-    let done = pool
-        .get_handle()
-        .and_then(move |c| c.query(query).fetch_all())
-        .and_then(move |(_, block)| {
-            let dist = block.rows().into_iter().for_each(|r| {
-                let dist: f64 = r.get("dist")?;
-                eprintln!("dist = {}", dist);
-                Ok(dist)
-            }
-            Ok(dist)
-        })
-        .map_err(|err| eprintln!("DB error: {}", err))?;
-
+    let dist_duck = dd_distance(point1, point2).await?;
+    let ch_dist = ch_distance(point1, point2).await?;
 
     println!("Distance between\n  {:?}\nand\n  {:?}", p1, p2);
     println!(
@@ -113,8 +113,9 @@ async fn main() -> eyre::Result<()> {
         {:.2} m geo::geodesic\n\
         {:.2} m geo::haversines\n\
         {:.2} m geo::vincenty\n\
-        {:.2} m duckdb:speh\n",
-        d_h, d_s, geo_g, geo_h, geo_vin, distduck
+        {:.2} m duckdb:speh\n\
+        {:.2} m clickhouse\n",
+        d_h, d_s, geo_g, geo_h, geo_vin, dist_duck, ch_dist
     );
     Ok(())
 }
