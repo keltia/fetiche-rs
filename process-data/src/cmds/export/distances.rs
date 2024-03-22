@@ -46,8 +46,8 @@ COPY (
     journey,
     drone_id,
     model,
-    py AS drone_lat,
-    px AS drone_lon,
+    dy AS drone_lat,
+    dx AS drone_lon,
     dz AS drone_alt,
     dh AS drone_height,
     callsign
