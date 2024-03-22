@@ -174,8 +174,8 @@ SELECT
   t.py AS py,
   t.pz AS pz,
   dist_2d(dx,dy, px,py) AS dist2d,
-  dist_3d(px, py, pz, dx, dy, dz) AS dist_drone_plane,
-  @(pz - dz) AS diff_alt
+  dist_3d(dx, dy, dz, px, py, pz) AS dist_drone_plane,
+  CEIL(@(pz - dz)) AS diff_alt
 FROM
   today AS t,
   candidates AS c
