@@ -14,25 +14,74 @@ We consider two databases:
 CREATE
 OR REPLACE MACRO nm_to_deg(nm) AS
   nm * 1.852 / 111111.11;
+```
+
+```sql
 CREATE
 OR REPLACE MACRO deg_to_m(deg) AS
   deg * 111111.11;
+```
+
+```sql
 CREATE
 OR REPLACE MACRO m_to_deg(m) AS
   m / 111111.11;
+```
+
+```sql
+
 CREATE
 OR REPLACE MACRO dist_2d(px, py, dx, dy) AS
   CEIL(ST_Distance_Spheroid(ST_Point(py, px), ST_Point(dy, dx)));
+```
+
+> NOTE: ST_Distance_Spheroid() is undocumented, it was merged
+> in [this PR](https://github.com/duckdb/duckdb_spatial/pull/74).
+
+> NOTE: ST_Distance_Spheroid() right now use (lat, lon) parameters, not the usual (x, y)  where x = lon and y = lat.
+
+```sql
 CREATE
 OR REPLACE MACRO dist_3d(px, py, pz, dx, dy, dz) AS
   CEIL(SQRT(POW(dist_2d(px, py, dx, dy), 2) + POW((pz - dz), 2)));
 ```
 
-### Tables
+### Views
+
+We use views to avoid the import of the whole data tree.
+
+- all ADS-B points from the parquet files into a specific `airplanes` view:
 
 ```sql
--- Store data for the sites
---
+CREATE VIEW airplanes AS
+SELECT *
+FROM read_parquet('adsb/**/*.parquet', hive_partitioning = true);
+```
+
+- View `drones` is created from the parquet files and updated for the new columns:
+
+```sql
+CREATE VIEW drones
+AS
+(
+select *,
+       dist_2d(longitude, latitude, home_lon, home_lat)                        as home_distance_2d,
+       dist_3d(longitude, latitude, altitude, home_lon, home_lat, home_height) as home_distance_3d
+FROM read_parquet('drones/**/*.parquet')
+    );
+```
+
+We can re-create the whole Hive tree with this command:
+
+```sql
+COPY drones TO 'drones' (FORMAT parquet, PARTITION_BY (year, month), COMPRESSION 'zstd', FILENAME_PATTERN "drones_{i}");
+```
+
+### Tables
+
+Store data for the sites
+
+```sql
 CREATE TABLE sites
 (
     id        INTEGER PRIMARY KEY,
@@ -43,9 +92,9 @@ CREATE TABLE sites
 );
 ```
 
+Store the various antennas
+
 ```sql
--- Store one antenna
---
 CREATE TABLE antennas
 (
     id          INTEGER PRIMARY KEY,
@@ -56,9 +105,9 @@ CREATE TABLE antennas
 );
 ```
 
+Store all installations of one antenna on one site (1:1)
+
 ```sql
--- Store one installation of one antenna on one site 1:1
---
 CREATE TABLE installations
 (
     id         INTEGER PRIMARY KEY,
@@ -70,6 +119,8 @@ CREATE TABLE installations
     FOREIGN KEY (antenna_id) REFERENCES antennas (id),
 );
 ```
+
+The main table for the airplane-drone proximity data:
 
 ```sql
 CREATE
@@ -93,6 +144,21 @@ OR REPLACE TABLE airplane_prox (
   distance_hor_m   INT,
   distance_vert_m  INT,
   distance_home_m  INT,
+)
+```
+
+We keep a table for statistics, updated each time we do a calculation for any given day.
+
+```sql
+CREATE TABLE daily_stats
+(
+    date       DATE,
+    planes     BIGINT,
+    drones     BIGINT,
+    potential  INT,
+    encounters INT,
+    distance   FLOAT,
+    proximity  FLOAT,
 )
 ```
 
@@ -195,5 +261,17 @@ OR REPLACE TABLE acute.airplane_prox (
     COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
 ```
 
-
+```sql
+CREATE TABLE daily_stats
+(
+    date       DATE,
+    planes     BIGINT,
+    drones     BIGINT,
+    potential  INT,
+    encounters INT,
+    distance   FLOAT,
+    proximity  FLOAT,
+) ENGINE = MergeTree PRIMARY KEY (date)
+    COMMENT 'Statistics for a day run.'
+```
 

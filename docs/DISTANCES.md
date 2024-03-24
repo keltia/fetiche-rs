@@ -2,7 +2,7 @@
 
 ## Dataset
 
-See [SCHEMAS.md](SCHEMAS.md) for the description of the various tables & macros involved.
+See [SCHEMA.md](SCHEMA.md) for the description of the various tables & macros involved.
 
 ### Main static data (stored in parquet files)
 
