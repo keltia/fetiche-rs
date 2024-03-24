@@ -180,6 +180,8 @@ CREATE FUNCTION dist_2d AS (dx, dy, px, py) ->
   ceil(geoDistance(dx,dy,px,py));
 ```
 
+> NOTE: `geoDistance` returns an FLOAT32, not FLOAT64.
+
 3D distance using the 2D Geodesic distance and altitude, rounded to the nearest upper integer.
 
 ```sql
@@ -262,11 +264,11 @@ OR REPLACE TABLE acute.airplane_prox (
 ```
 
 ```sql
-CREATE TABLE daily_stats
-(
+CREATE
+OR REPLACE TABLE daily_stats (
     date       DATE,
-    planes     BIGINT,
-    drones     BIGINT,
+    planes     INT,
+    drones     INT,
     potential  INT,
     encounters INT,
     distance   FLOAT,
