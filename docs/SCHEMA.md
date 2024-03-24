@@ -107,10 +107,14 @@ DATABASE acute COMMENT 'ACUTE Project data.';
 
 ### Functions
 
+Geodesic distance rounded to the nearest upper integer.
+
 ```sql
 CREATE FUNCTION dist_2d AS (dx, dy, px, py) ->
   ceil(geoDistance(dx,dy,px,py));
 ```
+
+3D distance using the 2D Geodesic distance and altitude, rounded to the nearest upper integer.
 
 ```sql
 CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
@@ -129,7 +133,8 @@ CREATE TABLE acute.sites
     code      VARCHAR NOT NULL,
     latitude  FLOAT   NOT NULL,
     longitude FLOAT   NOT NULL,
-) ENGINE MergeTree;
+) ENGINE MergeTree 
+    COMMENT 'All sites with an antenna in time.';
 ```
 
 ```sql
@@ -142,7 +147,8 @@ CREATE TABLE acute.antennas
     name        VARCHAR NOT NULL,
     owned       BOOLEAN,
     description VARCHAR,
-) ENGINE MergeTree;
+) ENGINE MergeTree
+    COMMENT 'All known antennas.';
 ```
 
 ```sql
@@ -158,7 +164,8 @@ CREATE TABLE acute.installations
     comment    VARCHAR,
     FOREIGN KEY (site_id) REFERENCES sites (id),
     FOREIGN KEY (antenna_id) REFERENCES antennas (id),
-) ENGINE MergeTree;
+) ENGINE MergeTree 
+    COMMENT 'Which antenna on each site in time.';
 ```
 
 ```sql
@@ -183,7 +190,9 @@ OR REPLACE TABLE acute.airplane_prox (
   distance_hor_m   INT,
   distance_vert_m  INT,
   distance_home_m  INT,
-) ENGINE = MergeTree PRIMARY KEY (time, journey);
+)
+    ENGINE = MergeTree PRIMARY KEY (time, journey)
+    COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
 ```
 
 
