@@ -162,8 +162,8 @@ FROM read_parquet('adsb/**/*.parquet', hive_partitioning = true);
 CREATE OR REPLACE VIEW drones
 AS (
   SELECT *,
-         dist_2d(longitude, latitude, home_lon, home_lat) as home_distance_2d,
-         dist_3d(longitude, latitude, height, home_lon, home_lat, home_height) as home_distance_3d
+         dist_2d(latitude, longitude, home_lat, home_lon) as home_distance_2d,
+         dist_3d(latitude, longitude, height, home_lat, home_lon, home_height) as home_distance_3d
   FROM read_parquet('drones/**/*.parquet')
 );
     "##;
