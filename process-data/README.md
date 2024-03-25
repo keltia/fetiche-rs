@@ -107,6 +107,13 @@ Using an ML system to classify the different kind of trajectory we can expect fr
 
 ## Performance
 
+## TODO
+
+- Implement [Clickhouse] support
+- Implement a better way to manage migrations
+
 [datafusion]: https://crates.io/crates/arrow-datafusion
 
 [DuckDB]: https://duckdb.org/
+
+[Clickhouse]: https://clickhouse.com/
