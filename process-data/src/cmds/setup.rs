@@ -153,23 +153,25 @@ DROP SEQUENCE IF EXISTS id_encounter;
 /// for `read_parquet()`.
 ///
 #[tracing::instrument(skip(dbh))]
-fn create_views(dbh: &Connection) -> Result<()> {
+fn create_views(dbh: &Connection, dir: &str) -> Result<()> {
     info!("Creating the airplanes and drones views.");
 
-    let r = r##"
-CREATE OR REPLACE VIEW airplanes AS
+    let r = format!(r##"
+CREATE
+OR REPLACE VIEW airplanes AS
 SELECT *
-FROM read_parquet('adsb/**/*.parquet', hive_partitioning = true);
-CREATE OR REPLACE VIEW drones
+FROM read_parquet('{}/adsb/**/*.parquet', hive_partitioning = true);
+CREATE
+OR REPLACE VIEW drones
 AS (
   SELECT *,
          dist_2d(latitude, longitude, home_lat, home_lon) as home_distance_2d,
          dist_3d(latitude, longitude, height, home_lat, home_lon, home_height) as home_distance_3d
-  FROM read_parquet('drones/**/*.parquet')
+  FROM read_parquet('{}/drones/**/*.parquet', hive_partitioning = true)
 );
-    "##;
+    "##, dir, dir);
 
-    Ok(dbh.execute_batch(r)?)
+    Ok(dbh.execute_batch(&r)?)
 }
 
 /// Remove both views
@@ -191,14 +193,15 @@ DROP VIEW IF EXISTS drones;
 #[tracing::instrument(skip(ctx))]
 pub fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
     let dbh = ctx.db();
+    let dir = ctx.config["datalake"].clone();
 
     // Move here.
     //
-    let _ = env::set_current_dir(&ctx.config["datalake"]);
+    let _ = env::set_current_dir(&dir);
 
     if opts.all {
         add_sequences(&dbh)?;
-        create_views(&dbh)?;
+        create_views(&dbh, &dir)?;
         add_macros(&dbh)?;
         add_encounters_table(&dbh)?;
     } else {
