@@ -59,21 +59,21 @@ SELECT
   TimeRecPosition AS time,
   AircraftAddress AS addr,
   regexp_extract(Callsign, '([0-9A-Z]+)') AS callsign,
-  Longitude AS px,
-  Latitude AS py,
-  CAST(GeometricAltitude AS DOUBLE) * 0.305 AS pz
+  Longitude AS plon,
+  Latitude AS plat,
+  CAST(GeometricAltitude AS DOUBLE) * 0.305 AS palt
 FROM
   airplanes
 WHERE
   site = ? AND
   time >= ? AND
   time <= ? AND
-  pz IS NOT NULL AND
-  ST_DWithin(ST_point(?, ?), ST_Point(px, py), ?)
+  palt IS NOT NULL AND
+  ST_DWithin(ST_point(?, ?), ST_Point(plat, plon), ?)
 ORDER BY time
 "##;
         let mut stmt = dbh.prepare(r1)?;
-        let _ = stmt.query(params![site, time_from, time_to, lon, lat, dist])?;
+        let _ = stmt.query(params![site, time_from, time_to, lat, lon, dist])?;
 
         // Check how many
         //
@@ -125,13 +125,13 @@ FROM drones
 WHERE
   CAST(to_timestamp(timestamp) AS TIMESTAMP) <= ? AND
   CAST(to_timestamp(timestamp) AS TIMESTAMP) >= ? AND
-  ST_DWithin(ST_point(?, ?), ST_Point(longitude, latitude), ?)
+  ST_DWithin(ST_point(?, ?), ST_Point(latitude, longitude), ?)
 ORDER BY
   (time,journey)
     "##;
 
         let mut stmt = dbh.prepare(r2)?;
-        let _ = stmt.query(params![pt2, pt1, lon, lat, dist])?;
+        let _ = stmt.query(params![pt2, pt1, lat, lon, dist])?;
 
         // Check how many
         //
@@ -160,9 +160,9 @@ SELECT
   c.ident AS drone_id,
   c.model,
   c.timestamp AS time,
-  c.longitude AS dx,
-  c.latitude AS dy,
-  c.altitude AS dz,
+  c.longitude AS dlon,
+  c.latitude AS dlat,
+  c.altitude AS dalt,
   c.elevation AS dh,
   c.home_distance_2d AS hdist2d,
   c.home_distance_3d AS hdist3d,
@@ -170,12 +170,12 @@ SELECT
   t.addr AS addr,
   t.callsign,
   t.time AS pt,
-  t.px AS px,
-  t.py AS py,
-  t.pz AS pz,
-  dist_2d(dx,dy, px,py) AS dist2d,
-  dist_3d(dx, dy, dz, px, py, pz) AS dist_drone_plane,
-  CEIL(@(pz - dz)) AS diff_alt
+  t.plon AS plon,
+  t.plat AS plat,
+  t.palt AS palt,
+  st_distance_spheroid(st_point(dlat,dlon), st_point(plat,plon)) AS dist2d,
+  dist_3d(dlat, dlon, dalt, plat, plon, palt) AS dist_drone_plane,
+  CEIL(@(palt - dalt)) AS diff_alt
 FROM
   today AS t,
   candidates AS c
@@ -257,17 +257,17 @@ BY NAME (
       tc.journey,
       tc.drone_id,
       any_value(model) AS model,
-      any_value(dx) AS drone_lon,
-      any_value(dy) AS drone_lat,
-      any_value(dz) AS drone_alt_m,
+      any_value(dlon) AS drone_lon,
+      any_value(dlat) AS drone_lat,
+      any_value(dalt) AS drone_alt_m,
       any_value(dh) AS drone_height_m,
       any_value(tc.callsign) AS prox_callsign,
       addr AS prox_id,
-      any_value(px) AS prox_lon,
-      any_value(py) AS prox_lat,
-      any_value(pz) AS prox_alt_m,
+      any_value(plon) AS prox_lon,
+      any_value(plat) AS prox_lat,
+      any_value(palt) AS prox_alt_m,
       any_value(CEIL(dist2d)) AS distance_hor_m,
-      any_value(CEIL(@(pz - dz))) AS distance_vert_m,
+      any_value(CEIL(@(palt - dalt))) AS distance_vert_m,
       any_value(CEIL(hdist2d)) as distance_home_m,
       CEIL(dist_drone_plane) AS distance_slant_m,
     FROM today_close AS tc, ids
