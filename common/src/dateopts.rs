@@ -98,3 +98,21 @@ impl DateOpts {
         })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use test_pretty_log::test;
+
+    #[test]
+    fn test_dateopts_parse() -> eyre::Result<()> {
+        let opt = DateOpts::From { begin: "2022-06-14 00:00:00 UTC".into(), end: "2023-02-29 00:00:00 UTC".into() };
+        let r = DateOpts::parse(opt);
+
+        assert!(r.is_ok());
+        let (b, e) = r.unwrap();
+        assert_eq!(dateparser::parse("2022-06-14 00:00:00 UTC").unwrap(), b);
+        assert_eq!(dateparser::parse("2023-02-28 00:00:00 UTC").unwrap(), e);
+        Ok(())
+    }
+}
