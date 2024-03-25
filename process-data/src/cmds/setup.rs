@@ -1,6 +1,8 @@
 //! This task connects to the database and create some useful macros and tables
 //! to set our work environment up.
 //!
+//! >NOTE: THIS IS DUCKDB-SPECIFIC
+//!
 
 use std::env;
 
@@ -37,7 +39,6 @@ pub struct SetupOpts {
 /// - m_to_deg      and back to degrees
 /// - dist_2d       geodesic distance between two points
 /// - dist_3d       3D distance based on geodesic
-/// - encounter     create a unique ID for encounters
 ///
 #[tracing::instrument(skip(dbh))]
 fn add_macros(dbh: &Connection) -> Result<()> {
