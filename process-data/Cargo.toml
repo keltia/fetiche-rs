@@ -59,6 +59,7 @@ derive_builder = "0.20"
 duckdb = { version = "0.10", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
 geo = "0.28"
 itertools = "0.12"
+kml = "0.8"
 ml-progress = "0.1"
 rand = "0"
 rust-3d = "0.34"
