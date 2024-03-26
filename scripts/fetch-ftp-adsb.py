@@ -3,7 +3,7 @@
 """
 This fetch the latest ADS-B drops from ftps.eurocontrol.fr.
 
-usage: fetch-ftp-adsb [-h] [--datalake DATALAKE] [--keep]
+usage: fetch-ftp-adsb [-h] [-D DATALAKE] [--keep]
 
 Fetch the last files from the incoming directory on ftps.
 
@@ -22,8 +22,9 @@ import os
 # CONFIG CHANGE HERE or use -D
 #
 datalake = "/Users/acute"
-d_import = "/import"
-d_data = "/data"
+importdir = "/import"
+datadir = "/data"
+bindir = "/bin"
 
 # Use the bookmark name
 #
@@ -31,7 +32,7 @@ site = "ftp_avt"
 
 
 def fetch_files(list):
-    os.system('lftp -f fetch-all-adsb.txt')
+    os.system(f'lftp -f {datalake}{bindir}fetch-all-adsb.txt')
     os.system(f'/bin/ls -lF {list}')
 
 
@@ -42,15 +43,12 @@ parser = argparse.ArgumentParser(
     description='Fetch the last files from the incoming directory on ftps.')
 
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--site', '-S', help="Connect to this site/bookmark.")
 parser.add_argument('--keep', '-K', action='store_true', help="Do not delete files after download.")
 args = parser.parse_args()
 
 if args.datalake:
     datalake = args.datalake
 
-os.chdir(f'{datalake}{d_import}')
-if args.site:
-    site = args.site
+os.chdir(f'{datalake}{importdir}')
 
 fetch_files('*.gz')
