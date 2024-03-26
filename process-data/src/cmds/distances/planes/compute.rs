@@ -301,7 +301,7 @@ DROP SEQUENCE seq_ids;
     }
 }
 
-const DELAY: u64 = 300;
+const DELAY: u64 = 200;
 
 impl Calculate for PlaneDistance {
     /// Run the process for the given day.
