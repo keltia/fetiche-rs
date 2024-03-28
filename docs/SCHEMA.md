@@ -53,23 +53,53 @@ We use views to avoid the import of the whole data tree.
 - all ADS-B points from the parquet files into a specific `airplanes` view:
 
 ```sql
-CREATE VIEW airplanes AS
-SELECT *
-FROM read_parquet('adsb/**/*.parquet', hive_partitioning = true);
+CREATE
+OR REPLACE VIEW airplanes AS (
+    SELECT EmitterCategory,
+       GBS,
+       ModeA,
+       TimeRecPosition,
+       AircraftAddress,
+       Latitude,
+       Longitude,
+       GeometricAltitude,
+       FlightLevel,
+       BarometricVerticalRate,
+       CAST(GeoVertRateExceeded AS DOUBLE)     AS GeoVertRateExceeded,
+       CAST(GeometricVerticalRate AS DOUBLE)   AS GeometricVerticalRate,
+       GroundSpeed,
+       TrackAngle,
+       regexp_extract(Callsign, '([0-9A-Z]+)') AS Callsign,
+       AircraftStopped,
+       GroundTrackValid,
+       GroundHeadingProvided,
+       MagneticNorth,
+       SurfaceGroundSpeed,
+       SurfaceGroundTrack,
+       CAST(month AS INT) AS month,
+       site,
+       year,
+    FROM read_parquet('{}/adsb/**/*.parquet', hive_partitioning = true)
+);
 ```
+
+with "{}" being replaced by the full path of the datalake.
 
 - View `drones` is created from the parquet files and updated for the new columns:
 
 ```sql
-CREATE VIEW drones
+CREATE
+OR REPLACE VIEW drones
 AS
 (
-select *,
-       dist_2d(longitude, latitude, home_lon, home_lat)                        as home_distance_2d,
-       dist_3d(longitude, latitude, altitude, home_lon, home_lat, home_height) as home_distance_3d
-FROM read_parquet('drones/**/*.parquet')
-    );
+    SELECT *,
+            dist_2d(longitude, latitude, home_lon, home_lat)                        as home_distance_2d,
+            dist_3d(longitude, latitude, altitude, home_lon, home_lat, home_height) as home_distance_3d
+    FROM read_parquet('drones/**/*.parquet')
+);
 ```
+
+with "{}" being replaced by the full path of the datalake.
 
 We can re-create the whole Hive tree with this command:
 
