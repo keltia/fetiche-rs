@@ -159,7 +159,31 @@ fn create_views(dbh: &Connection, dir: &str) -> Result<()> {
     let r = format!(r##"
 CREATE
 OR REPLACE VIEW airplanes AS
-SELECT *
+SELECT
+    EmitterCategory,
+    GBS,
+    ModeA,
+    TimeRecPosition,
+    AircraftAddress,
+    Latitude,
+    Longitude,
+    GeometricAltitude,
+    FlightLevel,
+    BarometricVerticalRate,
+    CAST(GeoVertRateExceeded AS DOUBLE) AS GeoVertRateExceeded,
+    CAST(GeometricVerticalRate AS DOUBLE) AS GeometricVerticalRate,
+    GroundSpeed,
+    TrackAngle,
+    regexp_extract(Callsign, '([0-9A-Z]+)') AS Callsign,
+    AircraftStopped,
+    GroundTrackValid,
+    GroundHeadingProvided,
+    MagneticNorth,
+    SurfaceGroundSpeed,
+    SurfaceGroundTrack,
+    CAST(month AS INT) AS month,
+    site,
+    year,
 FROM read_parquet('{}/adsb/**/*.parquet', hive_partitioning = true);
 CREATE
 OR REPLACE VIEW drones
