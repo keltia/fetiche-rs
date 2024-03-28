@@ -57,6 +57,7 @@ pub fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
 
                 export_drone_stats(ctx, opts)?;
             }
+            ExportSubCommand::Encounters(opts) => unimplemented!()
         },
         SubCommand::Setup(sopts) => {
             println!("Setup ACUTE environment in {}.\n", ctx.config["datalake"]);
