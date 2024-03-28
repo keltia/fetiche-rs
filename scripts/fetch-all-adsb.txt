@@ -1,0 +1,5 @@
+open ftp_avt
+cd /incoming
+lcd /acute/import
+mget *.gz && mrm *.gz
+lls *.gz
