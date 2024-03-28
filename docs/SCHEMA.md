@@ -277,3 +277,66 @@ OR REPLACE TABLE daily_stats (
     COMMENT 'Statistics for a day run.'
 ```
 
+```sql
+CREATE
+OR REPLACE TABLE airplanes (
+    site                   VARCHAR,  
+    EmitterCategory        INT,   
+    GBS                    INT,   
+    ModeA                  VARCHAR,  
+    TimeRecPosition        TIMESTAMP,
+    AircraftAddress        VARCHAR,  
+    Latitude               DOUBLE,   
+    Longitude              DOUBLE,   
+    GeometricAltitude      DOUBLE,   
+    FlightLevel            DOUBLE,   
+    BarometricVerticalRate DOUBLE,   
+    GeoVertRateExceeded    VARCHAR,  
+    GeometricVerticalRate  DOUBLE,
+    GroundSpeed            DOUBLE,   
+    TrackAngle             DOUBLE,   
+    Callsign               VARCHAR,  
+    AircraftStopped        VARCHAR,  
+    GroundTrackValid       VARCHAR,  
+    GroundHeadingProvided  VARCHAR,  
+    MagneticNorth          VARCHAR,  
+    SurfaceGroundSpeed     VARCHAR,  
+    SurfaceGroundTrack     VARCHAR,  
+    month                  INT,  
+    year                   INT,   
+) ENGINE = MergeTree PRIMARY KEY (TimeRecPosition,AircraftAddress)
+    COMMENT 'Main table for ADS-B positions.'
+```
+
+```sql
+CREATE
+OR REPLACE drones (
+    journey            INT, 
+    ident              VARCHAR,
+    model              VARCHAR,
+    source             VARCHAR,
+    location           INT,
+    timestamp          TIMESTAMP,
+    latitude           DOUBLE, 
+    longitude          DOUBLE, 
+    altitude           INTEGER,
+    elevation          INT,
+    gps                INTEGER,
+    rssi               INTEGER,
+    home_lat           DOUBLE,
+    home_lon           DOUBLE,
+    home_height        INT,
+    speed              INT,
+    heading            INT,
+    station_name       VARCHAR,
+    station_latitude   DOUBLE, 
+    station_longitude  DOUBLE,
+    time               INT,
+    year               INT,
+    month              INT
+    home_distance_2d   DOUBLE,
+    home_distance_3d   DOUBLE, 
+)
+    ENGINE = MergeTree PRIMARY KEY (journey, timestamp)
+    COMMENT 'Drone positions for all sites.'
+```

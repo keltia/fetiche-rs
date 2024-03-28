@@ -114,7 +114,7 @@ for file in files:
             for fn in base:
                 if fn.name.endswith(".parquet"):
                     print(f"Looking at {fn.name}")
-                    move_one(fn.name, ftype, action)
+                    move_one(fn.path, ftype, action)
     else:
         print(f"Just {file}")
         move_one(file, ftype, action)
