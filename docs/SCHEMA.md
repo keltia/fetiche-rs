@@ -307,35 +307,91 @@ OR REPLACE TABLE daily_stats (
     COMMENT 'Statistics for a day run.'
 ```
 
+This is the schema stored in the parquet files, extracted from the CSV. We will change a few things during import. As
+we are putting everything inside CH, no need for year/month optimisations we got earlier from having a view upon the
+parquet files.
+
 ```sql
+--    site                   VARCHAR,  
+--    EmitterCategory        INT,   
+--    GBS                    INT,   
+--    ModeA                  VARCHAR,  
+--    TimeRecPosition        TIMESTAMP,
+--    AircraftAddress        VARCHAR,  
+--    Latitude               DOUBLE,   
+--    Longitude              DOUBLE,   
+--    GeometricAltitude      DOUBLE,   
+--    FlightLevel            DOUBLE,   
+--    BarometricVerticalRate DOUBLE,   
+--    GeoVertRateExceeded    VARCHAR,  
+--    GeometricVerticalRate  DOUBLE,
+--    GroundSpeed            DOUBLE,   
+--    TrackAngle             DOUBLE,   
+--    Callsign               VARCHAR,  
+--    AircraftStopped        VARCHAR,  
+--    GroundTrackValid       VARCHAR,  
+--    GroundHeadingProvided  VARCHAR,  
+--    MagneticNorth          VARCHAR,  
+--    SurfaceGroundSpeed     VARCHAR,  
+--    SurfaceGroundTrack     VARCHAR,  
+--    month                  INT,  
+--    year                   INT,   
 CREATE
 OR REPLACE TABLE airplanes (
-    site                   VARCHAR,  
     EmitterCategory        INT,   
-    GBS                    INT,   
+    GBS                    BOOLEAN,   
     ModeA                  VARCHAR,  
-    TimeRecPosition        TIMESTAMP,
-    AircraftAddress        VARCHAR,  
-    Latitude               DOUBLE,   
-    Longitude              DOUBLE,   
-    GeometricAltitude      DOUBLE,   
-    FlightLevel            DOUBLE,   
-    BarometricVerticalRate DOUBLE,   
-    GeoVertRateExceeded    VARCHAR,  
-    GeometricVerticalRate  DOUBLE,
-    GroundSpeed            DOUBLE,   
+    time                   TIMESTAMP,
+    prox_id                VARCHAR,  
+    prox_lat               DOUBLE,   
+    prox_lon               DOUBLE,   
+    prox_alt               DOUBLE,   
+    flight_level           DOUBLE,   
+    baro_vert_rate         DOUBLE,
+    geo_vert_exceeded      BOOLEAN,
+    geo_vert_rate          DOUBLE,
+    ground_speed           DOUBLE,   
     TrackAngle             DOUBLE,   
-    Callsign               VARCHAR,  
-    AircraftStopped        VARCHAR,  
-    GroundTrackValid       VARCHAR,  
-    GroundHeadingProvided  VARCHAR,  
-    MagneticNorth          VARCHAR,  
-    SurfaceGroundSpeed     VARCHAR,  
-    SurfaceGroundTrack     VARCHAR,  
-    month                  INT,  
-    year                   INT,   
-) ENGINE = MergeTree PRIMARY KEY (TimeRecPosition,AircraftAddress)
-    COMMENT 'Main table for ADS-B positions.'
+    prox_callsign          VARCHAR,  
+    stopped                BOOLEAN,  
+    GroundTrackValid       BOOLEAN,  
+    GroundHeadingProvided  BOOLEAN,  
+    MagneticNorth          BOOLEAN,  
+    SurfaceGroundSpeed     DOUBLE,  
+    SurfaceGroundTrack     DOUBLE,  
+    site                   VARCHAR,  
+) ENGINE = MergeTree PRIMARY KEY (site, time, prox_id)
+    COMMENT 'Main table for ADS-B positions.';
+```
+
+For each site, with "{}" being replaced by the site name.
+
+```sql
+INSERT INTO airplanes
+SELECT f.EmitterCategory,
+       (f.GBS == 1) AS GBS,
+       f.ModeA,
+       f.TimeRecPosition AS time,
+       f.AircraftAddress AS prox_id,
+       f.Latitude AS prox_lat,
+       f.Longitude AS prox_lon,
+       f.GeometricAltitude AS prox_alt,
+       f.FlightLevel AS flight_level,
+       f.BarometricVerticalRate AS baro_vert_rate,
+       (f.GeoVertRateExceeded == '1') AS geo_vert_exceeded,
+       f.GeometricVerticalRate AS geo_vert_rate,
+       f.GroundSpeed AS ground_speed,
+       f.TrackAngle,
+       f.Callsign AS prox_callsign,
+       (f.AircraftStopped == '1') AS stopped,
+       (f.GroundTrackValid == '1') AS GroundTrackValid,
+       (f.GroundHeadingProvided == '1') AS GroundHeadingProvided,
+       (f.MagneticNorth == '1') AS MagneticNorth,
+       f.SurfaceGroundSpeed,
+       f.SurfaceGroundTrack,
+       '{}'         AS site,
+FROM
+    file('data/adsb/site={}/**/*.parquet') AS f;
 ```
 
 ```sql
