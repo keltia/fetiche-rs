@@ -1,0 +1,349 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [end-sprint-3] - 2024-04-01
+
+### FIX
+
+- We need to use height here, not altitude.
+- Do not export the wrong columns.
+- Fix other usage as well.
+
+### WIP
+
+- Test clickhouse.
+- Support for exporting drone data as KML files.
+
+### Clippy
+
+- Fix warnings.
+- Fix various warnings.
+
+## [end-sprint-2] - 2024-03-07
+
+### Update
+
+- New ASD antenna in CDG.
+
+### WIP
+
+- Parse date intervals.
+- Add batch processing.
+- Implement batching of calculations.
+- Working on  curves.
+- While fixing csv from ASD, handle a datatype change.
+
+## [sources-v0.13] - 2024-02-17
+
+### Fix
+
+- Copy/paste error.
+
+### Refactor
+
+- Reorganise all modules & sub-commands.
+- Reorganise the module & sub-commands for "export".
+
+### WIP
+
+- Gather stats.
+
+### Clippy
+
+- Fix warnings.
+
+## [end-sprint-1] - 2024-02-06
+
+### WIP
+
+- Add SQL queries to select drones and planes into a temp table.  Added location stuff from opensky-history.
+- Tying everything together.
+- Gather and display results.
+- Finalise the display/extraction of results.
+
+## [adsb-to-parquet-v0.2] - 2023-12-30
+
+### WIP
+
+- Revise import into DB.
+- Hive sharding support.
+- Work on DB import.
+- Use arrow2 to read csv.
+- Try to figure  out how this work.
+- Add TID.
+- Not finished.
+- Update tabled to 0.15, Builder API changed.
+
+## [parquet-is-done] - 2023-12-04
+
+### FIX
+
+- If we specified an output format, file is saved elsewhere, no need to clobber it with empty data.
+- Types & names were wrong, use serde_as to fix.
+
+### Refactor
+
+- Merge the two macros crates.
+
+### WIP
+
+- Find a way to distribute addr<T> to all actors.
+- Sort out interactions.
+- Fix our state management.
+- Remove state/storage from Engine as these are actors now.
+- Make the generic version work.
+- Add export as parquet for Asd data.
+- Fix parquet output.
+- Parquet output is still broken.
+- Arrow/Parquet loading from json w/ DataFusion.
+- Handle formats in the stream.
+- Make it work with arrow2.
+- Still no cigar.
+- Still trying to make it work.
+- Use NDJSON instead of JSON as input.
+- Not only we want to generate ndjson but we need types fixed.
+- Serde_arrow/arrow2_convert still in the works.
+- Use arrow2 to write into parquet.
+
+## [before-forking-engine] - 2023-09-25
+
+### FIX
+
+- Do not create link inside the directory.
+- Do not hardcode the site name.
+- Deadlock because calling sync() with held lock.
+
+### Fixes
+
+- TOC, typos, details.
+
+### WIP
+
+- Begin implementing storage subpart.
+- Loading engine.hcl.
+- V2 with basedir and variable paths.
+- Fix test.
+- Begin support for database recording.
+- Database support.
+- Create, update and sync state.
+- Engine must be mutable.
+- Try to add an async version of simple.
+- More options to fetiched.
+- We can retrieve all data wanted. Next: convert it.
+- Add channel to the control thread.
+- Split into files, if nothing is given list locations, etc.
+- Search with ICAO id.
+- Describe FA types.
+- Flightaware connection code.
+- Flightaware conversion code.
+- Try to use proxy still.
+- Update to pyopensky 2.1.
+- This will return more information.
+- Submit a job to the engine. Some issues with return.
+- Add state management actor.
+
+### Clippy
+
+- Remove warnings.
+- Needless borrows & Ok().
+- Fix warnings.
+- Let is unused now.
+
+### Std
+
+- :env::var() return a Result, not an Option.
+
+## [cat21conv-is-back] - 2023-06-29
+
+### Clippy
+
+- Simplify & add defaults.
+- Fix imports.
+
+## [multithread-engine] - 2023-06-14
+
+### Clippy
+
+- Remove warnings.
+
+## [config-v4] - 2023-06-14
+
+### WIP
+
+- Use threads everywhere.
+- Credentials are configurable, not the sources' parameters from sources.hcl. Begin to separate the two.
+- Begin the integration of fetiche-sources into the engine.
+
+## [0.10.0] - 2023-06-03
+
+### Clippy
+
+- Fix warnings.
+
+## [clean-worker-threading] - 2023-06-03
+
+### Clippy
+
+- Cleanup, use eprint* instead of write*.
+- Cleanup, use eprint* instead of write*.
+
+## [opensky-caching] - 2023-05-31
+
+### Refactor
+
+- Move Sources stuff into its file.
+
+### Clippy
+
+- Fix warnings.
+
+## [working-streaming] - 2023-05-30
+
+### FIX
+
+- It is a string, no need to "":?" it.
+- Request parameter formatting.
+- Get the "untagged" back.
+- Finally manage to sort out what I needed.  Fix Runnable for stream/fetch.
+
+### Fetchable
+
+- :fetch() takes a "dyn Write" now like Streamable for consistency.
+
+### WIP
+
+- Begin to lay down the foundation of the Engine itself.
+- Parser for future Fetiche language.
+- Commented out for now.
+- Implement streaming.
+- Conversion part.
+- Conversion part.
+
+### Clippy
+
+- Format is unused here.
+- Rename.
+- Remove warnings.
+
+### Rustdoc
+
+- Make it an explicit URL.
+
+### Rustfmt
+
+- Optimize imports.
+
+## [config-v3] - 2023-05-15
+
+### Clippy
+
+- Return struct.
+- Add Copy which simplify things.
+
+## [formats-v1] - 2023-05-12
+
+### Rustfmt
+
+- Refactoring imports.
+
+## [config-v2] - 2023-05-12
+
+### Refactor
+
+- Create a module with site-specific stuff.  Fix paths.
+- Rename sites into the more proper sources.
+- Reorganizing source, move common struct to module.
+- Code move complete, API chnaged, no more input/output.
+- Extract stuff into different files for clarity.
+- Simplify.
+- Create asterix crate.
+
+### WIP
+
+- Load and parse the HTML page.
+- Use abscissa.
+- Add InfluxDB as a source.
+- Comment out for now.
+- Begin implementation of Opensky::fetch().
+
+### Clippy
+
+- Add a Site::default().
+- Infer the default() impl.
+- Remove redundant Defer().
+- Simplify.
+- Use "if let".
+
+## [config-v1] - 2023-03-15
+
+### Fix
+
+- Altitude can be negative. XXX
+
+### Refactor
+
+- Add the http_call! macro and use it.
+- WIP: create two different crates, fix paths.
+- Create format-specs & sites as separate crates.  Move files around.
+
+### WIP
+
+- Prepare for more work, add arguments, etc.
+- Fetch() test.
+- Add Opensky format/site support.
+- Infra to read from file.
+
+### Clippy
+
+- Simplify.
+- Fix warnings.
+
+## [0.8.0] - 2022-11-11
+
+### Clippy
+
+- Replace to_string() by a proper impl Display.
+- Remove return.
+- Remove "&".
+
+## [0.7.0] - 2022-11-09
+
+### Refactor
+
+- Split into binary and lib.
+- Split tree into library and binary.
+
+### WIP
+
+- Add argument handling.
+
+### Clippy
+
+- Impl Default.
+- Simplify format() and fix with().
+- Simplify.
+- Remove unneeded deref & simplify.
+- Change into a proper new() and add load().  Add impl Default as well.
+
+## [0.5.0] - 2022-10-23
+
+### Clippy
+
+- Fix warnings.
+
+### WIP
+
+- New flags: -B/-E to specify begin and end of sample.
+
+### Clippy
+
+- Be consistent.
+
+## [0.2.0] - 2022-10-17
+
+### Clippy
+
+- Fix warnings.
+
+<!-- generated by git-cliff -->

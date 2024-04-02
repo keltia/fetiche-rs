@@ -102,7 +102,7 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     //
     let name = opts.name.clone();
     let current: Location = if list.get(&name).is_none() {
-        return Err(Status::ErrUnknownSite(name).into());
+        return Err(Status::UnknownSite(name).into());
     } else {
         list.get(&name).unwrap().clone()
     };
@@ -117,7 +117,6 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
             .date(day)
             .separation(opts.separation)
             .build().unwrap();
-        dbg!(&work);
 
         work
     }).collect();

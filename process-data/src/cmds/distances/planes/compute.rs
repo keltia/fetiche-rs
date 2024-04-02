@@ -1,13 +1,14 @@
 //! This is where all the main calculations are done.
 //!
-//! FIXME: at the moment, the pipe uses fixed names for the intermediate tables (today,candidates, etc.).
+//! FIXME: at the moment, the pipe uses fixed names for the intermediate tables (today, candidates, etc.).
 //!
 use std::ops::Add;
 
-use chrono::{Datelike, Duration, TimeZone, Utc};
+use chrono::{Datelike, Days, Duration, TimeZone, Utc};
 use duckdb::{Connection, params};
+use eyre::Result;
 use tokio::time::Instant;
-use tracing::{info, trace};
+use tracing::{debug, info, trace};
 
 use crate::cmds::{ONE_DEG, PlaneDistance, PlanesStats, Stats};
 use crate::cmds::batch::Calculate;
@@ -21,7 +22,7 @@ impl PlaneDistance {
     /// - define a bounding box around a specific site (default is 70nm) and use it as a filter
     ///
     #[tracing::instrument(skip(dbh))]
-    fn select_planes(&self, dbh: &Connection) -> eyre::Result<usize> {
+    fn select_planes(&self, dbh: &Connection) -> Result<usize> {
         let site = self.name.clone();
         let day = self.date.day();
         let month = self.date.month();
@@ -32,18 +33,12 @@ impl PlaneDistance {
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
-        println!("{} nm as deg: {}", self.distance, dist);
+        debug!("{} nm as deg: {}", self.distance, dist);
 
         let time_from = Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
-        let time_to = time_from.add(Duration::days(1));
+        let time_to = time_from.add(Duration::try_days(1).unwrap());
 
         println!("From {} to {}.", time_from, time_to);
-
-        // Cleanup if needed
-        //
-        if dbh.execute("SHOW TABLE today", []).is_ok() {
-            let _ = dbh.execute("DROP TABLE today", [])?;
-        }
 
         // All flights for a given day in a table
         //
@@ -58,26 +53,27 @@ impl PlaneDistance {
         //
         //
         let r1 = r##"
-CREATE TABLE today AS
+CREATE OR REPLACE TABLE today AS
 SELECT
+  site,
   TimeRecPosition AS time,
   AircraftAddress AS addr,
-  Callsign AS callsign,
-  Longitude AS px,
-  Latitude AS py,
-  CAST(GeometricAltitude AS DOUBLE) * 0.305 AS pz
+  regexp_extract(Callsign, '([0-9A-Z]+)') AS callsign,
+  Longitude AS plon,
+  Latitude AS plat,
+  CAST(GeometricAltitude AS DOUBLE) * 0.305 AS palt
 FROM
   airplanes
 WHERE
-  site=? AND
+  site = ? AND
   time >= ? AND
   time <= ? AND
-  pz IS NOT NULL AND
-  ST_DWithin(ST_point(?, ?), ST_Point(px, py), ?)
+  palt IS NOT NULL AND
+  ST_DWithin(ST_point(?, ?), ST_Point(plat, plon), ?)
 ORDER BY time
 "##;
         let mut stmt = dbh.prepare(r1)?;
-        let _ = stmt.query(params![site, time_from, time_to, lon, lat, dist])?;
+        let _ = stmt.query(params![site, time_from, time_to, lat, lon, dist])?;
 
         // Check how many
         //
@@ -86,52 +82,56 @@ ORDER BY time
             [],
             |row| Ok(row.get_unwrap(0)),
         )?;
-        println!("Total number of planes: {}\n", count);
+        trace!("Total number of planes: {}\n", count);
         Ok(count)
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn select_drones(&self, dbh: &Connection) -> eyre::Result<usize> {
+    fn select_drones(&self, dbh: &Connection) -> Result<usize> {
         // All drone points for the same day
         //
-        // $1 = year
-        // $2 = month
-        // $3 = day
-        // $4,$5 = (lon,lat) site
-        // $6 = distance in degrees
+        // $1 = date+1
+        // $2 = date
+        // $3,$4 = (lon,lat) site
+        // $5 = distance in degrees
         //
-        let year = self.date.year();
-        let month = self.date.month();
-        let day = self.date.day();
-
         let lat = self.loc.lat;
         let lon = self.loc.lon;
 
+        let pt1 = self.date;
+        let pt2 = self.date.checked_add_days(Days::new(1)).unwrap();
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
-        println!("{} nm as deg: {}", self.distance, dist);
-
-        // Cleanup if needed
-        //
-        if dbh.execute("SHOW TABLE candidates", []).is_ok() {
-            let _ = dbh.execute("DROP TABLE candidates", [])?;
-        }
+        debug!("{} nm as deg: {}", self.distance, dist);
 
         let r2 = r##"
-CREATE TABLE candidates AS
-SELECT time,journey,ident,model,timestamp,latitude,longitude,altitude,home_lat,home_lon,home_distance_2d,home_distance_3d
+CREATE OR REPLACE TABLE candidates AS
+SELECT
+    time,
+    journey,
+    ident,
+    model,
+    to_timestamp(timestamp) as timestamp,
+    latitude,
+    longitude,
+    altitude,
+    elevation,
+    home_lat,
+    home_lon,
+    home_distance_2d,
+    home_distance_3d
 FROM drones
 WHERE
-  CAST(to_timestamp(time) AS TIMESTAMP) <= make_timestamp(?,?,? + 1,0,0,0.0) AND
-  CAST(to_timestamp(time) AS TIMESTAMP) >= make_timestamp(?,?,?,0,0,0.0) AND
-  ST_DWithin(ST_point(?, ?), ST_Point(longitude, latitude), ?)
+  CAST(to_timestamp(timestamp) AS TIMESTAMP) <= ? AND
+  CAST(to_timestamp(timestamp) AS TIMESTAMP) >= ? AND
+  ST_DWithin(ST_point(?, ?), ST_Point(latitude, longitude), ?)
 ORDER BY
   (time,journey)
     "##;
 
         let mut stmt = dbh.prepare(r2)?;
-        let _ = stmt.query(params![year, month, day, year, month, day, lon, lat, dist])?;
+        let _ = stmt.query(params![pt2, pt1, lat, lon, dist])?;
 
         // Check how many
         //
@@ -139,17 +139,13 @@ ORDER BY
             let r: usize = row.get_unwrap(0);
             Ok(r)
         })?;
-        println!("Total number of drones: {}", count);
+        trace!("Total number of drones: {}", count);
         Ok(count)
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn find_close(&self, dbh: &Connection) -> eyre::Result<usize> {
-        // Cleanup if needed
-        //
-        if dbh.execute("SHOW TABLE today_close", []).is_ok() {
-            let _ = dbh.execute("DROP TABLE today_close", [])?;
-        }
+    fn find_close(&self, dbh: &Connection) -> Result<usize> {
+        trace!("Find close encounters.");
 
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
         // altitude diff is less than 3 nm. (parameter is `separation`).
@@ -158,35 +154,38 @@ ORDER BY
         // $3 = timestamp of drone point
         //
         let r = r##"
-CREATE TABLE today_close AS
+CREATE OR REPLACE TABLE today_close AS
 SELECT
-  c.time AS dt,
   c.journey,
   c.ident AS drone_id,
   c.model,
-  c.timestamp as timestamp,
-  c.longitude AS dx,
-  c.latitude AS dy,
-  c.altitude AS dz,
+  c.timestamp AS time,
+  c.longitude AS dlon,
+  c.latitude AS dlat,
+  c.altitude AS dalt,
+  c.elevation AS dh,
+  c.home_distance_2d AS hdist2d,
+  c.home_distance_3d AS hdist3d,
+  t.site,
   t.addr AS addr,
   t.callsign,
   t.time AS pt,
-  t.px AS px,
-  t.py AS py,
-  t.pz AS pz,
-  dist_2d(dx,dy, px,py) AS dist2d,
-  dist_3d(px, py, pz, dx, dy, dz) AS dist_drone_plane,
-  @(pz - dz) AS diff_alt
+  t.plon AS plon,
+  t.plat AS plat,
+  t.palt AS palt,
+  st_distance_spheroid(st_point(dlat,dlon), st_point(plat,plon)) AS dist2d,
+  dist_3d(dlat, dlon, dalt, plat, plon, palt) AS dist_drone_plane,
+  CEIL(@(palt - dalt)) AS diff_alt
 FROM
   today AS t,
   candidates AS c
 WHERE
-  pt > CAST(to_timestamp(dt-2) AS TIMESTAMP) AND
-  pt < CAST(to_timestamp(dt+2) AS TIMESTAMP) AND
+  pt > CAST(to_timestamp(c.time - 2) AS TIMESTAMP) AND
+  pt < CAST(to_timestamp(c.time + 2) AS TIMESTAMP) AND
   dist2d <= ? AND
   diff_alt < ?
 ORDER BY
-  (dt, c.journey)
+  (c.time, c.journey)
     "##;
 
         let proximity = self.separation;
@@ -199,13 +198,13 @@ ORDER BY
             let r: usize = row.get_unwrap(0);
             Ok(r)
         })?;
-        println!("Total number of potential encounters: {}", count);
+        trace!("Total number of potential encounters: {}", count);
         Ok(count)
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn save_encounters(&self, dbh: &Connection) -> eyre::Result<usize> {
-        trace!("filter calculations, take min()");
+    fn select_encounters(&self, dbh: &Connection) -> Result<usize> {
+        trace!("select and record close points. ");
 
         // We use a GROUP BY() clause to get the point where the distance between this drone and any surrounding planes
         // is minimal.  Gather more information about the encounter, `any_value()` is used to avoid "duplicates".
@@ -214,64 +213,106 @@ ORDER BY
         //
         // FIXME: conflicts are not handled, not sure why.
 
+        let day_name = self.date.format("%Y%m%d").to_string();
+
         // Insert data into table `encounters`
         //
-        let ins = r##"
-INSERT OR IGNORE INTO encounters
-BY NAME (
+        // - create sequence
+        // - create table for ids
+        // - select unique encounter for id generation
+        // - insert ids
+        // - join today_close and ids to get all points with the right en_id
+        //
+
+        let ins = format!(r##"
+CREATE OR REPLACE SEQUENCE seq_ids;
+CREATE OR REPLACE TABLE ids (
+    id INT DEFAULT nextval('seq_ids'),
+    site STRING,
+    date STRING,
+    drone_id STRING,
+    callsign STRING,
+    journey INT,
+    en_id STRING,
+);
+INSERT INTO ids BY NAME (
     SELECT
-      any_value(dt) AS dt,
+      any_value(site) AS site,
+      '{day_name}' AS date,
       journey,
-      any_value(drone_id) AS drone_id,
-      model,
-      any_value(timestamp) AS time,
-      any_value(callsign) AS callsign,
-      any_value(addr) AS addr,
-      any_value(dist2d) AS distancelat,
-      any_value(@(pz - dz)) AS distancevert,
-      MIN(dist_drone_plane) AS distance,
+      drone_id,
+      callsign,
     FROM today_close
     WHERE
       dist_drone_plane < 1852
     GROUP BY ALL
-)
-        "##;
+);
+UPDATE ids SET en_id = printf('%s-%s-%d-%d', site, date, journey, id);
+INSERT INTO airplane_prox
+BY NAME (
+    SELECT
+      ids.en_id,
+      any_value(tc.site) AS site,
+      any_value(time) AS time,
+      tc.journey,
+      tc.drone_id,
+      any_value(model) AS model,
+      any_value(dlon) AS drone_lon,
+      any_value(dlat) AS drone_lat,
+      any_value(dalt) AS drone_alt_m,
+      any_value(dh) AS drone_height_m,
+      any_value(tc.callsign) AS prox_callsign,
+      addr AS prox_id,
+      any_value(plon) AS prox_lon,
+      any_value(plat) AS prox_lat,
+      any_value(palt) AS prox_alt_m,
+      any_value(CEIL(dist2d)) AS distance_hor_m,
+      any_value(CEIL(@(palt - dalt))) AS distance_vert_m,
+      any_value(CEIL(hdist2d)) as distance_home_m,
+      CEIL(dist_drone_plane) AS distance_slant_m,
+    FROM today_close AS tc, ids
+    WHERE
+      dist_drone_plane < 1852
+    AND
+      ids.journey = tc.journey
+    AND
+      ids.callsign = tc.callsign
+    GROUP BY ALL
+);
+DROP TABLE ids;
+DROP SEQUENCE seq_ids;
+        "##);
 
-        let count = dbh.execute(ins, [])?;
+        let _ = dbh.execute_batch(&ins)?;
+
+        // Now check how many
+        //
+        let count = dbh.query_row(&format!("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE '%{}%'", day_name), [], |row| {
+            let r: usize = row.get_unwrap(0);
+            Ok(r)
+        })?;
         if count == 0 {
             info!("No new encounters.");
             return Ok(count);
         } else {
             info!("Inserted {} new encounters", count);
         }
-
-        trace!("Generate en_id");
-        let upd = r##"
-UPDATE encounters AS old_e
-SET en_id = (
-    SELECT
-      encounter(CAST(old_e.time AS DATE), journey, id) AS en_id
-    FROM
-      encounters AS new_e
-    WHERE
-      old_e.dt = new_e.dt AND old_e.journey = new_e.journey
-),
-site = ?
-WHERE en_id IS NULL OR site IS NULL
-        "##;
-
-        let count = dbh.execute(upd, [self.name.clone()])?;
-
         Ok(count)
     }
 }
+
+const DELAY: u64 = 200;
 
 impl Calculate for PlaneDistance {
     /// Run the process for the given day.
     ///
     #[tracing::instrument(skip(dbh))]
-    fn run(&self, dbh: &Connection) -> eyre::Result<Stats> {
+    fn run(&self, dbh: &Connection) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
+        let bar = ml_progress::progress!(
+            4;
+            "[" percent "] " message_fill "(" eta_hms ")"
+        )?;
 
         let start = Instant::now();
         // Create our stat struct
@@ -280,48 +321,68 @@ impl Calculate for PlaneDistance {
 
         // Create table `today` with all identified plane points with the specified range
         //
-        let c_planes = self.select_planes(&dbh)?;
+        bar.message("Select planes.");
+        let c_planes = self.select_planes(dbh)?;
+        bar.inc(1);
 
         if c_planes == 0 {
             stats.time = (Instant::now() - start).as_millis();
-            eprintln!("No planes found.");
+            bar.message("No planes found.");
+            bar.finish();
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.planes = c_planes;
+        bar.message(format!("{} planes.", c_planes));
+        std::thread::sleep(std::time::Duration::from_millis(DELAY));
 
         // Create table `candidates` with all designated drone points
         //
-        let c_drones = self.select_drones(&dbh)?;
+        bar.message("Select drones.");
+        let c_drones = self.select_drones(dbh)?;
+        bar.inc(1);
 
         if c_drones == 0 {
             stats.time = (Instant::now() - start).as_millis();
-            eprintln!("No drones found.");
+            bar.message("No drones found.");
+            bar.finish();
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.drones = c_drones;
+        bar.message(format!("{} drones.", c_drones));
+        std::thread::sleep(std::time::Duration::from_millis(DELAY));
 
         // Create table `today_close` with all designated drone points and airplanes in proximity
         //
-        let c_potential = self.find_close(&dbh)?;
+        bar.message("Find close planes.");
+        let c_potential = self.find_close(dbh)?;
+        bar.inc(1);
 
         if c_potential == 0 {
             stats.time = (Instant::now() - start).as_millis();
-            eprintln!("No potential airprox found.");
+            bar.message("No potential airprox found.");
+            bar.finish();
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.potential = c_potential;
+        bar.message(format!("{} potentials.", c_potential));
+        std::thread::sleep(std::time::Duration::from_millis(DELAY));
 
         // Now we have the distance calculated.
         //
-        let c_encounters = self.save_encounters(&dbh)?;
+        bar.message("Find encounters.");
+        let c_encounters = self.select_encounters(dbh)?;
+        bar.inc(1);
 
+        stats.time = (Instant::now() - start).as_millis();
         if c_encounters == 0 {
-            stats.time = (Instant::now() - start).as_millis();
-            eprintln!("No close encounters of any kind found.");
+            bar.message("No close encounters of any kind found.");
+            bar.finish();
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.encounters = c_encounters;
-        stats.time = (Instant::now() - start).as_millis();
+        bar.message(format!("{} encounters.", c_encounters));
+        std::thread::sleep(std::time::Duration::from_millis(DELAY));
+        bar.finish();
 
         eprintln!("Stats for {}: {}", self.date, stats);
         info!("Done.");

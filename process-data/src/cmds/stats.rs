@@ -13,18 +13,18 @@ use itertools::fold;
 #[derive(Clone, Debug)]
 pub enum Stats {
     Planes(PlanesStats),
-    Home(HomeStats),
 }
 
 impl Stats {
     /// Gather all instances stats into one
     ///
     pub fn summarise(v: Vec<Stats>) -> Stats {
+        assert!(!v.is_empty());
         let first = v[0].clone();
         if v.len() == 1 {
             first
         } else {
-            fold(v[1..].into_iter(), first, |a, b| a + b.clone())
+            fold(v[1..].iter(), first, |a, b| a + b.clone())
         }
     }
 }
@@ -36,9 +36,6 @@ impl Add for Stats {
     ///
     fn add(self, rhs: Self) -> Self::Output {
         match self {
-            Stats::Home(inner) => {
-                Stats::Home(inner + rhs.into())
-            }
             Stats::Planes(inner) => {
                 Stats::Planes(inner + rhs.into())
             }
@@ -48,24 +45,12 @@ impl Add for Stats {
 
 // -----
 
-/// Dereference `Stats` into inner `HomeStats`
-///
-impl From<Stats> for HomeStats {
-    fn from(value: Stats) -> Self {
-        match value {
-            Stats::Home(inner) => inner,
-            _ => panic!("bad type")
-        }
-    }
-}
-
 /// Dereference `Stats` into inner `PlaneStats`
 ///
 impl From<Stats> for PlanesStats {
     fn from(value: Stats) -> Self {
         match value {
             Stats::Planes(inner) => inner,
-            _ => panic!("bad type")
         }
     }
 }
@@ -121,7 +106,7 @@ impl PlanesStats {
 impl Display for PlanesStats {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = format!("Day {:?}:\n{} drones in potential airprox with {} planes, {} found within {}m in a {} nm radius.\n\
-        Time spent: {} ms",
+        Time spent: {} ms\n",
                           self.day, self.drones, self.planes, self.encounters, self.proximity, self.distance, self.time);
         write!(f, "{}", str)
     }
@@ -132,7 +117,7 @@ impl Add for PlanesStats {
 
     fn add(self, rhs: Self) -> Self::Output {
         let mut days = self.day.clone();
-        let added = rhs.day.get(0).unwrap().to_owned();
+        let added = rhs.day.first().unwrap().to_owned();
         days.push(added);
         Self {
             day: days.clone(),
@@ -146,51 +131,3 @@ impl Add for PlanesStats {
         }
     }
 }
-
-// -----
-
-#[derive(Clone, Debug)]
-pub struct HomeStats {
-    /// Statistics for the home to drone calculations, all entries.
-    pub total: usize,
-    /// Updated for the current run
-    pub updated: usize,
-    /// Time for processing in ms
-    pub time: u128,
-}
-
-impl Default for HomeStats {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl HomeStats {
-    pub fn new() -> Self {
-        Self {
-            total: 0,
-            updated: 0,
-            time: 0,
-        }
-    }
-}
-
-impl Display for HomeStats {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let str = format!("Calculated {} distances between drone and operator.\nTotal entries: {} in {} ms", self.updated, self.total, self.time);
-        write!(f, "{}", str)
-    }
-}
-
-impl Add for HomeStats {
-    type Output = HomeStats;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            total: self.total + rhs.total,
-            updated: rhs.updated,
-            time: rhs.time,
-        }
-    }
-}
-

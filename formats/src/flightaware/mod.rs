@@ -15,7 +15,7 @@
 use eyre::Result;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
-use strum::{strum::VariantNames, EnumString};
+use strum::{VariantNames, EnumString};
 use tracing::debug;
 
 pub use location::*;

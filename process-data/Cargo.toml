@@ -1,6 +1,6 @@
 [package]
 name = "process-data"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Implement different processing of data."
@@ -54,10 +54,13 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 clap_complete = "4.5"
+clickhouse = { version = "0.11", features = ["time", "watch", "tls"] }
 derive_builder = "0.20"
 duckdb = { version = "0.10", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
 geo = "0.28"
 itertools = "0.12"
+kml = "0.8"
+ml-progress = "0.1"
 rand = "0"
 rust-3d = "0.34"
 

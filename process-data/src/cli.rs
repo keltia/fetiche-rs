@@ -22,6 +22,8 @@ pub struct Opts {
 pub enum SubCommand {
     /// Display data about Acute sites, etc.
     Acute(AcuteOpts),
+    /// Build the ACUTE env. from the ground up.
+    Bootstrap,
     /// Distance-related calculations.
     Distances(DistOpts),
     /// Export results as CSV.

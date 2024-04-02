@@ -6,9 +6,11 @@ use strum::{EnumString, VariantNames};
 
 pub use distances::*;
 pub use drones::*;
+pub use encounters::*;
 
 mod distances;
 mod drones;
+mod encounters;
 
 #[derive(Clone, Copy, Debug, EnumString, VariantNames, strum::Display)]
 #[strum(serialize_all = "lowercase")]
@@ -36,4 +38,6 @@ pub enum ExportSubCommand {
     Distances(ExpDistOpts),
     /// Export daily or weekly stats for drones
     Drones(ExpDroneOpts),
+    /// Export daily XML files for encounters
+    Encounters(ExpEncOpts),
 }

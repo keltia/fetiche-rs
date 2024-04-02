@@ -3,6 +3,7 @@ use std::ops::{Add, Sub};
 use chrono::{DateTime, Datelike, Days, TimeDelta, TimeZone, Utc};
 use clap::Parser;
 use thiserror::Error;
+use tracing::trace;
 
 /// Enum of supported options for the date formats.
 ///
@@ -33,17 +34,17 @@ impl DateOpts {
     pub fn parse(opts: Self) -> Result<(DateTime<Utc>, DateTime<Utc>), ErrDateOpts> {
         Ok(match opts {
             DateOpts::Today => {
-                eprintln!("got today true");
+                trace!("got today true");
                 let today = Utc::now();
                 let begin = Utc
                     .with_ymd_and_hms(today.year(), today.month(), today.day(), 0, 0, 0)
                     .unwrap();
                 let end = begin.add(Days::new(1));
-                eprintln!("today gives from {} to {}", begin, end);
+                trace!("today gives from {} to {}", begin, end);
                 (begin, end)
             }
             DateOpts::Yesterday => {
-                eprintln!("got yesterday true");
+                trace!("got yesterday true");
                 let today = Utc::now();
                 let yest = today.sub(Days::new(1));
                 let begin = Utc
@@ -52,10 +53,11 @@ impl DateOpts {
                 let end = Utc
                     .with_ymd_and_hms(today.year(), today.month(), today.day(), 0, 0, 0)
                     .unwrap();
-                eprintln!("yesterday gives from {} to {}", begin, end);
+                trace!("yesterday gives from {} to {}", begin, end);
                 (begin, end)
             }
             DateOpts::Day { date } => {
+                trace!("Got day {}", date);
                 let begin = match dateparser::parse(&date) {
                     Ok(date) => date,
                     Err(_) => return Err(ErrDateOpts::BadDate(date)),
@@ -64,22 +66,24 @@ impl DateOpts {
                     .with_ymd_and_hms(begin.year(), begin.month(), begin.day(), 0, 0, 0)
                     .unwrap();
                 let end = begin.add(Days::new(1));
-                eprintln!("this day={} gives from {} to {}", date, begin, end);
+                trace!("this day={} gives from {} to {}", date, begin, end);
                 (begin, end)
             }
             DateOpts::Week { num } => {
-                if num >= 53 {
+                trace!("Got week {}", num);
+                if num > 53 {
                     return Err(ErrDateOpts::BadDate(num.to_string()));
                 }
                 let week = Utc::now();
                 let begin: DateTime<Utc> =
                     Utc.with_ymd_and_hms(week.year(), 1, 1, 0, 0, 0).unwrap();
-                let begin = begin.checked_add_signed(TimeDelta::weeks(num - 1)).unwrap();
+                let begin = begin.checked_add_signed(TimeDelta::try_weeks(num - 1).unwrap()).unwrap();
                 let end = begin.add(Days::new(7));
-                eprintln!("week={} is from {} to {}", num, begin, end);
+                trace!("week={} is from {} to {}", num, begin, end);
                 (begin, end)
             }
             DateOpts::From { begin, end } => {
+                trace!("Got from {} to {}", begin, end);
                 let begin = match dateparser::parse(&begin) {
                     Ok(date) => date,
                     Err(_) => return Err(ErrDateOpts::BadDate(begin)),
@@ -88,9 +92,27 @@ impl DateOpts {
                     Ok(date) => date,
                     Err(_) => return Err(ErrDateOpts::BadDate(end)),
                 };
-                eprintln!("begin={} end={}", begin, end);
+                trace!("begin={} end={}", begin, end);
                 (begin, end)
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use test_pretty_log::test;
+
+    #[test]
+    fn test_dateopts_parse() -> eyre::Result<()> {
+        let opt = DateOpts::From { begin: "2022-06-14 00:00:00 UTC".into(), end: "2023-02-29 00:00:00 UTC".into() };
+        let r = DateOpts::parse(opt);
+
+        assert!(r.is_ok());
+        let (b, e) = r.unwrap();
+        assert_eq!(dateparser::parse("2022-06-14 00:00:00 UTC").unwrap(), b);
+        assert_eq!(dateparser::parse("2023-02-28 00:00:00 UTC").unwrap(), e);
+        Ok(())
     }
 }

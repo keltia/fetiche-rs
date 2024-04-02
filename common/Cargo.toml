@@ -17,6 +17,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 [badges]
 maintenance = { status = "actively-developed" }
 
+[[bench]]
+name = "dates"
+path = "benches/date_bench.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -30,9 +34,12 @@ serde.workspace = true
 strum.workspace = true
 tabled.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
 
 [dev-dependencies]
+criterion = { version = "0.5", features = ["async_tokio"] }
+humantime = "2.1"
 rstest.workspace = true
 test-pretty-log = "0.6"

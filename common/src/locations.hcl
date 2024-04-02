@@ -34,7 +34,7 @@ location "LON" {
   lon  = -0.05
 }
 
-location "EIH" {
+location "BRE" {
   code = "8FW4H8XX+XX"
   lat  = 48.6
   lon  = 2.35

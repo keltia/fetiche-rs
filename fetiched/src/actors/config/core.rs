@@ -3,9 +3,9 @@ use std::str::FromStr;
 use actix::dev::{MessageResponse, OneshotSender};
 use actix::{Actor, Message};
 use serde::Serialize;
-use strum::EnumString;
+use strum::VariantNames;
 
-#[derive(Clone, Debug, strum::Display, EnumString, strum::VariantNames, Serialize)]
+#[derive(Clone, Debug, strum::Display, VariantNames, Serialize)]
 pub enum Param {
     Integer(i32),
     String(String),
@@ -14,7 +14,7 @@ pub enum Param {
 impl FromStr for Param {
     type Err = ();
 
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Param::String(s.to_owned()))
     }
 }
@@ -32,9 +32,9 @@ impl From<u32> for Param {
 }
 
 impl<A, M> MessageResponse<A, M> for Param
-where
-    A: Actor,
-    M: Message<Result = Param>,
+    where
+        A: Actor,
+        M: Message<Result=Param>,
 {
     fn handle(self, _ctx: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
         if let Some(tx) = tx {

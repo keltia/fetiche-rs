@@ -105,7 +105,7 @@ impl Save {
                         let rt = Runtime::new()?;
 
                         rt.block_on(async {
-                            let _ = write_parquet(&fname, &p).await.unwrap();
+                            write_parquet(&fname, p).await.unwrap();
                         });
                     }
                     _ => return Err(eyre!("Error: only Asd is supported as input.")),
@@ -134,7 +134,7 @@ async fn write_parquet(from: &str, to: &str) -> Result<()> {
         .set_statistics_enabled(EnabledStatistics::Page)
         .set_compression(Compression::ZSTD(ZstdLevel::try_new(8).unwrap()))
         .build();
-    let _ = df.write_parquet(&to, dfopts, Some(props)).await?;
+    let _ = df.write_parquet(to, dfopts, Some(props)).await?;
     Ok(())
 }
 

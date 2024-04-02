@@ -1,19 +1,23 @@
 use clap::Parser;
+use duckdb::params;
 use geo::point;
 use geo::prelude::*;
+use clickhouse::{Client, Row};
 
 /// Earth radius in meters
 const R: f64 = 6_371_088.0;
 
 #[derive(Debug, Parser)]
 pub struct Opts {
+    #[clap(short = 'p', long)]
+    pub password: Option<String>,
     pub lat1: f64,
     pub lon1: f64,
     pub lat2: f64,
     pub lon2: f64,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 struct Point {
     latitude: f64,
     longitude: f64,
@@ -26,9 +30,9 @@ impl Point {
 
         let a = (d_lat / 2.0).sin() * (d_lat / 2.0).sin()
             + self.latitude.to_radians().cos()
-                * other.latitude.to_radians().cos()
-                * (d_lon / 2.0).sin()
-                * (d_lon / 2.0).sin();
+            * other.latitude.to_radians().cos()
+            * (d_lon / 2.0).sin()
+            * (d_lon / 2.0).sin();
 
         let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
         R * c
@@ -40,8 +44,8 @@ impl Point {
 
         let a = (self.latitude.to_radians()).sin() * (other.latitude.to_radians()).sin()
             + (self.latitude.to_radians()).cos()
-                * (other.latitude.to_radians()).cos()
-                * d_lon.cos();
+            * (other.latitude.to_radians()).cos()
+            * d_lon.cos();
 
         let c = a.acos();
 
@@ -49,8 +53,35 @@ impl Point {
     }
 }
 
-// 48.573174 2.319671 48.566757 2.303015
-fn main() -> eyre::Result<()> {
+async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f32> {
+    let url = format!("http://100.92.250.113:8123");
+    let client = Client::default().with_url(url).with_option("wait_end_of_query", "1");
+
+    let mut res = client.query("SELECT geoDistance(?,?,?,?) AS dist")
+        .bind(point1.longitude)
+        .bind(point1.latitude)
+        .bind(point2.longitude)
+        .bind(point2.latitude)
+        .fetch::<f32>()?;
+
+    let val: f32 = res.next().await?.unwrap_or_else(|| 0.);
+    Ok(val)
+}
+
+async fn dd_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
+    let dbh = duckdb::Connection::open_in_memory()?;
+    dbh.execute("LOAD spatial", [])?;
+
+    let dist_duck: f64 = dbh.query_row("SELECT ST_Distance_Spheroid(ST_Point(?, ?), ST_Point(?, ?))",
+                                       params![point1.latitude, point1.longitude, point2.latitude, point2.longitude], |row| {
+            Ok(row.get_unwrap(0))
+        },
+    )?;
+    Ok(dist_duck)
+}
+
+#[tokio::main]
+async fn main() -> eyre::Result<()> {
     let opts: Opts = Opts::parse();
 
     let point1 = Point {
@@ -71,6 +102,9 @@ fn main() -> eyre::Result<()> {
     let geo_h = p1.haversine_distance(&p2);
     let geo_vin = p1.vincenty_distance(&p2)?;
 
+    let dist_duck = dd_distance(point1, point2).await?;
+    let ch_dist = ch_distance(point1, point2).await?;
+
     println!("Distance between\n  {:?}\nand\n  {:?}", p1, p2);
     println!(
         "Distances:\n\
@@ -78,8 +112,10 @@ fn main() -> eyre::Result<()> {
         {:.2} m (sin/cos)\n\
         {:.2} m geo::geodesic\n\
         {:.2} m geo::haversines\n\
-        {:.2} m geo::vincenty\n",
-        d_h, d_s, geo_g, geo_h, geo_vin
+        {:.2} m geo::vincenty\n\
+        {:.2} m duckdb:speh\n\
+        {:.2} m clickhouse\n",
+        d_h, d_s, geo_g, geo_h, geo_vin, dist_duck, ch_dist
     );
     Ok(())
 }

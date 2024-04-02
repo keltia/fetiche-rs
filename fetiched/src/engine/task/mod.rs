@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use eyre::Result;
 use serde::Deserialize;
-use strum::{strum::VariantNames, EnumIter};
+use strum::{VariantNames, EnumIter};
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
@@ -30,7 +30,7 @@ mod store;
 mod stream;
 mod tee;
 
-#[derive(Debug, strum::Display, strum::VariantNames, EnumIter, PartialEq)]
+#[derive(Debug, strum::Display, VariantNames, EnumIter, PartialEq)]
 #[strum(serialize_all = "PascalCase")]
 pub enum Cmds {
     Convert,
