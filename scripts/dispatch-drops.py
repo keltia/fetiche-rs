@@ -70,6 +70,8 @@ def move_one(fn, ftype, action):
         # Create target
         #
         ourdir = f"{datalake}/{ftype}/site={site}/year={year}/month={month}"
+        if not Path(ourdir).exists():
+            os.makedirs(ourdir)
         final = Path(ourdir) / fname
         print(f"Moving {fn} into {final}")
 
