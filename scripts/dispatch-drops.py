@@ -27,7 +27,7 @@ from pathlib import Path
 
 # CONFIG CHANGE HERE or use -D
 #
-datalake = "/Users/Acute/data"
+datalake = "/Users/Acute"
 
 # Our current sites
 #
@@ -70,7 +70,7 @@ def move_one(fn, ftype, action):
 
         # Create target
         #
-        ourdir = f"{datalake}/{ftype}/site={site}/year={year}/month={month}"
+        ourdir = f"{datadir}/{ftype}/site={site}/year={year}/month={month}"
         if not Path(ourdir).exists():
             os.makedirs(ourdir)
         final = Path(ourdir) / fname
@@ -95,7 +95,9 @@ parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
 if args.datalake:
-    datalake = args.datalake
+    datadir = f"{args.datalake}/data"
+else:
+    datadir = f"{datalake}/data"
 
 if args.drones:
     ftype = "drones"
