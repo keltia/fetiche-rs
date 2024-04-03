@@ -7,9 +7,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[cfg(feature = "duckdb")]
-use duckdb::Connection;
-
 use clickhouse::Client;
 use eyre::Result;
 use tracing::{error, info, trace};
@@ -129,7 +126,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     info!("Connecting to {} @ {}", name, endpoint);
     let dbh = Client::default()
-            .with_url(endpoint)
+            .with_url(env!("CLICKHOUSE_CLIENT"))
             .with_database(&name)
             .with_user(&user)
             .with_password(&pass);
