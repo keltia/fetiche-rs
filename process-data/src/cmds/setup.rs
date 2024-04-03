@@ -7,7 +7,9 @@
 use std::env;
 
 use clap::Parser;
-use duckdb::Connection;
+
+use clickhouse::Client;
+
 use eyre::Result;
 use tracing::info;
 
@@ -41,7 +43,7 @@ pub struct SetupOpts {
 /// - dist_3d       3D distance based on geodesic
 ///
 #[tracing::instrument(skip(dbh))]
-fn add_macros(dbh: &Connection) -> Result<()> {
+fn add_macros(dbh: &Client) -> Result<()> {
     info!("Adding macros.");
 
     let r = r##"
@@ -61,7 +63,7 @@ CREATE OR REPLACE MACRO dist_3d(plat, plon, palt, dlat, dlon, dalt) AS
 }
 
 #[tracing::instrument(skip(dbh))]
-fn remove_macros(dbh: &Connection) -> Result<()> {
+fn remove_macros(dbh: &Client) -> Result<()> {
     info!("Removing macros.");
 
     let r = r##"
@@ -78,7 +80,7 @@ DROP MACRO IF EXISTS m_to_deg;
 /// Create the `encounters` table to store short air-prox points
 ///
 #[tracing::instrument(skip(dbh))]
-fn add_encounters_table(dbh: &Connection) -> Result<()> {
+fn add_encounters_table(dbh: &Client) -> Result<()> {
     info!("Adding encounters table.");
 
     let sq = r##"
@@ -111,7 +113,7 @@ CREATE OR REPLACE TABLE airplane_prox (
 /// Remove the `encounters` table to store short air-prox points
 ///
 #[tracing::instrument(skip(dbh))]
-fn drop_encounters_table(dbh: &Connection) -> Result<()> {
+fn drop_encounters_table(dbh: &Client) -> Result<()> {
     info!("Removing encounters table.");
 
     let sq = r##"
@@ -124,7 +126,7 @@ DROP TABLE IF EXISTS airplane_prox;
 /// Add the sequences we need
 ///
 #[tracing::instrument]
-fn add_sequences(dbh: &Connection) -> Result<()> {
+fn add_sequences(dbh: &Client) -> Result<()> {
     info!("Adding sequences");
 
     let seq = r##"
@@ -137,7 +139,7 @@ CREATE OR REPLACE SEQUENCE id_encounter;
 /// Add the sequences we need
 ///
 #[tracing::instrument]
-fn drop_sequences(dbh: &Connection) -> Result<()> {
+fn drop_sequences(dbh: &Client) -> Result<()> {
     info!("Adding sequences");
 
     let seq = r##"
@@ -153,7 +155,7 @@ DROP SEQUENCE IF EXISTS id_encounter;
 /// for `read_parquet()`.
 ///
 #[tracing::instrument(skip(dbh))]
-fn create_views(dbh: &Connection, dir: &str) -> Result<()> {
+fn create_views(dbh: &Client, dir: &str) -> Result<()> {
     info!("Creating the airplanes and drones views.");
 
     let r = format!(r##"
@@ -201,7 +203,7 @@ AS (
 /// Remove both views
 ///
 #[tracing::instrument(skip(dbh))]
-fn drop_views(dbh: &Connection) -> Result<()> {
+fn drop_views(dbh: &Client) -> Result<()> {
     info!("Dropping airplanes and drones views.");
 
     let rm = r##"

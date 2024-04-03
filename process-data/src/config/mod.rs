@@ -6,9 +6,12 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use clickhouse::Client;
 
 #[cfg(feature = "duckdb")]
-use duckdb::Connection;
+use duckdb::Client;
+
+
 use eyre::Result;
 use tracing::{info, trace};
 use tracing_subscriber::layer::SubscriberExt;
@@ -29,12 +32,12 @@ mod io;
 pub struct Context {
     /// All configuration parameters
     pub config: Arc<HashMap<String, String>>,
-    /// Database connection.
-    dbh: Arc<Connection>,
+    /// Database Client.
+    dbh: Arc<Client>,
 }
 
 impl Context {
-    pub fn db(&self) -> Arc<Connection> {
+    pub fn db(&self) -> Arc<Client> {
         self.dbh.clone()
     }
 
@@ -111,19 +114,16 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     }
 
     let name = opts.database.clone().unwrap_or(cfg.database.unwrap());
+    let user = cfg.user.clone().unwrap_or("default".to_string());
+    let pass = cfg.password.clone().unwrap();
     let datalake = cfg.datalake.unwrap();
 
     info!("Connecting to {}", name);
-    #[cfg(feature = "duckdb")]
-        let dbh = Connection::open_with_flags(
-        name.as_str(),
-        duckdb::Config::default()
-            .allow_unsigned_extensions()?
-            .enable_autoload_extension(true)?,
-    )?;
-
-    println!("Load extensions.");
-    load_extensions(&dbh)?;
+    let dbh = Client::default()
+            .with_url(env!("CLICKHOUSE_CLIENT"))
+            .with_database(&name)
+            .with_user(&user)
+            .with_password(&pass);
 
     let ctx = Context {
         config: HashMap::from([
@@ -141,15 +141,5 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 #[tracing::instrument]
 pub fn finish_runtime() -> Result<()> {
     opentelemetry::global::shutdown_tracer_provider();
-    Ok(())
-}
-
-/// We need these extensions all the time.
-///
-#[tracing::instrument(skip(dbh))]
-pub fn load_extensions(dbh: &Connection) -> Result<()> {
-    // Load our extensions
-    //
-    dbh.execute("LOAD spatial", [])?;
     Ok(())
 }
