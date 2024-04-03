@@ -29,8 +29,11 @@ pub struct ConfigFile {
     pub database: Option<String>,
     /// Directory holding the parquet files for the datalake.
     pub datalake: Option<String>,
+<<<<<<< HEAD
     /// URL
     pub url: String,
+=======
+>>>>>>> 74209f9 (WIP: port to Clickhouse.)
     /// User to connect with
     pub user: Option<String>,
     /// Corresponding password
@@ -43,7 +46,10 @@ impl Default for ConfigFile {
             version: CVERSION,
             database: None,
             datalake: None,
+<<<<<<< HEAD
             url: "".to_string(),
+=======
+>>>>>>> 74209f9 (WIP: port to Clickhouse.)
             user: None,
             password: None,
         }
