@@ -21,9 +21,9 @@ from datetime import datetime, timedelta
 # CONFIG CHANGE HERE or use -D
 #
 datalake = "/Users/acute"
-importdir = "/import"
-datadir = "/data"
-bindir = "/bin"
+importdir = f"{datalake}/import"
+datadir = f"{datalake}/data"
+bindir = f"{datalake}/bin"
 cmd = "acutectl"
 
 
@@ -46,7 +46,7 @@ args = parser.parse_args()
 if args.datalake:
     datalake = args.datalake
 
-os.chdir(f'{datalake}{importdir}')
+os.chdir(importdir)
 
 current = datetime.now()
 if args.yesterday:

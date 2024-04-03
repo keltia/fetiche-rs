@@ -22,9 +22,9 @@ import os
 # CONFIG CHANGE HERE or use -D
 #
 datalake = "/Users/acute"
-importdir = "/import"
-datadir = "/data"
-bindir = "/bin"
+importdir = f"{datalake}/import"
+datadir = f"{datalake}/data"
+bindir = f"{datalake}/bin"
 
 # Use the bookmark name
 #
@@ -32,7 +32,7 @@ site = "ftp_avt"
 
 
 def fetch_files(list):
-    os.system(f'lftp -f {datalake}{bindir}fetch-all-adsb.txt')
+    os.system(f'lftp -f {bindir}fetch-all-adsb.txt')
     os.system(f'/bin/ls -lF {list}')
 
 
@@ -49,6 +49,6 @@ args = parser.parse_args()
 if args.datalake:
     datalake = args.datalake
 
-os.chdir(f'{datalake}{importdir}')
+os.chdir(importdir)
 
 fetch_files('*.gz')
