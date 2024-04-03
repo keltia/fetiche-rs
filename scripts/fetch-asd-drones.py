@@ -21,9 +21,6 @@ from datetime import datetime, timedelta
 # CONFIG CHANGE HERE or use -D
 #
 datalake = "/Users/acute"
-importdir = f"{datalake}/import"
-datadir = f"{datalake}/data"
-bindir = f"{datalake}/bin"
 cmd = "acutectl"
 
 
@@ -45,6 +42,10 @@ args = parser.parse_args()
 
 if args.datalake:
     datalake = args.datalake
+
+importdir = f"{datalake}/import"
+datadir = f"{datalake}/data"
+bindir = f"{datalake}/bin"
 
 os.chdir(importdir)
 
