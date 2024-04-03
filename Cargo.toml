@@ -25,7 +25,7 @@ opentelemetry-otlp = "0.14"
 opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
 parquet2 = { version = "0.17", features = ["zstd"] }
 progress = "0.2"
-reqwest = { version = "0.11", features = ["blocking", "gzip", "json", "serde_json", "socks", "deflate"] }
+reqwest = { version = "0.12", features = ["blocking", "gzip", "json", "socks", "deflate"] }
 rstest = "0.18"
 serde = { version = "1.0", features = ["derive"] }
 serde_arrow = { version = "0.10", features = ["arrow2-0-17"] }

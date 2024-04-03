@@ -16,20 +16,17 @@ options:
 
 import argparse
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # CONFIG CHANGE HERE or use -D
 #
 datalake = "/Users/acute"
-importdir = "/import"
-datadir = "/data"
-bindir = "/bin"
 cmd = "acutectl"
 
 
-def fetch_files(day):
-    os.system(f'')
-    os.system(f'/bin/ls -lF {list}')
+def fetch_files(site, output):
+    os.system(f"{cmd} fetch -o {output} --yesterday {site}")
+    os.system('/bin/ls -lF')
 
 
 # Setup arguments
@@ -38,20 +35,26 @@ parser = argparse.ArgumentParser(
     prog='fetch-asd-drones',
     description='Fetch the last dataset for drones from ASD API.')
 
+parser.add_argument('--site', '-S', help='Use this site.')
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--yesterday', '-Y', help='Get data for yesterday.')
 parser.add_argument('--keep', '-K', action='store_true', help="Do not delete files after download.")
 args = parser.parse_args()
 
+site = ''
 if args.datalake:
     datalake = args.datalake
 
-os.chdir(f'{datalake}{importdir}')
+if args.site is None:
+    print("You must specify a site.")
+    exit(1)
 
-current = datetime.now()
-if args.yesterday:
-    day = current - timedelta(days=1)
-else:
-    day = current
+importdir = f"{datalake}/import"
+datadir = f"{datalake}/data"
+bindir = f"{datalake}/bin"
 
-fetch_files(day)
+os.chdir(importdir)
+
+day = datetime.now(timezone.utc) - timedelta(days=1)
+output = f"drones-{day.year}{day.month:02}{day.day:02}.parquet"
+
+fetch_files(site, output)
