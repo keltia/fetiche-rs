@@ -22,9 +22,6 @@ import os
 # CONFIG CHANGE HERE or use -D
 #
 datalake = "/Users/acute"
-importdir = f"{datalake}/import"
-datadir = f"{datalake}/data"
-bindir = f"{datalake}/bin"
 
 # Use the bookmark name
 #
@@ -48,6 +45,10 @@ args = parser.parse_args()
 
 if args.datalake:
     datalake = args.datalake
+
+importdir = f"{datalake}/import"
+datadir = f"{datalake}/data"
+bindir = f"{datalake}/bin"
 
 os.chdir(importdir)
 
