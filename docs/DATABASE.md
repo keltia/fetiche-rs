@@ -20,13 +20,13 @@ need.
 
 ## Clickhouse
 
-[Clickhouse] was mentioned on Twitter the other day by a friend of mine so I went to explore it, including getting
+[Clickhouse] was mentioned on Twitter the other day by a friend of mine, so I went to explore it, including getting
 registered on the Slack server. First steps were a bit difficult (mainly because I don't know the product) but with
 some help from helpful people on Slack, I was able to find my way.
 
 Clickhouse is seriously fast
 
-##     
+##        
 
 [Clickhouse]: https://clickhouse.com/
 
