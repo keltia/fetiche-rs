@@ -18,8 +18,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 maintenance = { status = "actively-developed" }
 
 [features]
-default = ["duckdb"]
-duckdb = []
+default = ["clickhouse"]
+clickhouse = []
 
 [[bench]]
 name = "distances"
