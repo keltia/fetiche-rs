@@ -29,7 +29,7 @@ site = "ftp_avt"
 
 
 def fetch_files(list):
-    os.system(f'lftp -f {bindir}fetch-all-adsb.txt')
+    os.system(f'lftp -f {bindir}/fetch-all-adsb.txt')
     os.system(f'/bin/ls -lF {list}')
 
 
