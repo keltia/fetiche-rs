@@ -30,11 +30,11 @@ Licensed under the [MIT](LICENSE) license.
 utilities for Aeronautical data about drones and aircraft.
 
 This is now divided into different crates with libraries (`fetiche-engine`, `fetiche-formats`, `fetiche-sources`) shared
-by the binary crates (`acutectl`, `opensky-history` and now `process-data`).
+by the binary crates (`acutectl`, `opensky-history`, `adsb-to-parquet` and now `process-data`).
 
 Binary crates include command-line utilities (`acutectl` and `opensky-history`) to perform import from a file or
-fetch data from different sites. There is now `process-data` which include several task aimed at gathering statistics
-and metrics about our drone and flight data.
+fetch data from different sites. There is now `process-data` which include several tasks aimed at gathering statistics
+and metrics about our drone and flight data. 
 
 `acutectl` is the main data fetching utility, relaying the `fetiche-sources` and `fetiche-formats` crates to provide
 a single interface to multi sources.
@@ -43,8 +43,11 @@ a single interface to multi sources.
 the Impala database. This is for everything older than 1h of real-time data which does complicate things. This utility
 use the [pyopensky] Python module (embedded through the `inline-python` crate).
 
-`process-data`  works on the drones and flights data through [DuckDB] and does various SQL-backed procedures to gather
+`process-data`  works on the drones and flights data through [Clickhouse] and does various SQL-backed procedures to gather
 and calculates metrics including distances (2D and 3D).
+
+`adsb-to-parquet` is a temporary converter between the CSV files we receive the ADS-B data into compressed parquet files.
+As my patch to improve [bdt]  has been merged, `bdt` is now used instead.
 
 ## Installation
 
@@ -72,47 +75,6 @@ However, while working on streaming support for Opensky, I have been experimenti
 
 All the commands are described in more details in the [acutectl README.md](acutectl/README.md),
 [opensky-history README.md](opensky-history/README.md) and [process-data](process-data/README.md) files.
-
-## Structure and Design
-
-`Fetiche` has 3 main library component so far:
-
-### Engine (managed in the `fetiche-engine` crate)
-
-As the name implies, this is the heart of the `Fetiche` framework. It is a fully-threaded engine, with one thread per
-job and each task has a number of threads inside. It uses a pipeline design that ensure that every stage has input from
-the previous one and send its own output to the next one. Some stage/tasks are filters (`Convert`) and some are either
-consumer or producer (notably `Fetch`, `Stream` and `Store`).
-
-This allows for filters to be inserted for conversion and in the future for DB export as well.
-
-More information on its internal design in [Engine README.md](fetiched/README.md).
-
-There is also the beginning of a job/task description DSL to describe and submit jobs.
-
-> NOTE: this is a fast-changing WIP.
-
-### Formats (managed in the `fetiche-formats` crate)
-
-This crate implement the various data models used by the different sources. Included are three [ASTERIX]-like formats --
-generic `Cat21`, a cut-down version of `Cat21` for ADS-B data (dubbed `Adsb21`) and drone-specific `Cat129` -- and
-formats used by different data providers like [Opensky] or [ASD]. This library implement some methods of conversion
-between some of these formats.
-
-The default input format is the one used by the Aeroscope from ASD, but it will soon support the format used
-by [Opensky] site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
-
-More details in the [Formats README.md](formats/README.md).
-
-### Sources (managed in the `fetiche-sources` crate)
-
-The configuration for the different sources of data is handled by the `fetiche-source` crate in [HCL] file
-format. Note that it is mainly used to avoid hard-coding some parameters like username and API URLs. Adding an entry
-in that file does not mean support except if it is a variation on a known source.
-
-You are not really supposed to edit this file.
-
-More details in the specific [Sources README.md](sources/README.md).
 
 ## `fetiched` (managed in the `fetiched` crate)
 
@@ -169,9 +131,12 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~Retrieve historical data from the [Opensky] site.~~
 - ~~Support for Flightaware AeroAPI and Firehose.~~
 - ~~Apache Parquet as output format.~~
+- Add more tests & benchmarks.
+- Migrate from the embedded [DuckDB] to a proper server-based DB [Clickhouse]
+
+Uncertain:
 - build `fetiched` as the core daemon and making all other talk to it through gRPC.
 - link to HashiCorp Vault for storing credentials and tokens
-- Add more tests & benchmarks.
 - support for Safesky for ADS-B data
 - Support for Sherlock formats and access methods
 - Multicast output?
@@ -224,3 +189,7 @@ I use Git Flow for this package so please use something similar or the usual Git
 [Actix]: https://actix.rs/
 
 [DuckDB]: https://duckdb.org/
+
+[Clickhouse]: https://clickhouse.com/
+
+[bdt]: https://github.com/datafusion-contrib/bdt
