@@ -88,7 +88,7 @@ parser = argparse.ArgumentParser(
     prog='dispatch-drops',
     description='Move each file in the right Hive directory for the given day.')
 
-parser.add_argument('--datalake', help='Datalake is here.')
+parser.add_argument('--datalake', '-D', help='Datalake is here.')
 parser.add_argument('--drones', action='store_true', help='This is drone data.')
 parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
 parser.add_argument('files', nargs='*', help='List of files or directories.')
