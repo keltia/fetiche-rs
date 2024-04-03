@@ -9,12 +9,37 @@ in [RUST] of the original Shell script. Code to handle formats and sites (aka so
 
 As the ACUTE project evolved, needs did as well and more code was added to handle these.
 
+`Fetiche` has 4 main library component so far:
+
 - `fetiche-common` has now some of the common code used by all crates.
 - `fetiche-formats` is handling the various data structures used throughout the framework, dealing with conversion,
   serialisation and de-serialisation.
 - `fetiche-sources` contains the code to connect to various sites and fetch or stream data out of them. It also handles
   authentication, etc.
 - `fetiche-macros` is the specific crate hosting the `RunnableDerive` proc macro for the engines.
+
+### Formats (managed in the `fetiche-formats` crate)
+
+This crate implement the various data models used by the different sources. Included are three [ASTERIX]-like formats --
+generic `Cat21`, a cut-down version of `Cat21` for ADS-B data (dubbed `Adsb21`) and drone-specific `Cat129` -- and
+formats used by different data providers like [Opensky] or [ASD]. This library implement some methods of conversion
+between some of these formats.
+
+The default input format is the one used by the Aeroscope from ASD, but it will soon support the format used
+by [Opensky] site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
+
+More details in the [Formats README.md](formats/README.md).
+
+### Sources (managed in the `fetiche-sources` crate)
+
+The configuration for the different sources of data is handled by the `fetiche-source` crate in [HCL] file
+format. Note that it is mainly used to avoid hard-coding some parameters like username and API URLs. Adding an entry
+in that file does not mean support except if it is a variation on a known source.
+
+You are not really supposed to edit this file.
+
+More details in the specific [Sources README.md](sources/README.md).
+
 
 There are also several binaries using the framework:
 
