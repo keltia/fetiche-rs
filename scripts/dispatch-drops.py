@@ -38,7 +38,8 @@ sites = {'Brussels': 'BRU',
          'Belfast': 'BEL',
          'Cyprus': 'CYP',
          'London': 'LON',
-         'Gatwick': 'LON'
+         'Gatwick': 'LON',
+         'Vienna': 'AUS',
          }
 
 
