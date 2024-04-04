@@ -17,7 +17,7 @@ const BASEDIR: &str = ".config";
 /// Config filename
 const CONFIG: &str = "process-data.hcl";
 /// Current version
-const CVERSION: usize = 1;
+const CVERSION: usize = 2;
 
 /// Configuration for the CLI tool
 ///
@@ -29,6 +29,8 @@ pub struct ConfigFile {
     pub database: Option<String>,
     /// Directory holding the parquet files for the datalake.
     pub datalake: Option<String>,
+    /// URL
+    pub url: String,
     /// User to connect with
     pub user: Option<String>,
     /// Corresponding password
@@ -41,6 +43,7 @@ impl Default for ConfigFile {
             version: CVERSION,
             database: None,
             datalake: None,
+            url: "".to_string(),
             user: None,
             password: None,
         }
