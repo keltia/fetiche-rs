@@ -25,7 +25,9 @@ cmd = "acutectl"
 
 
 def fetch_files(site, output):
-    os.system(f"{cmd} fetch -o {output} {site} yesterday")
+    str = f"{cmd} fetch -o {output} {site} yesterday"
+    print(f"cmd={str}")
+    os.system(str)
     os.system('/bin/ls -lF')
 
 
