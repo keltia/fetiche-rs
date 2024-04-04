@@ -29,6 +29,10 @@ pub struct ConfigFile {
     pub database: Option<String>,
     /// Directory holding the parquet files for the datalake.
     pub datalake: Option<String>,
+    /// User to connect with
+    pub user: Option<String>,
+    /// Corresponding password
+    pub password: Option<String>,
 }
 
 impl Default for ConfigFile {
@@ -37,6 +41,8 @@ impl Default for ConfigFile {
             version: CVERSION,
             database: None,
             datalake: None,
+            user: None,
+            password: None,
         }
     }
 }
