@@ -59,4 +59,4 @@ os.chdir(importdir)
 day = datetime.now(timezone.utc) - timedelta(days=1)
 output = f"drones-{day.year}{day.month:02}{day.day:02}.parquet"
 
-fetch_files(site, output)
+fetch_files(args.site, output)
