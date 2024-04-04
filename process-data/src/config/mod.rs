@@ -112,8 +112,6 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         return Err(Status::NoDatalake(def).into());
     }
 
-    // Extract parameters
-    //
     let datalake = cfg.datalake.unwrap();
     let name = std::env::var("CLICKHOUSE_DB").unwrap_or(opts.database.clone().unwrap_or(cfg.database.unwrap()));
     let user = std::env::var("CLICKHOUSE_USER").unwrap_or(cfg.user.clone().unwrap());
