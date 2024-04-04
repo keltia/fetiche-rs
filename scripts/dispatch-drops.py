@@ -70,7 +70,10 @@ def move_one(fn, ftype, action):
 
         # Create target
         #
-        ourdir = f"{datadir}/{ftype}/site={site}/year={year}/month={month}"
+        if ftype == "adsb":
+            ourdir = f"{datadir}/{ftype}/site={site}/year={year}/month={month:02}"
+        else:
+            ourdir = f"{datadir}/{ftype}/year={year}/month={month:02}"
         if not Path(ourdir).exists():
             os.makedirs(ourdir)
         final = Path(ourdir) / fname
