@@ -6,14 +6,13 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use clickhouse::Client;
 
 #[cfg(feature = "duckdb")]
-use duckdb::Client;
+use duckdb::Connection;
 
-
+use clickhouse::Client;
 use eyre::Result;
-use tracing::{info, trace};
+use tracing::{error, info, trace};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
@@ -113,14 +112,24 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         return Err(Status::NoDatalake(def).into());
     }
 
-    let name = opts.database.clone().unwrap_or(cfg.database.unwrap());
-    let user = cfg.user.clone().unwrap_or("default".to_string());
-    let pass = cfg.password.clone().unwrap();
+    // Extract parameters
+    //
     let datalake = cfg.datalake.unwrap();
+    let name = std::env::var("CLICKHOUSE_DB").unwrap_or(opts.database.clone().unwrap_or(cfg.database.unwrap()));
+    let user = std::env::var("CLICKHOUSE_USER").unwrap_or(cfg.user.clone().unwrap());
+    let pass = std::env::var("CLICKHOUSE_PASSWORD").unwrap_or(cfg.password.clone().unwrap());
+    let endpoint = std::env::var("CLICKHOUSE_CLIENT").unwrap_or(cfg.url.clone());
 
-    info!("Connecting to {}", name);
+    // URL is mandatory, either in environment or in the config file.
+    //
+    if endpoint.is_empty() {
+        error!("DB URL not defined, exiting!");
+        std::process::exit(1);
+    }
+
+    info!("Connecting to {} @ {}", name, endpoint);
     let dbh = Client::default()
-            .with_url(env!("CLICKHOUSE_CLIENT"))
+            .with_url(endpoint)
             .with_database(&name)
             .with_user(&user)
             .with_password(&pass);
