@@ -136,7 +136,7 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
 #[cfg(test)]
 mod tests {
     use chrono::Days;
-    use duckdb::Connection;
+    use clickhouse::Client;
 
     use super::*;
 
@@ -144,7 +144,7 @@ mod tests {
     fn test_calculations() -> Result<()> {
         // Store our context
         //
-        let dbh = Connection::open_in_memory()?;
+        let dbh = Client::open_in_memory()?;
         let day = Utc::now();
         let current = Location { lon: 0., lat: 0., code: "".to_string(), hash: Some("".to_string()) };
         let name = String::from("test1");
