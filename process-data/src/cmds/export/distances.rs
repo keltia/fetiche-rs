@@ -3,7 +3,7 @@
 
 use chrono::{Datelike, DateTime, TimeZone, Utc};
 use clap::Parser;
-use duckdb::{Connection, params};
+use clickhouse::Client;
 use duckdb::arrow::util::pretty::print_batches;
 use tracing::info;
 
@@ -30,15 +30,14 @@ pub struct ExpDistOpts {
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
 ///
 #[tracing::instrument(skip(dbh))]
-fn export_all_encounters_csv(
-    dbh: &Connection,
+async fn export_all_encounters_csv(
+    dbh: &Client,
     name: &str,
     day: DateTime<Utc>,
     fname: &str,
 ) -> eyre::Result<usize> {
     let r = format!(
         r##"
-COPY (
   SELECT
     en_id,
     site,
@@ -65,14 +64,19 @@ COPY (
     CAST(time AS DATE) >= CAST(? AS DATE) AND
     CAST(time AS DATE) < date_add(CAST(? AS DATE), INTERVAL 1 DAY)
     ORDER BY time
-) TO '{}' WITH (FORMAT CSV, HEADER true, DELIMITER ',');
+  INTO OUTFILE '{}' FORMAT parquet COMPRESSION zstd
         "##,
         fname
     );
 
-    let mut stmt = dbh.prepare(&r)?;
-    let count = stmt.execute(params![name, day, day])?;
+    let mut row = dbh.query(&r)
+        .bind(name)
+        .bind(day)
+        .bind(day)
+        .fetch()
+        .await?;
 
+    let count = row.
     Ok(count)
 }
 
@@ -81,7 +85,7 @@ COPY (
 ///
 #[tracing::instrument(skip(dbh))]
 fn export_all_encounters_parquet(
-    dbh: &Connection,
+    dbh: &Client,
     name: &str,
     day: DateTime<Utc>,
     fname: &str,
@@ -130,7 +134,7 @@ COPY (
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
 ///
 #[tracing::instrument(skip(dbh))]
-fn export_all_encounters_text(dbh: &Connection, name: &str, day: DateTime<Utc>) -> eyre::Result<usize> {
+fn export_all_encounters_text(dbh: &Client, name: &str, day: DateTime<Utc>) -> eyre::Result<usize> {
     let r = r##"
   SELECT
     en_id,
@@ -167,7 +171,7 @@ fn export_all_encounters_text(dbh: &Connection, name: &str, day: DateTime<Utc>) 
 }
 
 #[tracing::instrument(skip(dbh))]
-fn export_all_encounters_summary_csv(dbh: &Connection, name: &str, day: DateTime<Utc>, fname: &str) -> eyre::Result<usize> {
+fn export_all_encounters_summary_csv(dbh: &Client, name: &str, day: DateTime<Utc>, fname: &str) -> eyre::Result<usize> {
     let r = format!(r##"
 COPY (
   SELECT
