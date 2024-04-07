@@ -5,9 +5,28 @@ This is a CLI utility to load csv file containing ADS-B data and save them as Pa
 It is used to load and convert CSV files from the EMIT surveillance network into smaller and more usable [Parquet]
 files.
 
-This utility uses DuckDB and the tables/SQL as explained in [GEO.md](../docs/GEO.md)
+This utility uses Clickhouse and the tables/SQL as explained in [SCHEMA.md](../docs/SCHEMA.md)
 
 ## USAGE
+There are several ways to specify which instance and database of Clickhouse to use.
+
+- environment variables
+
+you can use `$CLICKHOUSE_CLIENT` to specify the Clickhouse instance and `$CLICKHOUSE_DB`, `$CLICKHOUSE_USER` and 
+`$CLICKHOUSE_PASSWORD` to specify database, user and password for the given instance. 
+
+- `process-data.hcl` this configuration file resides in the `drone-utils` main directory, like many others in Fetiche.
+
+```hcl
+version = 2
+
+datalake = "/path/to/datalake"
+
+url = "http://SOME.HOST.NAME:8123"
+database = "acute"
+user = "WHOEVER"
+password = "HIDDEN"
+```
 
 <details>
 <summary>`process-data --help`</summary>
