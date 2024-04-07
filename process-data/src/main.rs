@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
         SubCommand::Version => {
             println!("{} v{}", NAME, VERSION);
         }
-        _ => handle_cmds(&ctx, &opts)?,
+        _ => handle_cmds(&ctx, &opts).await?,
     }
 
     // Finish
