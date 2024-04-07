@@ -1,6 +1,7 @@
 use std::fmt::Debug;
+use std::sync::Arc;
+use clickhouse::Client;
 
-use duckdb::Connection;
 use tracing::trace;
 
 use crate::cmds::Stats;
@@ -8,7 +9,7 @@ use crate::cmds::Stats;
 /// This trait define an object that can be calculated
 ///
 pub trait Calculate: Debug {
-    fn run(&self, dbh: &Connection) -> eyre::Result<Stats>;
+    fn run(&self, dbh: &Client) -> eyre::Result<Stats>;
 }
 
 // -----
@@ -20,7 +21,7 @@ pub trait Calculate: Debug {
 pub struct Batch<'a, T>
     where T: Debug + Calculate,
 {
-    dbh: &'a Connection,
+    dbh: Arc<&'a Client>,
     inner: Vec<&'a T>,
 }
 
@@ -29,10 +30,10 @@ impl<'a, T> Batch<'a, T>
 {
     /// Create a new empty batch
     ///
-    #[tracing::instrument]
-    pub fn new(dbh: &'a Connection) -> Self {
+    #[tracing::instrument(skip(dbh))]
+    pub fn new(dbh: &'a Client) -> Self {
         Self {
-            dbh,
+            dbh: dbh.into(),
             inner: vec![],
         }
     }
@@ -68,7 +69,7 @@ impl<'a, T> Batch<'a, T>
     /// ```
     ///
     #[tracing::instrument(skip(dbh))]
-    pub fn from_vec(dbh: &'a Connection, v: &'a Vec<T>) -> Self
+    pub fn from_vec(dbh: &'a Client, v: &'a Vec<T>) -> Self
         where T: Debug + Calculate,
     {
         let mut b = Batch::new(dbh);
@@ -144,7 +145,7 @@ mod tests {
     }
 
     impl Calculate for Task {
-        fn run(&self, dbh: &Connection) -> eyre::Result<Stats> {
+        fn run(&self, dbh: &Client) -> eyre::Result<Stats> {
             let mut r = thread_rng();
             let val: u8 = r.gen();
             let upd: u8 = r.gen();
@@ -159,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_batch_new() -> eyre::Result<()> {
-        let dbh = Connection::open_in_memory()?;
+        let dbh = Client::open_in_memory()?;
 
         let b = Batch::<Task>::new(&dbh);
         assert!(b.inner.is_empty());
@@ -168,7 +169,7 @@ mod tests {
 
     #[test]
     fn test_batch_add() -> eyre::Result<()> {
-        let dbh = Connection::open_in_memory()?;
+        let dbh = Client::open_in_memory()?;
 
         let mut b = Batch::new(&dbh);
         let t1 = Task::new();
@@ -182,7 +183,7 @@ mod tests {
 
     #[test]
     fn test_batch_from_vec() -> eyre::Result<()> {
-        let dbh = Connection::open_in_memory()?;
+        let dbh = Client::open_in_memory()?;
 
         let t1 = Task::new();
         let t2 = Task::new();
@@ -195,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_batch_execute() -> eyre::Result<()> {
-        let dbh = Connection::open_in_memory()?;
+        let dbh = Client::open_in_memory()?;
 
         let t1 = Task::new();
         let t2 = Task::new();
