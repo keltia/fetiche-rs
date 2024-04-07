@@ -5,7 +5,7 @@
 use std::ops::Add;
 
 use chrono::{Datelike, Days, Duration, TimeZone, Utc};
-use duckdb::{Connection, params};
+use clickhouse::Client;
 use eyre::Result;
 use tokio::time::Instant;
 use tracing::{debug, info, trace};
@@ -22,7 +22,7 @@ impl PlaneDistance {
     /// - define a bounding box around a specific site (default is 70nm) and use it as a filter
     ///
     #[tracing::instrument(skip(dbh))]
-    fn select_planes(&self, dbh: &Connection) -> Result<usize> {
+    async fn select_planes(&self, dbh: &Client) -> Result<usize> {
         let site = self.name.clone();
         let day = self.date.day();
         let month = self.date.month();
@@ -72,8 +72,15 @@ WHERE
   ST_DWithin(ST_point(?, ?), ST_Point(plat, plon), ?)
 ORDER BY time
 "##;
-        let mut stmt = dbh.prepare(r1)?;
-        let _ = stmt.query(params![site, time_from, time_to, lat, lon, dist])?;
+        let _ = dbh.query(r1)
+            .bind(site)
+            .bind(time_from)
+            .bind(time_to)
+            .bind(lat)
+            .bind(lon)
+            .bind(dist)
+            .execute()
+            .await?;
 
         // Check how many
         //
@@ -87,7 +94,7 @@ ORDER BY time
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn select_drones(&self, dbh: &Connection) -> Result<usize> {
+    fn select_drones(&self, dbh: &Client) -> Result<usize> {
         // All drone points for the same day
         //
         // $1 = date+1
@@ -144,7 +151,7 @@ ORDER BY
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn find_close(&self, dbh: &Connection) -> Result<usize> {
+    fn find_close(&self, dbh: &Client) -> Result<usize> {
         trace!("Find close encounters.");
 
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
@@ -203,7 +210,7 @@ ORDER BY
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn select_encounters(&self, dbh: &Connection) -> Result<usize> {
+    fn select_encounters(&self, dbh: &Client) -> Result<usize> {
         trace!("select and record close points. ");
 
         // We use a GROUP BY() clause to get the point where the distance between this drone and any surrounding planes
@@ -307,7 +314,7 @@ impl Calculate for PlaneDistance {
     /// Run the process for the given day.
     ///
     #[tracing::instrument(skip(dbh))]
-    fn run(&self, dbh: &Connection) -> Result<Stats> {
+    fn run(&self, dbh: &Client) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
         let bar = ml_progress::progress!(
             4;
