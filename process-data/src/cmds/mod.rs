@@ -36,7 +36,7 @@ pub enum Status {
 // -----
 
 #[tracing::instrument(skip(ctx))]
-pub fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
+pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
     match &opts.subcmd {
         SubCommand::Distances(dopts) => match &dopts.subcmd {
             DistSubcommand::Planes(popts) => {
@@ -61,11 +61,11 @@ pub fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
         },
         SubCommand::Setup(sopts) => {
             println!("Setup ACUTE environment in {}.\n", ctx.config["datalake"]);
-            setup_acute_environment(ctx, sopts)?;
+            setup_acute_environment(ctx, sopts).await?;
         }
         SubCommand::Cleanup(copts) => {
             println!("Remove ACUTE environement in {}.\n", ctx.config["datalake"]);
-            cleanup_environment(ctx, copts)?;
+            cleanup_environment(ctx, copts).await?;
         }
         SubCommand::Acute(aopts) => {
             println!("ACUTE specific commands.\n");
