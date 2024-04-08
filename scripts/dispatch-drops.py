@@ -52,8 +52,15 @@ def move_one(fn, ftype, action):
     :param action: true does move the file
     :return: nothing
     """
+    final = ''
     fname = Path(fn).name
+
+    # Look for specific ADS-B filename format
+    #
     fc = re.search(r'^(?P<site>.*?)_(?P<year>\d+)-(?P<month>\d+)-(\d+).parquet$', fname)
+
+    # ADS-B pattern
+    #
     if fc is not None:
         site = fc.group('site')
 
@@ -70,19 +77,27 @@ def move_one(fn, ftype, action):
 
         # Create target
         #
-        if ftype == "adsb":
-            ourdir = f"{datadir}/{ftype}/site={site}/year={year}/month={month:02}"
-        else:
-            ourdir = f"{datadir}/{ftype}/year={year}/month={month:02}"
+        ourdir = f"{datadir}/{ftype}/site={site}/year={year}/month={month:02}"
         if not Path(ourdir).exists():
             os.makedirs(ourdir)
         final = Path(ourdir) / fname
-        print(f"Moving {fn} into {final}")
-
-        if action:
-            Path(fn).rename(final)
     else:
-        print(f'Bad file pattern {fn}')
+        # Drone pattern
+        #
+        fc = re.search(r'^drones-(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}).parquet$', fname)
+        if fc is not None:
+            year = fc.group('year')
+            month = fc.group('month')
+            ourdir = f"{datadir}/{ftype}/year={year}/month={month:02}"
+            if not Path(ourdir).exists():
+                os.makedirs(ourdir)
+            final = Path(ourdir) / fname
+        else:
+            print(f'Bad file pattern {fn}')
+
+    if action:
+        print(f"Moving {fn} into {final}")
+        Path(fn).rename(final)
 
 
 # Setup arguments
