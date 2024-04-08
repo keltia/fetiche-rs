@@ -126,7 +126,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     info!("Connecting to {} @ {}", name, endpoint);
     let dbh = Client::default()
-            .with_url(env!("CLICKHOUSE_CLIENT"))
+            .with_url(endpoint)
             .with_database(&name)
             .with_user(&user)
             .with_password(&pass);
