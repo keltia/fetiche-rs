@@ -226,12 +226,12 @@ CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
 --
 CREATE TABLE acute.sites
 (
-    id        INTEGER PRIMARY KEY,
+    id        INTEGER,
     name      VARCHAR NOT NULL,
     code      VARCHAR NOT NULL,
     latitude  FLOAT   NOT NULL,
     longitude FLOAT   NOT NULL,
-) ENGINE MergeTree 
+) ENGINE MergeTree PRIMARY KEY id
     COMMENT 'All sites with an antenna in time.';
 ```
 
@@ -240,12 +240,12 @@ CREATE TABLE acute.sites
 --
 CREATE TABLE acute.antennas
 (
-    id          INTEGER PRIMARY KEY,
+    id          INTEGER,
     type        VARCHAR,
     name        VARCHAR NOT NULL,
     owned       BOOLEAN,
     description VARCHAR,
-) ENGINE MergeTree
+) ENGINE MergeTree PRIMARY KEY id
     COMMENT 'All known antennas.';
 ```
 
@@ -254,15 +254,13 @@ CREATE TABLE acute.antennas
 --
 CREATE TABLE acute.installations
 (
-    id         INTEGER PRIMARY KEY,
+    id         INTEGER,
     site_id    INTEGER,
     antenna_id INTEGER,
     start_at   TIMESTAMP,
     end_at     TIMESTAMP,
     comment    VARCHAR,
-    FOREIGN KEY (site_id) REFERENCES sites (id),
-    FOREIGN KEY (antenna_id) REFERENCES antennas (id),
-) ENGINE MergeTree 
+) ENGINE MergeTree PRIMARY KEY id
     COMMENT 'Which antenna on each site in time.';
 ```
 
