@@ -226,12 +226,13 @@ CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
 --
 CREATE TABLE acute.sites
 (
-    id        INTEGER,
-    name      VARCHAR NOT NULL,
-    code      VARCHAR NOT NULL,
-    latitude  FLOAT   NOT NULL,
-    longitude FLOAT   NOT NULL,
-) ENGINE MergeTree PRIMARY KEY id
+    id           INTEGER,
+    name         VARCHAR NOT NULL,
+    code         VARCHAR NOT NULL,
+    latitude     FLOAT   NOT NULL,
+    longitude    FLOAT   NOT NULL,
+    ref_altitude FLOAT NOT NULL,
+) ENGINE MergeTree PRIMARY KEY id ORDER BY id
     COMMENT 'All sites with an antenna in time.';
 ```
 
@@ -245,7 +246,7 @@ CREATE TABLE acute.antennas
     name        VARCHAR NOT NULL,
     owned       BOOLEAN,
     description VARCHAR,
-) ENGINE MergeTree PRIMARY KEY id
+) ENGINE MergeTree PRIMARY KEY id ORDER BY id
     COMMENT 'All known antennas.';
 ```
 
@@ -260,7 +261,7 @@ CREATE TABLE acute.installations
     start_at   TIMESTAMP,
     end_at     TIMESTAMP,
     comment    VARCHAR,
-) ENGINE MergeTree PRIMARY KEY id
+) ENGINE MergeTree PRIMARY KEY id ORDER BY id
     COMMENT 'Which antenna on each site in time.';
 ```
 
@@ -335,7 +336,7 @@ parquet files.
 --    month                  INT,  
 --    year                   INT,   
 CREATE
-OR REPLACE TABLE airplanes (
+OR REPLACE TABLE acute.airplanes (
     EmitterCategory        INT,   
     GBS                    BOOLEAN,   
     ModeA                  VARCHAR,  
@@ -357,7 +358,7 @@ OR REPLACE TABLE airplanes (
     MagneticNorth          BOOLEAN,  
     SurfaceGroundSpeed     DOUBLE,  
     SurfaceGroundTrack     DOUBLE,  
-    site                   VARCHAR,  
+    site                   VARCHAR
 ) ENGINE = MergeTree PRIMARY KEY (site, time, prox_id)
     COMMENT 'Main table for ADS-B positions.';
 ```
@@ -365,7 +366,7 @@ OR REPLACE TABLE airplanes (
 For each site, with "{}" being replaced by the site name.
 
 ```sql
-INSERT INTO airplanes
+INSERT INTO acute.airplanes
 SELECT f.EmitterCategory,
        (f.GBS == 1) AS GBS,
        f.ModeA,
@@ -389,12 +390,11 @@ SELECT f.EmitterCategory,
        f.SurfaceGroundTrack,
        '{}'         AS site,
 FROM
-    file('data/adsb/site={}/**/*.parquet') AS f;
+    INFILE 'data/adsb/site={}/**/*.parquet' AS f;
 ```
 
 ```sql
-CREATE
-OR REPLACE drones (
+CREATE TABLE acute.drones (
     journey            INT, 
     ident              VARCHAR,
     model              VARCHAR,
@@ -404,7 +404,7 @@ OR REPLACE drones (
     latitude           DOUBLE, 
     longitude          DOUBLE, 
     altitude           INTEGER,
-    elevation          INT,
+    elevation          INTEGER,
     gps                INTEGER,
     rssi               INTEGER,
     home_lat           DOUBLE,
@@ -416,11 +416,23 @@ OR REPLACE drones (
     station_latitude   DOUBLE, 
     station_longitude  DOUBLE,
     time               INT,
-    year               INT,
-    month              INT
     home_distance_2d   DOUBLE,
     home_distance_3d   DOUBLE, 
 )
     ENGINE = MergeTree PRIMARY KEY (journey, timestamp)
     COMMENT 'Drone positions for all sites.'
+```
+
+Initial data is loaded with:
+```shell
+clickhouse client -d acute -q "insert into acute.drones from infile 'data/drones/**/*.parquet' format parquet"
+```
+
+Updating the distances:
+```sql
+ALTER TABLE acute.drones
+UPDATE
+    home_distance_2d = dist_2d(longitude,latitude,home_lon,home_lat), 
+    home_distance_3d = dist_3d(longitude,latitude,elevation,home_lon,home_lat,home_height)
+WHERE home_distance_2d = 0
 ```
