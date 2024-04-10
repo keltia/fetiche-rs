@@ -1,4 +1,4 @@
-ID,SITE_ID,ANTENNA_ID,START_AT,END_AT,COMMENT
+id,site_id,antenna_id,start_at,end_at,comment
 1,1,1,"2021-07-20","2023-04-23","Start of ACUTE project"
 2,2,2,"2022-06-14","2023-02-28","Loan then buy of the CDG antenna."
 3,3,2,"2023-03-01","","1st installation on ECTL LUX premises."
@@ -8,3 +8,4 @@ ID,SITE_ID,ANTENNA_ID,START_AT,END_AT,COMMENT
 7,7,1,"2023-10-17","","Belfast to London."
 8,8,3,"2024-02-20","","BRU antenna to Cyprus."
 9,2,8,"2024-02-14","","New antenna in CDG by ASD"
+10,10,3,"2024-04-08","","HQ to Vienna airport."
