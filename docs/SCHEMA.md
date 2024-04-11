@@ -347,7 +347,7 @@ OR REPLACE TABLE acute.airplanes (
     prox_alt               DOUBLE,   
     flight_level           DOUBLE,   
     baro_vert_rate         DOUBLE,
-    geo_vert_exceeded      BOOLEAN,
+    geo_vert_exceeded      BOOLEAN DEFAULT FALSE,
     geo_vert_rate          DOUBLE,
     ground_speed           DOUBLE,   
     TrackAngle             DOUBLE,   
