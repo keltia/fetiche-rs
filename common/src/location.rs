@@ -28,6 +28,8 @@ pub struct Location {
     pub lat: f64,
     /// Longitude
     pub lon: f64,
+    /// Reference altitude
+    pub alt: f64,
 }
 
 impl Default for Location {
@@ -37,6 +39,7 @@ impl Default for Location {
             hash: None,
             lat: 0.,
             lon: 0.,
+            alt: 0.,
         }
     }
 }
@@ -80,7 +83,7 @@ impl BB {
 }
 
 /// Current location file version
-const LOCATION_FILE_VER: usize = 3;
+const LOCATION_FILE_VER: usize = 4;
 
 /// On-disk structure for the locations file
 ///
