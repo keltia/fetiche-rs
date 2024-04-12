@@ -251,7 +251,7 @@ COPY (
 pub fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
     let dbh = ctx.db();
 
-    let day = if (&opts.date.is_some()) {
+    let day = if opts.date.is_some() {
         let tm = dateparser::parse(&opts.date.clone().unwrap()).unwrap();
         let day = Utc
             .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
