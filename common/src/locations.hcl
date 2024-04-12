@@ -2,6 +2,12 @@
 //
 version = 3
 
+location "AUS" {
+  code = "8FWR3HXR+X2",
+  lat  = 48.10
+  lon  = 16.59
+}
+
 location "BDX" {
   code = "8CPXR822+22"
   lat  = 44.8
