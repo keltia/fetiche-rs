@@ -3,7 +3,7 @@
 version = 3
 
 location "AUS" {
-  code = "8FWR3HXR+X2",
+  code = "8FWR3HXR+X2"
   lat  = 48.10
   lon  = 16.59
 }
