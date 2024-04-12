@@ -66,8 +66,7 @@ FROM
   airplanes
 WHERE
   site = ? AND
-  time >= ? AND
-  time <= ? AND
+  time BETWEEN ? AND ? AND
   palt IS NOT NULL AND
   ST_DWithin(ST_point(?, ?), ST_Point(plat, plon), ?)
 ORDER BY time
@@ -98,8 +97,8 @@ ORDER BY time
         let lat = self.loc.lat;
         let lon = self.loc.lon;
 
-        let pt1 = self.date;
-        let pt2 = self.date.checked_add_days(Days::new(1)).unwrap();
+        let day_start = self.date;
+        let day_end = self.date.checked_add_days(Days::new(1)).unwrap();
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
@@ -123,15 +122,14 @@ SELECT
     home_distance_3d
 FROM drones
 WHERE
-  CAST(to_timestamp(timestamp) AS TIMESTAMP) <= ? AND
-  CAST(to_timestamp(timestamp) AS TIMESTAMP) >= ? AND
+  CAST(to_timestamp(timestamp) AS TIMESTAMP) BETWEEN ? AND ? AND
   ST_DWithin(ST_point(?, ?), ST_Point(latitude, longitude), ?)
 ORDER BY
   (time,journey)
     "##;
 
         let mut stmt = dbh.prepare(r2)?;
-        let _ = stmt.query(params![pt2, pt1, lat, lon, dist])?;
+        let _ = stmt.query(params![day_start, day_end, lat, lon, dist])?;
 
         // Check how many
         //
@@ -180,8 +178,7 @@ FROM
   today AS t,
   candidates AS c
 WHERE
-  pt > CAST(to_timestamp(c.time - 2) AS TIMESTAMP) AND
-  pt < CAST(to_timestamp(c.time + 2) AS TIMESTAMP) AND
+  pt BETWEEN CAST(to_timestamp(c.time - 2) AS TIMESTAMP) AND CAST(to_timestamp(c.time + 2) AS TIMESTAMP) AND
   dist2d <= ? AND
   diff_alt < ?
 ORDER BY
