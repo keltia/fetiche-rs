@@ -146,7 +146,7 @@ mod tests {
         //
         let dbh = Connection::open_in_memory()?;
         let day = Utc::now();
-        let current = Location { lon: 0., lat: 0., code: "".to_string(), hash: Some("".to_string()) };
+        let current = Location { lon: 0., lat: 0., alt: 0., code: "".to_string(), hash: Some("".to_string()) };
         let name = String::from("test1");
 
         let work1 = PlaneDistanceBuilder::default()
