@@ -106,7 +106,7 @@ mod test {
 
     #[test]
     fn test_dateopts_parse() -> eyre::Result<()> {
-        let opt = DateOpts::From { begin: "2022-06-14 00:00:00 UTC".into(), end: "2023-02-29 00:00:00 UTC".into() };
+        let opt = DateOpts::From { begin: "2022-06-14 00:00:00 UTC".into(), end: "2023-02-28 00:00:00 UTC".into() };
         let r = DateOpts::parse(opt);
 
         assert!(r.is_ok());
