@@ -138,7 +138,7 @@ async fn ch_calc_distance(client: Client, point1: &Pt, point2: &Pt) -> f64 {
         .bind(point2.latitude)
         .fetch::<f64>().unwrap();
 
-    let val: f64 = res.next().await.unwrap().unwrap_or_else(|| 0.);
+    let val: f64 = res.next().await?.unwrap_or(0.);
     val
 }
 
