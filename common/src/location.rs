@@ -61,14 +61,24 @@ impl BB {
     ///
     #[tracing::instrument]
     pub fn from_location(value: &Location, dist: u32) -> Self {
-        // How many degree do we want?
-        //
+        Self::from_lat_lon(value.lat, value.lon, dist)
+    }
+
+    /// Take a lat lot tuple and create a bounding box of `dist` nautical miles away
+    ///
+    /// So from (lat, lon) we generate the following bounding box:
+    /// (lat - dist, lon - dist, lat + dist, lon + dist)
+    ///
+    /// NOTE: `dist` is in Nautical Miles
+    ///
+    #[tracing::instrument]
+    pub fn from_lat_lon(lat: f64, lon: f64, dist: u32) -> Self {
         let dist = dist as f64 / ONE_DEG_NM;
 
         // Calculate the four corners
         //
-        let (min_lat, max_lat) = (value.lat - dist, value.lat + dist);
-        let (min_lon, max_lon) = (value.lon - dist, value.lon + dist);
+        let (min_lat, max_lat) = (lat - dist, lat + dist);
+        let (min_lon, max_lon) = (lon - dist, lon + dist);
 
         Self {
             min_lon,
@@ -76,6 +86,20 @@ impl BB {
             max_lon,
             max_lat,
         }
+    }
+
+    /// Generate an array with the four points in a BB
+    ///
+    #[tracing::instrument]
+    pub fn to_polygon(&self) -> Result<[(f64, f64); 4]> {
+        Ok(
+            [
+                (self.min_lon, self.min_lat),
+                (self.min_lon, self.max_lat),
+                (self.max_lon, self.max_lat),
+                (self.max_lon, self.min_lat),
+            ]
+        )
     }
 }
 
@@ -190,6 +214,29 @@ mod tests {
         assert_eq!(shorten(50.38330078125), shorten(bb.min_lat));
         assert_eq!(shorten(4.816699981689453), shorten(bb.max_lon));
         assert_eq!(shorten(51.216697692871094), shorten(bb.max_lat));
+        Ok(())
+    }
+
+    #[test_pretty_log::test]
+    fn test_to_polygon() -> Result<()> {
+        let loc = Location {
+            code: "9F26RC22+22".to_string(),
+            hash: Some("u150upggr".to_string()),
+            lat: 50.8,
+            lon: 4.4,
+        };
+
+        let abb = BB::from_location(&loc, 25).to_polygon();
+        assert!(abb.is_ok());
+        let abb = abb.unwrap();
+        let x0 = abb[0].0;
+        let x1 = abb[2].0;
+        let y0 = abb[0].1;
+        let y1 = abb[2].1;
+        assert_eq!(shorten(3.983299970626831), shorten(x0));
+        assert_eq!(shorten(50.38330078125), shorten(y0));
+        assert_eq!(shorten(4.816699981689453), shorten(x1));
+        assert_eq!(shorten(51.216697692871094), shorten(y1));
         Ok(())
     }
 }
