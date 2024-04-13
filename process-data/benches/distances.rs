@@ -130,15 +130,15 @@ fn duckdb_spheroid(c: &mut Criterion) {
     });
 }
 
-async fn ch_calc_distance(client: Client, point1: &Pt, point2: &Pt) -> f32 {
+async fn ch_calc_distance(client: Client, point1: &Pt, point2: &Pt) -> f64 {
     let mut res = client.query("SELECT geoDistance(?,?,?,?) AS dist")
         .bind(point1.longitude)
         .bind(point1.latitude)
         .bind(point2.longitude)
         .bind(point2.latitude)
-        .fetch::<f32>().unwrap();
+        .fetch::<f64>().unwrap();
 
-    let val: f32 = res.next().await.unwrap().unwrap_or_else(|| 0.);
+    let val: f64 = res.next().await.unwrap().unwrap_or_else(|| 0.);
     val
 }
 
