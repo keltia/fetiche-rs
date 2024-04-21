@@ -94,11 +94,11 @@ impl<'a, T> Batch<'a, T>
     pub fn execute(&mut self) -> eyre::Result<Vec<Stats>>
         where T: Debug + Calculate,
     {
-        let dbh = self.dbh;
+        let dbh = self.dbh.clone();
 
         let all: Vec<_> = self.inner.iter()
             .filter_map(|e| {
-                let r = e.run(dbh);
+                let r = e.run(&dbh);
                 match r {
                     Ok(r) => Some(r),
                     Err(e) => {
@@ -144,6 +144,10 @@ mod tests {
         }
     }
 
+    fn setup() -> Client {
+        return Client::default()
+    }
+
     impl Calculate for Task {
         fn run(&self, dbh: &Client) -> eyre::Result<Stats> {
             let mut r = thread_rng();
@@ -160,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_batch_new() -> eyre::Result<()> {
-        let dbh = Client::open_in_memory()?;
+        let dbh = setup();
 
         let b = Batch::<Task>::new(&dbh);
         assert!(b.inner.is_empty());
@@ -169,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_batch_add() -> eyre::Result<()> {
-        let dbh = Client::open_in_memory()?;
+        let dbh = setup();
 
         let mut b = Batch::new(&dbh);
         let t1 = Task::new();
@@ -183,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_batch_from_vec() -> eyre::Result<()> {
-        let dbh = Client::open_in_memory()?;
+        let dbh = setup();
 
         let t1 = Task::new();
         let t2 = Task::new();
@@ -196,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_batch_execute() -> eyre::Result<()> {
-        let dbh = Client::open_in_memory()?;
+        let dbh = setup();
 
         let t1 = Task::new();
         let t2 = Task::new();
