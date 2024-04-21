@@ -9,6 +9,7 @@ use clickhouse::Client;
 use eyre::Result;
 use tokio::time::Instant;
 use tracing::{debug, info, trace};
+use fetiche_common::BB;
 
 use crate::cmds::{ONE_DEG, PlaneDistance, PlanesStats, Stats};
 use crate::cmds::batch::Calculate;
@@ -53,7 +54,8 @@ impl PlaneDistance {
         //
         //
         let r1 = r##"
-CREATE OR REPLACE TABLE today AS
+CREATE
+OR REPLACE TABLE today Engine = 'Memory' AS
 SELECT
   site,
   TimeRecPosition AS time,
@@ -94,7 +96,7 @@ ORDER BY time
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn select_drones(&self, dbh: &Client) -> Result<usize> {
+    async fn select_drones(&self, dbh: &Client) -> Result<usize> {
         // All drone points for the same day
         //
         // $1 = date+1
@@ -105,15 +107,21 @@ ORDER BY time
         let lat = self.loc.lat;
         let lon = self.loc.lon;
 
-        let pt1 = self.date;
-        let pt2 = self.date.checked_add_days(Days::new(1)).unwrap();
+        // Generate the polygon we are checking whether the point is in or not
+        //
+        let poly = BB::from_lat_lon(lat, lon, self.distance.into()).to_polygon()?;
+
+        let start_day = self.date;
+        let end_day = self.date.checked_add_days(Days::new(1)).unwrap();
+
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
         let r2 = r##"
-CREATE OR REPLACE TABLE candidates AS
+CREATE
+OR REPLACE TABLE candidates Engine = 'Memory' AS
 SELECT
     time,
     journey,
@@ -130,28 +138,34 @@ SELECT
     home_distance_3d
 FROM drones
 WHERE
-  CAST(to_timestamp(timestamp) AS TIMESTAMP) <= ? AND
-  CAST(to_timestamp(timestamp) AS TIMESTAMP) >= ? AND
-  ST_DWithin(ST_point(?, ?), ST_Point(latitude, longitude), ?)
+  CAST(to_timestamp(timestamp) AS TIMESTAMP) BETWEEN ? AND ?
+  AND
+  pointInPolygon((longitude,latitude), ?) = 1
 ORDER BY
   (time,journey)
     "##;
 
-        let mut stmt = dbh.prepare(r2)?;
-        let _ = stmt.query(params![pt2, pt1, lat, lon, dist])?;
+        let _ = dbh
+            .query(r2)
+            .bind(start_day)
+            .bind(end_day)
+            .bind(poly)
+            .execute()
+            .await?;
 
         // Check how many
         //
-        let count = dbh.query_row("SELECT COUNT(*) FROM candidates", [], |row| {
-            let r: usize = row.get_unwrap(0);
-            Ok(r)
-        })?;
+        let mut res = dbh
+            .query("SELECT COUNT() FROM candidates")
+            .fetch::<usize>()?;
+
+        let count: usize = res.next().await?.unwrap_or(0);
         trace!("Total number of drones: {}", count);
         Ok(count)
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn find_close(&self, dbh: &Client) -> Result<usize> {
+    async fn find_close(&self, dbh: &Client) -> Result<usize> {
         trace!("Find close encounters.");
 
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
@@ -161,7 +175,7 @@ ORDER BY
         // $3 = timestamp of drone point
         //
         let r = r##"
-CREATE OR REPLACE TABLE today_close AS
+CREATE OR REPLACE TABLE today_close Engine = 'Memory' AS
 SELECT
   c.journey,
   c.ident AS drone_id,
@@ -187,8 +201,7 @@ FROM
   today AS t,
   candidates AS c
 WHERE
-  pt > CAST(to_timestamp(c.time - 2) AS TIMESTAMP) AND
-  pt < CAST(to_timestamp(c.time + 2) AS TIMESTAMP) AND
+  pt BETWEEN CAST(to_timestamp(c.time - 2) AS TIMESTAMP) AND CAST(to_timestamp(c.time + 2) AS TIMESTAMP) AND
   dist2d <= ? AND
   diff_alt < ?
 ORDER BY
@@ -196,21 +209,26 @@ ORDER BY
     "##;
 
         let proximity = self.separation;
-        let mut stmt = dbh.prepare(r)?;
-        let _ = stmt.query(params![proximity, proximity])?;
+        let _ = dbh
+            .query(r)
+            .bind(proximity)
+            .bind(proximity)
+            .execute()
+            .await?;
 
         // Check how many
         //
-        let count = dbh.query_row("SELECT COUNT(*) FROM today_close", [], |row| {
-            let r: usize = row.get_unwrap(0);
-            Ok(r)
-        })?;
+        let mut res = dbh
+            .query("SELECT COUNT() FROM today_close")
+            .fetch::<usize>()?;
+
+        let count: usize = res.next().await?.unwrap_or(0);
         trace!("Total number of potential encounters: {}", count);
         Ok(count)
     }
 
     #[tracing::instrument(skip(dbh))]
-    fn select_encounters(&self, dbh: &Client) -> Result<usize> {
+    async fn select_encounters(&self, dbh: &Client) -> Result<usize> {
         trace!("select and record close points. ");
 
         // We use a GROUP BY() clause to get the point where the distance between this drone and any surrounding planes
@@ -230,10 +248,9 @@ ORDER BY
         // - insert ids
         // - join today_close and ids to get all points with the right en_id
         //
-
-        let ins = format!(r##"
-CREATE OR REPLACE SEQUENCE seq_ids;
-CREATE OR REPLACE TABLE ids (
+        [
+r##"CREATE OR REPLACE SEQUENCE seq_ids"##,
+r##"CREATE OR REPLACE TABLE ids (
     id INT DEFAULT nextval('seq_ids'),
     site STRING,
     date STRING,
@@ -241,8 +258,8 @@ CREATE OR REPLACE TABLE ids (
     callsign STRING,
     journey INT,
     en_id STRING,
-);
-INSERT INTO ids BY NAME (
+)"##,
+format!(r##"INSERT INTO ids BY NAME (
     SELECT
       any_value(site) AS site,
       '{day_name}' AS date,
@@ -253,9 +270,9 @@ INSERT INTO ids BY NAME (
     WHERE
       dist_drone_plane < 1852
     GROUP BY ALL
-);
-UPDATE ids SET en_id = printf('%s-%s-%d-%d', site, date, journey, id);
-INSERT INTO airplane_prox
+)"##),
+r##"UPDATE ids SET en_id = printf('%s-%s-%d-%d', site, date, journey, id)"##,
+r##"INSERT INTO airplane_prox
 BY NAME (
     SELECT
       ids.en_id,
@@ -285,12 +302,10 @@ BY NAME (
     AND
       ids.callsign = tc.callsign
     GROUP BY ALL
-);
-DROP TABLE ids;
-DROP SEQUENCE seq_ids;
-        "##);
-
-        let _ = dbh.execute_batch(&ins)?;
+)"##,
+r##"DROP TABLE ids"##,
+r##"DROP SEQUENCE seq_ids"##,
+].iter().for_each( |&q| async { dbh.query(q).execute().await });
 
         // Now check how many
         //
@@ -315,6 +330,7 @@ impl Calculate for PlaneDistance {
     ///
     #[tracing::instrument(skip(dbh))]
     fn run(&self, dbh: &Client) -> Result<Stats> {
+
         info!("Running calculations for {}:", self.date);
         let bar = ml_progress::progress!(
             4;
