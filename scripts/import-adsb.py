@@ -58,10 +58,16 @@ def walk_dir(path, action):
     """
     for root, dirs, files in os.walk(path):
         print(f"into {root}")
-        for file in files:
-            process_one(file, action)
+
+        # Breadth-first traversal
+        #
         for dir in dirs:
             walk_dir(os.path.join(root, dir), action)
+
+        # Now do stuff
+        #
+        for file in files:
+            process_one(file, action)
 
 
 parser = argparse.ArgumentParser(
