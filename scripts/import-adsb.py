@@ -30,6 +30,13 @@ convert_cmd = 'bdt'
 
 
 def process_one(fname, action):
+    """
+    If given a parquet file, convert it into csv and import it.
+
+    :param fname: filename.
+    :param action: do we do something or just print?
+    :return: converted filename.
+    """
     ext = Path(fname).suffix
     new = Path(fname).with_suffix('.csv')
     if ext == '.parquet':
@@ -42,6 +49,13 @@ def process_one(fname, action):
 
 
 def walk_dir(path, action):
+    """
+    Explore a given directory tree.
+
+    :param path: base directory.
+    :param action: propagate whether we take action or not.
+    :return: nothing
+    """
     for root, dirs, files in os.walk(path):
         print(f"into {root}")
         for file in files:
