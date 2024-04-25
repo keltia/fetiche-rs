@@ -33,7 +33,7 @@ def process_one(fname, action):
     ext = Path(fname).suffix
     new = Path(fname).with_suffix('.csv')
     if ext == '.parquet':
-        cmd = f"{convert_cmd} convert {fname} {new}"
+        cmd = f"{convert_cmd} convert -s {fname} {new}"
         if action:
             os.system(cmd)
         else:
@@ -42,20 +42,12 @@ def process_one(fname, action):
 
 
 def walk_dir(path, action):
-    content = os.listdir(path)
-    for item in content:
-        print(f"fn={item}")
-        if os.path.isdir(item):
-            print(f"deeper into {item}")
-            walk_dir(item, action)
-        else:
-            fn = Path(item).name
-            if fn.endswith(".parquet"):
-                print(f"Looking at {fn}")
-                new = process_one(fn, action)
-                print(f"{new} done.")
-            else:
-                print(f"file={fn}")
+    for root, dirs, files in os.walk(path):
+        print(f"into {root}")
+        for file in files:
+            process_one(file, action)
+        for dir in dirs:
+            walk_dir(os.path.join(root, dir), action)
 
 
 parser = argparse.ArgumentParser(
