@@ -6,6 +6,8 @@ all parquets files in the tree.
 """
 
 import argparse
+import os
+from pathlib import Path
 
 sites = {
     'Bretigny': 1,
@@ -18,17 +20,72 @@ sites = {
     'Cyprus': 8,
     'Bucharest': 9,
     'Vienna': 10,
-    }
+}
 
-# CONFIG
+# CONFIG CHANGE HERE or use -D
 #
+datalake = "/Users/acute"
 ch_cmd = 'clickhouse -q "INSERT INTO airplanes_raw FORMAT Parquet'
+convert_cmd = 'bdt'
+
+
+def process_one(fname, action):
+    ext = Path(fname).suffix
+    new = Path(fname).with_suffix('.csv')
+    if ext == '.parquet':
+        cmd = f"{convert_cmd} convert {fname} {new}"
+        if action:
+            os.system(cmd)
+        else:
+            print(cmd)
+    return new
+
+
+def walk_dir(path, action):
+    content = os.listdir(path)
+    for item in content:
+        print(f"fn={item}")
+        if os.path.isdir(item):
+            print(f"deeper into {item}")
+            walk_dir(item, action)
+        else:
+            fn = Path(item).name
+            if fn.endswith(".parquet"):
+                print(f"Looking at {fn}")
+                new = process_one(fn, action)
+                print(f"{new} done.")
+            else:
+                print(f"file={fn}")
+
 
 parser = argparse.ArgumentParser(
     prog='import-adsb',
     description='Import ADS-B data into CH.')
 
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
+parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
 parser.add_argument('--site', '-S', help="Site")
+parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
+
+importdir = f"{datalake}/import"
+datadir = f"{datalake}/data"
+bindir = f"{datalake}/bin"
+
+
+if args.dry_run:
+    action = False
+else:
+    action = True
+
+files = args.files
+for file in files:
+    # We have a directory
+    #
+    if os.path.isdir(file):
+        print(f"Exploring {file}")
+        walk_dir(file, action)
+    else:
+        print(f"Just {file}")
+        process_one(file, action)
 
