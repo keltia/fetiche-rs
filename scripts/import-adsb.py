@@ -69,8 +69,7 @@ def process_one(fname, action):
     q = f"ALTER TABLE airplanes_raw UPDATE site = {site} WHERE site IS NULL"
     str = f"clickhouse -d {db} -q '{q}'"
     os.system(str)
-
-    return new
+    return fname
 
 
 def find_site(fname):
