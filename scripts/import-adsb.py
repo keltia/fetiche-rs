@@ -8,20 +8,23 @@ all parquets files in the tree.
 import argparse
 import os
 import re
+import tempfile
 from pathlib import Path
 from typing import Any
 
+# Does the mapping between the site basename and its ID.  Not worth using SQL for that.
+#
 sites = {
-    'Bretigny': 'BRE',
-    'Luxembourg': 'LUX',
-    'Brussels': 'BRU',
-    'Belfast': 'BEL',
-    'Bordeaux': 'BDX',
-    'Gatwick': 'LON',
-    'London': 'LON',
-    'Cyprus': 'CYP',
-    'Bucharest': 'BUC',
-    'Vienna': 'AUS',
+    'Bretigny': 1,
+    'Luxembourg': 3,
+    'Brussels': 4,
+    'Belfast': 5,
+    'Bordeaux': 6,
+    'Gatwick': 7,
+    'London': 7,
+    'Cyprus': 9,
+    'Bucharest': 9,
+    'Vienna': 10,
 }
 
 # CONFIG CHANGE HERE or use -D
@@ -31,15 +34,16 @@ db = 'acute'
 convert_cmd = 'bdt'
 
 
-def process_one(fname, action):
+def process_one(dir, fname, action):
     """
     If given a parquet file, convert it into csv and import it.
 
-    :param site: site name.
     :param fname: filename.
     :param action: do we do something or just print?
     :return: converted filename.
     """
+    print(f">> Looking at {os.path.join(root, fname)}")
+
     # Deduct site name
     #
     site = find_site(fname)
@@ -47,28 +51,40 @@ def process_one(fname, action):
         return ''
 
     ext = Path(fname).suffix
+
     if ext == '.parquet':
-        new = Path(fname).with_suffix('.csv')
-        cmd = f"{convert_cmd} convert -s {fname} {new}"
-        if action:
-            os.system(cmd)
+        csv = Path(fname).with_suffix('.csv')
+        if os.path.exists(os.path.join(dir, csv)):
+            print(f"Warning: both parquet & csv exist for {fname}, ignoring parquet.")
+            fname = csv
         else:
-            print(cmd)
-        fname = new
-    elif ext != '.csv':
-        return None
+            full = os.path.join(dir, fname)
+            new = tempfile.NamedTemporaryFile(suffix='.csv').name
+            cmd = f"{convert_cmd} convert -s {full} {new}"
+            if action:
+                os.system(cmd)
+            else:
+                print(cmd)
+            fname = new
 
     # Now do the import, `fname` is a csv file in any case
     #
-    ch_cmd = f"clickhouse -d {db} -q \"INSERT INTO airplanes_raw FORMAT Parquet\""
-    str = f"/bin/cat {fname} | {ch_cmd}"
-    os.system(str)
+    ch_cmd = f"clickhouse client -d {db} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
+    cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
+    if action:
+        os.system(cmd)
+    else:
+        print(f"Running {cmd}")
 
     # Now we need to fix the `site` column.
     #
-    q = f"ALTER TABLE airplanes_raw UPDATE site = {site} WHERE site IS NULL"
-    str = f"clickhouse -d {db} -q '{q}'"
-    os.system(str)
+    if action:
+        q = f"ALTER TABLE acute.airplanes_raw UPDATE site = {site} WHERE site = 0"
+        cmd = f"clickhouse client -d {db} -q '{q}'"
+        print(f"Updating for site {site}")
+        os.system(cmd)
+    else:
+        print(f"cmd={cmd}")
     return fname
 
 
@@ -79,36 +95,12 @@ def find_site(fname):
     :param fname: full pathname.
     :return: short name.
     """
-    fc = re.search(r'^(?P<site>.*?)_(?P<year>\d+)-(?P<month>\d+)-(\d+).parquet$', fname)
+    name = Path(fname).name
+    fc = re.search(r'^(?P<site>.*?)_(?P<year>\d+)-(?P<month>\d+)-(\d+).', name)
     if fc is None:
         return fc
     site: str | Any = fc.group('site')
     return sites[site]
-
-
-def walk_dir(path, action):
-    """
-    Explore a given directory tree.
-
-    :param site: site name we pass down for `process_one`
-    :param path: base directory.
-    :param action: propagate whether we take action or not.
-    :return: nothing
-    """
-    for root, dirs, files in os.walk(path):
-        print(f"into {root}")
-
-        # Breadth-first traversal
-        #
-        for dir in dirs:
-            walk_dir(os.path.join(root, dir), action)
-
-        # Now do stuff
-        #
-        for file in files:
-            r = process_one(file, action)
-            if r is None:
-                print(f"{file} skipped.")
 
 
 parser = argparse.ArgumentParser(
@@ -135,10 +127,22 @@ for file in files:
     #
     if os.path.isdir(file):
         print(f"Exploring {file}")
-        walk_dir(file, action)
+        for root, dirs, files in os.walk(file, topdown=True):
+            print(f"into {root}")
+
+            # Now do stuff, look at parquet/csv only
+            #
+            for f in files:
+                if Path(f).suffix != '.parquet' and Path(f).suffix != '.csv':
+                    continue
+
+                r = process_one(root, f, action)
+                if r is None:
+                    print(f"{f} skipped.")
     else:
         print(f"Just {file}")
-        r = process_one(file, action)
+        root = Path(file).root
+        r = process_one(root, file, action)
         if r is None:
             print(f"{file} skipped.")
 
