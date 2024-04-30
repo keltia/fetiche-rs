@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 #
 """
+This is for importing ADS-B data into Clickhouse.
+
 This utility takes a filename or a directory.  If the former, import the given file and if the latter
 all parquets files in the tree.
 """
