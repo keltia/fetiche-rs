@@ -24,7 +24,6 @@ mod io;
 
 /// This holds our context, meaning common stuff
 ///
-#[derive(Debug)]
 pub struct Context {
     /// All configuration parameters
     pub config: Arc<HashMap<String, String>>,
