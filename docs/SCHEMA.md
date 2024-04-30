@@ -47,6 +47,7 @@ CREATE TABLE acute.sites
     id           INTEGER,
     name         VARCHAR NOT NULL,
     code         VARCHAR NOT NULL,
+    basename     VARCHAR NOT NULL,
     latitude     FLOAT   NOT NULL,
     longitude    FLOAT   NOT NULL,
     ref_altitude FLOAT NOT NULL,
@@ -106,7 +107,7 @@ OR REPLACE TABLE acute.airplane_prox (
   distance_vert_m  INT,
   distance_home_m  INT,
 )
-    ENGINE = MergeTree PRIMARY KEY (time, journey)
+    ENGINE = MergeTree PRIMARY KEY (time, journey) ORDER BY time
     COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
 ```
 
@@ -119,8 +120,8 @@ OR REPLACE TABLE daily_stats (
     potential  INT,
     encounters INT,
     distance   FLOAT,
-    proximity  FLOAT,
-) ENGINE = MergeTree PRIMARY KEY (date)
+    proximity  FLOAT
+) ENGINE = MergeTree PRIMARY KEY (date) ORDER BY date
     COMMENT 'Statistics for a day run.'
 ```
 
@@ -162,41 +163,33 @@ Then we create the view with our more usable names.
 ```sql
 CREATE
 OR REPLACE VIEW acute.airplanes 
-AS SELECT 
-    EmitterCategory,   
-    (GBS == 1) AS GBS,
-    ModeA,
-    TimeRecPosition AS time,
-    AircraftAddress AS prox_id,
-    Latitude AS prox_lat,
-    Longitude AS prox_lon,
-    GeometricAltitude AS prox_alt,
-    FlightLevel AS flight_level,
-    BarometricVerticalRate AS baro_vert_rate,
-    (GeoVertRateExceeded == '1') AS geo_vert_exceeded,
-    GeometricVerticalRate AS geo_vert_rate,
-    GroundSpeed AS ground_speed,
-    TrackAngle,
-    Callsign AS prox_callsign,
-    (AircraftStopped == '1') AS stopped,
-    (GroundTrackValid == '1') AS GroundTrackValid,
-    (GroundHeadingProvided == '1') AS GroundHeadingProvided,
-    (MagneticNorth == '1') AS MagneticNorth,
-    SurfaceGroundSpeed,
-    SurfaceGroundTrack,
-    site
-FROM
-    acute.airplanes_raw AS f
-```
-
-For each site, with "{}" being replaced by the site name.
-
-```sql
-INSERT INTO acute.airplanes_raw
-AS SELECT *,
-          '{}'         AS site,
-FROM
-    INFILE 'data/adsb/site={}/**/*.parquet' AS f;
+AS
+(
+    SELECT EmitterCategory,
+       (GBS == 1)                     AS GBS,
+       ModeA,
+       TimeRecPosition                AS time,
+       AircraftAddress                AS prox_id,
+       Latitude                       AS prox_lat,
+       Longitude                      AS prox_lon,
+       GeometricAltitude              AS prox_alt,
+       FlightLevel                    AS flight_level,
+       BarometricVerticalRate         AS baro_vert_rate,
+       (GeoVertRateExceeded == '1')   AS geo_vert_exceeded,
+       GeometricVerticalRate          AS geo_vert_rate,
+       GroundSpeed                    AS ground_speed,
+       TrackAngle,
+       Callsign                       AS prox_callsign,
+       (AircraftStopped == '1')       AS stopped,
+       (GroundTrackValid == '1')      AS GroundTrackValid,
+       (GroundHeadingProvided == '1') AS GroundHeadingProvided,
+       (MagneticNorth == '1')         AS MagneticNorth,
+       SurfaceGroundSpeed,
+       SurfaceGroundTrack,
+       site
+    FROM acute.airplanes_raw AS f
+)
+    COMMENT 'View for airplanes data.'
 ```
 
 ```sql
@@ -207,6 +200,7 @@ CREATE OR REPLACE TABLE acute.drones_raw (
     source             VARCHAR,
     location           INT,
     timestamp          TIMESTAMP,
+    time               INT,
     latitude           DOUBLE, 
     longitude          DOUBLE, 
     altitude           INTEGER,
@@ -220,10 +214,7 @@ CREATE OR REPLACE TABLE acute.drones_raw (
     heading            INT,
     station_name       VARCHAR,
     station_latitude   DOUBLE, 
-    station_longitude  DOUBLE,
-    time               INT,
-    home_distance_2d   DOUBLE,
-    home_distance_3d   DOUBLE, 
+    station_longitude  DOUBLE
 )
     ENGINE = MergeTree PRIMARY KEY (journey, timestamp)
     COMMENT 'Raw positions for drones on all sites.'
@@ -237,10 +228,12 @@ clickhouse client -d acute -q "insert into acute.drones from infile 'data/drones
 Updating the distances:
 ```sql
 CREATE OR REPLACE VIEW acute.drones AS
-SELECT
-    *,
-    dist_2d(longitude,latitude,home_lon,home_lat) AS home_distance_2d, 
-    dist_3d(longitude,latitude,elevation,home_lon,home_lat,home_height) AS home_distance_3d
-FROM acute..drones_raw
-COMMENT 'Voew for drones data.'
+(
+    SELECT
+        *,
+        dist_2d(longitude,latitude,home_lon,home_lat) AS home_distance_2d, 
+        dist_3d(longitude,latitude,elevation,home_lon,home_lat,home_height) AS home_distance_3d
+    FROM acute.drones_raw
+)
+    COMMENT 'View for drones data.'
 ```
