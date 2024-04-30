@@ -38,6 +38,7 @@ def process_one(dir, fname, action):
     """
     If given a parquet file, convert it into csv and import it.
 
+    :param dir directory part of the file path.
     :param fname: filename.
     :param action: do we do something or just print?
     :return: converted filename.
