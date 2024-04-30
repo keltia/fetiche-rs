@@ -44,6 +44,12 @@ def process_one(dir, fname, action):
             cmd = f"{convert_cmd} convert -s {full} {new}"
             if action:
                 os.system(cmd)
+
+                # DckDB generated some funky files with only schema so conversion does not work, skip these.
+                #
+                if not os.path.exists(new):
+                    print(f"{new} missing.")
+                    return None
             else:
                 print(cmd)
             fname = new
