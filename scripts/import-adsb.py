@@ -22,7 +22,7 @@ sites = {
     'Bordeaux': 6,
     'Gatwick': 7,
     'London': 7,
-    'Cyprus': 9,
+    'Cyprus': 8,
     'Bucharest': 9,
     'Vienna': 10,
 }
