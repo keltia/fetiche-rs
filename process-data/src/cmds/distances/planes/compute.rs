@@ -54,43 +54,50 @@ impl PlaneDistance {
         //
         //
         let r1 = r##"
-CREATE
-OR REPLACE TABLE today Engine = 'Memory' AS
-SELECT
+CREATE TABLE today
+ORDER BY time
+AS SELECT
   site,
-  TimeRecPosition AS time,
-  AircraftAddress AS addr,
-  regexp_extract(Callsign, '([0-9A-Z]+)') AS callsign,
-  Longitude AS plon,
-  Latitude AS plat,
-  CAST(GeometricAltitude AS DOUBLE) * 0.305 AS palt
+  time,
+  prox_id AS addr,
+  replaceRegexpOne(prox_callsign, '\'([0-9A-Z]+)\\s*\'', '\\1') AS callsign,
+  prox_lon AS plon,
+  prox_lat AS plat,
+  CAST(prox_alt AS DOUBLE) * 0.305 AS palt
 FROM
   airplanes
 WHERE
   site = ? AND
-  time >= ? AND
-  time <= ? AND
+  time BETWEEN ? AND ? AND
   palt IS NOT NULL AND
-  ST_DWithin(ST_point(?, ?), ST_Point(plat, plon), ?)
+  pointInEllipses(plon, plat, ?, ?, ?, ?)
 ORDER BY time
 "##;
+
+        // Given lat/lon and dist, we define the "ellipse" aka circle
+        // cf. https://clickhouse.com/docs/en/sql-reference/functions/geo/coordinates#pointinellipses
+        //
+        let x0 = lon;
+        let y0 = lat;
+        let a0 = y0 + dist;
+        let b0 = x0 + dist;
+        debug!("ellipse=(center={},{},{},{})", x0, y0, a0, b0);
+
         let _ = dbh.query(r1)
             .bind(site)
             .bind(time_from)
             .bind(time_to)
-            .bind(lat)
-            .bind(lon)
-            .bind(dist)
+            .bind(x0)
+            .bind(y0)
+            .bind(a0)
+            .bind(b0)
             .execute()
             .await?;
 
         // Check how many
         //
-        let count = dbh.query_row(
-            "SELECT COUNT(*) FROM today",
-            [],
-            |row| Ok(row.get_unwrap(0)),
-        )?;
+        let count = dbh.query("SELECT count() FROM today").fetch_one::<usize>().await?;
+
         trace!("Total number of planes: {}\n", count);
         Ok(count)
     }
