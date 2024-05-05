@@ -234,6 +234,56 @@ ORDER BY
         Ok(count)
     }
 
+    #[inline]
+    #[tracing::instrument(skip(dbh))]
+    async fn create_seq_ids(dbh: &Client) -> Result<()> {
+        Ok(dbh.query(r##"CREATE OR REPLACE SEQUENCE seq_ids"##).execute().await?)
+    }
+
+    #[inline]
+    #[tracing::instrument(skip(dbh))]
+    async fn create_table_ids(dbh: &Client) -> Result<()> {
+        Ok(dbh.query(r##"CREATE OR REPLACE TABLE ids (
+    id INT DEFAULT nextval('seq_ids'),
+    site STRING,
+    date STRING,
+    drone_id STRING,
+    callsign STRING,
+    journey INT,
+    en_id STRING,
+)"##).execute().await?)
+    }
+
+    #[inline]
+    #[tracing::instrument(skip(dbh))]
+    async fn insert_ids(dbh: &Client, day_name: &str) -> Result<()> {
+        Ok(dbh.query(r##"INSERT INTO ids BY NAME (
+    SELECT
+      any_value(site) AS site,
+      ? AS date,
+      journey,
+      drone_id,
+      callsign,
+    FROM today_close
+    WHERE
+      dist_drone_plane < 1852
+    GROUP BY ALL
+)"##).bind(day_name).execute().await?)
+    }
+
+    #[inline]
+    #[tracing::instrument(skip(dbh))]
+    async fn update_seq_en_id(dbh: &Client) -> Result<()> {
+        Ok(dbh.query(r##"UPDATE ids SET en_id = printf('%s-%s-%d-%d', site, date, journey, id)"##).execute().await?)
+    }
+
+    #[inline]
+    #[tracing::instrument(skip(dbh))]
+    async fn cleanup_seq(dbh: &Client) -> Result<()> {
+        let _ = dbh.query(r##"DROP TABLE ids"##).execute().await?;
+        Ok(dbh.query(r##"DROP SEQUENCE seq_ids"##).execute().await?)
+    }
+
     #[tracing::instrument(skip(dbh))]
     async fn select_encounters(&self, dbh: &Client) -> Result<usize> {
         trace!("select and record close points. ");
@@ -255,31 +305,12 @@ ORDER BY
         // - insert ids
         // - join today_close and ids to get all points with the right en_id
         //
-        [
-r##"CREATE OR REPLACE SEQUENCE seq_ids"##,
-r##"CREATE OR REPLACE TABLE ids (
-    id INT DEFAULT nextval('seq_ids'),
-    site STRING,
-    date STRING,
-    drone_id STRING,
-    callsign STRING,
-    journey INT,
-    en_id STRING,
-)"##,
-format!(r##"INSERT INTO ids BY NAME (
-    SELECT
-      any_value(site) AS site,
-      '{day_name}' AS date,
-      journey,
-      drone_id,
-      callsign,
-    FROM today_close
-    WHERE
-      dist_drone_plane < 1852
-    GROUP BY ALL
-)"##),
-r##"UPDATE ids SET en_id = printf('%s-%s-%d-%d', site, date, journey, id)"##,
-r##"INSERT INTO airplane_prox
+        Self::create_seq_ids(dbh).await?;
+        Self::create_table_ids(dbh).await?;
+        Self::insert_ids(dbh, &day_name).await?;
+        Self::update_seq_en_id(dbh).await?;
+
+        let r= r##"INSERT INTO airplane_prox
 BY NAME (
     SELECT
       ids.en_id,
@@ -303,23 +334,24 @@ BY NAME (
       CEIL(dist_drone_plane) AS distance_slant_m,
     FROM today_close AS tc, ids
     WHERE
-      dist_drone_plane < 1852
+      di st_drone_plane < 1852
     AND
       ids.journey = tc.journey
     AND
       ids.callsign = tc.callsign
     GROUP BY ALL
-)"##,
-r##"DROP TABLE ids"##,
-r##"DROP SEQUENCE seq_ids"##,
-].iter().for_each( |&q| async { dbh.query(q).execute().await });
+)"##;
+        dbh.query(r).execute().await?;
+
+        Self::cleanup_seq(dbh).await?;
 
         // Now check how many
         //
-        let count = dbh.query_row(&format!("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE '%{}%'", day_name), [], |row| {
-            let r: usize = row.get_unwrap(0);
-            Ok(r)
-        })?;
+        let pattern = format!("%{day_name}%");
+        let count = dbh.query("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE ?")
+            .bind(pattern)
+            .fetch_one::<usize>().await?;
+
         if count == 0 {
             info!("No new encounters.");
             return Ok(count);
