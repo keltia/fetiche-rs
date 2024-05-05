@@ -17,7 +17,6 @@ pub trait Calculate: Debug {
 /// This is a batch, that is, a series on tasks that can be `Calculate`d using the corresponding
 /// trait.  It also stores the handle to the database.
 ///
-#[derive(Debug)]
 pub struct Batch<'a, T>
     where T: Debug + Calculate,
 {
