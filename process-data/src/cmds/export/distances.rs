@@ -69,14 +69,13 @@ async fn export_all_encounters_csv(
         fname
     );
 
-    let mut row = dbh.query(&r)
+    let count = dbh.query(&r)
         .bind(name)
         .bind(day)
         .bind(day)
-        .fetch()
+        .fetch::<usize>()
         .await?;
 
-    let count = row.
     Ok(count)
 }
 
