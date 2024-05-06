@@ -362,6 +362,8 @@ BY NAME (
     }
 }
 
+/// Interactive mode, pause to show results before running next phase. In millisec.
+///
 const DELAY: u64 = 200;
 
 impl Calculate for PlaneDistance {
