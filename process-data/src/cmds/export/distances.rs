@@ -64,7 +64,7 @@ async fn export_all_encounters_csv(
     CAST(time AS DATE) >= CAST(? AS DATE) AND
     CAST(time AS DATE) < date_add(CAST(? AS DATE), INTERVAL 1 DAY)
     ORDER BY time
-  INTO OUTFILE '{}' FORMAT parquet COMPRESSION zstd
+  INTO OUTFILE '{}' FORMAT CSVWithNames
         "##,
         fname
     );
@@ -83,16 +83,15 @@ async fn export_all_encounters_csv(
 /// Same as previous but export as a Parquet file.
 ///
 #[tracing::instrument(skip(dbh))]
-fn export_all_encounters_parquet(
+async fn export_all_encounters_parquet(
     dbh: &Client,
     name: &str,
     day: DateTime<Utc>,
     fname: &str,
-) -> eyre::Result<usize> {
+) -> eyre::Result<()> {
     eprintln!("Summary file");
     let r = format!(
         r##"
-COPY (
   SELECT
     en_id,
     site,
@@ -119,15 +118,19 @@ COPY (
     CAST(time AS DATE) >= CAST(? AS DATE) AND
     CAST(time AS DATE) < date_add(CAST(? AS DATE), INTERVAL 1 DAY)
     ORDER BY time
-) TO '{}' WITH (FORMAT 'parquet', COMPRESSION 'zstd', ROW_GROUP_SIZE 1048576);
+  INTO OUTFILE '{}'
+  FORMAT parquet COMPRESSION 'zstd';
         "##,
         fname
     );
 
-    let mut stmt = dbh.prepare(&r)?;
-    let count = stmt.execute(params![name, day, day])?;
+    let _ = dbh.query(&r)
+        .bind(name)
+        .bind(day)
+        .bind(day)
+        .execute().await?;
 
-    Ok(count)
+    Ok(())
 }
 
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius

@@ -9,7 +9,7 @@ use crate::cmds::Stats;
 /// This trait define an object that can be calculated
 ///
 pub trait Calculate: Debug {
-    fn run(&self, dbh: &Client) -> eyre::Result<Stats>;
+    async fn run(&self, dbh: &Client) -> eyre::Result<Stats>;
 }
 
 // -----

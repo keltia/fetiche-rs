@@ -4,10 +4,10 @@
 //!
 use std::ops::Add;
 
-use chrono::{Datelike, Days, Duration, TimeZone, Utc};
+use chrono::{Datelike, Days, TimeZone, Utc};
 use clickhouse::Client;
 use eyre::Result;
-use tokio::time::Instant;
+use tokio::time::{Duration, Instant, sleep};
 use tracing::{debug, info, trace};
 use fetiche_common::BB;
 
@@ -37,7 +37,7 @@ impl PlaneDistance {
         debug!("{} nm as deg: {}", self.distance, dist);
 
         let time_from = Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
-        let time_to = time_from.add(Duration::try_days(1).unwrap());
+        let time_to = time_from.add(chrono::Duration::try_days(1).unwrap());
 
         println!("From {} to {}.", time_from, time_to);
 
@@ -370,7 +370,7 @@ impl Calculate for PlaneDistance {
     /// Run the process for the given day.
     ///
     #[tracing::instrument(skip(dbh))]
-    fn run(&self, dbh: &Client) -> Result<Stats> {
+    async fn run(&self, dbh: &Client) -> Result<Stats> {
 
         info!("Running calculations for {}:", self.date);
         let bar = ml_progress::progress!(
@@ -386,7 +386,7 @@ impl Calculate for PlaneDistance {
         // Create table `today` with all identified plane points with the specified range
         //
         bar.message("Select planes.");
-        let c_planes = self.select_planes(dbh)?;
+        let c_planes = self.select_planes(dbh).await?;
         bar.inc(1);
 
         if c_planes == 0 {
@@ -397,12 +397,12 @@ impl Calculate for PlaneDistance {
         }
         stats.planes = c_planes;
         bar.message(format!("{} planes.", c_planes));
-        std::thread::sleep(std::time::Duration::from_millis(DELAY));
+        sleep(Duration::from_millis(DELAY)).await;
 
         // Create table `candidates` with all designated drone points
         //
         bar.message("Select drones.");
-        let c_drones = self.select_drones(dbh)?;
+        let c_drones = self.select_drones(dbh).await?;
         bar.inc(1);
 
         if c_drones == 0 {
@@ -413,7 +413,7 @@ impl Calculate for PlaneDistance {
         }
         stats.drones = c_drones;
         bar.message(format!("{} drones.", c_drones));
-        std::thread::sleep(std::time::Duration::from_millis(DELAY));
+        sleep(Duration::from_millis(DELAY)).await;
 
         // Create table `today_close` with all designated drone points and airplanes in proximity
         //
@@ -429,7 +429,7 @@ impl Calculate for PlaneDistance {
         }
         stats.potential = c_potential;
         bar.message(format!("{} potentials.", c_potential));
-        std::thread::sleep(std::time::Duration::from_millis(DELAY));
+        sleep(Duration::from_millis(DELAY)).await;
 
         // Now we have the distance calculated.
         //
@@ -445,7 +445,7 @@ impl Calculate for PlaneDistance {
         }
         stats.encounters = c_encounters;
         bar.message(format!("{} encounters.", c_encounters));
-        std::thread::sleep(std::time::Duration::from_millis(DELAY));
+        sleep(Duration::from_millis(DELAY)).await;
         bar.finish();
 
         eprintln!("Stats for {}: {}", self.date, stats);
