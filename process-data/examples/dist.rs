@@ -53,18 +53,18 @@ impl Point {
     }
 }
 
-async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f32> {
+async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
     let url = format!("http://100.92.250.113:8123");
     let client = Client::default().with_url(url).with_option("wait_end_of_query", "1");
 
-    let mut res = client.query("SELECT geoDistance(?,?,?,?) AS dist")
+    let val = client.query("SELECT geoDistance(?,?,?,?) AS dist")
         .bind(point1.longitude)
         .bind(point1.latitude)
         .bind(point2.longitude)
         .bind(point2.latitude)
-        .fetch::<f32>()?;
+        .fetch_one::<f64>().await?;
 
-    let val: f32 = res.next().await?.unwrap_or_else(|| 0.);
+    //let val: f32 = res.next().await?.unwrap_or_else(|| 0.);
     Ok(val)
 }
 
