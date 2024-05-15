@@ -1,3 +1,5 @@
+use std::env::var;
+
 use clickhouse::Client;
 use eyre::Result;
 use tokio::fs;
@@ -5,13 +7,18 @@ use tokio::fs;
 const URL: &str = "http://127.0.0.1:8123";
 const DB: &str = "acute";
 const USER: &str = "default";
+const PASS: &str = "";
 const FNAME: &str = "/tmp/installations.csv";
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
+    let url = var("CLICKHOUSE_URL").unwrap_or(URL.into());
+    let pass = var("CLICKHOUSE_PASSWD").unwrap_or(PASS.into());
+
     let client = Client::default()
-        .with_url(URL)
+        .with_url(url)
         .with_user(USER)
+        .with_password(pass)
         .with_database(DB)
         .with_option("wait_end_of_query", "1");
 
