@@ -54,6 +54,7 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 clap_complete = "4.5"
+csv = "1.3"
 clickhouse = { version = "0.11", features = ["time", "watch", "tls"] }
 derive_builder = "0.20"
 duckdb = { version = "0.10", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"] }
@@ -63,6 +64,7 @@ kml = "0.8"
 ml-progress = "0.1"
 rand = "0"
 rust-3d = "0.34"
+time = { version = "0.3", features = ["serde", "serde-human-readable"] }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }

@@ -1,15 +1,18 @@
 use std::env::var;
+use std::fs::File;
 
 use clickhouse::{Client, Row};
+use csv::WriterBuilder;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use tokio::fs;
 
 const URL: &str = "http://127.0.0.1:8123";
 const DB: &str = "acute";
 const USER: &str = "default";
 const PASS: &str = "";
-const FNAME: &str = "/tmp/installations.csv";
+const FNAME: &str = "installations.csv";
 
 // CREATE TABLE acute.installations
 // (
@@ -31,8 +34,10 @@ pub struct Install {
     pub id: u32,
     pub site_id: u32,
     pub antenna_id: u32,
-    pub start_at: DateTime,
-    pub end_at: DateTime,
+    #[serde(with = "clickhouse::serde::time::datetime")]
+    pub start_at: OffsetDateTime,
+    #[serde(with = "clickhouse::serde::time::datetime")]
+    pub end_at: OffsetDateTime,
     pub comment: String,
 }
 
@@ -48,18 +53,20 @@ async fn main() -> Result<()> {
         .with_database(DB)
         .with_option("wait_end_of_query", "1");
 
-    let mut all = client
-        .query("SELECT ?fields FROM acute.installations")
-        .fetch::<Install>()?;
+    let all = client
+        .query("SELECT * FROM acute.installations")
+        .fetch_all::<Install>().await?;
 
-    while let Some(row) = all.next().await? {
-        println!("row={row:?}")
-    }
+    let fh = File::create(FNAME)?;
+    let mut wtr = csv::Writer::from_writer(fh);
+
+    all.iter().for_each(|row| wtr.serialize(row).unwrap() );
+    let _ = wtr.flush()?;
 
     // Check
     //
     if fs::try_exists(FNAME).await? {
-        println!("Exported  rows to {} ", FNAME);
+        println!("Exported {} rows to {} ", all.len(), FNAME);
     }
     Ok(())
 }
