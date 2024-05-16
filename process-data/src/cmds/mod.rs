@@ -50,12 +50,12 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
             ExportSubCommand::Distances(opts) => {
                 println!("Exporting calculated distances.\n");
 
-                export_results(ctx, opts)?;
+                export_results(ctx, opts).await?;
             }
             ExportSubCommand::Drones(opts) => {
                 println!("Exporting drone data.\n");
 
-                export_drone_stats(ctx, opts)?;
+                export_drone_stats(ctx, opts).await?;
             }
             ExportSubCommand::Encounters(opts) => unimplemented!()
         },

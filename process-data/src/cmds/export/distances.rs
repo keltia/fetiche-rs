@@ -213,7 +213,7 @@ COPY (
 }
 
 #[tracing::instrument(skip(ctx))]
-pub fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
+pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
     let dbh = ctx.db();
 
     let tm = dateparser::parse(&opts.date).unwrap();
@@ -235,7 +235,7 @@ pub fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
             } else {
                 match opts.format {
                     Format::Csv => export_all_encounters_csv(&dbh, &name, day, fname)?,
-                    Format::Parquet => export_all_encounters_parquet(&dbh, &name, day, fname)?,
+                    Format::Parquet => export_all_encounters_parquet(&dbh, &name, day, fname).await?,
                     _ => 0,
                 }
             };
