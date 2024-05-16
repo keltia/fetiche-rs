@@ -2,7 +2,6 @@ use std::env::var;
 use std::fs::File;
 
 use clickhouse::{Client, Row};
-use csv::WriterBuilder;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
