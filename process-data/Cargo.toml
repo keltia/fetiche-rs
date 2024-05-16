@@ -45,6 +45,7 @@ parquet2.workspace = true
 progress.workspace = true
 serde.workspace = true
 strum.workspace = true
+serde_with.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -64,7 +65,7 @@ kml = "0.8"
 ml-progress = "0.1"
 rand = "0"
 rust-3d = "0.34"
-time = { version = "0.3", features = ["serde", "serde-human-readable"] }
+time = { version = "0.3", features = ["local-offset", "macros", "serde", "serde-human-readable"] }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
