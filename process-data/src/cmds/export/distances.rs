@@ -234,7 +234,7 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
                 export_all_encounters_summary_csv(&dbh, &name, day, fname)?
             } else {
                 match opts.format {
-                    Format::Csv => export_all_encounters_csv(&dbh, &name, day, fname)?,
+                    Format::Csv => export_all_encounters_csv(&dbh, &name, day, fname).await?,
                     Format::Parquet => export_all_encounters_parquet(&dbh, &name, day, fname).await?,
                     _ => 0,
                 }
