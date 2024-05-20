@@ -38,7 +38,7 @@ impl Context {
 
     #[tracing::instrument(skip(self))]
     pub fn finish(&self) -> Result<()> {
-        let dbh = self.dbh.clone()?;
+        let dbh = self.dbh.clone();
         let _ = dbh.close();
         Ok(())
     }
