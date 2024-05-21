@@ -201,9 +201,9 @@ SELECT
   t.plon AS plon,
   t.plat AS plat,
   t.palt AS palt,
-  st_distance_spheroid(st_point(dlat,dlon), st_point(plat,plon)) AS dist2d,
-  dist_3d(dlat, dlon, dalt, plat, plon, palt) AS dist_drone_plane,
-  CEIL(@(palt - dalt)) AS diff_alt
+  dist_2d(dlon, dlat, plon, plat) AS dist2d,
+  dist_3d(dlon, dlat, dalt, plon, plat, palt) AS dist_drone_plane,
+  ceil(@(palt - dalt)) AS diff_alt
 FROM
   today AS t,
   candidates AS c
@@ -225,11 +225,10 @@ ORDER BY
 
         // Check how many
         //
-        let mut res = dbh
+        let count = dbh
             .query("SELECT COUNT() FROM today_close")
-            .fetch::<usize>()?;
+            .fetch_one::<usize>().await?;
 
-        let count: usize = res.next().await?.unwrap_or(0);
         trace!("Total number of potential encounters: {}", count);
         Ok(count)
     }
@@ -243,7 +242,8 @@ ORDER BY
     #[inline]
     #[tracing::instrument(skip(dbh))]
     async fn create_table_ids(dbh: &Client) -> Result<()> {
-        Ok(dbh.query(r##"CREATE OR REPLACE TABLE ids (
+        Ok(dbh.query(
+            r##"CREATE OR REPLACE TABLE ids (
     id INT DEFAULT nextval('seq_ids'),
     site STRING,
     date STRING,
@@ -251,13 +251,16 @@ ORDER BY
     callsign STRING,
     journey INT,
     en_id STRING,
-)"##).execute().await?)
+)"##)
+            .execute()
+            .await?)
     }
 
     #[inline]
     #[tracing::instrument(skip(dbh))]
     async fn insert_ids(dbh: &Client, day_name: &str) -> Result<()> {
-        Ok(dbh.query(r##"INSERT INTO ids BY NAME (
+        Ok(dbh.query(
+            r##"INSERT INTO ids BY NAME (
     SELECT
       any_value(site) AS site,
       ? AS date,
@@ -268,13 +271,16 @@ ORDER BY
     WHERE
       dist_drone_plane < 1852
     GROUP BY ALL
-)"##).bind(day_name).execute().await?)
+)"##)
+            .bind(day_name)
+            .execute()
+            .await?)
     }
 
     #[inline]
     #[tracing::instrument(skip(dbh))]
     async fn update_seq_en_id(dbh: &Client) -> Result<()> {
-        Ok(dbh.query(r##"UPDATE ids SET en_id = printf('%s-%s-%d-%d', site, date, journey, id)"##).execute().await?)
+        Ok(dbh.query(r##"UPDATE ids SET en_id = printf('%s-%s-%d-%d', site, date, journey, id) WHERE en_id = ''"##).execute().await?)
     }
 
     #[inline]
