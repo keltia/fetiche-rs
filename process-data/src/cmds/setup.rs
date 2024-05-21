@@ -26,7 +26,7 @@ pub struct SetupOpts {
     pub sequences: bool,
     /// Create permanent tables
     #[clap(short = 'V', long)]
-    pub tables: bool,
+    pub views: bool,
     /// Everything.
     #[clap(short = 'a', long)]
     pub all: bool,
@@ -142,75 +142,54 @@ async fn drop_sequences(_dbh: &Client) -> Result<()> {
     Ok(())
 }
 
-/// Create the two main views
-///
-/// Assume that the current directory is the datalake so that we use relative paths
-/// for `read_parquet()`.
+/// Create the two main raw tables
 ///
 #[tracing::instrument(skip(dbh))]
-async fn create_tables(dbh: &Client) -> Result<()> {
-    info!("Creating the airplanes and drones tables.");
+async fn create_views(dbh: &Client) -> Result<()> {
+    info!("Creating the airplanes and drones views.");
 
     let r1 = r##"
 CREATE
-OR REPLACE TABLE acute.airplanes (
-    EmitterCategory        INT,
-    GBS                    BOOLEAN,
-    ModeA                  VARCHAR,
-    time                   TIMESTAMP,
-    prox_id                VARCHAR,
-    prox_lat               DOUBLE,
-    prox_lon               DOUBLE,
-    prox_alt               DOUBLE,
-    flight_level           DOUBLE,
-    baro_vert_rate         DOUBLE,
-    geo_vert_exceeded      BOOLEAN,
-    geo_vert_rate          DOUBLE,
-    ground_speed           DOUBLE,
-    TrackAngle             DOUBLE,
-    prox_callsign          VARCHAR,
-    stopped                BOOLEAN,
-    GroundTrackValid       BOOLEAN,
-    GroundHeadingProvided  BOOLEAN,
-    MagneticNorth          BOOLEAN,
-    SurfaceGroundSpeed     DOUBLE,
-    SurfaceGroundTrack     DOUBLE,
-    site                   VARCHAR,
-) ENGINE = MergeTree PRIMARY KEY (site, time, prox_id)
-    COMMENT 'Main table for ADS-B positions.';
+OR REPLACE VIEW acute.airplanes
+AS
+(
+    SELECT EmitterCategory,
+       (GBS == 1)                     AS GBS,
+       ModeA,
+       TimeRecPosition                AS time,
+       AircraftAddress                AS prox_id,
+       Latitude                       AS prox_lat,
+       Longitude                      AS prox_lon,
+       GeometricAltitude              AS prox_alt,
+       FlightLevel                    AS flight_level,
+       BarometricVerticalRate         AS baro_vert_rate,
+       (GeoVertRateExceeded == '1')   AS geo_vert_exceeded,
+       GeometricVerticalRate          AS geo_vert_rate,
+       GroundSpeed                    AS ground_speed,
+       TrackAngle,
+       Callsign                       AS prox_callsign,
+       (AircraftStopped == '1')       AS stopped,
+       (GroundTrackValid == '1')      AS GroundTrackValid,
+       (GroundHeadingProvided == '1') AS GroundHeadingProvided,
+       (MagneticNorth == '1')         AS MagneticNorth,
+       SurfaceGroundSpeed,
+       SurfaceGroundTrack,
+       site
+    FROM acute.airplanes_raw AS f
+)
+    COMMENT 'View for airplanes data.'
 "##;
 
         let r2 = r##"
-CREATE
-OR REPLACE acute.drones (
-    journey            INT,
-    ident              VARCHAR,
-    model              VARCHAR,
-    source             VARCHAR,
-    location           INT,
-    timestamp          TIMESTAMP,
-    latitude           DOUBLE,
-    longitude          DOUBLE,
-    altitude           INTEGER,
-    elevation          INT,
-    gps                INTEGER,
-    rssi               INTEGER,
-    home_lat           DOUBLE,
-    home_lon           DOUBLE,
-    home_height        INT,
-    speed              INT,
-    heading            INT,
-    station_name       VARCHAR,
-    station_latitude   DOUBLE,
-    station_longitude  DOUBLE,
-    time               INT,
-    year               INT,
-    month              INT
-    home_distance_2d   DOUBLE,
-    home_distance_3d   DOUBLE,
+CREATE OR REPLACE VIEW acute.drones AS
+(
+    SELECT
+        *,
+        dist_2d(longitude,latitude,home_lon,home_lat) AS home_distance_2d,
+        dist_3d(longitude,latitude,elevation,home_lon,home_lat,home_height) AS home_distance_3d
+    FROM acute.drones_raw
 )
-    ENGINE = MergeTree PRIMARY KEY (journey, timestamp)
-    COMMENT 'Drone positions for all sites.'
+    COMMENT 'View for drones data with distances.'
 "##;
 
     let _ = dbh.query(r1).execute().await?;
@@ -221,15 +200,15 @@ OR REPLACE acute.drones (
 /// Remove both views
 ///
 #[tracing::instrument(skip(dbh))]
-async fn drop_tables(dbh: &Client) -> Result<()> {
+async fn drop_views(dbh: &Client) -> Result<()> {
     info!("Dropping airplanes and drones views.");
 
     let rm1 = r##"
-DROP TABLE IF EXISTS acute.airplanes;
+DROP VIEW IF EXISTS acute.airplanes;
     "##;
 
     let rm2 = r##"
-DROP TABLE IF EXISTS acute.drones;
+DROP VIEW IF EXISTS acute.drones;
     "##;
 
     let _ = dbh.query(rm1).execute().await?;
@@ -250,7 +229,7 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
 
     if opts.all {
         add_sequences(&dbh).await?;
-        create_tables(&dbh).await?;
+        create_views(&dbh).await?;
         add_macros(&dbh).await?;
         add_encounters_table(&dbh).await;
     } else {
@@ -275,7 +254,7 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
     if opts.all {
         drop_encounters_table(&dbh).await?;
         remove_macros(&dbh).await?;
-        drop_tables(&dbh).await?;
+        drop_views(&dbh).await?;
         drop_sequences(&dbh).await?;
     } else {
         if opts.macros {
@@ -284,8 +263,8 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
         if opts.encounters {
             drop_encounters_table(&dbh).await?;
         }
-        if opts.tables {
-            drop_tables(&dbh).await?;
+        if opts.views {
+            drop_views(&dbh).await?;
         }
         if opts.sequences {
             drop_sequences(&dbh).await?;
