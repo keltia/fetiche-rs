@@ -38,8 +38,6 @@ impl Context {
 
     #[tracing::instrument(skip(self))]
     pub fn finish(&self) -> Result<()> {
-        let dbh = self.dbh.clone();
-        let _ = dbh.close();
         Ok(())
     }
 }
@@ -125,15 +123,17 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     info!("Connecting to {} @ {}", name, endpoint);
     let dbh = Client::default()
-            .with_url(endpoint)
+            .with_url(endpoint.clone())
             .with_database(&name)
             .with_user(&user)
             .with_password(&pass);
 
     let ctx = Context {
         config: HashMap::from([
+            ("url".to_string(), endpoint.clone()),
             ("database".to_string(), name.clone()),
             ("datalake".to_string(), datalake.clone()),
+            ("username".to_string(), user.clone()),
         ])
             .into(),
         dbh: dbh.into(),
