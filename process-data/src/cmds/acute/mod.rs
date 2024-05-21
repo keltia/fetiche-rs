@@ -7,6 +7,8 @@ use clap::Parser;
 use duckdb::arrow::array::RecordBatch;
 use duckdb::arrow::util::pretty::print_batches;
 use eyre::Result;
+use serde::{Deserialize, Serialize};
+use time::Date;
 use tracing::trace;
 
 pub(crate) use antennas::*;
@@ -60,59 +62,98 @@ pub enum CrudSubCommand {
 // ----- Dispatching
 
 #[tracing::instrument(skip(ctx))]
-pub fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
-    trace!("execute");
+pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
+    trace!("run_acute_cmd");
 
     let dbh = ctx.db();
     match opts.subcmd {
+        // List all antennas
+        //
         AcuteSubCommand::Antennas(_) => {
+            #[derive(Debug, Deserialize, Serialize)]
+            struct Antenna {
+                pub id: u32,
+                #[serde(rename = "type")]
+                pub atype: String,
+                pub name: String,
+                pub owned: bool,
+                pub description: String,
+            }
+
             // Fetch antennas as Arrow
             //
-            let mut stmt = dbh.prepare("select * from antennas;")?;
+            let res = dbh
+                .query("select * from antennas")
+                .fetch_all::<Antenna>()
+                .await?;
 
             println!("Listing all antennas:");
-            let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
             print_batches(&rbs)?;
         }
+        // List all installations
+        //
         AcuteSubCommand::Install(_) => {
+            #[derive(Debug, Deserialize, Serialize)]
+            struct Install {
+                pub id: u32,
+                pub name: String,
+                pub start_at: Date,
+                pub end_at: Date,
+                pub station_name: String,
+                pub comment: String,
+            }
+
             // Find all installations with sites' name and antenna's ID
             //
-            let mut stmt = dbh.prepare(
-                r##"
+            let r = r##"
 SELECT 
   inst.id,
   sites.name,
   start_at,
   end_at,
   antennas.name AS station_name
+  inst.comment,
 FROM
   installations AS inst
   JOIN antennas ON antennas.id = inst.antenna_id
   JOIN sites ON inst.site_id = sites.id
 ORDER BY start_at
-        "##,
-            )?;
+        "##;
 
             println!("Listing all installations:");
-            let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
+            let rbs = dbh.query(r).fetch_all::<Install>().await?;
+
             print_batches(&rbs)?;
         }
         AcuteSubCommand::Sites(_) => {
+
+            #[derive(Debug, Deserialize, Serialize)]
+            struct Site {
+                pub id: u32,
+                pub name: String,
+                pub code: String,
+                pub home: f64,
+                pub here: f64,
+                pub distance: f64,
+            }
+
+
             // Fetch sites
             //
-            let mut stmt = dbh.prepare(
+            let mut stmt = dbh.query(
                 r##"
 SELECT
+  id,
   name,
   code,
-  ST_Point2D(2.35, 48.6) AS ref,
-  ST_Point2D(longitude, latitude) AS here,
+  longitude,
+  latitude,
+  ref_altitude,
   ST_Distance_Spheroid(ref, here) / 1000 AS distance,
 FROM sites
 ORDER BY
   name
-    "##,
-            )?;
+    "##).fetch_all::<Site>().await?;
 
             println!("Listing all sites:");
             let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
