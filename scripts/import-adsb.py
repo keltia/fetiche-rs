@@ -5,11 +5,17 @@ This is for importing ADS-B data into Clickhouse.
 
 This utility takes a filename or a directory.  If the former, import the given file and if the latter
 all parquets files in the tree.
+
+XXX this is specific to the macOS version of the client, invoked as `clickhouse client` and not
+`clickhouse-client` or `clickhouse-local` like in the other versions.
+
+XXX You must have `bdt(1)`  somewhere in the `PATH`
 """
 
 import argparse
 import os
 import re
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -34,6 +40,9 @@ sites = {
 datalake = "/Users/acute"
 db = 'acute'
 convert_cmd = 'bdt'
+clickhouse = 'clickhouse-client'
+if sys.platform.startswith('darwin'):
+    clickhouse = 'clickhouse client'
 
 
 def process_one(dir, fname, action):
@@ -72,7 +81,7 @@ def process_one(dir, fname, action):
 
     # Now do the import, `fname` is a csv file in any case
     #
-    ch_cmd = f"clickhouse client -d {db} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
+    ch_cmd = f"{clickhouse} -d {db} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
     cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
     if action:
         os.system(cmd)
@@ -82,8 +91,8 @@ def process_one(dir, fname, action):
     # Now we need to fix the `site` column.
     #
     if action:
-        q = f"ALTER TABLE acute.airplanes_raw UPDATE site = {site} WHERE site = 0"
-        cmd = f"clickhouse client -d {db} -q '{q}'"
+        q = f"ALTER TABLE acute.airplanes_raw UPDATE site = '{site}' WHERE site = 0"
+        cmd = f"{clickhouse} -d {db} -q '{q}'"
         print(f"Updating for site {site}")
         os.system(cmd)
     else:
@@ -116,7 +125,7 @@ parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
 importdir = f"{datalake}/import"
-datadir = f"{datalake}/data"
+datadir = f"{datalake}/data/adsb"
 bindir = f"{datalake}/bin"
 
 if args.dry_run:
