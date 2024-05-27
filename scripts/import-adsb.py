@@ -81,7 +81,11 @@ def process_one(dir, fname, action):
 
     # Now do the import, `fname` is a csv file in any case
     #
-    ch_cmd = f"{clickhouse} -d {db} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
+    host = os.getenv('CLICKHOUSE_HOST')
+    user = os.getenv('CLICKHOUSE_USER')
+    pwd = os.getenv('CLICKHOUSE_PASSWD')
+
+    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
     cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
     if action:
         os.system(cmd)
@@ -92,7 +96,7 @@ def process_one(dir, fname, action):
     #
     if action:
         q = f"ALTER TABLE acute.airplanes_raw UPDATE site = '{site}' WHERE site = 0"
-        cmd = f"{clickhouse} -d {db} -q '{q}'"
+        cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q '{q}'"
         print(f"Updating for site {site}")
         os.system(cmd)
     else:
