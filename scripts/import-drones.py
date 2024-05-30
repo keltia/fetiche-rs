@@ -14,7 +14,6 @@ XXX You must have `bdt(1)`  somewhere in the `PATH`
 
 import argparse
 import os
-import re
 import sys
 import tempfile
 from pathlib import Path
