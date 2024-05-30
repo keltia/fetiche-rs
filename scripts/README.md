@@ -49,7 +49,7 @@ options:
 Connect tpp `ftps.eurocontrol.fr` and retrieve the latest CSV files for ADS-B data for our various stations.
 
 ```text
-adsb [-h] [--datalake DATALAKE] [--keep]
+usage: fetch-ftp-adsb [-h] [--datalake DATALAKE] [--keep]
 
 Fetch the last files from the incoming directory on ftps.
 
