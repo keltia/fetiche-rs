@@ -5,19 +5,29 @@ This is for importing drone data into Clickhouse.
 
 This utility takes a filename or a directory.  If the former, import the given file and if the latter
 all parquets files in the tree.
+
+XXX this is specific to the macOS version of the client, invoked as `clickhouse client` and not
+`clickhouse-client` or `clickhouse-local` like in the other versions.
+
+XXX You must have `bdt(1)`  somewhere in the `PATH`
 """
 
 import argparse
 import os
 import re
+import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 
 # CONFIG CHANGE HERE or use -D
 #
 datalake = "/Users/acute"
 db = 'acute'
 convert_cmd = 'bdt'
+clickhouse = 'clickhouse-client'
+if sys.platform.startswith('darwin'):
+    clickhouse = 'clickhouse client'
 
 
 def process_one(dir, fname, action):
@@ -44,19 +54,17 @@ def process_one(dir, fname, action):
             cmd = f"{convert_cmd} convert -s {full} {new}"
             if action:
                 os.system(cmd)
-
-                # DckDB generated some funky files with only schema so conversion does not work, skip these.
-                #
-                if not os.path.exists(new):
-                    print(f"{new} missing.")
-                    return None
             else:
                 print(cmd)
             fname = new
 
     # Now do the import, `fname` is a csv file in any case
     #
-    ch_cmd = f"clickhouse client -d {db} -q \"INSERT INTO acute.drones_raw FORMAT Csv\""
+    host = os.getenv('CLICKHOUSE_HOST')
+    user = os.getenv('CLICKHOUSE_USER')
+    pwd = os.getenv('CLICKHOUSE_PASSWD')
+
+    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q \"INSERT INTO drones_raw FORMAT Csv\""
     cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
     if action:
         os.system(cmd)
@@ -68,7 +76,7 @@ def process_one(dir, fname, action):
 
 parser = argparse.ArgumentParser(
     prog='import-adsb',
-    description='Import ADS-B data into CH.')
+    description='Import drone data into CH.')
 
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
 parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
@@ -76,7 +84,7 @@ parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
 importdir = f"{datalake}/import"
-datadir = f"{datalake}/data"
+datadir = f"{datalake}/data/drones"
 bindir = f"{datalake}/bin"
 
 if args.dry_run:
