@@ -155,6 +155,22 @@ options:
 
 Take the parquet files coming from `convert-csv.py` and move them into the proper Hive subdirectory.
 
+```text
+usage: dispatch-drops [-h] [--datalake DATALAKE] [--drones] [--dry-run] [files ...]
+
+Move each file in the right Hive directory for the given day.
+
+positional arguments:
+  files                 List of files or directories.
+
+options:
+  -h, --help            show this help message and exit
+  --datalake DATALAKE, -D DATALAKE
+                        Datalake is here.
+  --drones              This is drone data.
+  --dry-run, -n         Do not actually move the file.
+```
+
 ## Obsolete utilities
 
 - `reduce.sh`
