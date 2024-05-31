@@ -33,6 +33,7 @@ sites = {
     'Cyprus': 8,
     'Bucharest': 9,
     'Vienna': 10,
+    'Vienna2': 10,
 }
 
 # CONFIG CHANGE HERE or use -D
