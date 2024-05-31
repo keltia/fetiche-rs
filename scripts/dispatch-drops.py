@@ -40,6 +40,7 @@ sites = {'Brussels': 'BRU',
          'London': 'LON',
          'Gatwick': 'LON',
          'Vienna': 'AUS',
+         'Vienna2': 'AUS',
          }
 
 
