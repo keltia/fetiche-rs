@@ -95,10 +95,10 @@ def process_one(dir, fname, action):
 
     # Now we need to fix the `site` column.
     #
+    q = f"ALTER TABLE acute.airplanes_raw UPDATE site = '{site}' WHERE site = 0"
+    cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q '{q}'"
+    print(f"Updating for site {site}")
     if action:
-        q = f"ALTER TABLE acute.airplanes_raw UPDATE site = '{site}' WHERE site = 0"
-        cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q '{q}'"
-        print(f"Updating for site {site}")
         os.system(cmd)
     else:
         print(f"cmd={cmd}")
