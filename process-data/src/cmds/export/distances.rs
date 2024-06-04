@@ -35,7 +35,7 @@ async fn export_all_encounters_csv(
     name: &str,
     day: DateTime<Utc>,
     fname: &str,
-) -> eyre::Result<usize> {
+) -> eyre::Result<()> {
     let r = format!(
         r##"
   SELECT
@@ -69,14 +69,14 @@ async fn export_all_encounters_csv(
         fname
     );
 
-    let count = dbh.query(&r)
+    let _ = dbh.query(&r)
         .bind(name)
         .bind(day)
         .bind(day)
         .fetch::<usize>()
         .await?;
 
-    Ok(count)
+    Ok(())
 }
 
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
@@ -136,7 +136,7 @@ async fn export_all_encounters_parquet(
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
 ///
 #[tracing::instrument(skip(dbh))]
-fn export_all_encounters_text(dbh: &Client, name: &str, day: DateTime<Utc>) -> eyre::Result<usize> {
+async fn export_all_encounters_text(dbh: &Client, name: &str, day: DateTime<Utc>) -> eyre::Result<()> {
     let r = r##"
   SELECT
     en_id,
@@ -165,15 +165,18 @@ fn export_all_encounters_text(dbh: &Client, name: &str, day: DateTime<Utc>) -> e
     CAST(time AS DATE) < date_add(CAST(? AS DATE), INTERVAL 1 DAY)
     ORDER BY time
 "##;
-    let mut stmt = dbh.prepare(r)?;
-    let rbs: Vec<_> = stmt.query_arrow(params![name, day, day])?.collect();
-    print_batches(&rbs)?;
 
-    Ok(rbs.len())
+    let _ = dbh.query(&r)
+        .bind(name)
+        .bind(day)
+        .bind(day)
+        .execute().await?;
+
+    Ok(())
 }
 
 #[tracing::instrument(skip(dbh))]
-fn export_all_encounters_summary_csv(dbh: &Client, name: &str, day: DateTime<Utc>, fname: &str) -> eyre::Result<usize> {
+async fn export_all_encounters_summary_csv(dbh: &Client, name: &str, day: DateTime<Utc>, fname: &str) -> eyre::Result<()> {
     let r = format!(r##"
 COPY (
   SELECT
@@ -206,10 +209,13 @@ COPY (
 ) TO '{}' WITH (FORMAT CSV, HEADER true, DELIMITER ',');
     "##, fname);
 
-    let mut stmt = dbh.prepare(&r)?;
-    let count = stmt.execute(params![name, day, day])?;
+    let _ = dbh.query(&r)
+        .bind(name)
+        .bind(day)
+        .bind(day)
+        .execute().await?;
 
-    Ok(count)
+    Ok(())
 }
 
 #[tracing::instrument(skip(ctx))]
@@ -231,7 +237,7 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
     match &opts.output {
         Some(fname) => {
             let count = if opts.summary {
-                export_all_encounters_summary_csv(&dbh, &name, day, fname)?
+                export_all_encounters_summary_csv(&dbh, &name, day, fname).await?
             } else {
                 match opts.format {
                     Format::Csv => export_all_encounters_csv(&dbh, &name, day, fname).await?,
@@ -242,7 +248,7 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
             println!("Exported {} records to {}", count, fname);
         }
         None => {
-            let _ = export_all_encounters_text(&dbh, &name, day)?;
+            let _ = export_all_encounters_text(&dbh, &name, day).await?;
         }
     }
 

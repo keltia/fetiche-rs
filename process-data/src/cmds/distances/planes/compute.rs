@@ -424,7 +424,7 @@ impl Calculate for PlaneDistance {
         // Create table `today_close` with all designated drone points and airplanes in proximity
         //
         bar.message("Find close planes.");
-        let c_potential = self.find_close(dbh)?;
+        let c_potential = self.find_close(dbh).await?;
         bar.inc(1);
 
         if c_potential == 0 {
@@ -440,7 +440,7 @@ impl Calculate for PlaneDistance {
         // Now we have the distance calculated.
         //
         bar.message("Find encounters.");
-        let c_encounters = self.select_encounters(dbh)?;
+        let c_encounters = self.select_encounters(dbh).await?;
         bar.inc(1);
 
         stats.time = (Instant::now() - start).as_millis();

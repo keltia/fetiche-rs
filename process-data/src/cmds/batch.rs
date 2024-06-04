@@ -97,7 +97,7 @@ impl<'a, T> Batch<'a, T>
 
         let all: Vec<_> = self.inner.iter()
             .filter_map(|e| {
-                let r = e.run(&dbh);
+                let r = e.run(&dbh).await;
                 match r {
                     Ok(r) => Some(r),
                     Err(e) => {
