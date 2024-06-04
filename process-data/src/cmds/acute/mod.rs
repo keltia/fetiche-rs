@@ -7,6 +7,7 @@ use clap::Parser;
 use clickhouse::Row;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use time::Date;
 use tracing::trace;
 
@@ -87,7 +88,8 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
                 .await?;
 
             println!("Listing all antennas:");
-            print_batches(&res)?;
+            let res = json!(&res).to_string();
+            println!("{res}");
         }
         // List all installations
         //
@@ -120,9 +122,9 @@ ORDER BY start_at
         "##;
 
             println!("Listing all installations:");
-            let rbs = dbh.query(r).fetch_all::<Install>().await?;
-
-            dbg!(&rbs)?;
+            let res = dbh.query(r).fetch_all::<Install>().await?;
+            let res = json!(&res).to_string();
+            println!("{res}");
         }
         AcuteSubCommand::Sites(_) => {
 
@@ -155,7 +157,8 @@ ORDER BY
     "##).fetch_all::<Site>().await?;
 
             println!("Listing all sites:");
-            dbg!(&res);
+            let res = json!(&res).to_string();
+            println!("{res}");
         }
     }
 
