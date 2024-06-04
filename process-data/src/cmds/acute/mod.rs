@@ -4,8 +4,7 @@
 //!
 
 use clap::Parser;
-use duckdb::arrow::array::RecordBatch;
-use duckdb::arrow::util::pretty::print_batches;
+use clickhouse::Row;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use time::Date;
@@ -70,7 +69,7 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
         // List all antennas
         //
         AcuteSubCommand::Antennas(_) => {
-            #[derive(Debug, Deserialize, Serialize)]
+            #[derive(Debug, Deserialize, Serialize, Row)]
             struct Antenna {
                 pub id: u32,
                 #[serde(rename = "type")]
@@ -88,12 +87,12 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
                 .await?;
 
             println!("Listing all antennas:");
-            print_batches(&rbs)?;
+            print_batches(&res)?;
         }
         // List all installations
         //
         AcuteSubCommand::Install(_) => {
-            #[derive(Debug, Deserialize, Serialize)]
+            #[derive(Debug, Deserialize, Serialize, Row)]
             struct Install {
                 pub id: u32,
                 pub name: String,
@@ -123,11 +122,11 @@ ORDER BY start_at
             println!("Listing all installations:");
             let rbs = dbh.query(r).fetch_all::<Install>().await?;
 
-            print_batches(&rbs)?;
+            dbg!(&rbs)?;
         }
         AcuteSubCommand::Sites(_) => {
 
-            #[derive(Debug, Deserialize, Serialize)]
+            #[derive(Debug, Deserialize, Serialize, Row)]
             struct Site {
                 pub id: u32,
                 pub name: String,
@@ -140,7 +139,7 @@ ORDER BY start_at
 
             // Fetch sites
             //
-            let mut stmt = dbh.query(
+            let res: Vec<Site> = dbh.query(
                 r##"
 SELECT
   id,
@@ -156,8 +155,7 @@ ORDER BY
     "##).fetch_all::<Site>().await?;
 
             println!("Listing all sites:");
-            let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
-            print_batches(&rbs)?;
+            dbg!(&res);
         }
     }
 
