@@ -231,7 +231,7 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
         add_sequences(&dbh).await?;
         create_views(&dbh).await?;
         add_macros(&dbh).await?;
-        add_encounters_table(&dbh).await;
+        let _ = add_encounters_table(&dbh).await;
     } else {
         if opts.sequences {
             add_sequences(&dbh).await?;
