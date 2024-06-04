@@ -105,9 +105,9 @@ OR REPLACE TABLE acute.airplane_prox (
   distance_slant_m INT,
   distance_hor_m   INT,
   distance_vert_m  INT,
-  distance_home_m  INT,
+  distance_home_m  INT
 )
-    ENGINE = MergeTree PRIMARY KEY (time, journey) ORDER BY time
+    ENGINE = MergeTree PRIMARY KEY (time, journey)
     COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
 ```
 
