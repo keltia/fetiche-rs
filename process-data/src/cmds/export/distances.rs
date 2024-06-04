@@ -4,7 +4,6 @@
 use chrono::{Datelike, DateTime, TimeZone, Utc};
 use clap::Parser;
 use clickhouse::Client;
-use duckdb::arrow::util::pretty::print_batches;
 use tracing::info;
 
 use crate::cmds::Format;
@@ -73,8 +72,7 @@ async fn export_all_encounters_csv(
         .bind(name)
         .bind(day)
         .bind(day)
-        .fetch::<usize>()
-        .await?;
+        .fetch::<usize>()?;
 
     Ok(())
 }
@@ -242,10 +240,9 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
                 match opts.format {
                     Format::Csv => export_all_encounters_csv(&dbh, &name, day, fname).await?,
                     Format::Parquet => export_all_encounters_parquet(&dbh, &name, day, fname).await?,
-                    _ => 0,
+                    _ => (),
                 }
             };
-            println!("Exported {} records to {}", count, fname);
         }
         None => {
             let _ = export_all_encounters_text(&dbh, &name, day).await?;
