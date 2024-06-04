@@ -126,7 +126,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
 
     // Gather stats for the run
     //
-    let stats = batch.execute().await?;
+    let stats = batch.execute()?;
 
     let stats = Stats::summarise(stats);
 
