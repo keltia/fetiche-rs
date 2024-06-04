@@ -64,7 +64,7 @@ pub struct PlaneDistance {
 /// Handle the `distances planes` command.
 ///
 #[tracing::instrument(skip(ctx))]
-pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
+pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     let dbh = ctx.db();
 
     // Move ourselves to the datalake.
@@ -126,7 +126,7 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
 
     // Gather stats for the run
     //
-    let stats = batch.execute()?;
+    let stats = batch.execute().await?;
 
     let stats = Stats::summarise(stats);
 

@@ -90,13 +90,13 @@ impl<'a, T> Batch<'a, T>
     /// ```
     ///
     #[tracing::instrument(skip(self))]
-    pub fn execute(&mut self) -> eyre::Result<Vec<Stats>>
+    pub async fn execute(&mut self) -> eyre::Result<Vec<Stats>>
         where T: Debug + Calculate,
     {
         let dbh = self.dbh.clone();
 
         let all: Vec<_> = self.inner.iter()
-            .filter_map(|e| {
+            .filter_map(move |&e| {
                 let r = e.run(&dbh).await;
                 match r {
                     Ok(r) => Some(r),

@@ -42,7 +42,7 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
             DistSubcommand::Planes(popts) => {
                 println!("Calculate 3D distance between drones and surrounding planes.\n");
 
-                let stats = planes_calculation(ctx, popts)?;
+                let stats = planes_calculation(ctx, popts).await?;
                 println!("Stats:\n{:?}", stats);
             }
         },
@@ -69,7 +69,7 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
         }
         SubCommand::Acute(aopts) => {
             println!("ACUTE specific commands.\n");
-            run_acute_cmd(ctx, aopts)?;
+            run_acute_cmd(ctx, aopts).await?;
         }
         // These are done already.
         //
