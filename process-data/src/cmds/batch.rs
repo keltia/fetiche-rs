@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::sync::Arc;
 use clickhouse::Client;
+use tokio::runtime::Runtime;
 
 use tracing::trace;
 
@@ -90,14 +91,16 @@ impl<'a, T> Batch<'a, T>
     /// ```
     ///
     #[tracing::instrument(skip(self))]
-    pub async fn execute(&mut self) -> eyre::Result<Vec<Stats>>
+    pub fn execute(&mut self) -> eyre::Result<Vec<Stats>>
         where T: Debug + Calculate,
     {
         let dbh = self.dbh.clone();
 
-        let all: Vec<_> = self.inner.iter()
-            .filter_map(move |&e| {
-                let r = e.run(&dbh).await;
+        let all: Vec<_> = self.inner
+            .iter()
+            .filter_map(|&e| {
+                let rt = Runtime::new().unwrap();
+                let r = rt.block_on(async { e.run(&dbh).await });
                 match r {
                     Ok(r) => Some(r),
                     Err(e) => {
