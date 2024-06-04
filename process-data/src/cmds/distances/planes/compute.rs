@@ -113,10 +113,11 @@ ORDER BY time
         //
         let lat = self.loc.lat;
         let lon = self.loc.lon;
+        let dist = self.distance.ceil() as u32;
 
         // Generate the polygon we are checking whether the point is in or not
         //
-        let poly = BB::from_lat_lon(lat, lon, self.distance.into()).to_polygon()?;
+        let poly = BB::from_lat_lon(lat, lon, dist).to_polygon()?;
 
         let start_day = self.date;
         let end_day = self.date.checked_add_days(Days::new(1)).unwrap();
