@@ -137,7 +137,7 @@ async fn add_sequences(_dbh: &Client) -> Result<()> {
 ///
 #[tracing::instrument(skip(_dbh))]
 async fn drop_sequences(_dbh: &Client) -> Result<()> {
-    info!("Adding sequences");
+    info!("Dropping sequences");
 
     Ok(())
 }
