@@ -54,18 +54,25 @@ impl Point {
 }
 
 async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
-    let url = format!("http://100.92.250.113:8123");
-    let client = Client::default().with_url(url).with_option("wait_end_of_query", "1");
+    let url = env!("CLICKHOUSE_URL");
+    let db = env!("CLICKHOUSE_DB");
+    let user = env!("CLICKHOUSE_USER");
+    let pwd = env!("CLICKHOUSE_PASSWD");
+    let client = Client::default()
+        .with_url(url)
+        .with_database(db)
+        .with_user(user)
+        .with_password(pwd)
+        .with_option("wait_end_of_query", "1");
 
     let val = client.query("SELECT geoDistance(?,?,?,?) AS dist")
         .bind(point1.longitude)
         .bind(point1.latitude)
         .bind(point2.longitude)
         .bind(point2.latitude)
-        .fetch_one::<f64>().await?;
+        .fetch_one::<f32>().await?;
 
-    //let val: f32 = res.next().await?.unwrap_or_else(|| 0.);
-    Ok(val)
+    Ok(val.into())
 }
 
 async fn dd_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
