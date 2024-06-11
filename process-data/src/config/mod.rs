@@ -111,8 +111,8 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     let datalake = cfg.datalake.unwrap();
     let name = std::env::var("CLICKHOUSE_DB").unwrap_or(opts.database.clone().unwrap_or(cfg.database.unwrap()));
     let user = std::env::var("CLICKHOUSE_USER").unwrap_or(cfg.user.clone().unwrap());
-    let pass = std::env::var("CLICKHOUSE_PASSWORD").unwrap_or(cfg.password.clone().unwrap());
-    let endpoint = std::env::var("CLICKHOUSE_CLIENT").unwrap_or(cfg.url.clone());
+    let pass = std::env::var("CLICKHOUSE_PASSWD").unwrap_or(cfg.password.clone().unwrap());
+    let endpoint = std::env::var("CLICKHOUSE_URL").unwrap_or(cfg.url.clone());
 
     // URL is mandatory, either in environment or in the config file.
     //
