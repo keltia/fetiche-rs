@@ -1,6 +1,8 @@
 use std::fmt::Debug;
 use std::sync::Arc;
+
 use clickhouse::Client;
+use futures::future::join_all;
 use tokio::runtime::Runtime;
 
 use tracing::trace;
@@ -90,17 +92,16 @@ impl<'a, T> Batch<'a, T>
     /// let stats: Vec<Stats> = batch.execute()?;
     /// ```
     ///
-    #[tracing::instrument(skip(self))]
-    pub fn execute(&mut self) -> eyre::Result<Vec<Stats>>
+/*    #[tracing::instrument(skip(self))]
+    pub async fn execute(&mut self) -> eyre::Result<Vec<Stats>>
         where T: Debug + Calculate,
     {
         let dbh = self.dbh.clone();
 
         let all: Vec<_> = self.inner
             .iter()
-            .filter_map(|&e| {
-                let rt = Runtime::new().unwrap();
-                let r = rt.block_on(async { e.run(&dbh).await });
+            .filter_map(|&e| Some(async {
+                let r = e.run(&dbh).await;
                 match r {
                     Ok(r) => Some(r),
                     Err(e) => {
@@ -108,12 +109,15 @@ impl<'a, T> Batch<'a, T>
                         None
                     }
                 }
-            }).collect();
+            }))
+            .collect();
+
+        let all = join_all(all).await;
 
         trace!("all stats={:?}", all);
         Ok(all)
     }
-
+*/
     /// Returns the length of the current batch.
     ///
     #[tracing::instrument(skip(self))]
