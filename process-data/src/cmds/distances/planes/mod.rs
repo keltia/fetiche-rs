@@ -9,12 +9,13 @@ use chrono::{Datelike, DateTime, TimeZone, Utc};
 use clap::Parser;
 use derive_builder::Builder;
 use eyre::Result;
+use futures::future::join_all;
 use tracing::{info, trace};
 
 use fetiche_common::{DateOpts, expand_interval, load_locations, Location};
 
 use crate::cmds::{Stats, Status};
-use crate::cmds::batch::Batch;
+use crate::cmds::batch::{Batch, Calculate};
 use crate::config::Context;
 
 mod compute;
@@ -122,12 +123,28 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     }).collect();
     trace!("All tasks: {:?}", worklist);
 
-    let mut batch = Batch::from_vec(&dbh, &worklist);
+/*    let mut batch = Batch::from_vec(&dbh, &worklist);
 
     // Gather stats for the run
     //
-    let stats = batch.execute()?;
+    let stats = batch.execute().await?;
+*/
+    let stats: Vec<_> = worklist.iter().map(|task| async {
+        task.run(&dbh.clone()).await
+    }).collect();
 
+    let stats= join_all(stats).await;
+    trace!("All stats: {:?}", stats);
+
+    let stats: Vec<_> = stats.iter().filter_map(|res| {
+        match res {
+            Ok(res) => Some(res.clone()),
+            Err(e) => {
+                eprintln!("Task failed: {}", e.to_string());
+                None
+            },
+        }
+    }).collect();
     let stats = Stats::summarise(stats);
 
     Ok(stats)
