@@ -53,11 +53,13 @@ impl PlaneDistance {
         // $8 = distance in degrees (== dist(nm) /  60)   1 deg ~ 60 nm ~111.1 km
         //
         //
+        let _ = dbh.query("DROP TABLE today").execute().await?;
+
         let r1 = r##"
 CREATE TABLE today
 ORDER BY time
 AS SELECT
-  site,
+  (SELECT id FROM sites WHERE name = ?) AS id_site,
   time,
   prox_id AS addr,
   replaceRegexpOne(prox_callsign, '\'([0-9A-Z]+)\\s*\'', '\\1') AS callsign,
@@ -65,10 +67,10 @@ AS SELECT
   prox_lat AS plat,
   CAST(prox_alt AS DOUBLE) * 0.305 AS palt
 FROM
-  airplanes
+  airplanes AS a, sites AS s
 WHERE
-  site = ? AND
-  time BETWEEN ? AND ? AND
+  id_site = site AND
+  time BETWEEN timestamp(?) AND timestamp(?) AND
   palt IS NOT NULL AND
   pointInEllipses(plon, plat, ?, ?, ?, ?)
 ORDER BY time
@@ -77,20 +79,16 @@ ORDER BY time
         // Given lat/lon and dist, we define the "ellipse" aka circle
         // cf. https://clickhouse.com/docs/en/sql-reference/functions/geo/coordinates#pointinellipses
         //
-        let x0 = lon;
-        let y0 = lat;
-        let a0 = y0 + dist;
-        let b0 = x0 + dist;
-        debug!("ellipse=(center={},{},{},{})", x0, y0, a0, b0);
+        debug!("ellipse=(center={},{},{},{})", lon, lat, dist, dist);
 
         let _ = dbh.query(r1)
             .bind(site)
             .bind(time_from)
             .bind(time_to)
-            .bind(x0)
-            .bind(y0)
-            .bind(a0)
-            .bind(b0)
+            .bind(lon)
+            .bind(lat)
+            .bind(dist)
+            .bind(dist)
             .execute()
             .await?;
 
