@@ -1,8 +1,9 @@
 # Various scripts for different systems
 
-## Environement variables
+## Environment variables
 
 There are several environment variables used in several scripts, mostly to specify which [Clickhouse] instance is to be used.
+See `env.sh` below.
 
 - `CLICKHOUSE_HOST`
 
@@ -10,7 +11,7 @@ FQDN to the DB server
 
 - `CLICKHOUSE_URL`
 
-URL for the HTTP client to [Clickhouse].  Format is `http://$CLICKHOUSE_HOST:8123`
+URL for the HTTP client to [Clickhouse].  Format is `http://$CLICKHOUSE_HOST:8123` or `https://$CLICKHOUSE_HOST:8443` 
 
 - `CLICKHOUSE_DB`
 
@@ -25,6 +26,11 @@ Which DB to use
 
 script to configure the current Clickhouse related environment variables (`CLICKHOUSE_*`) for all the scripts that
 expect them to be defined when running.
+
+To be used as such:
+```shell
+eval "$(cat /where/ever/it/is/env.sh)" && import-adsb.py …
+```
 
 - `fetch-fa.sh`
 
