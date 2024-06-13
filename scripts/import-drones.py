@@ -17,7 +17,6 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
 
 # CONFIG CHANGE HERE or use -D
 #
