@@ -74,7 +74,7 @@ def process_one(dir, fname, action):
 
 
 parser = argparse.ArgumentParser(
-    prog='import-adsb',
+    prog='import-drones',
     description='Import drone data into CH.')
 
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
