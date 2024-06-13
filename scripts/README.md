@@ -21,6 +21,11 @@ Which DB to use
 
 ## Shell (UNIX)
 
+- `env.sh`
+
+script to configure the current Clickhouse related environment variables (`CLICKHOUSE_*`) for all the scripts that
+expect them to be defined when running.
+
 - `fetch-fa.sh`
 
 Automate the retrieval of ADS-B data from [FlightAware] [Firehose] API through `acutectl`.
