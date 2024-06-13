@@ -7,12 +7,8 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
-
+use datafusion::config::TableParquetOptions;
 use datafusion::dataframe::DataFrameWriteOptions;
-use datafusion::parquet::{
-    basic::{Compression, Encoding, ZstdLevel},
-    file::properties::{EnabledStatistics, WriterProperties},
-};
 use datafusion::prelude::{CsvReadOptions, SessionContext};
 
 use eyre::{eyre, Result};
@@ -125,16 +121,16 @@ impl Save {
 #[tracing::instrument]
 async fn write_parquet(from: &str, to: &str) -> Result<()> {
     let ctx = SessionContext::new();
-    let df = ctx.read_csv(from, CsvReadOptions::default()).await?;
+    let df = ctx.read_csv(from, CsvReadOptions::default().has_header(false)).await?;
     let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
 
-    let props = WriterProperties::builder()
-        .set_created_by("acutectl/save".to_string())
-        .set_encoding(Encoding::PLAIN)
-        .set_statistics_enabled(EnabledStatistics::Page)
-        .set_compression(Compression::ZSTD(ZstdLevel::try_new(8).unwrap()))
-        .build();
-    let _ = df.write_parquet(to, dfopts, Some(props)).await?;
+    let mut options = TableParquetOptions::default();
+    options.global.created_by = "acutectl/save".to_string();
+    options.global.encoding = Some("plain".to_string());
+    options.global.statistics_enabled = Some("page".to_string());
+    options.global.compression = Some("zstd(8)".to_string());
+
+    let _ = df.write_parquet(to, dfopts, Some(options)).await?;
     Ok(())
 }
 
