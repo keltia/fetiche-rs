@@ -7,7 +7,7 @@ exclude = ["cat21conv"]
 arrow2 = { version = "0.17", features = ["io_csv", "io_json", "io_json_integration", "io_parquet"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
-datafusion = { version = "38.0", features = ["zstd", "async-compression", "serde"] }
+datafusion = { version = "39.0", features = ["zstd", "async-compression", "serde"] }
 dateparser = "0.2"
 env_logger = "0.11"
 eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
@@ -15,7 +15,7 @@ fetiche-common = { version = "0", path = "common" }
 fetiche-formats = { version = "0", path = "formats" }
 fetiche-macros = { version = "0", path = "macros" }
 fetiche-sources = { version = "0", path = "sources" }
-hcl-rs = "0.16"
+hcl-rs = "0.18"
 home = "0.5"
 log = { version = "0.4", features = ["serde", "std"] }
 nom = "7"
@@ -26,9 +26,9 @@ opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
 parquet2 = { version = "0.17", features = ["zstd"] }
 progress = "0.2"
 reqwest = { version = "0.12", features = ["blocking", "gzip", "json", "socks", "deflate"] }
-rstest = "0.19"
+rstest = "0.21"
 serde = { version = "1.0", features = ["derive"] }
-serde_arrow = { version = "0.10", features = ["arrow2-0-17"] }
+serde_arrow = { version = "0.11", features = ["arrow2-0-17"] }
 serde_json = "1.0"
 serde_repr = "0.1"
 serde_with = { version = "3", features = ["base64", "chrono_0_4", "json", "hex"] }
