@@ -65,6 +65,17 @@ def process_one(dir, fname, action):
 
     ext = Path(fname).suffix
 
+    # .csv.gz ?
+    #
+    if ext == '.gz':
+        cmd = f"gunzip {fname}"
+        fname = Path(fname).stem
+        ext = Path(fname).suffix
+        if action:
+            os.system(cmd)
+        else:
+            print(f"cmd={cmd} -> {fname}")
+
     if ext == '.parquet':
         csv = Path(fname).with_suffix('.csv')
         if os.path.exists(os.path.join(dir, csv)):
