@@ -45,6 +45,7 @@ clickhouse = 'clickhouse-client'
 if sys.platform.startswith('darwin'):
     clickhouse = 'clickhouse client'
 
+delete = False
 
 def process_one(dir, fname, action):
     """
@@ -113,6 +114,11 @@ def process_one(dir, fname, action):
         os.system(cmd)
     else:
         print(f"cmd={cmd}")
+
+    # Now delete if requested
+    #
+    if delete:
+        os.remove(fname)
     return fname
 
 
@@ -136,7 +142,8 @@ parser = argparse.ArgumentParser(
     description='Import ADS-B data into CH.')
 
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
+parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
+parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
 parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
@@ -148,6 +155,9 @@ if args.dry_run:
     action = False
 else:
     action = True
+
+if args.delete:
+    delete = True
 
 files = args.files
 for file in files:
