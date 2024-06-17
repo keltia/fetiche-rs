@@ -13,6 +13,8 @@ XXX You must have `bdt(1)`  somewhere in the `PATH`
 """
 
 import argparse
+import datetime
+import logging
 import os
 import re
 import sys
@@ -56,13 +58,14 @@ def process_one(dir, fname, action):
     :param action: do we do something or just print?
     :return: converted filename.
     """
-    print(f">> Looking at {os.path.join(root, fname)}")
 
     # Deduct site name
     #
     site = find_site(fname)
     if site is None:
+        logging.error(f"{site} not found.")
         return ''
+    logging.info(f"site={site}")
 
     ext = Path(fname).suffix
 
@@ -72,20 +75,23 @@ def process_one(dir, fname, action):
         cmd = f"gunzip {fname}"
         fname = Path(fname).stem
         ext = Path(fname).suffix
+        logging.info(f"{cmd} -> {fname}")
         if action:
             os.system(cmd)
         else:
             print(f"cmd={cmd} -> {fname}")
 
     if ext == '.parquet':
+        logging.info(f"found parquet file {fname}")
         csv = Path(fname).with_suffix('.csv')
         if os.path.exists(os.path.join(dir, csv)):
-            print(f"Warning: both parquet & csv exist for {fname}, ignoring parquet.")
+            logging.warning(f"Warning: both parquet & csv exist for {fname}, ignoring parquet.")
             fname = csv
         else:
             full = os.path.join(dir, fname)
             new = tempfile.NamedTemporaryFile(suffix='.csv').name
             cmd = f"{convert_cmd} convert -s {full} {new}"
+            logging.info(f"{cmd}")
             if action:
                 os.system(cmd)
             else:
@@ -100,24 +106,28 @@ def process_one(dir, fname, action):
 
     ch_cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
     cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
+    logging.info(f"cmd={cmd}")
     if action:
         os.system(cmd)
     else:
         print(f"Running {cmd}")
+    logging.info("insert done.")
 
     # Now we need to fix the `site` column.
     #
     q = f"ALTER TABLE acute.airplanes_raw UPDATE site = '{site}' WHERE site = 0"
     cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q '{q}'"
-    print(f"Updating for site {site}")
+    logging.info(cmd)
     if action:
         os.system(cmd)
     else:
         print(f"cmd={cmd}")
+    logging.info(f"update for site {site} done.")
 
     # Now delete if requested
     #
     if delete:
+        logging.info("delete done.")
         os.remove(fname)
     return fname
 
@@ -150,6 +160,13 @@ args = parser.parse_args()
 importdir = f"{datalake}/import"
 datadir = f"{datalake}/data/adsb"
 bindir = f"{datalake}/bin"
+logdir = f"{datalake}/var/log"
+
+date = datetime.datetime.now().strftime('%Y%m%d')
+logfile = f"{logdir}/import-adsb-{date}.log"
+logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                    format='%(asctime)s - %(levelname)s: %(message)s')
+logging.info("Starting")
 
 if args.dry_run:
     action = False
@@ -165,22 +182,24 @@ for file in files:
     #
     if os.path.isdir(file):
         print(f"Exploring {file}")
+        logging.info(f"Inside {file}")
         for root, dirs, files in os.walk(file, topdown=True):
-            print(f"into {root}")
+            logging.info(f"into {root}")
 
             # Now do stuff, look at parquet/csv only
             #
             for f in files:
                 if Path(f).suffix != '.parquet' and Path(f).suffix != '.csv':
+                    logging.warning(f"{f} ignored.")
                     continue
 
                 r = process_one(root, f, action)
                 if r is None:
-                    print(f"{f} skipped.")
+                    logging.warning(f"{f} skipped.")
     else:
-        print(f"Just {file}")
+        logging.info(f"file={file}")
         root = Path(file).root
         r = process_one(root, file, action)
         if r is None:
-            print(f"{file} skipped.")
+            logging.warning(f"{file} skipped.")
 
