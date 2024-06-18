@@ -4,6 +4,7 @@
 # ```sh
 # eval "$(cat /where/ever/etc/env.sh)"
 # ```
+# or use `direnv` to add it as `.envrc` into each directory that require these variables.
 #
 export CLICKHOUSE_URL=http://SITE:8123
 export CLICKHOUSE_HOST=SITE
