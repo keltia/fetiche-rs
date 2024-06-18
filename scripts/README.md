@@ -1,5 +1,16 @@
 # Various scripts for different systems
 
+## `direnv`
+
+The `/acute`  directory tree now use [direnv] to automatically add environment variables based on your location.  
+The `env.sh` is linked as `.envrc` in `/acute/import` and it will be read every time your shell enter said directories.  
+Remember to use `direnv allow .` everywhere it is needed.
+
+For `crontab(5)` usage, you should wrap the command like this:
+```cronexp
+10      0       *       *       *       cd /acute/import && direnv exec . /acute/bin/import-drones.py -D /acute .
+```
+
 ## Environment variables
 
 There are several environment variables used in several scripts, mostly to specify which [Clickhouse] instance is to be used.
@@ -25,12 +36,7 @@ Which DB to use
 - `env.sh`
 
 script to configure the current Clickhouse related environment variables (`CLICKHOUSE_*`) for all the scripts that
-expect them to be defined when running.
-
-To be used as such:
-```shell
-eval "$(cat /where/ever/it/is/env.sh)" && import-adsb.py …
-```
+expect them to be defined when running.  To be linked as `.envrc` where needed.
 
 - `fetch-fa.sh`
 
@@ -202,6 +208,8 @@ Automate the conversion of several CSV files into their Parquet equivalent on Wi
 [bdt]: https://github.com/datafusion-contrib/bdt
 
 [Clickhouse]: https://clickhouse.com/
+
+[direnv]: https://direnv.net/
 
 [Firehose]: https://www.flightaware.com/firehose/documentation/
 
