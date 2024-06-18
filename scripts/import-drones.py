@@ -6,9 +6,6 @@ This is for importing drone data into Clickhouse.
 This utility takes a filename or a directory.  If the former, import the given file and if the latter
 all parquets files in the tree.
 
-XXX this is specific to the macOS version of the client, invoked as `clickhouse client` and not
-`clickhouse-client` or `clickhouse-local` like in the other versions.
-
 XXX You must have `bdt(1)`  somewhere in the `PATH`
 """
 
