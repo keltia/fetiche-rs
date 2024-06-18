@@ -13,7 +13,7 @@ XXX You must have `bdt(1)`  somewhere in the `PATH`
 """
 
 import argparse
-import datetime
+from datetime import datetime
 import logging
 import os
 import re
@@ -162,7 +162,7 @@ datadir = f"{datalake}/data/adsb"
 bindir = f"{datalake}/bin"
 logdir = f"{datalake}/var/log"
 
-date = datetime.datetime.now().strftime('%Y%m%d')
+date = datetime.now().strftime('%Y%m%d')
 logfile = f"{logdir}/import-adsb-{date}.log"
 logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
                     format='%(asctime)s - %(levelname)s: %(message)s')
