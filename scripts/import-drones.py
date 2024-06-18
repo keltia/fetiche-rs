@@ -13,6 +13,8 @@ XXX You must have `bdt(1)`  somewhere in the `PATH`
 """
 
 import argparse
+from datetime import datetime
+import logging
 import os
 import sys
 import tempfile
@@ -37,19 +39,20 @@ def process_one(dir, fname, action):
     :param action: do we do something or just print?
     :return: converted filename.
     """
-    print(f">> Looking at {os.path.join(root, fname)}")
+    logging.info(f"Looking at {os.path.join(root, fname)}")
 
     ext = Path(fname).suffix
 
     if ext == '.parquet':
         csv = Path(fname).with_suffix('.csv')
         if os.path.exists(os.path.join(dir, csv)):
-            print(f"Warning: both parquet & csv exist for {fname}, ignoring parquet.")
+            logging.warning(f"both parquet & csv exist for {fname}, ignoring parquet.")
             fname = csv
         else:
             full = os.path.join(dir, fname)
             new = tempfile.NamedTemporaryFile(suffix='.csv').name
             cmd = f"{convert_cmd} convert -s {full} {new}"
+            logging.info(f"converting {cmd}")
             if action:
                 os.system(cmd)
             else:
@@ -64,11 +67,12 @@ def process_one(dir, fname, action):
 
     ch_cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q \"INSERT INTO drones_raw FORMAT Csv\""
     cmd = f"/bin/tail -n +2 {os.path.join(dir, fname)} | {ch_cmd}"
+    logging.info(f"{cmd}")
     if action:
         os.system(cmd)
     else:
         print(f"Running {cmd}")
-
+    logging.info("Import done.")
     return fname
 
 
@@ -84,6 +88,13 @@ args = parser.parse_args()
 importdir = f"{datalake}/import"
 datadir = f"{datalake}/data/drones"
 bindir = f"{datalake}/bin"
+logdir = f"{datalake}/var/log"
+
+date = datetime.now().strftime('%Y%m%d')
+logfile = f"{logdir}/import-drones-{date}.log"
+logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                    format='%(asctime)s - %(levelname)s: %(message)s')
+logging.info("Starting")
 
 if args.dry_run:
     action = False
@@ -96,22 +107,24 @@ for file in files:
     #
     if os.path.isdir(file):
         print(f"Exploring {file}")
+        logging.info(f"Inside {file}")
         for root, dirs, files in os.walk(file, topdown=True):
-            print(f"into {root}")
+            logging.info(f"into {root}")
 
             # Now do stuff, look at parquet/csv only
             #
             for f in files:
                 if Path(f).suffix != '.parquet' and Path(f).suffix != '.csv':
+                    logging.warning(f"{f} ignored.")
                     continue
 
                 r = process_one(root, f, action)
                 if r is None:
-                    print(f"{f} skipped.")
+                    logging.warning(f"{f} skipped.")
     else:
-        print(f"Just {file}")
+        logging.info(f"Just {file}")
         root = Path(file).root
         r = process_one(root, file, action)
         if r is None:
-            print(f"{file} skipped.")
+            logging.warning(f"{file} skipped.")
 
