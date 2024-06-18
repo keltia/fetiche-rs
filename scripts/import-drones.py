@@ -63,7 +63,7 @@ def process_one(dir, fname, action):
     pwd = os.getenv('CLICKHOUSE_PASSWD')
 
     ch_cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q \"INSERT INTO drones_raw FORMAT Csv\""
-    cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
+    cmd = f"/bin/tail -n +2 {os.path.join(dir, fname)} | {ch_cmd}"
     if action:
         os.system(cmd)
     else:
