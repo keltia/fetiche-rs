@@ -16,16 +16,12 @@
 //!
 //! [NDJSON]: https://en.wikipedia.org/wiki/NDJSON
 
-use std::fs;
 use std::ops::Add;
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use clap::{crate_name, crate_version};
-use datafusion::dataframe::DataFrameWriteOptions;
-use datafusion::prelude::*;
 use eyre::Report;
 use eyre::{eyre, Result};
 use reqwest::blocking::Client;
@@ -34,8 +30,6 @@ use serde::{Deserialize, Serialize};
 use snafu::prelude::*;
 use strum::{EnumString, VariantNames};
 use tap::Tap;
-use tempfile::{Builder, tempdir};
-use tokio::runtime::Runtime;
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
@@ -344,27 +338,7 @@ impl Fetchable for Asd {
 
         trace!("Fetched {}", data.filename);
 
-        // Save into a temp directory
-        //
-        let temp = tempdir()?;
-        trace!("save {} into {}", data.filename, temp.path().to_str().unwrap());
-        let fname = temp.path().join(PathBuf::from(data.filename));
-        fs::write(&fname, &data.content)?;
-
-        // Create tokio runtime
-        //
-        let rt = Runtime::new()?;
-
-        let fname = fname.clone().to_string_lossy().clone().to_string();
-
-        rt.block_on(async {
-            update_time(&fname).await.unwrap();
-        });
-        let res = fs::read_to_string(&fname)?;
-
-        // Now we must fixup the data by inserting the missing timestamp
-        //
-        Ok(out.send(res)?)
+        Ok(out.send(data.content)?)
     }
 
     /// Return the site's input formats
@@ -373,32 +347,6 @@ impl Fetchable for Asd {
         Format::Asd
     }
 }
-
-/// This is an async function that read the csv downloaded from ASD, add the "time" column as a
-/// UNIX timestamp (u32) and save the resulting CSV.
-///
-/// Raw CSV will then be push to the next stage of the pipeline.
-///
-/// async because the datafusion API requires it.
-///
-async fn update_time(fname: &str) -> Result<()> {
-    // Load out file in datafusion
-    //
-    let ctx = SessionContext::new();
-    ctx.register_csv("drones", fname, CsvReadOptions::default()).await?;
-
-    debug!("Reading {}, adding column time", fname);
-    let df = ctx.sql("SELECT *,CAST(date_part('epoch', timestamp) AS int) AS time FROM drones").await?;
-
-    let new = Builder::new().suffix(".csv").tempfile()?;
-    debug!("Writing result into {}", new.path().to_str().unwrap());
-    let a = df.write_csv(new.path().to_str().unwrap(), DataFrameWriteOptions::default(), None).await?;
-    trace!("Wrote {}", a.len());
-
-    debug!("Rename into {}", fname);
-    Ok(tokio::fs::rename(new.path(), fname).await?)
-}
-
 
 /// ASD is sending us an anonymous JSON array
 ///

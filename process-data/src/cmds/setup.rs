@@ -185,6 +185,7 @@ CREATE OR REPLACE VIEW acute.drones AS
 (
     SELECT
         *,
+        toUnixTimestamp(timestamp) as time,
         dist_2d(longitude,latitude,home_lon,home_lat) AS home_distance_2d,
         dist_3d(longitude,latitude,elevation,home_lon,home_lat,home_height) AS home_distance_3d
     FROM acute.drones_raw
