@@ -16,6 +16,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from subprocess import call
 
 # CONFIG CHANGE HERE or use -D
 #
@@ -51,7 +52,10 @@ def process_one(dir, fname, action):
             cmd = f"{convert_cmd} convert -s {full} {new}"
             logging.info(f"converting {cmd}")
             if action:
-                os.system(cmd)
+                try:
+                    call(cmd, shell=True)
+                except OSError as err:
+                    print("error: ", err, file=sys.stderr)
             else:
                 print(cmd)
             fname = new
@@ -66,7 +70,10 @@ def process_one(dir, fname, action):
     cmd = f"/bin/tail -n +2 {os.path.join(dir, fname)} | {ch_cmd}"
     logging.info(f"{cmd}")
     if action:
-        os.system(cmd)
+        try:
+            call(cmd, shell=True)
+        except OSError as err:
+            print("error: ", err, file=sys.stderr)
     else:
         print(f"Running {cmd}")
     logging.info("Import done.")

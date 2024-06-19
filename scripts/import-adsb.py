@@ -20,6 +20,7 @@ import re
 import sys
 import tempfile
 from pathlib import Path
+from subprocess import call
 from typing import Any
 
 # Does the mapping between the site basename and its ID.  Not worth using SQL for that.
@@ -77,7 +78,10 @@ def process_one(dir, fname, action):
         ext = Path(fname).suffix
         logging.info(f"{cmd} -> {fname}")
         if action:
-            os.system(cmd)
+            try:
+                call(cmd, shell=True)
+            except OSError as err:
+                print("error: ", err, file=sys.stderr)
         else:
             print(f"cmd={cmd} -> {fname}")
 
@@ -93,7 +97,10 @@ def process_one(dir, fname, action):
             cmd = f"{convert_cmd} convert -s {full} {new}"
             logging.info(f"{cmd}")
             if action:
-                os.system(cmd)
+                try:
+                    call(cmd, shell=True)
+                except OSError as err:
+                    print("error: ", err, file=sys.stderr)
             else:
                 print(cmd)
             fname = new
@@ -108,7 +115,10 @@ def process_one(dir, fname, action):
     cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
     logging.info(f"cmd={cmd}")
     if action:
-        os.system(cmd)
+        try:
+            call(cmd, shell=True)
+        except OSError as err:
+            print("error: ", err, file=sys.stderr)
     else:
         print(f"Running {cmd}")
     logging.info("insert done.")
@@ -119,7 +129,10 @@ def process_one(dir, fname, action):
     cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q '{q}'"
     logging.info(cmd)
     if action:
-        os.system(cmd)
+        try:
+            call(cmd, shell=True)
+        except OSError as err:
+            print("error: ", err, file=sys.stderr)
     else:
         print(f"cmd={cmd}")
     logging.info(f"update for site {site} done.")
