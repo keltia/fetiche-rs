@@ -8,7 +8,7 @@ readme = "README.md"
 license = "MIT"
 repository = "https://github.com/keltia/fetiche-rs"
 categories = ["aerospace::drones"]
-keywords = ["cat21", "asterix", "drones", "aeronautical-data", "hcl", "fetiche"]
+keywords = ["drones", "aeronautical-data", "fetiche"]
 
 [features]
 default = ["privacy"]
@@ -32,7 +32,6 @@ harness = false
 eyre.workspace = true
 chrono.workspace = true
 clap.workspace = true
-datafusion.workspace = true
 dateparser.workspace = true
 env_logger.workspace = true
 fetiche-common.workspace = true
