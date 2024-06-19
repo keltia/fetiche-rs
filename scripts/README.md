@@ -14,7 +14,7 @@ For `crontab(5)` usage, you should wrap the command like this:
 ## Environment variables
 
 There are several environment variables used in several scripts, mostly to specify which [Clickhouse] instance is to be used.
-See `env.sh` below.
+See `env.sh` above.
 
 - `CLICKHOUSE_HOST`
 
@@ -85,7 +85,7 @@ Import a file or a tree of files in parquet or csv format into a [Clickhouse] in
 to the `airplanes_raw` ADS-B table.
 
 ```text
-usage: import-adsb [-h] [--datalake DATALAKE] [--dry-run] [files ...]
+usage: import-adsb [-h] [--datalake DATALAKE] [--dry-run] [--delete] [files ...]
 
 Import ADS-B data into CH.
 
@@ -96,16 +96,17 @@ options:
   -h, --help            show this help message and exit
   --datalake DATALAKE, -D DATALAKE
                         Datalake is here.
-  --dry-run, -n         Do not actually move the file.
+  --dry-run, -n         Just show what would happen.
+  --delete, -d          Delete final file.
 ```
 
 - `import-drones.py` 
  
 Import a file or a tree of files in parquet or csv format into a [Clickhouse] instance.  This version is specific
-to the `drones_raw` ADS-B table.
+to the `drones_raw` table.
 
 ```text
-usage: import-adsb [-h] [--datalake DATALAKE] [--dry-run] [files ...]
+usage: import-drones [-h] [--datalake DATALAKE] [--dry-run] [files ...]
 
 Import drone data into CH.
 
