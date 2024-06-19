@@ -82,6 +82,9 @@ parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actuall
 parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
+if args.datalake is not None:
+    datalake = args.datalake
+
 importdir = f"{datalake}/import"
 datadir = f"{datalake}/data/drones"
 bindir = f"{datalake}/bin"
