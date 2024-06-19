@@ -200,7 +200,6 @@ CREATE OR REPLACE TABLE acute.drones_raw (
     source             VARCHAR,
     location           INT,
     timestamp          TIMESTAMP,
-    time               INT,
     latitude           DOUBLE, 
     longitude          DOUBLE, 
     altitude           INTEGER,
