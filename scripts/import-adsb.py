@@ -157,6 +157,9 @@ parser.add_argument('--delete', '-d', action='store_true', help="Delete final fi
 parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
+if args.datalake is not None:
+    datalake = args.datalake
+
 importdir = f"{datalake}/import"
 datadir = f"{datalake}/data/adsb"
 bindir = f"{datalake}/bin"
