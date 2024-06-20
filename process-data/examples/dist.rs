@@ -1,8 +1,10 @@
 use clap::Parser;
-use duckdb::params;
 use geo::point;
 use geo::prelude::*;
 use clickhouse::{Client, Row};
+
+#[cfg(feature = "duckdb")]
+use duckdb::params;
 
 /// Earth radius in meters
 const R: f64 = 6_371_088.0;
@@ -75,6 +77,7 @@ async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
     Ok(val.into())
 }
 
+#[cfg(feature = "duckdb")]
 async fn dd_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
     let dbh = duckdb::Connection::open_in_memory()?;
     dbh.execute("LOAD spatial", [])?;
@@ -109,6 +112,8 @@ async fn main() -> eyre::Result<()> {
     let geo_h = p1.haversine_distance(&p2);
     let geo_vin = p1.vincenty_distance(&p2)?;
 
+    let dist_duck: f64 = 0.;
+    #[cfg(feature = "duckdb")]
     let dist_duck = dd_distance(point1, point2).await?;
     let ch_dist = ch_distance(point1, point2).await?;
 

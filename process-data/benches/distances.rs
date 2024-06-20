@@ -1,8 +1,10 @@
 use clickhouse::Client;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use duckdb::{Connection, params};
 use geo::{point, Point};
 use geo::prelude::*;
+
+#[cfg(feature = "duckdb")]
+use duckdb::{Connection, params};
 
 struct Pt {
     latitude: f64,
@@ -112,11 +114,13 @@ fn geo_vincenty(c: &mut Criterion) {
     });
 }
 
+#[cfg(feature = "duckdb")]
 fn duckdb_calc(dbh: &Connection, p1: &Pt, p2: &Pt) {
     dbh.execute("SELECT ST_Distance_Spheroid(ST_Point(?, ?), ST_Point(?, ?))",
                 params![p1.latitude, p1.longitude, p2.latitude, p2.longitude]).unwrap();
 }
 
+#[cfg(feature = "duckdb")]
 fn duckdb_spheroid(c: &mut Criterion) {
     let (point1, point2) = setup();
 
@@ -160,9 +164,20 @@ fn ch_geodistance(c: &mut Criterion) {
 }
 
 criterion_group! {
-    name = benches;
+    name = benches_all;
     config = Criterion::default();
     targets = self_haversines, self_cosinuses, geo_geodesic, geo_haversines, geo_vincenty, duckdb_spheroid, ch_geodistance
 }
 
+criterion_group! {
+    name = benches;
+    config = Criterion::default();
+    targets = self_haversines, self_cosinuses, geo_geodesic, geo_haversines, geo_vincenty, ch_geodistance
+}
+
+#[cfg(feature = "duckdb")]
+criterion_main!(benches_all);
+
+#[cfg(not(feature = "duckdb"))]
 criterion_main!(benches);
+
