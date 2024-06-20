@@ -1,6 +1,8 @@
 //! This is the main driver module for all the different commands.
 //!
 
+use std::fmt::Debug;
+use clickhouse::Client;
 use thiserror::Error;
 use tracing::info;
 
@@ -14,7 +16,6 @@ use crate::cli::{Opts, SubCommand};
 use crate::config::Context;
 
 mod acute;
-mod batch;
 mod distances;
 mod export;
 mod setup;
@@ -31,6 +32,12 @@ pub enum Status {
     NoDatabase(String),
     #[error("No datalake specified in {0}")]
     NoDatalake(String),
+}
+
+/// This trait define an object that can be calculated
+///
+pub trait Calculate: Debug {
+    async fn run(&self, dbh: &Client) -> eyre::Result<Stats>;
 }
 
 // -----

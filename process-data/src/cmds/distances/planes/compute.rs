@@ -11,8 +11,7 @@ use tokio::time::{Duration, Instant, sleep};
 use tracing::{debug, info, trace};
 use fetiche_common::BB;
 
-use crate::cmds::{ONE_DEG, PlaneDistance, PlanesStats, Stats};
-use crate::cmds::batch::Calculate;
+use crate::cmds::{Calculate, ONE_DEG, PlaneDistance, PlanesStats, Stats};
 
 impl PlaneDistance {
     // -- private
