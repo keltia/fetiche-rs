@@ -122,12 +122,6 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     }).collect();
     trace!("All tasks: {:?}", worklist);
 
-/*    let mut batch = Batch::from_vec(&dbh, &worklist);
-
-    // Gather stats for the run
-    //
-    let stats = batch.execute().await?;
-*/
     let stats: Vec<_> = worklist.iter().map(|task| async {
         task.run(&dbh.clone()).await
     }).collect();
