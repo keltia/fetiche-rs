@@ -89,9 +89,9 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     // We must operate on a database.
     //
-    let cnf = opts.config.clone();
-    let cfg = ConfigFile::load(cnf)?;
     let def = ConfigFile::default_file().to_string_lossy().to_string();
+    let cnf = opts.config.clone().unwrap_or(def.clone());
+    let cfg = ConfigFile::load(&cnf)?;
 
     if opts.database.is_none() && cfg.database.is_none() {
         return Err(Status::NoDatabase(def).into());
