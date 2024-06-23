@@ -1,5 +1,7 @@
 ## DuckDB
 
+This document describes the different tables and macros used for the prototype calculation using DuckDB has DB engine.
+
 ### Macros
 
 ```sql

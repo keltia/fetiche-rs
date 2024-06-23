@@ -24,7 +24,8 @@ need.
 registered on the Slack server. First steps were a bit difficult (mainly because I don't know the product) but with
 some help from helpful people on Slack, I was able to find my way.
 
-Clickhouse is seriously fast
+Clickhouse is seriously fast even with our current table design (one table for all ADS-B data and a view to perform the
+necessary calculations).  We have now more than 4.5B records in a single table.
 
 ##        
 
