@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
 
-use eyre::eyre;
+use eyre::Result;
 #[cfg(unix)]
 use home::home_dir;
 use log::debug;
@@ -78,28 +78,17 @@ impl ConfigFile {
         Self::config_path().join(CONFIG)
     }
 
-    /// Load either file specified as parameter or the default file if `None`.
+    /// Load either file specified as parameter or the default file.
     ///
     #[tracing::instrument]
-    pub fn load<T>(fname: Option<T>) -> eyre::Result<ConfigFile>
-    where
-        T: Into<PathBuf> + Debug,
+    pub fn load(fname: &str) -> Result<ConfigFile>
     {
         trace!("loading config");
-        let fname: PathBuf = match fname {
-            Some(fname) => fname.into(),
-            _ => Self::default_file(),
-        };
-
         let data = fs::read_to_string(fname)
             .map_err(|_| {
-                eprintln!(
-                    "No configuration file, use -d or create {:?}",
-                    Self::default_file()
-                );
-                std::process::exit(1);
-            })
-            .unwrap();
+                let fname = Self::default_file().to_string_lossy().to_string();
+                Status::MissingConfig(fname)
+            })?;
         let data: ConfigFile = hcl::from_str(&data)?;
         debug!("config: {:?}", data);
 
