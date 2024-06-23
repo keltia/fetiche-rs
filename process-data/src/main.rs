@@ -14,6 +14,7 @@ use crate::config::{finish_runtime, init_runtime};
 mod cli;
 mod cmds;
 mod config;
+mod error;
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");

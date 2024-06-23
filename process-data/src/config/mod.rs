@@ -18,7 +18,7 @@ use tracing_tree::HierarchicalLayer;
 pub use io::*;
 
 use crate::cli::Opts;
-use crate::cmds::Status;
+use crate::error::Status;
 
 mod io;
 
@@ -94,10 +94,6 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     let def = ConfigFile::default_file().to_string_lossy().to_string();
 
     if opts.database.is_none() && cfg.database.is_none() {
-        eprintln!(
-            "Error: You must specify a database, either CLI or in {}",
-            def
-        );
         return Err(Status::NoDatabase(def).into());
     }
 
@@ -118,7 +114,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     //
     if endpoint.is_empty() {
         error!("DB URL not defined, exiting!");
-        std::process::exit(1);
+        return Err(Status::NoUrl(def).into());
     }
 
     info!("Connecting to {} @ {}", name, endpoint);

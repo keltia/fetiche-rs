@@ -14,8 +14,9 @@ use tracing::{info, trace};
 
 use fetiche_common::{DateOpts, expand_interval, load_locations, Location};
 
-use crate::cmds::{Calculate, Stats, Status};
+use crate::cmds::{Calculate, Stats};
 use crate::config::Context;
+use crate::error::Status;
 
 mod compute;
 

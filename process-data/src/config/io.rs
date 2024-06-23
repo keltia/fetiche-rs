@@ -11,6 +11,8 @@ use tracing::trace;
 
 use fetiche_common::makepath;
 
+use crate::error::Status;
+
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
 
@@ -102,7 +104,7 @@ impl ConfigFile {
         debug!("config: {:?}", data);
 
         if data.version != CVERSION {
-            return Err(eyre!("bad file version: {}", data.version));
+            return Err(Status::BadFileVersion(data.version).into());
         }
         Ok(data)
     }

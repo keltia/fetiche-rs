@@ -3,7 +3,6 @@
 
 use std::fmt::Debug;
 use clickhouse::Client;
-use thiserror::Error;
 use tracing::info;
 
 pub use acute::*;
@@ -23,16 +22,6 @@ mod stats;
 
 /// One degree in *kilometers*
 const ONE_DEG: f64 = 40_000. / 360.;
-
-#[derive(Debug, Error)]
-pub enum Status {
-    #[error("Invalid site name {0}")]
-    UnknownSite(String),
-    #[error("No database specified anywhere (config: {0}")]
-    NoDatabase(String),
-    #[error("No datalake specified in {0}")]
-    NoDatalake(String),
-}
 
 /// This trait define an object that can be calculated
 ///
