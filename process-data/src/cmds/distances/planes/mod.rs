@@ -140,6 +140,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
         }
     }).collect();
     let stats = Stats::summarise(stats);
+    trace!("summary={stats:?}");
 
     Ok(stats)
 }
