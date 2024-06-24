@@ -17,23 +17,17 @@ use std::io::Write;
 
 use chrono::prelude::*;
 use clap::{crate_authors, crate_version, Parser};
+use datafusion::config::{CsvOptions, TableParquetOptions};
+use datafusion::dataframe::DataFrameWriteOptions;
 use datafusion::prelude::*;
-use datafusion::{
-    common::arrow::csv::WriterBuilder as CsvOpts,
-    dataframe::DataFrameWriteOptions,
-    parquet::{
-        basic::{Compression, Encoding, ZstdLevel},
-        file::properties::{EnabledStatistics, WriterProperties},
-    },
-};
 use eyre::{eyre, Result};
-use inline_python::{python, Context};
+use inline_python::{Context, python};
 use tempfile::Builder;
 use tracing::{info, trace};
 
-use fetiche_common::{list_locations, load_locations, Location, BB};
+use fetiche_common::{BB, list_locations, load_locations, Location};
 
-use crate::cli::{banner, version, Opts, Otype};
+use crate::cli::{banner, Opts, Otype, version};
 use crate::init::init_runtime;
 use crate::segment::extract_segments;
 
@@ -91,14 +85,14 @@ async fn main() -> Result<()> {
         Some(start) => dateparser::parse(&start),
         None => Ok(Utc::now()),
     }
-    .unwrap();
+        .unwrap();
     trace!("start={}", start);
 
     let end = match opts.end {
         Some(end) => dateparser::parse(&end),
         None => Ok(Utc::now()),
     }
-    .unwrap();
+        .unwrap();
     trace!("end={}", end);
 
     // Convert into UNIX timestamps
@@ -170,21 +164,21 @@ async fn main() -> Result<()> {
 
     let ctx = SessionContext::new();
     let fname = tmpf.path().to_string_lossy().to_string();
-    let df = ctx.read_csv(fname, CsvReadOptions::default()).await?;
+    let df = ctx.read_csv(fname, CsvReadOptions::default().has_header(false)).await?;
     let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
 
     let output = opts.output;
 
     if opts.otype == Otype::Parquet {
-        let props = WriterProperties::builder()
-            .set_created_by(NAME.to_string())
-            .set_encoding(Encoding::PLAIN)
-            .set_statistics_enabled(EnabledStatistics::Page)
-            .set_compression(Compression::ZSTD(ZstdLevel::try_new(8)?))
-            .build();
-        let _ = df.write_parquet(&output, dfopts, Some(props)).await?;
+        let mut options = TableParquetOptions::default();
+        options.global.created_by = "acutectl/save".to_string();
+        options.global.encoding = Some("plain".to_string());
+        options.global.statistics_enabled = Some("page".to_string());
+        options.global.compression = Some("zstd(8)".to_string());
+
+        let _ = df.write_parquet(&output, dfopts, Some(options)).await?;
     } else {
-        let props = CsvOpts::default();
+        let props = CsvOptions::default();
         let _ = df.write_csv(&output, dfopts, Some(props)).await?;
     }
     Ok(())
