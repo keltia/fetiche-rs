@@ -119,6 +119,7 @@ def process_one(dir, fname, action):
             call(cmd, shell=True)
         except OSError as err:
             print("error: ", err, file=sys.stderr)
+            logging.error("error: ", err)
     else:
         print(f"Running {cmd}")
     logging.info("insert done.")
@@ -133,6 +134,7 @@ def process_one(dir, fname, action):
             call(cmd, shell=True)
         except OSError as err:
             print("error: ", err, file=sys.stderr)
+            logging.error("error: ", err)
     else:
         print(f"cmd={cmd}")
     logging.info(f"update for site {site} done.")
