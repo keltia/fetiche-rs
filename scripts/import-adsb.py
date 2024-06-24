@@ -209,6 +209,13 @@ for file in files:
                     logging.warning(f"{f} ignored.")
                     continue
 
+                # Ignore non drones-related files
+                #
+                name = Path(f).stem
+                if name.startswith('drones-'):
+                    logging.warning(f"{f} ignored.")
+                    continue
+
                 r = process_one(root, f, action)
                 if r is None:
                     logging.warning(f"{f} skipped.")
