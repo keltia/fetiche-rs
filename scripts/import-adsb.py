@@ -13,12 +13,12 @@ XXX You must have `bdt(1)`  somewhere in the `PATH`
 """
 
 import argparse
-from datetime import datetime
 import logging
 import os
 import re
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from subprocess import call
 from typing import Any
@@ -49,6 +49,7 @@ if sys.platform.startswith('darwin'):
     clickhouse = 'clickhouse client'
 
 delete = False
+
 
 def process_one(dir, fname, action):
     """
@@ -81,6 +82,7 @@ def process_one(dir, fname, action):
             try:
                 call(cmd, shell=True)
             except OSError as err:
+                logging.error("error: ", err)
                 print("error: ", err, file=sys.stderr)
         else:
             print(f"cmd={cmd} -> {fname}")
@@ -100,6 +102,7 @@ def process_one(dir, fname, action):
                 try:
                     call(cmd, shell=True)
                 except OSError as err:
+                    logging.error("error: ", err)
                     print("error: ", err, file=sys.stderr)
             else:
                 print(cmd)
@@ -228,4 +231,3 @@ for file in files:
         r = process_one(root, file, action)
         if r is None:
             logging.warning(f"{file} skipped.")
-
