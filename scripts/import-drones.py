@@ -10,11 +10,11 @@ XXX You must have `bdt(1)`  somewhere in the `PATH`
 """
 
 import argparse
-from datetime import datetime
 import logging
 import os
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from subprocess import call
 
