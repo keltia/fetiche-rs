@@ -66,8 +66,9 @@ def process_one(dir, fname, action):
     host = os.getenv('CLICKHOUSE_HOST')
     user = os.getenv('CLICKHOUSE_USER')
     pwd = os.getenv('CLICKHOUSE_PASSWD')
+    dbn = os.getenv('CLICKHOUSE_DB') or db
 
-    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q \"INSERT INTO drones_raw FORMAT Csv\""
+    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {dbn} --password {pwd} -q \"INSERT INTO drones_raw FORMAT Csv\""
     cmd = f"/bin/tail -n +2 {os.path.join(dir, fname)} | {ch_cmd}"
     logging.info(f"{cmd}")
     if action:
@@ -143,4 +144,3 @@ for file in files:
         r = process_one(root, file, action)
         if r is None:
             logging.warning(f"{file} skipped.")
-

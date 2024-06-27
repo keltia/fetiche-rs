@@ -110,8 +110,9 @@ def process_one(dir, fname, action):
     host = os.getenv('CLICKHOUSE_HOST')
     user = os.getenv('CLICKHOUSE_USER')
     pwd = os.getenv('CLICKHOUSE_PASSWD')
+    dbn = os.getenv('CLICKHOUSE_DB') or db
 
-    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
+    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {dbn} --password {pwd} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
     cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
     logging.info(f"cmd={cmd}")
     if action:
