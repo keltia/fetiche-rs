@@ -38,6 +38,18 @@ This is the current crontab running on `acute.eurocontrol.fr`  on my account.
 
 This is used to avoid hardcoding the different DB parameters into every script
 
+### `.envrc`
+
+The current `.envrc` is as follows, suitable for all POSIX/Bourne shell variants:
+
+```shell
+export CLICKHOUSE_URL=http://reku.eurocontrol.fr:8123
+export CLICKHOUSE_HOST=reku.eurocontrol.fr
+export CLICKHOUSE_DB=acute
+export CLICKHOUSE_USER=default
+export CLICKHOUSE_PASSWD=**replace**
+```
+
 [direnv]: https://direnv.net/
 
 
