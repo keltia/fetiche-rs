@@ -11,7 +11,6 @@ packages but most of them have rather old ones (i.e. Debian) so I'd recommend in
 fetch and install the toolchains (see above).
 
 On macOS, `rustup` is available through [Homebrew] and this is the way I'd recommend to use:
-
 ```text
 brew install rustup-init
 ```
@@ -23,7 +22,6 @@ scoop install rustup
 ```
 
 After `rustup` is installed, you need to install the toolchain(s) you need:
-
 ```text
 rustup toolchain install stable
 ```
@@ -31,8 +29,7 @@ rustup toolchain install stable
 to get the latest version in the "stable" channel. To compile at least one of the optional components of fetiche, you
 may need to install the "nightly" version which is update every few days. See [rustup] for more details.
 
-After installing the toolchain, just verify you can access the main utilies like `rustc`, `cargo`, etc.:
-
+After installing the toolchain, just verify you can access the main utilities like `rustc`, `cargo`, etc.:
 ```text
 ❯ cargo version
 cargo 1.79.0 (ffa9cf99a 2024-06-03)
@@ -45,13 +42,11 @@ rustc 1.79.0 (129f3b996 2024-06-10)
 Fetiche is hosted primarily on [Github] with clones on the different machines I work on.
 
 If you are not connected already on your GitHub account or, you don't have one.
-
 ```text
 git clone https://github.com/keltia/fetiche-rs
 ```
 
-However, it is better to use the SSH-based client:
-
+However, it is better to use the SSH-based client if you have a GitHub account:
 ```text
 git clone git@github.com:keltia/fetiche-rs
 ```
@@ -63,7 +58,9 @@ for eventual proxy setup, etc.
 ## Building the Rust applications
 
 As explained in [FETICHE.md](FETICHE.md), fetiche is separated into several parts (called "crates" in Rust ecosystem)
-and the various `Cargo.toml` files you can find in the tree specify the metadata linking all of this together.
+and the various `Cargo.toml` files you can find in the tree specify the metadata linking all of this together.   
+This is also where dependencies are specified for every crate.  There can be workspaces and shared dependencies as well, 
+see the [Top Cargo.toml](../Cargo.toml).
 
 ### Libraries
 
@@ -74,7 +71,6 @@ sections in `Cargo.toml` and will be built for the binaries when you compile the
 
 As we are still using the "nightly" toolchain for the `opensky-history` binary, one can not just run `cargo build` from
 the top directory, you will have to build both `acutectl` and `process-data` separately:
-
 ```text
 cd acutectl && cargo build
 cd process-data && cargo build
@@ -82,6 +78,8 @@ cd process-data && cargo build
 
 See [acutectl](../acutectl/README.md) and [process-data](../process-data/README.md) README for details. There is also
 `opensky-history` but it is not used for now, we have another, internal, source of ADS-B data.
+
+There is also a pure Python version of `opensky-history` in the `scripts` directory.
 
 ### Branches
 
