@@ -60,6 +60,7 @@ def process_one(dir, fname, action):
     :param action: do we do something or just print?
     :return: converted filename.
     """
+    print(f"file={fname}")
 
     # Deduct site name
     #
