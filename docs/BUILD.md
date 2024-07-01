@@ -16,7 +16,6 @@ brew install rustup-init
 ```
 
 For Windows, I've been using [Scoop] with great success to install, again, `rustup`:
-
 ```text
 scoop install rustup
 ```
