@@ -7,10 +7,10 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
+
 use datafusion::config::TableParquetOptions;
 use datafusion::dataframe::DataFrameWriteOptions;
 use datafusion::prelude::{CsvReadOptions, SessionContext};
-
 use eyre::{eyre, Result};
 use tempfile::Builder;
 use tokio::runtime::Runtime;
@@ -20,7 +20,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{Runnable, IO};
+use crate::{IO, Runnable};
 
 /// The Save task
 ///
@@ -121,11 +121,12 @@ impl Save {
 #[tracing::instrument]
 async fn write_parquet(from: &str, to: &str) -> Result<()> {
     let ctx = SessionContext::new();
-    let df = ctx.read_csv(from, CsvReadOptions::default().has_header(false)).await?;
+    let df = ctx.read_csv(from, CsvReadOptions::default().has_header(true)).await?;
     let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
 
     let mut options = TableParquetOptions::default();
     options.global.created_by = "acutectl/save".to_string();
+    options.global.writer_version = "2.0".to_string();
     options.global.encoding = Some("plain".to_string());
     options.global.statistics_enabled = Some("page".to_string());
     options.global.compression = Some("zstd(8)".to_string());
