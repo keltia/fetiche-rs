@@ -18,7 +18,7 @@ def fetch_one_year(year: int):
     """
     Fetch one year of drone data.
 
-    :param year: the year we <ant
+    :param year: the year we want
     :return:
     """
     print(f"Processing year {year}")
