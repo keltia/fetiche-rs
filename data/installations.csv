@@ -9,3 +9,4 @@ id,site_id,antenna_id,start_at,end_at,comment
 8,8,3,2024-02-20 00:00:00,,"BRU antenna to Cyprus."
 9,2,4,2023-02-14 00:00:00,2024-01-24 00:00:00,"New antenna in CDG by ASD"
 10,10,4,2024-04-08 00:00:00,,"HQ to Vienna airport."
+11,9,2,2024-07-02 00:00:00,,"LUX to Bucharest."
