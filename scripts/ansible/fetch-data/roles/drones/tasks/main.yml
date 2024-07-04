@@ -1,0 +1,27 @@
+---
+# fetch drone data
+# 05      0       *       *       *       cd /acute/import && /acute/bin/fetch-asd-drones.py -D /acute -S lux-me
+# 10      0       *       *       *       cd /acute/import && direnv exec . /acute/bin/import-drones.py -D /acute .
+# 15      0       *       *       *       cd /acute/import && /acute/bin/dispatch-drops.py --drones -D /acute .
+
+- name: Fetch drone data.
+  ansible.builtin.command: "{{ drones_fetch }} -D {{ basedir }} -S lux-me"
+  tags: doit
+  register: fetch
+  changed_when: fetch.rc != 0
+  args:
+    chdir: "{{ importdir }}"
+- name: Import into Clickhouse.
+  ansible.builtin.command: "{{ drones_import }} -D {{ basedir }} ."
+  tags: doit
+  register: importc
+  changed_when: importc.rc != 0
+  args:
+    chdir: "{{ importdir }}"
+- name: Move parquet files in datalake.
+  ansible.builtin.command: "{{ drones_dispatch }} --drones -D {{ basedir }} ."
+  tags: doit
+  register: move
+  changed_when: move.rc != 0
+  args:
+    chdir: "{{ importdir }}"
