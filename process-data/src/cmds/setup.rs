@@ -188,8 +188,11 @@ FROM read_parquet('{}/adsb/**/*.parquet', hive_partitioning = true);
 CREATE
 OR REPLACE VIEW drones
 AS (
-  SELECT *,
+  SELECT journey,ident,model,source,location,timestamp,latitude,longitude,altitude,elevation,
+         gps,rssi,home_lat,home_lon,home_height,speed,heading,station_name,station_latitude,
+         station_longitude,year,month,
          dist_2d(latitude, longitude, home_lat, home_lon) as home_distance_2d,
+         timestamp as time,
          dist_3d(latitude, longitude, height, home_lat, home_lon, home_height) as home_distance_3d
   FROM read_parquet('{}/drones/**/*.parquet', hive_partitioning = true)
 );
