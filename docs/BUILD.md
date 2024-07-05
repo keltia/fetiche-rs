@@ -87,6 +87,19 @@ depending on the current development streams (`fetiche-ch`, `feature/whatever`, 
 contains the branch compiling with the [DuckDB] embedded database whereas `fetiche-ch` is the branch for
 the [Clickhouse] port. Fetiche is compliant with the [gitflow] process for editing and merging branches.
 
+You can change branches in-place with `git checkout fetiche-ch` or, even better, use worktrees like this:
+```text
+$ git clone git@github.com:keltia/fetiche-rs
+$ cd fetiche-rs
+<work in the default branch>
+$ git worktree add ../fetiche-ch fetiche-ch
+$ cd ../fetiche-ch
+<work in the fetiche-ch branch>
+```
+
+the two directories `fetiche-rs` and `fetiche-ch` shares the same `.git` direcory with all git metadata.  If you commit in
+`fetiche-ch` it will be reflected when you push, etc.
+
 ## Scripts
 
 Fetiche contains several Python 3 scripts used to wrap the main utilities like `acutectl` for cron-based or manual
