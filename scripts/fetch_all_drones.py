@@ -2,7 +2,10 @@
 #
 # Fetch all drone data from ASD in one go, creating the entire Hive-based directory tree
 
+import argparse
+import logging
 import os
+from datetime import datetime
 
 years = {
     2021: [-1, -1, -1, -1, -1, -1, 31, 31, 30, 31, 30, 31],
@@ -14,7 +17,7 @@ years = {
 datalake = "/Users/acute/data"
 
 
-def fetch_one_year(year: int):
+def fetch_one_year(year: int, action: bool):
     """
     Fetch one year of drone data.
 
@@ -72,4 +75,32 @@ def fetch_one_day(year_id: int, month_id: int, day_id: int):
     print(f"Running {cmd}")
 
 
-fetch_one_year(2024)
+parser = argparse.ArgumentParser(
+    prog='fetch-all drones',
+    description='Fetch all drone data ever in a single run.')
+
+parser.add_argument('--datalake', '-D', help='Datalake is here.')
+parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
+args = parser.parse_args()
+
+if args.datalake is not None:
+    datalake = args.datalake
+
+if args.dry_run:
+    action = False
+else:
+    action = True
+
+importdir = f"{datalake}/import"
+datadir = f"{datalake}/data/drones"
+bindir = f"{datalake}/bin"
+logdir = f"{datalake}/var/log"
+
+date = datetime.now().strftime('%Y%m%d')
+logfile = f"{logdir}/fetch-all-drones-{date}.log"
+logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                    format='%(asctime)s - %(levelname)s: %(message)s')
+logging.info("Starting")
+
+fetch_one_year(2024, action)
+
