@@ -3,6 +3,7 @@
 # Fetch all drone data from ASD in one go, creating the entire Hive-based directory tree
 
 import os
+from datetime import datetime
 
 years = {
     2021: [-1, -1, -1, -1, -1, -1, 31, 31, 30, 31, 30, 31],
@@ -25,6 +26,11 @@ def fetch_one_year(year: int):
 
     months = years[year]
     print(months)
+
+    today = datetime.now()
+    if year > today.year:
+        return
+
     for ind, days in enumerate(months):
         # Skip months we do not have any data from
         #
@@ -43,6 +49,10 @@ def fetch_one_month(year_id: int, month_id: int):
     :param month_id: month
     :return:
     """
+    today = datetime.now()
+    if month_id > today.month and year_id == today.year:
+        return
+
     # Move ourselves in the relevant directory
     #
     basedir = f"{datalake}/drones/year={year_id}/month={month_id:02d}"
@@ -53,7 +63,6 @@ def fetch_one_month(year_id: int, month_id: int):
     monthdays = years[year_id]
     days = monthdays[month_id - 1]
     for day in range(1, days):
-        print(f"Fetching day {day}")
         fetch_one_day(year_id, month_id, day)
 
 
@@ -66,6 +75,11 @@ def fetch_one_day(year_id: int, month_id: int, day_id: int):
     :param day_id:
     :return:
     """
+    today = datetime.now()
+    if day_id >= today.day and month_id == today.month and year_id == today.year:
+        return
+
+    print(f"Fetching day {day_id}")
     current = f"{year_id}-{month_id:02d}-{day_id:02d}"
     print(f"Processing {current}")
     cmd = f"acutectl fetch -o drones-{current}.parquet lux-me day '{current} 00:00:00 UTC'"
