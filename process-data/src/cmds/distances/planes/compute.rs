@@ -97,17 +97,17 @@ ORDER BY time
         let lat = self.loc.lat;
         let lon = self.loc.lon;
 
-        let day_start = self.date;
-        let day_end = self.date.checked_add_days(Days::new(1)).unwrap();
+        let day_start = self.date.timestamp();
+        let day_end = self.date.checked_add_days(Days::new(1)).unwrap().timestamp();
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
-        let r2 = r##"
+        let r2 = format!(r##"
 CREATE OR REPLACE TABLE candidates AS
 SELECT
-    time,
+    to_timestamp(timestamp) as time,
     journey,
     ident,
     model,
@@ -122,14 +122,15 @@ SELECT
     home_distance_3d
 FROM drones
 WHERE
-  CAST(to_timestamp(timestamp) AS TIMESTAMP) BETWEEN ? AND ? AND
-  ST_DWithin(ST_point(?, ?), ST_Point(latitude, longitude), ?)
+  to_timestamp(timestamp) BETWEEN to_timestamp({}) AND to_timestamp({}) AND
+  ST_DWithin(ST_point({lat}, {lon}), ST_Point(latitude, longitude), {dist})
 ORDER BY
   (time,journey)
-    "##;
+    "##, day_start, day_end);
+        debug!("{r2}");
 
-        let mut stmt = dbh.prepare(r2)?;
-        let _ = stmt.query(params![day_start, day_end, lat, lon, dist])?;
+        let mut stmt = dbh.prepare(&r2)?;
+        let _ = stmt.query([])?;
 
         // Check how many
         //
@@ -145,13 +146,15 @@ ORDER BY
     fn find_close(&self, dbh: &Connection) -> Result<usize> {
         trace!("Find close encounters.");
 
+        let proximity = self.separation;
+
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
         // altitude diff is less than 3 nm. (parameter is `separation`).
         //
         // $1,$2 = lon,lat of site
         // $3 = timestamp of drone point
         //
-        let r = r##"
+        let r = format!(r##"
 CREATE OR REPLACE TABLE today_close AS
 SELECT
   c.journey,
@@ -178,16 +181,15 @@ FROM
   today AS t,
   candidates AS c
 WHERE
-  pt BETWEEN CAST(to_timestamp(c.time - 2) AS TIMESTAMP) AND CAST(to_timestamp(c.time + 2) AS TIMESTAMP) AND
-  dist2d <= ? AND
-  diff_alt < ?
-ORDER BY
-  (c.time, c.journey)
-    "##;
+  epoch(pt) BETWEEN (epoch(CAST(c.timestamp AS TIMESTAMP)) - 2) AND (epoch(CAST(c.timestamp AS TIMESTAMP)) + 2) AND
+  dist2d <= {} AND
+  diff_alt < {}
+ORDER BY (c.timestamp, c.journey)
+    "##, proximity, proximity);
 
-        let proximity = self.separation;
-        let mut stmt = dbh.prepare(r)?;
-        let _ = stmt.query(params![proximity, proximity])?;
+        debug!("{r}");
+        let mut stmt = dbh.prepare(&r)?;
+        let _ = stmt.query([])?;
 
         // Check how many
         //
