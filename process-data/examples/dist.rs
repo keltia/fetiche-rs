@@ -1,8 +1,8 @@
 use clap::Parser;
+use clickhouse::Client;
 use duckdb::params;
 use geo::point;
 use geo::prelude::*;
-use clickhouse::{Client, Row};
 
 /// Earth radius in meters
 const R: f64 = 6_371_088.0;
@@ -62,9 +62,10 @@ async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f32> {
         .bind(point1.latitude)
         .bind(point2.longitude)
         .bind(point2.latitude)
-        .fetch::<f32>()?;
+        .fetch::<f32>().unwrap();
 
-    let val: f32 = res.next().await?.unwrap_or_else(|| 0.);
+    let val = res.next().await?;
+    let val = val.unwrap_or_else(|| 0.);
     Ok(val)
 }
 

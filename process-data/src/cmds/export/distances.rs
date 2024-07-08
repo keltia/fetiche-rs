@@ -15,7 +15,7 @@ pub struct ExpDistOpts {
     /// Export results for this site
     pub name: String,
     /// Day to export
-    pub date: String,
+    pub date: Option<String>,
     /// Summary or everything?
     #[clap(short = 'S', long)]
     pub summary: bool,
@@ -28,6 +28,7 @@ pub struct ExpDistOpts {
 }
 
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
+/// for all sites and all days.
 ///
 #[tracing::instrument(skip(dbh))]
 fn export_all_encounters_csv(
@@ -166,8 +167,10 @@ fn export_all_encounters_text(dbh: &Connection, name: &str, day: DateTime<Utc>) 
     Ok(rbs.len())
 }
 
+/// This is for extracting a summary of encounters for a single day for any given site.
+///
 #[tracing::instrument(skip(dbh))]
-fn export_all_encounters_summary_csv(dbh: &Connection, name: &str, day: DateTime<Utc>, fname: &str) -> eyre::Result<usize> {
+fn export_site_encounters_summary(dbh: &Connection, name: &str, day: DateTime<Utc>, fname: &str) -> eyre::Result<usize> {
     let r = format!(r##"
 COPY (
   SELECT
@@ -206,15 +209,58 @@ COPY (
     Ok(count)
 }
 
+/// This is for exporting all encounters into a single CSV file, for all sites and days.
+///
+#[tracing::instrument(skip(dbh))]
+fn export_all_encounters_summary(dbh: &Connection, fname: &str) -> eyre::Result<usize> {
+    let r = format!(r##"
+COPY (
+  SELECT
+    en_id,
+    any_value(site) AS site,
+    any_value(time) AS time,
+    journey,
+    drone_id,
+    any_value(model) AS model,
+    any_value(drone_lat) AS drone_lat,
+    any_value(drone_lon) AS drone_lon,
+    any_value(drone_alt_m) AS drone_alt_m,
+    any_value(drone_height_m) AS drone_height_m,
+    any_value(prox_callsign) AS prox_callsign,
+    any_value(prox_id) AS prox_id,
+    any_value(prox_lat) AS prox_lat,
+    any_value(prox_lon) AS prox_lon,
+    any_value(prox_alt_m) AS prox_alt_m,
+    any_value(distance_hor_m) AS distance_hor_m,
+    any_value(distance_vert_m) AS distance_vert_m,
+    any_value(distance_home_m) as distance_home_m,
+    MIN(distance_slant_m) AS distance_slant_m,
+  FROM airplane_prox
+  GROUP BY ALL
+  ORDER BY time
+) TO '{}' WITH (FORMAT CSV, HEADER true, DELIMITER ',');
+    "##, fname);
+
+    let mut stmt = dbh.prepare(&r)?;
+    let count = stmt.execute([])?;
+
+    Ok(count)
+}
+
 #[tracing::instrument(skip(ctx))]
 pub fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
     let dbh = ctx.db();
 
-    let tm = dateparser::parse(&opts.date).unwrap();
-    let day = Utc
-        .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
-        .unwrap();
-    info!("Exporting results for {}:", day);
+    let day = if opts.date.is_some() {
+        let tm = dateparser::parse(&opts.date.clone().unwrap()).unwrap();
+        let day = Utc
+            .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
+            .unwrap();
+        info!("Exporting results for {}:", day);
+        day
+    } else {
+        Utc::now()
+    };
 
     // Load parameters
     //
@@ -225,7 +271,11 @@ pub fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
     match &opts.output {
         Some(fname) => {
             let count = if opts.summary {
-                export_all_encounters_summary_csv(&dbh, &name, day, fname)?
+                if name.as_str() == "ALL" {
+                    export_all_encounters_summary(&dbh, fname)?
+                } else {
+                    export_site_encounters_summary(&dbh, &name, day, fname)?
+                }
             } else {
                 match opts.format {
                     Format::Csv => export_all_encounters_csv(&dbh, &name, day, fname)?,
