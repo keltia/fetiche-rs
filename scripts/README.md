@@ -3,17 +3,20 @@
 ## `direnv`
 
 The `/acute`  directory tree now use [direnv] to automatically add environment variables based on your location.  
-The `env.sh` is linked as `.envrc` in `/acute/import` and it will be read every time your shell enter said directories.  
+The `env.sh` is linked as `.envrc` in `/acute/import` and it will be read every time your shell enter said
+directories.  
 Remember to use `direnv allow .` everywhere it is needed.
 
 For `crontab(5)` usage, you should wrap the command like this:
+
 ```cronexp
 10      0       *       *       *       cd /acute/import && direnv exec . /acute/bin/import-drones.py -D /acute .
 ```
 
 ## Environment variables
 
-There are several environment variables used in several scripts, mostly to specify which [Clickhouse] instance is to be used.
+There are several environment variables used in several scripts, mostly to specify which [Clickhouse] instance is to be
+used.
 See `env.sh` above.
 
 - `CLICKHOUSE_HOST`
@@ -22,7 +25,7 @@ FQDN to the DB server
 
 - `CLICKHOUSE_URL`
 
-URL for the HTTP client to [Clickhouse].  Format is `http://$CLICKHOUSE_HOST:8123` or `https://$CLICKHOUSE_HOST:8443` 
+URL for the HTTP client to [Clickhouse]. Format is `http://$CLICKHOUSE_HOST:8123` or `https://$CLICKHOUSE_HOST:8443`
 
 - `CLICKHOUSE_DB`
 
@@ -36,7 +39,7 @@ Which DB to use
 - `env.sh`
 
 script to configure the current Clickhouse related environment variables (`CLICKHOUSE_*`) for all the scripts that
-expect them to be defined when running.  To be linked as `.envrc` where needed.
+expect them to be defined when running. To be linked as `.envrc` where needed.
 
 - `fetch-fa.sh`
 
@@ -61,9 +64,29 @@ options:
   --keep, -K            Do not delete files after download.
 ```
 
+- `fetch-all-drones.py`
+
+Fetch all available drone data from the ASD site, either year by year or as a whole, create one file per day with the
+drone data. Create a Hive-compatible tree in `<datalake>/drones/`. Site is the name of the account to be used to
+connect.
+See the configuration file `sources.hcl`.
+
+```text
+usage: fetch-all-drones [-h] [--site SITE] [--datalake DATALAKE] [--year YEAR]
+
+Fetch all drone data from ASD in one go, creating the entire Hive-based directory tree.
+
+options:
+  -h, --help            show this help message and exit
+  --site SITE, -S SITE  Use this site.
+  --datalake DATALAKE, -D DATALAKE
+                        Datalake is here.
+  --year YEAR, -Y YEAR  Fetch a specific year and not everything.
+```
+
 - `fetch-ftp-adsb.py`
 
-Connect tpp `ftps.eurocontrol.fr` and retrieve the latest CSV files for ADS-B data for our various stations.
+Connect to the FTP site `ftps.eurocontrol.fr` and retrieve the latest CSV files for ADS-B data for our various stations.
 
 ```text
 usage: fetch-ftp-adsb [-h] [--datalake DATALAKE] [--keep]
@@ -81,7 +104,7 @@ options:
 
 - `import-adsb.py`
 
-Import a file or a tree of files in parquet or csv format into a [Clickhouse] instance.  This version is specific
+Import a file or a tree of files in parquet or csv format into a [Clickhouse] instance. This version is specific
 to the `airplanes_raw` ADS-B table.
 
 ```text
@@ -100,9 +123,9 @@ options:
   --delete, -d          Delete final file.
 ```
 
-- `import-drones.py` 
- 
-Import a file or a tree of files in parquet or csv format into a [Clickhouse] instance.  This version is specific
+- `import-drones.py`
+
+Import a file or a tree of files in parquet or csv format into a [Clickhouse] instance. This version is specific
 to the `drones_raw` table.
 
 ```text
