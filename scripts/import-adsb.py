@@ -21,7 +21,7 @@ import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
-from subprocess import call
+from subprocess import run
 from typing import Any
 
 # Does the mapping between the site basename and its ID.  Not worth using SQL for that.
@@ -101,13 +101,12 @@ def process_one(dir, fname, action):
             cmd = f"{convert_cmd} convert -s {full} {new}"
             logging.info(f"{cmd}")
             if action:
-                try:
-                    call(cmd, shell=True)
-                except OSError as err:
-                    logging.error("error: ", err)
-                    print("error: ", err, file=sys.stderr)
+                ret = run(cmd, shell=True, capture_output=True)
+                if ret.returncode != 0:
+                    logging.error("error: ", ret.stderr)
+                    print("error: ", ret.stderr, file=sys.stderr)
             else:
-                print(cmd)
+                print(f"Running {cmd}")
             fname = new
 
     # Now do the import, `fname` is a csv file in any case
@@ -121,11 +120,10 @@ def process_one(dir, fname, action):
     cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
     logging.info(f"cmd={cmd}")
     if action:
-        try:
-            call(cmd, shell=True)
-        except OSError as err:
-            print("error: ", err, file=sys.stderr)
-            logging.error("error: ", err)
+        ret = run(cmd, shell=True, capture_output=True)
+        if ret.returncode != 0:
+            logging.error("error: ", ret.stderr)
+            print("error: ", ret.stderr, file=sys.stderr)
     else:
         print(f"Running {cmd}")
     logging.info("insert done.")
@@ -136,11 +134,10 @@ def process_one(dir, fname, action):
     cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q '{q}'"
     logging.info(cmd)
     if action:
-        try:
-            call(cmd, shell=True)
-        except OSError as err:
-            print("error: ", err, file=sys.stderr)
-            logging.error("error: ", err)
+        ret = run(cmd, shell=True, capture_output=True)
+        if ret.returncode != 0:
+            logging.error("error: ", ret.stderr)
+            print("error: ", ret.stderr, file=sys.stderr)
     else:
         print(f"cmd={cmd}")
     logging.info(f"update for site {site} done.")

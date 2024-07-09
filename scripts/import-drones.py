@@ -16,7 +16,7 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from subprocess import call
+from subprocess import run
 
 # CONFIG CHANGE HERE or use -D
 #
@@ -52,13 +52,12 @@ def process_one(dir, fname, action):
             cmd = f"{convert_cmd} convert -s {full} {new}"
             logging.info(f"converting {cmd}")
             if action:
-                try:
-                    call(cmd, shell=True)
-                except OSError as err:
-                    print("error: ", err, file=sys.stderr)
-                    logging.error("error: ", err)
+                ret = run(cmd, shell=True, capture_output=True)
+                if ret.returncode != 0:
+                    logging.error("error: ", ret.stderr)
+                    print("error: ", ret.stderr, file=sys.stderr)
             else:
-                print(cmd)
+                print(f"Running {cmd}")
             fname = new
 
     # Now do the import, `fname` is a csv file in any case
@@ -72,11 +71,10 @@ def process_one(dir, fname, action):
     cmd = f"/bin/tail -n +2 {os.path.join(dir, fname)} | {ch_cmd}"
     logging.info(f"{cmd}")
     if action:
-        try:
-            call(cmd, shell=True)
-        except OSError as err:
-            print("error: ", err, file=sys.stderr)
-            logging.error("error: ", err)
+        ret = run(cmd, shell=True, capture_output=True)
+        if ret.returncode != 0:
+            logging.error("error: ", ret.stderr)
+            print("error: ", ret.stderr, file=sys.stderr)
     else:
         print(f"Running {cmd}")
     logging.info("Import done.")
