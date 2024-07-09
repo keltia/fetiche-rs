@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 from subprocess import call
@@ -174,6 +175,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
 parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
 parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
+parser.add_argument('--no-delay', '-N', action='store_true', help='Do not add delay between imports.')
 parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
@@ -226,6 +228,9 @@ for file in files:
                 r = process_one(root, f, action)
                 if r is None:
                     logging.warning(f"{f} skipped.")
+
+                if args.no_delay is None:
+                    time.sleep(0.2)
     else:
         logging.info(f"file={file}")
         root = Path(file).root
