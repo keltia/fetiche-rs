@@ -230,7 +230,7 @@ for file in files:
                     logging.warning(f"{f} skipped.")
 
                 if args.no_delay is None:
-                    time.sleep(0.2)
+                    time.sleep(1)
     else:
         logging.info(f"file={file}")
         root = Path(file).root
