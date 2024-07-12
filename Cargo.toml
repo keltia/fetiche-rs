@@ -1,7 +1,31 @@
+[package]
+name = "fetiche-rs"
+edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "The Fetiche Surveillance Framewortk."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/fetiche-rs"
+categories = ["aerospace::drones"]
+keywords = ["parquet", "drones", "aeronautical-data", "ads-b"]
+
+[[bin]]
+name = "acutctl"
+path = "acutectl/src/main.rs"
+
+[[bin]]
+name = "process-data"
+path = "process-data/src/main.rs"
+
+[[bin]]
+name = "fetiched"
+path = "fetiched/src/main.rs"
+
 [workspace]
 resolver = "2"
-members = ["acutectl", "adsb-to-parquet", "common", "fetiched", "formats", "sources", "opensky-history", "process-data", "common"]
-exclude = ["cat21conv"]
+members = ["acutectl", "common", "fetiched", "formats", "sources", "process-data"]
+default-members = ["acutectl", "process-data"]
+exclude = ["cat21conv", "adsb-to-parquet", "opensky-history"]
 
 [workspace.dependencies]
 arrow2 = { version = "0.17", features = ["io_csv", "io_json", "io_json_integration", "io_parquet"] }

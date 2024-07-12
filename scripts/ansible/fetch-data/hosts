@@ -1,0 +1,124 @@
+# This is the default ansible 'hosts' file.
+#
+# It should live in /usr/local/etc/ansible/hosts
+#
+#   - Comments begin with the '#' character
+#   - Blank lines are ignored
+#   - Groups of hosts are delimited by [header] elements
+#   - You can enter hostnames or ip addresses
+#   - A hostname/ip can be a member of multiple groups
+
+
+#--------------------
+[eih:children]
+cnslab
+esxi
+esxvm
+ac25
+
+[eih:vars]
+ansible_python_interpreter=/usr/bin/python
+
+# -- groups
+[esxi:children]
+charybde
+scylla
+
+[esxi:vars]
+ansible_user=root
+ansible_python_interpreter=/usr/bin/python3
+
+# --
+[ac25:children]
+ac25hosts
+ac25vm
+
+[ac25hosts:children]
+hdas
+vdas
+
+[ac25hosts:vars]
+ansible_python_interpreter=/usr/bin/python3
+ansible_ssh_user=root
+
+[ac25vm:children]
+drones_eih
+drones_cdg
+
+# --
+
+[cnslab:children]
+cnslabdrone
+esxi
+esxvm
+
+[esxvm:children]
+pydev
+acute
+sassc22
+reku
+
+[ubuntu:children]
+pydev
+acute
+reku
+
+[oracle_linux:children]
+sassc22
+
+[esxvm:vars]
+ansible_user=root
+ansible_python_interpreter=/usr/bin/python3
+
+[upgradable:children]
+oracle_linux
+ubuntu
+
+# --
+
+[misc:children]
+covid
+
+# -- each host
+
+[covid]
+covid.eurocontrol.fr ansible_python_interpreter=/usr/bin/python
+
+[drones_eih]
+drones_eih.local
+
+[drones_cdg]
+drones_cdg.local
+
+[hdas]
+hdas.eurocontrol.fr
+
+[vdas]
+vdas.eurocontrol.fr
+
+[cnslabdrone]
+cnslabdrone.local ansible_user=cnslabdrone
+
+## -- ESXi hosts
+
+[charybde]
+charybde.local
+
+[scylla]
+scylla.local
+
+# Use ECDSA for key file = /etc/ssh/keys-root/authorized_keys
+
+## -- ESXi VMs
+
+[pydev]
+pydev.eurocontrol.fr
+
+[acute]
+acute.eurocontrol.fr
+
+[reku]
+reku.eurocontrol.fr
+
+[sassc22]
+sassc22.eurocontrol.fr

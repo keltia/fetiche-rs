@@ -1,0 +1,11 @@
+---
+# Main driver
+
+- name: Fetch, convert and import our daily data.
+  hosts: acute
+  gather_facts: false
+  vars_files:
+    - vars.yml
+  roles:
+    - role: drones
+    - role: planes

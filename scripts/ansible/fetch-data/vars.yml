@@ -1,0 +1,8 @@
+---
+# variables.
+
+basedir: "/acute"
+bindir: "{{ basedir }}/bin"
+datalake: "{{ basedir }}/data"
+importdir: "{{ basedir }}/import"
+acutectl: "{{ bindir }}/acutectl"

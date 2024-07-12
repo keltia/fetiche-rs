@@ -15,20 +15,32 @@ options:
 """
 
 import argparse
+import logging
 import os
+import sys
 from datetime import datetime, timedelta, timezone
+from subprocess import run
 
 # CONFIG CHANGE HERE or use -D
 #
 datalake = "/Users/acute"
-cmd = "acutectl"
+acutectl = "acutectl"
 
 
 def fetch_files(site, output):
-    str = f"{cmd} fetch -o {output} {site} yesterday"
-    print(f"cmd={str}")
-    os.system(str)
-    os.system('/bin/ls -lF')
+    cmd = f"{acutectl} fetch -o {output} {site} yesterday"
+    print(f"cmd={cmd}")
+    ret = run(cmd, shell=True, capture_output=True)
+    if ret.returncode != 0:
+        logging.error("error: ", ret.stderr)
+        print("error: ", ret.stderr, file=sys.stderr)
+    ret = run('/bin/ls -lF', shell=True, capture_output=True)
+    if ret.returncode != 0:
+        logging.error("error: ", ret.stderr)
+        print("error: ", ret.stderr, file=sys.stderr)
+    else:
+        logging.info(f"ls -lF: {ret.stdout}")
+        print("info: ", ret.stdout)
 
 
 # Setup arguments
@@ -53,6 +65,13 @@ if args.site is None:
 importdir = f"{datalake}/import"
 datadir = f"{datalake}/data"
 bindir = f"{datalake}/bin"
+logdir = f"{datalake}/var/log"
+
+date = datetime.now().strftime('%Y%m%d')
+logfile = f"{logdir}/fetch-asd-drones-{date}.log"
+logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                    format='%(asctime)s - %(levelname)s: %(message)s')
+logging.info("Starting")
 
 os.chdir(importdir)
 
