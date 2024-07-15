@@ -172,6 +172,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
 parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
 parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
+parser.add_argument('--interval', '-i', type=int, help='Interval between imports.')
 parser.add_argument('--no-delay', '-N', action='store_true', help='Do not add delay between imports.')
 parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
@@ -197,6 +198,16 @@ else:
 
 if args.delete:
     delete = True
+
+# Default interval between imports is 5s
+#
+if args.interval is None:
+    interval = 5
+else:
+    interval = args.interval
+
+if args.no_delay is None:
+    logging.info(f"Delay is {interval}s")
 
 files = args.files
 for file in files:
@@ -227,7 +238,7 @@ for file in files:
                     logging.warning(f"{f} skipped.")
 
                 if args.no_delay is None:
-                    time.sleep(1)
+                    time.sleep(interval)
     else:
         logging.info(f"file={file}")
         root = Path(file).root
