@@ -2886,6 +2886,9 @@ dependencies = [
 [[package]]
 name = "fetiche-rs"
 version = "0.0.0"
+dependencies = [
+ "chrono",
+]
 
 [[package]]
 name = "fetiche-sources"
