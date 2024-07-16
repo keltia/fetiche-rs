@@ -38,6 +38,7 @@ sites = {
     'Bucharest': 9,
     'Vienna': 10,
     'Vienna2': 10,
+    'Zurich': 11,
 }
 
 # CONFIG CHANGE HERE or use -D
@@ -81,11 +82,10 @@ def process_one(dir, fname, action):
         ext = Path(fname).suffix
         logging.info(f"{cmd} -> {fname}")
         if action:
-            try:
-                call(cmd, shell=True)
-            except OSError as err:
-                logging.error("error: ", err)
-                print("error: ", err, file=sys.stderr)
+            ret = run(cmd, shell=True, capture_output=True)
+            if ret.returncode != 0:
+                logging.error("error: ", ret.stderr)
+                print("error: ", ret.stderr, file=sys.stderr)
         else:
             print(f"cmd={cmd} -> {fname}")
 
@@ -138,15 +138,17 @@ def process_one(dir, fname, action):
         if ret.returncode != 0:
             logging.error("error: ", ret.stderr)
             print("error: ", ret.stderr, file=sys.stderr)
+        else:
+            # Now delete if requested
+            #
+            if delete:
+                logging.info("delete done.")
+                os.remove(fname)
+
     else:
         print(f"cmd={cmd}")
     logging.info(f"update for site {site} done.")
 
-    # Now delete if requested
-    #
-    if delete:
-        logging.info("delete done.")
-        os.remove(fname)
     return fname
 
 
@@ -172,6 +174,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
 parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
 parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
+parser.add_argument('--interval', '-i', type=int, help='Interval between imports.')
 parser.add_argument('--no-delay', '-N', action='store_true', help='Do not add delay between imports.')
 parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
@@ -197,6 +200,16 @@ else:
 
 if args.delete:
     delete = True
+
+# Default interval between imports is 5s
+#
+if args.interval is None:
+    interval = 5
+else:
+    interval = args.interval
+
+if args.no_delay is None:
+    logging.info(f"Delay is {interval}s")
 
 files = args.files
 for file in files:
@@ -227,7 +240,7 @@ for file in files:
                     logging.warning(f"{f} skipped.")
 
                 if args.no_delay is None:
-                    time.sleep(1)
+                    time.sleep(interval)
     else:
         logging.info(f"file={file}")
         root = Path(file).root
