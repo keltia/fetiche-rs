@@ -138,15 +138,17 @@ def process_one(dir, fname, action):
         if ret.returncode != 0:
             logging.error("error: ", ret.stderr)
             print("error: ", ret.stderr, file=sys.stderr)
+        else:
+            # Now delete if requested
+            #
+            if delete:
+                logging.info("delete done.")
+                os.remove(fname)
+
     else:
         print(f"cmd={cmd}")
     logging.info(f"update for site {site} done.")
 
-    # Now delete if requested
-    #
-    if delete:
-        logging.info("delete done.")
-        os.remove(fname)
     return fname
 
 
