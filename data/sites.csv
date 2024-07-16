@@ -9,3 +9,4 @@ id,name,code,latitude,longitude,ref_altitude
 8,"CYP","8G7M575J+X2",35.16,33.28,3
 9,"BUC","8GP8H39X+XX",44.57,26.1,96
 10,"AUS","8FWR3HXR+X2",48.10,16.59,183
+11, "SWI","",0.0,0.0,0
