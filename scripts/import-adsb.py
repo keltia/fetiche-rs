@@ -81,11 +81,10 @@ def process_one(dir, fname, action):
         ext = Path(fname).suffix
         logging.info(f"{cmd} -> {fname}")
         if action:
-            try:
-                call(cmd, shell=True)
-            except OSError as err:
-                logging.error("error: ", err)
-                print("error: ", err, file=sys.stderr)
+            ret = run(cmd, shell=True, capture_output=True)
+            if ret.returncode != 0:
+                logging.error("error: ", ret.stderr)
+                print("error: ", ret.stderr, file=sys.stderr)
         else:
             print(f"cmd={cmd} -> {fname}")
 
