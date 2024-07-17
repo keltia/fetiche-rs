@@ -15,7 +15,6 @@ pub(crate) fn init_runtime(name: &str) -> Result<()> {
         .with_targets(true)
         .with_verbose_entry(true)
         .with_verbose_exit(true)
-        .with_higher_precision(true)
         .with_bracketed_fields(true);
 
     // Setup Open Telemetry with Jaeger

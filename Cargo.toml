@@ -1,3 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["acutectl", "common", "fetiched", "formats", "sources", "process-data"]
+default-members = ["acutectl", "process-data"]
+exclude = ["cat21conv", "adsb-to-parquet", "opensky-history"]
+
 [package]
 name = "fetiche-rs"
 edition = "2021"
@@ -21,17 +27,10 @@ path = "process-data/src/main.rs"
 name = "fetiched"
 path = "fetiched/src/main.rs"
 
-[workspace]
-resolver = "2"
-members = ["acutectl", "common", "fetiched", "formats", "sources", "process-data"]
-default-members = ["acutectl", "process-data"]
-exclude = ["cat21conv", "adsb-to-parquet", "opensky-history"]
-
 [workspace.dependencies]
-arrow2 = { version = "0.17", features = ["io_csv", "io_json", "io_json_integration", "io_parquet"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
-datafusion = { version = "39.0", features = ["zstd", "async-compression", "serde"] }
+datafusion = { version = "40.0", features = ["zstd", "async-compression", "serde"] }
 dateparser = "0.2"
 env_logger = "0.11"
 eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
@@ -64,4 +63,7 @@ tracing = "0.1"
 tracing-log = "0.2"
 tracing-opentelemetry = "0.22"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
-tracing-tree = { version = "0.3", features = ["time"] }
+tracing-tree = { version = "0.4", features = ["time"] }
+arrow2 = { version = "0.17", features = ["io_csv", "io_json", "io_json_integration", "io_parquet"] }
+[dependencies]
+chrono = "0.4.38"
