@@ -56,12 +56,12 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         .with_verbose_exit(true)
         .with_bracketed_fields(true);
 
-    let exporter = opentelemetry_otlp::new_exporter().tonic();
-    let tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(exporter)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    // let exporter = opentelemetry_otlp::new_exporter().tonic();
+    // let tracer = opentelemetry_otlp::new_pipeline()
+    //     .tracing()
+    //     .with_exporter(exporter)
+    //     .install_simple()?;
+    // let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
     //
@@ -72,7 +72,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     tracing_subscriber::registry()
         .with(filter)
         .with(tree)
-        .with(telemetry)
+        //        .with(telemetry)
         .init();
     trace!("Logging initialised.");
 
