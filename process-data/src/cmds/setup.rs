@@ -167,7 +167,7 @@ AS
        GeometricVerticalRate          AS geo_vert_rate,
        GroundSpeed                    AS ground_speed,
        TrackAngle,
-       Callsign                       AS prox_callsign,
+       replaceRegexpOne(prox_callsign, '\'([0-9A-Z]+)\\s*\'', '\\1') AS prox_callsign,
        (AircraftStopped == '1')       AS stopped,
        (GroundTrackValid == '1')      AS GroundTrackValid,
        (GroundHeadingProvided == '1') AS GroundHeadingProvided,
@@ -180,7 +180,7 @@ AS
     COMMENT 'View for airplanes data.'
 "##;
 
-        let r2 = r##"
+    let r2 = r##"
 CREATE OR REPLACE VIEW acute.drones AS
 (
     SELECT
