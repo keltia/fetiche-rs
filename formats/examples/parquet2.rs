@@ -41,22 +41,22 @@
 use std::fs::File;
 use std::io::BufReader;
 
-use arrow2::array::Array;
-use arrow2::datatypes::Field;
 use arrow2::{
     chunk::Chunk,
     datatypes::Schema,
     io::parquet::write::{
-        transverse, CompressionOptions, FileWriter, RowGroupIterator, Version, WriteOptions,
+        CompressionOptions, FileWriter, RowGroupIterator, transverse, Version, WriteOptions,
     },
 };
+use arrow2::array::Array;
+use arrow2::datatypes::Field;
 use eyre::Result;
 use parquet2::{compression::ZstdLevel, encoding::Encoding};
 use serde_arrow::schema::{SchemaLike, TracingOptions};
 use serde_json::Deserializer;
 use tracing::{debug, info, trace};
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::prelude::*;
 use tracing_tree::HierarchicalLayer;
 
 use fetiche_formats::Asd;
@@ -142,17 +142,7 @@ fn main() -> Result<()> {
         .with_targets(true)
         .with_verbose_entry(true)
         .with_verbose_exit(true)
-        .with_higher_precision(true)
         .with_bracketed_fields(true);
-
-    // Setup Open Telemetry with Jaeger
-    //
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_auto_split_batch(true)
-        .with_max_packet_size(9_216)
-        .with_service_name(NAME)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
     //
@@ -163,7 +153,6 @@ fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(filter)
         .with(tree)
-        .with(telemetry)
         .init();
     trace!("Logging initialised.");
 
@@ -174,6 +163,5 @@ fn main() -> Result<()> {
 
     let _ = write_chunk(schema, data, &fname)?;
 
-    opentelemetry::global::shutdown_tracer_provider();
     Ok(())
 }
