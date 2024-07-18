@@ -10,9 +10,9 @@ use std::sync::Arc;
 use clickhouse::Client;
 use eyre::Result;
 use tracing::{error, info, trace};
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 pub use io::*;
@@ -21,7 +21,6 @@ use crate::cli::Opts;
 use crate::error::Status;
 
 mod io;
-
 /// This holds our context, meaning common stuff
 ///
 pub struct Context {
@@ -118,10 +117,10 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     info!("Connecting to {} @ {}", name, endpoint);
     let dbh = Client::default()
-            .with_url(endpoint.clone())
-            .with_database(&name)
-            .with_user(&user)
-            .with_password(&pass);
+        .with_url(endpoint.clone())
+        .with_database(&name)
+        .with_user(&user)
+        .with_password(&pass);
 
     let ctx = Context {
         config: HashMap::from([
