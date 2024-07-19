@@ -2,17 +2,20 @@
 //!
 //! FIXME: at the moment, the pipe uses fixed names for the intermediate tables (today, candidates, etc.).
 //!
+//! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
+//!
 use std::ops::Add;
 
 use chrono::{Datelike, Days, TimeZone, Utc};
-use clickhouse::Client;
+use clickhouse::{Client, Row};
 use eyre::Result;
-use tokio::time::{Duration, Instant, sleep};
+use serde::{Deserialize, Serialize};
+use tokio::time::{sleep, Duration, Instant};
 use tracing::{debug, info, trace};
 
 use fetiche_common::BB;
 
-use crate::cmds::{Calculate, ONE_DEG, PlaneDistance, PlanesStats, Stats};
+use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, ONE_DEG};
 
 impl PlaneDistance {
     // -- private
@@ -53,14 +56,18 @@ impl PlaneDistance {
         // $8 = distance in degrees (== dist(nm) /  60)   1 deg ~ 60 nm ~111.1 km
         //
         //
-        let id_site = dbh.query("SELECT id FROM sites WHERE name = ?".into())
+        let id_site = dbh
+            .query("SELECT id FROM sites WHERE name = ?".into())
             .bind(&site)
             .fetch_one::<u32>()
             .await?;
         debug!("site_id for {site} is {id_site}");
 
         trace!("Removing old table today.");
-        let _ = dbh.query("DROP TABLE IF EXISTS acute.today".into()).execute().await?;
+        let _ = dbh
+            .query("DROP TABLE IF EXISTS acute.today".into())
+            .execute()
+            .await?;
 
         let r1 = r##"
 CREATE TABLE acute.today
@@ -88,7 +95,8 @@ ORDER BY time
         //
         debug!("ellipse=(center={},{},{},{})", lon, lat, dist, dist);
 
-        let _ = dbh.query(r1)
+        let _ = dbh
+            .query(r1)
             .bind(id_site)
             .bind(time_from)
             .bind(time_to)
@@ -101,7 +109,10 @@ ORDER BY time
 
         // Check how many
         //
-        let count = dbh.query("SELECT count() FROM today").fetch_one::<usize>().await?;
+        let count = dbh
+            .query("SELECT count() FROM today")
+            .fetch_one::<usize>()
+            .await?;
 
         trace!("Total number of planes: {}\n", count);
         Ok(count)
@@ -134,7 +145,10 @@ ORDER BY time
         debug!("{} nm as deg: {}", self.distance, dist);
 
         trace!("Removing old table candidates.");
-        let _ = dbh.query("DROP TABLE IF EXISTS acute.candidates".into()).execute().await?;
+        let _ = dbh
+            .query("DROP TABLE IF EXISTS acute.candidates".into())
+            .execute()
+            .await?;
 
         let r2 = r##"
 CREATE TABLE acute.candidates
@@ -177,7 +191,8 @@ ORDER BY
         //
         let count = dbh
             .query("SELECT COUNT() FROM candidates")
-            .fetch_one::<usize>().await?;
+            .fetch_one::<usize>()
+            .await?;
 
         trace!("Total number of drones: {}", count);
         Ok(count)
@@ -188,7 +203,10 @@ ORDER BY
         trace!("Find close encounters.");
 
         trace!("Removing old table today_close.");
-        let _ = dbh.query("DROP TABLE IF EXISTS acute.today_close".into()).execute().await?;
+        let _ = dbh
+            .query("DROP TABLE IF EXISTS acute.today_close".into())
+            .execute()
+            .await?;
 
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
         // altitude diff is less than 3 nm. (parameter is `separation`).
@@ -243,43 +261,60 @@ ORDER BY
         //
         let count = dbh
             .query("SELECT COUNT() FROM today_close")
-            .fetch_one::<usize>().await?;
+            .fetch_one::<usize>()
+            .await?;
 
         trace!("Total number of potential encounters: {}", count);
         Ok(count)
     }
 
-    #[inline]
-    #[tracing::instrument(skip(dbh))]
-    async fn create_seq_ids(dbh: &Client) -> Result<()> {
-        Ok(dbh.query(r##"CREATE OR REPLACE SEQUENCE seq_ids"##).execute().await?)
-    }
+    // #[inline]
+    // #[tracing::instrument(skip(dbh))]
+    // async fn create_seq_ids(dbh: &Client) -> Result<()> {
+    //     Ok(dbh
+    //         .query(r##"CREATE OR REPLACE SEQUENCE seq_ids"##)
+    //         .execute()
+    //         .await?)
+    // }
 
     #[inline]
     #[tracing::instrument(skip(dbh))]
     async fn create_table_ids(dbh: &Client) -> Result<()> {
-        Ok(dbh.query(
-            r##"CREATE OR REPLACE TABLE ids (
-    id INT DEFAULT nextval('seq_ids'),
+        let _ = dbh
+            .query("DROP TABLE IF EXISTS ids".into())
+            .execute()
+            .await?;
+        let r = r##"
+        CREATE TABLE ids ENGINE = Memory (
     site STRING,
     date STRING,
     drone_id STRING,
     callsign STRING,
     journey INT,
     en_id STRING,
-)"##)
-            .execute()
-            .await?)
+)
+"##;
+
+        Ok(dbh.query(&r).execute().await?)
     }
 
     #[inline]
     #[tracing::instrument(skip(dbh))]
-    async fn insert_ids(dbh: &Client, day_name: &str) -> Result<()> {
-        Ok(dbh.query(
-            r##"INSERT INTO ids BY NAME (
+    async fn insert_ids(dbh: &Client, day_name: &str, site: &str) -> Result<usize> {
+        #[derive(Serialize, Deserialize, Row)]
+        struct Tc {
+            #[serde(skip_deserializing)]
+            en_id: String,
+            site: String,
+            date: String,
+            journey: u32,
+            drone_id: String,
+            callsign: String,
+        }
+
+        let r = format!(r##"
     SELECT
-      any_value(site) AS site,
-      ? AS date,
+      {day_name} AS date,
       journey,
       drone_id,
       callsign,
@@ -287,15 +322,33 @@ ORDER BY
     WHERE
       dist_drone_plane < 1852
     GROUP BY ALL
-)"##)
-            .bind(day_name)
-            .execute()
-            .await?)
+        "##);
+
+        let all = dbh.query(&r).fetch_all::<Tc>().await?;
+
+        let all = all.iter().enumerate().map(|(id, elem)| {
+            Tc {
+                en_id: format!("{}-{}-{}-{}", site, elem.date, elem.journey, id),
+                site: site.to_string(),
+                date: elem.date.clone(),
+                journey: elem.journey,
+                drone_id: elem.drone_id.clone(),
+                callsign: elem.callsign.clone(),
+            }
+        }).collect::<Vec<Tc>>();
+        let r = r##"INSERT INTO ids VALUES {}"##;
+
+        let _ = dbh.query(&r).bind(&all).execute().await?;
+
+        let count= all.len();
+        trace!("Got {count} IDs");
+        Ok(count)
     }
 
     #[inline]
     #[tracing::instrument(skip(dbh))]
     async fn update_seq_en_id(dbh: &Client) -> Result<()> {
+
         Ok(dbh.query(r##"UPDATE ids SET en_id = printf('%s-%s-%d-%d', site, date, journey, id) WHERE en_id = ''"##).execute().await?)
     }
 
@@ -303,7 +356,7 @@ ORDER BY
     #[tracing::instrument(skip(dbh))]
     async fn cleanup_seq(dbh: &Client) -> Result<()> {
         let _ = dbh.query(r##"DROP TABLE ids"##).execute().await?;
-        Ok(dbh.query(r##"DROP SEQUENCE seq_ids"##).execute().await?)
+        Ok(())
     }
 
     #[tracing::instrument(skip(dbh))]
@@ -327,9 +380,10 @@ ORDER BY
         // - insert ids
         // - join today_close and ids to get all points with the right en_id
         //
-        Self::create_seq_ids(dbh).await?;
+        let site = self.name.clone();
+
         Self::create_table_ids(dbh).await?;
-        Self::insert_ids(dbh, &day_name).await?;
+        Self::insert_ids(dbh, &day_name, &site).await?;
         Self::update_seq_en_id(dbh).await?;
 
         let r = r##"INSERT INTO airplane_prox
@@ -351,7 +405,7 @@ BY NAME (
       any_value(plat) AS prox_lat,
       any_value(palt) AS prox_alt_m,
       any_value(CEIL(dist2d)) AS distance_hor_m,
-      any_value(CEIL(@(palt - dalt))) AS distance_vert_m,
+      any_value(CEIL(ABS(palt - dalt))) AS distance_vert_m,
       any_value(CEIL(hdist2d)) as distance_home_m,
       CEIL(dist_drone_plane) AS distance_slant_m,
     FROM today_close AS tc, ids
@@ -365,14 +419,16 @@ BY NAME (
 )"##;
         dbh.query(r).execute().await?;
 
-        Self::cleanup_seq(dbh).await?;
+        //Self::cleanup_seq(dbh).await?;
 
         // Now check how many
         //
         let pattern = format!("%{day_name}%");
-        let count = dbh.query("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE ?")
+        let count = dbh
+            .query("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE ?")
             .bind(pattern)
-            .fetch_one::<usize>().await?;
+            .fetch_one::<usize>()
+            .await?;
 
         if count == 0 {
             info!("No new encounters.");
