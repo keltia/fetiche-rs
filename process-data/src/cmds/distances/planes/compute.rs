@@ -285,14 +285,14 @@ ORDER BY
             .execute()
             .await?;
         let r = r##"
-        CREATE TABLE ids ENGINE = Memory (
+        CREATE TABLE ids (
     site STRING,
     date STRING,
     drone_id STRING,
     callsign STRING,
     journey INT,
     en_id STRING,
-)
+) ENGINE = Memory
 "##;
 
         Ok(dbh.query(&r).execute().await?)
