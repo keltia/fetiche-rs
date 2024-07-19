@@ -286,12 +286,12 @@ ORDER BY
             .await?;
         let r = r##"
         CREATE TABLE ids (
-    site STRING,
-    date STRING,
-    drone_id STRING,
-    callsign STRING,
+    site VARCHAR,
+    date VARCHAR,
+    drone_id VARCHAR,
+    callsign VARCHAR,
     journey INT,
-    en_id STRING,
+    en_id VARCHAR,
 ) ENGINE = Memory
 "##;
 
@@ -384,7 +384,7 @@ ORDER BY
 
         Self::create_table_ids(dbh).await?;
         Self::insert_ids(dbh, &day_name, &site).await?;
-        Self::update_seq_en_id(dbh).await?;
+        //Self::update_seq_en_id(dbh).await?;
 
         let r = r##"INSERT INTO airplane_prox
 BY NAME (
