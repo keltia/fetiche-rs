@@ -9,6 +9,7 @@ use clickhouse::Client;
 use eyre::Result;
 use tokio::time::{Duration, Instant, sleep};
 use tracing::{debug, info, trace};
+
 use fetiche_common::BB;
 
 use crate::cmds::{Calculate, ONE_DEG, PlaneDistance, PlanesStats, Stats};
@@ -52,23 +53,30 @@ impl PlaneDistance {
         // $8 = distance in degrees (== dist(nm) /  60)   1 deg ~ 60 nm ~111.1 km
         //
         //
-        let _ = dbh.query("DROP TABLE today").execute().await?;
+        let id_site = dbh.query("SELECT id FROM sites WHERE name = ?".into())
+            .bind(&site)
+            .fetch_one::<u32>()
+            .await?;
+        debug!("site_id for {site} is {id_site}");
+
+        trace!("Removing old table today.");
+        let _ = dbh.query("DROP TABLE IF EXISTS acute.today".into()).execute().await?;
 
         let r1 = r##"
-CREATE TABLE today
-ORDER BY time
+CREATE TABLE acute.today
+ENGINE = Memory
 AS SELECT
-  (SELECT id FROM sites WHERE name = ?) AS id_site,
+  site,
   time,
   prox_id AS addr,
-  replaceRegexpOne(prox_callsign, '\'([0-9A-Z]+)\\s*\'', '\\1') AS callsign,
+  prox_callsign AS callsign,
   prox_lon AS plon,
   prox_lat AS plat,
   CAST(prox_alt AS DOUBLE) * 0.305 AS palt
 FROM
-  airplanes AS a, sites AS s
+  airplanes
 WHERE
-  id_site = site AND
+  site = ? AND
   time BETWEEN timestamp(?) AND timestamp(?) AND
   palt IS NOT NULL AND
   pointInEllipses(plon, plat, ?, ?, ?, ?)
@@ -81,7 +89,7 @@ ORDER BY time
         debug!("ellipse=(center={},{},{},{})", lon, lat, dist, dist);
 
         let _ = dbh.query(r1)
-            .bind(site)
+            .bind(id_site)
             .bind(time_from)
             .bind(time_to)
             .bind(lon)
@@ -115,6 +123,7 @@ ORDER BY time
         // Generate the polygon we are checking whether the point is in or not
         //
         let poly = BB::from_lat_lon(lat, lon, dist).to_polygon()?;
+        debug!("poly={poly:?}");
 
         let start_day = self.date;
         let end_day = self.date.checked_add_days(Days::new(1)).unwrap();
@@ -124,15 +133,18 @@ ORDER BY time
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
+        trace!("Removing old table candidates.");
+        let _ = dbh.query("DROP TABLE IF EXISTS acute.candidates".into()).execute().await?;
+
         let r2 = r##"
-CREATE
-OR REPLACE TABLE candidates Engine = 'Memory' AS
+CREATE TABLE acute.candidates
+ENGINE = Memory AS
 SELECT
     time,
     journey,
     ident,
     model,
-    to_timestamp(timestamp) as timestamp,
+    timestamp,
     latitude,
     longitude,
     altitude,
@@ -143,9 +155,9 @@ SELECT
     home_distance_3d
 FROM drones
 WHERE
-  CAST(to_timestamp(timestamp) AS TIMESTAMP) BETWEEN ? AND ?
+  CAST(toUnixTimestamp(timestamp) AS TIMESTAMP) BETWEEN timestamp(?) AND timestamp(?)
   AND
-  pointInPolygon((longitude,latitude), ?) = 1
+  pointInPolygon((longitude,latitude), [?, ?, ?, ?]) = 1
 ORDER BY
   (time,journey)
     "##;
@@ -154,17 +166,19 @@ ORDER BY
             .query(r2)
             .bind(start_day)
             .bind(end_day)
-            .bind(poly)
+            .bind(poly[0])
+            .bind(poly[1])
+            .bind(poly[2])
+            .bind(poly[3])
             .execute()
             .await?;
 
         // Check how many
         //
-        let mut res = dbh
+        let count = dbh
             .query("SELECT COUNT() FROM candidates")
-            .fetch::<usize>()?;
+            .fetch_one::<usize>().await?;
 
-        let count: usize = res.next().await?.unwrap_or(0);
         trace!("Total number of drones: {}", count);
         Ok(count)
     }
@@ -173,6 +187,9 @@ ORDER BY
     async fn find_close(&self, dbh: &Client) -> Result<usize> {
         trace!("Find close encounters.");
 
+        trace!("Removing old table today_close.");
+        let _ = dbh.query("DROP TABLE IF EXISTS acute.today_close".into()).execute().await?;
+
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
         // altitude diff is less than 3 nm. (parameter is `separation`).
         //
@@ -180,7 +197,8 @@ ORDER BY
         // $3 = timestamp of drone point
         //
         let r = r##"
-CREATE OR REPLACE TABLE today_close Engine = 'Memory' AS
+CREATE TABLE today_close
+ENGINE = Memory AS
 SELECT
   c.journey,
   c.ident AS drone_id,
@@ -201,12 +219,12 @@ SELECT
   t.palt AS palt,
   dist_2d(dlon, dlat, plon, plat) AS dist2d,
   dist_3d(dlon, dlat, dalt, plon, plat, palt) AS dist_drone_plane,
-  ceil(@(palt - dalt)) AS diff_alt
+  ceil(palt - dalt) AS diff_alt
 FROM
   today AS t,
   candidates AS c
 WHERE
-  pt BETWEEN CAST(to_timestamp(c.time - 2) AS TIMESTAMP) AND CAST(to_timestamp(c.time + 2) AS TIMESTAMP) AND
+  pt BETWEEN CAST(toUnixTimestamp(c.time - 2) AS TIMESTAMP) AND CAST(toUnixTimestamp(c.time + 2) AS TIMESTAMP) AND
   dist2d <= ? AND
   diff_alt < ?
 ORDER BY
@@ -314,7 +332,7 @@ ORDER BY
         Self::insert_ids(dbh, &day_name).await?;
         Self::update_seq_en_id(dbh).await?;
 
-        let r= r##"INSERT INTO airplane_prox
+        let r = r##"INSERT INTO airplane_prox
 BY NAME (
     SELECT
       ids.en_id,
@@ -375,7 +393,6 @@ impl Calculate for PlaneDistance {
     ///
     #[tracing::instrument(skip(dbh))]
     async fn run(&self, dbh: &Client) -> Result<Stats> {
-
         info!("Running calculations for {}:", self.date);
         let bar = ml_progress::progress!(
             4;
@@ -415,7 +432,7 @@ impl Calculate for PlaneDistance {
             bar.finish();
             return Ok(Stats::Planes(stats.clone()));
         }
-        stats.drones = c_drones;
+        stats.drones = c_drones as usize;
         bar.message(format!("{} drones.", c_drones));
         sleep(Duration::from_millis(DELAY)).await;
 
@@ -457,5 +474,3 @@ impl Calculate for PlaneDistance {
         Ok(Stats::Planes(stats.clone()))
     }
 }
-
-

@@ -10,9 +10,9 @@ use std::sync::Arc;
 use clickhouse::Client;
 use eyre::Result;
 use tracing::{error, info, trace};
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 pub use io::*;
@@ -21,7 +21,6 @@ use crate::cli::Opts;
 use crate::error::Status;
 
 mod io;
-
 /// This holds our context, meaning common stuff
 ///
 pub struct Context {
@@ -57,21 +56,12 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         .with_verbose_exit(true)
         .with_bracketed_fields(true);
 
-    // Setup Open Telemetry with Jaeger
-    //
-    // let tracer = opentelemetry_jaeger::new_agent_pipeline()
-    //     .with_auto_split_batch(true)
-    //     .with_max_packet_size(9_216)
-    //     .with_service_name(NAME)
+    // let exporter = opentelemetry_otlp::new_exporter().tonic();
+    // let tracer = opentelemetry_otlp::new_pipeline()
+    //     .tracing()
+    //     .with_exporter(exporter)
     //     .install_simple()?;
     // let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-
-    let exporter = opentelemetry_otlp::new_exporter().tonic();
-    let tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(exporter)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
     //
@@ -82,7 +72,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     tracing_subscriber::registry()
         .with(filter)
         .with(tree)
-        .with(telemetry)
+        //        .with(telemetry)
         .init();
     trace!("Logging initialised.");
 
@@ -118,10 +108,10 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     info!("Connecting to {} @ {}", name, endpoint);
     let dbh = Client::default()
-            .with_url(endpoint.clone())
-            .with_database(&name)
-            .with_user(&user)
-            .with_password(&pass);
+        .with_url(endpoint.clone())
+        .with_database(&name)
+        .with_user(&user)
+        .with_password(&pass);
 
     let ctx = Context {
         config: HashMap::from([

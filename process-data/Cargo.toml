@@ -1,6 +1,6 @@
 [package]
 name = "process-data"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Implement different processing of data."
@@ -31,6 +31,7 @@ harness = false
 [dependencies]
 chrono.workspace = true
 clap.workspace = true
+csv.workspace = true
 datafusion.workspace = true
 dateparser.workspace = true
 eyre.workspace = true
@@ -39,7 +40,6 @@ hcl-rs.workspace = true
 home.workspace = true
 log.workspace = true
 opentelemetry.workspace = true
-opentelemetry-jaeger.workspace = true
 opentelemetry-otlp.workspace = true
 opentelemetry_sdk.workspace = true
 parquet2.workspace = true
@@ -57,8 +57,7 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 clap_complete = "4.5"
-csv = "1.3"
-clickhouse = { version = "0.11", features = ["time", "watch", "tls"] }
+clickhouse = { version = "0.12", features = ["time", "watch"] }
 derive_builder = "0.20"
 duckdb = { version = "0.10", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"], optional = true }
 futures = "0.3"
@@ -71,7 +70,7 @@ rust-3d = "0.34"
 time = { version = "0.3", features = ["local-offset", "macros", "serde", "serde-human-readable"] }
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["async_tokio"] }
+criterion.workspace = true
 rstest.workspace = true
 
 [target.'cfg(unix)'.dependencies]

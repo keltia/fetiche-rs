@@ -2,9 +2,9 @@ use datafusion::arrow::array::{Array, Int32Array, RecordBatch};
 use datafusion::prelude::*;
 use eyre::Result;
 use tracing::trace;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 use fetiche_formats::Asd;
@@ -57,17 +57,7 @@ async fn main() -> Result<()> {
         .with_targets(true)
         .with_verbose_entry(true)
         .with_verbose_exit(true)
-        .with_higher_precision(true)
         .with_bracketed_fields(true);
-
-    // Setup Open Telemetry with Jaeger
-    //
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_auto_split_batch(true)
-        .with_max_packet_size(9_216)
-        .with_service_name(NAME)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
     //
@@ -78,7 +68,6 @@ async fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(filter)
         .with(tree)
-        .with(telemetry)
         .init();
     trace!("Logging initialised.");
 
