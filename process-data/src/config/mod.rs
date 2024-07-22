@@ -11,9 +11,9 @@ use std::sync::Arc;
 use duckdb::Connection;
 use eyre::Result;
 use tracing::{info, trace};
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 pub use io::*;
@@ -62,21 +62,12 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         .with_higher_precision(true)
         .with_bracketed_fields(true);
 
-    // Setup Open Telemetry with Jaeger
-    //
-    // let tracer = opentelemetry_jaeger::new_agent_pipeline()
-    //     .with_auto_split_batch(true)
-    //     .with_max_packet_size(9_216)
-    //     .with_service_name(NAME)
+    // let exporter = opentelemetry_otlp::new_exporter().tonic();
+    // let tracer = opentelemetry_otlp::new_pipeline()
+    //     .tracing()
+    //     .with_exporter(exporter)
     //     .install_simple()?;
     // let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-
-    let exporter = opentelemetry_otlp::new_exporter().tonic();
-    let tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(exporter)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
     //
@@ -87,7 +78,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     tracing_subscriber::registry()
         .with(filter)
         .with(tree)
-        .with(telemetry)
+        //        .with(telemetry)
         .init();
     trace!("Logging initialised.");
 
@@ -115,7 +106,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     info!("Connecting to {}", name);
     #[cfg(feature = "duckdb")]
-        let dbh = Connection::open_with_flags(
+    let dbh = Connection::open_with_flags(
         name.as_str(),
         duckdb::Config::default()
             .allow_unsigned_extensions()?
