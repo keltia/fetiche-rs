@@ -19,7 +19,6 @@ impl Stats {
     /// Gather all instances stats into one
     ///
     pub fn summarise(v: Vec<Stats>) -> Stats {
-        assert!(!v.is_empty());
         let first = v[0].clone();
         if v.len() == 1 {
             first
