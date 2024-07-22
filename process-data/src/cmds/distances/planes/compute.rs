@@ -8,14 +8,18 @@ use std::ops::Add;
 
 use chrono::{Datelike, Days, TimeZone, Utc};
 use clickhouse::{Client, Row};
-use eyre::Result;
+use eyre::{eyre, Result};
+use futures::executor::block_on;
+use hcl::BlockBuilder;
 use serde::{Deserialize, Serialize};
-use tokio::time::{sleep, Duration, Instant};
+use serde_json::json;
+use tokio::time::{Duration, Instant, sleep};
 use tracing::{debug, info, trace};
+use tracing::field::debug;
 
 use fetiche_common::BB;
 
-use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, ONE_DEG};
+use crate::cmds::{Calculate, ONE_DEG, PlaneDistance, PlanesStats, Stats};
 
 impl PlaneDistance {
     // -- private
@@ -260,7 +264,7 @@ ORDER BY
         // Check how many
         //
         let count = dbh
-            .query("SELECT COUNT() FROM today_close")
+            .query("SELECT count() FROM today_close")
             .fetch_one::<usize>()
             .await?;
 
@@ -268,26 +272,18 @@ ORDER BY
         Ok(count)
     }
 
-    // #[inline]
-    // #[tracing::instrument(skip(dbh))]
-    // async fn create_seq_ids(dbh: &Client) -> Result<()> {
-    //     Ok(dbh
-    //         .query(r##"CREATE OR REPLACE SEQUENCE seq_ids"##)
-    //         .execute()
-    //         .await?)
-    // }
-
     #[inline]
     #[tracing::instrument(skip(dbh))]
     async fn create_table_ids(dbh: &Client) -> Result<()> {
+        trace!("Drop table ids.");
         let _ = dbh
             .query("DROP TABLE IF EXISTS ids".into())
             .execute()
             .await?;
+
+        trace!("Create table ids.");
         let r = r##"
         CREATE TABLE ids (
-    site VARCHAR,
-    date VARCHAR,
     drone_id VARCHAR,
     callsign VARCHAR,
     journey INT,
@@ -301,20 +297,19 @@ ORDER BY
     #[inline]
     #[tracing::instrument(skip(dbh))]
     async fn insert_ids(dbh: &Client, day_name: &str, site: &str) -> Result<usize> {
-        #[derive(Serialize, Deserialize, Row)]
+        #[derive(Clone, Debug, Serialize, Deserialize, Row)]
         struct Tc {
             #[serde(skip_deserializing)]
             en_id: String,
-            site: String,
-            date: String,
             journey: u32,
             drone_id: String,
             callsign: String,
         }
 
-        let r = format!(r##"
+        let total = dbh.query("SELECT count() FROM today_close").fetch_one::<usize>().await?;
+
+        let r = r##"
     SELECT
-      {day_name} AS date,
       journey,
       drone_id,
       callsign,
@@ -322,34 +317,39 @@ ORDER BY
     WHERE
       dist_drone_plane < 1852
     GROUP BY ALL
-        "##);
+        "##;
 
-        let all = dbh.query(&r).fetch_all::<Tc>().await?;
+        trace!("Fetch close encounters out of {total} from today_close.");
+        let all = dbh.query(r).fetch_all::<Tc>().await?;
 
-        let all = all.iter().enumerate().map(|(id, elem)| {
-            Tc {
-                en_id: format!("{}-{}-{}-{}", site, elem.date, elem.journey, id),
-                site: site.to_string(),
-                date: elem.date.clone(),
-                journey: elem.journey,
-                drone_id: elem.drone_id.clone(),
-                callsign: elem.callsign.clone(),
-            }
-        }).collect::<Vec<Tc>>();
-        let r = r##"INSERT INTO ids VALUES {}"##;
+        if all.len() == 0 {
+            return Err(eyre!("No encounters found out of {total}").into());
+        }
 
-        let _ = dbh.query(&r).bind(&all).execute().await?;
+        trace!("Insert updated records.");
+        // Insert the records
+        //
+        let mut batch = dbh.insert("acute.ids")?;
 
-        let count= all.len();
+        trace!("Add en_id.");
+        all.iter()
+            .enumerate()
+            .for_each(|(id, elem): (usize, &Tc)| {
+                let journey = elem.journey;
+                let elem = Tc {
+                    en_id: format!("{}-{}-{}-{}", site, day_name, journey, id),
+                    journey: elem.journey,
+                    drone_id: elem.drone_id.clone(),
+                    callsign: elem.callsign.clone(),
+                };
+                debug!("{elem:?}");
+                block_on(async { batch.write(&elem).await.unwrap(); });
+            });
+        let _ = batch.end().await?;
+
+        let count = dbh.query("SELECT count() FROM today_close").fetch_one::<usize>().await?;
         trace!("Got {count} IDs");
-        Ok(count)
-    }
-
-    #[inline]
-    #[tracing::instrument(skip(dbh))]
-    async fn update_seq_en_id(dbh: &Client) -> Result<()> {
-
-        Ok(dbh.query(r##"UPDATE ids SET en_id = printf('%s-%s-%d-%d', site, date, journey, id) WHERE en_id = ''"##).execute().await?)
+        Ok(count as usize)
     }
 
     #[inline]
@@ -384,11 +384,9 @@ ORDER BY
 
         Self::create_table_ids(dbh).await?;
         Self::insert_ids(dbh, &day_name, &site).await?;
-        //Self::update_seq_en_id(dbh).await?;
 
         let r = r##"INSERT INTO airplane_prox
-BY NAME (
-    SELECT
+     SELECT
       ids.en_id,
       any_value(tc.site) AS site,
       any_value(time) AS time,
@@ -407,16 +405,17 @@ BY NAME (
       any_value(CEIL(dist2d)) AS distance_hor_m,
       any_value(CEIL(ABS(palt - dalt))) AS distance_vert_m,
       any_value(CEIL(hdist2d)) as distance_home_m,
-      CEIL(dist_drone_plane) AS distance_slant_m,
+      CEIL(dist_drone_plane) AS distance_slant_m
     FROM today_close AS tc, ids
     WHERE
-      di st_drone_plane < 1852
+      dist_drone_plane < 1852
     AND
       ids.journey = tc.journey
     AND
       ids.callsign = tc.callsign
     GROUP BY ALL
-)"##;
+"##;
+        trace!("Save encounters.");
         dbh.query(r).execute().await?;
 
         //Self::cleanup_seq(dbh).await?;
