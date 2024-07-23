@@ -19,11 +19,16 @@ impl Stats {
     /// Gather all instances stats into one
     ///
     pub fn summarise(v: Vec<Stats>) -> Stats {
-        let first = v[0].clone();
-        if v.len() == 1 {
-            first
-        } else {
-            fold(v[1..].iter(), first, |a, b| a + b.clone())
+        match v.len() {
+            0 => return Stats::Planes(PlanesStats::default()),
+            _ => {
+                let first = v[0].clone();
+                if v.len() == 1 {
+                    first
+                } else {
+                    fold(v[1..].iter(), first, |a, b| a + b.clone())
+                }
+            }
         }
     }
 }
