@@ -9,15 +9,9 @@ use std::ops::Add;
 use chrono::{Datelike, Days, TimeZone, Utc};
 use clickhouse::{Client, Row};
 use eyre::{eyre, Result};
-use futures::executor::block_on;
-use hcl::BlockBuilder;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tokio::time::{Duration, Instant, sleep};
 use tracing::{debug, info, trace};
-use tracing::field::debug;
-
-use fetiche_common::BB;
 
 use crate::cmds::{Calculate, ONE_DEG, PlaneDistance, PlanesStats, Stats};
 
