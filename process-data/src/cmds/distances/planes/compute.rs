@@ -61,14 +61,16 @@ impl PlaneDistance {
             .await?;
         debug!("site_id for {site} is {id_site}");
 
+        let day_name = self.date.format("%Y%m%d").to_string();
+
         trace!("Removing old table today.");
         let _ = dbh
-            .query("DROP TABLE IF EXISTS acute.today".into())
+            .query(&format!("DROP TABLE IF EXISTS today{day_name}"))
             .execute()
             .await?;
 
-        let r1 = r##"
-CREATE TABLE acute.today
+        let r1 = format!(r##"
+CREATE TABLE today{day_name}
 ENGINE = Memory
 AS SELECT
   site,
@@ -86,7 +88,7 @@ WHERE
   palt IS NOT NULL AND
   pointInEllipses(plon, plat, ?, ?, ?, ?)
 ORDER BY time
-"##;
+"##);
 
         // Given lat/lon and dist, we define the "ellipse" aka circle
         // cf. https://clickhouse.com/docs/en/sql-reference/functions/geo/coordinates#pointinellipses
@@ -94,7 +96,7 @@ ORDER BY time
         debug!("ellipse=(center={},{},{},{})", lon, lat, dist, dist);
 
         let _ = dbh
-            .query(r1)
+            .query(&r1)
             .bind(id_site)
             .bind(time_from)
             .bind(time_to)
@@ -107,8 +109,9 @@ ORDER BY time
 
         // Check how many
         //
+        let r1 = format!("SELECT count() FROM today{day_name}");
         let count = dbh
-            .query("SELECT count() FROM today")
+            .query(&r1)
             .fetch_one::<usize>()
             .await?;
 
@@ -127,29 +130,29 @@ ORDER BY time
         //
         let lat = self.loc.lat;
         let lon = self.loc.lon;
-        let dist = self.distance.ceil() as u32;
 
-        // Generate the polygon we are checking whether the point is in or not
-        //
-        let poly = BB::from_lat_lon(lat, lon, dist).to_polygon()?;
-        debug!("poly={poly:?}");
+        let dist = self.distance * 1.852 / ONE_DEG;
+        debug!("{} nm as deg: {}", self.distance, dist);
 
         let start_day = self.date;
         let end_day = self.date.checked_add_days(Days::new(1)).unwrap();
+
+        let day_name = self.date.format("%Y%m%d").to_string();
 
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
-        trace!("Removing old table candidates.");
+        trace!("Removing old table candidates{day_name}.");
+        let r1 = format!("DROP TABLE IF EXISTS candidates{day_name}");
         let _ = dbh
-            .query("DROP TABLE IF EXISTS acute.candidates".into())
+            .query(&r1)
             .execute()
             .await?;
 
-        let r2 = r##"
-CREATE TABLE acute.candidates
+        let r2 = format!(r##"
+CREATE TABLE candidates{day_name}
 ENGINE = Memory AS
 SELECT
     time,
@@ -169,26 +172,36 @@ FROM drones
 WHERE
   CAST(toUnixTimestamp(timestamp) AS TIMESTAMP) BETWEEN timestamp(?) AND timestamp(?)
   AND
-  pointInPolygon((longitude,latitude), [?, ?, ?, ?]) = 1
+  pointInEllipses(longitude,latitude, ?, ?, ?, ?)
 ORDER BY
   (time,journey)
-    "##;
+    "##);
+
+        // let _ = dbh
+        //     .query(&r2)
+        //     .bind(start_day)
+        //     .bind(end_day)
+        //     .bind(poly[0])
+        //     .bind(poly[1])
+        //     .bind(poly[2])
+        //     .bind(poly[3])
+        //     .execute()
+        //     .await?;
 
         let _ = dbh
-            .query(r2)
+            .query(&r2)
             .bind(start_day)
             .bind(end_day)
-            .bind(poly[0])
-            .bind(poly[1])
-            .bind(poly[2])
-            .bind(poly[3])
+            .bind(lon)
+            .bind(lat)
+            .bind(dist)
+            .bind(dist)
             .execute()
             .await?;
-
         // Check how many
         //
         let count = dbh
-            .query("SELECT COUNT() FROM candidates")
+            .query(&format!("SELECT COUNT() FROM candidates{day_name}"))
             .fetch_one::<usize>()
             .await?;
 
@@ -200,9 +213,12 @@ ORDER BY
     async fn find_close(&self, dbh: &Client) -> Result<usize> {
         trace!("Find close encounters.");
 
-        trace!("Removing old table today_close.");
+        let day_name = self.date.format("%Y%m%d").to_string();
+
+        trace!("Removing old table today_close{day_name}.");
+        let r = format!("DROP TABLE IF EXISTS today_close{day_name}");
         let _ = dbh
-            .query("DROP TABLE IF EXISTS acute.today_close".into())
+            .query(&r)
             .execute()
             .await?;
 
@@ -212,8 +228,8 @@ ORDER BY
         // $1,$2 = lon,lat of site
         // $3 = timestamp of drone point
         //
-        let r = r##"
-CREATE TABLE today_close
+        let r = format!(r##"
+CREATE TABLE today_close{day_name}
 ENGINE = Memory AS
 SELECT
   c.journey,
@@ -237,19 +253,19 @@ SELECT
   dist_3d(dlon, dlat, dalt, plon, plat, palt) AS dist_drone_plane,
   ceil(palt - dalt) AS diff_alt
 FROM
-  today AS t,
-  candidates AS c
+  today{day_name} AS t,
+  candidates{day_name} AS c
 WHERE
   pt BETWEEN CAST(toUnixTimestamp(c.time - 2) AS TIMESTAMP) AND CAST(toUnixTimestamp(c.time + 2) AS TIMESTAMP) AND
   dist2d <= ? AND
   diff_alt < ?
 ORDER BY
   (c.time, c.journey)
-    "##;
+    "##);
 
         let proximity = self.separation;
         let _ = dbh
-            .query(r)
+            .query(&r)
             .bind(proximity)
             .bind(proximity)
             .execute()
@@ -258,7 +274,7 @@ ORDER BY
         // Check how many
         //
         let count = dbh
-            .query("SELECT count() FROM today_close")
+            .query(&format!("SELECT count() FROM today_close{day_name}"))
             .fetch_one::<usize>()
             .await?;
 
@@ -268,22 +284,23 @@ ORDER BY
 
     #[inline]
     #[tracing::instrument(skip(dbh))]
-    async fn create_table_ids(dbh: &Client) -> Result<()> {
-        trace!("Drop table ids.");
+    async fn create_table_ids(dbh: &Client, day_name: &str) -> Result<()> {
+        trace!("Drop table ids{day_name}.");
+        let r = format!("DROP TABLE IF EXISTS ids{day_name}");
         let _ = dbh
-            .query("DROP TABLE IF EXISTS ids".into())
+            .query(&r)
             .execute()
             .await?;
 
-        trace!("Create table ids.");
-        let r = r##"
-        CREATE TABLE ids (
+        trace!("Create table ids{day_name}.");
+        let r = format!(r##"
+        CREATE TABLE ids{day_name} (
     drone_id VARCHAR,
     callsign VARCHAR,
     journey INT,
-    en_id VARCHAR,
+    en_id VARCHAR DEFAULT '',
 ) ENGINE = Memory
-"##;
+"##);
 
         Ok(dbh.query(&r).execute().await?)
     }
@@ -291,65 +308,75 @@ ORDER BY
     #[inline]
     #[tracing::instrument(skip(dbh))]
     async fn insert_ids(dbh: &Client, day_name: &str, site: &str) -> Result<usize> {
-        #[derive(Clone, Debug, Serialize, Deserialize, Row)]
+        let total = dbh.query("SELECT count() FROM today_close").fetch_one::<usize>().await?;
+
+        // This is for the query
+        #[derive(Clone, Debug, Default, Serialize, Deserialize, Row)]
         struct Tc {
-            #[serde(skip_deserializing)]
+            journey: u32,
+            drone_id: String,
+            callsign: String,
+        }
+
+        // This is for the insert as the CH client does not support serde `skip_deserializing`.
+        #[derive(Clone, Debug, Default, Serialize, Deserialize, Row)]
+        struct Ids {
             en_id: String,
             journey: u32,
             drone_id: String,
             callsign: String,
         }
 
-        let total = dbh.query("SELECT count() FROM today_close").fetch_one::<usize>().await?;
-
-        let r = r##"
-    SELECT
+        let r = format!(r##"SELECT
       journey,
       drone_id,
       callsign,
-    FROM today_close
+    FROM today_close{day_name}
     WHERE
       dist_drone_plane < 1852
     GROUP BY ALL
-        "##;
+            "##);
 
         trace!("Fetch close encounters out of {total} from today_close.");
-        let all = dbh.query(r).fetch_all::<Tc>().await?;
+        let all = dbh.query(&r).fetch_all::<Tc>().await?;
 
         if all.len() == 0 {
             return Err(eyre!("No encounters found out of {total}").into());
         }
 
-        trace!("Insert updated records.");
-        // Insert the records
-        //
-        let mut batch = dbh.insert("acute.ids")?;
-
         trace!("Add en_id.");
-        all.iter()
+        let all = all.iter()
             .enumerate()
-            .for_each(|(id, elem): (usize, &Tc)| {
+            .map(|(id, elem): (usize, &Tc)| {
                 let journey = elem.journey;
-                let elem = Tc {
+                let elem = Ids {
                     en_id: format!("{}-{}-{}-{}", site, day_name, journey, id),
                     journey: elem.journey,
                     drone_id: elem.drone_id.clone(),
                     callsign: elem.callsign.clone(),
                 };
                 debug!("{elem:?}");
-                block_on(async { batch.write(&elem).await.unwrap(); });
-            });
+                elem
+            }).collect::<Vec<_>>();
+
+        trace!("Insert updated records.");
+        // Insert the records
+        //
+        let mut batch = dbh.insert(&format!("ids{day_name}"))?;
+        for item in all.iter() {
+            let _ = batch.write(item).await?;
+        }
         let _ = batch.end().await?;
 
-        let count = dbh.query("SELECT count() FROM today_close").fetch_one::<usize>().await?;
+        let count = dbh.query(&format!("SELECT count() FROM today_close{day_name}")).fetch_one::<usize>().await?;
         trace!("Got {count} IDs");
         Ok(count as usize)
     }
 
     #[inline]
     #[tracing::instrument(skip(dbh))]
-    async fn cleanup_seq(dbh: &Client) -> Result<()> {
-        let _ = dbh.query(r##"DROP TABLE ids"##).execute().await?;
+    async fn cleanup_ids(dbh: &Client, day_name: &str) -> Result<()> {
+        let _ = dbh.query(&format!("DROP TABLE ids{day_name}")).execute().await?;
         Ok(())
     }
 
@@ -376,13 +403,13 @@ ORDER BY
         //
         let site = self.name.clone();
 
-        Self::create_table_ids(dbh).await?;
+        Self::create_table_ids(dbh, &day_name).await?;
         Self::insert_ids(dbh, &day_name, &site).await?;
 
-        let r = r##"INSERT INTO airplane_prox
+        let r = format!(r##"INSERT INTO airplane_prox
      SELECT
-      ids.en_id,
       any_value(tc.site) AS site,
+      id.en_id,
       any_value(time) AS time,
       tc.journey,
       tc.drone_id,
@@ -400,19 +427,19 @@ ORDER BY
       any_value(CEIL(ABS(palt - dalt))) AS distance_vert_m,
       any_value(CEIL(hdist2d)) as distance_home_m,
       CEIL(dist_drone_plane) AS distance_slant_m
-    FROM today_close AS tc, ids
+    FROM today_close{day_name} AS tc, ids{day_name} AS id
     WHERE
       dist_drone_plane < 1852
     AND
-      ids.journey = tc.journey
+      id.journey = tc.journey
     AND
-      ids.callsign = tc.callsign
+      id.callsign = tc.callsign
     GROUP BY ALL
-"##;
+"##);
         trace!("Save encounters.");
-        dbh.query(r).execute().await?;
+        dbh.query(&r).execute().await?;
 
-        //Self::cleanup_seq(dbh).await?;
+        Self::cleanup_ids(dbh, &day_name).await?;
 
         // Now check how many
         //
@@ -523,3 +550,4 @@ impl Calculate for PlaneDistance {
         Ok(Stats::Planes(stats.clone()))
     }
 }
+
