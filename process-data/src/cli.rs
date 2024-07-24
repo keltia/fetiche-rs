@@ -13,6 +13,9 @@ pub struct Opts {
     /// Database file to use
     #[clap(short = 'd', long)]
     pub database: Option<String>,
+    /// Delay between task in ms
+    #[clap(short = 'w', long, default_value = "100")]
+    pub wait: u64,
     /// Sub-commands (see below).
     #[clap(subcommand)]
     pub subcmd: SubCommand,

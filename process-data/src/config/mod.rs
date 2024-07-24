@@ -28,6 +28,8 @@ pub struct Context {
     pub config: Arc<HashMap<String, String>>,
     /// Database Client.
     dbh: Arc<Client>,
+    /// Delay between parallel tasks
+    pub wait: u64,
 }
 
 impl Context {
@@ -122,6 +124,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         ])
             .into(),
         dbh: dbh.into(),
+        wait: opts.wait,
     };
     Ok(ctx)
 }

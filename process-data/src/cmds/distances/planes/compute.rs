@@ -449,10 +449,6 @@ ORDER BY
     }
 }
 
-/// Interactive mode, pause to show results before running next phase. In millisec.
-///
-const DELAY: u64 = 200;
-
 impl Calculate for PlaneDistance {
     /// Run the process for the given day.
     ///
@@ -483,7 +479,7 @@ impl Calculate for PlaneDistance {
         }
         stats.planes = c_planes;
         bar.message(format!("{} planes.", c_planes));
-        sleep(Duration::from_millis(DELAY)).await;
+        sleep(Duration::from_millis(self.wait)).await;
 
         // Create table `candidates` with all designated drone points
         //
@@ -499,7 +495,7 @@ impl Calculate for PlaneDistance {
         }
         stats.drones = c_drones as usize;
         bar.message(format!("{} drones.", c_drones));
-        sleep(Duration::from_millis(DELAY)).await;
+        sleep(Duration::from_millis(self.wait)).await;
 
         // Create table `today_close` with all designated drone points and airplanes in proximity
         //
@@ -515,7 +511,7 @@ impl Calculate for PlaneDistance {
         }
         stats.potential = c_potential;
         bar.message(format!("{} potentials.", c_potential));
-        sleep(Duration::from_millis(DELAY)).await;
+        sleep(Duration::from_millis(self.wait)).await;
 
         // Now we have the distance calculated.
         //
@@ -531,11 +527,12 @@ impl Calculate for PlaneDistance {
         }
         stats.encounters = c_encounters;
         bar.message(format!("{} encounters.", c_encounters));
-        sleep(Duration::from_millis(DELAY)).await;
+        sleep(Duration::from_millis(self.wait)).await;
+
+        info!("Stats for {}\n{}", self.date, stats);
+        bar.message("Done.");
         bar.finish();
 
-        eprintln!("Stats for {}: {}", self.date, stats);
-        info!("Done.");
         Ok(Stats::Planes(stats.clone()))
     }
 }

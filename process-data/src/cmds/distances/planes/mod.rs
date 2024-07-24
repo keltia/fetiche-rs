@@ -49,6 +49,8 @@ pub struct PlaneDistance {
     pub loc: Location,
     /// Specific day
     pub date: DateTime<Utc>,
+    /// Optional delay between tasks
+    pub wait: u64,
     /// Max distance we want to consider
     #[builder(default = "70.")]
     pub distance: f64,
@@ -117,6 +119,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
             .distance(opts.distance)
             .date(day)
             .separation(opts.separation)
+            .wait(ctx.wait)
             .build().unwrap();
 
         work
