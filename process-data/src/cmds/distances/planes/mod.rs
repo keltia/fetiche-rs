@@ -123,7 +123,9 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     }).collect();
     trace!("All tasks: {:?}", worklist);
 
-    let stats: Vec<_> = worklist.iter().map(|task| async {
+    use rayon::prelude::*;
+
+    let stats: Vec<_> = worklist.par_iter().map(|task| async {
         task.run(&dbh.clone()).await
     }).collect();
 

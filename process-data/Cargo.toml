@@ -66,6 +66,7 @@ itertools = "0.13"
 kml = "0.8"
 ml-progress = "0.1"
 rand = "0"
+rayon = "1.10"
 rust-3d = "0.34"
 time = { version = "0.3", features = ["local-offset", "macros", "serde", "serde-human-readable"] }
 
