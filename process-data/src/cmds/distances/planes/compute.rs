@@ -1,7 +1,5 @@
 //! This is where all the main calculations are done.
 //!
-//! FIXME: at the moment, the pipe uses fixed names for the intermediate tables (today, candidates, etc.).
-//!
 //! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
 //!
 use std::ops::Add;
