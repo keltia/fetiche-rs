@@ -177,17 +177,6 @@ ORDER BY
   (time,journey)
     "##);
 
-        // let _ = dbh
-        //     .query(&r2)
-        //     .bind(start_day)
-        //     .bind(end_day)
-        //     .bind(poly[0])
-        //     .bind(poly[1])
-        //     .bind(poly[2])
-        //     .bind(poly[3])
-        //     .execute()
-        //     .await?;
-
         let _ = dbh
             .query(&r2)
             .bind(start_day)
