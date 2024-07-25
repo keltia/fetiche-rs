@@ -258,7 +258,7 @@ dependencies = [
  "progress",
  "quote",
  "reqwest 0.12.5",
- "rstest",
+ "rstest 0.18.2",
  "serde",
  "serde_json",
  "serde_repr",
@@ -2826,7 +2826,7 @@ dependencies = [
  "hcl-rs",
  "humantime",
  "log",
- "rstest",
+ "rstest 0.21.0",
  "serde",
  "strum 0.26.3",
  "tabled",
@@ -2856,7 +2856,7 @@ dependencies = [
  "parquet2",
  "percent-encoding",
  "reqwest 0.12.5",
- "rstest",
+ "rstest 0.21.0",
  "serde",
  "serde_arrow",
  "serde_json",
@@ -2907,7 +2907,7 @@ dependencies = [
  "percent-encoding",
  "progress",
  "reqwest 0.12.5",
- "rstest",
+ "rstest 0.21.0",
  "serde",
  "serde_json",
  "serde_repr",
@@ -2952,7 +2952,7 @@ dependencies = [
  "parquet 50.0.0",
  "parquet_derive",
  "reqwest 0.12.5",
- "rstest",
+ "rstest 0.21.0",
  "serde",
  "serde_json",
  "strum 0.26.3",
@@ -5308,7 +5308,7 @@ dependencies = [
  "pprof",
  "progress",
  "rand",
- "rstest",
+ "rstest 0.21.0",
  "rust-3d",
  "serde",
  "strum 0.26.3",
@@ -5734,7 +5734,19 @@ checksum = "97eeab2f3c0a199bc4be135c36c924b6590b88c377d416494288c14f2db30199"
 dependencies = [
  "futures",
  "futures-timer",
- "rstest_macros",
+ "rstest_macros 0.18.2",
+ "rustc_version",
+]
+
+[[package]]
+name = "rstest"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9afd55a67069d6e434a95161415f5beeada95a01c7b815508a82dcb0e1593682"
+dependencies = [
+ "futures",
+ "futures-timer",
+ "rstest_macros 0.21.0",
  "rustc_version",
 ]
 
@@ -5746,6 +5758,24 @@ checksum = "d428f8247852f894ee1be110b375111b586d4fa431f6c46e64ba5a0dcccbe605"
 dependencies = [
  "cfg-if",
  "glob",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "relative-path",
+ "rustc_version",
+ "syn 2.0.68",
+ "unicode-ident",
+]
+
+[[package]]
+name = "rstest_macros"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4165dfae59a39dd41d8dec720d3cbfbc71f69744efb480a3920f5d4e0cc6798d"
+dependencies = [
+ "cfg-if",
+ "glob",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "regex",
