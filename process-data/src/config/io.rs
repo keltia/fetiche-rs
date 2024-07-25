@@ -1,3 +1,10 @@
+//! This is the configuration module.
+//!
+//! Versions:
+//! - v1 is for the duckdb-backed database, database is path to the .duckdb file.
+//! - v2 is the ClickHouse-backed database, added url/user/password/database
+//!
+
 use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
