@@ -1,10 +1,11 @@
 //! Utility implement different processing tasks over our locally stored data.
 //!
 
-use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
+use std::io;
+
+use clap::{CommandFactory, crate_authors, crate_description, crate_version, Parser};
 use clap_complete::generate;
 use eyre::Result;
-use std::io;
 use tracing::trace;
 
 use crate::cli::{Opts, SubCommand};
@@ -42,7 +43,10 @@ async fn main() -> Result<()> {
             generate(generator, &mut cmd, "acutectl", &mut io::stdout());
         }
         SubCommand::Version => {
-            println!("{} v{}", NAME, VERSION);
+            #[cfg(feature = "clickhouse")]
+            println!("{} v{}+clickhouse", NAME, VERSION);
+            #[cfg(feature = "duckdb")]
+            println!("{} v{}+duckdb", NAME, VERSION);
         }
         _ => handle_cmds(&ctx, &opts).await?,
     }
@@ -55,14 +59,15 @@ async fn main() -> Result<()> {
 /// Display banner
 ///
 fn banner() -> Result<()> {
+    #[cfg(feature = "clickhouse")]
+    let ver = format!("{} v{}+clickhouse", NAME, VERSION);
+    #[cfg(feature = "duckdb")]
+    let ver = format!("{} v{}+duckdb", NAME, VERSION);
     Ok(eprintln!(
         r##"
-{}/{} by {}
+{NAME}/{ver} by {AUTHORS}
 {}
 "##,
-        NAME,
-        VERSION,
-        AUTHORS,
         crate_description!()
     ))
 }
