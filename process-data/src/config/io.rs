@@ -13,9 +13,10 @@ use fetiche_common::makepath;
 
 use crate::error::Status;
 
+/// This is the package config tag or category.
+const CONFIG_TAG: &str = "drone-utils";
 #[cfg(unix)]
 const BASEDIR: &str = ".config";
-
 /// Config filename
 const CONFIG: &str = "process-data.hcl";
 /// Current version
@@ -58,7 +59,7 @@ impl ConfigFile {
     #[cfg(unix)]
     pub fn config_path() -> PathBuf {
         let homedir = home_dir().unwrap();
-        let def: PathBuf = makepath!(homedir, BASEDIR, "drone-utils");
+        let def: PathBuf = makepath!(homedir, BASEDIR, CONFIG_TAG);
         def
     }
 
@@ -68,7 +69,7 @@ impl ConfigFile {
     pub fn config_path() -> PathBuf {
         let homedir = env!("LOCALAPPDATA");
 
-        let def: PathBuf = makepath!(homedir, "drone-utils");
+        let def: PathBuf = makepath!(homedir, CONFIG_TAG);
         def
     }
 
