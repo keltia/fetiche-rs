@@ -14,4 +14,6 @@ pub enum Status {
     BadFileVersion(usize),
     #[error("Missing configuration file, use -d or create {0}")]
     MissingConfig(String),
+    #[error("Error reading configuration({0})")]
+    MissingConfigParameter(String),
 }

@@ -90,7 +90,8 @@ impl ConfigFile {
                 let fname = Self::default_file().to_string_lossy().to_string();
                 Status::MissingConfig(fname)
             })?;
-        let data: ConfigFile = hcl::from_str(&data)?;
+        let data: ConfigFile = hcl::from_str(&data)
+            .map_err(|e| Status::MissingConfigParameter(e.to_string()))?;
         debug!("config: {:?}", data);
 
         if data.version != CVERSION {
