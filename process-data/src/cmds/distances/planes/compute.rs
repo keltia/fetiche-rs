@@ -327,8 +327,10 @@ ORDER BY
         trace!("Fetch close encounters out of {total} from today_close.");
         let all = dbh.query(&r).fetch_all::<Tc>().await?;
 
+        // No close encounters.
+        //
         if all.is_empty() {
-            return Err(eyre!("No encounters found out of {total}"));
+            return Ok(0);
         }
 
         trace!("Add en_id.");
@@ -357,7 +359,7 @@ ORDER BY
 
         let count = dbh.query(&format!("SELECT count() FROM today_close{day_name}")).fetch_one::<usize>().await?;
         trace!("Got {count} IDs");
-        Ok(count as usize)
+        Ok(count)
     }
 
     #[inline]
