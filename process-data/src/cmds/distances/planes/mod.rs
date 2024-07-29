@@ -91,7 +91,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     info!("Datalake: {}", datalake);
     env::set_current_dir(datalake)?;
 
-    // Load locations
+    // Load locations from DB
     //
     let r = r##"
     SELECT * from sites WHERE name = ?
@@ -146,16 +146,20 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     }).collect();
     trace!("All tasks: {:?}", worklist);
 
+    // We use rayon to reduce the overhead during parallel calculations
+    //
     use rayon::prelude::*;
 
-    let stats: Vec<_> = worklist.par_iter().map(|task| async {
-        task.run(&dbh.clone()).await
-    }).collect();
+    let stats: Vec<_> = worklist
+        .par_iter()
+        .map(|task| async {
+            task.run(&dbh.clone()).await
+        }).collect();
 
     let stats = join_all(stats).await;
     trace!("All stats: {:?}", stats);
 
-    let stats: Vec<_> = stats.iter().filter_map(|res| {
+    let stats: Vec<_> = stats.par_iter().filter_map(|res| {
         match res {
             Ok(res) => Some(res.clone()),
             Err(e) => {
