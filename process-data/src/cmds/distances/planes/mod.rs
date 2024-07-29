@@ -4,12 +4,15 @@
 //!
 
 use std::env;
+use std::sync::Arc;
 
 use chrono::{Datelike, DateTime, TimeZone, Utc};
 use clap::Parser;
+use clickhouse::Row;
 use derive_builder::Builder;
 use eyre::Result;
 use futures::future::join_all;
+use serde::{Deserialize, Serialize};
 use tracing::{info, trace};
 
 use fetiche_common::{DateOpts, expand_interval, load_locations, Location};
@@ -46,7 +49,7 @@ pub struct PlaneDistance {
     /// Name of site
     pub name: String,
     /// Coordinates of site
-    pub loc: Location,
+    pub loc: Arc<Location>,
     /// Specific day
     pub date: DateTime<Utc>,
     /// Optional delay between tasks
@@ -70,6 +73,17 @@ pub struct PlaneDistance {
 pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     let dbh = ctx.db();
 
+    #[derive(Debug, Deserialize, Row, Serialize)]
+    struct Site {
+        pub id: u32,
+        name: String,
+        code: String,
+        basename: String,
+        latitude: f32,
+        longitude: f32,
+        ref_alt: f32,
+    }
+
     // Move ourselves to the datalake.
     //
     let datalake = ctx.config.get("datalake").unwrap();
@@ -81,6 +95,23 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     //
     let list = load_locations(None)?;
 
+    let r = r##"
+    SELECT * from sites WHERE name = ?
+    "##;
+    let name = opts.name.clone();
+    let site = match dbh.query(r).bind(&name).fetch_one::<Site>().await {
+        Ok(site) => site,
+        Err(e) => return Err(Status::UnknownSite(name).into()),
+    };
+    let current = Arc::new(Location {
+        code: site.code.clone(),
+        hash: None,
+        lat: site.latitude as f64,
+        lon: site.longitude as f64,
+    });
+
+    // Load parameters
+    //
     let (begin, end) = match DateOpts::parse(opts.date.clone()) {
         Ok((start, stop)) => {
             info!("We have an interval: from {} to {}", start, stop);
@@ -100,15 +131,6 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     let dates = expand_interval(begin, end)?;
     trace!("all days: {:?}", dates);
     info!("{} days to process.", dates.len());
-
-    // Load parameters
-    //
-    let name = opts.name.clone();
-    let current: Location = if !list.contains_key(&name) {
-        return Err(Status::UnknownSite(name).into());
-    } else {
-        list.get(&name).unwrap().clone()
-    };
 
     // Build our set of batches
     //
