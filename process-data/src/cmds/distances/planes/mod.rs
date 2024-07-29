@@ -93,8 +93,6 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
 
     // Load locations
     //
-    let list = load_locations(None)?;
-
     let r = r##"
     SELECT * from sites WHERE name = ?
     "##;
