@@ -451,6 +451,9 @@ ORDER BY
 impl Calculate for PlaneDistance {
     /// Run the process for the given day.
     ///
+    /// XXX Should we keep the interactive display or not.  When running parallel runs it messes
+    /// up the output.
+    ///
     #[tracing::instrument(skip(dbh))]
     async fn run(&self, dbh: &Client) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
