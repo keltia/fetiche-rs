@@ -122,7 +122,7 @@ async fn export_all_encounters_parquet(
         fname
     );
 
-    let _ = dbh.query(&r)
+    dbh.query(&r)
         .bind(name)
         .bind(day)
         .bind(day)
@@ -164,7 +164,7 @@ async fn export_all_encounters_text(dbh: &Client, name: &str, day: DateTime<Utc>
     ORDER BY time
 "##;
 
-    let _ = dbh.query(&r)
+    dbh.query(r)
         .bind(name)
         .bind(day)
         .bind(day)
@@ -207,7 +207,7 @@ COPY (
 ) TO '{}' WITH (FORMAT CSV, HEADER true, DELIMITER ',');
     "##, fname);
 
-    let _ = dbh.query(&r)
+    dbh.query(&r)
         .bind(name)
         .bind(day)
         .bind(day)
@@ -234,7 +234,7 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
     //
     match &opts.output {
         Some(fname) => {
-            let count = if opts.summary {
+            if opts.summary {
                 export_all_encounters_summary_csv(&dbh, &name, day, fname).await?
             } else {
                 match opts.format {
@@ -245,7 +245,7 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
             };
         }
         None => {
-            let _ = export_all_encounters_text(&dbh, &name, day).await?;
+            export_all_encounters_text(&dbh, &name, day).await?;
         }
     }
 

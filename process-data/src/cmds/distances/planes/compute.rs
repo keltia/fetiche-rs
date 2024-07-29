@@ -53,7 +53,7 @@ impl PlaneDistance {
         //
         //
         let id_site = dbh
-            .query("SELECT id FROM sites WHERE name = ?".into())
+            .query("SELECT id FROM sites WHERE name = ?")
             .bind(&site)
             .fetch_one::<u32>()
             .await?;
@@ -62,7 +62,7 @@ impl PlaneDistance {
         let day_name = self.date.format("%Y%m%d").to_string();
 
         trace!("Removing old table today.");
-        let _ = dbh
+        dbh
             .query(&format!("DROP TABLE IF EXISTS today{day_name}"))
             .execute()
             .await?;
@@ -93,7 +93,7 @@ ORDER BY time
         //
         debug!("ellipse=(center={},{},{},{})", lon, lat, dist, dist);
 
-        let _ = dbh
+        dbh
             .query(&r1)
             .bind(id_site)
             .bind(time_from)
@@ -144,7 +144,7 @@ ORDER BY time
 
         trace!("Removing old table candidates{day_name}.");
         let r1 = format!("DROP TABLE IF EXISTS candidates{day_name}");
-        let _ = dbh
+        dbh
             .query(&r1)
             .execute()
             .await?;
@@ -175,7 +175,7 @@ ORDER BY
   (time,journey)
     "##);
 
-        let _ = dbh
+        dbh
             .query(&r2)
             .bind(start_day)
             .bind(end_day)
@@ -204,7 +204,7 @@ ORDER BY
 
         trace!("Removing old table today_close{day_name}.");
         let r = format!("DROP TABLE IF EXISTS today_close{day_name}");
-        let _ = dbh
+        dbh
             .query(&r)
             .execute()
             .await?;
@@ -251,7 +251,7 @@ ORDER BY
     "##);
 
         let proximity = self.separation;
-        let _ = dbh
+        dbh
             .query(&r)
             .bind(proximity)
             .bind(proximity)
@@ -274,7 +274,7 @@ ORDER BY
     async fn create_table_ids(dbh: &Client, day_name: &str) -> Result<()> {
         trace!("Drop table ids{day_name}.");
         let r = format!("DROP TABLE IF EXISTS ids{day_name}");
-        let _ = dbh
+        dbh
             .query(&r)
             .execute()
             .await?;
@@ -327,8 +327,8 @@ ORDER BY
         trace!("Fetch close encounters out of {total} from today_close.");
         let all = dbh.query(&r).fetch_all::<Tc>().await?;
 
-        if all.len() == 0 {
-            return Err(eyre!("No encounters found out of {total}").into());
+        if all.is_empty() {
+            return Err(eyre!("No encounters found out of {total}"));
         }
 
         trace!("Add en_id.");
@@ -351,9 +351,9 @@ ORDER BY
         //
         let mut batch = dbh.insert(&format!("ids{day_name}"))?;
         for item in all.iter() {
-            let _ = batch.write(item).await?;
+            batch.write(item).await?;
         }
-        let _ = batch.end().await?;
+        batch.end().await?;
 
         let count = dbh.query(&format!("SELECT count() FROM today_close{day_name}")).fetch_one::<usize>().await?;
         trace!("Got {count} IDs");
@@ -363,8 +363,7 @@ ORDER BY
     #[inline]
     #[tracing::instrument(skip(dbh))]
     async fn cleanup_ids(dbh: &Client, day_name: &str) -> Result<()> {
-        let _ = dbh.query(&format!("DROP TABLE ids{day_name}")).execute().await?;
-        Ok(())
+        Ok(dbh.query(&format!("DROP TABLE ids{day_name}")).execute().await?)
     }
 
     #[tracing::instrument(skip(dbh))]

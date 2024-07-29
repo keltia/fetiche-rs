@@ -20,7 +20,7 @@ impl Stats {
     ///
     pub fn summarise(v: Vec<Stats>) -> Stats {
         match v.len() {
-            0 => return Stats::Planes(PlanesStats::default()),
+            0 => Stats::Planes(PlanesStats::default()),
             _ => {
                 let first = v[0].clone();
                 if v.len() == 1 {

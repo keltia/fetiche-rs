@@ -113,7 +113,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         .with_url(endpoint.clone())
         .with_database(&name)
         .with_user(&user)
-        .with_password(&pass);
+        .with_password(pass);
 
     let ctx = Context {
         config: HashMap::from([

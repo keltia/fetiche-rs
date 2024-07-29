@@ -53,8 +53,8 @@ CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
   ceil(sqrt(pow(dist_2d(dx,dy,px,py), 2) + pow((dz-pz), 2)));
     "##;
 
-    let _ = dbh.query(r1).execute().await?;
-    let _ = dbh.query(r2).execute().await?;
+    dbh.query(r1).execute().await?;
+    dbh.query(r2).execute().await?;
     Ok(())
 }
 
@@ -70,8 +70,8 @@ DROP FUNCTION IF EXISTS dist_2d;
 DROP FUNCTION IF EXISTS dist_3d;
     "##;
 
-    let _ = dbh.query(r1).execute().await?;
-    let _ = dbh.query(r2).execute().await?;
+    dbh.query(r1).execute().await?;
+    dbh.query(r2).execute().await?;
     Ok(())
 }
 
@@ -193,8 +193,8 @@ CREATE OR REPLACE VIEW acute.drones AS
     COMMENT 'View for drones data with distances.'
 "##;
 
-    let _ = dbh.query(r1).execute().await?;
-    let _ = dbh.query(r2).execute().await?;
+    dbh.query(r1).execute().await?;
+    dbh.query(r2).execute().await?;
     Ok(())
 }
 
@@ -212,8 +212,8 @@ DROP VIEW IF EXISTS acute.airplanes;
 DROP VIEW IF EXISTS acute.drones;
     "##;
 
-    let _ = dbh.query(rm1).execute().await?;
-    let _ = dbh.query(rm2).execute().await?;
+    dbh.query(rm1).execute().await?;
+    dbh.query(rm2).execute().await?;
     Ok(())
 }
 

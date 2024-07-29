@@ -104,7 +104,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     // Load parameters
     //
     let name = opts.name.clone();
-    let current: Location = if list.get(&name).is_none() {
+    let current: Location = if !list.contains_key(&name) {
         return Err(Status::UnknownSite(name).into());
     } else {
         list.get(&name).unwrap().clone()
@@ -132,16 +132,16 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
         task.run(&dbh.clone()).await
     }).collect();
 
-    let stats= join_all(stats).await;
+    let stats = join_all(stats).await;
     trace!("All stats: {:?}", stats);
 
     let stats: Vec<_> = stats.iter().filter_map(|res| {
         match res {
             Ok(res) => Some(res.clone()),
             Err(e) => {
-                eprintln!("Task failed: {}", e.to_string());
+                eprintln!("Task failed: {}", e);
                 None
-            },
+            }
         }
     }).collect();
     let stats = Stats::summarise(stats);
