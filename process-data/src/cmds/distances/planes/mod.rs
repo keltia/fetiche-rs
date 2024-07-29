@@ -124,7 +124,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
             (tm, tm)
         }
     };
-    trace!("From {} to {}", begin, end);
+    trace!("From {} to {} on site {}", begin, end, &opts.name);
 
     let dates = expand_interval(begin, end)?;
     trace!("all days: {:?}", dates);
