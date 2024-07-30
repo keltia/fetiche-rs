@@ -4,7 +4,6 @@
 //!
 
 use std::env;
-use std::sync::Arc;
 
 use chrono::{Datelike, DateTime, TimeZone, Utc};
 use clap::Parser;
@@ -48,8 +47,6 @@ pub struct PlanesOpts {
 pub struct PlaneDistance {
     /// Name of site
     pub name: String,
-    /// Coordinates of site
-    pub loc: Arc<Location>,
     /// Specific day
     pub date: DateTime<Utc>,
     /// Optional delay between tasks
@@ -60,9 +57,12 @@ pub struct PlaneDistance {
     /// proximity
     #[builder(default = "5500.")]
     pub separation: f64,
-    /// table name template for a run
-    #[builder(setter(into, strip_option), default = "None")]
-    pub template: Option<String>,
+    // Lat of antenna
+    #[builder]
+    pub lat: f64,
+    // Lon of antenna
+    #[builder]
+    pub lon: f64,
 }
 
 // -----
@@ -101,12 +101,6 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
         Ok(site) => site,
         Err(e) => return Err(Status::UnknownSite(name).into()),
     };
-    let current = Arc::new(Location {
-        code: site.code.clone(),
-        hash: None,
-        lat: site.latitude as f64,
-        lon: site.longitude as f64,
-    });
 
     // Load parameters
     //
@@ -135,7 +129,8 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     let worklist: Vec<_> = dates.into_iter().map(|day| {
         let work = PlaneDistanceBuilder::default()
             .name(opts.name.clone())
-            .loc(current.clone())
+            .lat(site.latitude as f64)
+            .lon(site.longitude as f64)
             .distance(opts.distance)
             .date(day)
             .separation(opts.separation)
