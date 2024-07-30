@@ -27,8 +27,8 @@ impl PlaneDistance {
         let day = self.date.day();
         let month = self.date.month();
         let year = self.date.year();
-        let lat = self.loc.lat;
-        let lon = self.loc.lon;
+        let lat = self.lat;
+        let lon = self.lon;
 
         // Our distance in nm converted into degrees
         //
@@ -126,8 +126,8 @@ ORDER BY time
         // $3,$4 = (lon,lat) site
         // $5 = distance in degrees
         //
-        let lat = self.loc.lat;
-        let lon = self.loc.lon;
+        let lat = self.lat;
+        let lon = self.lon;
 
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
