@@ -67,22 +67,69 @@ pub struct PlaneDistance {
 
 // -----
 
+#[derive(Debug, Deserialize, Row, Serialize)]
+struct Site {
+    pub id: u32,
+    name: String,
+    code: String,
+    basename: String,
+    latitude: f32,
+    longitude: f32,
+    ref_alt: f32,
+}
+
+/// FInd a given site, id, locatio,, etc. frm database
+///
+async fn find_site(ctx: &Context, site: &str) -> Result<Site> {
+    let dbh = ctx.db();
+
+    // Load locations from DB
+    //
+    let r = r##"
+    SELECT * from sites WHERE name = ?
+    "##;
+    let name = site.clone();
+    let site = match dbh.query(r).bind(name).fetch_one::<Site>().await {
+        Ok(site) => site,
+        Err(e) => return Err(Status::UnknownSite(name.to_string()).into()),
+    };
+    Ok(site)
+}
+
+/// Now, for a given day, find all sites that have data
+///
+async fn enumerate_sites(ctx: &Context, day: DateTime<Utc>) -> Result<Vec<Site>> {
+    let dbh = ctx.db();
+
+    let r = r##"
+SELECT sites.name AS site_id
+FROM
+    sites, installations
+WHERE (sites.id = installations.site_id) AND
+    ((toDateTime('2024-07-28') >= installations.start_at) AND
+    (toDateTime('2024-07-28') <= installations.end_at))
+    "##;
+
+    // Fetch all site IDs for this specific day
+    //
+    let sites = dbh.query(r).bind(day).fetch_all::<String>().await?;
+
+    // Now create our array of sites for all ids
+    //
+    let sites = sites
+        .iter()
+        .map(|name| async { find_site(ctx, name).await.unwrap() })
+        .collect::<Vec<_>>();
+    let sites = join_all(sites).await;
+
+    Ok(sites)
+}
+
 /// Handle the `distances planes` command.
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     let dbh = ctx.db();
-
-    #[derive(Debug, Deserialize, Row, Serialize)]
-    struct Site {
-        pub id: u32,
-        name: String,
-        code: String,
-        basename: String,
-        latitude: f32,
-        longitude: f32,
-        ref_alt: f32,
-    }
 
     // Move ourselves to the datalake.
     //
@@ -90,17 +137,6 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
 
     info!("Datalake: {}", datalake);
     env::set_current_dir(datalake)?;
-
-    // Load locations from DB
-    //
-    let r = r##"
-    SELECT * from sites WHERE name = ?
-    "##;
-    let name = opts.name.clone();
-    let site = match dbh.query(r).bind(&name).fetch_one::<Site>().await {
-        Ok(site) => site,
-        Err(e) => return Err(Status::UnknownSite(name).into()),
-    };
 
     // Load parameters
     //
@@ -118,28 +154,42 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
             (tm, tm)
         }
     };
-    trace!("From {} to {} on site {}", begin, end, &opts.name);
 
     let dates = expand_interval(begin, end)?;
     trace!("all days: {:?}", dates);
     info!("{} days to process.", dates.len());
 
+    // Check site name for "ALL" or a specific site name
+    //
+    let name = opts.name.as_str();
+
+    trace!("From {} to {} for sites(s)", begin, end);
+
     // Build our set of batches
     //
-    let worklist: Vec<_> = dates.into_iter().map(|day| {
-        let work = PlaneDistanceBuilder::default()
-            .name(opts.name.clone())
-            .lat(site.latitude as f64)
-            .lon(site.longitude as f64)
-            .distance(opts.distance)
-            .date(day)
-            .separation(opts.separation)
-            .wait(ctx.wait)
-            .build().unwrap();
+    let worklist: Vec<_> = dates
+        .into_iter()
+        .inspect(|d| trace!("Looking for sites for {d}"))
+        .map(|day| async {
+            let sites = enumerate_sites(ctx, day).await.unwrap();
+            let this_day = sites.iter().map(|site| {
+                let work = PlaneDistanceBuilder::default()
+                    .name(opts.name.clone())
+                    .lat(site.latitude as f64)
+                    .lon(site.longitude as f64)
+                    .distance(opts.distance)
+                    .date(day)
+                    .separation(opts.separation)
+                    .wait(ctx.wait)
+                    .build().unwrap();
 
-        work
-    }).collect();
-    trace!("All tasks: {:?}", worklist);
+                work
+            }).collect::<Vec<_>>();
+            trace!("worklist for {}: {:?}", day, this_day);
+        })
+        .collect::<Vec<_>>();
+
+    //let worklist: Vec<PlaneDistance> = join_all(worklist).await;
 
     // We use rayon to reduce the overhead during parallel calculations
     //
@@ -154,7 +204,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     let stats = join_all(stats).await;
     trace!("All stats: {:?}", stats);
 
-    let stats: Vec<_> = stats.par_iter().filter_map(|res| {
+    let stats: Vec<_> = stats.iter().filter_map(|res| {
         match res {
             Ok(res) => Some(res.clone()),
             Err(e) => {
