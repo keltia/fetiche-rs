@@ -1,7 +1,7 @@
 [workspace]
 members = ["common", "fetiched", "formats", "sources", "acutectl", "process-data", "common"]
 default-members = ["acutectl", "process-data"]
-exclude = ["cat21conv", "adsb-to-parquet", "opensky-history"]
+exclude = ["adsb-to-parquet", "opensky-history"]
 resolver = "2"
 
 [workspace.dependencies]
