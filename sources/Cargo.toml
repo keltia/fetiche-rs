@@ -57,7 +57,7 @@ tracing-subscriber.workspace = true
 base64_light = "0.1"
 mini-moka = "0.10"
 native-tls = "0.2"
-percent-encoding = "2.2"
+percent-encoding = "2.3"
 signal-hook = "0.3"
 snafu = { version = "0.7", features = ["backtrace", "rust_1_61", "backtraces"] }
 tap = "1"
@@ -65,4 +65,4 @@ tap = "1"
 [dev-dependencies]
 criterion.workspace = true
 rstest.workspace = true
-httpmock = { version = "0.6", features = ["colored", "color", "clap"] }
+httpmock = { version = "0.7", features = ["colored", "color", "clap"] }
