@@ -12,8 +12,9 @@ keywords = ["drones", "aeronautical-data", "fetiche"]
 
 [features]
 default = ["privacy"]
-privacy = []
 async = []
+json = []
+privacy = []
 
 [package.metadata.docs.rs]
 all-features = true
