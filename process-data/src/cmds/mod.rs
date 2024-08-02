@@ -1,14 +1,15 @@
 //! This is the main driver module for all the different commands.
 //!
 
-use std::fmt::Debug;
 use clickhouse::Client;
+use std::fmt::Debug;
 use tracing::info;
 
 pub use acute::*;
 pub use distances::*;
 pub use export::*;
 pub use setup::*;
+pub use site::*;
 pub use stats::*;
 
 use crate::cli::{Opts, SubCommand};
@@ -18,6 +19,7 @@ mod acute;
 mod distances;
 mod export;
 mod setup;
+mod site;
 mod stats;
 
 /// One degree in *kilometers*
