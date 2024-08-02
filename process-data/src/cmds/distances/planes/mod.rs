@@ -5,20 +5,17 @@
 
 use std::env;
 
-use chrono::{Datelike, DateTime, TimeZone, Utc};
+use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
-use clickhouse::Row;
 use derive_builder::Builder;
-use eyre::Result;
-use futures::future::join_all;
-use serde::{Deserialize, Serialize};
-use tracing::{info, trace};
+use eyre::{eyre, Result};
+use futures::future::try_join_all;
+use tracing::{debug, info, trace};
 
-use fetiche_common::{DateOpts, expand_interval, load_locations, Location};
+use fetiche_common::{expand_interval, DateOpts};
 
-use crate::cmds::{Calculate, Stats};
+use crate::cmds::{enumerate_sites, find_site, Calculate, Stats};
 use crate::config::Context;
-use crate::error::Status;
 
 mod compute;
 
@@ -29,8 +26,8 @@ pub struct PlanesOpts {
     /// Do calculation(s) on this/these day(s)
     #[clap(subcommand)]
     pub date: DateOpts,
-    /// Do calculations around this station.
-    pub name: String,
+    /// Do calculations around this station (default is all)
+    pub name: Option<String>,
     /// Distance around the site in Nautical Miles.
     #[clap(short = 'D', long, default_value = "70.")]
     pub distance: f64,
@@ -67,70 +64,10 @@ pub struct PlaneDistance {
 
 // -----
 
-#[derive(Debug, Deserialize, Row, Serialize)]
-struct Site {
-    pub id: u32,
-    name: String,
-    code: String,
-    basename: String,
-    latitude: f32,
-    longitude: f32,
-    ref_alt: f32,
-}
-
-/// FInd a given site, id, locatio,, etc. frm database
-///
-async fn find_site(ctx: &Context, site: &str) -> Result<Site> {
-    let dbh = ctx.db();
-
-    // Load locations from DB
-    //
-    let r = r##"
-    SELECT * from sites WHERE name = ?
-    "##;
-    let name = site.clone();
-    let site = match dbh.query(r).bind(name).fetch_one::<Site>().await {
-        Ok(site) => site,
-        Err(e) => return Err(Status::UnknownSite(name.to_string()).into()),
-    };
-    Ok(site)
-}
-
-/// Now, for a given day, find all sites that have data
-///
-async fn enumerate_sites(ctx: &Context, day: DateTime<Utc>) -> Result<Vec<Site>> {
-    let dbh = ctx.db();
-
-    let r = r##"
-SELECT sites.name AS site_id
-FROM
-    sites, installations
-WHERE (sites.id = installations.site_id) AND
-    ((toDateTime('2024-07-28') >= installations.start_at) AND
-    (toDateTime('2024-07-28') <= installations.end_at))
-    "##;
-
-    // Fetch all site IDs for this specific day
-    //
-    let sites = dbh.query(r).bind(day).fetch_all::<String>().await?;
-
-    // Now create our array of sites for all ids
-    //
-    let sites = sites
-        .iter()
-        .map(|name| async { find_site(ctx, name).await.unwrap() })
-        .collect::<Vec<_>>();
-    let sites = join_all(sites).await;
-
-    Ok(sites)
-}
-
 /// Handle the `distances planes` command.
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
-    let dbh = ctx.db();
-
     // Move ourselves to the datalake.
     //
     let datalake = ctx.config.get("datalake").unwrap();
@@ -156,65 +93,130 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     };
 
     let dates = expand_interval(begin, end)?;
-    trace!("all days: {:?}", dates);
     info!("{} days to process.", dates.len());
 
-    // Check site name for "ALL" or a specific site name
+    trace!("From {} to {}", begin, end);
+
+    // Gather all sites to run calculations on for every day.
     //
-    let name = opts.name.as_str();
+    let stats = match &opts.name {
+        Some(site) => {
+            let day_stats = try_join_all(dates.iter().inspect(|&day| debug!("day = {day}")).map(
+                |&day| async move {
+                    debug!("site = [{site:?}]");
+                    calculate_one_day_on_site(ctx, &site, day, opts.distance, opts.separation).await
+                },
+            ))
+            .await
+            .map_err(|e| eyre!("error: {}", e))?;
 
-    trace!("From {} to {} for sites(s)", begin, end);
-
-    // Build our set of batches
-    //
-    let worklist: Vec<_> = dates
-        .into_iter()
-        .inspect(|d| trace!("Looking for sites for {d}"))
-        .map(|day| async {
-            let sites = enumerate_sites(ctx, day).await.unwrap();
-            let this_day = sites.iter().map(|site| {
-                let work = PlaneDistanceBuilder::default()
-                    .name(opts.name.clone())
-                    .lat(site.latitude as f64)
-                    .lon(site.longitude as f64)
-                    .distance(opts.distance)
-                    .date(day)
-                    .separation(opts.separation)
-                    .wait(ctx.wait)
-                    .build().unwrap();
-
-                work
-            }).collect::<Vec<_>>();
-            trace!("worklist for {}: {:?}", day, this_day);
-        })
-        .collect::<Vec<_>>();
-
-    //let worklist: Vec<PlaneDistance> = join_all(worklist).await;
-
-    // We use rayon to reduce the overhead during parallel calculations
-    //
-    use rayon::prelude::*;
-
-    let stats: Vec<_> = worklist
-        .par_iter()
-        .map(|task| async {
-            task.run(&dbh.clone()).await
-        }).collect();
-
-    let stats = join_all(stats).await;
-    trace!("All stats: {:?}", stats);
-
-    let stats: Vec<_> = stats.iter().filter_map(|res| {
-        match res {
-            Ok(res) => Some(res.clone()),
-            Err(e) => {
-                eprintln!("Task failed: {}", e);
-                None
-            }
+            debug!("days({dates:?}) stats={day_stats:?}");
+            day_stats
         }
-    }).collect();
+        None => {
+            let day_stats = try_join_all(dates.iter().inspect(|&day| debug!("day = {day}")).map(
+                |&day| async move {
+                    let stats = calculate_one_day(ctx, day, opts.distance, opts.separation).await;
+                    stats
+                },
+            ))
+            .await
+            .map_err(|e| eyre!("error: {}", e))?;
+
+            let stats = day_stats.into_iter().flatten().collect::<Vec<_>>();
+            debug!("days({dates:?}) stats={stats:?}");
+            stats
+        }
+    };
+
     let stats = Stats::summarise(stats);
     trace!("summary={stats:?}");
 
+    Ok(stats)
+}
+
+#[tracing::instrument(skip(ctx))]
+async fn calculate_one_day(
+    ctx: &Context,
+    day: DateTime<Utc>,
+    distance: f64,
+    separation: f64,
+) -> Result<Vec<Stats>> {
+    let dbh = ctx.db();
+
+    // Build our set of batches
+    //
+    let sites = enumerate_sites(ctx, day).await?;
+
+    let worklist = sites
+        .iter()
+        .map(|site| {
+            let name = site.name.clone();
+            let work = PlaneDistanceBuilder::default()
+                .name(name)
+                .lat(site.latitude as f64)
+                .lon(site.longitude as f64)
+                .distance(distance)
+                .date(day)
+                .separation(separation)
+                .wait(ctx.wait)
+                .build()
+                .unwrap();
+
+            work
+        })
+        .collect::<Vec<_>>();
+
+    trace!("worklist for {:?}: {:?}", day, worklist);
+
+    // We use rayon to reduce the overhead during parallel calculations
+    //
+    let stats: Vec<Stats> = try_join_all(worklist.iter().map(|task| {
+        let dbh = dbh.clone();
+        async move {
+            let day_stat = task
+                .run(&dbh.clone())
+                .await
+                .map_err(|e| eyre!("error: {e}"));
+            day_stat
+        }
+    }))
+    .await?;
+
+    trace!("All stats: {:?}", stats);
+
+    Ok(stats)
+}
+
+#[tracing::instrument(skip(ctx))]
+async fn calculate_one_day_on_site(
+    ctx: &Context,
+    site: &str,
+    day: DateTime<Utc>,
+    distance: f64,
+    separation: f64,
+) -> Result<Stats> {
+    let dbh = ctx.db();
+
+    let site = find_site(ctx, site).await?;
+
+    let name = site.name.clone();
+    let work = PlaneDistanceBuilder::default()
+        .name(name)
+        .lat(site.latitude as f64)
+        .lon(site.longitude as f64)
+        .distance(distance)
+        .date(day)
+        .separation(separation)
+        .wait(ctx.wait)
+        .build()
+        .unwrap();
+
+    trace!("worklist for {:?} on {}: {:?}", site.name, day, work);
+
+    // We use rayon to reduce the overhead during parallel calculations
+    //
+
+    let stats = work.run(&dbh.clone()).await?;
     Ok(stats)
 }
