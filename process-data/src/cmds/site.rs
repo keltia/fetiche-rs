@@ -3,14 +3,13 @@
 
 use chrono::{Datelike, DateTime, Utc};
 use clickhouse::Row;
-use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 use crate::config::Context;
 use crate::error::Status;
 
 /// A site, as reflected in the "sites" table
-#[derive(Debug, Deserialize, Row, Serialize)]
+#[derive(Clone, Debug, Deserialize, Row, Serialize)]
 pub struct Site {
     /// auto-increment ID
     pub id: u32,
