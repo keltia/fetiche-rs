@@ -5,7 +5,7 @@ use chrono::{Datelike, DateTime, Utc};
 use clickhouse::Row;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
-
+use tracing::debug;
 use crate::config::Context;
 use crate::error::Status;
 
@@ -53,25 +53,24 @@ pub async fn enumerate_sites(ctx: &Context, day: DateTime<Utc>) -> eyre::Result<
 
     let day_tag = format!("{:4}{:02}{:02}", day.year(), day.month(), day.day());
     let r = r##"
-SELECT sites.name AS site_id
+SELECT
+    s.id,
+    s.name,
+    s.code,
+    s.basename,
+    s.latitude,
+    s.longitude,
+    s.ref_alt,
 FROM
-    sites, installations
-WHERE (sites.id = installations.site_id) AND
+    sites AS s, installations
+WHERE (s.id = installations.site_id) AND
     (toDateTime(?) BETWEEN installations.start_at AND
     installations.end_at)
     "##;
 
     // Fetch all site IDs for this specific day
     //
-    let sites = dbh.query(r).bind(day_tag).fetch_all::<String>().await?;
-
-    // Now create our array of sites for all ids
-    //
-    let sites = sites
-        .iter()
-        .map(|name| async { find_site(ctx, name).await.unwrap() })
-        .collect::<Vec<_>>();
-    let sites = join_all(sites).await;
-
+    let sites = dbh.query(r).bind(day_tag).fetch_all::<Site>().await?;
+    debug!("sites={:?}", sites);
     Ok(sites)
 }
