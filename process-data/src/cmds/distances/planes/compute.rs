@@ -6,7 +6,7 @@ use std::ops::Add;
 
 use chrono::{Datelike, Days, TimeZone, Utc};
 use clickhouse::{Client, Row};
-use eyre::{eyre, Result};
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tokio::time::{Duration, Instant, sleep};
 use tracing::{debug, info, trace};
