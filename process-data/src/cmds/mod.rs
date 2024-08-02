@@ -55,7 +55,7 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
 
                 export_drone_stats(ctx, opts).await?;
             }
-            ExportSubCommand::Encounters(opts) => unimplemented!()
+            ExportSubCommand::Encounters(_opts) => unimplemented!()
         },
         SubCommand::Setup(sopts) => {
             println!("Setup ACUTE environment in {}.\n", ctx.config["datalake"]);
