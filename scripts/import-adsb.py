@@ -87,6 +87,7 @@ def process_one(dir, fname, action):
             if ret.returncode != 0:
                 logging.error("error: ", ret.stderr)
                 print("error: ", ret.stderr, file=sys.stderr)
+                return fname
         else:
             print(f"cmd={cmd} -> {fname}")
 
@@ -104,8 +105,9 @@ def process_one(dir, fname, action):
             if action:
                 ret = run(cmd, shell=True, capture_output=True)
                 if ret.returncode != 0:
-                    logging.error("error: ", ret.stderr)
+                    logging.error("error", "(", fname, "): ", ret.stderr)
                     print("error: ", ret.stderr, file=sys.stderr)
+                    return fname
             else:
                 print(f"Running {cmd}")
             fname = new
@@ -123,8 +125,9 @@ def process_one(dir, fname, action):
     if action:
         ret = run(cmd, shell=True, capture_output=True)
         if ret.returncode != 0:
-            logging.error("error: ", ret.stderr)
+            logging.error("error", "(", fname, "): ", ret.stderr)
             print("error: ", ret.stderr, file=sys.stderr)
+            return fname
     else:
         print(f"Running {cmd}")
     logging.info("insert done.")
@@ -137,9 +140,11 @@ def process_one(dir, fname, action):
     if action:
         ret = run(cmd, shell=True, capture_output=True)
         if ret.returncode != 0:
-            logging.error("error: ", ret.stderr)
+            logging.error("error", "(", fname, "): ", ret.stderr)
             print("error: ", ret.stderr, file=sys.stderr)
+            return fname
         else:
+            logging.info(f"update for site {site} done.")
             # Now delete if requested
             #
             if delete:
@@ -148,7 +153,6 @@ def process_one(dir, fname, action):
 
     else:
         print(f"cmd={cmd}")
-    logging.info(f"update for site {site} done.")
 
     return fname
 
