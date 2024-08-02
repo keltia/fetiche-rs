@@ -36,6 +36,7 @@ sites = {
     'London': 7,
     'Cyprus': 8,
     'Bucharest': 9,
+    'Bucharest1': 9,
     'Vienna': 10,
     'Vienna2': 10,
     'Zurich': 11,
