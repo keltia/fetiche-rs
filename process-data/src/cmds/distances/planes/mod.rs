@@ -14,7 +14,7 @@ use tracing::{debug, info, trace};
 
 use fetiche_common::{expand_interval, DateOpts};
 
-use crate::cmds::{enumerate_sites, find_site, Calculate, Stats};
+use crate::cmds::{enumerate_sites, find_site, Calculate, PlanesStats, Stats};
 use crate::config::Context;
 
 mod compute;
@@ -169,15 +169,17 @@ async fn calculate_one_day(
 
     trace!("worklist for {:?}: {:?}", day, worklist);
 
-    // We use rayon to reduce the overhead during parallel calculations
-    //
     let stats: Vec<Stats> = try_join_all(worklist.iter().map(|task| {
         let dbh = dbh.clone();
         async move {
-            let day_stat = task
-                .run(&dbh.clone())
-                .await
-                .map_err(|e| eyre!("error: {e}"));
+            let day_stat = if !ctx.dry_run {
+                task.run(&dbh.clone())
+                    .await
+                    .map_err(|e| eyre!("error: {e}"))
+            } else {
+                trace!("dry run!");
+                Ok(Stats::Planes(PlanesStats::default()))
+            };
             day_stat
         }
     }))
@@ -217,6 +219,11 @@ async fn calculate_one_day_on_site(
     // We use rayon to reduce the overhead during parallel calculations
     //
 
-    let stats = work.run(&dbh.clone()).await?;
+    let stats = if !ctx.dry_run {
+        work.run(&dbh.clone()).await?
+    } else {
+        trace!("dry run!");
+        Stats::Planes(PlanesStats::default())
+    };
     Ok(stats)
 }
