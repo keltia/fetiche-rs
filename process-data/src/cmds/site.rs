@@ -37,10 +37,9 @@ pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
     let r = r##"
     SELECT * from sites WHERE name = ?
     "##;
-    let name = site.clone();
-    let site = match dbh.query(r).bind(name).fetch_one::<Site>().await {
+    let site = match dbh.query(r).bind(site).fetch_one::<Site>().await {
         Ok(site) => site,
-        Err(e) => return Err(Status::UnknownSite(name.to_string()).into()),
+        Err(e) => return Err(Status::UnknownSite(site.to_string()).into()),
     };
     Ok(site)
 }
