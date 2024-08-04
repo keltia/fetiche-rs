@@ -56,10 +56,10 @@ impl Point {
 }
 
 async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
-    let url = env!("CLICKHOUSE_URL");
-    let db = env!("CLICKHOUSE_DB");
-    let user = env!("CLICKHOUSE_USER");
-    let pwd = env!("CLICKHOUSE_PASSWD");
+    let url = std::env::var("CLICKHOUSE_URL")?;
+    let db = std::env::var("CLICKHOUSE_DB")?;
+    let user = std::env::var("CLICKHOUSE_USER")?;
+    let pwd = std::env::var("CLICKHOUSE_PASSWD")?;
     let client = Client::default()
         .with_url(url)
         .with_database(db)
