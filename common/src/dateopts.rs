@@ -2,8 +2,11 @@ use std::ops::{Add, Sub};
 
 use chrono::{DateTime, Datelike, Days, TimeDelta, TimeZone, Utc};
 use clap::Parser;
+use eyre::Report;
 use thiserror::Error;
 use tracing::trace;
+use crate::ErrDateOpts::BadDate;
+use crate::normalise_day;
 
 /// Enum of supported options for the date formats.
 ///
@@ -27,6 +30,12 @@ pub enum ErrDateOpts {
     BadDate(String),
 }
 
+impl From<Report> for ErrDateOpts {
+    fn from(value: Report) -> Self {
+        BadDate(value.to_string())
+    }
+}
+
 impl DateOpts {
     /// Parse options and return a time interval
     ///
@@ -36,9 +45,7 @@ impl DateOpts {
             DateOpts::Today => {
                 trace!("got today true");
                 let today = Utc::now();
-                let begin = Utc
-                    .with_ymd_and_hms(today.year(), today.month(), today.day(), 0, 0, 0)
-                    .unwrap();
+                let begin = normalise_day(today)?;
                 let end = begin.add(Days::new(1));
                 trace!("today gives from {} to {}", begin, end);
                 (begin, end)
@@ -47,12 +54,8 @@ impl DateOpts {
                 trace!("got yesterday true");
                 let today = Utc::now();
                 let yest = today.sub(Days::new(1));
-                let begin = Utc
-                    .with_ymd_and_hms(yest.year(), yest.month(), yest.day(), 0, 0, 0)
-                    .unwrap();
-                let end = Utc
-                    .with_ymd_and_hms(today.year(), today.month(), today.day(), 0, 0, 0)
-                    .unwrap();
+                let begin = normalise_day(yest)?;
+                let end = normalise_day(today)?;
                 trace!("yesterday gives from {} to {}", begin, end);
                 (begin, end)
             }
@@ -62,9 +65,7 @@ impl DateOpts {
                     Ok(date) => date,
                     Err(_) => return Err(ErrDateOpts::BadDate(date)),
                 };
-                let begin = Utc
-                    .with_ymd_and_hms(begin.year(), begin.month(), begin.day(), 0, 0, 0)
-                    .unwrap();
+                let begin = normalise_day(begin)?;
                 let end = begin.add(Days::new(1));
                 trace!("this day={} gives from {} to {}", date, begin, end);
                 (begin, end)
@@ -77,7 +78,9 @@ impl DateOpts {
                 let week = Utc::now();
                 let begin: DateTime<Utc> =
                     Utc.with_ymd_and_hms(week.year(), 1, 1, 0, 0, 0).unwrap();
-                let begin = begin.checked_add_signed(TimeDelta::try_weeks(num - 1).unwrap()).unwrap();
+                let begin = begin
+                    .checked_add_signed(TimeDelta::try_weeks(num - 1).unwrap())
+                    .unwrap();
                 let end = begin.add(Days::new(7));
                 trace!("week={} is from {} to {}", num, begin, end);
                 (begin, end)
@@ -92,6 +95,9 @@ impl DateOpts {
                     Ok(date) => date,
                     Err(_) => return Err(ErrDateOpts::BadDate(end)),
                 };
+                let begin = normalise_day(begin)?;
+                let end = normalise_day(end)?;
+
                 trace!("begin={} end={}", begin, end);
                 (begin, end)
             }
@@ -106,7 +112,10 @@ mod test {
 
     #[test]
     fn test_dateopts_parse() -> eyre::Result<()> {
-        let opt = DateOpts::From { begin: "2022-06-14 00:00:00 UTC".into(), end: "2023-02-28 00:00:00 UTC".into() };
+        let opt = DateOpts::From {
+            begin: "2022-06-14 00:00:00 UTC".into(),
+            end: "2023-02-28 00:00:00 UTC".into(),
+        };
         let r = DateOpts::parse(opt);
 
         assert!(r.is_ok());
