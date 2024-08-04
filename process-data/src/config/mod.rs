@@ -30,6 +30,8 @@ pub struct Context {
     dbh: Arc<Client>,
     /// Delay between parallel tasks
     pub wait: u64,
+    /// Dry run
+    pub dry_run: bool,
 }
 
 impl Context {
@@ -125,6 +127,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
             .into(),
         dbh: dbh.into(),
         wait: opts.wait,
+        dry_run: opts.dry_run,
     };
     Ok(ctx)
 }

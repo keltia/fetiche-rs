@@ -16,6 +16,9 @@ pub struct Opts {
     /// Delay between task in ms
     #[clap(short = 'w', long, default_value = "100")]
     pub wait: u64,
+    /// Dry run
+    #[clap(short = 'n', long)]
+    pub dry_run: bool,
     /// Sub-commands (see below).
     #[clap(subcommand)]
     pub subcmd: SubCommand,
