@@ -58,7 +58,7 @@ SELECT
     s.basename,
     s.latitude,
     s.longitude,
-    s.ref_alt,
+    s.ref_altitude,
 FROM
     sites AS s, installations
 WHERE (s.id = installations.site_id) AND
