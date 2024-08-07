@@ -165,7 +165,7 @@ async fn calculate_one_day(
                 .lat(site.latitude as f64)
                 .lon(site.longitude as f64)
                 .distance(distance)
-                .date(normalise_day(day).)
+                .date(day)
                 .separation(separation)
                 .wait(ctx.wait)
                 .build()
