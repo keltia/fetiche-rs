@@ -60,15 +60,16 @@ impl PlaneDistance {
         debug!("site_id for {site} is {id_site}");
 
         let day_name = self.date.format("%Y%m%d").to_string();
+        let tag = format!("_{site}_{day_name}");
 
-        trace!("Removing old table today{day_name}.");
+        trace!("Removing old table today{tag}.");
         dbh
-            .query(&format!("DROP TABLE IF EXISTS today{day_name}"))
+            .query(&format!("DROP TABLE IF EXISTS today{tag}"))
             .execute()
             .await?;
 
         let r1 = format!(r##"
-CREATE TABLE today{day_name}
+CREATE TABLE today{tag}
 ENGINE = Memory
 AS SELECT
   site,
@@ -107,7 +108,7 @@ ORDER BY time
 
         // Check how many
         //
-        let r1 = format!("SELECT count() FROM today{day_name}");
+        let r1 = format!("SELECT count() FROM today{tag}");
         let count = dbh
             .query(&r1)
             .fetch_one::<usize>()
@@ -129,6 +130,7 @@ ORDER BY time
         let lat = self.lat;
         let lon = self.lon;
 
+        let site = &self.name;
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
@@ -136,21 +138,22 @@ ORDER BY time
         let end_day = self.date.checked_add_days(Days::new(1)).unwrap();
 
         let day_name = self.date.format("%Y%m%d").to_string();
+        let tag = format!("_{site}_{day_name}");
 
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
-        trace!("Removing old table candidates{day_name}.");
-        let r1 = format!("DROP TABLE IF EXISTS candidates{day_name}");
+        trace!("Removing old table candidates{tag}.");
+        let r1 = format!("DROP TABLE IF EXISTS candidates{tag}");
         dbh
             .query(&r1)
             .execute()
             .await?;
 
         let r2 = format!(r##"
-CREATE TABLE candidates{day_name}
+CREATE TABLE candidates{tag}
 ENGINE = Memory AS
 SELECT
     time,
@@ -188,7 +191,7 @@ ORDER BY
         // Check how many
         //
         let count = dbh
-            .query(&format!("SELECT COUNT() FROM candidates{day_name}"))
+            .query(&format!("SELECT COUNT() FROM candidates{tag}"))
             .fetch_one::<usize>()
             .await?;
 
@@ -200,10 +203,12 @@ ORDER BY
     async fn find_close(&self, dbh: &Client) -> Result<usize> {
         trace!("Find close encounters.");
 
+        let site = &self.name;
         let day_name = self.date.format("%Y%m%d").to_string();
+        let tag = format!("_{site}_{day_name}");
 
-        trace!("Removing old table today_close{day_name}.");
-        let r = format!("DROP TABLE IF EXISTS today_close{day_name}");
+        trace!("Removing old table today_close{tag}.");
+        let r = format!("DROP TABLE IF EXISTS today_close{tag}");
         dbh
             .query(&r)
             .execute()
@@ -216,7 +221,7 @@ ORDER BY
         // $3 = timestamp of drone point
         //
         let r = format!(r##"
-CREATE TABLE today_close{day_name}
+CREATE TABLE today_close{tag}
 ENGINE = Memory AS
 SELECT
   c.journey,
@@ -240,8 +245,8 @@ SELECT
   dist_3d(dlon, dlat, dalt, plon, plat, palt) AS dist_drone_plane,
   ceil(palt - dalt) AS diff_alt
 FROM
-  today{day_name} AS t,
-  candidates{day_name} AS c
+  today{tag} AS t,
+  candidates{tag} AS c
 WHERE
   pt BETWEEN CAST(toUnixTimestamp(c.time - 2) AS TIMESTAMP) AND CAST(toUnixTimestamp(c.time + 2) AS TIMESTAMP) AND
   dist2d <= ? AND
@@ -261,7 +266,7 @@ ORDER BY
         // Check how many
         //
         let count = dbh
-            .query(&format!("SELECT count() FROM today_close{day_name}"))
+            .query(&format!("SELECT count() FROM today_close{tag}"))
             .fetch_one::<usize>()
             .await?;
 
@@ -271,17 +276,19 @@ ORDER BY
 
     #[inline]
     #[tracing::instrument(skip(dbh))]
-    async fn create_table_ids(dbh: &Client, day_name: &str) -> Result<()> {
-        trace!("Drop table ids{day_name}.");
-        let r = format!("DROP TABLE IF EXISTS ids{day_name}");
+    async fn create_table_ids(dbh: &Client, day_name: &str, site: &str) -> Result<()> {
+        let tag = format!("_{site}_{day_name}");
+        trace!("Drop table ids{tag}.");
+
+        let r = format!("DROP TABLE IF EXISTS ids{tag}");
         dbh
             .query(&r)
             .execute()
             .await?;
 
-        trace!("Create table ids{day_name}.");
+        trace!("Create table ids{tag}.");
         let r = format!(r##"
-        CREATE TABLE ids{day_name} (
+        CREATE TABLE ids{tag} (
     drone_id VARCHAR,
     callsign VARCHAR,
     journey INT,
@@ -318,7 +325,7 @@ ORDER BY
       journey,
       drone_id,
       callsign,
-    FROM today_close{day_name}
+    FROM today_close{tag}
     WHERE
       dist_drone_plane < 1852
     GROUP BY ALL
@@ -351,13 +358,13 @@ ORDER BY
         trace!("Insert updated records.");
         // Insert the records
         //
-        let mut batch = dbh.insert(&format!("ids{day_name}"))?;
+        let mut batch = dbh.insert(&format!("ids{tag}"))?;
         for item in all.iter() {
             batch.write(item).await?;
         }
         batch.end().await?;
 
-        let count = dbh.query(&format!("SELECT count() FROM today_close{day_name}")).fetch_one::<usize>().await?;
+        let count = dbh.query(&format!("SELECT count() FROM today_close{tag}")).fetch_one::<usize>().await?;
         trace!("Got {count} IDs");
         Ok(count)
     }
@@ -365,7 +372,7 @@ ORDER BY
     #[inline]
     #[tracing::instrument(skip(dbh))]
     async fn cleanup_ids(dbh: &Client, day_name: &str) -> Result<()> {
-        Ok(dbh.query(&format!("DROP TABLE ids{day_name}")).execute().await?)
+        Ok(dbh.query(&format!("DROP TABLE ids{tag}")).execute().await?)
     }
 
     #[tracing::instrument(skip(dbh))]
@@ -379,7 +386,9 @@ ORDER BY
         //
         // FIXME: conflicts are not handled, not sure why.
 
+        let site = &self.name;
         let day_name = self.date.format("%Y%m%d").to_string();
+        let tag = format!("_{site}_{day_name}");
 
         // Insert data into table `encounters`
         //
@@ -389,10 +398,10 @@ ORDER BY
         // - insert ids
         // - join today_close and ids to get all points with the right en_id
         //
-        let site = self.name.clone();
+        let site = &self.name;
 
-        Self::create_table_ids(dbh, &day_name).await?;
-        Self::insert_ids(dbh, &day_name, &site).await?;
+        Self::create_table_ids(dbh, &day_name, site).await?;
+        Self::insert_ids(dbh, &day_name, site).await?;
 
         let r = format!(r##"INSERT INTO airplane_prox
      SELECT
@@ -415,7 +424,7 @@ ORDER BY
       any_value(CEIL(ABS(palt - dalt))) AS distance_vert_m,
       any_value(CEIL(hdist2d)) as distance_home_m,
       CEIL(dist_drone_plane) AS distance_slant_m
-    FROM today_close{day_name} AS tc, ids{day_name} AS id
+    FROM today_close{tag} AS tc, ids{tag} AS id
     WHERE
       dist_drone_plane < 1852
     AND
