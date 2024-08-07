@@ -61,7 +61,7 @@ impl PlaneDistance {
 
         let day_name = self.date.format("%Y%m%d").to_string();
 
-        trace!("Removing old table today.");
+        trace!("Removing old table today{day_name}.");
         dbh
             .query(&format!("DROP TABLE IF EXISTS today{day_name}"))
             .execute()
