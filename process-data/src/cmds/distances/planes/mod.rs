@@ -101,6 +101,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     //
     let stats = match &opts.name {
         Some(site) => {
+            trace!("Calculate for site {site}");
             let day_stats = try_join_all(dates.iter().inspect(|&day| debug!("day = {day}")).map(
                 |&day| async move {
                     debug!("site = [{site:?}]");
@@ -114,6 +115,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
             day_stats
         }
         None => {
+            trace!("Calculate for all valid sites.");
             let day_stats = try_join_all(dates.iter().inspect(|&day| debug!("day = {day}")).map(
                 |&day| async move {
                     let stats = calculate_one_day(ctx, day, opts.distance, opts.separation).await;
@@ -129,12 +131,17 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
         }
     };
 
+    // Gather all statistics
+    //
     let stats = Stats::summarise(stats);
     trace!("summary={stats:?}");
 
     Ok(stats)
 }
 
+/// Does the calculation for one specific day on one specific site.
+/// Find all sites for which the day is valid and run these.
+///
 #[tracing::instrument(skip(ctx))]
 async fn calculate_one_day(
     ctx: &Context,
@@ -190,6 +197,9 @@ async fn calculate_one_day(
     Ok(stats)
 }
 
+/// Does the calculation for one specific day on one specific site.
+/// Could be merged with previous but I think it might be too much overhead for just a few lines.
+///
 #[tracing::instrument(skip(ctx))]
 async fn calculate_one_day_on_site(
     ctx: &Context,
