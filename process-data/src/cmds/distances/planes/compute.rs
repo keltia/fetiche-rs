@@ -302,7 +302,10 @@ ORDER BY
     #[inline]
     #[tracing::instrument(skip(dbh))]
     async fn insert_ids(dbh: &Client, day_name: &str, site: &str) -> Result<usize> {
-        let total = dbh.query("SELECT count() FROM today_close").fetch_one::<usize>().await?;
+        let tag = format!("_{site}_{day_name}");
+
+        let r = format!("SELECT count() FROM today_close{tag}");
+        let total = dbh.query(&r).fetch_one::<usize>().await?;
 
         // This is for the query
         #[derive(Clone, Debug, Default, Serialize, Deserialize, Row)]
@@ -371,7 +374,9 @@ ORDER BY
 
     #[inline]
     #[tracing::instrument(skip(dbh))]
-    async fn cleanup_ids(dbh: &Client, day_name: &str) -> Result<()> {
+    async fn cleanup_ids(dbh: &Client, day_name: &str, site: &str) -> Result<()> {
+        let tag = format!("_{site}_{day_name}");
+
         Ok(dbh.query(&format!("DROP TABLE ids{tag}")).execute().await?)
     }
 
@@ -436,7 +441,7 @@ ORDER BY
         trace!("Save encounters.");
         dbh.query(&r).execute().await?;
 
-        Self::cleanup_ids(dbh, &day_name).await?;
+        Self::cleanup_ids(dbh, &day_name, site).await?;
 
         // Now check how many
         //
