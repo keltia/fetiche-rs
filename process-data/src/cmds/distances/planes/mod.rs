@@ -12,7 +12,7 @@ use eyre::{eyre, Result};
 use futures::future::try_join_all;
 use tracing::{debug, info, trace};
 
-use fetiche_common::{expand_interval, DateOpts};
+use fetiche_common::{expand_interval, DateOpts, normalise_day};
 
 use crate::cmds::{enumerate_sites, find_site, Calculate, PlanesStats, Stats};
 use crate::config::Context;
@@ -153,6 +153,7 @@ async fn calculate_one_day(
 
     // Build our set of batches
     //
+    let day = normalise_day(day)?;
     let sites = enumerate_sites(ctx, day).await?;
 
     let worklist = sites
@@ -164,7 +165,7 @@ async fn calculate_one_day(
                 .lat(site.latitude as f64)
                 .lon(site.longitude as f64)
                 .distance(distance)
-                .date(day)
+                .date(normalise_day(day).)
                 .separation(separation)
                 .wait(ctx.wait)
                 .build()
@@ -210,6 +211,7 @@ async fn calculate_one_day_on_site(
 ) -> Result<Stats> {
     let dbh = ctx.db();
 
+    let day = normalise_day(day)?;
     let site = find_site(ctx, site).await?;
 
     let name = site.name.clone();
