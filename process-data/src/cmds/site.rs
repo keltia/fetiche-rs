@@ -29,6 +29,7 @@ pub struct Site {
 
 /// Find a given site, id, location,, etc. frm database
 ///
+#[tracing::instrument(skip(ctx))]
 pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
     let dbh = ctx.db();
 
@@ -46,10 +47,11 @@ pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
 
 /// Now, for a given day, find all sites that have data
 ///
+#[tracing::instrument(skip(ctx))]
 pub async fn enumerate_sites(ctx: &Context, day: DateTime<Utc>) -> eyre::Result<Vec<Site>> {
     let dbh = ctx.db();
 
-    let day_tag = format!("{:4}{:02}{:02}", day.year(), day.month(), day.day());
+    let day_tag = format!("{:4}-{:02}-{:02}", day.year(), day.month(), day.day());
     let r = r##"
 SELECT
     s.id,
