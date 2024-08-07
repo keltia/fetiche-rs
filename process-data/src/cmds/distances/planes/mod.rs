@@ -198,7 +198,7 @@ async fn calculate_one_day(
 }
 
 /// Does the calculation for one specific day on one specific site.
-/// Could be merged with previous but I think it might be too much overhead for just a few lines.
+/// Could be merged with previous, but I think it might be too much overhead for just a few lines.
 ///
 #[tracing::instrument(skip(ctx))]
 async fn calculate_one_day_on_site(
