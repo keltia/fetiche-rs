@@ -18,12 +18,12 @@ pub(crate) fn init_runtime(name: &str) -> Result<()> {
         .with_higher_precision(true)
         .with_bracketed_fields(true);
 
-    // Setup Open Telemetry with Jaeger
+    // Setup Open Telemetry with OTLP
     //
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_auto_split_batch(true)
-        .with_max_packet_size(9_216)
-        .with_service_name(name)
+    let exporter = opentelemetry_otlp::new_exporter().tonic();
+    let tracer = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(exporter)
         .install_simple()?;
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 

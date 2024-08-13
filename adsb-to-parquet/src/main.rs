@@ -1,19 +1,16 @@
 //! Read some data as csv and write it into a parquet file
 //!
-use std::path::Path;
-
+use adsb_to_parquet::{
+    arrow2::{read_csv, write_chunk},
+    datafusion::parquet_through_df,
+    Options,
+};
 use clap::Parser;
 use eyre::Result;
 use tracing::{debug, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
-
-use adsb_to_parquet::{
-    arrow2::{read_csv, write_chunk},
-    datafusion::parquet_through_df,
-    Options,
-};
 
 use crate::cli::Opts;
 
@@ -39,12 +36,12 @@ async fn main() -> Result<()> {
         .with_higher_precision(true)
         .with_bracketed_fields(true);
 
-    // Setup Open Telemetry with Jaeger
+    // Setup Open Telemetry with OTLP
     //
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_auto_split_batch(true)
-        .with_max_packet_size(9_216)
-        .with_service_name(NAME)
+    let exporter = opentelemetry_otlp::new_exporter().tonic();
+    let tracer = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(exporter)
         .install_simple()?;
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
