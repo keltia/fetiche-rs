@@ -9,20 +9,23 @@ use std::sync::Arc;
 
 use clickhouse::Client;
 use eyre::Result;
+use opentelemetry::trace::TracerProvider;
 use tracing::{error, info, trace};
-use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 pub use io::*;
 
 use crate::cli::Opts;
 use crate::error::Status;
+use crate::NAME;
 
 mod io;
 /// This holds our context, meaning common stuff
 ///
+#[derive(Clone)]
 pub struct Context {
     /// All configuration parameters
     pub config: Arc<HashMap<String, String>>,
@@ -60,12 +63,13 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         .with_verbose_exit(true)
         .with_bracketed_fields(true);
 
-    // let exporter = opentelemetry_otlp::new_exporter().tonic();
-    // let tracer = opentelemetry_otlp::new_pipeline()
-    //     .tracing()
-    //     .with_exporter(exporter)
-    //     .install_simple()?;
-    // let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    let exporter = opentelemetry_otlp::new_exporter().tonic();
+    let provider = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(exporter)
+        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+    let tracer = provider.tracer(NAME);
+    let _telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
     //
@@ -76,7 +80,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     tracing_subscriber::registry()
         .with(filter)
         .with(tree)
-        //        .with(telemetry)
+        //  .with(telemetry)
         .init();
     trace!("Logging initialised.");
 
@@ -98,7 +102,8 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     // Extract parameters
     //
     let datalake = cfg.datalake.unwrap();
-    let name = std::env::var("CLICKHOUSE_DB").unwrap_or(opts.database.clone().unwrap_or(cfg.database.unwrap()));
+    let name = std::env::var("CLICKHOUSE_DB")
+        .unwrap_or(opts.database.clone().unwrap_or(cfg.database.unwrap()));
     let user = std::env::var("CLICKHOUSE_USER").unwrap_or(cfg.user.clone().unwrap());
     let pass = std::env::var("CLICKHOUSE_PASSWD").unwrap_or(cfg.password.clone().unwrap());
     let endpoint = std::env::var("CLICKHOUSE_URL").unwrap_or(cfg.url.clone());
@@ -124,7 +129,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
             ("datalake".to_string(), datalake.clone()),
             ("username".to_string(), user.clone()),
         ])
-            .into(),
+        .into(),
         dbh: dbh.into(),
         wait: opts.wait,
         dry_run: opts.dry_run,

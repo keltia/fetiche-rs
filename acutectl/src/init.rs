@@ -1,8 +1,12 @@
 use eyre::Result;
+use opentelemetry::trace::TracerProvider;
 use tracing::trace;
-use tracing_subscriber::filter::EnvFilter;
-use tracing_subscriber::prelude::*;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
+
+use crate::NAME;
 
 #[tracing::instrument]
 pub(crate) fn init_runtime(name: &str) -> Result<()> {
@@ -20,11 +24,12 @@ pub(crate) fn init_runtime(name: &str) -> Result<()> {
     // Setup Open Telemetry with OTLP
     //
     let exporter = opentelemetry_otlp::new_exporter().tonic();
-    let tracer = opentelemetry_otlp::new_pipeline()
+    let provider = opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(exporter)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+    let tracer = provider.tracer(NAME);
+    let _telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
     //
@@ -35,7 +40,7 @@ pub(crate) fn init_runtime(name: &str) -> Result<()> {
     tracing_subscriber::registry()
         .with(filter)
         .with(tree)
-        .with(telemetry)
+        //      .with(telemetry)
         .init();
     trace!("Logging initialised.");
     Ok(())
