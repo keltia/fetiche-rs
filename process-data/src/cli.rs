@@ -1,6 +1,7 @@
-use crate::cmds::{AcuteOpts, DistOpts, ExportOpts, SetupOpts};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use clap_complete::Shell;
+
+use crate::cmds::{AcuteOpts, DistOpts, ExportOpts, SetupOpts};
 
 #[derive(Debug, Parser)]
 #[command(disable_version_flag = true)]
@@ -16,6 +17,9 @@ pub struct Opts {
     /// Delay between task in ms
     #[clap(short = 'w', long, default_value = "100")]
     pub wait: u64,
+    /// Enable telemetry with OTLP.
+    #[clap(short = 'T', long)]
+    pub use_telemetry: bool,
     /// Dry run
     #[clap(short = 'n', long)]
     pub dry_run: bool,
