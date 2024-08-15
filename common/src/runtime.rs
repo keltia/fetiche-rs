@@ -9,6 +9,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
+#[tracing::instrument]
 pub fn init_logging(name: &'static str, use_telemetry: bool) -> Result<()> {
     // Initialise logging early
     //
@@ -45,4 +46,9 @@ pub fn init_logging(name: &'static str, use_telemetry: bool) -> Result<()> {
         .with(telemetry)
         .init();
     Ok(())
+}
+
+#[tracing::instrument]
+pub fn close_logging() {
+    opentelemetry::global::shutdown_tracer_provider();
 }
