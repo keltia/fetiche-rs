@@ -55,6 +55,9 @@ pub struct Opts {
     /// Output file.
     #[clap(short = 'o', long)]
     pub output: Option<String>,
+    /// Enable telemetry with OTLP.
+    #[clap(short = 'T', long)]
+    pub use_telemetry: bool,
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
     pub verbose: u8,
@@ -318,7 +321,5 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
             eprintln!("Modules: \t{}", engine.version());
         }
     }
-    opentelemetry::global::shutdown_tracer_provider();
-
     Ok(())
 }

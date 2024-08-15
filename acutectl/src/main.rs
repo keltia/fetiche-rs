@@ -24,15 +24,12 @@
 //   -h, --help             Print help
 //! ```
 
-mod init;
-
 use clap::{crate_authors, crate_description, crate_version, Parser};
 use eyre::Result;
 use tracing::trace;
 
-use crate::init::init_runtime;
-
 use acutectl::{handle_subcmd, Config, Engine, Opts};
+use fetiche_common::{close_logging, init_logging};
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -47,7 +44,7 @@ fn main() -> Result<()> {
 
     // Initialise tracing.
     //
-    init_runtime(NAME)?;
+    init_logging(NAME, opts.use_telemetry)?;
 
     // Config only has the credentials for every source now.
     //
@@ -69,7 +66,9 @@ fn main() -> Result<()> {
     trace!("Engine initialised and running.");
 
     let subcmd = &opts.subcmd;
-    handle_subcmd(&mut engine, subcmd)
+    let res = handle_subcmd(&mut engine, subcmd);
+    close_logging();
+    res
 }
 
 /// Return our version number
