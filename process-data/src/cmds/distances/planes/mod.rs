@@ -12,7 +12,7 @@ use eyre::{eyre, Result};
 use futures::future::try_join_all;
 use tracing::{debug, info, trace};
 
-use fetiche_common::{expand_interval, DateOpts, normalise_day};
+use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
 use crate::cmds::{enumerate_sites, find_site, Calculate, PlanesStats, Stats};
 use crate::config::Context;
@@ -105,7 +105,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
             let day_stats = try_join_all(dates.iter().inspect(|&day| debug!("day = {day}")).map(
                 |&day| async move {
                     debug!("site = [{site:?}]");
-                    calculate_one_day_on_site(ctx, &site, day, opts.distance, opts.separation).await
+                    calculate_one_day_on_site(ctx, site, day, opts.distance, opts.separation).await
                 },
             ))
             .await
@@ -116,14 +116,14 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
         }
         None => {
             trace!("Calculate for all valid sites.");
-            let day_stats = try_join_all(dates.iter().inspect(|&day| debug!("day = {day}")).map(
-                |&day| async move {
-                    let stats = calculate_one_day(ctx, day, opts.distance, opts.separation).await;
-                    stats
-                },
-            ))
-            .await
-            .map_err(|e| eyre!("error: {}", e))?;
+            let day_stats =
+                try_join_all(dates.iter().inspect(|&day| debug!("day = {day}")).map(
+                    |&day| async move {
+                        calculate_one_day(ctx, day, opts.distance, opts.separation).await
+                    },
+                ))
+                .await
+                .map_err(|e| eyre!("error: {}", e))?;
 
             let stats = day_stats.into_iter().flatten().collect::<Vec<_>>();
             debug!("days({dates:?}) stats={stats:?}");
@@ -180,15 +180,14 @@ async fn calculate_one_day(
     let stats: Vec<Stats> = try_join_all(worklist.iter().map(|task| {
         let dbh = dbh.clone();
         async move {
-            let day_stat = if !ctx.dry_run {
+            if !ctx.dry_run {
                 task.run(&dbh.clone())
                     .await
                     .map_err(|e| eyre!("error: {e}"))
             } else {
                 trace!("dry run!");
                 Ok(Stats::Planes(PlanesStats::default()))
-            };
-            day_stat
+            }
         }
     }))
     .await?;

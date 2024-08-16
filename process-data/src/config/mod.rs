@@ -26,7 +26,7 @@ pub struct Context {
     /// All configuration parameters
     pub config: Arc<HashMap<String, String>>,
     /// Database Client.
-    dbh: Arc<Client>,
+    dbh: Client,
     /// Delay between parallel tasks
     pub wait: u64,
     /// Dry run
@@ -35,7 +35,7 @@ pub struct Context {
 
 impl Context {
     #[tracing::instrument(skip(self))]
-    pub fn db(&self) -> Arc<Client> {
+    pub fn db(&self) -> Client {
         self.dbh.clone()
     }
 
@@ -100,7 +100,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
             ("username".to_string(), user.clone()),
         ])
         .into(),
-        dbh: dbh.into(),
+        dbh,
         wait: opts.wait,
         dry_run: opts.dry_run,
     };
