@@ -75,6 +75,8 @@ impl Fetch {
 
                     let token = match token {
                         Err(e) => {
+                            /// FIXME: this does not play well with `thiserror`
+                            ///
                             if let Some(err) = e.downcast_ref::<TokenError>() {
                                 if *err == TokenError::Expired {
                                     site.authenticate()?

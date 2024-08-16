@@ -224,7 +224,7 @@ impl Fetchable for Asd {
                     Ok(()) => (),
                     Err(e) => error!("Can not remove token: {}", e.to_string()),
                 };
-                return Err(TokenError::Expired(token.name).into());
+                return Err(TokenError::Expired.into());
             }
             trace!("token is valid");
             token.token
@@ -399,8 +399,8 @@ struct Token {
 ///
 #[derive(Debug, PartialEq, Error)]
 pub enum TokenError {
-    #[error("Token for {0} expired")]
-    Expired(String),
+    #[error("Token expired")]
+    Expired,
     #[error("Invalid token in {0}")]
     Invalid(String),
 }
