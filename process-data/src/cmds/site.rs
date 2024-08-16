@@ -1,10 +1,13 @@
 //! Anything related to ACUTE site management
 //!
 
-use chrono::{Datelike, DateTime, Utc};
+use std::fmt::{Display, Formatter};
+
+use chrono::{DateTime, Datelike, Utc};
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
+
 use crate::config::Context;
 use crate::error::Status;
 
@@ -25,6 +28,13 @@ pub struct Site {
     pub longitude: f32,
     /// Reference altitude
     pub ref_alt: f32,
+}
+
+impl Display for Site {
+    /// Implement `Display`.  Just return the name for now.
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
 }
 
 /// Find a given site, id, location,, etc. frm database
