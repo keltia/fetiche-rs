@@ -203,8 +203,7 @@ async fn calculate_one_day_on_site(
         .date(day)
         .separation(separation)
         .wait(ctx.wait)
-        .build()
-        .unwrap();
+        .build()?;
 
     trace!("worklist for {:?} on {}: {:?}", site.name, day, work);
 
