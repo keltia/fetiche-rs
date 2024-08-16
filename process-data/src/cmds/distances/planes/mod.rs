@@ -211,7 +211,9 @@ async fn calculate_one_day_on_site(
     //
 
     let stats = if !ctx.dry_run {
-        tokio::spawn(async move { work.run(&dbh.clone()).await.unwrap() }).await?
+        work.run(&dbh.clone())
+            .await
+            .map_err(|e| eyre!("error: {}", e))?
     } else {
         trace!("dry run!");
         Stats::Planes(PlanesStats::default())
