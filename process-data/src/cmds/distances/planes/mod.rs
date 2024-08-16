@@ -14,7 +14,7 @@ use tracing::{debug, info, trace};
 
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
-use crate::cmds::{enumerate_sites, find_site, Calculate, PlanesStats, Stats};
+use crate::cmds::{enumerate_sites, find_site, Calculate, PlanesStats, Site, Stats};
 use crate::config::Context;
 
 mod compute;
@@ -43,7 +43,7 @@ pub struct PlanesOpts {
 #[derive(Builder, Debug)]
 pub struct PlaneDistance {
     /// Name of site
-    pub name: String,
+    pub name: Site,
     /// Specific day
     pub date: DateTime<Utc>,
     /// Optional delay between tasks
@@ -102,10 +102,15 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     let stats = match &opts.name {
         Some(site) => {
             trace!("Calculate for site {site}");
+            let site = find_site(ctx, site).await?;
             let day_stats = try_join_all(dates.iter().inspect(|&day| debug!("day = {day}")).map(
-                |&day| async move {
-                    debug!("site = [{site:?}]");
-                    calculate_one_day_on_site(ctx, site, day, opts.distance, opts.separation).await
+                |&day| {
+                    let site = site.clone();
+                    async move {
+                        debug!("site = [{site:?}]");
+                        calculate_one_day_on_site(ctx, site, day, opts.distance, opts.separation)
+                            .await
+                    }
                 },
             ))
             .await
@@ -140,7 +145,8 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
 }
 
 /// Does the calculation for one specific day on one specific site.
-/// Find all sites for which the day is valid and run these.
+/// Find all sites for which the day is valid and run these
+/// with `calculate_one_day_on_site()`
 ///
 #[tracing::instrument(skip(ctx))]
 async fn calculate_one_day(
@@ -149,49 +155,25 @@ async fn calculate_one_day(
     distance: f64,
     separation: f64,
 ) -> Result<Vec<Stats>> {
-    let dbh = ctx.db();
-
     // Build our set of batches
     //
     let day = normalise_day(day)?;
     let sites = enumerate_sites(ctx, day).await?;
 
-    let worklist = sites
-        .iter()
-        .map(|site| {
-            let name = site.name.clone();
-            let work = PlaneDistanceBuilder::default()
-                .name(name)
-                .lat(site.latitude as f64)
-                .lon(site.longitude as f64)
-                .distance(distance)
-                .date(day)
-                .separation(separation)
-                .wait(ctx.wait)
-                .build()
-                .unwrap();
+    let stats = sites
+        .into_iter()
+        .map(|site| async move {
+            let ctx = ctx.clone();
+            let site = site.clone();
 
-            work
+            tokio::spawn(async move {
+                calculate_one_day_on_site(&ctx, site, day, distance, separation).await
+            })
+            .await?
         })
         .collect::<Vec<_>>();
 
-    trace!("worklist for {:?}: {:?}", day, worklist);
-
-    let stats: Vec<Stats> = try_join_all(worklist.iter().map(|task| {
-        let dbh = dbh.clone();
-        async move {
-            if !ctx.dry_run {
-                task.run(&dbh.clone())
-                    .await
-                    .map_err(|e| eyre!("error: {e}"))
-            } else {
-                trace!("dry run!");
-                Ok(Stats::Planes(PlanesStats::default()))
-            }
-        }
-    }))
-    .await?;
-
+    let stats = try_join_all(stats).await?;
     trace!("All stats: {:?}", stats);
 
     Ok(stats)
@@ -203,7 +185,7 @@ async fn calculate_one_day(
 #[tracing::instrument(skip(ctx))]
 async fn calculate_one_day_on_site(
     ctx: &Context,
-    site: &str,
+    site: Site,
     day: DateTime<Utc>,
     distance: f64,
     separation: f64,
@@ -211,9 +193,8 @@ async fn calculate_one_day_on_site(
     let dbh = ctx.db();
 
     let day = normalise_day(day)?;
-    let site = find_site(ctx, site).await?;
 
-    let name = site.name.clone();
+    let name = site.clone();
     let work = PlaneDistanceBuilder::default()
         .name(name)
         .lat(site.latitude as f64)
@@ -231,7 +212,7 @@ async fn calculate_one_day_on_site(
     //
 
     let stats = if !ctx.dry_run {
-        work.run(&dbh.clone()).await?
+        tokio::spawn(async move { work.run(&dbh.clone()).await.unwrap() }).await?
     } else {
         trace!("dry run!");
         Stats::Planes(PlanesStats::default())

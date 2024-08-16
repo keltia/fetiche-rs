@@ -8,10 +8,10 @@ use chrono::{Datelike, Days, TimeZone, Utc};
 use clickhouse::{Client, Row};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use tokio::time::{Duration, Instant, sleep};
+use tokio::time::{sleep, Duration, Instant};
 use tracing::{debug, info, trace};
 
-use crate::cmds::{Calculate, ONE_DEG, PlaneDistance, PlanesStats, Stats};
+use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, ONE_DEG};
 
 impl PlaneDistance {
     // -- private
@@ -63,12 +63,12 @@ impl PlaneDistance {
         let tag = format!("_{site}_{day_name}");
 
         trace!("Removing old table today{tag}.");
-        dbh
-            .query(&format!("DROP TABLE IF EXISTS today{tag}"))
+        dbh.query(&format!("DROP TABLE IF EXISTS today{tag}"))
             .execute()
             .await?;
 
-        let r1 = format!(r##"
+        let r1 = format!(
+            r##"
 CREATE TABLE today{tag}
 ENGINE = Memory
 AS SELECT
@@ -87,15 +87,15 @@ WHERE
   palt IS NOT NULL AND
   pointInEllipses(plon, plat, ?, ?, ?, ?)
 ORDER BY time
-"##);
+"##
+        );
 
         // Given lat/lon and dist, we define the "ellipse" aka circle
         // cf. https://clickhouse.com/docs/en/sql-reference/functions/geo/coordinates#pointinellipses
         //
         debug!("ellipse=(center={},{},{},{})", lon, lat, dist, dist);
 
-        dbh
-            .query(&r1)
+        dbh.query(&r1)
             .bind(id_site)
             .bind(time_from)
             .bind(time_to)
@@ -109,10 +109,7 @@ ORDER BY time
         // Check how many
         //
         let r1 = format!("SELECT count() FROM today{tag}");
-        let count = dbh
-            .query(&r1)
-            .fetch_one::<usize>()
-            .await?;
+        let count = dbh.query(&r1).fetch_one::<usize>().await?;
 
         trace!("Total number of planes: {}\n", count);
         Ok(count)
@@ -147,12 +144,10 @@ ORDER BY time
 
         trace!("Removing old table candidates{tag}.");
         let r1 = format!("DROP TABLE IF EXISTS candidates{tag}");
-        dbh
-            .query(&r1)
-            .execute()
-            .await?;
+        dbh.query(&r1).execute().await?;
 
-        let r2 = format!(r##"
+        let r2 = format!(
+            r##"
 CREATE TABLE candidates{tag}
 ENGINE = Memory AS
 SELECT
@@ -176,10 +171,10 @@ WHERE
   pointInEllipses(longitude,latitude, ?, ?, ?, ?)
 ORDER BY
   (time,journey)
-    "##);
+    "##
+        );
 
-        dbh
-            .query(&r2)
+        dbh.query(&r2)
             .bind(start_day)
             .bind(end_day)
             .bind(lon)
@@ -209,10 +204,7 @@ ORDER BY
 
         trace!("Removing old table today_close{tag}.");
         let r = format!("DROP TABLE IF EXISTS today_close{tag}");
-        dbh
-            .query(&r)
-            .execute()
-            .await?;
+        dbh.query(&r).execute().await?;
 
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
         // altitude diff is less than 3 nm. (parameter is `separation`).
@@ -220,7 +212,8 @@ ORDER BY
         // $1,$2 = lon,lat of site
         // $3 = timestamp of drone point
         //
-        let r = format!(r##"
+        let r = format!(
+            r##"
 CREATE TABLE today_close{tag}
 ENGINE = Memory AS
 SELECT
@@ -253,11 +246,11 @@ WHERE
   diff_alt < ?
 ORDER BY
   (c.time, c.journey)
-    "##);
+    "##
+        );
 
         let proximity = self.separation;
-        dbh
-            .query(&r)
+        dbh.query(&r)
             .bind(proximity)
             .bind(proximity)
             .execute()
@@ -281,20 +274,19 @@ ORDER BY
         trace!("Drop table ids{tag}.");
 
         let r = format!("DROP TABLE IF EXISTS ids{tag}");
-        dbh
-            .query(&r)
-            .execute()
-            .await?;
+        dbh.query(&r).execute().await?;
 
         trace!("Create table ids{tag}.");
-        let r = format!(r##"
+        let r = format!(
+            r##"
         CREATE TABLE ids{tag} (
     drone_id VARCHAR,
     callsign VARCHAR,
     journey INT,
     en_id VARCHAR DEFAULT '',
 ) ENGINE = Memory
-"##);
+"##
+        );
 
         Ok(dbh.query(&r).execute().await?)
     }
@@ -324,7 +316,8 @@ ORDER BY
             callsign: String,
         }
 
-        let r = format!(r##"SELECT
+        let r = format!(
+            r##"SELECT
       journey,
       drone_id,
       callsign,
@@ -332,7 +325,8 @@ ORDER BY
     WHERE
       dist_drone_plane < 1852
     GROUP BY ALL
-            "##);
+            "##
+        );
 
         trace!("Fetch close encounters out of {total} from today_close.");
         let all = dbh.query(&r).fetch_all::<Tc>().await?;
@@ -344,7 +338,8 @@ ORDER BY
         }
 
         trace!("Add en_id.");
-        let all = all.iter()
+        let all = all
+            .iter()
             .enumerate()
             .map(|(id, elem): (usize, &Tc)| {
                 let journey = elem.journey;
@@ -356,7 +351,8 @@ ORDER BY
                 };
                 debug!("{elem:?}");
                 elem
-            }).collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
 
         trace!("Insert updated records.");
         // Insert the records
@@ -367,7 +363,10 @@ ORDER BY
         }
         batch.end().await?;
 
-        let count = dbh.query(&format!("SELECT count() FROM today_close{tag}")).fetch_one::<usize>().await?;
+        let count = dbh
+            .query(&format!("SELECT count() FROM today_close{tag}"))
+            .fetch_one::<usize>()
+            .await?;
         trace!("Got {count} IDs");
         Ok(count)
     }
@@ -403,12 +402,12 @@ ORDER BY
         // - insert ids
         // - join today_close and ids to get all points with the right en_id
         //
-        let site = &self.name;
 
-        Self::create_table_ids(dbh, &day_name, site).await?;
-        Self::insert_ids(dbh, &day_name, site).await?;
+        Self::create_table_ids(dbh, &day_name, &site.name).await?;
+        Self::insert_ids(dbh, &day_name, &site.name).await?;
 
-        let r = format!(r##"INSERT INTO airplane_prox
+        let r = format!(
+            r##"INSERT INTO airplane_prox
      SELECT
       any_value(tc.site) AS site,
       id.en_id,
@@ -437,11 +436,12 @@ ORDER BY
     AND
       id.callsign = tc.callsign
     GROUP BY ALL
-"##);
+"##
+        );
         trace!("Save encounters.");
         dbh.query(&r).execute().await?;
 
-        Self::cleanup_ids(dbh, &day_name, site).await?;
+        Self::cleanup_ids(dbh, &day_name, &site.name).await?;
 
         // Now check how many
         //
@@ -552,4 +552,3 @@ impl Calculate for PlaneDistance {
         Ok(Stats::Planes(stats.clone()))
     }
 }
-
