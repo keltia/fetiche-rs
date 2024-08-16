@@ -49,6 +49,7 @@ serde_repr.workspace = true
 serde_with.workspace = true
 strum.workspace = true
 tabled.workspace = true
+thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
@@ -59,7 +60,6 @@ mini-moka = "0.10"
 native-tls = "0.2"
 percent-encoding = "2.3"
 signal-hook = "0.3"
-snafu = { version = "0.7", features = ["backtrace", "rust_1_61", "backtraces"] }
 tap = "1"
 
 [dev-dependencies]

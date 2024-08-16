@@ -22,14 +22,13 @@ use std::sync::mpsc::Sender;
 
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use clap::{crate_name, crate_version};
-use eyre::Report;
 use eyre::{eyre, Result};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use snafu::prelude::*;
 use strum::{EnumString, VariantNames};
 use tap::Tap;
+use thiserror::Error;
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
@@ -210,7 +209,7 @@ impl Fetchable for Asd {
             trace!("load stored token");
             let token: Token = match serde_json::from_str(&token) {
                 Ok(token) => token,
-                Err(_) => return Err(eyre!("Invalid/no token in {:?}", token)),
+                Err(_) => return Err(TokenError::Invalid(fname).into()),
             };
 
             // Check stored token expiration date
@@ -225,7 +224,7 @@ impl Fetchable for Asd {
                     Ok(()) => (),
                     Err(e) => error!("Can not remove token: {}", e.to_string()),
                 };
-                return Err(Report::from(TokenError::Expired));
+                return Err(TokenError::Expired(token.name).into());
             }
             trace!("token is valid");
             token.token
@@ -398,12 +397,12 @@ struct Token {
 
 /// Custom error type for tokens, allow us to differentiate between errors.
 ///
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Error)]
 pub enum TokenError {
-    #[snafu(display("Token expired"))]
-    Expired,
-    #[snafu(display("Invalid token"))]
-    Invalid,
+    #[error("Token for {0} expired")]
+    Expired(String),
+    #[error("Invalid token in {0}")]
+    Invalid(String),
 }
 
 impl Default for Token {
