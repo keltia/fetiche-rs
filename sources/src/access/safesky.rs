@@ -10,7 +10,7 @@
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
-use eyre::{eyre, Result};
+use eyre::Result;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use tracing::trace;
@@ -18,7 +18,7 @@ use tracing::trace;
 use fetiche_formats::{Format, Position};
 
 use crate::site::Site;
-use crate::{Auth, Capability, Fetchable};
+use crate::{Auth, AuthError, Capability, Fetchable};
 
 /// Define the square inside which we want beacons information
 ///
@@ -110,11 +110,11 @@ impl Fetchable for Safesky {
     /// real authentication.
     ///
     #[tracing::instrument]
-    fn authenticate(&self) -> Result<String> {
+    fn authenticate(&self) -> Result<String, AuthError> {
         trace!("safesky::authenticate");
 
         if self.api_key.is_empty() {
-            return Err(eyre!("No API key"));
+            return Err(AuthError::NoAPIKey);
         }
         Ok(self.api_key.clone())
     }

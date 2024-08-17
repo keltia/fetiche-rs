@@ -33,7 +33,7 @@ use tracing::trace;
 
 use fetiche_formats::Format;
 
-use crate::{version, Auth, Capability, Fetchable, Site, Streamable};
+use crate::{version, Auth, AuthError, Capability, Fetchable, Site, Streamable};
 
 /// Firehose is out target
 const SITE: &str = "firehose.flightaware.com";
@@ -280,7 +280,7 @@ impl Fetchable for Flightaware {
     /// Credentials are passed in the call the API    
     ///
     #[tracing::instrument(skip(self))]
-    fn authenticate(&self) -> Result<String> {
+    fn authenticate(&self) -> Result<String, AuthError> {
         trace!("fake auth");
 
         Ok(format!("{}:{}", self.login, self.password))
@@ -357,7 +357,7 @@ impl Streamable for Flightaware {
     /// All credentials are passed every time we call the API so return a fake token
     ///
     #[tracing::instrument(skip(self))]
-    fn authenticate(&self) -> Result<String> {
+    fn authenticate(&self) -> Result<String, AuthError> {
         trace!("fake auth");
         Ok(format!("{}:{}", self.login, self.password))
     }

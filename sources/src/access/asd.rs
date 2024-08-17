@@ -28,14 +28,13 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, VariantNames};
 use tap::Tap;
-use thiserror::Error;
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
 
 use crate::filter::Filter;
 use crate::site::Site;
-use crate::{http_post, Auth, Capability, Fetchable, Sources};
+use crate::{http_post, Auth, AuthError, Capability, Fetchable, Sources};
 
 /// Default token
 const DEF_TOKEN: &str = "asd_default_token";
@@ -188,7 +187,7 @@ impl Fetchable for Asd {
     /// Authenticate to the site using the supplied credentials and get a token
     ///
     #[tracing::instrument(skip(self))]
-    fn authenticate(&self) -> Result<String> {
+    fn authenticate(&self) -> Result<String, AuthError> {
         trace!("authenticate as ({:?})", &self.login);
 
         // Prepare our submission data
@@ -209,7 +208,7 @@ impl Fetchable for Asd {
             trace!("load stored token");
             let token: Token = match serde_json::from_str(&token) {
                 Ok(token) => token,
-                Err(_) => return Err(TokenError::Invalid(fname).into()),
+                Err(_) => return Err(AuthError::Invalid(fname)),
             };
 
             // Check stored token expiration date
@@ -224,7 +223,7 @@ impl Fetchable for Asd {
                     Ok(()) => (),
                     Err(e) => error!("Can not remove token: {}", e.to_string()),
                 };
-                return Err(TokenError::Expired.into());
+                return Err(AuthError::Expired);
             }
             trace!("token is valid");
             token.token
@@ -235,16 +234,22 @@ impl Fetchable for Asd {
             //
             let url = format!("{}{}", self.base_url, self.token);
             trace!("Fetching token through {}…", url);
-            let resp = http_post!(self, url, &cred)?;
+            let resp = http_post!(self, url, &cred).map_err(|e| AuthError::HTTP(e.to_string()))?;
+
             trace!("resp={:?}", resp);
-            let resp = resp.text()?;
-            let res: Token = serde_json::from_str(&resp)?;
+            let resp = resp
+                .text()
+                .map_err(|_| AuthError::Retrieval(cred.email.clone()))?;
+
+            let res: Token = serde_json::from_str(&resp)
+                .map_err(|_| AuthError::Retrieval(cred.email.clone()))?;
+
             trace!("token={}", res.token);
 
             // Write fetched token in `tokens` (unless it is during tests)
             //
             #[cfg(not(test))]
-            Sources::store_token(&fname, &resp)?;
+            Sources::store_token(&fname, &resp).map_err(|e| AuthError::Storing(e.to_string()))?;
 
             res.token
         };
@@ -393,16 +398,6 @@ struct Token {
     email: String,
     airspace_admin: Option<String>,
     homepage: String,
-}
-
-/// Custom error type for tokens, allow us to differentiate between errors.
-///
-#[derive(Debug, PartialEq, Error)]
-pub enum TokenError {
-    #[error("Token expired")]
-    Expired,
-    #[error("Invalid token in {0}")]
-    Invalid(String),
 }
 
 impl Default for Token {

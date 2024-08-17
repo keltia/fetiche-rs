@@ -33,8 +33,8 @@ use tracing::{debug, error, info, trace};
 
 use fetiche_formats::{Format, StateList};
 
-use crate::Site;
 use crate::{http_get_basic, Auth, Capability, Fetchable, Filter, Streamable};
+use crate::{AuthError, Site};
 
 /// We can go back only 1h in Opensky API
 const MAX_INTERVAL: i64 = 3600;
@@ -188,7 +188,7 @@ impl Fetchable for Opensky {
     /// All credentials are passed every time we call the API so return a fake token
     ///
     #[tracing::instrument]
-    fn authenticate(&self) -> Result<String> {
+    fn authenticate(&self) -> Result<String, AuthError> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
     }
@@ -262,7 +262,7 @@ impl Streamable for Opensky {
 
     /// All credentials are passed every time we call the API so return a fake token
     ///
-    fn authenticate(&self) -> Result<String> {
+    fn authenticate(&self) -> Result<String, AuthError> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
     }
