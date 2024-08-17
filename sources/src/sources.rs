@@ -12,13 +12,12 @@ use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
 
 use chrono::{DateTime, Utc};
+use directories::BaseDirs;
 use eyre::{eyre, Result};
-#[cfg(unix)]
-use home::home_dir;
 use serde::{Deserialize, Serialize};
 use tabled::builder::Builder;
 use tabled::settings::Style;
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 
 #[cfg(unix)]
 use crate::BASEDIR;
@@ -36,8 +35,13 @@ impl Sources {
     ///
     #[cfg(unix)]
     pub fn config_path() -> PathBuf {
-        let homedir = home_dir().unwrap();
-        let def: PathBuf = makepath!(homedir, BASEDIR, "drone-utils");
+        let base = BaseDirs::new().unwrap();
+
+        let homedir = base.config_local_dir().to_string_lossy().to_string();
+        trace!("homedir={homedir}");
+        let pathdir = PathBuf::from(homedir);
+
+        let def: PathBuf = makepath!(pathdir, "drone-utils");
         def
     }
 
@@ -45,7 +49,23 @@ impl Sources {
     ///
     #[cfg(windows)]
     pub fn config_path() -> PathBuf {
-        let homedir = env!("LOCALAPPDATA");
+        let base = BaseDirs::new();
+
+        let homedir = match base {
+            Some(base) => {
+                let base = base.config_local_dir().to_string_lossy().to_string();
+                debug!("base = {base}");
+                base
+            }
+            None => {
+                let homedir = std::env::var("LOCALAPPDATA")
+                    .map_err(|_| error!("No LOCALAPPDATA variable defined, can not continue"))
+                    .unwrap();
+                debug!("base = {homedir}");
+                homedir
+            }
+        };
+        let homedir = PathBuf::from(homedir);
 
         let def: PathBuf = makepath!(homedir, "drone-utils");
         def
@@ -580,7 +600,7 @@ mod tests {
     #[cfg(windows)]
     fn test_basedir() {
         let p = Sources::config_path();
-        let ep: PathBuf = makepath!(env!("LOCALAPPDATA"), "drone-utils");
+        let ep: PathBuf = makepath!(std::env::var("LOCALAPPDATA").unwrap(), "drone-utils");
         assert_eq!(ep, p);
     }
 
