@@ -8,8 +8,7 @@ use eyre::{eyre, Result};
 use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
-use fetiche_sources::asd::TokenError;
-use fetiche_sources::{Filter, Flow, Site, Sources};
+use fetiche_sources::{AuthError, Filter, Flow, Site, Sources};
 
 use crate::{Runnable, IO};
 
@@ -74,19 +73,10 @@ impl Fetch {
                     //
 
                     let token = match token {
-                        Err(e) => {
-                            /// FIXME: this does not play well with `thiserror`
-                            ///
-                            if let Some(err) = e.downcast_ref::<TokenError>() {
-                                if *err == TokenError::Expired {
-                                    site.authenticate()?
-                                } else {
-                                    return Err(e);
-                                }
-                            } else {
-                                return Err(e);
-                            }
-                        }
+                        Err(e) => match e {
+                            AuthError::Expired => site.authenticate()?,
+                            _ => return Err(eyre!(e.to_string())),
+                        },
                         Ok(token) => token,
                     };
                     site.fetch(stdout, &token, &self.args)?;
