@@ -5,7 +5,7 @@
 //! supposed to be collecting data (like `fetch` or `stream`) and send it along
 //! the pipe for processing.
 //!
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::VecDeque;
 use std::io::Write;
 use std::sync::mpsc::channel;
 
@@ -149,11 +149,6 @@ impl Job {
         Ok(out.flush()?)
     }
 }
-
-/// Job queue
-///
-#[derive(Debug)]
-pub struct Jobs(BTreeMap<String, Job>);
 
 #[cfg(test)]
 mod tests {
