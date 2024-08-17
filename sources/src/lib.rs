@@ -12,11 +12,13 @@ use std::sync::mpsc::Sender;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 
+use fetiche_formats::Format;
+
 // Re-export these modules for a shorted import path.
 //
 pub use access::*;
 pub use auth::*;
-use fetiche_formats::Format;
+pub use error::*;
 pub use filter::*;
 pub use route::*;
 pub use site::*;
@@ -24,6 +26,7 @@ pub use sources::*;
 
 mod access;
 mod auth;
+mod error;
 mod filter;
 mod route;
 mod site;
@@ -62,7 +65,7 @@ pub trait Fetchable: Debug {
     /// Return site's name
     fn name(&self) -> String;
     /// If credentials are needed, get a token for subsequent operations
-    fn authenticate(&self) -> Result<String>;
+    fn authenticate(&self) -> Result<String, AuthError>;
     /// Fetch actual data
     fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()>;
     /// Returns the input formats
@@ -77,7 +80,7 @@ pub trait Streamable: Debug {
     /// Return site's name
     fn name(&self) -> String;
     /// If credentials are needed, get a token for subsequent operations
-    fn authenticate(&self) -> Result<String>;
+    fn authenticate(&self) -> Result<String, AuthError>;
     /// Stream actual data
     fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()>;
     /// Returns the input formats
