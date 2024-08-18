@@ -29,6 +29,7 @@ clap.workspace = true
 dateparser.workspace = true
 directories.workspace = true
 eyre.workspace = true
+fetiche-macros.workspace = true
 hcl-rs.workspace = true
 log.workspace = true
 opentelemetry.workspace = true
