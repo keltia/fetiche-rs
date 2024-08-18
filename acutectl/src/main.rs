@@ -38,7 +38,8 @@ pub const VERSION: &str = crate_version!();
 /// Authors
 pub const AUTHORS: &str = crate_authors!();
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let opts = Opts::parse();
     let cfn = opts.config.clone();
 
