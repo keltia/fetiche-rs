@@ -141,10 +141,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_configengine_load() -> Result<()> {
+    fn test_configengine_load_default() -> Result<()> {
+        // Explicitely load default
+        //
         let cfg: Foo = ConfigEngine::load(None)?;
         dbg!(&cfg);
-        assert_eq!(2, cfg.version);
+        assert_eq!(CVERSION, cfg.version);
+        Ok(())
+    }
+
+    #[test]
+    fn test_configengine_load_file() -> Result<()> {
+        // Explicitely load default
+        //
+        let cfg: Foo = ConfigEngine::load(Some("examples/local.hcl"))?;
+        dbg!(&cfg);
+        assert_eq!(CVERSION, cfg.version);
         Ok(())
     }
 }
