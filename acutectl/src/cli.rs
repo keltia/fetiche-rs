@@ -48,7 +48,7 @@ use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
 pub struct Opts {
     /// configuration file.
     #[clap(short = 'c', long)]
-    pub config: Option<PathBuf>,
+    pub config: Option<String>,
     /// debug mode.
     #[clap(short = 'D', long = "debug")]
     pub debug: bool,
