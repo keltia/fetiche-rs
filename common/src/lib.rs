@@ -5,12 +5,14 @@ use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::{crate_name, crate_version};
 use eyre::Result;
 
+pub use config::*;
 pub use container::*;
 pub use dateopts::*;
 pub use daterange::*;
 pub use location::*;
 pub use runtime::*;
 
+mod config;
 mod container;
 mod dateopts;
 mod daterange;
@@ -23,6 +25,25 @@ const VERSION: &str = crate_version!();
 
 pub fn version() -> String {
     format!("{}/{}", NAME, VERSION)
+}
+
+/// This trait implements versioning on a given structure
+///
+/// ```no_run
+/// use fetiche_common::Versioned;
+///
+/// struct Foo;
+///
+/// impl Versioned for Foo {
+///     fn version(&self) -> usize {
+///        1
+///     }
+/// }
+/// ```
+/// then you can use `ConfigEngine` for all configuration files you want to handle through it.
+///
+pub trait Versioned {
+    fn version(&self) -> usize;
 }
 
 #[inline]
