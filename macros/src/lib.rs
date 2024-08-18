@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput};
+use syn::parse::Parser;
+use syn::{parse_macro_input, Data, DeriveInput, Fields, Ident, LitInt};
 
 /// Most basic proc_macro ever: use as a template.
 ///
@@ -54,4 +55,68 @@ pub fn runnable(input: TokenStream) -> TokenStream {
         }
     );
     outer.into()
+}
+
+/// Add a `version(usize)` with to any given `struct` and implement the `Versioned`trait for it
+///
+/// ```no_run
+/// use fetiche_macros::add_version;
+///
+/// #[add_version(2)]
+/// #[derive(Debug, Default)]
+/// pub struct Foo {
+///     pub name: String,
+/// }
+///
+/// fn main() {
+///     let foo = Foo::new();
+///
+///     assert_eq!(2, foo.version());
+///     println!("struct Foo version is {}", foo.version());
+/// }
+/// ```
+///
+#[proc_macro_attribute]
+pub fn add_version(args: TokenStream, input: TokenStream) -> TokenStream {
+    let args = syn::parse::<LitInt>(args)
+        .unwrap_or_else(|_| proc_macro2::Literal::usize_unsuffixed(1).into());
+    let mut input = parse_macro_input!(input as DeriveInput);
+    let ident = &input.ident;
+
+    let version_ident = Ident::new("version", ident.span());
+    let version_type = quote! { usize };
+
+    let output = match input.data {
+        Data::Struct(ref mut data_struct) => {
+            match &mut data_struct.fields {
+                Fields::Named(fields) => fields.named.push(
+                    syn::Field::parse_named
+                        .parse2(quote! { #version_ident: #version_type })
+                        .unwrap(),
+                ),
+                _ => (),
+            }
+
+            quote! {
+                #input
+
+                impl Versioned for #ident {
+                    fn version(&self) -> #version_type {
+                        self.version
+                    }
+                }
+
+                impl #ident {
+                    pub fn new() -> Self {
+                        Self {
+                            version: #args,
+                            ..Default::default()
+                        }
+                    }
+                }
+            }
+        }
+        _ => panic!("#[add_version)] is only for struct with named fields"),
+    };
+    output.into()
 }
