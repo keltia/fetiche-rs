@@ -25,11 +25,11 @@
 //! ```
 
 use clap::{crate_authors, crate_description, crate_version, Parser};
-use eyre::Result;
+use eyre::{eyre, Result};
 use tracing::trace;
 
-use acutectl::{handle_subcmd, Config, Engine, Opts};
-use fetiche_common::{close_logging, init_logging};
+use acutectl::{handle_subcmd, Config, Engine, Opts, CVERSION};
+use fetiche_common::{close_logging, init_logging, ConfigEngine};
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -48,7 +48,10 @@ fn main() -> Result<()> {
 
     // Config only has the credentials for every source now.
     //
-    let cfg = Config::load(cfn)?;
+    let cfg: Config = ConfigEngine::load(cfn.as_deref())?;
+    if cfg.version != CVERSION {
+        return Err(eyre!("bad file version: {}", cfg.version));
+    }
 
     // Banner
     //
