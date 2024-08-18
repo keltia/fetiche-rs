@@ -2838,13 +2838,15 @@ checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
 
 [[package]]
 name = "fetiche-common"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "clap",
  "criterion",
  "dateparser",
+ "directories",
  "eyre",
+ "fetiche-macros",
  "hcl-rs",
  "humantime",
  "log",
@@ -2901,9 +2903,10 @@ dependencies = [
 
 [[package]]
 name = "fetiche-macros"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "eyre",
+ "proc-macro2",
  "quote",
  "syn 2.0.72",
 ]
