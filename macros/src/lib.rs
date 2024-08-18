@@ -7,6 +7,19 @@ use syn::{parse_macro_input, DeriveInput};
 /// `execute()` takes whatever was sent from the previous stage and process is, knowing that
 /// any input should be sent directly to the stdout channel.
 ///
+/// ```no_run
+/// use fetiche_formats::Format;
+/// use fetiche_macros::RunnableDerive;
+/// use crate::{Runnable, IO};
+///
+/// #[derive(Clone, Debug, RunnableDerive)]
+/// pub struct Convert {
+///     io: IO,
+///     pub from: Format,
+///     pub into: Format,
+/// }
+/// ```
+///
 #[proc_macro_derive(RunnableDerive)]
 pub fn runnable(input: TokenStream) -> TokenStream {
     let klass = parse_macro_input!(input as DeriveInput);
