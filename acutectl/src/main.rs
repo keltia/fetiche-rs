@@ -29,7 +29,7 @@ use eyre::{eyre, Result};
 use tracing::trace;
 
 use acutectl::{handle_subcmd, Config, Engine, Opts, CVERSION};
-use fetiche_common::{close_logging, init_logging, ConfigEngine};
+use fetiche_common::{close_logging, init_logging, ConfigEngine, Versioned};
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -50,8 +50,8 @@ async fn main() -> Result<()> {
     // Config only has the credentials for every source now.
     //
     let cfg: Config = ConfigEngine::load(cfn.as_deref())?;
-    if cfg.version != CVERSION {
-        return Err(eyre!("bad file version: {}", cfg.version));
+    if cfg.version() != CVERSION {
+        return Err(eyre!("bad file version: {}", cfg.version()));
     }
 
     // Banner
