@@ -3,22 +3,50 @@
 //! This is where most of the initialisation code lies.  We start the logging process, open
 //! the database, etc.
 //!
+//! Version History:
+//!
+//! - v1 is for the duckdb-backed database, database is path to the .duckdb file.
+//! - v2 is the ClickHouse-backed database, added url/user/password/database
+//!
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use clickhouse::Client;
 use eyre::Result;
+use serde::{Deserialize, Serialize};
 use tracing::{error, info, trace};
 
-use fetiche_common::{close_logging, init_logging};
-pub use io::*;
+use fetiche_common::{close_logging, init_logging, ConfigEngine, Versioned};
+use fetiche_macros::add_version;
 
 use crate::cli::Opts;
 use crate::error::Status;
 use crate::NAME;
 
-mod io;
+/// Config filename
+const CONFIG: &str = "process-data.hcl";
+
+/// Current version
+const CVERSION: usize = 2;
+
+/// Configuration for the CLI tool
+///
+#[add_version(2)]
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct ConfigFile {
+    /// Database name or path.
+    pub database: Option<String>,
+    /// Directory holding the parquet files for the datalake.
+    pub datalake: Option<String>,
+    /// URL
+    pub url: String,
+    /// User to connect with
+    pub user: Option<String>,
+    /// Corresponding password
+    pub password: Option<String>,
+}
+
 /// This holds our context, meaning common stuff
 ///
 #[derive(Clone)]
@@ -56,9 +84,12 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     // We must operate on a database.
     //
-    let def = ConfigFile::default_file().to_string_lossy().to_string();
-    let cnf = opts.config.clone().unwrap_or(def.clone());
-    let cfg = ConfigFile::load(&cnf)?;
+    let cfg: ConfigFile = ConfigEngine::load(Some(CONFIG))?;
+    let def = String::from(CONFIG);
+
+    if cfg.version() != CVERSION {
+        return Err(Status::BadFileVersion(cfg.version()).into());
+    }
 
     if opts.database.is_none() && cfg.database.is_none() {
         return Err(Status::NoDatabase(def).into());

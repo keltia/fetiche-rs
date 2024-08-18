@@ -36,6 +36,7 @@ datafusion.workspace = true
 dateparser.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
+fetiche-macros.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
 log.workspace = true
