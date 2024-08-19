@@ -29,18 +29,23 @@ pub fn version() -> String {
 
 /// This trait implements versioning on a given structure
 ///
-/// ```no_run
+/// ```rust
+/// use fetiche_macros::add_version;
 /// use fetiche_common::Versioned;
 ///
-/// struct Foo;
+/// #[add_version(2)]
+/// #[derive(Debug, Default)]
+/// pub struct Foo {
+///     pub name: String,
+/// }
 ///
-/// impl Versioned for Foo {
-///     fn version(&self) -> usize {
-///        1
-///     }
+/// fn main() {
+///     let foo = Foo::new();
+///
+///     assert_eq!(2, foo.version());
+///     println!("struct Foo version is {}", foo.version());
 /// }
 /// ```
-/// then you can use `ConfigEngine` for all configuration files you want to handle through it.
 ///
 pub trait Versioned {
     fn version(&self) -> usize;
