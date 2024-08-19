@@ -2905,6 +2905,7 @@ dependencies = [
 name = "fetiche-macros"
 version = "0.2.0"
 dependencies = [
+ "darling",
  "eyre",
  "proc-macro2",
  "quote",
