@@ -118,6 +118,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fetiche_macros::into_configfile;
     use serde::{Deserialize, Serialize};
     use std::collections::BTreeMap;
 
@@ -156,21 +157,14 @@ mod tests {
     /// Configuration for the CLI tool, supposed to include parameters and most importantly
     /// credentials for the various sources.
     ///
+    #[into_configfile]
     #[derive(Debug, Deserialize)]
     struct ConfigFile {
-        /// Version in the file MUST match `CVERSION`
-        pub version: usize,
         /// Each site credentials
         pub site: BTreeMap<String, Auth>,
     }
 
     pub const CVERSION: usize = 1;
-
-    impl Versioned for ConfigFile {
-        fn version(&self) -> usize {
-            CVERSION
-        }
-    }
 
     #[test]
     fn test_configengine_load_default() -> Result<()> {
@@ -178,17 +172,15 @@ mod tests {
         //
         let cfg: ConfigFile = ConfigEngine::load(None)?;
         dbg!(&cfg);
-        assert_eq!(CVERSION, cfg.version);
+        assert_eq!(CVERSION, cfg.version());
         Ok(())
     }
 
     #[test]
     fn test_configengine_load_file() -> Result<()> {
-        // Explicitely load default
-        //
         let cfg: Foo = ConfigEngine::load(Some("examples/local.hcl"))?;
         dbg!(&cfg);
-        assert_eq!(CVERSION, cfg.version);
+        assert_eq!(CVERSION, cfg.version());
         Ok(())
     }
 }
