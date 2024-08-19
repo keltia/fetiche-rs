@@ -58,13 +58,12 @@ pub fn add_version(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let output = match input.data {
         Data::Struct(ref mut data_struct) => {
-            match &mut data_struct.fields {
-                Fields::Named(fields) => fields.named.push(
+            if let Fields::Named(fields) = &mut data_struct.fields {
+                fields.named.push(
                     syn::Field::parse_named
                         .parse2(quote! { #version_ident: #version_type })
                         .unwrap(),
-                ),
-                _ => (),
+                )
             }
 
             quote! {
