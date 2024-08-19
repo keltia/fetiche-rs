@@ -3,14 +3,14 @@
 
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::{crate_name, crate_version};
-use eyre::Result;
-
 pub use config::*;
 pub use container::*;
 pub use dateopts::*;
 pub use daterange::*;
+use eyre::Result;
 pub use location::*;
 pub use runtime::*;
+use serde::Deserialize;
 
 mod config;
 mod container;
@@ -55,6 +55,28 @@ pub fn version() -> String {
 ///
 pub trait Versioned {
     fn version(&self) -> usize;
+}
+
+// -----
+
+/// This trait is a superset of `Versioned` and add a `filename()` method that returns
+/// the default filename for the struct when read from a file.
+///
+/// ```no_run
+/// // Specify version and filename.
+/// # use serde::Deserialize;
+/// use fetiche_common::IntoConfig;
+/// use fetiche_macros::into_configfile;
+///
+/// #[into_configfile(version = 3, filename = "bar.hcl")]
+/// #[derive(Debug, Default, Deserialize)]
+/// struct Bar {
+///     pub value: u32,
+/// }
+/// ```
+///
+pub trait IntoConfig: Versioned {
+    fn filename(&self) -> String;
 }
 
 // -----

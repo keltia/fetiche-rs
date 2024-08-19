@@ -5,7 +5,7 @@
 //! base directory and with `load()` read the proper file or the default one.
 //!
 
-use crate::{makepath, Versioned};
+use crate::{makepath, IntoConfig, Versioned};
 
 use directories::BaseDirs;
 use eyre::Result;
@@ -26,7 +26,7 @@ const TAG: &str = "drone-utils";
 /// credentials for the various sources.
 ///
 #[derive(Debug)]
-pub struct ConfigEngine<T: Debug + DeserializeOwned + Versioned> {
+pub struct ConfigEngine<T: Debug + DeserializeOwned + IntoConfig> {
     /// Version in the file MUST match `CVERSION`
     tag: String,
     basedir: PathBuf,
@@ -35,7 +35,7 @@ pub struct ConfigEngine<T: Debug + DeserializeOwned + Versioned> {
 
 impl<T> ConfigEngine<T>
 where
-    T: Debug + DeserializeOwned + Versioned,
+    T: Debug + DeserializeOwned + IntoConfig,
 {
     #[tracing::instrument]
     fn new(tag: &str) -> Self {
