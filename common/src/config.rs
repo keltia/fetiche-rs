@@ -122,18 +122,6 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use std::collections::BTreeMap;
 
-    #[derive(Clone, Debug, Deserialize)]
-    struct Foo {
-        version: usize,
-        pub name: String,
-    }
-
-    impl Versioned for Foo {
-        fn version(&self) -> usize {
-            self.version
-        }
-    }
-
     /// Describe the possible ways to authenticate oneself
     ///
     #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -167,7 +155,7 @@ mod tests {
     pub const CVERSION: usize = 1;
 
     #[test]
-    fn test_configengine_load_default() -> Result<()> {
+    fn test_config_engine_load_default() -> Result<()> {
         // Explicitly load default
         //
         let cfg: ConfigFile = ConfigEngine::load(None)?;
@@ -176,8 +164,14 @@ mod tests {
         Ok(())
     }
 
+    #[into_configfile]
+    #[derive(Clone, Debug, Deserialize)]
+    struct Foo {
+        pub name: String,
+    }
+
     #[test]
-    fn test_configengine_load_file() -> Result<()> {
+    fn test_config_engine_load_file() -> Result<()> {
         let cfg: Foo = ConfigEngine::load(Some("examples/local.hcl"))?;
         dbg!(&cfg);
         assert_eq!(CVERSION, cfg.version());
