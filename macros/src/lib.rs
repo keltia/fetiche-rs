@@ -92,6 +92,9 @@ pub fn add_version(args: TokenStream, input: TokenStream) -> TokenStream {
     output.into()
 }
 
+const DEF_VERSION: usize = 1;
+const DEF_FILENAME: &str = "config.hcl";
+
 #[derive(Debug, FromMeta)]
 struct ConfigArgs {
     version: Option<usize>,
@@ -101,8 +104,8 @@ struct ConfigArgs {
 impl Default for ConfigArgs {
     fn default() -> Self {
         Self {
-            version: Some(1),
-            filename: Some(String::from("config.hcl")),
+            version: Some(DEF_VERSION),
+            filename: Some(String::from(DEF_FILENAME)),
         }
     }
 }
@@ -128,8 +131,8 @@ pub fn into_configfile(args: TokenStream, input: TokenStream) -> TokenStream {
         ConfigArgs::from_list(&attr_args).unwrap()
     };
 
-    let version_value = args.version.unwrap();
-    let filename = args.filename.unwrap();
+    let version_value = args.version.unwrap_or(DEF_VERSION);
+    let filename = args.filename.unwrap_or(String::from(DEF_FILENAME));
 
     // Prepare our substitutions
     //
@@ -151,7 +154,10 @@ pub fn into_configfile(args: TokenStream, input: TokenStream) -> TokenStream {
                     );
                     fields.named.push(
                         syn::Field::parse_named
-                            .parse2(quote! { #filename_ident: #filename_type })
+                            .parse2(quote! {
+                                #[serde(skip_deserializing)]
+                                #filename_ident: #filename_type
+                            })
                             .unwrap(),
                     );
                 }
@@ -175,8 +181,10 @@ pub fn into_configfile(args: TokenStream, input: TokenStream) -> TokenStream {
                             ..Default::default()
                         }
                     }
+                }
 
-                    pub fn filename(&self) -> #filename_type {
+                impl IntoConfig for #ident {
+                    fn filename(&self) -> #filename_type {
                         self.filename.clone()
                     }
                 }
