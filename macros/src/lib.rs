@@ -8,19 +8,6 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields, Ident, LitInt};
 /// `execute()` takes whatever was sent from the previous stage and process is, knowing that
 /// any input should be sent directly to the stdout channel.
 ///
-/// ```no_run
-/// use fetiche_formats::Format;
-/// use fetiche_macros::RunnableDerive;
-/// use crate::{Runnable, IO};
-///
-/// #[derive(Clone, Debug, RunnableDerive)]
-/// pub struct Convert {
-///     io: IO,
-///     pub from: Format,
-///     pub into: Format,
-/// }
-/// ```
-///
 #[proc_macro_derive(RunnableDerive)]
 pub fn runnable(input: TokenStream) -> TokenStream {
     let klass = parse_macro_input!(input as DeriveInput);
@@ -58,23 +45,6 @@ pub fn runnable(input: TokenStream) -> TokenStream {
 }
 
 /// Add a `version(usize)` with to any given `struct` and implement the `Versioned`trait for it
-///
-/// ```no_run
-/// use fetiche_macros::add_version;
-///
-/// #[add_version(2)]
-/// #[derive(Debug, Default)]
-/// pub struct Foo {
-///     pub name: String,
-/// }
-///
-/// fn main() {
-///     let foo = Foo::new();
-///
-///     assert_eq!(2, foo.version());
-///     println!("struct Foo version is {}", foo.version());
-/// }
-/// ```
 ///
 #[proc_macro_attribute]
 pub fn add_version(args: TokenStream, input: TokenStream) -> TokenStream {

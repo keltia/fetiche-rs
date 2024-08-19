@@ -21,9 +21,9 @@ use std::convert::Into;
 use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Receiver;
+use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
 use eyre::Result;
@@ -31,10 +31,10 @@ use eyre::Result;
 use home::home_dir;
 use serde::Deserialize;
 use strum::EnumString;
-use tracing::{debug, event, info, Level, trace, warn};
+use tracing::{debug, event, info, trace, warn, Level};
 
 pub use config::*;
-use fetiche_common::{Container, makepath};
+use fetiche_common::{makepath, Container};
 use fetiche_formats::Format;
 use fetiche_sources::{Auth, Site, Sources};
 pub use job::*;
@@ -109,8 +109,8 @@ impl Engine {
     ///
     #[tracing::instrument]
     pub fn load<T>(fname: T) -> Self
-        where
-            T: Into<PathBuf> + Debug,
+    where
+        T: Into<PathBuf> + Debug,
     {
         let fname = fname.into();
 
@@ -386,6 +386,20 @@ pub enum IO {
 ///
 /// See the engine-macro crate for a proc-macro that implement the `run()`  wrapper for
 /// the `Runnable` trait.
+///
+/// ```no_run
+/// use acutectl::{IO, Runnable};
+/// use fetiche_formats::Format;
+/// use fetiche_macros::RunnableDerive;
+///
+/// #[derive(Clone, Debug, RunnableDerive)]
+/// pub struct Convert {
+///     io: IO,
+///     pub from: Format,
+///     pub into: Format,
+/// }
+/// ```
+///
 ///
 pub trait Runnable: Debug {
     fn cap(&self) -> IO;
