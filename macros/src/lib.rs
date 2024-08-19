@@ -127,7 +127,6 @@ pub fn into_configfile(args: TokenStream, input: TokenStream) -> TokenStream {
     } else {
         ConfigArgs::from_list(&attr_args).unwrap()
     };
-    dbg!(&args);
 
     let version_value = args.version.unwrap();
     let filename = args.filename.unwrap();
