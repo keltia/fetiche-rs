@@ -23,9 +23,15 @@ mod runtime;
 const NAME: &str = crate_name!();
 const VERSION: &str = crate_version!();
 
+// -----
+
+/// How to retrieve specific version of this crate.
+///
 pub fn version() -> String {
     format!("{}/{}", NAME, VERSION)
 }
+
+// -----
 
 /// This trait implements versioning on a given structure
 ///
@@ -51,6 +57,10 @@ pub trait Versioned {
     fn version(&self) -> usize;
 }
 
+// -----
+
+/// This takes any given date and return the beginning of this day as a `DateTime<Utc>`
+///
 #[inline]
 #[tracing::instrument]
 pub fn normalise_day(date: DateTime<Utc>) -> Result<DateTime<Utc>> {
