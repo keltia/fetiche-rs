@@ -13,7 +13,7 @@ use directories::BaseDirs;
 use eyre::{eyre, Result};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
-use std::marker::PhantomData;
+use std::fs::read_dir;
 use std::path::PathBuf;
 use std::{env, fs};
 use tracing::{debug, error, trace};
@@ -47,7 +47,11 @@ where
         let basedir: PathBuf = match base {
             Some(base) => {
                 #[cfg(unix)]
-                let base = base.home_dir().join(".config").to_string_lossy().to_string();
+                let base = base
+                    .home_dir()
+                    .join(".config")
+                    .to_string_lossy()
+                    .to_string();
 
                 #[cfg(windows)]
                 let base = base.data_local_dir().to_string_lossy().to_string();
@@ -95,10 +99,8 @@ where
     /// Returns the path of the default config file
     ///
     #[tracing::instrument]
-    pub fn default_file(&self) -> PathBuf {
-        let cfg = self.config_path().join(CONFIG);
-        debug!("default = {cfg:?}");
-        cfg
+    pub fn default_file(&self) -> String {
+        String::from(CONFIG)
     }
 
     /// Load the file and return a struct T in the right format.
@@ -107,6 +109,28 @@ where
     /// - default basedir (base on $HOME or $LOCALAPPDATA)
     /// - file specified on CLI
     ///
+    /// Example:
+    /// ```no_run
+    /// use fetiche_common::{ConfigFile, IntoConfig};
+    ///
+    /// use fetiche_macros::into_configfile;
+    ///
+    /// #[into_configfile]
+    /// struct Foo {
+    ///     // We need at least one named field
+    ///     a: u32,
+    /// }
+    ///
+    /// // This will load "config.hcl" from the base directory
+    /// //
+    /// let cfg = ConfigFile::<Foo>::load(None)?;
+    ///
+    /// // Access the loaded configuration file
+    /// //
+    /// let conf = cfg.inner();
+    /// ```
+    ///
+    /// NOTE: if `fname`
     #[tracing::instrument]
     pub fn load(fname: Option<&str>) -> Result<ConfigFile<T>> {
         // Create context
@@ -115,18 +139,25 @@ where
         //
         let mut cfg = ConfigFile::<T>::new(TAG);
 
-        let fname = match fname {
-            Some(fname) => PathBuf::from(fname),
-            None => cfg.default_file(),
-        };
-
-        // Use a full path
+        // Check is None was passed to get the default file from the default location:
         //
-        let fname = if fname.exists() {
-            PathBuf::from(fname).canonicalize()?
+        let fname = if fname.is_none() {
+            PathBuf::from(cfg.default_file()).canonicalize()?
         } else {
-            return Err(eyre!("Unknown config file {:?} and no default in {:?}", fname, cfg.default_file()));
+            // Do we have a bare filename?
+            //
+            let fname = fname.unwrap();
+            let p = PathBuf::from(fname);
+
+            if p.file_name().unwrap() == p {
+                cfg.basedir.join(fname).canonicalize()?
+            } else {
+                // If it is relative or absolute, assume it exists and return its canonical form
+                //
+                PathBuf::from(fname).canonicalize()?
+            }
         };
+        assert!(fname.is_absolute());
 
         trace!("Loading config file {fname:?} from {:?}", cfg.config_path());
 
@@ -146,10 +177,34 @@ where
         self.inner.as_ref().unwrap()
     }
 
-    /// Return the inner configuration file as putable
+    /// Return the inner configuration file as mutable
     ///
     pub fn inner_mut(&mut self) -> &mut T {
         self.inner.as_mut().unwrap()
+    }
+
+    /// Return the list of possible configuration files within basedir
+    ///
+    pub fn list(&self) -> Vec<String> {
+        env::set_current_dir(self.basedir.as_path()).unwrap();
+
+        if let Ok(dir) = read_dir(env::current_dir().unwrap()) {
+            let list = dir
+                .into_iter()
+                .filter_map(|f|
+                    if let Ok(p) = f {
+                        if p.file_name().to_string_lossy().ends_with(".hcl") {
+                            Some(p.file_name().into_string().unwrap())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                ).collect::<Vec<_>>();
+            return list;
+        }
+        vec![]
     }
 }
 
