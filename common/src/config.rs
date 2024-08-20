@@ -142,14 +142,14 @@ where
 
     /// Return the inner configuration file
     ///
-    pub fn inner(&self) -> Option<&T> {
-        self.inner.as_ref()
+    pub fn inner(&self) -> &T {
+        self.inner.as_ref().unwrap()
     }
 
     /// Return the inner configuration file as putable
     ///
-    pub fn inner_mut(&mut self) -> Option<&mut T> {
-        self.inner.as_mut()
+    pub fn inner_mut(&mut self) -> &mut T {
+        self.inner.as_mut().unwrap()
     }
 }
 

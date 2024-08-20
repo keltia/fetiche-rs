@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     dbg!(&base);
     let b = ConfigFile::<Foo>::load(Some("examples/local.hcl"))?;
     dbg!(&b);
-    let b = b.inner().unwrap();
+    let b = b.inner();
 
     assert_eq!(CVERSION, b.version());
     Ok(())
