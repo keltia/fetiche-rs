@@ -1,4 +1,4 @@
-use fetiche_common::Versioned;
+use fetiche_common::{IntoConfig, Versioned};
 use fetiche_macros::{add_version, into_configfile};
 use serde::Deserialize;
 
