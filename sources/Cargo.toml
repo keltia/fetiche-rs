@@ -39,6 +39,7 @@ directories.workspace = true
 env_logger.workspace = true
 fetiche-common.workspace = true
 fetiche-formats.workspace = true
+fetiche-macros.workspace = true
 hcl-rs.workspace = true
 log.workspace = true
 progress.workspace = true
