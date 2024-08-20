@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
     dbg!(&a);
     let b = a.inner();
     println!("{:?}", a.list());
-    
+
     assert_eq!(CVERSION, b.version());
 
     // wrong type for default "config.hcl"
