@@ -243,6 +243,7 @@ dependencies = [
  "env_logger",
  "eyre",
  "fetiche-common",
+ "fetiche-engine",
  "fetiche-formats",
  "fetiche-macros",
  "fetiche-sources",
@@ -261,7 +262,6 @@ dependencies = [
  "serde_with",
  "strum 0.26.3",
  "tabled",
- "tempfile",
  "thiserror",
  "tokio",
  "tracing",
@@ -2865,6 +2865,44 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "tracing-tree",
+]
+
+[[package]]
+name = "fetiche-engine"
+version = "0.22.0"
+dependencies = [
+ "chrono",
+ "csv",
+ "datafusion",
+ "dateparser",
+ "eyre",
+ "fetiche-common",
+ "fetiche-formats",
+ "fetiche-macros",
+ "fetiche-sources",
+ "hcl-rs",
+ "log",
+ "nom",
+ "parquet2",
+ "percent-encoding",
+ "reqwest",
+ "rstest",
+ "serde",
+ "serde_arrow",
+ "serde_json",
+ "serde_repr",
+ "serde_with",
+ "strum 0.26.3",
+ "tabled",
+ "tap",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "tracing-log",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "tracing-tree",
+ "zstd 0.13.2",
 ]
 
 [[package]]

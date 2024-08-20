@@ -40,6 +40,7 @@ serde.workspace = true
 serde_repr.workspace = true
 strum.workspace = true
 tabled.workspace = true
+tempfile.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
@@ -50,7 +51,6 @@ tracing-tree.workspace = true
 inline-python = "0.12"
 seek_bufread = "1.2"
 seekable_reader = "0.1"
-tempfile = "3"
 
 [dev-dependencies]
 rstest.workspace = true
