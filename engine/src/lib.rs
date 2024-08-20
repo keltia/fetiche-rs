@@ -31,10 +31,10 @@ use eyre::Result;
 use home::home_dir;
 use serde::Deserialize;
 use strum::EnumString;
-use tracing::{debug, event, info, trace, warn, Level};
+use tracing::{debug, error, event, info, trace, warn, Level};
 
 pub use config::*;
-use fetiche_common::{makepath, Container};
+use fetiche_common::{makepath, ConfigEngine, Container};
 use fetiche_formats::Format;
 use fetiche_sources::{Auth, Site, Sources};
 pub use job::*;
@@ -108,27 +108,20 @@ impl Engine {
     /// Takes a string or anything that can be turned into a `PathBuf`.
     ///
     #[tracing::instrument]
-    pub fn load<T>(fname: T) -> Self
-    where
-        T: Into<PathBuf> + Debug,
-    {
-        let fname = fname.into();
-
+    pub fn load(fname: &str) -> Result<Self> {
         trace!("reading({:?}", fname);
 
         let data =
             fs::read_to_string(&fname).unwrap_or_else(|_| panic!("file not found {:?}", fname));
 
-        let cfg: EngineConfig = hcl::from_str(&data).expect("syntax error");
+        let cfg: EngineConfig = ConfigEngine::load(Some(fname)).map_err(|e| {
+            error!("Error loading {fname}: {}", e.to_string())
+        })?;
 
         // Bail out if different
         //
         if cfg.version != ENGINE_VERSION {
-            event!(
-                Level::ERROR,
-                tag = "bad config version",
-                version = cfg.version
-            );
+            error!("Bad config version {}", cfg.version());
             panic!(
                 "Only v{} config file supported in {}",
                 ENGINE_VERSION,

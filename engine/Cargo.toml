@@ -1,14 +1,14 @@
 [package]
-name = "acutectl"
+name = "fetiche-engine"
 version = "0.22.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
-description = "CLI utility to fetch data."
+description = "Engine component for the Fetiche framework."
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/keltia/fetiche-rs"
-categories = ["command-line-utilities", "aerospace::drones"]
-keywords = ["ads-b", "aeronautical-data"]
+categories = ["aerospace::drones"]
+keywords = ["asterix", "drones", "aeronautical-data", "ads-b"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -19,44 +19,39 @@ maintenance = { status = "actively-developed" }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[features]
-default = []
-flightaware = []
-
 [dependencies]
-eyre.workspace = true
 chrono.workspace = true
-clap.workspace = true
+csv.workspace = true
 datafusion.workspace = true
 dateparser.workspace = true
-env_logger.workspace = true
+eyre.workspace = true
 fetiche-common.workspace = true
-fetiche-engine.workspace = true
 fetiche-formats.workspace = true
 fetiche-macros.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
-home.workspace = true
 log.workspace = true
 nom.workspace = true
-progress.workspace = true
+parquet2.workspace = true
 reqwest.workspace = true
 serde.workspace = true
+serde_arrow.workspace = true
 serde_json.workspace = true
 serde_repr.workspace = true
 serde_with.workspace = true
 strum.workspace = true
 tabled.workspace = true
-thiserror.workspace = true
+tempfile.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true
 
-clap_complete = "4.5"
 percent-encoding = "2.3"
+tap = "1.0"
+zstd = "0.13"
 
 [dev-dependencies]
-assert_cmd = "2.0"
-httpmock = "0.7"
 rstest.workspace = true
-

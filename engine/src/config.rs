@@ -3,12 +3,13 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 
+use fetiche_common::{IntoConfig, Versioned};
+use fetiche_macros::into_configfile;
+
 /// Configuration file format
-///
+#[into_configfile(version = 2, filename = "engine.hcl")]
 #[derive(Clone, Debug, Deserialize)]
 pub struct EngineConfig {
-    /// Usual check for malformed file
-    pub version: usize,
     /// Base directory
     pub basedir: PathBuf,
     /// List of storage types
