@@ -2708,6 +2708,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum_dispatch"
+version = "0.3.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa18ce2bc66555b3218614519ac839ddb759a7d6720732f979ef8d13be147ecd"
+dependencies = [
+ "once_cell",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
+]
+
+[[package]]
 name = "env_filter"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2838,7 +2850,7 @@ checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
 
 [[package]]
 name = "fetiche-common"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "chrono",
  "clap",
@@ -2875,6 +2887,7 @@ dependencies = [
  "csv",
  "datafusion",
  "dateparser",
+ "enum_dispatch",
  "eyre",
  "fetiche-common",
  "fetiche-formats",
@@ -2896,6 +2909,7 @@ dependencies = [
  "tabled",
  "tap",
  "tempfile",
+ "thiserror",
  "tokio",
  "tracing",
  "tracing-log",
@@ -2965,6 +2979,7 @@ dependencies = [
  "eyre",
  "fetiche-common",
  "fetiche-formats",
+ "fetiche-macros",
  "hcl-rs",
  "httpmock",
  "log",
