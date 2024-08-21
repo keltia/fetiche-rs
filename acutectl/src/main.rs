@@ -28,8 +28,9 @@ use clap::{crate_authors, crate_description, crate_version, Parser};
 use eyre::{eyre, Result};
 use tracing::trace;
 
-use acutectl::{handle_subcmd, Config, Engine, Opts, CVERSION};
-use fetiche_common::{close_logging, init_logging, ConfigEngine, Versioned};
+use acutectl::{handle_subcmd, Config, Opts, Status, CVERSION};
+use fetiche_common::{close_logging, init_logging, ConfigFile, Versioned};
+use fetiche_engine::Engine;
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -49,9 +50,9 @@ async fn main() -> Result<()> {
 
     // Config only has the credentials for every source now.
     //
-    let cfg: Config = ConfigEngine::load(cfn.as_deref())?;
-    if cfg.version() != CVERSION {
-        return Err(eyre!("bad file version: {}", cfg.version()));
+    let cfg = ConfigFile::<Config>::load(cfn.as_deref())?;
+    if cfg.inner().version() != CVERSION {
+        return Err(Status::BadFileVersion(cfg.inner().version()).into());
     }
 
     // Banner
@@ -63,9 +64,11 @@ async fn main() -> Result<()> {
     //
     let mut engine = Engine::new();
 
+    let auth = cfg.inner().unwrap();
+
     // Load auth data
     //
-    engine.auth(cfg.site);
+    engine.auth(&auth.site);
 
     trace!("Engine initialised and running.");
 
