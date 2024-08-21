@@ -17,8 +17,8 @@ use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, trace};
 
-use fetiche_common::{close_logging, init_logging, ConfigEngine, Versioned};
-use fetiche_macros::add_version;
+use fetiche_common::{close_logging, init_logging, ConfigFile, IntoConfig, Versioned};
+use fetiche_macros::{add_version, into_configfile};
 
 use crate::cli::Opts;
 use crate::error::Status;
@@ -32,9 +32,9 @@ const CVERSION: usize = 2;
 
 /// Configuration for the CLI tool
 ///
-#[add_version(2)]
+#[into_configfile(version = 2, filename = "proces-data.hcl")]
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub struct ConfigFile {
+pub struct ProcessConfig {
     /// Database name or path.
     pub database: Option<String>,
     /// Directory holding the parquet files for the datalake.
@@ -84,8 +84,9 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     // We must operate on a database.
     //
-    let cfg: ConfigFile = ConfigEngine::load(Some(CONFIG))?;
+    let cfile = ConfigFile::<ProcessConfig>::load(Some(CONFIG))?;
     let def = String::from(CONFIG);
+    let cfg = cfile.inner();
 
     if cfg.version() != CVERSION {
         return Err(Status::BadFileVersion(cfg.version()).into());
@@ -95,14 +96,16 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         return Err(Status::NoDatabase(def).into());
     }
 
-    if cfg.datalake.is_none() {
-        eprintln!("Error: you must define datalake.");
-        return Err(Status::NoDatalake(def).into());
-    }
+    let datalake = match &cfg.datalake {
+        Some(v) => v,
+        None => {
+            eprintln!("Error: you must define datalake.");
+            return Err(Status::NoDatalake(def).into());
+        }
+    };
 
     // Extract parameters
     //
-    let datalake = cfg.datalake.unwrap();
     let name = std::env::var("CLICKHOUSE_DB")
         .unwrap_or(opts.database.clone().unwrap_or(cfg.database.unwrap()));
     let user = std::env::var("CLICKHOUSE_USER").unwrap_or(cfg.user.clone().unwrap());
@@ -130,7 +133,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
             ("datalake".to_string(), datalake.clone()),
             ("username".to_string(), user.clone()),
         ])
-        .into(),
+            .into(),
         dbh,
         wait: opts.wait,
         dry_run: opts.dry_run,
