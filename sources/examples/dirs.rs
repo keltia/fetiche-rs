@@ -1,7 +1,9 @@
 use directories::ProjectDirs;
+use fetiche_common::ConfigFile;
+use fetiche_sources::Sources;
 use tracing::error;
 
-fn main() {
+fn main() -> eyre::Result<()> {
     let p = ProjectDirs::from("", "", "drone-utils");
     match p {
         Some(p) => println!("path = {p:?}"),
@@ -13,6 +15,7 @@ fn main() {
         .unwrap();
     println!("home={homedir}");
 
-    let config = fetiche_sources::Sources::config_path();
-    println!("config={config:?}");
+    let config = ConfigFile::<Sources>::load(Some("config.hcl"))?;
+    println!("basedir = {:?}", config.config_path());
+    println!("config={:?}", config.inner());
 }

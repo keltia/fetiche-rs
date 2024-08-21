@@ -23,62 +23,21 @@ use tracing::{debug, error, trace};
 use crate::BASEDIR;
 use crate::{Auth, Site, CONFIG, CVERSION, TOKEN_BASE};
 
-use fetiche_common::makepath;
+use fetiche_common::{makepath, IntoConfig, Versioned};
+use fetiche_macros::into_configfile;
 
 /// List of sources, this is the only exposed struct from here.
 ///
-#[derive(Debug)]
-pub struct Sources(BTreeMap<String, Site>);
+#[into_configfile(version = 4, filename = "sources.hcl")]
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct Sources {
+    inner: BTreeMap<String, Site>,
+}
 
 impl Sources {
-    /// Returns the path of the default config directory
-    ///
-    #[cfg(unix)]
-    pub fn config_path() -> PathBuf {
-        let base = BaseDirs::new().unwrap();
-
-        let homedir = base.config_local_dir().to_string_lossy().to_string();
-        trace!("homedir={homedir}");
-        let pathdir = PathBuf::from(homedir);
-
-        let def: PathBuf = makepath!(pathdir, "drone-utils");
-        def
-    }
-
-    /// Returns the path of the default config directory
-    ///
-    #[cfg(windows)]
-    pub fn config_path() -> PathBuf {
-        let base = BaseDirs::new();
-
-        let homedir = match base {
-            Some(base) => {
-                let base = base.config_local_dir().to_string_lossy().to_string();
-                debug!("base = {base}");
-                base
-            }
-            None => {
-                let homedir = std::env::var("LOCALAPPDATA")
-                    .map_err(|_| error!("No LOCALAPPDATA variable defined, can not continue"))
-                    .unwrap();
-                debug!("base = {homedir}");
-                homedir
-            }
-        };
-        let homedir = PathBuf::from(homedir);
-
-        let def: PathBuf = makepath!(homedir, "drone-utils");
-        def
-    }
-
-    /// Returns the path of the default config file
-    ///
-    pub fn default_file() -> PathBuf {
-        Self::config_path().join(CONFIG)
-    }
-
     /// Install default files
     ///
+    #[tracing::instrument]
     pub fn install_defaults(dir: &PathBuf) -> std::io::Result<()> {
         // Create config directory if needed
         //
@@ -93,48 +52,16 @@ impl Sources {
         fs::write(fname, content)
     }
 
-    /// Load configuration from either the specified file or the default one.
-    ///
-    #[tracing::instrument]
-    pub fn load(fname: &Option<PathBuf>) -> Result<Sources> {
-        // Load default config if nothing is specified
-        //
-        let cnf = match fname {
-            // We have a configuration file
-            //
-            Some(cnf) => {
-                trace!("Loading from {:?}", cnf);
-                cnf.into()
-            }
-            // Need to load our own
-            //
-            _ => {
-                let cnf = Sources::default_file();
-                trace!("Loading from {:?}", cnf);
-                cnf
-            }
-        };
-        let s = Sites::read_file(&cnf)?;
-        let mut sources: BTreeMap<String, Site> = BTreeMap::new();
-
-        s.iter().for_each(|s| {
-            let key = s.name.clone().unwrap();
-
-            sources.insert(key, s.clone());
-        });
-        Ok(Sources(sources))
-    }
-
     /// List of currently known sources into a nicely formatted string.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn list(&self) -> Result<String> {
         let header = vec!["Name", "Type", "Format", "URL", "Auth", "Ops"];
 
         let mut builder = Builder::default();
         builder.push_record(header);
 
-        self.0.iter().for_each(|(n, s)| {
+        self.inner.iter().for_each(|(n, s)| {
             let mut row = vec![];
 
             let dtype = s.dtype.clone().to_string();
@@ -151,7 +78,7 @@ impl Sources {
                     Auth::Anon => "open",
                     Auth::Key { .. } => "API key",
                 }
-                .to_string()
+                    .to_string()
             } else {
                 "anon".to_owned()
             };
@@ -176,6 +103,7 @@ impl Sources {
 // Token management
 //
 impl Sources {
+    pub fn config_path() -> PathBuf { PathBuf::from("/") }
     /// Returns the path of the directory storing tokens
     ///
     pub fn token_path() -> PathBuf {
@@ -276,91 +204,91 @@ impl Sources {
     ///
     #[inline]
     pub fn get(&self, name: &str) -> Option<&Site> {
-        self.0.get(name)
+        self.inner.get(name)
     }
 
     /// Wrap `get_mut`
     ///
     #[inline]
     pub fn get_mut(&mut self, name: &str) -> Option<&mut Site> {
-        self.0.get_mut(name)
+        self.inner.get_mut(name)
     }
 
     /// Wrap `is_empty()`
     ///
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.inner.is_empty()
     }
 
     /// Wrap `len()`
     ///
     #[inline]
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.inner.len()
     }
 
     /// Wrap `keys()`
     ///
     #[inline]
     pub fn keys(&self) -> Keys<'_, String, Site> {
-        self.0.keys()
+        self.inner.keys()
     }
 
     /// Wrap `index()`
     ///
     #[inline]
     pub fn index(&self, s: &str) -> Option<&Site> {
-        self.0.get(s)
+        self.inner.get(s)
     }
 
     /// Wrap `index_mut()`
     ///
     #[inline]
     pub fn index_mut(&mut self, s: &str) -> Option<&Site> {
-        self.0.get(s)
+        self.inner.get(s)
     }
 
     /// Wrap `values()`
     ///
     #[inline]
     pub fn values(&self) -> Values<'_, String, Site> {
-        self.0.values()
+        self.inner.values()
     }
 
     /// Wrap `values_mut()`
     ///
     #[inline]
     pub fn values_mut(&mut self) -> ValuesMut<'_, String, Site> {
-        self.0.values_mut()
+        self.inner.values_mut()
     }
 
     /// Wrap `into_values()`
     ///
     #[inline]
     pub fn into_values(self) -> IntoValues<String, Site> {
-        self.0.into_values()
+        self.inner.into_values()
     }
 
     /// Wrap `contains_key()`
     ///
     #[inline]
     pub fn contains_key(&self, s: &str) -> bool {
-        self.0.contains_key(s)
+        self.inner.contains_key(s)
     }
 
     /// Wrap `iter()`
     ///
     #[inline]
     pub fn iter(&self) -> Iter<'_, String, Site> {
-        self.0.iter()
+        self.inner.iter()
     }
 
     /// Wrap `iter_mut()`
     ///
     #[inline]
     pub fn iter_mut(&mut self) -> IterMut<'_, String, Site> {
-        self.0.iter_mut()
+        self.inner.iter_mut()
     }
 }
 
@@ -371,7 +299,7 @@ impl Index<&str> for Sources {
     ///
     #[inline]
     fn index(&self, s: &str) -> &Self::Output {
-        self.0.get(s).unwrap()
+        self.inner.get(s).unwrap()
     }
 }
 
@@ -382,7 +310,7 @@ impl Index<String> for Sources {
     ///
     #[inline]
     fn index(&self, s: String) -> &Self::Output {
-        self.0.get(&s).unwrap()
+        self.inner.get(&s).unwrap()
     }
 }
 
@@ -391,11 +319,11 @@ impl IndexMut<&str> for Sources {
     ///
     #[inline]
     fn index_mut(&mut self, s: &str) -> &mut Self::Output {
-        let me = self.0.get_mut(s);
+        let me = self.inner.get_mut(s);
         if me.is_none() {
-            self.0.insert(s.to_string(), Site::new());
+            self.inner.insert(s.to_string(), Site::new());
         }
-        self.0.get_mut(s).unwrap()
+        self.inner.get_mut(s).unwrap()
     }
 }
 
@@ -404,11 +332,11 @@ impl IndexMut<String> for Sources {
     ///
     #[inline]
     fn index_mut(&mut self, s: String) -> &mut Self::Output {
-        let me = self.0.get_mut(&s);
+        let me = self.inner.get_mut(&s);
         if me.is_none() {
-            self.0.insert(s.to_string(), Site::new());
+            self.inner.insert(s.to_string(), Site::new());
         }
-        self.0.get_mut(&s).unwrap()
+        self.inner.get_mut(&s).unwrap()
     }
 }
 
@@ -419,7 +347,7 @@ impl<'a> IntoIterator for &'a Sources {
     /// We can now do `sources.iter()`
     ///
     fn into_iter(self) -> Iter<'a, String, Site> {
-        self.0.iter()
+        self.inner.iter()
     }
 }
 
@@ -427,89 +355,10 @@ impl<'a> IntoIterator for &'a Sources {
 ///
 impl From<BTreeMap<String, Site>> for Sources {
     fn from(value: BTreeMap<String, Site>) -> Self {
-        Sources(value.clone())
+        Sources { version: CVERSION, inner: value.clone(), filename: CONFIG.to_string() }
     }
 }
 
-// -----
-
-/// Main struct holding configurations internally
-///
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
-struct Sites {
-    version: usize,
-    site: BTreeMap<String, Site>,
-}
-
-/// `Default` is for `unwrap_or_default()`.
-///
-impl Default for Sites {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Sites {
-    /// Returns an empty struct
-    ///
-    #[inline]
-    #[tracing::instrument]
-    pub fn new() -> Sites {
-        Sites {
-            version: CVERSION,
-            site: BTreeMap::<String, Site>::new(),
-        }
-    }
-
-    /// Load the specified config file
-    ///
-    #[tracing::instrument]
-    fn read_file(fname: &PathBuf) -> Result<Vec<Site>> {
-        trace!("Reading {:?}", fname);
-        let content = fs::read_to_string(fname)?;
-
-        // Check extension
-        //
-        let ext = match fname.extension() {
-            Some(ext) => ext,
-            _ => OsStr::new("hcl"),
-        };
-
-        debug!("File is .{ext:?}");
-        let s: hcl::error::Result<Sites> = hcl::from_str(&content);
-        let s = match s {
-            Ok(s) => s,
-            Err(e) => return Err(eyre!("syntax error or wrong version: {}", e)),
-        };
-
-        // First check
-        //
-        if s.version != CVERSION {
-            return Err(eyre!("bad config version"));
-        }
-
-        // Fetch the site name and insert it into each Site
-        //
-        let s: Vec<_> = s
-            .site
-            .keys()
-            .map(|n| {
-                let site = s.site.get(n).unwrap();
-                Site {
-                    features: site.features.clone(),
-                    dtype: site.dtype,
-                    name: Some(n.clone()),
-                    format: site.format.clone(),
-                    auth: site.auth.clone(),
-                    base_url: site.base_url.clone(),
-                    routes: site.routes.clone(),
-                }
-            })
-            .collect();
-
-        Ok(s)
-    }
-}
 
 #[cfg(test)]
 mod tests {
