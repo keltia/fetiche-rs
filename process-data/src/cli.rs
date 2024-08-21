@@ -14,6 +14,9 @@ pub struct Opts {
     /// Database file to use
     #[clap(short = 'd', long)]
     pub database: Option<String>,
+    /// Datalake file to use
+    #[clap(short = 'l', long)]
+    pub datalake: Option<String>,
     /// Delay between task in ms
     #[clap(short = 'w', long, default_value = "100")]
     pub wait: u64,

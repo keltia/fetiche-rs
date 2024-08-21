@@ -84,8 +84,8 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 
     // We must operate on a database.
     //
-    let cfile = ConfigFile::<ProcessConfig>::load(Some(CONFIG))?;
     let def = String::from(CONFIG);
+    let cfile = ConfigFile::<ProcessConfig>::load(Some(CONFIG))?;
     let cfg = cfile.inner();
 
     if cfg.version() != CVERSION {
@@ -96,18 +96,37 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         return Err(Status::NoDatabase(def).into());
     }
 
-    let datalake = match &cfg.datalake {
+    // Get some sane values
+    //
+    let database = match &opts.database {
         Some(v) => v,
         None => {
-            eprintln!("Error: you must define datalake.");
-            return Err(Status::NoDatalake(def).into());
+            if let Some(v) = &cfg.database {
+                v
+            } else {
+                eprintln!("Error: you must define database.");
+                return Err(Status::NoDatabase(def).into());
+            }
+        }
+    };
+    let datalake = match &opts.datalake {
+        Some(v) => v,
+        None => {
+            if let Some(v) = &cfg.datalake {
+                v
+            } else {
+                eprintln!("Error: you must define datalake.");
+                return Err(Status::NoDatalake(def).into());
+            }
         }
     };
 
     // Extract parameters
     //
+    // Allow database to be overridden on command line
+    //
     let name = std::env::var("CLICKHOUSE_DB")
-        .unwrap_or(opts.database.clone().unwrap_or(cfg.database.unwrap()));
+        .unwrap_or(opts.database.clone().unwrap_or(database.to_string()));
     let user = std::env::var("CLICKHOUSE_USER").unwrap_or(cfg.user.clone().unwrap());
     let pass = std::env::var("CLICKHOUSE_PASSWD").unwrap_or(cfg.password.clone().unwrap());
     let endpoint = std::env::var("CLICKHOUSE_URL").unwrap_or(cfg.url.clone());
