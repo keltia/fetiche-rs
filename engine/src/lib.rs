@@ -26,38 +26,35 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
-use eyre::Result;
-#[cfg(unix)]
-use home::home_dir;
+use eyre::{eyre, Result};
 use serde::Deserialize;
 use strum::EnumString;
 use tracing::{debug, error, event, info, trace, warn, Level};
 
-pub use config::*;
-use fetiche_common::{makepath, ConfigEngine, Container};
+use fetiche_common::{ConfigFile, Container, IntoConfig, Versioned};
 use fetiche_formats::Format;
+use fetiche_macros::into_configfile;
 use fetiche_sources::{Auth, Site, Sources};
+
 pub use job::*;
 pub use parse::*;
 pub use state::*;
 pub use storage::*;
 pub use task::*;
+pub use tokens::*;
 
-mod config;
 mod job;
 mod parse;
 mod state;
 mod storage;
 mod task;
+mod tokens;
 
 /// Engine signature
 ///
 pub fn version() -> String {
     format!("{}/{}", "embedded-engine", env!("CARGO_PKG_VERSION"))
 }
-
-#[cfg(unix)]
-const BASEDIR: &str = ".config";
 
 /// Configuration filename
 const ENGINE_CONFIG: &str = "engine.hcl";
@@ -70,6 +67,28 @@ const ENGINE_VERSION: usize = 2;
 
 /// Main state data file, will be created in `basedir`.
 pub(crate) const STATE_FILE: &str = "state";
+
+
+/// Configuration file format
+#[into_configfile(version = 2, filename = "engine.hcl")]
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct EngineConfig {
+    /// Base directory
+    pub basedir: PathBuf,
+    /// List of storage types
+    pub storage: BTreeMap<String, StorageConfig>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum StorageConfig {
+    /// in-memory K/V store like DragonflyDB or REDIS
+    Cache { url: String },
+    /// In the local filesystem
+    Directory { path: PathBuf, rotation: String },
+    /// HIVE-based sharding
+    Hive { path: PathBuf },
+}
 
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
@@ -85,6 +104,8 @@ pub struct Engine {
     pub sources: Arc<Sources>,
     /// Storage area for long-running jobs
     pub storage: Arc<Storage>,
+    /// SStorage are for auth tokens
+    pub tokens: Arc<TokenStorage>,
     /// Current state
     pub state: Arc<RwLock<State>>,
     /// Job Queue
@@ -100,7 +121,7 @@ impl Engine {
 
         // Load storage areas from `engine.hcl`
         //
-        Self::load(Self::default_file()).clone()
+        Self::load(ENGINE_CONFIG).unwrap()
     }
 
     /// Load configuration file for the engine.
@@ -111,64 +132,50 @@ impl Engine {
     pub fn load(fname: &str) -> Result<Self> {
         trace!("reading({:?}", fname);
 
-        let data =
-            fs::read_to_string(&fname).unwrap_or_else(|_| panic!("file not found {:?}", fname));
-
-        let cfg: EngineConfig = ConfigEngine::load(Some(fname)).map_err(|e| {
-            error!("Error loading {fname}: {}", e.to_string())
-        })?;
+        let root = ConfigFile::<EngineConfig>::load(Some(fname))?;
+        let cfg = root.inner();
+        let home = root.config_path();
 
         // Bail out if different
         //
-        if cfg.version != ENGINE_VERSION {
+        if cfg.version() != ENGINE_VERSION {
             error!("Bad config version {}", cfg.version());
-            panic!(
-                "Only v{} config file supported in {}",
-                ENGINE_VERSION,
-                fname.to_string_lossy()
-            );
+            return Err(eyre!("Only v{} config file supported in {}", ENGINE_VERSION, fname));
         }
-        Self::from_cfg(&cfg)
-    }
 
-    /// Create a new instance from a EngineConfig struct
-    ///
-    /// FIXME: too many paths hard-coded in the `engine.hcl` or `storage.hcl` files.
-    ///
-    #[tracing::instrument]
-    pub fn from_cfg(cfg: &EngineConfig) -> Self {
         trace!("load sources");
-
-        // Register sources
-        //
-        let src = match Sources::load(&None) {
-            Ok(src) => src,
-            Err(e) => panic!("No sources configured in 'sources.hcl':{}", e),
-        };
+        let src_file = ConfigFile::<Sources>::load(Some("sources.hcl"))?;
+        let src = src_file.inner();
         info!("{} sources loaded", src.len());
 
-        trace!("load storage areas");
         // Register storage areas
         //
+        trace!("load storage areas");
         let areas = Storage::register(&cfg.storage);
         info!("{} areas loaded", areas.len());
+
+        // Register tokens
+        //
+        trace!("load tokens");
+        let tokens_area = cfg.basedir.join("tokens").to_string_lossy().to_string();
+        let tokens = TokenStorage::register(&tokens_area);
+        info!("{} tokens loaded", tokens.len());
 
         // Save PID
         //
         let pid = std::process::id();
-        let basedir: PathBuf = cfg.basedir.clone();
-        let pidfile: PathBuf = makepath!(&basedir, ENGINE_PID);
+        let pidfile = home.join(ENGINE_PID);
         fs::write(&pidfile, format!("{pid}"))
-            .unwrap_or_else(|_| panic!("can not write {}", ENGINE_PID));
+            .unwrap_or_else(|_| panic!("can not write {}", pidfile.to_string_lossy()));
 
         info!("PID {} written in {:?}", pid, pidfile);
 
         // Load state
         //
-        let fname: PathBuf = makepath!(&basedir, STATE_FILE);
+        let fname = home.join(STATE_FILE);
         let state = match State::from(fname.clone()) {
             Ok(state) => {
-                info!("State loaded from {:?}", fname);
+                info!("State loaded from {}", fname.to_string_lossy());
                 debug!("{:?}", state);
                 state
             }
@@ -186,9 +193,10 @@ impl Engine {
         let engine = Engine {
             pid,
             next: Arc::new(AtomicUsize::new(state.last + 1)),
-            home: Arc::new(basedir),
-            sources: Arc::new(src),
+            home: Arc::new(home.clone()),
+            sources: Arc::new(src.clone()),
             storage: Arc::new(areas),
+            tokens: Arc::new(tokens),
             state: Arc::new(RwLock::new(state)),
             jobs: Arc::new(RwLock::new(jobs)),
         };
@@ -198,7 +206,7 @@ impl Engine {
         //
         engine.sync().expect("can not sync");
 
-        engine
+        Ok(engine)
     }
 
     /// Create a new job queue
@@ -255,7 +263,7 @@ impl Engine {
         self.sync()
     }
 
-    /// Load authentication data
+    /// Load authentication data and patch internal state
     ///
     #[tracing::instrument(skip(self))]
     pub fn auth(&mut self, db: BTreeMap<String, Auth>) -> &mut Self {
@@ -274,31 +282,6 @@ impl Engine {
         });
         self.sources = Arc::new(Sources::from(srcs));
         self
-    }
-
-    /// Returns the path of the default config directory
-    ///
-    #[cfg(unix)]
-    pub fn config_path() -> PathBuf {
-        let homedir = home_dir().unwrap();
-        let def: PathBuf = makepath!(homedir, BASEDIR, "drone-utils");
-        def
-    }
-
-    /// Returns the path of the default config directory
-    ///
-    #[cfg(windows)]
-    pub fn config_path() -> PathBuf {
-        let homedir = env!("LOCALAPPDATA");
-
-        let def: PathBuf = makepath!(homedir, "drone-utils");
-        def
-    }
-
-    /// Returns the path of the default config file
-    ///
-    pub fn default_file() -> PathBuf {
-        Self::config_path().join(ENGINE_CONFIG)
     }
 
     /// Return an `Arc::clone` of the Engine sources
@@ -381,7 +364,7 @@ pub enum IO {
 /// the `Runnable` trait.
 ///
 /// ```no_run
-/// use acutectl::{IO, Runnable};
+/// use fetiche_engine::{IO, Runnable};
 /// use fetiche_formats::Format;
 /// use fetiche_macros::RunnableDerive;
 ///
