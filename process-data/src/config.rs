@@ -152,7 +152,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
             ("datalake".to_string(), datalake.clone()),
             ("username".to_string(), user.clone()),
         ])
-            .into(),
+        .into(),
         dbh,
         wait: opts.wait,
         dry_run: opts.dry_run,
@@ -163,7 +163,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
 /// Finish everything.
 ///
 #[tracing::instrument]
-pub fn finish_runtime() -> Result<()> {
+pub fn finish_runtime(_ctx: &Context) -> Result<()> {
     close_logging();
     Ok(())
 }

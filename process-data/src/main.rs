@@ -3,7 +3,7 @@
 
 use std::io;
 
-use clap::{CommandFactory, crate_authors, crate_description, crate_version, Parser};
+use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
 use clap_complete::generate;
 use eyre::Result;
 use tracing::trace;
@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
 
     // Finish
     //
-    finish_runtime()
+    finish_runtime(&ctx)
 }
 
 /// Display banner
