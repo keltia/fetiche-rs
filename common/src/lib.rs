@@ -64,7 +64,7 @@ pub trait Versioned {
 /// ```no_run
 /// // Specify version and filename.
 /// # use serde::Deserialize;
-/// use fetiche_common::IntoConfig;
+/// use fetiche_common::{IntoConfig, Versioned};
 /// use fetiche_macros::into_configfile;
 ///
 /// #[into_configfile(version = 3, filename = "bar.hcl")]

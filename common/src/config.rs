@@ -14,7 +14,7 @@ use eyre::{eyre, Result};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::fs::read_dir;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{env, fs};
 use tracing::{debug, error, trace};
 
@@ -32,7 +32,7 @@ pub struct ConfigFile<T: Debug + DeserializeOwned + IntoConfig> {
     /// Tag is the project name.
     tag: String,
     /// This is the base directory for all files.
-    basedir: PathBuf,
+    root: PathBuf,
     inner: Option<T>,
 }
 
@@ -49,15 +49,13 @@ where
                 #[cfg(unix)]
                 let base = base
                     .home_dir()
-                    .join(".config")
-                    .to_string_lossy()
-                    .to_string();
+                    .join(".config");
 
                 #[cfg(windows)]
-                let base = base.data_local_dir().to_string_lossy().to_string();
+                let base = base.data_local_dir();
 
-                debug!("base = {base}");
-                let base: PathBuf = makepath!(base, tag);
+                debug!("base = {base:?}");
+                let base = base.join(Path::new(tag));
                 base
             }
             None => {
@@ -74,7 +72,7 @@ where
                 debug!("base = {homedir}");
 
                 #[cfg(unix)]
-                let base: PathBuf = makepath!(homedir, ".config", tag);
+                let base = Path::new(&homedir).join(Path::new(".config")).join(Path::new(tag));
 
                 #[cfg(windows)]
                 let base: PathBuf = makepath!(homedir, tag);
@@ -84,23 +82,30 @@ where
         };
         ConfigFile {
             tag: String::from(tag),
-            basedir,
+            root: basedir,
             inner: None,
         }
     }
 
     /// Returns the path of the default config directory
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn config_path(&self) -> PathBuf {
-        self.basedir.clone()
+        self.root.clone()
     }
 
     /// Returns the path of the default config file
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn default_file(&self) -> String {
         String::from(CONFIG)
+    }
+
+    /// Return our root
+    ///
+    #[tracing::instrument(skip(self))]
+    pub fn root(&self) -> PathBuf {
+        self.root.clone()
     }
 
     /// Load the file and return a struct T in the right format.
@@ -111,11 +116,13 @@ where
     ///
     /// Example:
     /// ```no_run
-    /// use fetiche_common::{ConfigFile, IntoConfig};
+    /// use serde::Deserialize;
+    /// use fetiche_common::{ConfigFile, IntoConfig, Versioned};
     ///
     /// use fetiche_macros::into_configfile;
     ///
     /// #[into_configfile]
+    /// #[derive(Debug, Default, Deserialize)]
     /// struct Foo {
     ///     // We need at least one named field
     ///     a: u32,
@@ -123,7 +130,7 @@ where
     ///
     /// // This will load "config.hcl" from the base directory
     /// //
-    /// let cfg = ConfigFile::<Foo>::load(None)?;
+    /// let cfg = ConfigFile::<Foo>::load(None).unwrap();
     ///
     /// // Access the loaded configuration file
     /// //
@@ -142,7 +149,9 @@ where
         // Check is None was passed to get the default file from the default location:
         //
         let fname = if fname.is_none() {
-            PathBuf::from(cfg.default_file()).canonicalize()?
+            let def = PathBuf::from(cfg.default_file()).canonicalize()?;
+            dbg!(&def);
+            def
         } else {
             // Do we have a bare filename?
             //
@@ -150,7 +159,7 @@ where
             let p = PathBuf::from(fname);
 
             if p.file_name().unwrap() == p {
-                cfg.basedir.join(fname).canonicalize()?
+                cfg.root.join(fname).canonicalize()?
             } else {
                 // If it is relative or absolute, assume it exists and return its canonical form
                 //
@@ -161,7 +170,10 @@ where
 
         trace!("Loading config file {fname:?} from {:?}", cfg.config_path());
 
-        let data = fs::read_to_string(fname)?;
+        let data = match fs::read_to_string(&fname) {
+            Ok(data) => data,
+            Err(e) => { return Err(eyre!("Error: failed to read config file {fname:?}: {e}")); }
+        };
         debug!("string data = {data}");
 
         let data: T = hcl::from_str(&data)?;
@@ -186,7 +198,7 @@ where
     /// Return the list of possible configuration files within basedir
     ///
     pub fn list(&self) -> Vec<String> {
-        env::set_current_dir(self.basedir.as_path()).unwrap();
+        env::set_current_dir(self.root.as_path()).unwrap();
 
         if let Ok(dir) = read_dir(env::current_dir().unwrap()) {
             let list = dir
@@ -252,9 +264,10 @@ mod tests {
     fn test_config_engine_load_default() -> Result<()> {
         // Explicitly load default
         //
-        let cfg = ConfigFile::<Bar>::load(None)?;
-        dbg!(&cfg);
-        let inner = cfg.inner().unwrap();
+        let cfg = ConfigFile::<Bar>::load(Some("config.hcl"));
+        assert!(cfg.is_ok());
+        let cfg = cfg?;
+        let inner = cfg.inner();
         assert_eq!(CVERSION, inner.version());
         Ok(())
     }
@@ -267,9 +280,10 @@ mod tests {
 
     #[test]
     fn test_config_engine_load_file() -> Result<()> {
-        let cfg = ConfigFile::<Foo>::load(Some("examples/local.hcl"))?;
-        dbg!(&cfg);
-        let inner = cfg.inner().unwrap();
+        let cfg = ConfigFile::<Foo>::load(Some("examples/local.hcl"));
+        assert!(cfg.is_ok());
+        let cfg = cfg?;
+        let inner = cfg.inner();
         assert_eq!(CVERSION, inner.version());
         Ok(())
     }
