@@ -3,7 +3,6 @@
 
 use eyre::Result;
 use serde::Deserialize;
-use std::path::Path;
 
 use fetiche_common::{init_logging, ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
@@ -39,10 +38,5 @@ async fn main() -> Result<()> {
     let c = ConfigFile::<Foo>::load(Some("local.hcl"));
     assert!(c.is_err());
 
-    assert!(Path::new("foo").is_relative());
-    assert!(Path::new("../foo").is_relative());
-    assert!(Path::new("./foo").is_relative());
-
-    assert!(Path::new("/foo").is_absolute());
     Ok(())
 }
