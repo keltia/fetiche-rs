@@ -31,7 +31,7 @@ use fetiche_macros::into_configfile;
 #[into_configfile(version = 4, filename = "sources.hcl")]
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct Sources {
-    inner: BTreeMap<String, Site>,
+    site: BTreeMap<String, Site>,
 }
 
 impl Sources {
@@ -61,7 +61,7 @@ impl Sources {
         let mut builder = Builder::default();
         builder.push_record(header);
 
-        self.inner.iter().for_each(|(n, s)| {
+        self.site.iter().for_each(|(n, s)| {
             let mut row = vec![];
 
             let dtype = s.dtype.clone().to_string();
@@ -78,7 +78,7 @@ impl Sources {
                     Auth::Anon => "open",
                     Auth::Key { .. } => "API key",
                 }
-                    .to_string()
+                .to_string()
             } else {
                 "anon".to_owned()
             };
@@ -103,7 +103,9 @@ impl Sources {
 // Token management
 //
 impl Sources {
-    pub fn config_path() -> PathBuf { PathBuf::from("/") }
+    pub fn config_path() -> PathBuf {
+        PathBuf::from("/")
+    }
     /// Returns the path of the directory storing tokens
     ///
     pub fn token_path() -> PathBuf {
@@ -204,91 +206,91 @@ impl Sources {
     ///
     #[inline]
     pub fn get(&self, name: &str) -> Option<&Site> {
-        self.inner.get(name)
+        self.site.get(name)
     }
 
     /// Wrap `get_mut`
     ///
     #[inline]
     pub fn get_mut(&mut self, name: &str) -> Option<&mut Site> {
-        self.inner.get_mut(name)
+        self.site.get_mut(name)
     }
 
     /// Wrap `is_empty()`
     ///
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+        self.site.is_empty()
     }
 
     /// Wrap `len()`
     ///
     #[inline]
     pub fn len(&self) -> usize {
-        self.inner.len()
+        self.site.len()
     }
 
     /// Wrap `keys()`
     ///
     #[inline]
     pub fn keys(&self) -> Keys<'_, String, Site> {
-        self.inner.keys()
+        self.site.keys()
     }
 
     /// Wrap `index()`
     ///
     #[inline]
     pub fn index(&self, s: &str) -> Option<&Site> {
-        self.inner.get(s)
+        self.site.get(s)
     }
 
     /// Wrap `index_mut()`
     ///
     #[inline]
     pub fn index_mut(&mut self, s: &str) -> Option<&Site> {
-        self.inner.get(s)
+        self.site.get(s)
     }
 
     /// Wrap `values()`
     ///
     #[inline]
     pub fn values(&self) -> Values<'_, String, Site> {
-        self.inner.values()
+        self.site.values()
     }
 
     /// Wrap `values_mut()`
     ///
     #[inline]
     pub fn values_mut(&mut self) -> ValuesMut<'_, String, Site> {
-        self.inner.values_mut()
+        self.site.values_mut()
     }
 
     /// Wrap `into_values()`
     ///
     #[inline]
     pub fn into_values(self) -> IntoValues<String, Site> {
-        self.inner.into_values()
+        self.site.into_values()
     }
 
     /// Wrap `contains_key()`
     ///
     #[inline]
     pub fn contains_key(&self, s: &str) -> bool {
-        self.inner.contains_key(s)
+        self.site.contains_key(s)
     }
 
     /// Wrap `iter()`
     ///
     #[inline]
     pub fn iter(&self) -> Iter<'_, String, Site> {
-        self.inner.iter()
+        self.site.iter()
     }
 
     /// Wrap `iter_mut()`
     ///
     #[inline]
     pub fn iter_mut(&mut self) -> IterMut<'_, String, Site> {
-        self.inner.iter_mut()
+        self.site.iter_mut()
     }
 }
 
@@ -299,7 +301,7 @@ impl Index<&str> for Sources {
     ///
     #[inline]
     fn index(&self, s: &str) -> &Self::Output {
-        self.inner.get(s).unwrap()
+        self.site.get(s).unwrap()
     }
 }
 
@@ -310,7 +312,7 @@ impl Index<String> for Sources {
     ///
     #[inline]
     fn index(&self, s: String) -> &Self::Output {
-        self.inner.get(&s).unwrap()
+        self.site.get(&s).unwrap()
     }
 }
 
@@ -319,11 +321,11 @@ impl IndexMut<&str> for Sources {
     ///
     #[inline]
     fn index_mut(&mut self, s: &str) -> &mut Self::Output {
-        let me = self.inner.get_mut(s);
+        let me = self.site.get_mut(s);
         if me.is_none() {
-            self.inner.insert(s.to_string(), Site::new());
+            self.site.insert(s.to_string(), Site::new());
         }
-        self.inner.get_mut(s).unwrap()
+        self.site.get_mut(s).unwrap()
     }
 }
 
@@ -332,11 +334,11 @@ impl IndexMut<String> for Sources {
     ///
     #[inline]
     fn index_mut(&mut self, s: String) -> &mut Self::Output {
-        let me = self.inner.get_mut(&s);
+        let me = self.site.get_mut(&s);
         if me.is_none() {
-            self.inner.insert(s.to_string(), Site::new());
+            self.site.insert(s.to_string(), Site::new());
         }
-        self.inner.get_mut(&s).unwrap()
+        self.site.get_mut(&s).unwrap()
     }
 }
 
@@ -347,7 +349,7 @@ impl<'a> IntoIterator for &'a Sources {
     /// We can now do `sources.iter()`
     ///
     fn into_iter(self) -> Iter<'a, String, Site> {
-        self.inner.iter()
+        self.site.iter()
     }
 }
 
@@ -355,10 +357,13 @@ impl<'a> IntoIterator for &'a Sources {
 ///
 impl From<BTreeMap<String, Site>> for Sources {
     fn from(value: BTreeMap<String, Site>) -> Self {
-        Sources { version: CVERSION, inner: value.clone(), filename: CONFIG.to_string() }
+        Sources {
+            version: CVERSION,
+            site: value.clone(),
+            filename: CONFIG.to_string(),
+        }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
