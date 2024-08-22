@@ -121,7 +121,10 @@ impl Engine {
 
         // Load storage areas from `engine.hcl`
         //
-        Self::load(ENGINE_CONFIG).unwrap()
+        match Self::load(ENGINE_CONFIG) {
+            Ok(e) => e,
+            Err(e) => panic!("Error: {}", e.to_string()),
+        }
     }
 
     /// Load configuration file for the engine.
