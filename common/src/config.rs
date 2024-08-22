@@ -47,9 +47,7 @@ where
         let basedir: PathBuf = match base {
             Some(base) => {
                 #[cfg(unix)]
-                let base = base
-                    .home_dir()
-                    .join(".config");
+                let base = base.home_dir().join(".config");
 
                 #[cfg(windows)]
                 let base = base.data_local_dir();
@@ -72,7 +70,9 @@ where
                 debug!("base = {homedir}");
 
                 #[cfg(unix)]
-                let base = Path::new(&homedir).join(Path::new(".config")).join(Path::new(tag));
+                let base = Path::new(&homedir)
+                    .join(Path::new(".config"))
+                    .join(Path::new(tag));
 
                 #[cfg(windows)]
                 let base: PathBuf = makepath!(homedir, tag);
@@ -178,7 +178,9 @@ where
 
         let data = match fs::read_to_string(&fname) {
             Ok(data) => data,
-            Err(e) => { return Err(eyre!("Error: failed to read config file {fname:?}: {e}")); }
+            Err(e) => {
+                return Err(eyre!("Error: failed to read config file {fname:?}: {e}"));
+            }
         };
         debug!("string data = {data}");
 
@@ -219,7 +221,8 @@ where
                     } else {
                         None
                     }
-                ).collect::<Vec<_>>();
+                })
+                .collect::<Vec<_>>();
             return list;
         }
         vec![]
