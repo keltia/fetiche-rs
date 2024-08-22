@@ -39,10 +39,25 @@ pub const VERSION: &str = crate_version!();
 /// Authors
 pub const AUTHORS: &str = crate_authors!();
 
+/// Config filename
+const CONFIG: &str = "config.hcl";
+/// Current version
+pub const CVERSION: usize = 1;
+
+/// Configuration for the CLI tool, supposed to include parameters and most importantly
+/// credentials for the various sources.
+///
+#[into_configfile]
+#[derive(Debug, Default, Deserialize)]
+pub struct AcuteConfig {
+    /// Each site credentials
+    pub site: BTreeMap<String, Auth>,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let opts = Opts::parse();
-    let cfn = opts.config.clone();
+    let cfn = opts.config.or(Some(CONFIG.into()));
 
     // Initialise tracing.
     //
