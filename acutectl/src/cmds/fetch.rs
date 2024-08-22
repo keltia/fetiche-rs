@@ -9,10 +9,11 @@ use eyre::{eyre, Result};
 use tracing::{info, trace};
 
 use fetiche_common::{Container, DateOpts};
+use fetiche_engine::{Convert, Engine, Fetch, Save, Tee};
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 
-use crate::{Convert, Engine, Fetch, FetchOpts, Save, Tee};
+use crate::FetchOpts;
 
 /// Actual fetching of data from a given site
 ///

@@ -3,7 +3,9 @@ use std::fs::File;
 use eyre::Result;
 use tracing::trace;
 
-use crate::{Convert, ConvertOpts, Engine, Read};
+use fetiche_engine::{Convert, Engine, Read};
+
+use crate::ConvertOpts;
 
 #[tracing::instrument]
 pub fn convert_from_to(engine: &mut Engine, copts: &ConvertOpts) -> Result<()> {

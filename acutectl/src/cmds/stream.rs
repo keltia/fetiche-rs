@@ -3,12 +3,12 @@ use std::io::stdout;
 use std::sync::Arc;
 
 use eyre::{eyre, Result};
-use tracing::{info, trace};
-
+use fetiche_engine::{Convert, Engine, Store, Stream, Tee};
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
+use tracing::{info, trace};
 
-use crate::{Convert, Engine, Store, Stream, StreamOpts, Tee};
+use crate::StreamOpts;
 
 /// Actual fetching of data from a given site
 ///
