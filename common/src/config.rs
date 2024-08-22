@@ -209,7 +209,7 @@ where
         if let Ok(dir) = read_dir(env::current_dir().unwrap()) {
             let list = dir
                 .into_iter()
-                .filter_map(|f|
+                .filter_map(|f| {
                     if let Ok(p) = f {
                         if p.file_name().to_string_lossy().ends_with(".hcl") {
                             Some(p.file_name().into_string().unwrap())
