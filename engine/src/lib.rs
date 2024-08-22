@@ -269,7 +269,7 @@ impl Engine {
     /// Load authentication data and patch internal state
     ///
     #[tracing::instrument(skip(self))]
-    pub fn auth(&mut self, db: BTreeMap<String, Auth>) -> &mut Self {
+    pub fn auth(&mut self, db: &BTreeMap<String, Auth>) -> &mut Self {
         // Generate a sources list with credentials
         //
         let mut srcs = BTreeMap::<String, Site>::new();
@@ -277,8 +277,17 @@ impl Engine {
         trace!("Patching db with authentication data");
         self.sources.values().for_each(|site: &Site| {
             let mut s = site.clone();
-            if let Some(auth) = db.get(&s.name().unwrap()) {
-                s.auth(auth.clone());
+
+            // Skip if a source does not have any auth data
+            //
+            match site.name() {
+                Some(name) => {
+                    if let Some(auth) = db.get(&s.name().unwrap()) {
+                        s.auth(auth.clone());
+                        srcs.insert(name.clone(), s.clone());
+                    }
+                }
+                None => {}
             }
             let n = &s.name().unwrap();
             srcs.insert(n.clone(), s.clone());
