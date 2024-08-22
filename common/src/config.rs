@@ -87,6 +87,12 @@ where
         }
     }
 
+    /// Return the project tag
+    ///
+    pub fn tag(&self) -> String {
+        self.tag.clone()
+    }
+
     /// Returns the path of the default config directory
     ///
     #[tracing::instrument(skip(self))]
