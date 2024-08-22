@@ -36,9 +36,10 @@ use eyre::Result;
 use tracing::{info, trace};
 
 use fetiche_common::{Container, DateOpts};
+use fetiche_engine::Engine;
 use fetiche_formats::Format;
 
-use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
+use crate::{convert_from_to, fetch_from_site, stream_from_site};
 
 /// CLI options
 #[derive(Parser)]
