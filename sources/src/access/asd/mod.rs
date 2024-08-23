@@ -36,7 +36,7 @@ use fetiche_formats::Format;
 
 use crate::filter::Filter;
 use crate::site::Site;
-use crate::{http_post, Auth, AuthError, Capability, Fetchable, Sources};
+use crate::{http_post, Auth, AuthError, Capability, Fetchable};
 
 #[cfg(feature = "json")]
 use serde_json::json;
@@ -158,7 +158,7 @@ impl Asd {
         if fname.exists() {
             Ok(fs::read_to_string(fname)?)
         } else {
-            Err(AuthError::Retrieval(fname.to_string_lossy().to_string())).into()
+            Err(AuthError::Retrieval(fname.to_string_lossy().to_string()).into())
         }
     }
 
