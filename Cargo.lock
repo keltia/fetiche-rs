@@ -2881,7 +2881,7 @@ dependencies = [
 
 [[package]]
 name = "fetiche-engine"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "chrono",
  "csv",
@@ -2966,7 +2966,7 @@ dependencies = [
 
 [[package]]
 name = "fetiche-sources"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "base64_light",
  "chrono",
@@ -2975,6 +2975,7 @@ dependencies = [
  "csv",
  "dateparser",
  "directories",
+ "enum_dispatch",
  "env_logger",
  "eyre",
  "fetiche-common",
