@@ -1,25 +1,21 @@
-use chrono::Utc;
-use enum_dispatch::enum_dispatch;
-use eyre::{eyre, Result};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::fs;
 use std::fs::read_dir;
 use std::path::Path;
+use std::time::UNIX_EPOCH;
 
-#[enum_dispatch(TokenType)]
-pub trait Expirable: Debug + Clone {
-    fn key(&self) -> String;
-    fn is_expired(&self) -> bool;
-}
+use chrono::{DateTime, Utc};
+use enum_dispatch::enum_dispatch;
+use eyre::Result;
+use fetiche_sources::{AsdToken, TokenType};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use tabled::builder::Builder;
+use tabled::settings::Style;
+use tracing::trace;
 
-#[enum_dispatch]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum TokenType {
-    AsdToken,
-}
+use crate::TokenStatus;
 
 #[derive(Debug)]
 pub struct TokenStorage {
@@ -30,6 +26,8 @@ pub struct TokenStorage {
 }
 
 impl TokenStorage {
+    /// Read the directory and return all tokens (one per file)
+    ///
     pub fn register(path: &str) -> Self {
         let mut db = BTreeMap::<String, TokenType>::new();
         if let Ok(dir) = read_dir(&path) {
@@ -41,16 +39,23 @@ impl TokenStorage {
 
                     if f.starts_with("asd_") {
                         let data: AsdToken = serde_json::from_str(&raw).unwrap();
-                        db.insert(p.file_name().to_string_lossy().to_string(), data.into());
+                        db.insert(
+                            p.file_name().to_string_lossy().to_string(),
+                            TokenType::AsdToken(data),
+                        );
                     } else {
                         unimplemented!()
                     }
                 }
             });
         }
-        TokenStorage { path: path.into(), list: db }
+        TokenStorage {
+            path: path.into(),
+            list: db,
+        }
     }
 
+    #[inline]
     pub fn store(&mut self, key: &str, data: TokenType) -> Result<()> {
         self.list.insert(key.into(), data);
         Ok(())
@@ -59,53 +64,72 @@ impl TokenStorage {
     pub fn load(&self, key: &str) -> Result<TokenType> {
         match self.list.get(key) {
             Some(t) => Ok(t.clone()),
-            None => Err(eyre!("Unknown token").into())
+            None => Err(TokenStatus::NotFound(key.to_string()).into()),
         }
     }
 
+    #[inline]
+    pub fn path(&self) -> String {
+        self.path.clone()
+    }
+
+    #[inline]
     pub fn len(&self) -> usize {
         self.list.len()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.list.is_empty()
     }
-}
 
-/// Access token derived from username/password
-///
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AsdToken {
-    /// The actual token
-    token: String,
-    /// Don't ask
-    gjrt: String,
-    /// Expiration date
-    expired_at: i64,
-    roles: Vec<String>,
-    /// Fullname
-    name: String,
-    supervision: Option<String>,
-    lang: String,
-    status: String,
-    email: String,
-    airspace_admin: Option<String>,
-    homepage: String,
-}
+    /// List tokens
+    ///
+    /// NOTE: we do not show data from each token (like expiration, etc.) because at this point
+    ///       we do not know which kind of token each one is.
+    ///
+    #[tracing::instrument(skip(self))]
+    pub fn list(&self) -> Result<String> {
+        trace!("listing tokens");
 
-impl AsdToken {
-    pub fn export(&self) -> Result<String> {
-        Ok(json!(&self).to_string())
-    }
-}
+        let header = vec!["Path", "Producer", "Created at"];
 
-impl Expirable for AsdToken {
-    fn is_expired(&self) -> bool {
-        Utc::now().timestamp() > self.expired_at
-    }
+        let mut builder = Builder::default();
+        builder.push_record(header);
 
-    fn key(&self) -> String {
-        self.email.clone()
+        let p = self.path.as_str();
+        dbg!(&p);
+        if let Ok(dir) = fs::read_dir(p) {
+            for fname in dir {
+                let mut row = vec![];
+
+                if let Ok(fname) = fname {
+                    // Using strings is easier
+                    //
+                    let name = format!("{}", fname.file_name().to_string_lossy());
+                    row.push(name.clone());
+
+                    // FIXME
+                    if name.starts_with("asd_default_token") {
+                        row.push("Asd".into());
+                    } else {
+                        row.push("Unknown".into());
+                    }
+
+                    let st = fname.metadata().unwrap();
+                    let modified = DateTime::<Utc>::from(st.modified().unwrap());
+                    let modified = format!("{}", modified);
+                    row.push(modified);
+                } else {
+                    row.push("INVALID".to_string());
+                    let origin = format!("{}", DateTime::<Utc>::from(UNIX_EPOCH));
+                    row.push(origin);
+                }
+                builder.push_record(row);
+            }
+        }
+        let table = builder.build().with(Style::rounded()).to_string();
+        let table = format!("Listing all tokens:\n{}", table);
+        Ok(table)
     }
 }
