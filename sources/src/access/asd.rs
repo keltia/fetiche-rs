@@ -129,7 +129,7 @@ impl Asd {
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("asd::load");
 
-        self.site = site.name.clone().unwrap();
+        self.site = site.name.clone();
         self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {

@@ -158,7 +158,7 @@ impl Flightaware {
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("flightaware::load");
 
-        self.name = site.name.as_ref().unwrap().to_owned();
+        self.name = site.name.clone();
         self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
