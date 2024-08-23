@@ -20,10 +20,7 @@ use tracing::trace;
 
 use fetiche_formats::Format;
 
-use crate::{
-    aeroscope::Aeroscope, asd::Asd, flightaware::Flightaware, opensky::Opensky, safesky::Safesky,
-    Auth, Capability, Routes, Streamable,
-};
+use crate::{Aeroscope, Asd, Auth, Capability, Flightaware, Opensky, Routes, Safesky, Streamable};
 use crate::{Fetchable, Sources};
 
 /// Describe what a site is, its capabilities, access methods and authentication method.
