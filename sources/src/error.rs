@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// Custom error type for tokens, allow us to differentiate between errors.
 ///
-#[derive(Debug, PartialEq, Error)]
+#[derive(Debug, Error)]
 pub enum AuthError {
     #[error("No API Key")]
     NoAPIKey,
