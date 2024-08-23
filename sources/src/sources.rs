@@ -5,36 +5,79 @@
 
 use std::collections::btree_map::{IntoValues, Iter, IterMut, Keys, Values, ValuesMut};
 use std::collections::BTreeMap;
-use std::ffi::OsStr;
 use std::fs;
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
-use std::time::UNIX_EPOCH;
 
-use chrono::{DateTime, Utc};
-use directories::BaseDirs;
-use eyre::{eyre, Result};
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tabled::builder::Builder;
 use tabled::settings::Style;
-use tracing::{debug, error, trace};
+use tracing::debug;
 
-#[cfg(unix)]
-use crate::BASEDIR;
-use crate::{Auth, Site, CONFIG, CVERSION, TOKEN_BASE};
+use crate::{Auth, Site, CONFIG};
 
-use fetiche_common::{makepath, IntoConfig, Versioned};
+use fetiche_common::{makepath, ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
 
 /// List of sources, this is the only exposed struct from here.
 ///
 #[into_configfile(version = 4, filename = "sources.hcl")]
 #[derive(Clone, Debug, Default, Deserialize)]
+pub struct SourcesConfig {
+    site: BTreeMap<String, Site>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
 pub struct Sources {
     site: BTreeMap<String, Site>,
 }
 
+/// Initialise a `Source` from a `BTreeMap`
+///
+impl From<BTreeMap<String, Site>> for Sources {
+    fn from(value: BTreeMap<String, Site>) -> Self {
+        dbg!(&value);
+        Sources {
+            site: value.clone(),
+        }
+    }
+}
+
+/// Initialise a `Source` from a `BTreeMap`
+///
+impl From<Vec<(String, Site)>> for Sources {
+    fn from(value: Vec<(String, Site)>) -> Self {
+        dbg!(&value);
+        let mut sites = BTreeMap::<String, Site>::new();
+        value.iter().for_each(|(n, s)| {
+            sites.insert(n.clone(), s.clone());
+        });
+        Sources { site: sites }
+    }
+}
+
 impl Sources {
+    #[tracing::instrument]
+    pub fn load() -> Result<Self> {
+        let src_file = ConfigFile::<SourcesConfig>::load(Some("sources.hcl"))?;
+        let src = src_file.inner();
+
+        let all = src
+            .site
+            .iter()
+            .map(|(n, s)| {
+                let mut site = s.clone();
+
+                site.name = n.to_string();
+                site.token_base = src_file.root();
+                (n.to_string(), site)
+            })
+            .collect::<Vec<_>>();
+        let s = Sources::from(all);
+        Ok(s)
+    }
+
     /// Install default files
     ///
     #[tracing::instrument]
@@ -96,103 +139,6 @@ impl Sources {
 
         let table = builder.build().with(Style::rounded()).to_string();
         let table = format!("Listing all sources:\n{table}");
-        Ok(table)
-    }
-}
-
-// Token management
-//
-impl Sources {
-    pub fn config_path() -> PathBuf {
-        PathBuf::from("/")
-    }
-    /// Returns the path of the directory storing tokens
-    ///
-    pub fn token_path() -> PathBuf {
-        Self::config_path().join(TOKEN_BASE)
-    }
-
-    /// Return the content of named token
-    ///
-    #[tracing::instrument]
-    pub fn get_token(name: &str) -> Result<String> {
-        let t = Self::token_path().join(name);
-        trace!("get_token: {t:?}");
-        if t.exists() {
-            Ok(fs::read_to_string(t)?)
-        } else {
-            Err(eyre!("{:?}: No such file", t))
-        }
-    }
-
-    /// Store (overwrite) named token
-    ///
-    #[tracing::instrument]
-    pub fn store_token(name: &str, data: &str) -> Result<()> {
-        let p = Self::token_path();
-
-        // Check token cache
-        //
-        if !p.exists() {
-            // Create it
-            //
-            trace!("create token store: {p:?}");
-
-            fs::create_dir_all(p)?
-        }
-        let t = Self::token_path().join(name);
-        trace!("store_token: {t:?}");
-        Ok(fs::write(t, data)?)
-    }
-
-    /// Purge expired token
-    ///
-    #[tracing::instrument]
-    pub fn purge_token(name: &str) -> Result<()> {
-        trace!("purge expired token");
-        let p = Self::token_path().join(name);
-        Ok(fs::remove_file(p)?)
-    }
-
-    /// List tokens
-    ///
-    /// NOTE: we do not show data from each token (like expiration, etc.) because at this point
-    ///       we do not know which kind of token each one is.
-    ///
-    #[tracing::instrument]
-    pub fn list_tokens(&self) -> Result<String> {
-        trace!("listing tokens");
-
-        let header = vec!["Path", "Created at"];
-
-        let mut builder = Builder::default();
-        builder.push_record(header);
-
-        let p = Self::token_path();
-        if let Ok(dir) = fs::read_dir(p) {
-            for fname in dir {
-                let mut row = vec![];
-
-                if let Ok(fname) = fname {
-                    // Using strings is easier
-                    //
-                    let name = format!("{}", fname.file_name().to_string_lossy());
-                    row.push(name.clone());
-
-                    let st = fname.metadata().unwrap();
-                    let modified = DateTime::<Utc>::from(st.modified().unwrap());
-                    let modified = format!("{}", modified);
-                    row.push(modified);
-                } else {
-                    row.push("INVALID".to_string());
-                    let origin = format!("{}", DateTime::<Utc>::from(UNIX_EPOCH));
-                    row.push(origin);
-                }
-                builder.push_record(row);
-            }
-        }
-        let table = builder.build().with(Style::rounded()).to_string();
-        let table = format!("Listing all tokens:\n{}", table);
         Ok(table)
     }
 }
@@ -353,26 +299,14 @@ impl<'a> IntoIterator for &'a Sources {
     }
 }
 
-/// Initialise a `Source` from a `BTreeMap`
-///
-impl From<BTreeMap<String, Site>> for Sources {
-    fn from(value: BTreeMap<String, Site>) -> Self {
-        Sources {
-            version: CVERSION,
-            site: value.clone(),
-            filename: CONFIG.to_string(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::env::temp_dir;
 
-    use eyre::bail;
-    use tracing::debug;
-
     use crate::DataType;
+    use eyre::bail;
+    use fetiche_common::ConfigFile;
+    use tracing::debug;
 
     use super::*;
 
@@ -381,10 +315,10 @@ mod tests {
         let cn: PathBuf = makepath!("src", "sources.hcl");
         assert!(cn.try_exists().is_ok());
 
-        let cfg = Sources::load(&Some(cn));
-        assert!(cfg.is_ok());
+        let cfile = ConfigFile::<Sources>::load(Some(&cn.to_string_lossy().to_string()));
+        assert!(cfile.is_ok());
 
-        let cfg = cfg.unwrap();
+        let cfg = cfile.unwrap().inner();
         assert!(!cfg.is_empty());
         assert_eq!(5, cfg.len());
 
@@ -434,35 +368,11 @@ mod tests {
 
         match Sources::install_defaults(&tempdir) {
             Ok(()) => {
-                let f: PathBuf = makepath!(tempdir, CONFIG);
+                let f = tempdir.join(CONFIG);
                 assert!(f.exists());
             }
             _ => bail!("all failed"),
         }
         Ok(())
-    }
-
-    #[test]
-    #[cfg(unix)]
-    fn test_basedir() {
-        let p = Sources::config_path();
-        let ep: PathBuf = makepath!(env!("HOME"), BASEDIR, "drone-utils");
-        assert_eq!(ep, p);
-    }
-
-    #[test]
-    #[cfg(windows)]
-    fn test_basedir() {
-        let p = Sources::config_path();
-        let ep: PathBuf = makepath!(std::env::var("LOCALAPPDATA").unwrap(), "drone-utils");
-        assert_eq!(ep, p);
-    }
-
-    #[test]
-    #[cfg(unix)]
-    fn test_token_path() {
-        let p = Sources::token_path();
-        let ep: PathBuf = makepath!(env!("HOME"), BASEDIR, "drone-utils", "tokens");
-        assert_eq!(ep, p);
     }
 }
