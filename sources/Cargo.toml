@@ -57,6 +57,7 @@ tracing-log.workspace = true
 tracing-subscriber.workspace = true
 
 base64_light = "0.1"
+enum_dispatch = "0.3"
 mini-moka = "0.10"
 native-tls = "0.2"
 percent-encoding = "2.3"

@@ -6,11 +6,11 @@
 //! - fetching data (GET or POST, etc.).
 //!
 
-use std::fmt::{Debug, Display, Formatter};
-use std::sync::mpsc::Sender;
-
+use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use std::fmt::{Debug, Display, Formatter};
+use std::sync::mpsc::Sender;
 
 use fetiche_formats::Format;
 
@@ -34,6 +34,18 @@ mod sources;
 
 #[macro_use]
 mod macros;
+
+#[enum_dispatch(TokenType)]
+pub trait Expirable: Debug + Clone {
+    fn key(&self) -> String;
+    fn is_expired(&self) -> bool;
+}
+
+#[enum_dispatch]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TokenType {
+    AsdToken(AsdToken),
+}
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Ord, PartialOrd, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
