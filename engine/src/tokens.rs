@@ -6,10 +6,8 @@ use std::path::Path;
 use std::time::UNIX_EPOCH;
 
 use chrono::{DateTime, Utc};
-use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use fetiche_sources::{AsdToken, TokenType};
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tabled::builder::Builder;
 use tabled::settings::Style;
