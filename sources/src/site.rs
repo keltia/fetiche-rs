@@ -11,6 +11,7 @@
 //! History:
 
 use std::fmt::{Debug, Display, Formatter};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use eyre::{eyre, Result};
@@ -37,6 +38,9 @@ pub struct Site {
     /// Name of the site
     #[serde(skip_deserializing)]
     pub name: String,
+    /// Storage path for tokens
+    #[serde(skip_deserializing)]
+    pub token_base: PathBuf,
     /// Type of input
     pub format: String,
     /// Base URL (to avoid repeating)
