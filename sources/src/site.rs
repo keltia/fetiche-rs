@@ -35,7 +35,8 @@ pub struct Site {
     #[serde(rename = "type")]
     pub dtype: DataType,
     /// Name of the site
-    pub name: Option<String>,
+    #[serde(skip_deserializing)]
+    pub name: String,
     /// Type of input
     pub format: String,
     /// Base URL (to avoid repeating)
@@ -158,13 +159,6 @@ impl Site {
         }
     }
 
-    /// Add authentication info
-    ///
-    pub fn auth(&mut self, auth: Auth) -> &mut Self {
-        self.auth = Some(auth);
-        self
-    }
-
     /// Return whether a site is streamable
     ///
     pub fn is_streamable(&self) -> bool {
@@ -173,8 +167,8 @@ impl Site {
 
     /// Return the site name
     ///
-    pub fn name(&self) -> Option<String> {
-        self.name.as_ref().map(|name| name.to_string())
+    pub fn name(&self) -> String {
+        self.name.clone()
     }
 
     /// Return the site formats
