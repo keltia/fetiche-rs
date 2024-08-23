@@ -16,7 +16,9 @@
 //!
 //! [NDJSON]: https://en.wikipedia.org/wiki/NDJSON
 
+use std::fs;
 use std::ops::Add;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
@@ -98,6 +100,8 @@ pub struct Asd {
     pub site: String,
     /// Input formats
     pub format: Format,
+    /// Base directory for tokens
+    pub token_base: PathBuf,
     /// Username
     pub login: String,
     /// Password
@@ -116,18 +120,7 @@ impl Asd {
     #[tracing::instrument]
     pub fn new() -> Self {
         trace!("asd::new");
-
-        Asd {
-            features: vec![Capability::Fetch],
-            site: "NONE".to_string(),
-            format: Format::Asd,
-            login: "".to_owned(),
-            password: "".to_owned(),
-            base_url: "".to_owned(),
-            token: "".to_owned(),
-            get: "".to_owned(),
-            client: Client::new(),
-        }
+        Asd::default()
     }
 
     /// Load some data from the configuration file
@@ -139,6 +132,7 @@ impl Asd {
         self.site = site.name.clone();
         self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
+        self.token_base = site.token_base.clone();
         if let Some(auth) = &site.auth {
             match auth {
                 Auth::Token {
@@ -156,11 +150,61 @@ impl Asd {
         self.get = site.route("get").unwrap().to_owned();
         self
     }
+    /// Return the content of named token
+    ///
+    #[tracing::instrument]
+    pub fn retrieve(fname: &PathBuf) -> Result<String> {
+        trace!("get_token from {fname:?}");
+        if fname.exists() {
+            Ok(fs::read_to_string(fname)?)
+        } else {
+            Err(AuthError::Retrieval(fname.to_string_lossy().to_string())).into()
+        }
+    }
+
+    /// Store (overwrite) named token
+    ///
+    #[tracing::instrument]
+    pub fn store(fname: &PathBuf, data: &str) -> Result<()> {
+        let dir = fname.parent().unwrap();
+
+        // Check token cache
+        //
+        if !dir.exists() {
+            // Create it
+            //
+            trace!("create token store: {dir:?}");
+
+            fs::create_dir_all(dir)?
+        }
+        trace!("store_token: {fname:?}");
+        Ok(fs::write(fname, data)?)
+    }
+
+    /// Purge expired token
+    ///
+    #[tracing::instrument]
+    pub fn purge(fname: &PathBuf) -> Result<()> {
+        trace!("purge expired token in {fname:?}");
+
+        Ok(fs::remove_file(fname)?)
+    }
 }
 
 impl Default for Asd {
     fn default() -> Self {
-        Self::new()
+        Asd {
+            features: vec![Capability::Fetch],
+            site: "NONE".to_string(),
+            format: Format::Asd,
+            token_base: PathBuf::new(),
+            login: "".to_owned(),
+            password: "".to_owned(),
+            base_url: "".to_owned(),
+            token: "".to_owned(),
+            get: "".to_owned(),
+            client: Client::new(),
+        }
     }
 }
 
@@ -208,14 +252,19 @@ impl Fetchable for Asd {
         //
         // Use `<token>-<email>` to allow identity-based tokens
         //
+        let token_base = &self.token_base;
         let fname = format!("{}-{}", DEF_TOKEN, self.login);
-        let res = if let Ok(token) = Sources::get_token(&fname) {
+        let fname = token_base.join(fname);
+
+        let res = if let Ok(token) = Asd::retrieve(&fname) {
             // Load potential token data
             //
             trace!("load stored token");
-            let token: Token = match serde_json::from_str(&token) {
+            let token: AsdToken = match serde_json::from_str(&token) {
                 Ok(token) => token,
-                Err(_) => return Err(AuthError::Invalid(fname)),
+                Err(_) => {
+                    return Err(AuthError::Invalid(fname.to_string_lossy().to_string()).into())
+                }
             };
 
             // Check stored token expiration date
@@ -226,7 +275,7 @@ impl Fetchable for Asd {
                 // Should we delete it?
                 //
                 warn!("Stored token in {:?} has expired, deleting!", fname);
-                match Sources::purge_token(&fname) {
+                match Asd::purge(&fname) {
                     Ok(()) => (),
                     Err(e) => error!("Can not remove token: {}", e.to_string()),
                 };
@@ -248,15 +297,15 @@ impl Fetchable for Asd {
                 .text()
                 .map_err(|_| AuthError::Retrieval(cred.email.clone()))?;
 
-            let res: Token = serde_json::from_str(&resp)
-                .map_err(|_| AuthError::Retrieval(cred.email.clone()))?;
+            let res: AsdToken =
+                serde_json::from_str(&resp).map_err(|_| AuthError::Decoding(cred.email.clone()))?;
 
             trace!("token={}", res.token);
 
             // Write fetched token in `tokens` (unless it is during tests)
             //
             #[cfg(not(test))]
-            Sources::store_token(&fname, &resp).map_err(|e| AuthError::Storing(e.to_string()))?;
+            Asd::store(&fname, &resp).map_err(|e| AuthError::Storing(e.to_string()))?;
 
             res.token
         };
@@ -385,46 +434,6 @@ fn into_ndjson(resp: &str) -> Result<String> {
     Ok(res)
 }
 
-/// Access token derived from username/password
-///
-#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Token {
-    /// The actual token
-    token: String,
-    /// Don't ask
-    gjrt: String,
-    /// Expiration date
-    expired_at: i64,
-    roles: Vec<String>,
-    /// Fullname
-    name: String,
-    supervision: Option<String>,
-    lang: String,
-    status: String,
-    email: String,
-    airspace_admin: Option<String>,
-    homepage: String,
-}
-
-impl Default for Token {
-    fn default() -> Self {
-        Token {
-            token: "".to_owned(),
-            gjrt: "".to_owned(),
-            expired_at: 0i64,
-            roles: vec![],
-            name: "John Doe".to_owned(),
-            supervision: None,
-            lang: "en".to_owned(),
-            status: "".to_owned(),
-            email: "john.doe@example.net".to_owned(),
-            airspace_admin: None,
-            homepage: "https://example.net".to_owned(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use env_logger;
@@ -444,6 +453,7 @@ mod tests {
             features: vec![Capability::Fetch],
             site: "NONE".to_string(),
             format: Format::Asd,
+            token_base: PathBuf::from("/tmp/asd"),
             login: "user".to_string(),
             password: "pass".to_string(),
             token: "/api/security/login".to_string(),
@@ -457,7 +467,7 @@ mod tests {
     fn test_get_asd_token() {
         let server = MockServer::start();
         let now = Utc::now().timestamp() + 3600i64;
-        let token = Token {
+        let token = AsdToken {
             token: "FOOBAR".to_string(),
             expired_at: now,
             ..Default::default()
