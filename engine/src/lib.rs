@@ -1,6 +1,24 @@
 //! Library implementing common part of the transformations
 //!
-//! NOTE: this is a fork of the main `fetiche-engine` crate, simplified for a stand-alone CLI app.
+//! This is a *synchronous* engine.  It needs to be called in a synchronous context even if the
+//! program calling it is async.
+//!
+//! Example:
+//! ```no_run
+//! # async fn main() {
+//! use tracing::trace;
+//! use fetiche_engine::Engine;
+//!
+//! // Instantiate Engine
+//! //
+//! let engine = Engine::new();
+//! trace!("Engine initialised and running.");
+//!
+//! // For the moment the whole of Engine is sync so we need to block.
+//! //
+//! let res = tokio::task::spawn_blocking(move || println!("{}", engine.list_tokens())).await?;
+//! # }
+//! ```
 //!
 //! In the `Engine`, we run jobs.  `Jobs` are made from a list of `Task` and all tasks are put into
 //! a pipeline.  All tasks must be `Runnable` and the `RunnableDerive` proc-macro stitches everything
