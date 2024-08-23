@@ -35,7 +35,6 @@
 //!
 
 use std::collections::{BTreeMap, VecDeque};
-use std::convert::Into;
 use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
@@ -88,7 +87,6 @@ const ENGINE_VERSION: usize = 2;
 /// Main state data file, will be created in `basedir`.
 pub(crate) const STATE_FILE: &str = "state";
 
-
 /// Configuration file format
 #[into_configfile(version = 2, filename = "engine.hcl")]
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -124,7 +122,7 @@ pub struct Engine {
     pub sources: Arc<Sources>,
     /// Storage area for long-running jobs
     pub storage: Arc<Storage>,
-    /// SStorage are for auth tokens
+    /// Storage are for auth tokens
     pub tokens: Arc<TokenStorage>,
     /// Current state
     pub state: Arc<RwLock<State>>,
@@ -158,17 +156,21 @@ impl Engine {
         let root = ConfigFile::<EngineConfig>::load(Some(fname))?;
         let cfg = root.inner();
         let home = root.config_path();
+        trace!("Home is in {home:?}");
 
         // Bail out if different
         //
         if cfg.version() != ENGINE_VERSION {
             error!("Bad config version {}", cfg.version());
-            return Err(eyre!("Only v{} config file supported in {}", ENGINE_VERSION, fname));
+            return Err(eyre!(
+                "Only v{} config file supported in {}",
+                ENGINE_VERSION,
+                fname
+            ));
         }
 
         trace!("load sources");
-        let src_file = ConfigFile::<Sources>::load(Some("sources.hcl"))?;
-        let src = src_file.inner();
+        let src = Sources::load()?;
         info!("{} sources loaded", src.len());
 
         // Register storage areas
@@ -286,36 +288,6 @@ impl Engine {
         self.sync()
     }
 
-    /// Load authentication data and patch internal state
-    ///
-    #[tracing::instrument(skip(self))]
-    pub fn auth(&mut self, db: &BTreeMap<String, Auth>) -> &mut Self {
-        // Generate a sources list with credentials
-        //
-        let mut srcs = BTreeMap::<String, Site>::new();
-
-        trace!("Patching db with authentication data");
-        self.sources.values().for_each(|site: &Site| {
-            let mut s = site.clone();
-
-            // Skip if a source does not have any auth data
-            //
-            match site.name() {
-                Some(name) => {
-                    if let Some(auth) = db.get(&s.name().unwrap()) {
-                        s.auth(auth.clone());
-                        srcs.insert(name.clone(), s.clone());
-                    }
-                }
-                None => {}
-            }
-            let n = &s.name().unwrap();
-            srcs.insert(n.clone(), s.clone());
-        });
-        self.sources = Arc::new(Sources::from(srcs));
-        self
-    }
-
     /// Return an `Arc::clone` of the Engine sources
     ///
     pub fn sources(&self) -> Arc<Sources> {
@@ -355,7 +327,7 @@ impl Engine {
     /// Return a list of all currently available authentication tokens
     ///
     pub fn list_tokens(&self) -> Result<String> {
-        self.sources.list_tokens()
+        self.tokens.list()
     }
 
     /// Return Engine version (and internal modules)
