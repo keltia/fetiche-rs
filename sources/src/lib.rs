@@ -101,13 +101,6 @@ pub trait Streamable: Debug {
 
 /// Default configuration filename
 const CONFIG: &str = "sources.hcl";
-const CVERSION: usize = 4;
-
-#[cfg(unix)]
-const BASEDIR: &str = ".config";
-
-/// Relative path to `BASEDIR` for storing auth tokens
-const TOKEN_BASE: &str = "tokens";
 
 pub fn version() -> String {
     format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))

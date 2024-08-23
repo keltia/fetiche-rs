@@ -10,14 +10,13 @@ use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
 
 use eyre::Result;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tabled::builder::Builder;
 use tabled::settings::Style;
-use tracing::debug;
 
 use crate::{Auth, Site, CONFIG};
 
-use fetiche_common::{makepath, ConfigFile, IntoConfig, Versioned};
+use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
 
 /// List of sources, this is the only exposed struct from here.
@@ -90,7 +89,7 @@ impl Sources {
 
         // Copy content of `sources.hcl`  into place.
         //
-        let fname: PathBuf = makepath!(&dir, CONFIG);
+        let fname: PathBuf = dir.join(CONFIG);
         let content = include_str!("sources.hcl");
         fs::write(fname, content)
     }
