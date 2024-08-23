@@ -36,6 +36,7 @@ use fetiche_formats::Format;
 use fetiche_macros::into_configfile;
 use fetiche_sources::{Auth, Site, Sources};
 
+pub use error::*;
 pub use job::*;
 pub use parse::*;
 pub use state::*;
@@ -43,6 +44,7 @@ pub use storage::*;
 pub use task::*;
 pub use tokens::*;
 
+mod error;
 mod job;
 mod parse;
 mod state;
