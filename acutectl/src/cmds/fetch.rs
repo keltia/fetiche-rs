@@ -3,7 +3,6 @@
 
 use std::path::Path;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use eyre::{eyre, Result};
 use tracing::{info, trace};
@@ -22,7 +21,7 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
 
     let name = &fopts.site;
-    let srcs = Arc::clone(&engine.sources());
+    let srcs = engine.sources();
 
     let site = match Site::load(name, &srcs)? {
         Flow::Fetchable(s) => s,
