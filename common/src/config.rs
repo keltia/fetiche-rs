@@ -241,7 +241,7 @@ mod tests {
     ///
     #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
     #[serde(untagged)]
-    pub enum Auth {
+    enum Auth {
         /// Nothing special, no auth
         #[default]
         Anon,
