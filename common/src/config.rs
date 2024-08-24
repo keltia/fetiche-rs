@@ -104,7 +104,9 @@ where
     ///
     #[tracing::instrument(skip(self))]
     pub fn default_file(&self) -> String {
-        String::from(CONFIG)
+        let f = String::from(CONFIG);
+        trace!("Default filename: {f}");
+        f
     }
 
     /// Return our root
