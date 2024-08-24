@@ -8,7 +8,6 @@ use std::time::UNIX_EPOCH;
 use chrono::{DateTime, Utc};
 use eyre::Result;
 use fetiche_sources::{AsdToken, TokenType};
-use serde_json::json;
 use tabled::builder::Builder;
 use tabled::settings::Style;
 use tracing::trace;
