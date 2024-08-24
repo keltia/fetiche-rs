@@ -46,6 +46,7 @@ const CONFIG: &str = "config.hcl";
 /// Current version
 pub const CVERSION: usize = 1;
 
+#[allow(dead_code)]
 /// Configuration for the CLI tool, supposed to include parameters
 ///
 #[into_configfile]
