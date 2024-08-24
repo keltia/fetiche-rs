@@ -46,12 +46,12 @@ use std::thread::JoinHandle;
 use eyre::{eyre, Result};
 use serde::Deserialize;
 use strum::EnumString;
-use tracing::{debug, error, event, info, trace, warn, Level};
+use tracing::{debug, error, info, trace, warn};
 
 use fetiche_common::{ConfigFile, Container, IntoConfig, Versioned};
 use fetiche_formats::Format;
 use fetiche_macros::into_configfile;
-use fetiche_sources::{Auth, Site, Sources};
+use fetiche_sources::Sources;
 
 pub use error::*;
 pub use job::*;
