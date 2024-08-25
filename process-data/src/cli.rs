@@ -36,12 +36,16 @@ pub enum SubCommand {
     /// Display data about Acute sites, etc.
     Acute(AcuteOpts),
     /// Build the ACUTE env. from the ground up.
+    #[clap(visible_alias = "boot", visible_alias = "restart")]
     Bootstrap,
     /// Distance-related calculations.
+    #[clap(visible_alias = "dist", visible_alias = "d")]
     Distances(DistOpts),
     /// Export results as CSV.
+    #[clap(visible_alias = "exp", visible_alias = "e")]
     Export(ExportOpts),
     /// Remove macros and other stuff
+    #[clap(visible_alias = "clean", visible_alias = "cls")]
     Cleanup(SetupOpts),
     /// Prepare the database environment with some tables and macros.
     Setup(SetupOpts),
