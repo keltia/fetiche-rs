@@ -10,6 +10,7 @@
 //!
 
 use std::collections::HashMap;
+use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 use clickhouse::Client;
@@ -70,6 +71,17 @@ impl Context {
     #[tracing::instrument(skip(self))]
     pub fn finish(&self) -> Result<()> {
         Ok(())
+    }
+}
+
+impl Debug for Context {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Context")
+            .field("config", &self.config)
+            .field("dbh", &String::from("Clickhouse client"))
+            .field("wait", &self.wait)
+            .field("dry_run", &self.dry_run)
+            .finish()
     }
 }
 
