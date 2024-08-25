@@ -42,7 +42,7 @@ pub const VERSION: &str = crate_version!();
 pub const AUTHORS: &str = crate_authors!();
 
 /// Config filename
-const CONFIG: &str = "config.hcl";
+const CONFIG: &str = "acutectl.hcl";
 /// Current version
 pub const CVERSION: usize = 1;
 
