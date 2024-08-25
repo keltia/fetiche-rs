@@ -262,9 +262,7 @@ impl Fetchable for Asd {
             trace!("load stored token");
             let token: AsdToken = match serde_json::from_str(&token) {
                 Ok(token) => token,
-                Err(_) => {
-                    return Err(AuthError::Invalid(fname.to_string_lossy().to_string()).into())
-                }
+                Err(_) => return Err(AuthError::Invalid(fname.to_string_lossy().to_string())),
             };
 
             // Check stored token expiration date

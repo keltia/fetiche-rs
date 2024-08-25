@@ -27,7 +27,7 @@ impl TokenStorage {
     ///
     pub fn register(path: &str) -> Self {
         let mut db = BTreeMap::<String, TokenType>::new();
-        if let Ok(dir) = read_dir(&path) {
+        if let Ok(dir) = read_dir(path) {
             dir.into_iter().for_each(|entry| {
                 if let Ok(p) = entry {
                     let f = p.file_name().to_str().unwrap().to_string();

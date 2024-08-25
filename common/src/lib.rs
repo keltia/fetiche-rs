@@ -44,12 +44,10 @@ pub fn version() -> String {
 ///     pub name: String,
 /// }
 ///
-/// fn main() {
-///     let foo = Foo::new();
+/// let foo = Foo::new();
 ///
-///     assert_eq!(2, foo.version());
-///     println!("struct Foo version is {}", foo.version());
-/// }
+/// assert_eq!(2, foo.version());
+/// println!("struct Foo version is {}", foo.version());
 /// ```
 ///
 pub trait Versioned {
