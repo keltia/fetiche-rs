@@ -44,7 +44,7 @@ pub const AUTHORS: &str = crate_authors!();
 /// Config filename
 const CONFIG: &str = "acutectl.hcl";
 /// Current version
-pub const CVERSION: usize = 1;
+pub const CVERSION: usize = 2;
 
 #[allow(dead_code)]
 /// Configuration for the CLI tool, supposed to include parameters
