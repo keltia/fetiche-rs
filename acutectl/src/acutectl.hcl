@@ -1,5 +1,5 @@
 // Safety check
 //
-version = 1
+version = 2
 
 use_async = false
