@@ -30,6 +30,7 @@ struct Viewport {
     se: Position,
 }
 
+#[allow(dead_code)]
 /// Data to submit to get replay of journeys
 ///
 #[derive(Debug, Serialize)]

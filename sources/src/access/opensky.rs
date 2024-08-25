@@ -71,6 +71,7 @@ pub struct Opensky {
     pub duration: i32,
 }
 
+#[allow(dead_code)]
 /// This is the struct holding potential parameters to the API
 ///
 #[derive(Debug, Serialize)]
@@ -83,6 +84,7 @@ struct Param {
     pub serials: Option<Vec<u32>>,
 }
 
+#[allow(dead_code)]
 /// Credentials to submit to the site to get the token
 ///
 #[derive(Debug, Serialize)]
