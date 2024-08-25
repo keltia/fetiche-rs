@@ -141,7 +141,7 @@ impl Engine {
         //
         match Self::load(ENGINE_CONFIG) {
             Ok(e) => e,
-            Err(e) => panic!("Error: {}", e.to_string()),
+            Err(e) => panic!("Error: {e}"),
         }
     }
 
