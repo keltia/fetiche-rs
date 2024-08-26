@@ -6,14 +6,14 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
-use eyre::{eyre, Result};
+use eyre::Result;
 use tracing::trace;
 
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 use fetiche_sources::Filter;
 
-use crate::{Runnable, IO};
+use crate::{EngineStatus, Runnable, IO};
 
 /// The Read task
 ///
@@ -76,7 +76,7 @@ impl Read {
     pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Read::transform()");
         if self.path.is_none() || self.format == Format::None {
-            Err(eyre!("uninitialised read"))
+            Err(EngineStatus::UninitialisedRead.into())
         } else {
             let p = self.path.clone().unwrap();
             let fh = File::open(p)?;

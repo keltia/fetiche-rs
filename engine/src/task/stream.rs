@@ -5,13 +5,13 @@ use std::fmt::{Debug, Formatter};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use eyre::{eyre, Result};
+use eyre::Result;
 use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
 use fetiche_sources::{Filter, Flow, Site, Sources};
 
-use crate::{Runnable, IO};
+use crate::{EngineStatus, Runnable, IO};
 
 /// The Stream task
 ///
@@ -102,7 +102,7 @@ impl Stream {
                     site.stream(stdout, &token, &args).unwrap();
                 }
             }
-            None => return Err(eyre!("site not defined")),
+            None => return Err(EngineStatus::NoSiteDefined.into()),
         }
         Ok(())
     }

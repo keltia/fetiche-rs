@@ -11,7 +11,7 @@ use std::sync::mpsc::Sender;
 use datafusion::config::TableParquetOptions;
 use datafusion::dataframe::DataFrameWriteOptions;
 use datafusion::prelude::{CsvReadOptions, SessionContext};
-use eyre::{eyre, Result};
+use eyre::Result;
 use tempfile::Builder;
 use tokio::runtime::Runtime;
 use tracing::{info, trace};
@@ -20,7 +20,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{IO, Runnable};
+use crate::{EngineStatus, Runnable, IO};
 
 /// The Save task
 ///
@@ -104,7 +104,7 @@ impl Save {
                             write_parquet(&fname, p).await.unwrap();
                         });
                     }
-                    _ => return Err(eyre!("Error: only Asd is supported as input.")),
+                    _ => return Err(EngineStatus::OnlyAsdToParquet.into()),
                 },
                 _ => {
                     trace!("raw data");
@@ -121,7 +121,9 @@ impl Save {
 #[tracing::instrument]
 async fn write_parquet(from: &str, to: &str) -> Result<()> {
     let ctx = SessionContext::new();
-    let df = ctx.read_csv(from, CsvReadOptions::default().has_header(true)).await?;
+    let df = ctx
+        .read_csv(from, CsvReadOptions::default().has_header(true))
+        .await?;
     let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
 
     let mut options = TableParquetOptions::default();

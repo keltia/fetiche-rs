@@ -43,7 +43,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
-use eyre::{eyre, Result};
+use eyre::Result;
 use serde::Deserialize;
 use strum::EnumString;
 use tracing::{debug, error, info, trace, warn};
@@ -72,7 +72,7 @@ mod tokens;
 /// Engine signature
 ///
 pub fn version() -> String {
-    format!("{}/{}", "embedded-engine", env!("CARGO_PKG_VERSION"))
+    format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }
 
 /// Configuration filename
@@ -139,10 +139,10 @@ impl Engine {
 
         // Load storage areas from `engine.hcl`
         //
-        match Self::load(ENGINE_CONFIG) {
-            Ok(e) => e,
-            Err(e) => panic!("Error: {e}"),
-        }
+        Self::load(ENGINE_CONFIG).unwrap_or_else(|e| {
+            error!("Can not create Engine: {}", e.to_string());
+            panic!("Error: {}", e.to_string())
+        })
     }
 
     /// Load configuration file for the engine.
@@ -162,11 +162,7 @@ impl Engine {
         //
         if cfg.version() != ENGINE_VERSION {
             error!("Bad config version {}", cfg.version());
-            return Err(eyre!(
-                "Only v{} config file supported in {}",
-                ENGINE_VERSION,
-                fname
-            ));
+            return Err(EngineStatus::BadConfigVersion(cfg.version(), ENGINE_VERSION).into());
         }
 
         trace!("load sources");

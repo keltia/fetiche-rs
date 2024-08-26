@@ -4,13 +4,13 @@
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use eyre::{eyre, Result};
+use eyre::Result;
 use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
 use fetiche_sources::{AuthError, Filter, Flow, Site, Sources};
 
-use crate::{Runnable, IO};
+use crate::{EngineStatus, Runnable, IO};
 
 /// The Fetch task
 ///
@@ -36,7 +36,7 @@ impl Fetch {
             name: s.to_string(),
             args: String::new(),
             site: None,
-            srcs: Arc::clone(&srcs),
+            srcs: srcs.clone(),
         }
     }
     /// Copy the site's data
@@ -75,14 +75,14 @@ impl Fetch {
                     let token = match token {
                         Err(e) => match e {
                             AuthError::Expired => site.authenticate()?,
-                            _ => return Err(eyre!(e.to_string())),
+                            _ => return Err(EngineStatus::TokenError(e.to_string()).into()),
                         },
                         Ok(token) => token,
                     };
                     site.fetch(stdout, &token, &self.args)?;
                 }
             }
-            None => return Err(eyre!("no site defined")),
+            None => return Err(EngineStatus::NoSiteDefined.into()),
         }
         Ok(())
     }

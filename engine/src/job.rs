@@ -9,11 +9,11 @@ use std::collections::VecDeque;
 use std::io::Write;
 use std::sync::mpsc::channel;
 
-use eyre::{eyre, Result};
+use eyre::Result;
 use tracing::{info, trace};
 use tracing::{span, Level};
 
-use crate::{Runnable, IO};
+use crate::{EngineStatus, Runnable, IO};
 
 /// The engine is processing jobs, made of runnable tasks
 ///
@@ -97,10 +97,10 @@ impl Job {
         match first {
             Some(first) => {
                 if first.cap() != IO::Producer {
-                    return Err(eyre!("First task must be a producer"));
+                    return Err(EngineStatus::NoFirstProducer.into());
                 }
             }
-            None => return Err(eyre!("empty task list")),
+            None => return Err(EngineStatus::EmptyTaskList.into()),
         }
 
         // At this point, `self.list` is not empty so in the worst case, `first == last`.
@@ -113,11 +113,11 @@ impl Job {
             // Then we check the last one
             //
             if last.cap() != IO::Consumer && last.cap() != IO::Filter {
-                return Err(eyre!("last must be consumer or filter"));
+                return Err(EngineStatus::NoLastConsumer.into());
             }
         }
 
-        // Setup the pipeline
+        // Set the pipeline up
         //
         let (key, stdout) = channel::<String>();
 
