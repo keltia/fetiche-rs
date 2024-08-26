@@ -110,7 +110,7 @@ impl Store {
                 curr,
                 e.to_string()
             );
-            return Err(EngineStatus::CreateLink(path, curr));
+            return Err(EngineStatus::CreateLink(path, curr).into());
         }
 
         Ok(Store {
