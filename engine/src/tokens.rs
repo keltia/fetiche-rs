@@ -95,7 +95,6 @@ impl TokenStorage {
         builder.push_record(header);
 
         let p = self.path.as_str();
-        dbg!(&p);
         if let Ok(dir) = fs::read_dir(p) {
             for fname in dir {
                 let mut row = vec![];
