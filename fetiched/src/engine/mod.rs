@@ -254,7 +254,7 @@ impl Engine {
 
     /// Load authentication data
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn auth(&mut self, db: BTreeMap<String, Auth>) -> &mut Self {
         // Generate a sources list with credentials
         //
