@@ -22,7 +22,6 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     let name = &fopts.site;
     let srcs = engine.sources();
-    let srcs = engine.sources().clone();
     let site = Site::load(name, &engine.sources())?;
     match site {
         Flow::Fetchable(s) => s,
