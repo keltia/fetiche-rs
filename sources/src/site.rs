@@ -105,6 +105,16 @@ impl Flow {
             Flow::Streamable(s) => s.name(),
         }
     }
+
+    /// Return the format of the underlying object
+    ///
+    #[inline]
+    pub fn format(&self) -> Format {
+        match self {
+            Flow::Fetchable(s) => s.format(),
+            Flow::Streamable(s) => s.format(),
+        }
+    }
 }
 
 impl Site {
