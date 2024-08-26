@@ -36,7 +36,6 @@ fetiche-formats.workspace = true
 fetiche-macros.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
-home.workspace = true
 log.workspace = true
 nom.workspace = true
 progress.workspace = true
