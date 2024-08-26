@@ -9,19 +9,17 @@
 //!
 
 use std::fs;
-use std::fs::{create_dir, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
 use chrono::{Datelike, Timelike, Utc};
 use eyre::Result;
-use tracing::trace;
+use tracing::{error, trace};
 
-use fetiche_common::makepath;
 use fetiche_macros::RunnableDerive;
 
-use crate::{Runnable, IO};
+use crate::{EngineStatus, Runnable, IO};
 
 /// Struct describing the data for the `Store` task.
 ///
@@ -33,14 +31,14 @@ pub struct Store {
     /// IO Capability
     io: IO,
     /// Our storage directory
-    path: Option<PathBuf>,
+    path: PathBuf,
 }
 
 impl Default for Store {
     fn default() -> Self {
         Store {
             io: IO::Consumer,
-            path: None,
+            path: PathBuf::from(""),
         }
     }
 }
@@ -50,36 +48,75 @@ impl Store {
     /// path as path/ID
     ///
     #[tracing::instrument]
-    pub fn new(path: &str, id: usize) -> Self {
-        trace!("store::new({})", path);
+    pub fn new(path: &str, id: usize) -> Result<Self> {
+        trace!("store::new");
+
+        // Ensure path is defined.
+        //
+        if path.is_empty() {
+            error!("Store: path can not be empty");
+            return Err(EngineStatus::NoPathDefined.into());
+        }
 
         // We want to have `path/current` pointing to `path/ID`
         //
-        let id = format!("{id}");
-        let base = path;
-        let path: PathBuf = makepath!(path, &id);
+        let base = PathBuf::from(path);
+        let path = base.join(id.to_string());
+        trace!("Store path is {}", path.to_string_lossy().to_string());
 
-        // Base is PATH/ID/
+        // Base MUST be writable so we create BASE/ID
         //
-        create_dir(&path)
-            .unwrap_or_else(|_| panic!("can not create {} in {}", id, path.to_string_lossy()));
+        if !path.exists() {
+            trace!("Store: creating {}", path.to_string_lossy().to_string());
 
-        let curr: PathBuf = makepath!(&base, "current");
+            if let Err(e) = fs::create_dir_all(&path) {
+                let path = path.to_string_lossy().to_string();
+                error!("Store: can not create {}: {}", path, e.to_string());
+            }
+        }
+
+        let curr = base.join("current");
         if curr.exists() {
-            fs::remove_file(&curr).expect("can not remove current");
+            if let Err(e) = fs::remove_file(&curr) {
+                let curr = curr.to_string_lossy().to_string();
+
+                error!("Store: can not remove symlink {}: {}", curr, e.to_string());
+                return Err(EngineStatus::RemoveLink(curr).into());
+            }
         }
 
         #[cfg(windows)]
-        std::os::windows::fs::symlink_dir(&path, &curr).expect("can not symlink current");
+        if let Err(e) = std::os::windows::fs::symlink_dir(&path, &curr) {
+            let path = path.to_string_lossy().to_string();
+            let curr = curr.to_string_lossy().to_string();
+
+            error!(
+                "Store: can not create symlink to {} as {}: {}",
+                path,
+                curr,
+                e.to_string()
+            );
+            return Err(EngineStatus::CreateLink(path, curr).into());
+        }
 
         #[cfg(unix)]
-        std::os::unix::fs::symlink(&path, &curr).expect("can not symlink current");
+        if let Err(e) = std::os::unix::fs::symlink(&path, &curr) {
+            let path = path.to_string_lossy().to_string();
+            let curr = curr.to_string_lossy().to_string();
 
-        trace!("store::new({})", path.to_string_lossy());
-        Store {
-            io: IO::Consumer,
-            path: Some(path),
+            error!(
+                "Store: can not create symlink to {} as {}: {}",
+                path,
+                curr,
+                e.to_string()
+            );
+            return Err(EngineStatus::CreateLink(path, curr));
         }
+
+        Ok(Store {
+            io: IO::Consumer,
+            path,
+        })
     }
 
     /// Store and rotate every hour for now.  We open/create and write every packet without
@@ -91,7 +128,7 @@ impl Store {
 
         let tm = Utc::now();
 
-        // Extract parts to get to a filename
+        // Extract parts to create a filename
         //
         // Filename format is YYYYMMDD-HH0000
         //
@@ -100,16 +137,18 @@ impl Store {
 
         // Full path is BASE/ID/FNAME
         //
-        let path: PathBuf = [self.path.clone().unwrap(), PathBuf::from(fname)]
-            .iter()
-            .collect();
-        trace!("fname={}", path.to_string_lossy());
+        let base = self.path.clone();
+        let fname = base.join(fname);
+
+        trace!("final name={}", fname.to_string_lossy().to_string());
 
         // Append to it (and create if not yet present)
         //
-        let mut fh = OpenOptions::new().create(true).append(true).open(&path)?;
+        let mut fh = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(fname)?;
         write!(fh, "{}", data)?;
-
         Ok(())
     }
 }
