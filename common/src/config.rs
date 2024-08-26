@@ -7,7 +7,7 @@
 //! This encapsulates the configuration file, available with `.inner()` or `.inner_mut()`.
 //!
 
-use crate::{makepath, IntoConfig};
+use crate::IntoConfig;
 
 use directories::BaseDirs;
 use eyre::{eyre, Result};
@@ -75,7 +75,7 @@ where
                     .join(Path::new(tag));
 
                 #[cfg(windows)]
-                let base: PathBuf = makepath!(homedir, tag);
+                let base = PathBuf::from(homedir).join(tag);
 
                 base
             }
