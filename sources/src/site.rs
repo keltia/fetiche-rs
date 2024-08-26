@@ -257,15 +257,13 @@ mod tests {
 
     use rstest::rstest;
 
-    use fetiche_common::makepath;
-
     use super::*;
 
     fn set_default() -> Sources {
-        let cn: PathBuf = makepath!("src", "sources.hcl");
+        let cn = PathBuf::from("src").join("sources.hcl");
         assert!(cn.try_exists().is_ok());
 
-        let cfg = Sources::load(&Some(cn));
+        let cfg = Sources::load();
         dbg!(&cfg);
         assert!(cfg.is_ok());
 
