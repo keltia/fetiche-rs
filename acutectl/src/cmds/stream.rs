@@ -6,9 +6,9 @@ use eyre::{eyre, Result};
 use fetiche_engine::{Convert, Engine, Store, Stream, Tee};
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
-use tracing::{info, trace};
+use tracing::{error, info, trace};
 
-use crate::StreamOpts;
+use crate::{Status, StreamOpts};
 
 /// Actual fetching of data from a given site
 ///
@@ -19,10 +19,14 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
     check_args(sopts)?;
 
     let name = &sopts.site;
-    let srcs = Arc::clone(&engine.sources());
-    let site = match Site::load(name, &engine.sources())? {
+    let srcs = engine.sources().clone();
+    let site = Site::load(name, &engine.sources())?;
+    match site {
         Flow::Streamable(s) => s,
-        _ => return Err(eyre!("this site is not fetchable")),
+        _ => {
+            error!("Site {} is not Streamable!", site.name());
+            return Err(Status::SiteNotStreamable(site.name()).into());
+        }
     };
 
     let filter = filter_from_opts(sopts)?;
@@ -47,6 +51,8 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
 
     // If a conversion is requested, insert it
     //
+    // FIXME: DEPRECATED
+    //
     if let Some(_into) = &sopts.into {
         let mut convert = Convert::new();
         convert.from(site.format()).into(Format::Cat21);
@@ -61,7 +67,7 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
 
         // Store must be the last one, it is a pure consumer
         //
-        let store = Store::new(basedir, job.id);
+        let store = Store::new(basedir, job.id)?;
         job.add(Box::new(store));
 
         job.run(&mut stdout())?;

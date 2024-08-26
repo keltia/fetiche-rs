@@ -11,4 +11,8 @@ pub enum Status {
     MissingConfig(String),
     #[error("Error reading configuration({0})")]
     MissingConfigParameter(String),
+    #[error("Site {0} is not Fetchable!")]
+    SiteNotFetchable(String),
+    #[error("Site {0} is not Streamable!")]
+    SiteNotStreamable(String),
 }

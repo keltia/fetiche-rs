@@ -5,14 +5,14 @@ use std::path::Path;
 use std::str::FromStr;
 
 use eyre::{eyre, Result};
-use tracing::{info, trace};
+use tracing::{error, info, trace};
 
 use fetiche_common::{Container, DateOpts};
 use fetiche_engine::{Convert, Engine, Fetch, Save, Tee};
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 
-use crate::FetchOpts;
+use crate::{FetchOpts, Status};
 
 /// Actual fetching of data from a given site
 ///
@@ -22,16 +22,21 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     let name = &fopts.site;
     let srcs = engine.sources();
-
-    let site = match Site::load(name, &srcs)? {
+    let srcs = engine.sources().clone();
+    let site = Site::load(name, &engine.sources())?;
+    match site {
         Flow::Fetchable(s) => s,
-        _ => return Err(eyre!("this site is not fetchable")),
+        _ => {
+            error!("Site {} is not Fetchable!", site.name());
+            return Err(Status::SiteNotFetchable(site.name()).into());
+        }
     };
+
     let filter = filter_from_opts(fopts)?;
 
     info!("Fetching from network site {}", name);
 
-    // Full json array with all point
+    // Full json array with all points
     //
     let mut task = Fetch::new(name, srcs);
 
@@ -51,13 +56,13 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
 
     // If a conversion is requested, insert it
     //
+    // FIXME: DEPRECATED
+    //
     let input = if let Some(_into) = &fopts.into {
         let mut convert = Convert::new();
         convert.from(site.format()).into(Format::Cat21);
         job.add(Box::new(convert));
 
-        // FIXME: convert does only Cat21 for now
-        //
         Format::Cat21
     } else {
         site.format()
