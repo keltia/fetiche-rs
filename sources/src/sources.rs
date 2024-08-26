@@ -36,7 +36,6 @@ pub struct Sources {
 ///
 impl From<BTreeMap<String, Site>> for Sources {
     fn from(value: BTreeMap<String, Site>) -> Self {
-        dbg!(&value);
         Sources {
             site: value.clone(),
         }
@@ -47,7 +46,6 @@ impl From<BTreeMap<String, Site>> for Sources {
 ///
 impl From<Vec<(String, Site)>> for Sources {
     fn from(value: Vec<(String, Site)>) -> Self {
-        dbg!(&value);
         let mut sites = BTreeMap::<String, Site>::new();
         value.iter().for_each(|(n, s)| {
             sites.insert(n.clone(), s.clone());

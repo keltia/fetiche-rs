@@ -491,7 +491,6 @@ mod tests {
 
         let site = setup_asd(&server);
         let t = site.authenticate();
-        dbg!(&t);
         m.assert();
         assert!(t.is_ok());
         assert_eq!("FOOBAR", t.as_ref().unwrap());
