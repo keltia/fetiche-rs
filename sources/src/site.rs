@@ -95,6 +95,18 @@ pub enum Flow {
     Streamable(Box<dyn Streamable>),
 }
 
+impl Flow {
+    /// Return the name of the underlying object
+    ///
+    #[inline]
+    pub fn name(&self) -> String {
+        match self {
+            Flow::Fetchable(s) => s.name(),
+            Flow::Streamable(s) => s.name(),
+        }
+    }
+}
+
 impl Site {
     /// Basic `new()`
     ///
