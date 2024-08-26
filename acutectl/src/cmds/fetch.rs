@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::str::FromStr;
 
-use eyre::{eyre, Result};
+use eyre::Result;
 use tracing::{error, info, trace};
 
 use fetiche_common::{Container, DateOpts};
@@ -24,7 +24,7 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     let srcs = engine.sources();
     let site = Site::load(name, &engine.sources())?;
     match site {
-        Flow::Fetchable(s) => s,
+        Flow::Fetchable(ref s) => s,
         _ => {
             error!("Site {} is not Fetchable!", site.name());
             return Err(Status::SiteNotFetchable(site.name()).into());

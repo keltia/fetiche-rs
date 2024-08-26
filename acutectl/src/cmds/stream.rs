@@ -1,6 +1,5 @@
 use std::fs::File;
 use std::io::stdout;
-use std::sync::Arc;
 
 use eyre::{eyre, Result};
 use fetiche_engine::{Convert, Engine, Store, Stream, Tee};
@@ -22,7 +21,7 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
     let srcs = engine.sources().clone();
     let site = Site::load(name, &engine.sources())?;
     match site {
-        Flow::Streamable(s) => s,
+        Flow::Streamable(ref s) => s,
         _ => {
             error!("Site {} is not Streamable!", site.name());
             return Err(Status::SiteNotStreamable(site.name()).into());
