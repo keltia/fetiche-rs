@@ -211,9 +211,7 @@ async fn calculate_one_day_on_site(
     //
 
     let stats = if !ctx.dry_run {
-        work.run(&dbh.clone())
-            .await
-            .map_err(|e| eyre!("error: {}", e))?
+        work.run(&dbh.clone()).await?
     } else {
         trace!("dry run!");
         Stats::Planes(PlanesStats::default())
