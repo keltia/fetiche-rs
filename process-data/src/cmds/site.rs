@@ -50,7 +50,7 @@ pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
     "##;
     let site = match dbh.query(r).bind(site).fetch_one::<Site>().await {
         Ok(site) => site,
-        Err(e) => return Err(Status::UnknownSite(site.to_string()).into()),
+        Err(_) => return Err(Status::UnknownSite(site.to_string()).into()),
     };
     Ok(site)
 }

@@ -16,7 +16,8 @@ pub struct ExpEncOpts {
     pub output: Option<String>,
 }
 
-pub fn export_encounters_kml(ctx: &Context, opts: &ExpEncOpts) -> Result<()> {
+#[allow(dead_code)]
+pub fn export_encounters_kml(_ctx: &Context, _opts: &ExpEncOpts) -> Result<()> {
     /*    let dbh = ctx.db();
 
         let tm = dateparser::parse(&opts.date).unwrap();
@@ -46,6 +47,6 @@ pub fn export_encounters_kml(ctx: &Context, opts: &ExpEncOpts) -> Result<()> {
         }
 
 
-    */    Ok(())
+    */
+    Ok(())
 }
-
