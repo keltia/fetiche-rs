@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, info, trace};
 
 use fetiche_common::{close_logging, init_logging, ConfigFile, IntoConfig, Versioned};
-use fetiche_macros::{add_version, into_configfile};
+use fetiche_macros::into_configfile;
 
 use crate::cli::Opts;
 use crate::error::Status;
