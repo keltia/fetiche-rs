@@ -32,7 +32,6 @@ impl Nothing {
     #[inline]
     #[tracing::instrument]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
-        dbg!(&data);
         Ok(stdout.send(format!("{}|NOP", data))?)
     }
 }
@@ -61,7 +60,6 @@ impl Copy {
     #[inline]
     #[tracing::instrument]
     fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
-        dbg!(&data);
         Ok(stdout.send(data)?)
     }
 }
