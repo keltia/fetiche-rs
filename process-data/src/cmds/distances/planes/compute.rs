@@ -38,7 +38,7 @@ impl PlaneDistance {
         let time_from = Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
         let time_to = time_from.add(chrono::Duration::try_days(1).unwrap());
 
-        println!("From {} to {}.", time_from, time_to);
+        info!("From {} to {}.", time_from, time_to);
 
         // All flights for a given day in a table
         //
@@ -52,6 +52,7 @@ impl PlaneDistance {
         // $8 = distance in degrees (== dist(nm) /  60)   1 deg ~ 60 nm ~111.1 km
         //
         //
+        trace!("Get site_id for {}", site);
         let id_site = dbh
             .query("SELECT id FROM sites WHERE name = ?")
             .bind(&site)
@@ -66,7 +67,6 @@ impl PlaneDistance {
         dbh.query(&format!("DROP TABLE IF EXISTS today{tag}"))
             .execute()
             .await?;
-
         let r1 = format!(
             r##"
 CREATE TABLE today{tag}
