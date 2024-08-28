@@ -12,6 +12,7 @@ pyopensky = "*"
 geopy = "*"
 numpy = "*"
 py-hcl = "*"
+pandas = "*"
 
 [dev-packages]
 

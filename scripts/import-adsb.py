@@ -16,13 +16,15 @@ import argparse
 import logging
 import os
 import re
-import sys
 import tempfile
-import time
 from datetime import datetime
 from pathlib import Path
 from subprocess import run
 from typing import Any
+
+import pandas as pd
+import sys
+import time
 
 # Does the mapping between the site basename and its ID.  Not worth using SQL for that.
 #
@@ -46,12 +48,19 @@ sites = {
 #
 datalake = "/Users/acute"
 db = 'acute'
+chunk = 500_000
 convert_cmd = 'bdt'
+delete = False
 clickhouse = 'clickhouse-client'
 if sys.platform.startswith('darwin'):
     clickhouse = 'clickhouse client'
 
-delete = False
+# Import DB data from env.
+#
+host = os.getenv('CLICKHOUSE_HOST')
+user = os.getenv('CLICKHOUSE_USER')
+pwd = os.getenv('CLICKHOUSE_PASSWD')
+dbn = os.getenv('CLICKHOUSE_DB') or db
 
 
 def process_one(dir, fname, action):
@@ -112,24 +121,14 @@ def process_one(dir, fname, action):
                 print(f"Running {cmd}")
             fname = new
 
-    # Now do the import, `fname` is a csv file in any case
+    # Import data in chunk.
     #
-    host = os.getenv('CLICKHOUSE_HOST')
-    user = os.getenv('CLICKHOUSE_USER')
-    pwd = os.getenv('CLICKHOUSE_PASSWD')
-    dbn = os.getenv('CLICKHOUSE_DB') or db
+    for data in pd.read_csv(fname, chunksize=chunk):
+        logging.info(f"Processing {len(data)} lines.")
+        new = tempfile.NamedTemporaryFile(suffix='.csv').name
+        data.to_csv(new, index=False)
+        import_one_chunk(dir, new)
 
-    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {dbn} --password {pwd} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
-    cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
-    logging.info(f"cmd={cmd}")
-    if action:
-        ret = run(cmd, shell=True, capture_output=True)
-        if ret.returncode != 0:
-            logging.error("error", "(", fname, "): ", ret.stderr)
-            print("error: ", ret.stderr, file=sys.stderr)
-            return fname
-    else:
-        print(f"Running {cmd}")
     logging.info("insert done.")
 
     # Now we need to fix the `site` column.
@@ -157,6 +156,30 @@ def process_one(dir, fname, action):
     return fname
 
 
+def import_one_chunk(dir, fname):
+    """
+    Import one chunk of at most "chunk" lines into CH.
+
+    :param dir:
+    :param fname:
+    :return:
+    """
+    logging.info(f"Processing {fname}")
+
+    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {dbn} --password {pwd} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
+    cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
+    logging.info(f"cmd={cmd}")
+    if action:
+        ret = run(cmd, shell=True, capture_output=True)
+        if ret.returncode != 0:
+            logging.error("error", "(", fname, "): ", ret.stderr)
+            print("error: ", ret.stderr, file=sys.stderr)
+            return fname
+    else:
+        print(f"Running {cmd}")
+    logging.info("insert done.")
+
+
 def find_site(fname):
     """
     Return the site shortname deducted from the filename.
@@ -176,6 +199,7 @@ parser = argparse.ArgumentParser(
     prog='import-adsb',
     description='Import ADS-B data into CH.')
 
+parser.add_argument('--chunk-size', 'S', type=int, help='Import by batch of that many lines.')
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
 parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
 parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
@@ -205,6 +229,10 @@ else:
 
 if args.delete:
     delete = True
+
+if args.chunk_size is not None:
+    chunk = args.chunk_size
+    logging.info(f"Chunk size is {chunk} lines.")
 
 # Default interval between imports is 5s
 #
