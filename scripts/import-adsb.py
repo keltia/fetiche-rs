@@ -199,7 +199,7 @@ parser = argparse.ArgumentParser(
     prog='import-adsb',
     description='Import ADS-B data into CH.')
 
-parser.add_argument('--chunk-size', 'S', type=int, help='Import by batch of that many lines.')
+parser.add_argument('--chunk-size', '-S', type=int, help='Import by batch of that many lines.')
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
 parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
 parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
