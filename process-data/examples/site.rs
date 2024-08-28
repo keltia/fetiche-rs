@@ -1,6 +1,6 @@
 use eyre::Result;
 use fetiche_common::init_logging;
-use klickhouse::{Client, ClientOptions, Progress, QueryBuilder, RawRow, Row, UnitValue, Uuid};
+use klickhouse::{Client, ClientOptions, Progress, QueryBuilder, RawRow, Row, UnitValue, Uuid, Value};
 use tracing::{debug, trace};
 
 #[derive(Debug, Row)]
@@ -17,9 +17,18 @@ async fn main() -> Result<()> {
 
     init_logging("site", false)?;
 
-    let client = Client::connect(endpoint, ClientOptions { username: user, password: pass, default_database: name }).await?;
+    let client = Client::connect(
+        endpoint,
+        ClientOptions {
+            username: user,
+            password: pass,
+            default_database: name,
+        },
+    )
+        .await?;
 
     // Retrieve and display query progress events
+    //
     let mut progress = client.subscribe_progress();
     let progress_task = tokio::task::spawn(async move {
         let mut current_query = Uuid::nil();
@@ -41,15 +50,15 @@ async fn main() -> Result<()> {
         }
     });
 
-
     let site = "AUS";
     let q = QueryBuilder::new("SELECT id FROM sites WHERE name = $1;").arg(site);
 
     trace!("Get site_id for {}", site);
-    let id_site = client
-        .query_one::<UnitValue<u32>>(q)
-        .await?;
-    debug!("site_id for {site} is {}", id_site.0);
+    let mut id_site = client.query_one::<RawRow>(q).await?;
+    dbg!(&id_site);
+    let id_site: i32 = id_site.get(0);
+    dbg!(&id_site);
+    debug!("site_id for {site} is {:?}", id_site);
 
     drop(client);
     progress_task.await?;

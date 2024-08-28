@@ -53,6 +53,7 @@ tracing-tree.workspace = true
 
 clap_complete = "4.5"
 clickhouse = { version = "0.12", features = ["time", "watch", "inserter"] }
+klickhouse = { version = "0.13", features = ["derive", "geo-types", "serde"] }
 derive_builder = "0.20"
 duckdb = { version = "1.0", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"], optional = true }
 futures = "0.3"
