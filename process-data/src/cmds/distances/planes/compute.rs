@@ -9,7 +9,7 @@ use clickhouse::{Client, Row};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration, Instant};
-use tracing::{debug, info, trace};
+use tracing::{debug, error, info, trace};
 
 use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, ONE_DEG};
 
@@ -55,10 +55,11 @@ impl PlaneDistance {
         trace!("Get site_id for {}", site);
         let id_site = dbh
             .query("SELECT id FROM sites WHERE name = ?")
-            .bind(&site)
+            .bind(&site.name)
             .fetch_one::<u32>()
             .await?;
-        debug!("site_id for {site} is {id_site}");
+
+        trace!("site_id for {site} is {id_site}");
 
         let day_name = self.date.format("%Y%m%d").to_string();
         let tag = format!("_{site}_{day_name}");
@@ -468,7 +469,7 @@ impl Calculate for PlaneDistance {
     /// XXX Should we keep the interactive display or not.  When running parallel runs it messes
     /// up the output.
     ///
-    #[tracing::instrument(skip(dbh))]
+    #[tracing::instrument(skip(self, dbh))]
     async fn run(&self, dbh: &Client) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
         let bar = ml_progress::progress!(
