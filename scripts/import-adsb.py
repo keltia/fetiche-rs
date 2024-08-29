@@ -149,7 +149,7 @@ def process_one(dir_path, fname, action):
             import_one_chunk(root, f)
             time.sleep(2)
 
-    logging.info("insert from {tmpdir} done.")
+    logging.info(f"insert from {tmpdir} done.")
 
     # Cleanup
     #
