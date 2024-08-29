@@ -9,7 +9,7 @@ all parquets files in the tree.
 XXX this is specific to the macOS version of the client, invoked as `clickhouse client` and not
 `clickhouse-client` or `clickhouse-local` like in the other versions.
 
-XXX You must have `bdt(1)`  somewhere in the `PATH`
+XXX You must have `bdt(1)` and `qsv(1)` somewhere in the `PATH`
 """
 
 import argparse
@@ -22,9 +22,9 @@ from pathlib import Path
 from subprocess import run
 from typing import Any
 
-import pandas as pd
 import sys
 import time
+from anyio import sleep
 
 # Does the mapping between the site basename and its ID.  Not worth using SQL for that.
 #
@@ -63,11 +63,11 @@ pwd = os.getenv('CLICKHOUSE_PASSWD')
 dbn = os.getenv('CLICKHOUSE_DB') or db
 
 
-def process_one(dir, fname, action):
+def process_one(dir_path, fname, action):
     """
     If given a parquet file, convert it into csv and import it.
 
-    :param dir directory part of the file path.
+    :param dir_path directory part of the file path.
     :param fname: filename.
     :param action: do we do something or just print?
     :return: converted filename.
@@ -103,11 +103,11 @@ def process_one(dir, fname, action):
     if ext == '.parquet':
         logging.info(f"found parquet file {fname}")
         csv = Path(fname).with_suffix('.csv')
-        if os.path.exists(os.path.join(dir, csv)):
+        if os.path.exists(os.path.join(dir_path, csv)):
             logging.warning(f"Warning: both parquet & csv exist for {fname}, ignoring parquet.")
             fname = csv
         else:
-            full = os.path.join(dir, fname)
+            full = os.path.join(dir_path, fname)
             new = tempfile.NamedTemporaryFile(suffix='.csv').name
             cmd = f"{convert_cmd} convert -s {full} {new}"
             logging.info(f"{cmd}")
@@ -121,13 +121,33 @@ def process_one(dir, fname, action):
                 print(f"Running {cmd}")
             fname = new
 
+    # Split file into chunks
+    #
+    tmpdir = get_site_prefix(fname)
+
+    cmd = f"qsv split -s {chunk} {tmpdir} {fname}"
+    ret = run(cmd, shell=True, capture_output=True)
+    if ret.returncode != 0:
+        logging.error("error", "(", fname, "): ", ret.stderr)
+        print("error: ", ret.stderr, file=sys.stderr)
+        return fname
+
+    # All files in tmpdir are CSV splitted from main
+    #
     # Import data in chunk.
     #
-    for data in pd.read_csv(fname, chunksize=chunk):
-        logging.info(f"Processing {len(data)} lines.")
-        new = tempfile.NamedTemporaryFile(suffix='.csv').name
-        data.to_csv(new, index=False)
-        import_one_chunk(dir, new)
+    for root, dirs, files in os.walk(tmpdir, topdown=True):
+        logging.info(f"into {root} for split files")
+
+        # Now do stuff, look at parquet/csv only
+        #
+        for f in files:
+            if Path(f).suffix != '.csv':
+                logging.warning(f"{f} ignored.")
+                continue
+            logging.info(f"Processing {f} from {root}")
+            import_one_chunk(root, f)
+            sleep(2.)
 
     logging.info("insert done.")
 
@@ -156,18 +176,18 @@ def process_one(dir, fname, action):
     return fname
 
 
-def import_one_chunk(dir, fname):
+def import_one_chunk(dir_path, fname):
     """
     Import one chunk of at most "chunk" lines into CH.
 
-    :param dir:
+    :param dir_path:
     :param fname:
     :return:
     """
     logging.info(f"Processing {fname}")
 
     ch_cmd = f"{clickhouse} -h {host} -u {user} -d {dbn} --password {pwd} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
-    cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
+    cmd = f"/bin/cat {os.path.join(dir_path, fname)} | {ch_cmd}"
     logging.info(f"cmd={cmd}")
     if action:
         ret = run(cmd, shell=True, capture_output=True)
@@ -193,6 +213,21 @@ def find_site(fname):
         return fc
     site: str | Any = fc.group('site')
     return sites[site]
+
+
+def get_site_prefix(fname):
+    """
+    Return the site name.
+
+    :param fname:
+    :return:
+    """
+    name = Path(fname).name
+    fc = re.search(r'^(?P<site>.*?)_(?P<year>\d+)-(?P<month>\d+)-(\d+).', name)
+    if fc is None:
+        return fc
+    site: str | Any = fc.group('site')
+    return site
 
 
 parser = argparse.ArgumentParser(
