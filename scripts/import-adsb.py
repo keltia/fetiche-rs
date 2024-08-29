@@ -159,7 +159,7 @@ def process_one(dir_path, fname, action):
         logging.error("error", "(", fname, "): ", ret.stderr)
         print("error: ", ret.stderr, file=sys.stderr)
         return fname
-    logging.info("Removing {tmpdir}.")
+    logging.info(f"Removing {tmpdir}.")
 
     # Now we need to fix the `site` column.
     #
