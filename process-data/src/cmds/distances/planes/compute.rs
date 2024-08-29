@@ -2,16 +2,23 @@
 //!
 //! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
 //!
-use std::ops::Add;
-
+use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, ONE_DEG};
 use chrono::{Datelike, Days, TimeZone, Utc};
 use clickhouse::{Client, Row};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use std::ops::Add;
 use tokio::time::{sleep, Duration, Instant};
+use tracing::field::debug;
 use tracing::{debug, error, info, trace};
 
-use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, ONE_DEG};
+#[derive(Debug, Default, Deserialize)]
+struct Timings {
+    select_planes: u128,
+    select_drones: u128,
+    find_close: u128,
+    select_encounters: u128,
+}
 
 impl PlaneDistance {
     // -- private
@@ -64,14 +71,11 @@ impl PlaneDistance {
         let day_name = self.date.format("%Y%m%d").to_string();
         let tag = format!("_{site}_{day_name}");
 
-        trace!("Removing old table today{tag}.");
-        dbh.query(&format!("DROP TABLE IF EXISTS today{tag}"))
-            .execute()
-            .await?;
         let r1 = format!(
             r##"
-CREATE TABLE today{tag}
-ENGINE = Memory
+CREATE OR REPLACE TABLE today{tag}
+ENGINE = MergeTree
+PRIMARY KEY (site, time)
 AS SELECT
   site,
   time,
@@ -96,6 +100,7 @@ ORDER BY time
         //
         debug!("ellipse=(center={},{},{},{})", lon, lat, dist, dist);
 
+        let tm = Instant::now();
         dbh.query(&r1)
             .bind(id_site)
             .bind(time_from)
@@ -106,6 +111,8 @@ ORDER BY time
             .bind(dist)
             .execute()
             .await?;
+        let tm = (Instant::now() - tm).as_millis();
+        trace!("CREATE TABLE today{tag} took {tm} ms");
 
         // Check how many
         //
@@ -167,7 +174,7 @@ SELECT
     home_distance_3d
 FROM drones
 WHERE
-  CAST(toUnixTimestamp(timestamp) AS TIMESTAMP) BETWEEN timestamp(?) AND timestamp(?)
+  timestamp BETWEEN timestamp(?) AND timestamp(?)
   AND
   pointInEllipses(longitude,latitude, ?, ?, ?, ?)
 ORDER BY
@@ -204,8 +211,6 @@ ORDER BY
         let tag = format!("_{site}_{day_name}");
 
         trace!("Removing old table today_close{tag}.");
-        let r = format!("DROP TABLE IF EXISTS today_close{tag}");
-        dbh.query(&r).execute().await?;
 
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
         // altitude diff is less than 3 nm. (parameter is `separation`).
@@ -215,8 +220,9 @@ ORDER BY
         //
         let r = format!(
             r##"
-CREATE TABLE today_close{tag}
-ENGINE = Memory AS
+CREATE OR REPLACE TABLE today_close{tag}
+ENGINE = Memory
+AS (
 SELECT
   c.journey,
   c.ident AS drone_id,
@@ -242,13 +248,14 @@ FROM
   today{tag} AS t,
   candidates{tag} AS c
 WHERE
-  pt BETWEEN CAST(toUnixTimestamp(c.time - 2) AS TIMESTAMP) AND CAST(toUnixTimestamp(c.time + 2) AS TIMESTAMP) AND
+  pt BETWEEN (time - 2) AND (time + 2) AND
   dist2d <= ? AND
   diff_alt < ?
-ORDER BY
-  (c.time, c.journey)
+)
     "##
         );
+
+        debug!("q={r}");
 
         let proximity = self.separation;
         dbh.query(&r)
@@ -477,15 +484,18 @@ impl Calculate for PlaneDistance {
             "[" percent "] " message_fill "(" eta_hms ")"
         )?;
 
-        let start = Instant::now();
         // Create our stat struct
         //
         let stats = &mut PlanesStats::new(self.date, self.distance, self.separation);
+        let mut timings = Timings::default();
 
         // Create table `today` with all identified plane points with the specified range
         //
         bar.message("Select planes.");
+        let start = Instant::now();
         let c_planes = self.select_planes(dbh).await?;
+        timings.select_planes = (Instant::now() - start).as_millis();
+
         bar.inc(1);
 
         if c_planes == 0 {
@@ -501,7 +511,9 @@ impl Calculate for PlaneDistance {
         // Create table `candidates` with all designated drone points
         //
         bar.message("Select drones.");
+        let start = Instant::now();
         let c_drones = self.select_drones(dbh).await?;
+        timings.select_drones = (Instant::now() - start).as_millis();
         bar.inc(1);
 
         if c_drones == 0 {
@@ -517,7 +529,9 @@ impl Calculate for PlaneDistance {
         // Create table `today_close` with all designated drone points and airplanes in proximity
         //
         bar.message("Find close planes.");
+        let start = Instant::now();
         let c_potential = self.find_close(dbh).await?;
+        timings.find_close = (Instant::now() - start).as_millis();
         bar.inc(1);
 
         if c_potential == 0 {
@@ -533,7 +547,9 @@ impl Calculate for PlaneDistance {
         // Now we have the distance calculated.
         //
         bar.message("Find encounters.");
+        let start = Instant::now();
         let c_encounters = self.select_encounters(dbh).await?;
+        timings.select_encounters = (Instant::now() - start).as_millis();
         bar.inc(1);
 
         stats.time = (Instant::now() - start).as_millis();
@@ -549,6 +565,8 @@ impl Calculate for PlaneDistance {
         info!("Stats for {}\n{}", self.date, stats);
         bar.message("Done.");
         bar.finish();
+
+        dbg!(timings);
 
         Ok(Stats::Planes(stats.clone()))
     }
