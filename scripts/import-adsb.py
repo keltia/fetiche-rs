@@ -24,7 +24,6 @@ from typing import Any
 
 import sys
 import time
-from anyio import sleep
 
 # Does the mapping between the site basename and its ID.  Not worth using SQL for that.
 #
@@ -147,7 +146,7 @@ def process_one(dir_path, fname, action):
                 continue
             logging.info(f"Processing {f} from {root}")
             import_one_chunk(root, f)
-            sleep(2.)
+            time.sleep(2)
 
     logging.info("insert done.")
 
