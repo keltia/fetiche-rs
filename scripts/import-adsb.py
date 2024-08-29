@@ -122,8 +122,9 @@ def process_one(dir_path, fname, action):
 
     # Split file into chunks
     #
-    tmpdir = get_site_prefix(fname)
+    tmpdir = Path(fname).stem
 
+    logging.info(f"Creating {tmpdir} and splitting {fname} into it")
     cmd = f"qsv split -s {chunk} {tmpdir} {fname}"
     ret = run(cmd, shell=True, capture_output=True)
     if ret.returncode != 0:
@@ -131,7 +132,7 @@ def process_one(dir_path, fname, action):
         print("error: ", ret.stderr, file=sys.stderr)
         return fname
 
-    # All files in tmpdir are CSV splitted from main
+    # All files in tmpdir are CSV split from main
     #
     # Import data in chunk.
     #
@@ -148,7 +149,17 @@ def process_one(dir_path, fname, action):
             import_one_chunk(root, f)
             time.sleep(2)
 
-    logging.info("insert done.")
+    logging.info("insert from {tmpdir} done.")
+
+    # Cleanup
+    #
+    cmd = f"/bin/rm -rf {tmpdir}"
+    ret = run(cmd, shell=True, capture_output=True)
+    if ret.returncode != 0:
+        logging.error("error", "(", fname, "): ", ret.stderr)
+        print("error: ", ret.stderr, file=sys.stderr)
+        return fname
+    logging.info("Removing {tmpdir}.")
 
     # Now we need to fix the `site` column.
     #
@@ -212,21 +223,6 @@ def find_site(fname):
         return fc
     site: str | Any = fc.group('site')
     return sites[site]
-
-
-def get_site_prefix(fname):
-    """
-    Return the site name.
-
-    :param fname:
-    :return:
-    """
-    name = Path(fname).name
-    fc = re.search(r'^(?P<site>.*?)_(?P<year>\d+)-(?P<month>\d+)-(\d+).', name)
-    if fc is None:
-        return fc
-    site: str | Any = fc.group('site')
-    return site
 
 
 parser = argparse.ArgumentParser(
