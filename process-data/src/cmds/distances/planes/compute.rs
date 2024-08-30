@@ -247,8 +247,8 @@ SELECT
 FROM
   candidates{tag} AS c JOIN today{tag} AS t
 ON
-  toStartOfInterval(pt, toIntervalSecond(2)) = toStartOfInterval(c.time, toIntervalSecond(2)) OR
-  toStartOfInterval(pt, toIntervalSecond(2)) = toStartOfInterval(addSeconds(c.time, 2), toIntervalSecond(2))
+  toStartOfInterval(pt, toIntervalSecond(2)) = toStartOfInterval(c.timestamp, toIntervalSecond(2)) OR
+  toStartOfInterval(pt, toIntervalSecond(2)) = toStartOfInterval(addSeconds(c.timestamp, 2), toIntervalSecond(2))
 WHERE
   dist2d <= ? AND
   diff_alt < ?
