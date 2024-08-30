@@ -245,10 +245,11 @@ SELECT
   dist_3d(dlon, dlat, dalt, plon, plat, palt) AS dist_drone_plane,
   ceil(palt - dalt) AS diff_alt
 FROM
-  today{tag} AS t,
-  candidates{tag} AS c
+  candidates{tag} AS c JOIN today{tag} AS t
+ON
+  toStartOfInterval(toDateTime(pt), toIntervalSecond(2)) = toStartOfInterval(toDateTime(c.time), toIntervalSecond(2)) OR
+  toStartOfInterval(toDateTime(pt), toIntervalSecond(2)) = toStartOfInterval(addSeconds(toDateTime(c.time), 2), toIntervalSecond(2))
 WHERE
-  pt BETWEEN (time - 2) AND (time + 2) AND
   dist2d <= ? AND
   diff_alt < ?
 )
