@@ -437,13 +437,10 @@ WHERE
       any_value(CEIL(ABS(palt - dalt))) AS distance_vert_m,
       any_value(CEIL(hdist2d)) as distance_home_m,
       CEIL(dist_drone_plane) AS distance_slant_m
-    FROM today_close{tag} AS tc, ids{tag} AS id
+    FROM today_close{tag} AS tc JOIN ids{tag} AS id
+      ON id.journey = tc.journey AND id.callsign = tc.callsign
     WHERE
       dist_drone_plane < 1852
-    AND
-      id.journey = tc.journey
-    AND
-      id.callsign = tc.callsign
     GROUP BY ALL
 "##
         );
