@@ -3,8 +3,9 @@
 
 use std::path::Path;
 use std::str::FromStr;
-
+use std::time::Duration;
 use eyre::Result;
+use indicatif::ProgressBar;
 use tracing::{error, info, trace};
 
 use fetiche_common::{Container, DateOpts};
@@ -98,9 +99,15 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     save.path(final_output);
     job.add(Box::new(save));
 
+    eprintln!("Fetching {final_output}");
+    let bar = ProgressBar::new_spinner();
+    bar.enable_steady_tick(Duration::from_millis(100));
+
     // Launch it now
     //
     job.run(&mut data)?;
+
+    bar.finish();
 
     // Remove job from engine and state
     //
