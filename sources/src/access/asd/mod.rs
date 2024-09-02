@@ -36,7 +36,7 @@ use fetiche_formats::Format;
 
 use crate::filter::Filter;
 use crate::site::Site;
-use crate::{http_post, Auth, AuthError, Capability, Fetchable};
+use crate::{http_post, Auth, AuthError, Capability, Fetchable, Expirable};
 
 #[cfg(feature = "json")]
 use serde_json::json;
@@ -267,9 +267,7 @@ impl Fetchable for Asd {
 
             // Check stored token expiration date
             //
-            let now: DateTime<Utc> = Utc::now();
-            let tok_time: DateTime<Utc> = Utc.timestamp_opt(token.expired_at, 0).unwrap();
-            if now > tok_time {
+            if token.is_expired()  {
                 // Should we delete it?
                 //
                 warn!("Stored token in {:?} has expired, deleting!", fname);
