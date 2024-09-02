@@ -54,6 +54,7 @@ tracing-tree.workspace = true
 cached = { version = "0.53", features = ["async", "async_tokio_rt_multi_thread"] }
 clap_complete = "4.5"
 clickhouse = { version = "0.12", features = ["time", "watch", "inserter"] }
+enum_dispatch = "0.3"
 klickhouse = { version = "0.13", features = ["derive", "geo-types", "serde"] }
 derive_builder = "0.20"
 duckdb = { version = "1.0", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"], optional = true }
