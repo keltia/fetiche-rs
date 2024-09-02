@@ -97,44 +97,48 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
 
     trace!("From {} to {}", begin, end);
 
+    // Let us generate the list we want:
+    //
+    // if there is only one site we want then
+    //     [(day0, site), (day1, site) .. (dayN, site)]
+    // otherwise we want for each day, all sites
+    //     [(day0, site0), (day0, site1) .. (day0, siteN), (day1, site0) ...]
+    //
+    // Basically zip together the two iterators, even if there is only one
+    //
+    let work_list: Vec<_> = dates.iter().map(|&day| async move {
+        match &opts.name {
+            Some(site) => {
+                let site = find_site(&ctx, site).await.unwrap();
+                let res = vec![(day, site)];
+                Ok(res)
+            }
+            None => {
+                let list = enumerate_sites(&ctx, day).await.unwrap();
+                let list: Vec<_> = list.iter().map(|&site| (day, site.clone())).collect();
+                Ok(list)
+            }
+        }
+    }).collect::<Vec<_>>();
+
+    let work_list = try_join_all(work_list).await?;
+    dbg!(&work_list);
+    let work_list: Vec<_> = work_list.iter().flatten().collect::<Vec<_>>();
+    dbg!(&work_list);
+
     // Gather all sites to run calculations on for every day.
     //
-    let stats = match &opts.name {
-        Some(site) => {
-            trace!("Calculate for site {site}");
-            let site = find_site(ctx, site).await?;
-            let day_stats = try_join_all(dates.iter().inspect(|&day| debug!("day = {day}")).map(
-                |&day| {
-                    let site = site.clone();
-                    async move {
-                        debug!("site = [{site:?}]");
-                        calculate_one_day_on_site(ctx, site, day, opts.distance, opts.separation)
-                            .await
-                    }
-                },
-            ))
-            .await
-            .map_err(|e| eyre!("error: {}", e))?;
+    let stats = work_list.iter().map(|(day, site)| {
+        trace!("Calculate for site {site} on day {day}");
+        let day = day.clone();
+        let site = site.clone();
 
-            debug!("days({dates:?}) stats={day_stats:?}");
-            day_stats
+        async move {
+            let stat = calculate_one_day_on_site(ctx, &site, &day, opts.distance, opts.separation).await.unwrap();
+            Ok(stat)
         }
-        None => {
-            trace!("Calculate for all valid sites.");
-            let day_stats =
-                try_join_all(dates.iter().inspect(|&day| debug!("day = {day}")).map(
-                    |&day| async move {
-                        calculate_one_day(ctx, day, opts.distance, opts.separation).await
-                    },
-                ))
-                .await
-                .map_err(|e| eyre!("error: {}", e))?;
-
-            let stats = day_stats.into_iter().flatten().collect::<Vec<_>>();
-            debug!("days({dates:?}) stats={stats:?}");
-            stats
-        }
-    };
+    });
+    let stats = try_join_all(stats).await?;
 
     // Gather all statistics
     //
@@ -167,9 +171,9 @@ async fn calculate_one_day(
             let site = site.clone();
 
             tokio::spawn(async move {
-                calculate_one_day_on_site(&ctx, site, day, distance, separation).await
+                calculate_one_day_on_site(&ctx, &site, &day, distance, separation).await
             })
-            .await?
+                .await?
         })
         .collect::<Vec<_>>();
 
@@ -185,14 +189,14 @@ async fn calculate_one_day(
 #[tracing::instrument(skip(ctx))]
 async fn calculate_one_day_on_site(
     ctx: &Context,
-    site: Site,
-    day: DateTime<Utc>,
+    site: &Site,
+    day: &DateTime<Utc>,
     distance: f64,
     separation: f64,
 ) -> Result<Stats> {
     let dbh = ctx.db();
 
-    let day = normalise_day(day)?;
+    let day = normalise_day(*day)?;
 
     let name = site.clone();
     let work = PlaneDistanceBuilder::default()
