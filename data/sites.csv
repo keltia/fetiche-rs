@@ -1,13 +1,13 @@
-id,name,basename,code,latitude,longitude,ref_altitude
-1,"EIH","Bretigny","8FW4H8XX+XX",48.6,2.35,89
-2,"CDG","Bretigny","8FX42H52+X2",49.01,2.55,119
-3,"LUX","Luxembourg","8FX8H5XX+XX",49.6,6.2,376
-4,"BRU","Brussels","9F26RC22+22",50.8,4.4,56
-5,"BEL","Belfast","9C6MMRX2+X2",54.7,-6.2,82
-6,"BDX","Bordeaux","8CPXR822+22",44.8,-0.7,49
-7,"LON","London","9C3X5WXX+XX",51.52,-0.05,6
-8,"CYP","Cyprus","8G7M575J+X2",35.16,33.28,3
-9,"BUC","Bucharest","8GP8H39X+XX",44.57,26.1,96
-10,"AUS","Vienna","8FWR3HXR+X2",48.10,16.59,183
-11,"ZUR","","8FVC9GXX+5M",47.397942,8.549208,530
-12,"PAP","","8G6JPF9G+C6",34.718522, 32.475510,5
+id,name,code,basename,latitude,longitude,ref_altitude
+1,"EIH","8FW4H8XX+XX","Bretigny",48.6,2.35,89
+2,"CDG","8FX42H52+X2","Bretigny",49.01,2.55,119
+3,"LUX","8FX8H5XX+XX","Luxembourg",49.6,6.2,376
+4,"BRU","9F26RC22+22","Brussels",50.8,4.4,56
+5,"BEL","9C6MMRX2+X2","Belfast",54.7,-6.2,82
+6,"BDX","8CPXR822+22","Bordeaux",44.8,-0.7,49
+7,"LON","9C3X5WXX+XX","London",51.52,-0.05,6
+8,"CYP","8G7M575J+X2","Cyprus",35.16,33.28,3
+9,"BUC","8GP8H39X+XX","Bucharest",44.57,26.1,96
+10,"AUS","8FWR3HXR+X2","Vienna",48.10,16.59,183
+11,"ZUR","8FVC9GXX+5M","",47.397942,8.549208,530
+12,"PAP","8G6JPF9G+C6","",34.718522,32.475510,5
