@@ -1,10 +1,12 @@
 use std::fmt::Debug;
+use enum_dispatch::enum_dispatch;
 
 use eyre::Result;
 use rand::Rng;
 
 /// This trait define an object that can be calculated
 ///
+#[enum_dispatch(Task)]
 pub trait Calculate: Debug {
     fn execute(&self) -> Stat;
 }
@@ -34,11 +36,18 @@ impl Batch {
         self
     }
 
-    pub fn run(&self) -> Vec<Stat> {
+    pub fn run(&mut self) -> Vec<Stat> {
         let res: Vec<Stat> = self.inner.iter().map(|e| e.execute()).collect();
         eprintln!("res={:?}", res);
         res
     }
+}
+
+#[enum_dispatch]
+#[derive(Debug)]
+pub enum Task {
+    Foo(usize),
+    Bar(f64),
 }
 
 #[derive(Debug)]
@@ -81,7 +90,7 @@ impl Calculate for Bar {
 
 
 fn main() -> Result<()> {
-    let c1 = Foo::new();
+    let c1 = Task::Foo::new();
     let c2 = Bar::new();
 
     let r1 = c1.execute();
@@ -90,9 +99,8 @@ fn main() -> Result<()> {
     dbg!(r1, r2);
 
     let b = Batch::new().add(Box::new(c1)).add(Box::new(c2));
+
+    let res: Vec<Stat> = b.run();
+    dbg!(&res);
     Ok(())
-
-    //let res: Vec<usize> = b.run();
-
-    //eprintln!("res={:?}", res.unwrap());
 }
