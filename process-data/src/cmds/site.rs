@@ -1,11 +1,11 @@
 //! Anything related to ACUTE site management
 //!
 
-use std::fmt::{Display, Formatter};
-
+use cached::proc_macro::cached;
 use chrono::{DateTime, Datelike, Utc};
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 use tracing::debug;
 
 use crate::config::Context;
@@ -40,6 +40,11 @@ impl Display for Site {
 /// Find a given site, id, location,, etc. frm database
 ///
 #[tracing::instrument(skip(ctx))]
+#[cached(
+    key = "String",
+    result = true,
+    convert = r#"{format!("{}", site)}"#,
+)]
 pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
     let dbh = ctx.db();
 
