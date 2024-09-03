@@ -4,6 +4,8 @@
 //! v2: added [Plus Code](https://plus.codes/)
 //! v3: added [GeoHash](https://en.wikipedia.org/wiki/Geohash)
 //!
+//! NOTE: no more history as data is now loaded from the `sites.csv` file.
+//!
 use std::collections::BTreeMap;
 use std::fs;
 
@@ -16,7 +18,7 @@ use tracing::trace;
 /// one degree is circumference of earth / 360°, convert into nautical miles
 const ONE_DEG_NM: f64 = (40_000. / 1.852) / 360.;
 
-/// Actual location
+/// Actual location (this is the same schema as `sites.csv`).
 ///
 #[derive(Clone, Debug, Deserialize)]
 pub struct Location {
@@ -101,31 +103,16 @@ impl BB {
     ///
     #[tracing::instrument]
     pub fn to_polygon(&self) -> Result<[(f64, f64); 4]> {
-        Ok(
-            [
-                (self.min_lon, self.min_lat),
-                (self.min_lon, self.max_lat),
-                (self.max_lon, self.max_lat),
-                (self.max_lon, self.min_lat),
-            ]
-        )
+        Ok([
+            (self.min_lon, self.min_lat),
+            (self.min_lon, self.max_lat),
+            (self.max_lon, self.max_lat),
+            (self.max_lon, self.min_lat),
+        ])
     }
 }
 
-/// Current location file version
-const LOCATION_FILE_VER: usize = 3;
-
-/// On-disk structure for the locations file
-///
-#[derive(Debug, Deserialize)]
-struct LocationsFile {
-    /// Version number for safety
-    pub version: usize,
-    /// List of locations
-    pub location: BTreeMap<String, Location>,
-}
-
-/// Load all locations
+/// Load all locations from the `sites.csv` file instead of a separate `locations.hcl`.
 ///
 #[tracing::instrument]
 pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location>> {
@@ -154,7 +141,14 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
 #[tracing::instrument]
 pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<String> {
     trace!("enter");
-    let header = vec!["Location", "Plus Code", "Basename", "Lat/Lon", "Altitude", "Polygon"];
+    let header = vec![
+        "Location",
+        "Plus Code",
+        "Basename",
+        "Lat/Lon",
+        "Altitude",
+        "Polygon",
+    ];
 
     let mut builder = Builder::default();
     builder.push_record(header);
