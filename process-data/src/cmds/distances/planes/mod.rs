@@ -9,7 +9,7 @@ use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use derive_builder::Builder;
 use eyre::{eyre, Result};
-use futures::future::try_join_all;
+use futures::future::{join_all, try_join_all};
 use tracing::{debug, info, trace};
 
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
@@ -106,39 +106,51 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     //
     // Basically zip together the two iterators, even if there is only one
     //
-    let work_list: Vec<_> = dates.iter().map(|&day| async move {
-        match &opts.name {
-            Some(site) => {
-                let site = find_site(&ctx, site).await.unwrap();
-                let res = vec![(day, site)];
-                Ok(res)
-            }
-            None => {
-                let list = enumerate_sites(&ctx, day).await.unwrap();
-                let list: Vec<_> = list.iter().map(|&site| (day, site.clone())).collect();
-                Ok(list)
+    let name = match &opts.name {
+        Some(name) => {
+            if name == "ALL" {
+                ""
+            } else {
+                name.as_str()
             }
         }
-    }).collect::<Vec<_>>();
+        None => { "" }
+    };
+    let work_list: Vec<_> = dates.iter().map(|&day|
+        async move {
+            if name != "" {
+                let site = find_site(&ctx, name).await.unwrap();
+                let res = vec![(day, site)];
+                res
+            } else {
+                let list = enumerate_sites(&ctx, day).await.unwrap();
+                let list: Vec<_> = list.iter().map(|site| (day, site.clone())).collect();
+                list
+            }
+        }).collect::<Vec<_>>();
+    let work_list = join_all(work_list).await;
 
-    let work_list = try_join_all(work_list).await?;
-    dbg!(&work_list);
+    // Now flatten it
+    //
     let work_list: Vec<_> = work_list.iter().flatten().collect::<Vec<_>>();
-    dbg!(&work_list);
+    trace!("Work list len = {}", work_list.len());
+
+    let distance = opts.distance;
+    let separation = opts.separation;
 
     // Gather all sites to run calculations on for every day.
     //
-    let stats = work_list.iter().map(|(day, site)| {
+    let stats: Vec<_> = work_list.iter().map(|(day, site)| {
         trace!("Calculate for site {site} on day {day}");
         let day = day.clone();
         let site = site.clone();
+        let ctx = ctx.clone();
 
-        async move {
-            let stat = calculate_one_day_on_site(ctx, &site, &day, opts.distance, opts.separation).await.unwrap();
-            Ok(stat)
-        }
-    });
-    let stats = try_join_all(stats).await?;
+        tokio::spawn(async move {
+            calculate_one_day_on_site(&ctx, &site, &day, distance, separation).await.unwrap()
+        })
+    }).collect();
+    let stats: Vec<_> = try_join_all(stats).await?;
 
     // Gather all statistics
     //
