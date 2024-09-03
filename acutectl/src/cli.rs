@@ -35,7 +35,7 @@ use clap_complete::shells::Shell;
 use eyre::Result;
 use tracing::{info, trace};
 
-use fetiche_common::{Container, DateOpts};
+use fetiche_common::{list_locations, load_locations, Container, DateOpts};
 use fetiche_engine::Engine;
 use fetiche_formats::Format;
 
@@ -159,6 +159,8 @@ pub enum ListSubCommand {
     Containers,
     /// List all formats in `formats`
     Formats,
+    /// List all possible sites for antennas.
+    Sites,
     /// List all sources from `sources.hcl`
     Sources,
     /// List all storage areas
@@ -294,6 +296,13 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
                 info!("Listing all sources:");
 
                 let str = engine.list_sources()?;
+                eprintln!("{}", str);
+            }
+            ListSubCommand::Sites => {
+                info!("Listing all sites:");
+
+                let list = load_locations(None)?;
+                let str = list_locations(&list, 70)?;
                 eprintln!("{}", str);
             }
             ListSubCommand::Formats => {
