@@ -20,23 +20,32 @@ const ONE_DEG_NM: f64 = (40_000. / 1.852) / 360.;
 ///
 #[derive(Clone, Debug, Deserialize)]
 pub struct Location {
+    /// Site id
+    pub id: u32,
+    /// Short name
+    pub name: String,
     /// Plus code encoded location
     pub code: String,
-    /// GeoHash string
-    pub hash: Option<String>,
+    /// More descriptive name
+    pub basename: String,
     /// Latitude
-    pub lat: f64,
+    pub latitude: f64,
     /// Longitude
-    pub lon: f64,
+    pub longitude: f64,
+    /// Reference altitude
+    pub ref_altitude: f64,
 }
 
 impl Default for Location {
     fn default() -> Self {
         Location {
+            id: 0,
+            name: String::new(),
             code: String::new(),
-            hash: None,
-            lat: 0.,
-            lon: 0.,
+            basename: String::new(),
+            latitude: 0.,
+            longitude: 0.,
+            ref_altitude: 0.,
         }
     }
 }
@@ -61,7 +70,7 @@ impl BB {
     ///
     #[tracing::instrument]
     pub fn from_location(value: &Location, dist: u32) -> Self {
-        Self::from_lat_lon(value.lat, value.lon, dist)
+        Self::from_lat_lon(value.latitude, value.longitude, dist)
     }
 
     /// Take a lat lot tuple and create a bounding box of `dist` nautical miles away
@@ -127,14 +136,17 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
     let data = if let Some(fname) = fname {
         fs::read_to_string(fname)?
     } else {
-        include_str!("locations.hcl").to_owned()
+        include_str!("sites.csv").to_owned()
     };
 
-    let loc: LocationsFile = hcl::from_str(&data)?;
-    if loc.version != LOCATION_FILE_VER {
-        return Err(eyre!("Bad locations file version, aborting…"));
-    }
-    Ok(loc.location)
+    let mut list = BTreeMap::<String, Location>::new();
+    let mut rdr = csv::Reader::from_reader(data.as_bytes());
+    rdr.deserialize().into_iter().for_each(|line| {
+        let rec: Location = line.unwrap();
+        list.insert(rec.name.clone(), rec);
+    });
+
+    Ok(list)
 }
 
 /// List loaded locations
@@ -142,7 +154,7 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
 #[tracing::instrument]
 pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<String> {
     trace!("enter");
-    let header = vec!["Location", "Plus Code", "GeoHash", "Lat/Lon", "Polygon"];
+    let header = vec!["Location", "Plus Code", "Basename", "Lat/Lon", "Altitude", "Polygon"];
 
     let mut builder = Builder::default();
     builder.push_record(header);
@@ -152,17 +164,19 @@ pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<St
 
         let loc = data.get(name).unwrap();
         let code = loc.code.clone();
-        let hash = loc.hash.clone().unwrap_or("Unknown".to_string());
+        let ref_alt = format!("{}", loc.ref_altitude);
+        let basename = loc.basename.clone();
         let poly = BB::from_location(loc, dist);
-        let point = format!("{:.2}, {:.2}", loc.lat, loc.lon);
+        let point = format!("{:.5}, {:.5}", loc.latitude, loc.longitude);
         let poly = format!(
             "{:.2}, {:.2}, {:.2}, {:.2}",
             poly.min_lat, poly.min_lon, poly.max_lat, poly.max_lon
         );
         row.push(name);
         row.push(&code);
-        row.push(&hash);
+        row.push(&basename);
         row.push(&point);
+        row.push(&ref_alt);
         row.push(&poly);
         builder.push_record(row);
     });
@@ -187,8 +201,8 @@ mod tests {
         let loc = Location {
             code: "9C6MMRX2+X2".to_string(),
             hash: Some("gcex4vv69".to_string()),
-            lat: 54.7,
-            lon: -6.2,
+            latitude: 54.7,
+            longitude: -6.2,
         };
 
         let bb = BB::from_location(&loc, 25);
@@ -205,8 +219,8 @@ mod tests {
         let loc = Location {
             code: "9F26RC22+22".to_string(),
             hash: Some("u150upggr".to_string()),
-            lat: 50.8,
-            lon: 4.4,
+            latitude: 50.8,
+            longitude: 4.4,
         };
 
         let bb = BB::from_location(&loc, 25);
@@ -222,8 +236,8 @@ mod tests {
         let loc = Location {
             code: "9F26RC22+22".to_string(),
             hash: Some("u150upggr".to_string()),
-            lat: 50.8,
-            lon: 4.4,
+            latitude: 50.8,
+            longitude: 4.4,
         };
 
         let abb = BB::from_location(&loc, 25).to_polygon();

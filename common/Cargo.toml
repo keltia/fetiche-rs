@@ -26,6 +26,7 @@ path = "benches/date_bench.rs"
 [dependencies]
 chrono.workspace = true
 clap.workspace = true
+csv.workspace = true
 dateparser.workspace = true
 directories.workspace = true
 eyre.workspace = true

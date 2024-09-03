@@ -2778,6 +2778,7 @@ dependencies = [
  "chrono",
  "clap",
  "criterion",
+ "csv",
  "dateparser",
  "directories",
  "eyre",
