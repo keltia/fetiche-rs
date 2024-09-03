@@ -8,9 +8,9 @@ use std::env;
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use derive_builder::Builder;
-use eyre::{eyre, Result};
+use eyre::Result;
 use futures::future::{join_all, try_join_all};
-use tracing::{debug, info, trace};
+use tracing::{info, trace};
 
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
@@ -114,10 +114,11 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
                 name.as_str()
             }
         }
-        None => { "" }
+        None => "",
     };
-    let work_list: Vec<_> = dates.iter().map(|&day|
-        async move {
+    let work_list: Vec<_> = dates
+        .iter()
+        .map(|&day| async move {
             if name != "" {
                 let site = find_site(&ctx, name).await.unwrap();
                 let res = vec![(day, site)];
@@ -127,7 +128,8 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
                 let list: Vec<_> = list.iter().map(|site| (day, site.clone())).collect();
                 list
             }
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
     let work_list = join_all(work_list).await;
 
     // Now flatten it
@@ -140,16 +142,21 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
 
     // Gather all sites to run calculations on for every day.
     //
-    let stats: Vec<_> = work_list.iter().map(|(day, site)| {
-        trace!("Calculate for site {site} on day {day}");
-        let day = day.clone();
-        let site = site.clone();
-        let ctx = ctx.clone();
+    let stats: Vec<_> = work_list
+        .iter()
+        .map(|(day, site)| {
+            trace!("Calculate for site {site} on day {day}");
+            let day = day.clone();
+            let site = site.clone();
+            let ctx = ctx.clone();
 
-        tokio::spawn(async move {
-            calculate_one_day_on_site(&ctx, &site, &day, distance, separation).await.unwrap()
+            tokio::spawn(async move {
+                calculate_one_day_on_site(&ctx, &site, &day, distance, separation)
+                    .await
+                    .unwrap()
+            })
         })
-    }).collect();
+        .collect();
     let stats: Vec<_> = try_join_all(stats).await?;
 
     // Gather all statistics
@@ -185,7 +192,7 @@ async fn calculate_one_day(
             tokio::spawn(async move {
                 calculate_one_day_on_site(&ctx, &site, &day, distance, separation).await
             })
-                .await?
+            .await?
         })
         .collect::<Vec<_>>();
 
