@@ -1,10 +1,10 @@
 //! Export the distances calculated by the `distances` module.
 //!
 
-use chrono::{Datelike, DateTime, TimeZone, Utc};
+use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
-use duckdb::{Connection, params};
 use duckdb::arrow::util::pretty::print_batches;
+use duckdb::{params, Connection};
 use tracing::info;
 
 use crate::cmds::Format;
@@ -214,29 +214,44 @@ COPY (
 #[tracing::instrument(skip(dbh))]
 fn export_all_encounters_summary(dbh: &Connection, fname: &str) -> eyre::Result<usize> {
     let r = format!(r##"
-COPY (
+CREATE OR REPLACE TABLE airprox_summary AS (
   SELECT
     en_id,
-    any_value(site) AS site,
-    any_value(time) AS time,
     journey,
     drone_id,
-    any_value(model) AS model,
-    any_value(drone_lat) AS drone_lat,
-    any_value(drone_lon) AS drone_lon,
-    any_value(drone_alt_m) AS drone_alt_m,
-    any_value(drone_height_m) AS drone_height_m,
-    any_value(prox_callsign) AS prox_callsign,
-    any_value(prox_id) AS prox_id,
-    any_value(prox_lat) AS prox_lat,
-    any_value(prox_lon) AS prox_lon,
-    any_value(prox_alt_m) AS prox_alt_m,
-    any_value(distance_hor_m) AS distance_hor_m,
-    any_value(distance_vert_m) AS distance_vert_m,
-    any_value(distance_home_m) as distance_home_m,
-    MIN(distance_slant_m) AS distance_slant_m,
-  FROM airplane_prox
-  GROUP BY ALL
+    min(distance_slant_m) as distance_slant_m
+  FROM
+    airplane_prox
+  GROUP BY
+    en_id,journey,drone_id
+)"##;
+
+    let s = r##"
+  SELECT
+    a.en_id,
+    a.site,
+    a.time,
+    a.journey,
+    a.drone_id,
+    a.model,
+    a.drone_lat,
+    a.drone_lon,
+    a.drone_alt_m,
+    a.drone_height_m,
+    a.prox_callsign,
+    a.prox_id,
+    a.prox_lat,
+    a.prox_lon,
+    a.prox_alt_m,
+    a.distance_hor_m,
+    a.distance_vert_m,
+    a.distance_home_m,
+    a.distance_slant_m,
+  FROM
+    airplane_prox AS a JOIN airprox_summary AS s
+    ON s.en_id = a.en_id AND s.journey = a.journey AND s.drone_id = a.drone_id
+  WHERE
+    a.distance_slant_m = s.distance_slant_m
   ORDER BY time
 ) TO '{}' WITH (FORMAT CSV, HEADER true, DELIMITER ',');
     "##, fname);
