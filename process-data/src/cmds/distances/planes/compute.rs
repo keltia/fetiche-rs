@@ -9,8 +9,7 @@ use eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::ops::Add;
 use tokio::time::{sleep, Duration, Instant};
-use tracing::field::debug;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, info, trace};
 
 #[derive(Debug, Default, Deserialize)]
 struct Timings {
@@ -37,6 +36,8 @@ impl PlaneDistance {
         let lat = self.lat;
         let lon = self.lon;
 
+        let tm_date = self.date.timestamp();
+
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
@@ -45,7 +46,7 @@ impl PlaneDistance {
         let time_from = Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
         let time_to = time_from.add(chrono::Duration::try_days(1).unwrap());
 
-        info!("From {} to {}.", time_from, time_to);
+        info!("From {} to {} on {}/{}.", time_from, time_to, site.name, site.id);
 
         // All flights for a given day in a table
         //
@@ -59,15 +60,6 @@ impl PlaneDistance {
         // $8 = distance in degrees (== dist(nm) /  60)   1 deg ~ 60 nm ~111.1 km
         //
         //
-        trace!("Get site_id for {}", site);
-        let id_site = dbh
-            .query("SELECT id FROM sites WHERE name = ?")
-            .bind(&site.name)
-            .fetch_one::<u32>()
-            .await?;
-
-        trace!("site_id for {site} is {id_site}");
-
         let day_name = self.date.format("%Y%m%d").to_string();
         let tag = format!("_{site}_{day_name}");
 
@@ -88,7 +80,7 @@ FROM
   airplanes
 WHERE
   site = ? AND
-  time BETWEEN timestamp(?) AND timestamp(?) AND
+  toStartOfInterval(time, toIntervalDay(1)) = fromUnixTimestamp(?) AND
   palt IS NOT NULL AND
   pointInEllipses(plon, plat, ?, ?, ?, ?)
 ORDER BY time
@@ -102,9 +94,8 @@ ORDER BY time
 
         let tm = Instant::now();
         dbh.query(&r1)
-            .bind(id_site)
-            .bind(time_from)
-            .bind(time_to)
+            .bind(site.id)
+            .bind(tm_date)
             .bind(lon)
             .bind(lat)
             .bind(dist)
@@ -175,6 +166,7 @@ SELECT
 FROM drones
 WHERE
   timestamp BETWEEN timestamp(?) AND timestamp(?)
+  toStartOfInterval(time, toIntervalDay(1)) = fromUnixTimestamp(?) AND
   AND
   pointInEllipses(longitude,latitude, ?, ?, ?, ?)
 ORDER BY
