@@ -9,7 +9,7 @@
 use std::collections::BTreeMap;
 use std::fs;
 
-use eyre::{eyre, Result};
+use eyre::Result;
 use serde::Deserialize;
 use tabled::builder::Builder;
 use tabled::settings::Style;
