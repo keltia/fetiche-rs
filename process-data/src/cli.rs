@@ -1,7 +1,7 @@
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use clap_complete::Shell;
 
-use crate::cmds::{AcuteOpts, DistOpts, ExportOpts, ImportOpts, SetupOpts};
+use crate::cmds::{AcuteOpts, DistOpts, ExportOpts, SetupOpts};
 
 /// Global (aka non-command-related) options.
 ///
@@ -47,8 +47,8 @@ pub enum SubCommand {
     #[clap(visible_alias = "exp", visible_alias = "e")]
     Export(ExportOpts),
     /// Import into a CH instance.
-    #[clap(visible_alias = "imp")]
-    Import(ImportOpts),
+    //#[clap(visible_alias = "imp")]
+    //Import(ImportOpts),
     /// Remove macros and other stuff
     #[clap(visible_alias = "clean", visible_alias = "cls")]
     Cleanup(SetupOpts),
