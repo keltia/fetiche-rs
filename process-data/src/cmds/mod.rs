@@ -8,7 +8,7 @@ use tracing::info;
 pub use acute::*;
 pub use distances::*;
 pub use export::*;
-pub use import::*;
+//pub use import::*;
 pub use setup::*;
 pub use site::*;
 pub use stats::*;
@@ -19,7 +19,7 @@ use crate::config::Context;
 mod acute;
 mod distances;
 mod export;
-mod import;
+//mod import;
 mod setup;
 mod site;
 mod stats;
@@ -57,7 +57,7 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
 
                 export_drone_stats(ctx, opts).await?;
             }
-            ExportSubCommand::Encounters(_opts) => unimplemented!()
+            ExportSubCommand::Encounters(_opts) => unimplemented!(),
         },
         SubCommand::Setup(sopts) => {
             println!("Setup ACUTE environment in {}.\n", ctx.config["datalake"]);
