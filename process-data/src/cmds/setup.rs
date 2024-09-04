@@ -34,9 +34,6 @@ pub struct SetupOpts {
 
 /// Macros :
 ///
-/// - nm_to_deg     convert nautical miles into degrees
-/// - deg_to_m      convert degrees into meters
-/// - m_to_deg      and back to degrees
 /// - dist_2d       geodesic distance between two points
 /// - dist_3d       3D distance based on geodesic
 ///
@@ -281,7 +278,10 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
 pub async fn bootstrap(ctx: &Context) -> Result<()> {
     // Remove everything
     //
-    let opts = &SetupOpts { all: true, ..SetupOpts::default() };
+    let opts = &SetupOpts {
+        all: true,
+        ..SetupOpts::default()
+    };
     cleanup_environment(ctx, opts).await?;
 
     // Fiat Lux
