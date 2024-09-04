@@ -40,7 +40,7 @@ async fn main() -> Result<()> {
             let generator = copts.shell;
 
             let mut cmd = Opts::command();
-            generate(generator, &mut cmd, "acutectl", &mut io::stdout());
+            generate(generator, &mut cmd, NAME, &mut io::stdout());
         }
         SubCommand::Version => {
             #[cfg(feature = "clickhouse")]
