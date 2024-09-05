@@ -220,7 +220,7 @@ SELECT
   t.palt AS palt,
   dist_2d(dlon, dlat, plon, plat) AS dist2d,
   dist_3d(dlon, dlat, dalt, plon, plat, palt) AS dist_drone_plane,
-  ceil(palt - dalt) AS diff_alt
+  ceil(abs(palt - dalt)) AS diff_alt
 FROM
   candidates{tag} AS c JOIN today{tag} AS t
 ON
