@@ -1,7 +1,7 @@
 //! Export the distances calculated by the `distances` module.
 //!
 
-use chrono::{Datelike, DateTime, TimeZone, Utc};
+use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use clickhouse::Client;
 use tracing::info;
@@ -11,10 +11,6 @@ use crate::config::Context;
 
 #[derive(Debug, Parser)]
 pub struct ExpDistOpts {
-    /// Export results for this site
-    pub name: String,
-    /// Day to export
-    pub date: String,
     /// Summary or everything?
     #[clap(short = 'S', long)]
     pub summary: bool,
@@ -31,8 +27,6 @@ pub struct ExpDistOpts {
 #[tracing::instrument(skip(dbh))]
 async fn export_all_encounters_csv(
     dbh: &Client,
-    name: &str,
-    day: DateTime<Utc>,
     fname: &str,
 ) -> eyre::Result<()> {
     let r = format!(
@@ -58,20 +52,13 @@ async fn export_all_encounters_csv(
     distance_home_m,
     distance_slant_m,
   FROM airplane_prox
-  WHERE
-    site = ? AND
-    CAST(time AS DATE) >= CAST(? AS DATE) AND
-    CAST(time AS DATE) < date_add(CAST(? AS DATE), INTERVAL 1 DAY)
-    ORDER BY time
+  ORDER BY time
   INTO OUTFILE '{}' FORMAT CSVWithNames
         "##,
         fname
     );
 
     let _ = dbh.query(&r)
-        .bind(name)
-        .bind(day)
-        .bind(day)
         .fetch::<usize>()?;
 
     Ok(())
@@ -83,8 +70,6 @@ async fn export_all_encounters_csv(
 #[tracing::instrument(skip(dbh))]
 async fn export_all_encounters_parquet(
     dbh: &Client,
-    name: &str,
-    day: DateTime<Utc>,
     fname: &str,
 ) -> eyre::Result<()> {
     eprintln!("Summary file");
@@ -111,11 +96,7 @@ async fn export_all_encounters_parquet(
     distance_home_m,
     distance_slant_m,
   FROM airplane_prox
-  WHERE
-    site = ? AND
-    CAST(time AS DATE) >= CAST(? AS DATE) AND
-    CAST(time AS DATE) < date_add(CAST(? AS DATE), INTERVAL 1 DAY)
-    ORDER BY time
+  ORDER BY time
   INTO OUTFILE '{}'
   FORMAT parquet COMPRESSION 'zstd';
         "##,
@@ -123,9 +104,6 @@ async fn export_all_encounters_parquet(
     );
 
     dbh.query(&r)
-        .bind(name)
-        .bind(day)
-        .bind(day)
         .execute().await?;
 
     Ok(())
@@ -134,7 +112,7 @@ async fn export_all_encounters_parquet(
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
 ///
 #[tracing::instrument(skip(dbh))]
-async fn export_all_encounters_text(dbh: &Client, name: &str, day: DateTime<Utc>) -> eyre::Result<()> {
+async fn export_all_encounters_text(dbh: &Client) -> eyre::Result<()> {
     let r = r##"
   SELECT
     en_id,
@@ -157,60 +135,73 @@ async fn export_all_encounters_text(dbh: &Client, name: &str, day: DateTime<Utc>
     distance_home_m,
     distance_slant_m,
   FROM airplane_prox
-  WHERE
-    site = ? AND
-    CAST(time AS DATE) >= CAST(? AS DATE) AND
-    CAST(time AS DATE) < date_add(CAST(? AS DATE), INTERVAL 1 DAY)
-    ORDER BY time
+  ORDER BY time
+  FORMAT PrettyCompact
 "##;
 
     dbh.query(r)
-        .bind(name)
-        .bind(day)
-        .bind(day)
         .execute().await?;
 
     Ok(())
 }
 
 #[tracing::instrument(skip(dbh))]
-async fn export_all_encounters_summary_csv(dbh: &Client, name: &str, day: DateTime<Utc>, fname: &str) -> eyre::Result<()> {
-    let r = format!(r##"
-COPY (
+async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::Result<()> {
+    // Create a temp file with all min distances
+    //
+    let r = r##"
+CREATE OR REPLACE TABLE airprox_summary
+ENGINE = Memory
+AS (
   SELECT
     en_id,
-    any_value(site) AS site,
-    any_value(time) AS time,
     journey,
     drone_id,
-    any_value(model) AS model,
-    any_value(drone_lat) AS drone_lat,
-    any_value(drone_lon) AS drone_lon,
-    any_value(drone_alt_m) AS drone_alt_m,
-    any_value(drone_height_m) AS drone_height_m,
-    any_value(prox_callsign) AS prox_callsign,
-    any_value(prox_id) AS prox_id,
-    any_value(prox_lat) AS prox_lat,
-    any_value(prox_lon) AS prox_lon,
-    any_value(prox_alt_m) AS prox_alt_m,
-    any_value(distance_hor_m) AS distance_hor_m,
-    any_value(distance_vert_m) AS distance_vert_m,
-    any_value(distance_home_m) as distance_home_m,
-    MIN(distance_slant_m) AS distance_slant_m,
-  FROM airplane_prox
+    min(distance_slant_m) as distance_slant_m
+  FROM
+    airplane_prox
+  GROUP BY
+    en_id,journey,drone_id
+)"##;
+
+    dbh.query(r).execute().await?;
+
+    // Match with airprox_summary for export
+    //
+    let r1 = format!(r##"
+  SELECT
+    a.en_id,
+    a.site,
+    a.time,
+    a.journey,
+    a.drone_id,
+    a.model,
+    a.drone_lat,
+    a.drone_lon,
+    a.drone_alt_m,
+    a.drone_height_m,
+    a.prox_callsign,
+    a.prox_id,
+    a.prox_lat,
+    a.prox_lon,
+    a.prox_alt_m,
+    a.distance_hor_m,
+    a.distance_vert_m,
+    a.distance_home_m,
+    a.distance_slant_m,
+  FROM
+    airplane_prox AS a JOIN airprox_summary AS s
+    ON
+    s.en_id = a.en_id AND
+    s.journey = a.journey AND
+    s.drone_id = a.drone_id
   WHERE
-    site = ? AND
-    CAST(time AS DATE) >= CAST(? AS DATE) AND
-    CAST(time AS DATE) < date_add(CAST(? AS DATE), INTERVAL 1 DAY)
-  GROUP BY ALL
+    a.distance_slant_m = s.distance_slant_m
   ORDER BY time
-) TO '{}' WITH (FORMAT CSV, HEADER true, DELIMITER ',');
+  INTO OUTFILE '{}' FORMAT CSVWithNames;
     "##, fname);
 
-    dbh.query(&r)
-        .bind(name)
-        .bind(day)
-        .bind(day)
+    dbh.query(&r1)
         .execute().await?;
 
     Ok(())
@@ -220,32 +211,22 @@ COPY (
 pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
     let dbh = ctx.db();
 
-    let tm = dateparser::parse(&opts.date).unwrap();
-    let day = Utc
-        .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
-        .unwrap();
-    info!("Exporting results for {}:", day);
-
-    // Load parameters
-    //
-    let name = opts.name.clone();
-
     // Do we export as a csv the "encounters of the day"?
     //
     match &opts.output {
         Some(fname) => {
             if opts.summary {
-                export_all_encounters_summary_csv(&dbh, &name, day, fname).await?
+                export_all_encounters_summary_csv(&dbh, fname).await?
             } else {
                 match opts.format {
-                    Format::Csv => export_all_encounters_csv(&dbh, &name, day, fname).await?,
-                    Format::Parquet => export_all_encounters_parquet(&dbh, &name, day, fname).await?,
+                    Format::Csv => export_all_encounters_csv(&dbh, fname).await?,
+                    Format::Parquet => export_all_encounters_parquet(&dbh, fname).await?,
                     _ => (),
                 }
             };
         }
         None => {
-            export_all_encounters_text(&dbh, &name, day).await?;
+            export_all_encounters_text(&dbh).await?;
         }
     }
 
