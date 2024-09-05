@@ -5,13 +5,13 @@
 use std::ops::Add;
 
 use chrono::{Datelike, Days, Duration, TimeZone, Utc};
-use duckdb::{Connection, params};
+use duckdb::{params, Connection};
 use eyre::Result;
 use tokio::time::Instant;
 use tracing::{debug, info, trace};
 
-use crate::cmds::{ONE_DEG, PlaneDistance, PlanesStats, Stats};
 use crate::cmds::batch::Calculate;
+use crate::cmds::{PlaneDistance, PlanesStats, Stats, ONE_DEG};
 
 impl PlaneDistance {
     // -- private
@@ -259,7 +259,7 @@ BY NAME (
       any_value(dlon) AS drone_lon,
       any_value(dlat) AS drone_lat,
       any_value(dalt) AS drone_alt_m,
-      any_value(dh) AS drone_height_m,
+      any_value(ABS(dalt - dh)) AS drone_height_m,
       any_value(tc.callsign) AS prox_callsign,
       addr AS prox_id,
       any_value(plon) AS prox_lon,
