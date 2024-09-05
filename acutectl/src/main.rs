@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
 
     // Initialise tracing.
     //
-    init_logging(NAME, opts.use_telemetry)?;
+    init_logging(NAME, opts.use_telemetry, false, true)?;
 
     // Config only has the credentials for every source now.
     //

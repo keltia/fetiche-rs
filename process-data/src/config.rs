@@ -91,7 +91,7 @@ impl Debug for Context {
 pub fn init_runtime(opts: &Opts) -> Result<Context> {
     // Initialise logging early
     //
-    init_logging(NAME, opts.use_telemetry)?;
+    init_logging(NAME, opts.use_telemetry, false, true)?;
     trace!("Logging initialised.");
 
     // We must operate on a database.
@@ -164,7 +164,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
             ("datalake".to_string(), datalake.clone()),
             ("username".to_string(), user.clone()),
         ])
-        .into(),
+            .into(),
         dbh,
         wait: opts.wait,
         dry_run: opts.dry_run,
