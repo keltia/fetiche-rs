@@ -24,7 +24,9 @@ pub const VERSION: &str = crate_version!();
 /// Authors
 pub const AUTHORS: &str = crate_authors!();
 
-#[tokio::main]
+/// Use reasonable defaults for tokio threads & workers.
+///
+#[tokio::main(flavor = "multi_thread", worker_threads = 8)]
 async fn main() -> Result<()> {
     let opts = Opts::parse();
 
