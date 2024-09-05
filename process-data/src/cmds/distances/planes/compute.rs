@@ -30,22 +30,16 @@ impl PlaneDistance {
     #[tracing::instrument(skip(dbh))]
     async fn select_planes(&self, dbh: &Client) -> Result<usize> {
         let site = self.name.clone();
-        let day = self.date.day();
-        let month = self.date.month();
-        let year = self.date.year();
         let lat = self.lat;
         let lon = self.lon;
-
-        let tm_date = self.date.timestamp();
 
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
-        let time_from = Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
-        let time_to = time_from.add(chrono::Duration::try_days(1).unwrap());
-
+        let time_from = self.date.format("%Y-%m-%d 00:00:00").to_string();
+        let time_to = self.date.add(chrono::Duration::try_days(1).unwrap()).format("%Y-%m-%d 00:00:00").to_string();
         info!("From {} to {} on {}/{}.", time_from, time_to, site.name, site.id);
 
         // All flights for a given day in a table
@@ -80,7 +74,7 @@ FROM
   airplanes
 WHERE
   site = ? AND
-  toStartOfInterval(time, toIntervalDay(1)) = fromUnixTimestamp(?) AND
+  toStartOfInterval(time, toIntervalDay(1)) = toDateTime(?) AND
   palt IS NOT NULL AND
   pointInEllipses(plon, plat, ?, ?, ?, ?)
 ORDER BY time
@@ -95,7 +89,7 @@ ORDER BY time
         let tm = Instant::now();
         dbh.query(&r1)
             .bind(site.id)
-            .bind(tm_date)
+            .bind(time_from)
             .bind(lon)
             .bind(lat)
             .bind(dist)
@@ -130,8 +124,7 @@ ORDER BY time
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
-        let start_day = self.date;
-        let end_day = self.date.checked_add_days(Days::new(1)).unwrap();
+        let time_from = self.date.format("%Y-%m-%d 00:00:00").to_string();
 
         let day_name = self.date.format("%Y%m%d").to_string();
         let tag = format!("_{site}_{day_name}");
@@ -141,13 +134,9 @@ ORDER BY time
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
-        trace!("Removing old table candidates{tag}.");
-        let r1 = format!("DROP TABLE IF EXISTS candidates{tag}");
-        dbh.query(&r1).execute().await?;
-
         let r2 = format!(
             r##"
-CREATE TABLE candidates{tag}
+CREATE OR REPLACE TABLE candidates{tag}
 ENGINE = Memory AS
 SELECT
     time,
@@ -165,9 +154,7 @@ SELECT
     home_distance_3d
 FROM drones
 WHERE
-  timestamp BETWEEN timestamp(?) AND timestamp(?)
-  toStartOfInterval(time, toIntervalDay(1)) = fromUnixTimestamp(?) AND
-  AND
+  toStartOfInterval(timestamp, toIntervalDay(1)) = toDateTime(?) AND
   pointInEllipses(longitude,latitude, ?, ?, ?, ?)
 ORDER BY
   (time,journey)
@@ -175,8 +162,7 @@ ORDER BY
         );
 
         dbh.query(&r2)
-            .bind(start_day)
-            .bind(end_day)
+            .bind(time_from)
             .bind(lon)
             .bind(lat)
             .bind(dist)
@@ -248,8 +234,6 @@ WHERE
     "##
         );
 
-        debug!("q={r}");
-
         let proximity = self.separation;
         dbh.query(&r)
             .bind(proximity)
@@ -272,15 +256,11 @@ WHERE
     #[tracing::instrument(skip(dbh))]
     async fn create_table_ids(dbh: &Client, day_name: &str, site: &str) -> Result<()> {
         let tag = format!("_{site}_{day_name}");
-        trace!("Drop table ids{tag}.");
-
-        let r = format!("DROP TABLE IF EXISTS ids{tag}");
-        dbh.query(&r).execute().await?;
 
         trace!("Create table ids{tag}.");
         let r = format!(
             r##"
-        CREATE TABLE ids{tag} (
+CREATE OR REPLACE TABLE ids{tag} (
     drone_id VARCHAR,
     callsign VARCHAR,
     journey INT,
@@ -318,7 +298,8 @@ WHERE
         }
 
         let r = format!(
-            r##"SELECT
+            r##"
+    SELECT
       journey,
       drone_id,
       callsign,
@@ -458,6 +439,20 @@ WHERE
         }
         Ok(count)
     }
+
+    /// Remove temporary tables.
+    ///
+    #[tracing::instrument(skip(dbh))]
+    async fn cleanup_temp_tables(&self, dbh: &Client) -> Result<()> {
+        let site = self.name.clone();
+        let day_name = self.date.format("%Y%m%d").to_string();
+        let tag = format!("_{site}_{day_name}");
+
+        dbh.query(&format!("DROP TABLE today_close{tag}", )).execute().await?;
+        dbh.query(&format!("DROP TABLE candidates{tag}", )).execute().await?;
+        dbh.query(&format!("DROP TABLE today{tag}", )).execute().await?;
+        Ok(())
+    }
 }
 
 impl Calculate for PlaneDistance {
@@ -555,6 +550,8 @@ impl Calculate for PlaneDistance {
         info!("Stats for {}\n{}", self.date, stats);
         bar.message("Done.");
         bar.finish();
+
+        self.cleanup_temp_tables(&dbh).await?;
 
         dbg!(timings);
 
