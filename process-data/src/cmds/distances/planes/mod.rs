@@ -108,7 +108,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     //
     let name = match &opts.name {
         Some(name) => {
-            if name == "ALL" {
+            if name == "ALL" || name == "*" {
                 ""
             } else {
                 name.as_str()
@@ -192,7 +192,7 @@ async fn calculate_one_day(
             tokio::spawn(async move {
                 calculate_one_day_on_site(&ctx, &site, &day, distance, separation).await
             })
-            .await?
+                .await?
         })
         .collect::<Vec<_>>();
 
