@@ -12,6 +12,8 @@ pub enum Auth {
     Anon,
     /// Using an API key supplied through the URL or a header
     Key { api_key: String },
+    /// API with both user-key and api-key
+    UserKey { api_key: String, user_key: String },
     /// Using a login/passwd to get a token
     Token {
         login: String,
@@ -32,6 +34,10 @@ impl Display for Auth {
         let auth = match self.clone() {
             Auth::Key { .. } => Auth::Key {
                 api_key: "HIDDEN".to_string(),
+            },
+            Auth::UserKey { .. } => Auth::UserKey {
+                api_key: "HIDDEN".to_string(),
+                user_key: "HIDDEN".to_string(),
             },
             Auth::Login { username, .. } => Auth::Login {
                 username,
