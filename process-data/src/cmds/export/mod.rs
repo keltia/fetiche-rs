@@ -1,5 +1,10 @@
 //! This is the `export` command module
 //!
+//! NOTE: The HTTP API does not really support this.  You need to use `clickhouse-client` or
+//! `clickhouse client` to export such query results.  Therefore, this is for reference.
+//!
+//! FIXME: Using the `klickhouse` API might fix this as it uses the client access (port 9000/tcp).
+//!
 
 use clap::Parser;
 use strum::{EnumString, VariantNames};
