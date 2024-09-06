@@ -1,7 +1,6 @@
 //! Export the distances calculated by the `distances` module.
 //!
 
-use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use clickhouse::Client;
 use tracing::info;
@@ -25,10 +24,7 @@ pub struct ExpDistOpts {
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
 ///
 #[tracing::instrument(skip(dbh))]
-async fn export_all_encounters_csv(
-    dbh: &Client,
-    fname: &str,
-) -> eyre::Result<()> {
+async fn export_all_encounters_csv(dbh: &Client, fname: &str) -> eyre::Result<()> {
     let r = format!(
         r##"
   SELECT
@@ -58,8 +54,7 @@ async fn export_all_encounters_csv(
         fname
     );
 
-    let _ = dbh.query(&r)
-        .fetch::<usize>()?;
+    let _ = dbh.query(&r).fetch::<usize>()?;
 
     Ok(())
 }
@@ -68,10 +63,7 @@ async fn export_all_encounters_csv(
 /// Same as previous but export as a Parquet file.
 ///
 #[tracing::instrument(skip(dbh))]
-async fn export_all_encounters_parquet(
-    dbh: &Client,
-    fname: &str,
-) -> eyre::Result<()> {
+async fn export_all_encounters_parquet(dbh: &Client, fname: &str) -> eyre::Result<()> {
     eprintln!("Summary file");
     let r = format!(
         r##"
@@ -103,8 +95,7 @@ async fn export_all_encounters_parquet(
         fname
     );
 
-    dbh.query(&r)
-        .execute().await?;
+    dbh.query(&r).execute().await?;
 
     Ok(())
 }
@@ -139,8 +130,7 @@ async fn export_all_encounters_text(dbh: &Client) -> eyre::Result<()> {
   FORMAT PrettyCompact
 "##;
 
-    dbh.query(r)
-        .execute().await?;
+    dbh.query(r).execute().await?;
 
     Ok(())
 }
@@ -168,7 +158,8 @@ AS (
 
     // Match with airprox_summary for export
     //
-    let r1 = format!(r##"
+    let r1 = format!(
+        r##"
   SELECT
     a.en_id,
     a.site,
@@ -199,10 +190,11 @@ AS (
     a.distance_slant_m = s.distance_slant_m
   ORDER BY time
   INTO OUTFILE '{}' FORMAT CSVWithNames;
-    "##, fname);
+    "##,
+        fname
+    );
 
-    dbh.query(&r1)
-        .execute().await?;
+    dbh.query(&r1).execute().await?;
 
     Ok(())
 }
