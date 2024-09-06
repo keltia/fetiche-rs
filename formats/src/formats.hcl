@@ -48,14 +48,14 @@ format "avionix" {
   type        = "adsb"
   description = "Flattened ASTERIX cat21-like for Avionix stations."
   source      = "Avionix"
-  url         = "http://www.avionix.pl"
+  url         = "https://www.avionix.eu"
 }
 
-format "aero" {
-  type        = "adsb"
-  description = "Flattened ADS-B from Avionix stations for Aero Network."
+format "cube" {
+  type        = "drone"
+  description = "Drone data from Avionix stations for Aero Network."
   source      = "Avionix"
-  url         = "http://www.avionix.eu"
+  url         = "https://www.avionix.eu"
 }
 
 format "impala" {
