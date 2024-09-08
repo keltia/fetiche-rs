@@ -279,7 +279,7 @@ impl Streamable for Opensky {
     ///
     /// The cache might be overkill because keeping only the last timestamp might be enough but:
     /// - it is easy to code and use
-    /// - it helps determining whether we had lack of traffic for a longer time if we have no
+    /// - it helps to determine whether we had lack of traffic for a longer time if we have no
     ///   cached entries
     ///
     #[tracing::instrument]
