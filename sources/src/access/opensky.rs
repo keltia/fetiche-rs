@@ -282,7 +282,7 @@ impl Streamable for Opensky {
     /// - it helps to determine whether we had lack of traffic for a longer time if we have no
     ///   cached entries
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, out))]
     fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
 
