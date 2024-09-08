@@ -8,11 +8,10 @@
 //!     to define a syntax first.
 //!
 
-use std::fmt::{Display, Formatter};
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::fmt::{Display, Formatter};
 
 /// If we specify -B/-E or --today, we need to pass these below
 ///
@@ -28,6 +27,8 @@ pub enum Filter {
     Keyword { name: String, value: String },
     /// Duration as length of time in seconds (can be negative to go in the past for N seconds)
     Duration(i32),
+    /// Altitude is for min and max altitude you want drone data for (`AvionixCube`).
+    Altitude { min: u32, max: u32 },
     /// Special interval for stream: do we go back slightly in time?  For how long?  Do we have a
     /// delay between calls?
     Stream {
@@ -96,12 +97,25 @@ impl Display for Filter {
             delay: u32,
         }
 
+        #[derive(Debug, Serialize)]
+        struct Altitude {
+            min: u32,
+            max: u32,
+        }
+
         let s: String = match self {
             Filter::None => "{}".to_owned(),
             Filter::Interval { begin, end } => {
                 let m = Minimal {
                     begin: *begin,
                     end: *end,
+                };
+                json!(m).to_string()
+            }
+            Filter::Altitude { min, max } => {
+                let m = Altitude {
+                    min: *min,
+                    max: *max,
                 };
                 json!(m).to_string()
             }
