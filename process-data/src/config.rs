@@ -91,7 +91,7 @@ impl Debug for Context {
 pub fn init_runtime(opts: &Opts) -> Result<Context> {
     // Initialise logging early
     //
-    init_logging(NAME, opts.use_telemetry, false, true)?;
+    init_logging(NAME, opts.use_telemetry, true, true)?;
     trace!("Logging initialised.");
 
     // We must operate on a database.
