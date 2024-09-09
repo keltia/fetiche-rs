@@ -2,8 +2,13 @@
 //!
 
 use clap::Parser;
-use clickhouse::Client;
-use tracing::info;
+use clickhouse::Client as CHClient;
+use csv::WriterBuilder;
+use eyre::Result;
+use klickhouse::{Client, ClientOptions, DateTime, Row};
+use serde::{Deserialize, Serialize};
+use std::fs;
+use tracing::{info, trace};
 
 use crate::cmds::Format;
 use crate::config::Context;
@@ -21,40 +26,108 @@ pub struct ExpDistOpts {
     pub output: Option<String>,
 }
 
+/// Private struct for extracting data
+///
+#[derive(Debug, Deserialize, Row, Serialize)]
+struct Encounter {
+    site: String,
+    en_id: String,
+    time: DateTime,
+    journey: i32,
+    drone_id: String,
+    model: String,
+    drone_lon: f32,
+    drone_lat: f32,
+    drone_alt_m: f32,
+    drone_height_m: f32,
+    prox_callsign: String,
+    prox_id: String,
+    prox_lon: f32,
+    prox_lat: f32,
+    prox_alt_m: f32,
+    distance_slant_m: i32,
+    distance_hor_m: i32,
+    distance_vert_m: i32,
+    distance_home_m: i32,
+}
+
+//     en_id,
+//     site,
+//     time,
+//     journey,
+//     drone_id,
+//     model,
+//     drone_lat,
+//     drone_lon,
+//     drone_alt_m,
+//     drone_height_m,
+//     prox_callsign,
+//     prox_id,
+//     prox_lat,
+//     prox_lon,
+//     prox_alt_m,
+//     distance_hor_m,
+//     distance_vert_m,
+//     distance_home_m,
+//     distance_slant_m,
+
+#[tracing::instrument(skip(_dbh))]
+async fn export_all_encounters_records(_dbh: &CHClient) -> Result<Vec<Encounter>> {
+    trace!("retrieving records from airplane_prox");
+
+    let name = std::env::var("CLICKHOUSE_DB")?;
+    let user = std::env::var("CLICKHOUSE_USER")?;
+    let pass = std::env::var("CLICKHOUSE_PASSWD")?;
+    let endpoint = std::env::var("KLICKHOUSE_URL")?;
+
+    let client = klickhouse::Client::connect(
+        endpoint,
+        ClientOptions {
+            username: user,
+            password: pass,
+            default_database: name,
+        },
+    )
+        .await?;
+
+    let r = r##"SELECT *
+  FROM airplane_prox
+  ORDER BY time
+        "##;
+
+    let res = client.query_collect::<Encounter>(r).await?;
+
+    drop(client);
+
+    Ok(res)
+}
+
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
 ///
 #[tracing::instrument(skip(dbh))]
-async fn export_all_encounters_csv(dbh: &Client, fname: &str) -> eyre::Result<()> {
-    let r = format!(
-        r##"
-  SELECT
-    en_id,
-    site,
-    time,
-    journey,
-    drone_id,
-    model,
-    drone_lat,
-    drone_lon,
-    drone_alt_m,
-    drone_height_m,
-    prox_callsign,
-    prox_id,
-    prox_lat,
-    prox_lon,
-    prox_alt_m,
-    distance_hor_m,
-    distance_vert_m,
-    distance_home_m,
-    distance_slant_m,
-  FROM airplane_prox
-  ORDER BY time
-  INTO OUTFILE '{}' FORMAT CSVWithNames
-        "##,
-        fname
-    );
+async fn export_all_encounters_csv(dbh: &CHClient, fname: &str) -> Result<()> {
+    trace!("Exporting all encounters from airplane_prox");
 
-    let _ = dbh.query(&r).fetch::<usize>()?;
+    let data = export_all_encounters_records(&dbh).await?;
+    let len = data.len();
+
+    // Prepare the writer
+    //
+    let mut wtr = WriterBuilder::new()
+        .has_headers(true)
+        .from_writer(vec![]);
+
+    // Insert data
+    //
+    data.into_iter().for_each(|rec| {
+        wtr.serialize(rec).unwrap();
+    });
+
+    // Output final csv
+    //
+    let data = String::from_utf8(wtr.into_inner()?)?;
+    fs::write(fname, data)?;
+    trace!("Exported {} encounters", len);
 
     Ok(())
 }
@@ -63,7 +136,7 @@ async fn export_all_encounters_csv(dbh: &Client, fname: &str) -> eyre::Result<()
 /// Same as previous but export as a Parquet file.
 ///
 #[tracing::instrument(skip(dbh))]
-async fn export_all_encounters_parquet(dbh: &Client, fname: &str) -> eyre::Result<()> {
+async fn export_all_encounters_parquet(dbh: &CHClient, fname: &str) -> eyre::Result<()> {
     eprintln!("Summary file");
     let r = format!(
         r##"
@@ -103,7 +176,7 @@ async fn export_all_encounters_parquet(dbh: &Client, fname: &str) -> eyre::Resul
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
 ///
 #[tracing::instrument(skip(dbh))]
-async fn export_all_encounters_text(dbh: &Client) -> eyre::Result<()> {
+async fn export_all_encounters_text(dbh: &CHClient) -> eyre::Result<()> {
     let r = r##"
   SELECT
     en_id,
@@ -136,7 +209,7 @@ async fn export_all_encounters_text(dbh: &Client) -> eyre::Result<()> {
 }
 
 #[tracing::instrument(skip(dbh))]
-async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::Result<()> {
+async fn export_all_encounters_summary_csv(dbh: &CHClient, fname: &str) -> eyre::Result<()> {
     // Create a temp file with all min distances
     //
     let r = r##"
