@@ -3,7 +3,6 @@
 //! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
 //!
 use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, ONE_DEG};
-use chrono::{Datelike, Days, TimeZone, Utc};
 use clickhouse::{Client, Row};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
@@ -39,8 +38,15 @@ impl PlaneDistance {
         debug!("{} nm as deg: {}", self.distance, dist);
 
         let time_from = self.date.format("%Y-%m-%d 00:00:00").to_string();
-        let time_to = self.date.add(chrono::Duration::try_days(1).unwrap()).format("%Y-%m-%d 00:00:00").to_string();
-        info!("From {} to {} on {}/{}.", time_from, time_to, site.name, site.id);
+        let time_to = self
+            .date
+            .add(chrono::Duration::try_days(1).unwrap())
+            .format("%Y-%m-%d 00:00:00")
+            .to_string();
+        info!(
+            "From {} to {} on {}/{}.",
+            time_from, time_to, site.name, site.id
+        );
 
         // All flights for a given day in a table
         //
@@ -447,9 +453,15 @@ CREATE OR REPLACE TABLE ids{tag} (
         let day_name = self.date.format("%Y%m%d").to_string();
         let tag = format!("_{site}_{day_name}");
 
-        dbh.query(&format!("DROP TABLE today_close{tag}", )).execute().await?;
-        dbh.query(&format!("DROP TABLE candidates{tag}", )).execute().await?;
-        dbh.query(&format!("DROP TABLE today{tag}", )).execute().await?;
+        dbh.query(&format!("DROP TABLE today_close{tag}",))
+            .execute()
+            .await?;
+        dbh.query(&format!("DROP TABLE candidates{tag}",))
+            .execute()
+            .await?;
+        dbh.query(&format!("DROP TABLE today{tag}",))
+            .execute()
+            .await?;
         Ok(())
     }
 }
@@ -550,7 +562,7 @@ impl Calculate for PlaneDistance {
         bar.message("Done.");
         bar.finish();
 
-        self.cleanup_temp_tables(&dbh).await?;
+        self.cleanup_temp_tables(dbh).await?;
 
         dbg!(timings);
 
