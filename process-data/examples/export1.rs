@@ -1,5 +1,9 @@
 //! ClickHouse official client `clickhouse`.
 //!
+//! NOTE: current official client can not handle `DateTime<Utc>` at all and we need to use
+//! `OffsetDateTime` will give us a UNIX timestamp.
+//!
+
 use std::fs;
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
