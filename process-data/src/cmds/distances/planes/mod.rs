@@ -106,6 +106,8 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     //
     // Basically zip together the two iterators, even if there is only one
     //
+    // Goal is to have a flattened list of all combinations to run these in parallel
+    //
     let name = match &opts.name {
         Some(name) => {
             if name == "ALL" || name == "*" {
@@ -116,15 +118,20 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
         }
         None => "",
     };
-    trace!("Site = {name}");
+    trace!("Site = {name} (all if empty)");
+
     let work_list: Vec<_> = dates
         .iter()
         .map(|&day| async move {
+            // We have a specific site
+            //
             if !name.is_empty() {
                 let site = find_site(ctx, name).await.unwrap();
                 let res = vec![(day, site)];
                 res
             } else {
+                // Process all sites
+                //
                 let list = enumerate_sites(ctx, day).await.unwrap();
                 let list: Vec<_> = list.iter().map(|site| (day, site.clone())).collect();
                 list
