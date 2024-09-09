@@ -158,7 +158,7 @@ where
         //
         let fname = if fname.is_none() {
             let def = PathBuf::from(cfg.default_file()).canonicalize()?;
-            dbg!(&def);
+            debug!("{}", def);
             def
         } else {
             // Do we have a bare filename?
@@ -184,7 +184,6 @@ where
                 return Err(eyre!("Error: failed to read config file {fname:?}: {e}"));
             }
         };
-        debug!("string data = {data}");
 
         let data: T = hcl::from_str(&data)?;
         debug!("struct data = {data:?}");
