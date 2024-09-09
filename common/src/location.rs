@@ -128,7 +128,7 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
 
     let mut list = BTreeMap::<String, Location>::new();
     let mut rdr = csv::Reader::from_reader(data.as_bytes());
-    rdr.deserialize().into_iter().for_each(|line| {
+    rdr.deserialize().for_each(|line| {
         let rec: Location = line.unwrap();
         list.insert(rec.name.clone(), rec);
     });

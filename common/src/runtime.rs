@@ -10,7 +10,12 @@ use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 #[tracing::instrument]
-pub fn init_logging(name: &'static str, use_telemetry: bool, use_tree: bool, use_file: bool) -> Result<()> {
+pub fn init_logging(
+    name: &'static str,
+    use_telemetry: bool,
+    use_tree: bool,
+    use_file: bool,
+) -> Result<()> {
     // Initialise logging early
     //
     // Load filters from environment
@@ -20,14 +25,16 @@ pub fn init_logging(name: &'static str, use_telemetry: bool, use_tree: bool, use
     // Do we want hierarchical output?
     //
     let tree = if use_tree {
-        Some(HierarchicalLayer::new(2)
-            .with_ansi(true)
-            .with_span_retrace(true)
-            .with_span_modes(true)
-            .with_targets(true)
-            .with_verbose_entry(true)
-            .with_verbose_exit(true)
-            .with_bracketed_fields(true))
+        Some(
+            HierarchicalLayer::new(2)
+                .with_ansi(true)
+                .with_span_retrace(true)
+                .with_span_modes(true)
+                .with_targets(true)
+                .with_verbose_entry(true)
+                .with_verbose_exit(true)
+                .with_bracketed_fields(true),
+        )
     } else {
         None
     };
@@ -51,7 +58,7 @@ pub fn init_logging(name: &'static str, use_telemetry: bool, use_tree: bool, use
     let file = if use_file {
         // Basic append-only rolling file for all traces.
         //
-        let file_appender = tracing_appender::rolling::hourly("/tmp/acute", format!("{name}"));
+        let file_appender = tracing_appender::rolling::hourly("/tmp/acute", name);
         Some(tracing_subscriber::fmt::layer().with_writer(file_appender))
     } else {
         None
