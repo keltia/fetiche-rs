@@ -116,10 +116,11 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
         }
         None => "",
     };
+    trace!("Site = {name}");
     let work_list: Vec<_> = dates
         .iter()
         .map(|&day| async move {
-            if name.is_empty() {
+            if !name.is_empty() {
                 let site = find_site(ctx, name).await.unwrap();
                 let res = vec![(day, site)];
                 res
@@ -191,7 +192,7 @@ async fn calculate_one_day(
             tokio::spawn(async move {
                 calculate_one_day_on_site(&ctx, &site, &day, distance, separation).await
             })
-            .await?
+                .await?
         })
         .collect::<Vec<_>>();
 
