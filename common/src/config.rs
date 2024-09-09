@@ -158,7 +158,7 @@ where
         //
         let fname = if fname.is_none() {
             let def = PathBuf::from(cfg.default_file()).canonicalize()?;
-            debug!("{}", def);
+            debug!("{:?}", def);
             def
         } else {
             // Do we have a bare filename?
