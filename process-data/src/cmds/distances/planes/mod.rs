@@ -119,12 +119,12 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     let work_list: Vec<_> = dates
         .iter()
         .map(|&day| async move {
-            if name != "" {
-                let site = find_site(&ctx, name).await.unwrap();
+            if name.is_empty() {
+                let site = find_site(ctx, name).await.unwrap();
                 let res = vec![(day, site)];
                 res
             } else {
-                let list = enumerate_sites(&ctx, day).await.unwrap();
+                let list = enumerate_sites(ctx, day).await.unwrap();
                 let list: Vec<_> = list.iter().map(|site| (day, site.clone())).collect();
                 list
             }
@@ -146,7 +146,6 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
         .iter()
         .map(|(day, site)| {
             trace!("Calculate for site {site} on day {day}");
-            let day = day.clone();
             let site = site.clone();
             let ctx = ctx.clone();
 
