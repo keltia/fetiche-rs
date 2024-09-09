@@ -1,13 +1,13 @@
-//! ClickHouse unofficial client `klickhouse`.
+//! ClickHouse official client `clickhouse`.
 //!
-
 use std::fs;
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use clickhouse::{Client, Row};
 use csv::WriterBuilder;
 use eyre::Result;
-use klickhouse::{Client, ClientOptions, DateTime, QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 use fetiche_common::{close_logging, init_logging};
 
@@ -15,7 +15,8 @@ use fetiche_common::{close_logging, init_logging};
 struct Encounter {
     site: String,
     en_id: String,
-    time: DateTime,
+    #[serde(with = "clickhouse::serde::time::datetime")]
+    time: OffsetDateTime,
     journey: i32,
     drone_id: String,
     model: String,
@@ -50,20 +51,16 @@ async fn main() -> Result<()> {
     let name = std::env::var("CLICKHOUSE_DB")?;
     let user = std::env::var("CLICKHOUSE_USER")?;
     let pass = std::env::var("CLICKHOUSE_PASSWD")?;
-    let endpoint = std::env::var("KLICKHOUSE_URL")?;
+    let endpoint = std::env::var("CLICKHOUSE_URL")?;
 
     init_logging("export-encounters", false, true, true)?;
 
-    eprintln!("Create connection.");
-    let client = Client::connect(
-        endpoint,
-        ClientOptions {
-            username: user,
-            password: pass,
-            default_database: name,
-        },
-    )
-    .await?;
+    eprintln!("Connecting to {} @ {}", name, endpoint);
+    let dbh = Client::default()
+        .with_url(endpoint.clone())
+        .with_database(&name)
+        .with_user(&user)
+        .with_password(pass);
 
     let fname = opts.fname.clone();
     eprintln!("Created fname: {}", fname);
@@ -92,8 +89,7 @@ async fn main() -> Result<()> {
   ORDER BY time
         "##;
 
-    let q = QueryBuilder::new(&r);
-    let res = client.query_collect::<Encounter>(q).await?;
+    let res = dbh.query(&r).fetch_all::<Encounter>().await?;
 
     // Prepare the writer
     //
