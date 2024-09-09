@@ -134,7 +134,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
 
     // Now flatten it
     //
-    let work_list: Vec<_> = work_list.iter().flatten().collect::<Vec<_>>();
+    let work_list: Vec<_> = work_list.into_iter().flatten().collect::<Vec<_>>();
     trace!("Work list len = {}", work_list.len());
 
     let distance = opts.distance;
@@ -143,7 +143,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     // Gather all sites to run calculations on for every day.
     //
     let stats: Vec<_> = work_list
-        .iter()
+        .into_iter()
         .map(|(day, site)| {
             trace!("Calculate for site {site} on day {day}");
             let site = site.clone();
@@ -191,7 +191,7 @@ async fn calculate_one_day(
             tokio::spawn(async move {
                 calculate_one_day_on_site(&ctx, &site, &day, distance, separation).await
             })
-                .await?
+            .await?
         })
         .collect::<Vec<_>>();
 
