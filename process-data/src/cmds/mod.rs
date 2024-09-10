@@ -30,7 +30,7 @@ const ONE_DEG: f64 = 40_000. / 360.;
 /// This trait define an object that can be calculated
 ///
 pub trait Calculate: Debug {
-    async fn run(&self, dbh: &Client) -> eyre::Result<Stats>;
+    async fn run(&mut self, dbh: &Client) -> eyre::Result<Stats>;
 }
 
 // -----

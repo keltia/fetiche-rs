@@ -43,7 +43,7 @@ pub struct PlanesOpts {
 #[derive(Builder, Debug)]
 pub struct PlaneDistance {
     /// Name of site
-    pub name: Site,
+    pub site: Site,
     /// Specific day
     pub date: DateTime<Utc>,
     /// Optional delay between tasks
@@ -60,6 +60,16 @@ pub struct PlaneDistance {
     // Lon of antenna
     #[builder]
     pub lon: f64,
+    /// List of temporary tables created along the way, for cleanup.
+    state: Vec<TempTables>,
+}
+
+#[derive(Clone, Debug)]
+pub enum TempTables {
+    Today,
+    Candidates,
+    TodayClose,
+    Ids,
 }
 
 // -----
@@ -223,9 +233,8 @@ async fn calculate_one_day_on_site(
 
     let day = normalise_day(*day)?;
 
-    let name = site.clone();
-    let work = PlaneDistanceBuilder::default()
-        .name(name)
+    let mut work = PlaneDistanceBuilder::default()
+        .site(site.clone())
         .lat(site.latitude as f64)
         .lon(site.longitude as f64)
         .distance(distance)

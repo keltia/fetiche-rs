@@ -2,11 +2,12 @@
 //!
 //! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
 //!
-use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, ONE_DEG};
+use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
 use clickhouse::{Client, Row};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::ops::Add;
+use futures::future::try_join_all;
 use tokio::time::{sleep, Duration, Instant};
 use tracing::{debug, info, trace};
 
@@ -27,8 +28,9 @@ impl PlaneDistance {
     /// - define a bounding box around a specific site (default is 70nm) and use it as a filter
     ///
     #[tracing::instrument(skip(dbh))]
-    async fn select_planes(&self, dbh: &Client) -> Result<usize> {
-        let site = self.name.clone();
+    async fn select_planes(&mut self, dbh: &Client) -> Result<usize> {
+        let site = self.site.clone();
+        let name = site.name.clone();
         let lat = self.lat;
         let lon = self.lon;
 
@@ -61,7 +63,7 @@ impl PlaneDistance {
         //
         //
         let day_name = self.date.format("%Y%m%d").to_string();
-        let tag = format!("_{site}_{day_name}");
+        let tag = format!("_{name}_{day_name}");
 
         let r1 = format!(
             r##"
@@ -110,12 +112,13 @@ ORDER BY time
         let r1 = format!("SELECT count() FROM today{tag}");
         let count = dbh.query(&r1).fetch_one::<usize>().await?;
 
+        self.state.push(TempTables::Today);
         trace!("Total number of planes: {}\n", count);
         Ok(count)
     }
 
     #[tracing::instrument(skip(dbh))]
-    async fn select_drones(&self, dbh: &Client) -> Result<usize> {
+    async fn select_drones(&mut self, dbh: &Client) -> Result<usize> {
         // All drone points for the same day
         //
         // $1 = date+1
@@ -126,14 +129,15 @@ ORDER BY time
         let lat = self.lat;
         let lon = self.lon;
 
-        let site = &self.name;
+        let site = self.site.clone();
+        let name = site.name.clone();
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
         let time_from = self.date.format("%Y-%m-%d 00:00:00").to_string();
 
         let day_name = self.date.format("%Y%m%d").to_string();
-        let tag = format!("_{site}_{day_name}");
+        let tag = format!("_{name}_{day_name}");
 
         // Our distance in nm converted into degrees
         //
@@ -182,17 +186,21 @@ ORDER BY
             .fetch_one::<usize>()
             .await?;
 
+        self.state.push(TempTables::Candidates);
+
         trace!("Total number of drones: {}", count);
         Ok(count)
     }
 
     #[tracing::instrument(skip(dbh))]
-    async fn find_close(&self, dbh: &Client) -> Result<usize> {
+    async fn find_close(&mut self, dbh: &Client) -> Result<usize> {
         trace!("Find close encounters.");
 
         let site = &self.name;
+        let site = self.site.clone();
+        let name = site.name.clone();
         let day_name = self.date.format("%Y%m%d").to_string();
-        let tag = format!("_{site}_{day_name}");
+        let tag = format!("_{name}_{day_name}");
 
         trace!("Removing old table today_close{tag}.");
 
@@ -253,13 +261,14 @@ WHERE
             .fetch_one::<usize>()
             .await?;
 
+        self.state.push(TempTables::TodayClose);
+
         trace!("Total number of potential encounters: {}", count);
         Ok(count)
     }
 
-    #[inline]
     #[tracing::instrument(skip(dbh))]
-    async fn create_table_ids(dbh: &Client, day_name: &str, site: &str) -> Result<()> {
+    async fn create_table_ids(&mut self, dbh: &Client, day_name: &str, site: &str) -> Result<()> {
         let tag = format!("_{site}_{day_name}");
 
         trace!("Create table ids{tag}.");
@@ -273,13 +282,13 @@ CREATE OR REPLACE TABLE ids{tag} (
 ) ENGINE = Memory
 "##
         );
+        self.state.push(TempTables::Ids);
 
         Ok(dbh.query(&r).execute().await?)
     }
 
-    #[inline]
     #[tracing::instrument(skip(dbh))]
-    async fn insert_ids(dbh: &Client, day_name: &str, site: &str) -> Result<usize> {
+    async fn insert_ids(&mut self, dbh: &Client, day_name: &str, site: &str) -> Result<usize> {
         let tag = format!("_{site}_{day_name}");
 
         let r = format!("SELECT count() FROM today_close{tag}");
@@ -358,16 +367,8 @@ CREATE OR REPLACE TABLE ids{tag} (
         Ok(count)
     }
 
-    #[inline]
     #[tracing::instrument(skip(dbh))]
-    async fn cleanup_ids(dbh: &Client, day_name: &str, site: &str) -> Result<()> {
-        let tag = format!("_{site}_{day_name}");
-
-        Ok(dbh.query(&format!("DROP TABLE ids{tag}")).execute().await?)
-    }
-
-    #[tracing::instrument(skip(dbh))]
-    async fn select_encounters(&self, dbh: &Client) -> Result<usize> {
+    async fn select_encounters(&mut self, dbh: &Client) -> Result<usize> {
         trace!("select and record close points. ");
 
         // We use a GROUP BY() clause to get the point where the distance between this drone and any surrounding planes
@@ -377,9 +378,10 @@ CREATE OR REPLACE TABLE ids{tag} (
         //
         // FIXME: conflicts are not handled, not sure why.
 
-        let site = &self.name;
+        let site = self.site.clone();
+        let name = site.name.clone();
         let day_name = self.date.format("%Y%m%d").to_string();
-        let tag = format!("_{site}_{day_name}");
+        let tag = format!("_{name}_{day_name}");
 
         // Insert data into table `encounters`
         //
@@ -390,8 +392,8 @@ CREATE OR REPLACE TABLE ids{tag} (
         // - join today_close and ids to get all points with the right en_id
         //
 
-        Self::create_table_ids(dbh, &day_name, &site.name).await?;
-        Self::insert_ids(dbh, &day_name, &site.name).await?;
+        self.create_table_ids(dbh, &day_name, &name).await?;
+        self.insert_ids(dbh, &day_name, &name).await?;
 
         let r = format!(
             r##"INSERT INTO airplane_prox
@@ -425,7 +427,7 @@ CREATE OR REPLACE TABLE ids{tag} (
         trace!("Save encounters.");
         dbh.query(&r).execute().await?;
 
-        Self::cleanup_ids(dbh, &day_name, &site.name).await?;
+        self.state.push(TempTables::Ids);
 
         // Now check how many
         //
@@ -449,19 +451,41 @@ CREATE OR REPLACE TABLE ids{tag} (
     ///
     #[tracing::instrument(skip(dbh))]
     async fn cleanup_temp_tables(&self, dbh: &Client) -> Result<()> {
-        let site = self.name.clone();
+        let site = self.site.clone();
+        let name = site.name.clone();
         let day_name = self.date.format("%Y%m%d").to_string();
-        let tag = format!("_{site}_{day_name}");
+        let tag = format!("_{name}_{day_name}");
 
-        dbh.query(&format!("DROP TABLE IF EXISTS today_close{tag}", ))
-            .execute()
-            .await?;
-        dbh.query(&format!("DROP TABLE IF EXISTS candidates{tag}", ))
-            .execute()
-            .await?;
-        dbh.query(&format!("DROP TABLE IF EXISTS today{tag}", ))
-            .execute()
-            .await?;
+        let list = self.state.clone();
+        let res = list.into_iter().map(|t| {
+            let tag = tag.clone();
+
+            async move {
+                match t {
+                    TempTables::Today => {
+                        dbh.query(&format!("DROP TABLE IF EXISTS today{tag}", ))
+                            .execute()
+                            .await
+                    }
+                    TempTables::Candidates => {
+                        dbh.query(&format!("DROP TABLE IF EXISTS candidates{tag}", ))
+                            .execute()
+                            .await
+                    }
+                    TempTables::TodayClose => {
+                        dbh.query(&format!("DROP TABLE IF EXISTS today_close{tag}", ))
+                            .execute()
+                            .await
+                    }
+                    TempTables::Ids => {
+                        dbh.query(&format!("DROP TABLE IF EXISTS ids{tag}", ))
+                            .execute()
+                            .await
+                    }
+                }
+            }
+        }).collect::<Vec<_>>();
+        let _ = try_join_all(res).await;
         Ok(())
     }
 }
@@ -473,7 +497,7 @@ impl Calculate for PlaneDistance {
     /// up the output.
     ///
     #[tracing::instrument(skip(self, dbh))]
-    async fn run(&self, dbh: &Client) -> Result<Stats> {
+    async fn run(&mut self, dbh: &Client) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
         let bar = ml_progress::progress!(
             4;
@@ -498,6 +522,7 @@ impl Calculate for PlaneDistance {
             stats.time = (Instant::now() - start).as_millis();
             bar.message("No planes found.");
             bar.finish();
+            self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.planes = c_planes;
@@ -516,6 +541,7 @@ impl Calculate for PlaneDistance {
             stats.time = (Instant::now() - start).as_millis();
             bar.message("No drones found.");
             bar.finish();
+            self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.drones = c_drones as usize;
@@ -534,6 +560,7 @@ impl Calculate for PlaneDistance {
             stats.time = (Instant::now() - start).as_millis();
             bar.message("No potential airprox found.");
             bar.finish();
+            self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.potential = c_potential;
@@ -552,6 +579,7 @@ impl Calculate for PlaneDistance {
         if c_encounters == 0 {
             bar.message("No close encounters of any kind found.");
             bar.finish();
+            self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.encounters = c_encounters;
