@@ -1,7 +1,7 @@
 use clap::Parser;
 use geo::point;
 use geo::prelude::*;
-use clickhouse::{Client, Row};
+use klickhouse::{ClientOptions, QueryBuilder, Row};
 
 #[cfg(feature = "duckdb")]
 use duckdb::params;
@@ -56,25 +56,38 @@ impl Point {
 }
 
 async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
-    let url = std::env::var("CLICKHOUSE_URL")?;
+    let url = std::env::var("KLICKHOUSE_URL")?;
     let db = std::env::var("CLICKHOUSE_DB")?;
     let user = std::env::var("CLICKHOUSE_USER")?;
     let pwd = std::env::var("CLICKHOUSE_PASSWD")?;
-    let client = Client::default()
-        .with_url(url)
-        .with_database(db)
-        .with_user(user)
-        .with_password(pwd)
-        .with_option("wait_end_of_query", "1");
 
-    let val = client.query("SELECT geoDistance(?,?,?,?) AS dist")
-        .bind(point1.longitude)
-        .bind(point1.latitude)
-        .bind(point2.longitude)
-        .bind(point2.latitude)
-        .fetch_one::<f32>().await?;
+    let client = klickhouse::Client::connect(
+        url,
+        ClientOptions {
+            username: user,
+            password: pwd,
+            default_database: db,
+        },
+    )
+        .await?;
 
-    Ok(val.into())
+    dbg!(&point1);
+    dbg!(&point2);
+    #[derive(Debug, Row)]
+    struct Ans {
+        dist: f64,
+    }
+    // let val = client.query("SELECT geoDistance(?,?,?,?) AS dist")
+    //     .bind(point1.longitude)
+    //     .bind(point1.latitude)
+    //     .bind(point2.longitude)
+    //     .bind(point2.latitude)
+    //     .fetch_one::<f32>().await?;
+    let q = QueryBuilder::new("SELECT geoDistance(5.5, 48.3, 5.6, 48.5) AS dist");
+    //.arg(point1.longitude).arg(point1.latitude).arg(point2.longitude).arg(point2.latitude);
+    let val = client.query_one::<Ans>(q).await?;
+    dbg!(&val);
+    Ok(val.dist.into())
 }
 
 #[cfg(feature = "duckdb")]
