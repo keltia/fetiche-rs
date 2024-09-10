@@ -5,7 +5,7 @@ use clap::Parser;
 use clickhouse::Client as CHClient;
 use csv::WriterBuilder;
 use eyre::Result;
-use klickhouse::{Client, ClientOptions, DateTime, Row};
+use klickhouse::{ClientOptions, DateTime, Row};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use tracing::{info, trace};
@@ -108,7 +108,7 @@ async fn export_all_encounters_records(_dbh: &CHClient) -> Result<Vec<Encounter>
 async fn export_all_encounters_csv(dbh: &CHClient, fname: &str) -> Result<()> {
     trace!("Exporting all encounters from airplane_prox");
 
-    let data = export_all_encounters_records(&dbh).await?;
+    let data = export_all_encounters_records(dbh).await?;
     let len = data.len();
 
     // Prepare the writer
