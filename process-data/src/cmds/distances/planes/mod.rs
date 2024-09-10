@@ -54,10 +54,10 @@ pub struct PlaneDistance {
     /// proximity
     #[builder(default = "5500.")]
     pub separation: f64,
-    // Lat of antenna
+    /// Lat of antenna
     #[builder]
     pub lat: f64,
-    // Lon of antenna
+    /// Lon of antenna
     #[builder]
     pub lon: f64,
     /// List of temporary tables created along the way, for cleanup.
