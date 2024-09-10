@@ -453,13 +453,13 @@ CREATE OR REPLACE TABLE ids{tag} (
         let day_name = self.date.format("%Y%m%d").to_string();
         let tag = format!("_{site}_{day_name}");
 
-        dbh.query(&format!("DROP IF EXISTS TABLE today_close{tag}", ))
+        dbh.query(&format!("DROP TABLE IF EXISTS today_close{tag}", ))
             .execute()
             .await?;
-        dbh.query(&format!("DROP IF EXISTS TABLE candidates{tag}", ))
+        dbh.query(&format!("DROP TABLE IF EXISTS candidates{tag}", ))
             .execute()
             .await?;
-        dbh.query(&format!("DROP IF EXISTS TABLE today{tag}", ))
+        dbh.query(&format!("DROP TABLE IF EXISTS today{tag}", ))
             .execute()
             .await?;
         Ok(())
