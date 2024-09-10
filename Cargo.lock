@@ -1221,6 +1221,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bb8"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b10cf871f3ff2ce56432fddc2615ac7acc3aa22ca321f8fea800846fbb32f188"
+dependencies = [
+ "async-trait",
+ "futures-util",
+ "parking_lot",
+ "tokio",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3902,6 +3914,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58b682b30ec24c0adc06c7b1ae2e63698d71fa8d41738446e1a2999628aa988e"
 dependencies = [
  "async-trait",
+ "bb8",
  "chrono",
  "chrono-tz",
  "cityhash-rs",
