@@ -1,12 +1,14 @@
-use std::ops::{Add, Sub};
-
-use chrono::{DateTime, Datelike, Days, TimeDelta, TimeZone, Utc};
+use crate::normalise_day;
+use crate::DateOpts::Month;
+use crate::ErrDateOpts::BadDate;
+use chrono::format::Numeric::Year;
+use chrono::{DateTime, Datelike, Days, Months, TimeDelta, TimeZone, Utc};
 use clap::Parser;
 use eyre::Report;
+use std::ops::{Add, Sub};
+use std::time::Duration;
 use thiserror::Error;
 use tracing::trace;
-use crate::ErrDateOpts::BadDate;
-use crate::normalise_day;
 
 /// Enum of supported options for the date formats.
 ///
@@ -18,6 +20,8 @@ pub enum DateOpts {
     Day { date: String },
     /// Specific week
     Week { num: i64 },
+    /// Specific month
+    Month(u8),
     /// Shortcut for today
     Today,
     /// Shortcut to yesterday
@@ -63,7 +67,7 @@ impl DateOpts {
                 trace!("Got day {}", date);
                 let begin = match dateparser::parse(&date) {
                     Ok(date) => date,
-                    Err(_) => return Err(ErrDateOpts::BadDate(date)),
+                    Err(_) => return Err(BadDate(date)),
                 };
                 let begin = normalise_day(begin)?;
                 let end = begin.add(Days::new(1));
@@ -73,7 +77,7 @@ impl DateOpts {
             DateOpts::Week { num } => {
                 trace!("Got week {}", num);
                 if num > 53 {
-                    return Err(ErrDateOpts::BadDate(num.to_string()));
+                    return Err(BadDate(num.to_string()));
                 }
                 let week = Utc::now();
                 let begin: DateTime<Utc> =
@@ -89,14 +93,23 @@ impl DateOpts {
                 trace!("Got from {} to {}", begin, end);
                 let begin = match dateparser::parse(&begin) {
                     Ok(date) => date,
-                    Err(_) => return Err(ErrDateOpts::BadDate(begin)),
+                    Err(_) => return Err(BadDate(begin)),
                 };
                 let end = match dateparser::parse(&end) {
                     Ok(date) => date,
-                    Err(_) => return Err(ErrDateOpts::BadDate(end)),
+                    Err(_) => return Err(BadDate(end)),
                 };
                 let begin = normalise_day(begin)?;
                 let end = normalise_day(end)?;
+
+                trace!("begin={} end={}", begin, end);
+                (begin, end)
+            }
+            DateOpts::Month(num) => {
+                let now = Utc::now();
+                let year = now.year();
+                let begin: DateTime<Utc> = Utc.with_ymd_and_hms(year, num as u32, 1, 0, 0, 0).unwrap();
+                let end: DateTime<Utc> = begin.add(Month(1));
 
                 trace!("begin={} end={}", begin, end);
                 (begin, end)
