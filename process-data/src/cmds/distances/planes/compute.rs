@@ -147,7 +147,7 @@ ORDER BY time
         let r2 = format!(
             r##"
 CREATE OR REPLACE TABLE candidates{tag}
-ENGINE = Memory AS
+ENGINE = MergeTree AS
 SELECT
     time,
     journey,
@@ -196,7 +196,6 @@ ORDER BY
     async fn find_close(&mut self, dbh: &Client) -> Result<usize> {
         trace!("Find close encounters.");
 
-        let site = &self.name;
         let site = self.site.clone();
         let name = site.name.clone();
         let day_name = self.date.format("%Y%m%d").to_string();
@@ -212,7 +211,7 @@ ORDER BY
         let r = format!(
             r##"
 CREATE OR REPLACE TABLE today_close{tag}
-ENGINE = Memory
+ENGINE = MergeTree
 AS (
 SELECT
   c.journey,
