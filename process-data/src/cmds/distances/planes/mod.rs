@@ -188,41 +188,6 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
 }
 
 /// Does the calculation for one specific day on one specific site.
-/// Find all sites for which the day is valid and run these
-/// with `calculate_one_day_on_site()`
-///
-#[tracing::instrument(skip(ctx))]
-async fn calculate_one_day(
-    ctx: &Context,
-    day: DateTime<Utc>,
-    distance: f64,
-    separation: f64,
-) -> Result<Vec<Stats>> {
-    // Build our set of batches
-    //
-    let day = normalise_day(day)?;
-    let sites = enumerate_sites(ctx, day).await?;
-
-    let stats = sites
-        .into_iter()
-        .map(|site| async move {
-            let ctx = ctx.clone();
-            let site = site.clone();
-
-            tokio::spawn(async move {
-                calculate_one_day_on_site(&ctx, &site, &day, distance, separation).await
-            })
-                .await?
-        })
-        .collect::<Vec<_>>();
-
-    let stats = try_join_all(stats).await?;
-    trace!("All stats: {:?}", stats);
-
-    Ok(stats)
-}
-
-/// Does the calculation for one specific day on one specific site.
 /// Could be merged with previous, but I think it might be too much overhead for just a few lines.
 ///
 #[tracing::instrument(skip(ctx))]
