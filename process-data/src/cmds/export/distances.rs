@@ -47,8 +47,8 @@ struct Encounter {
     drone_height_m: f32,
     prox_callsign: String,
     prox_id: String,
-    prox_lon: f32,
     prox_lat: f32,
+    prox_lon: f32,
     prox_alt_m: f32,
     distance_slant_m: i32,
     distance_hor_m: i32,
@@ -56,25 +56,6 @@ struct Encounter {
     distance_home_m: i32,
 }
 
-//     en_id,
-//     site,
-//     time,
-//     journey,
-//     drone_id,
-//     model,
-//     drone_lat,
-//     drone_lon,
-//     drone_alt_m,
-//     drone_height_m,
-//     prox_callsign,
-//     prox_id,
-//     prox_lat,
-//     prox_lon,
-//     prox_alt_m,
-//     distance_hor_m,
-//     distance_vert_m,
-//     distance_home_m,
-//     distance_slant_m,
 
 async fn connect_clickhouse() -> Result<Client> {
     let name = std::env::var("CLICKHOUSE_DB")?;
@@ -98,7 +79,27 @@ async fn connect_clickhouse() -> Result<Client> {
 async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     trace!("retrieving records from airplane_prox");
 
-    let r = r##"SELECT *
+    let r = r##"
+  SELECT
+    en_id,
+    site,
+    time,
+    journey,
+    drone_id,
+    model,
+    drone_lat,
+    drone_lon,
+    drone_alt_m,
+    drone_height_m,
+    prox_callsign,
+    prox_id,
+    prox_lat,
+    prox_lon,
+    prox_alt_m,
+    distance_hor_m,
+    distance_vert_m,
+    distance_home_m,
+    distance_slant_m,
   FROM airplane_prox
   ORDER BY time
         "##;
