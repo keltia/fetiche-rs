@@ -56,7 +56,12 @@ struct Encounter {
     distance_home_m: i32,
 }
 
-
+/// Connect to the clickhouse database using the `klickhouse` client instead of the
+/// official client.
+///
+/// FIXME: this is temporary, we might migrate to this one for all.
+///
+#[tracing::instrument]
 async fn connect_clickhouse() -> Result<Client> {
     let name = std::env::var("CLICKHOUSE_DB")?;
     let user = std::env::var("CLICKHOUSE_USER")?;
@@ -75,6 +80,8 @@ async fn connect_clickhouse() -> Result<Client> {
     Ok(client)
 }
 
+/// Retrieve all the records in `airplane_prox` table.
+///
 #[tracing::instrument(skip(client))]
 async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     trace!("retrieving records from airplane_prox");
@@ -110,10 +117,11 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     Ok(res)
 }
 
-
+/// Retrieve the subset summary of all encounters from `airplane_prox`
+///
 #[tracing::instrument(skip(client))]
 async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> {
-    trace!("retrieving records from airplane_prox");
+    trace!("retrieving summary records from airplane_prox");
 
     let r = r##"
 CREATE OR REPLACE TABLE airprox_summary
@@ -172,7 +180,7 @@ AS (
     Ok(summ)
 }
 
-/// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
+/// Write the output of `retrieve_all_encounters()` as a CSV file
 ///
 #[tracing::instrument(skip(client))]
 async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()>
@@ -204,7 +212,8 @@ async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()>
 }
 
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
-/// Same as previous but export as a Parquet file.
+/// Same as previous but export as a Parquet file.  Due to the way DataFrames are handled in
+/// Datafusion, it is easier to generate the CSV and use it to generate a parquet file.
 ///
 #[tracing::instrument(skip(client))]
 async fn export_all_encounters_parquet(client: &Client, fname: &str) -> Result<()> {
@@ -298,6 +307,8 @@ async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::R
     Ok(())
 }
 
+/// Main entry point for the various `export distances` subcommand.
+///
 #[tracing::instrument(skip(_ctx))]
 pub async fn export_results(_ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
     let client = connect_clickhouse().await?;
