@@ -64,6 +64,10 @@ pub struct PlaneDistance {
     state: Vec<TempTables>,
 }
 
+/// This is the list of temporary tables created during the calculations process.  As we can
+/// bail out a certain points, the cleanup process may include one or more of these tables.
+/// This is registered in the `state` attribute in `PlaneDistance`.
+///
 #[derive(Clone, Debug)]
 pub enum TempTables {
     Today,
