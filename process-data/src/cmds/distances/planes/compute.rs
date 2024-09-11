@@ -211,9 +211,9 @@ WHERE
             r##"
 CREATE OR REPLACE TABLE today_close{tag}
 ENGINE = MergeTree
-AS (
-SELECT
-  c.journey,
+ORDER BY (journey, time)
+AS SELECT
+  c.journey AS journey,
   c.ident AS drone_id,
   c.model,
   c.timestamp AS time,
@@ -241,7 +241,6 @@ ON
 WHERE
   dist2d <= ? AND
   diff_alt < ?
-)
     "##
         );
 
