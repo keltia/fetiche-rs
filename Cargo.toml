@@ -24,9 +24,9 @@ hcl-rs = "0.18"
 home = "0.5"
 log = { version = "0.4", features = ["serde", "std"] }
 nom = "7"
-opentelemetry = { version = "0.24", features = ["logs", "metrics"] }
-opentelemetry-otlp = "0.17"
-opentelemetry_sdk = { version = "0.24", features = ["rt-tokio"] }
+opentelemetry = { version = "0.25", features = ["logs", "metrics"] }
+opentelemetry-otlp = "0.25"
+opentelemetry_sdk = { version = "0.25", features = ["rt-tokio"] }
 parquet2 = { version = "0.17", features = ["zstd"] }
 progress = "0.2"
 reqwest = { version = "0.12", features = ["blocking", "gzip", "json", "socks", "deflate"] }
@@ -43,6 +43,6 @@ thiserror = "1.0"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-log = "0.2"
-tracing-opentelemetry = "0.25"
+tracing-opentelemetry = "0.26"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
 tracing-tree = { version = "0.4", features = ["time"] }
