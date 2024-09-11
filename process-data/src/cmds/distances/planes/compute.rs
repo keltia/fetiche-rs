@@ -146,8 +146,10 @@ ORDER BY time
 
         let r2 = format!(
             r##"
-CREATE OR REPLACE TABLE candidates{tag} AS (
-SELECT
+CREATE OR REPLACE TABLE candidates{tag}
+ENGINE = MergeTree
+ORDER BY (time,journey)
+AS SELECT
     time,
     journey,
     ident,
@@ -165,9 +167,6 @@ FROM drones
 WHERE
   toStartOfInterval(timestamp, toIntervalDay(1)) = toDateTime(?) AND
   pointInEllipses(longitude,latitude, ?, ?, ?, ?)
-)
-ENGINE = MergeTree
-ORDER BY (time,journey)
     "##
         );
 
