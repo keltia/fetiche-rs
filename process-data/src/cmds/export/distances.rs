@@ -3,7 +3,6 @@
 
 use std::fmt::Debug;
 use std::fs;
-use std::path::Path;
 
 use clap::Parser;
 use csv::WriterBuilder;
@@ -298,7 +297,7 @@ async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::R
     Ok(())
 }
 
-#[tracing::instrument(skip(ctx))]
+#[tracing::instrument(skip(_ctx))]
 pub async fn export_results(_ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
     let client = connect_clickhouse().await?;
 
