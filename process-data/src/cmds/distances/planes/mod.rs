@@ -61,6 +61,7 @@ pub struct PlaneDistance {
     #[builder]
     pub lon: f64,
     /// List of temporary tables created along the way, for cleanup.
+    #[builder(default = "vec![]")]
     state: Vec<TempTables>,
 }
 
@@ -107,9 +108,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     };
 
     let dates = expand_interval(begin, end)?;
-    info!("{} days to process.", dates.len());
-
-    trace!("From {} to {}", begin, end);
+    info!("{} days to process, from {begin} to {end}", dates.len());
 
     // Let us generate the list we want:
     //
