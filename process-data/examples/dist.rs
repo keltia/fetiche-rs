@@ -83,8 +83,9 @@ async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
     //     .bind(point2.longitude)
     //     .bind(point2.latitude)
     //     .fetch_one::<f32>().await?;
-    let q = QueryBuilder::new("SELECT geoDistance(5.5, 48.3, 5.6, 48.5) AS dist");
-    //.arg(point1.longitude).arg(point1.latitude).arg(point2.longitude).arg(point2.latitude);
+    let q = QueryBuilder::new("SELECT geoDistance($1,$2,$3,$4) AS dist")
+        .arg(point1.longitude).arg(point1.latitude).arg(point2.longitude).arg(point2.latitude);
+    dbg!(q.clone().finalize()?);
     let val = client.query_one::<Ans>(q).await?;
     dbg!(&val);
     Ok(val.dist.into())
