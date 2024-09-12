@@ -221,7 +221,7 @@ impl Fetchable for Opensky {
                 Some(format!("time={}", now - d))
             }
             Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
-            Filter::Stream { .. } | Filter::None => None,
+            _ => None,
         };
 
         let url = match tm {
