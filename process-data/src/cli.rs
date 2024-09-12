@@ -28,6 +28,9 @@ pub struct Opts {
     /// Enable logging in hierarchical manner (aka tree)
     #[clap(short = 'L', long)]
     pub use_tree: bool,
+    /// This parameter enable logging to a file in that location.
+    #[clap(short = 'F', long)]
+    pub use_file: Option<String>,
     /// Dry run
     #[clap(short = 'n', long)]
     pub dry_run: bool,
