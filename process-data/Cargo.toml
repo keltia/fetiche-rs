@@ -40,7 +40,6 @@ fetiche-macros.workspace = true
 hcl-rs.workspace = true
 log.workspace = true
 parquet2.workspace = true
-progress.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
