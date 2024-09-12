@@ -71,18 +71,10 @@ async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
     )
         .await?;
 
-    dbg!(&point1);
-    dbg!(&point2);
     #[derive(Debug, Row)]
     struct Ans {
         dist: f64,
     }
-    // let val = client.query("SELECT geoDistance(?,?,?,?) AS dist")
-    //     .bind(point1.longitude)
-    //     .bind(point1.latitude)
-    //     .bind(point2.longitude)
-    //     .bind(point2.latitude)
-    //     .fetch_one::<f32>().await?;
     let q = QueryBuilder::new("SELECT geoDistance($1,$2,$3,$4) AS dist")
         .arg(point1.longitude).arg(point1.latitude).arg(point2.longitude).arg(point2.latitude);
     dbg!(q.clone().finalize()?);
