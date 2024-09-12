@@ -25,6 +25,9 @@ pub struct Opts {
     /// Enable telemetry with OTLP.
     #[clap(short = 'T', long)]
     pub use_telemetry: bool,
+    /// Enable logging in hierarchical manner (aka tree)
+    #[clap(short = 'L', long)]
+    pub use_tree: bool,
     /// Dry run
     #[clap(short = 'n', long)]
     pub dry_run: bool,
