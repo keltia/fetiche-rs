@@ -149,7 +149,7 @@ pub struct AvionixCat21 {
 ///
 #[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
 #[strum(serialize_all = "UPPERCASE")]
-pub enum Gda {
+enum Gda {
     /// Airborne
     A,
     /// Ground
@@ -159,7 +159,7 @@ pub enum Gda {
 /// Special enum for type of source, always ADS-B for Avionix
 ///
 #[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
-pub enum Src {
+enum Src {
     /// ADS-B
     A,
     /// MLAT
@@ -184,7 +184,10 @@ pub enum Src {
     X,
 }
 
-pub enum Category {
+/// Object type
+///
+#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
+enum Category {
     /// Unknown
     O0,
     /// Glider
