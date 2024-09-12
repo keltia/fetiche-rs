@@ -254,7 +254,6 @@ dependencies = [
  "log",
  "nom",
  "percent-encoding",
- "progress",
  "reqwest",
  "rstest",
  "serde",
@@ -2872,7 +2871,6 @@ dependencies = [
  "mini-moka",
  "native-tls",
  "percent-encoding",
- "progress",
  "reqwest",
  "rstest",
  "serde",
@@ -5131,7 +5129,6 @@ dependencies = [
  "ml-progress",
  "parquet2",
  "pprof",
- "progress",
  "rand",
  "rayon",
  "rstest",
@@ -5147,15 +5144,6 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-tree",
-]
-
-[[package]]
-name = "progress"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17b820305721858696053a7fd0215cfeeee16ecaaf96b7a209945428e02f1c44"
-dependencies = [
- "terminal_size",
 ]
 
 [[package]]
