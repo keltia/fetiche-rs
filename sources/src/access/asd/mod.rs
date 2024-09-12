@@ -22,7 +22,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
-use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use clap::{crate_name, crate_version};
 use eyre::{eyre, Result};
 use reqwest::blocking::Client;
