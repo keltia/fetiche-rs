@@ -117,6 +117,7 @@ impl Sources {
                     Auth::Token { .. } => "token",
                     Auth::Anon => "open",
                     Auth::Key { .. } => "API key",
+                    Auth::UserKey { .. } => "API+User keys",
                 }
                 .to_string()
             } else {
