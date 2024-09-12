@@ -14,7 +14,7 @@ pub fn init_logging(
     name: &'static str,
     use_telemetry: bool,
     use_tree: bool,
-    use_file: bool,
+    use_file: Option<String>,
 ) -> Result<()> {
     // Initialise logging early
     //
@@ -55,10 +55,10 @@ pub fn init_logging(
 
     // Log to file?
     //
-    let file = if use_file {
+    let file = if use_file.is_some() {
         // Basic append-only rolling file for all traces.
         //
-        let file_appender = tracing_appender::rolling::hourly("/tmp/acute", name);
+        let file_appender = tracing_appender::rolling::hourly(&use_file.unwrap(), name);
         Some(tracing_subscriber::fmt::layer().with_writer(file_appender))
     } else {
         None
