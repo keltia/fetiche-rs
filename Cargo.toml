@@ -5,7 +5,6 @@ exclude = ["adsb-to-parquet", "opensky-history"]
 resolver = "2"
 
 [workspace.dependencies]
-arrow2 = { version = "0.17", features = ["io_csv", "io_json", "io_json_integration", "io_parquet"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 criterion = { version = "0.5", features = ["async_tokio"] }
@@ -27,8 +26,6 @@ nom = "7"
 opentelemetry = { version = "0.25", features = ["logs", "metrics"] }
 opentelemetry-otlp = "0.25"
 opentelemetry_sdk = { version = "0.25", features = ["rt-tokio"] }
-parquet2 = { version = "0.17", features = ["zstd"] }
-progress = "0.2"
 reqwest = { version = "0.12", features = ["blocking", "gzip", "json", "socks", "deflate"] }
 rstest = "0.22"
 serde = { version = "1.0", features = ["derive"] }
