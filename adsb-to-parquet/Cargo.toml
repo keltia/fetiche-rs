@@ -28,6 +28,7 @@ chrono.workspace = true
 clap.workspace = true
 datafusion.workspace = true
 eyre.workspace = true
+fetiche-common.workspace = true
 log.workspace = true
 opentelemetry.workspace = true
 opentelemetry-otlp.workspace = true
@@ -42,7 +43,7 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 arrow2 = { version = "0.18", features = ["io_csv", "io_parquet"] }
-rayon = "1.8"
-
+rayon = "1.10"
+polars = { version = "0.43", features = ["lazy", "parquet", "csv"] }
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
