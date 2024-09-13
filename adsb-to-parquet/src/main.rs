@@ -1,5 +1,7 @@
 //! Read some data as csv and write it into a parquet file
 //!
+
+use crate::cli::Opts;
 use adsb_to_parquet::{
     arrow2::{read_csv, write_chunk},
     datafusion::parquet_through_df,
@@ -7,12 +9,9 @@ use adsb_to_parquet::{
 };
 use clap::Parser;
 use eyre::Result;
+use fetiche_common::init_logging;
+use std::path::Path;
 use tracing::{debug, trace};
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::EnvFilter;
-use tracing_tree::HierarchicalLayer;
-
-use crate::cli::Opts;
 
 mod cli;
 mod types;
@@ -25,37 +24,7 @@ const NAME: &str = "adsb-to-parquet";
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
-    // Initialise logging early
-    //
-    let tree = HierarchicalLayer::new(2)
-        .with_ansi(true)
-        .with_span_retrace(true)
-        .with_targets(true)
-        .with_verbose_entry(true)
-        .with_verbose_exit(true)
-        .with_higher_precision(true)
-        .with_bracketed_fields(true);
-
-    // Setup Open Telemetry with OTLP
-    //
-    let exporter = opentelemetry_otlp::new_exporter().tonic();
-    let tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(exporter)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-
-    // Load filters from environment
-    //
-    let filter = EnvFilter::from_default_env();
-
-    // Combine filter & specific format
-    //
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(tree)
-        .with(telemetry)
-        .init();
+    init_logging(NAME, false, true, true)?;
     trace!("Logging initialised.");
 
     // Generate our basename
