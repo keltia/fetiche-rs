@@ -36,7 +36,6 @@ fetiche-sources.workspace = true
 hcl-rs.workspace = true
 log.workspace = true
 nom.workspace = true
-parquet2.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_arrow.workspace = true
