@@ -67,7 +67,7 @@ fn banner() -> Result<()> {
     let ver = format!("{} v{}+duckdb", NAME, VERSION);
     Ok(eprintln!(
         r##"
-{NAME}/{ver} by {AUTHORS}
+{ver} by {AUTHORS}
 {}
 "##,
         crate_description!()
