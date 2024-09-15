@@ -1,7 +1,7 @@
 //! This is the main driver module for all the different commands.
 //!
 
-use clickhouse::Client;
+use klickhouse::Client;
 use std::fmt::Debug;
 use tracing::info;
 
