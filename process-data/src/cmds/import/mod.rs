@@ -3,7 +3,7 @@ pub use adsb::*;
 mod adsb;
 
 use clap::{Parser, Subcommand};
-use clickhouse::Row;
+use klickhouse::Row;
 use serde::Deserialize;
 
 use crate::cmds::import::adsb::AdsbOpts;
