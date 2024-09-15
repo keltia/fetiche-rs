@@ -17,4 +17,6 @@ pub enum Status {
     MissingConfig(String),
     #[error("Error reading configuration({0})")]
     MissingConfigParameter(String),
+    #[error("Can't get a connection from pool {0}")]
+    ConnectionUnavailable(String)
 }
