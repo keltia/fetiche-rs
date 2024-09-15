@@ -3,7 +3,7 @@
 
 use crate::config::Context;
 use clap::Parser;
-use clickhouse::Row;
+use klickhouse::Row;
 use datafusion::prelude::{CsvReadOptions, SessionConfig, SessionContext};
 use serde::Deserialize;
 use tracing::debug;
@@ -32,7 +32,7 @@ struct Sites {
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn fetch_sites(ctx: &Context) -> eyre::Result<Vec<Sites>> {
-    let db = ctx.db();
+    let db = ctx.db().await;
 
     // Fetch all sites long names and id
     //
@@ -47,7 +47,7 @@ pub async fn fetch_sites(ctx: &Context) -> eyre::Result<Vec<Sites>> {
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> eyre::Result<()> {
-    let db = ctx.db();
+    let db = ctx.db().await;
 
     let sites = fetch_sites(ctx).await?;
     debug!("sites={:?}", sites);
