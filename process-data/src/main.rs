@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
 
     // Initialise our context including logging.
     //
-    let ctx = init_runtime(&opts)?;
+    let ctx = init_runtime(&opts).await?;
 
     banner()?;
 

@@ -13,8 +13,9 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
-use clickhouse::Client;
 use eyre::Result;
+use klickhouse::bb8::Pool;
+use klickhouse::{bb8, Client, ClientOptions, ConnectionManager};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, trace};
 
@@ -55,7 +56,7 @@ pub struct Context {
     /// All configuration parameters
     pub config: Arc<HashMap<String, String>>,
     /// Database Client.
-    dbh: Client,
+    dbh: Pool<ConnectionManager>,
     /// Delay between parallel tasks
     pub wait: u64,
     /// Dry run
@@ -64,8 +65,14 @@ pub struct Context {
 
 impl Context {
     #[tracing::instrument(skip(self))]
-    pub fn db(&self) -> Client {
-        self.dbh.clone()
+    pub async fn db(&self) -> Client {
+        let client = self
+            .dbh
+            .get()
+            .await
+            .map_err(|e| Status::ConnectionUnavailable(e.to_string()))
+            .unwrap();
+        client.clone()
     }
 
     #[tracing::instrument(skip(self))]
@@ -88,10 +95,15 @@ impl Debug for Context {
 /// Connect to database and load the extensions.
 ///
 #[tracing::instrument]
-pub fn init_runtime(opts: &Opts) -> Result<Context> {
+pub async fn init_runtime(opts: &Opts) -> Result<Context> {
     // Initialise logging early
     //
-    init_logging(NAME, opts.use_telemetry, opts.use_tree, opts.use_file.clone())?;
+    init_logging(
+        NAME,
+        opts.use_telemetry,
+        opts.use_tree,
+        opts.use_file.clone(),
+    )?;
     trace!("Logging initialised.");
 
     // We must operate on a database.
@@ -151,11 +163,19 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     }
 
     info!("Connecting to {} @ {}", name, endpoint);
-    let dbh = Client::default()
-        .with_url(endpoint.clone())
-        .with_database(&name)
-        .with_user(&user)
-        .with_password(pass);
+    trace!("Creating connection pool");
+
+    let manager = ConnectionManager::new(
+        endpoint,
+        ClientOptions {
+            username: user,
+            password: pass,
+            default_database: name,
+        },
+    )
+    .await?;
+
+    let pool = bb8::Pool::builder().max_size(8).build(manager).await?;
 
     let ctx = Context {
         config: HashMap::from([
@@ -164,8 +184,8 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
             ("datalake".to_string(), datalake.clone()),
             ("username".to_string(), user.clone()),
         ])
-            .into(),
-        dbh,
+        .into(),
+        dbh: pool.clone(),
         wait: opts.wait,
         dry_run: opts.dry_run,
     };
