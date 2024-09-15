@@ -197,7 +197,7 @@ async fn calculate_one_day_on_site(
     distance: f64,
     separation: f64,
 ) -> Result<Stats> {
-    let dbh = ctx.db();
+    let dbh = ctx.db().await;
 
     let day = normalise_day(*day)?;
 
