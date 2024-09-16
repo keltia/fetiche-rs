@@ -45,10 +45,7 @@ async fn main() -> Result<()> {
             generate(generator, &mut cmd, NAME, &mut io::stdout());
         }
         SubCommand::Version => {
-            #[cfg(feature = "clickhouse")]
             println!("{} v{}+clickhouse", NAME, VERSION);
-            #[cfg(feature = "duckdb")]
-            println!("{} v{}+duckdb", NAME, VERSION);
         }
         _ => handle_cmds(&ctx, &opts).await?,
     }
@@ -61,10 +58,7 @@ async fn main() -> Result<()> {
 /// Display banner
 ///
 fn banner() -> Result<()> {
-    #[cfg(feature = "clickhouse")]
     let ver = format!("{} v{}+clickhouse", NAME, VERSION);
-    #[cfg(feature = "duckdb")]
-    let ver = format!("{} v{}+duckdb", NAME, VERSION);
     Ok(eprintln!(
         r##"
 {ver} by {AUTHORS}
