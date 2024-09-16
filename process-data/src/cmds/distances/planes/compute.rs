@@ -350,7 +350,9 @@ CREATE OR REPLACE TABLE ids{tag} (
         trace!("Insert updated records.");
         // Insert the records
         //
-        let _ = dbh.insert_native_block(&format!("INSERT INTO ids{tag} FORMAT native"), all).await?;
+        let _ = dbh
+            .insert_native_block(&format!("INSERT INTO ids{tag} FORMAT native"), all)
+            .await?;
 
         let mut count = dbh
             .query_one::<RawRow>(&format!("SELECT count() FROM today_close{tag}"))
@@ -423,10 +425,9 @@ CREATE OR REPLACE TABLE ids{tag} (
         // Now check how many
         //
         let pattern = format!("%{day_name}%");
-        let q = QueryBuilder::new("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE $1").arg(pattern);
-        let mut count = dbh
-            .query_one::<RawRow>(q)
-            .await?;
+        let q = QueryBuilder::new("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE $1")
+            .arg(pattern);
+        let mut count = dbh.query_one::<RawRow>(q).await?;
 
         let count: u32 = count.get(0);
         if count == 0 {
@@ -468,8 +469,7 @@ CREATE OR REPLACE TABLE ids{tag} (
                                 .await
                         }
                         TempTables::Ids => {
-                            dbh.execute(&format!("DROP TABLE IF EXISTS ids{tag}", ))
-                                .await
+                            dbh.execute(&format!("DROP TABLE IF EXISTS ids{tag}")).await
                         }
                     }
                 }
