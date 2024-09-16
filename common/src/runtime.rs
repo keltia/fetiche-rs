@@ -58,7 +58,7 @@ pub fn init_logging(
     let file = if use_file.is_some() {
         // Basic append-only rolling file for all traces.
         //
-        let file_appender = tracing_appender::rolling::hourly(&use_file.unwrap(), name);
+        let file_appender = tracing_appender::rolling::hourly(use_file.unwrap(), name);
         Some(tracing_subscriber::fmt::layer().with_writer(file_appender))
     } else {
         None
