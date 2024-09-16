@@ -6,10 +6,9 @@
 use clap::Parser;
 use eyre::Result;
 use geo::coord;
-use klickhouse::{QueryBuilder, Row};
+use klickhouse::{DateTime, QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use time::Date;
 use tracing::trace;
 
 pub(crate) use antennas::*;
@@ -98,8 +97,8 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
             struct Install {
                 pub id: u32,
                 pub name: String,
-                pub start_at: Date,
-                pub end_at: Date,
+                pub start_at: DateTime,
+                pub end_at: DateTime,
                 pub station_name: String,
                 pub comment: String,
             }
