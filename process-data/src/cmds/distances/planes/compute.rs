@@ -5,7 +5,7 @@
 use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
 use eyre::Result;
 use futures::future::try_join_all;
-use klickhouse::{Client, QueryBuilder, RawRow, Row, UnitValue};
+use klickhouse::{Client, QueryBuilder, RawRow, Row};
 use serde::{Deserialize, Serialize};
 use std::ops::Add;
 use tokio::time::{sleep, Duration, Instant};
