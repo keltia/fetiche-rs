@@ -76,7 +76,7 @@ async fn connect_clickhouse() -> Result<Client> {
             default_database: name,
         },
     )
-        .await?;
+    .await?;
     Ok(client)
 }
 
@@ -138,7 +138,7 @@ AS (
     en_id,journey,drone_id
 )"##;
     trace!("Create temp table airprox_summary");
-    let _ = client.execute(r).await?;
+    client.execute(r).await?;
 
     // Match with airprox_summary for export
     //
@@ -181,8 +181,7 @@ AS (
 /// Write the output of `retrieve_all_encounters()` as a CSV file
 ///
 #[tracing::instrument(skip(client))]
-async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()>
-{
+async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()> {
     trace!("Exporting all encounters from airplane_prox");
 
     let data = retrieve_all_encounters(client).await?;
@@ -190,9 +189,7 @@ async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()>
 
     // Prepare the writer
     //
-    let mut wtr = WriterBuilder::new()
-        .has_headers(true)
-        .from_writer(vec![]);
+    let mut wtr = WriterBuilder::new().has_headers(true).from_writer(vec![]);
 
     // Insert data
     //
@@ -220,7 +217,9 @@ async fn export_all_encounters_parquet(client: &Client, fname: &str) -> Result<(
     let tmpname = csv.path().to_string_lossy().to_string();
     trace!("Creating and saving CSV into {tmpname}");
 
-    let _ = export_all_encounters_csv(client, &tmpname).await?;
+    // Generate the csv file as `tmpname`
+    //
+    export_all_encounters_csv(client, &tmpname).await?;
 
     let ctx = SessionContext::new();
     let df = ctx
@@ -287,9 +286,7 @@ async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::R
 
     // Prepare the writer
     //
-    let mut wtr = WriterBuilder::new()
-        .has_headers(true)
-        .from_writer(vec![]);
+    let mut wtr = WriterBuilder::new().has_headers(true).from_writer(vec![]);
 
     // Insert data
     //

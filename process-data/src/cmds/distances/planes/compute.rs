@@ -102,7 +102,7 @@ ORDER BY time
             .arg(lat)
             .arg(dist)
             .arg(dist);
-        let _ = dbh.execute(q).await?;
+        dbh.execute(q).await?;
         let tm = (Instant::now() - tm).as_millis();
         trace!("CREATE TABLE today{tag} took {tm} ms");
 
@@ -176,7 +176,7 @@ WHERE
             .arg(lat)
             .arg(dist)
             .arg(dist);
-        let _ = dbh.execute(q).await?;
+        dbh.execute(q).await?;
 
         // Check how many
         //
@@ -350,8 +350,7 @@ CREATE OR REPLACE TABLE ids{tag} (
         trace!("Insert updated records.");
         // Insert the records
         //
-        let _ = dbh
-            .insert_native_block(&format!("INSERT INTO ids{tag} FORMAT native"), all)
+        dbh.insert_native_block(&format!("INSERT INTO ids{tag} FORMAT native"), all)
             .await?;
 
         let mut count = dbh

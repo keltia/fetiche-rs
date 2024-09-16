@@ -47,8 +47,8 @@ CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
   ceil(sqrt(pow(dist_2d(dx,dy,px,py), 2) + pow((dz-pz), 2)));
     "##;
 
-    let _ = dbh.execute(r1).await?;
-    let _ = dbh.execute(r2).await?;
+    dbh.execute(r1).await?;
+    dbh.execute(r2).await?;
 
     Ok(())
 }
@@ -65,8 +65,8 @@ DROP FUNCTION IF EXISTS dist_2d;
 DROP FUNCTION IF EXISTS dist_3d;
     "##;
 
-    let _ = dbh.execute(r1).await?;
-    let _ = dbh.execute(r2).await?;
+    dbh.execute(r1).await?;
+    dbh.execute(r2).await?;
     Ok(())
 }
 
