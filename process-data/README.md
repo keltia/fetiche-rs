@@ -135,6 +135,4 @@ Using an ML system to classify the different kind of trajectory we can expect fr
 
 [datafusion]: https://crates.io/crates/arrow-datafusion
 
-[DuckDB]: https://duckdb.org/
-
 [Clickhouse]: https://clickhouse.com/
