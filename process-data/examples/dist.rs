@@ -1,10 +1,7 @@
 use clap::Parser;
 use geo::point;
 use geo::prelude::*;
-use klickhouse::{ClientOptions, QueryBuilder, Row};
-
-#[cfg(feature = "duckdb")]
-use duckdb::params;
+use klickhouse::{ClientOptions, QueryBuilder, RawRow};
 
 /// Earth radius in meters
 const R: f64 = 6_371_088.0;
@@ -71,36 +68,16 @@ async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
     )
         .await?;
 
-    dbg!(&point1);
-    dbg!(&point2);
-    #[derive(Debug, Row)]
-    struct Ans {
-        dist: f64,
-    }
-    // let val = client.query("SELECT geoDistance(?,?,?,?) AS dist")
-    //     .bind(point1.longitude)
-    //     .bind(point1.latitude)
-    //     .bind(point2.longitude)
-    //     .bind(point2.latitude)
-    //     .fetch_one::<f32>().await?;
-    let q = QueryBuilder::new("SELECT geoDistance(5.5, 48.3, 5.6, 48.5) AS dist");
-    //.arg(point1.longitude).arg(point1.latitude).arg(point2.longitude).arg(point2.latitude);
-    let val = client.query_one::<Ans>(q).await?;
+    let q = QueryBuilder::new("SELECT geoDistance($1,$2,$3,$4) AS dist")
+        .arg(point1.longitude)
+        .arg(point1.latitude)
+        .arg(point2.longitude)
+        .arg(point2.latitude);
+    dbg!(&q.clone().finalize());
+    let mut val = client.query_one::<RawRow>(q).await?;
+    let val: f64 = val.get(0);
     dbg!(&val);
-    Ok(val.dist.into())
-}
-
-#[cfg(feature = "duckdb")]
-async fn dd_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
-    let dbh = duckdb::Connection::open_in_memory()?;
-    dbh.execute("LOAD spatial", [])?;
-
-    let dist_duck: f64 = dbh.query_row("SELECT ST_Distance_Spheroid(ST_Point(?, ?), ST_Point(?, ?))",
-                                       params![point1.latitude, point1.longitude, point2.latitude, point2.longitude], |row| {
-            Ok(row.get_unwrap(0))
-        },
-    )?;
-    Ok(dist_duck)
+    Ok(val.into())
 }
 
 #[tokio::main]
@@ -125,9 +102,6 @@ async fn main() -> eyre::Result<()> {
     let geo_h = p1.haversine_distance(&p2);
     let geo_vin = p1.vincenty_distance(&p2)?;
 
-    let dist_duck: f64 = 0.;
-    #[cfg(feature = "duckdb")]
-    let dist_duck = dd_distance(point1, point2).await?;
     let ch_dist = ch_distance(point1, point2).await?;
 
     println!("Distance between\n  {:?}\nand\n  {:?}", p1, p2);
@@ -138,9 +112,8 @@ async fn main() -> eyre::Result<()> {
         {:.2} m geo::geodesic\n\
         {:.2} m geo::haversines\n\
         {:.2} m geo::vincenty\n\
-        {:.2} m duckdb:speh\n\
         {:.2} m clickhouse\n",
-        d_h, d_s, geo_g, geo_h, geo_vin, dist_duck, ch_dist
+        d_h, d_s, geo_g, geo_h, geo_vin, ch_dist
     );
     Ok(())
 }
