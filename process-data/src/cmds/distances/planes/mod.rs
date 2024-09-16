@@ -178,7 +178,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     // Gather all statistics
     //
     let stats = Stats::summarise(stats);
-    dbg!(stats);
+    dbg!(&stats);
     trace!("summary={stats:?}");
 
     Ok(stats)
