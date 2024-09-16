@@ -153,7 +153,7 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
         .unwrap_or(opts.database.clone().unwrap_or(database.to_string()));
     let user = std::env::var("CLICKHOUSE_USER").unwrap_or(cfg.user.clone().unwrap());
     let pass = std::env::var("CLICKHOUSE_PASSWD").unwrap_or(cfg.password.clone().unwrap());
-    let endpoint = std::env::var("CLICKHOUSE_URL").unwrap_or(cfg.url.clone());
+    let endpoint = std::env::var("KLICKHOUSE_URL").unwrap_or(cfg.url.clone());
 
     // URL is mandatory, either in environment or in the config file.
     //
@@ -166,11 +166,11 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
     trace!("Creating connection pool");
 
     let manager = ConnectionManager::new(
-        endpoint,
+        endpoint.clone(),
         ClientOptions {
-            username: user,
-            password: pass,
-            default_database: name,
+            username: user.clone(),
+            password: pass.clone(),
+            default_database: name.clone(),
         },
     )
     .await?;
