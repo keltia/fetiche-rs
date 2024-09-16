@@ -103,10 +103,10 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     prox_lat,
     prox_lon,
     prox_alt_m,
+    distance_slant_m,
     distance_hor_m,
     distance_vert_m,
     distance_home_m,
-    distance_slant_m,
   FROM airplane_prox
   ORDER BY time
         "##;
@@ -138,8 +138,7 @@ AS (
     en_id,journey,drone_id
 )"##;
     trace!("Create temp table airprox_summary");
-    let q = QueryBuilder::new(r);
-    let _ = client.execute(q).await?;
+    let _ = client.execute(r).await?;
 
     // Match with airprox_summary for export
     //
@@ -160,10 +159,10 @@ AS (
     a.prox_lat,
     a.prox_lon,
     a.prox_alt_m,
+    a.distance_slant_m,
     a.distance_hor_m,
     a.distance_vert_m,
     a.distance_home_m,
-    a.distance_slant_m,
   FROM
     airplane_prox AS a JOIN airprox_summary AS s
     ON
@@ -174,8 +173,7 @@ AS (
     a.distance_slant_m = s.distance_slant_m
   ORDER BY time
     "##;
-    let q = QueryBuilder::new(r1);
-    let summ = client.query_collect::<Encounter>(q).await?;
+    let summ = client.query_collect::<Encounter>(r1).await?;
     trace!("Summary encounters: {:?}", summ);
     Ok(summ)
 }
@@ -199,6 +197,7 @@ async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()>
     // Insert data
     //
     data.into_iter().for_each(|rec| {
+        assert!(rec.distance_slant_m >= rec.distance_hor_m);
         wtr.serialize(rec).unwrap();
     });
 
@@ -265,16 +264,16 @@ async fn export_all_encounters_text(client: &Client) -> Result<()> {
     prox_lat,
     prox_lon,
     prox_alt_m,
+    distance_slant_m,
     distance_hor_m,
     distance_vert_m,
     distance_home_m,
-    distance_slant_m,
   FROM airplane_prox
   ORDER BY time
   FORMAT PrettyCompact
 "##;
     let q = QueryBuilder::new(r);
-    let _ = client.execute(q).await?;
+    let _ = client.query_collect::<Encounter>(q).await?;
 
     Ok(())
 }
@@ -331,7 +330,7 @@ pub async fn export_results(_ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<
             export_all_encounters_text(&client).await?;
         }
     }
-    drop (client);
+    drop(client);
     info!("Done.");
     Ok(())
 }
