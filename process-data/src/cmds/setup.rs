@@ -8,7 +8,7 @@ use std::env;
 
 use clap::Parser;
 use eyre::Result;
-use klickhouse::{Client, QueryBuilder};
+use klickhouse::Client;
 use tracing::info;
 
 use crate::config::Context;
