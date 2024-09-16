@@ -28,7 +28,7 @@ impl PlaneDistance {
     /// - define a bounding box around a specific site (default is 70nm) and use it as a filter
     ///
     #[tracing::instrument(skip(dbh))]
-    async fn select_planes(&mut self, dbh: &Client) -> Result<u32> {
+    async fn select_planes(&mut self, dbh: &Client) -> Result<usize> {
         let site = self.site.clone();
         let name = site.name.clone();
         let lat = self.lat;
@@ -102,7 +102,7 @@ ORDER BY time
             .arg(lat)
             .arg(dist)
             .arg(dist);
-        let _ = dbh.query(q).await?;
+        let _ = dbh.execute(q).await?;
         let tm = (Instant::now() - tm).as_millis();
         trace!("CREATE TABLE today{tag} took {tm} ms");
 
@@ -113,9 +113,9 @@ ORDER BY time
         let mut count = dbh.query_one::<RawRow>(q).await?;
 
         self.state.push(TempTables::Today);
-        let count = count.get("count");
+        let count: u32 = count.get("count");
         trace!("Total number of planes: {}\n", count);
-        Ok(count)
+        Ok(count as usize)
     }
 
     #[tracing::instrument(skip(dbh))]
@@ -166,18 +166,17 @@ AS SELECT
     home_distance_3d
 FROM drones
 WHERE
-  toStartOfInterval(timestamp, toIntervalDay(1)) = toDateTime(?) AND
-  pointInEllipses(longitude,latitude, ?, ?, ?, ?)
+  toStartOfInterval(timestamp, toIntervalDay(1)) = toDateTime($1) AND
+  pointInEllipses(longitude,latitude, $2, $3, $4, $5)
     "##
         );
         let q = QueryBuilder::new(&r2)
             .arg(time_from)
             .arg(lon)
-            .arg(&time_from)
             .arg(lat)
             .arg(dist)
             .arg(dist);
-        let _ = dbh.query(q).await?;
+        let _ = dbh.execute(q).await?;
 
         // Check how many
         //
@@ -289,7 +288,8 @@ CREATE OR REPLACE TABLE ids{tag} (
         let tag = format!("_{site}_{day_name}");
 
         let r = format!("SELECT count() FROM today_close{tag}");
-        let total = dbh.query(&r).fetch_one::<usize>().await?;
+        let mut total = dbh.query_one::<RawRow>(&r).await?;
+        let total: u32 = total.get(0);
 
         // This is for the query
         #[derive(Clone, Debug, Default, Serialize, Deserialize, Row)]
@@ -322,7 +322,7 @@ CREATE OR REPLACE TABLE ids{tag} (
         );
 
         trace!("Fetch close encounters out of {total} from today_close.");
-        let all = dbh.query(&r).fetch_all::<Tc>().await?;
+        let all = dbh.query_collect::<Tc>(&r).await?;
 
         // No close encounters.
         //
@@ -350,18 +350,14 @@ CREATE OR REPLACE TABLE ids{tag} (
         trace!("Insert updated records.");
         // Insert the records
         //
-        let mut batch = dbh.insert(&format!("ids{tag}"))?;
-        for item in all.iter() {
-            batch.write(item).await?;
-        }
-        batch.end().await?;
+        let _ = dbh.insert_native_block(&format!("INSERT INTO ids{tag} FORMAT native"), all).await?;
 
-        let count = dbh
-            .query(&format!("SELECT count() FROM today_close{tag}"))
-            .fetch_one::<usize>()
+        let mut count = dbh
+            .query_one::<RawRow>(&format!("SELECT count() FROM today_close{tag}"))
             .await?;
+        let count: u32 = count.get(0);
         trace!("Got {count} IDs");
-        Ok(count)
+        Ok(count as usize)
     }
 
     #[tracing::instrument(skip(dbh))]
@@ -420,26 +416,26 @@ CREATE OR REPLACE TABLE ids{tag} (
 "##
         );
         trace!("Save encounters.");
-        dbh.query(&r).execute().await?;
+        dbh.execute(&r).await?;
 
         self.state.push(TempTables::Ids);
 
         // Now check how many
         //
         let pattern = format!("%{day_name}%");
-        let count = dbh
-            .query("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE ?")
-            .bind(pattern)
-            .fetch_one::<usize>()
+        let q = QueryBuilder::new("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE $1").arg(pattern);
+        let mut count = dbh
+            .query_one::<RawRow>(q)
             .await?;
 
+        let count: u32 = count.get(0);
         if count == 0 {
             info!("No new encounters.");
-            return Ok(count);
+            return Ok(count as usize);
         } else {
             info!("Inserted {} new encounters", count);
         }
-        Ok(count)
+        Ok(count as usize)
     }
 
     /// Remove temporary tables.
@@ -460,23 +456,19 @@ CREATE OR REPLACE TABLE ids{tag} (
                 async move {
                     match t {
                         TempTables::Today => {
-                            dbh.query(&format!("DROP TABLE IF EXISTS today{tag}",))
-                                .execute()
+                            dbh.execute(&format!("DROP TABLE IF EXISTS today{tag}"))
                                 .await
                         }
                         TempTables::Candidates => {
-                            dbh.query(&format!("DROP TABLE IF EXISTS candidates{tag}",))
-                                .execute()
+                            dbh.execute(&format!("DROP TABLE IF EXISTS candidates{tag}"))
                                 .await
                         }
                         TempTables::TodayClose => {
-                            dbh.query(&format!("DROP TABLE IF EXISTS today_close{tag}",))
-                                .execute()
+                            dbh.execute(&format!("DROP TABLE IF EXISTS today_close{tag}"))
                                 .await
                         }
                         TempTables::Ids => {
-                            dbh.query(&format!("DROP TABLE IF EXISTS ids{tag}",))
-                                .execute()
+                            dbh.execute(&format!("DROP TABLE IF EXISTS ids{tag}", ))
                                 .await
                         }
                     }
