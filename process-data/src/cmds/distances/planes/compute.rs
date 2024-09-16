@@ -582,7 +582,7 @@ impl Calculate for PlaneDistance {
 
         self.cleanup_temp_tables(dbh).await?;
 
-        dbg!(timings);
+        debug!("timings={timings}");
 
         Ok(Stats::Planes(stats.clone()))
     }
