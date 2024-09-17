@@ -277,8 +277,7 @@ impl Engine {
     #[cfg(unix)]
     pub fn config_path() -> PathBuf {
         let homedir = home_dir().unwrap();
-        let def: PathBuf = makepath!(homedir, ".config", "drone-utils");
-        def
+        homedir.join(".config").join("drone-utils")
     }
 
     /// Returns the path of the default config directory
