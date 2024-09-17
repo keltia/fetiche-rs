@@ -190,7 +190,7 @@ pub fn into_configfile(args: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }
         }
-        _ => panic!("#[add_version)] is only for struct with named fields"),
+        _ => panic!("#[into_configfile)] is only for struct with named fields"),
     };
     output.into()
 }
