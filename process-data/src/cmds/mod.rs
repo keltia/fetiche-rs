@@ -40,35 +40,35 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
     match &opts.subcmd {
         SubCommand::Distances(dopts) => match &dopts.subcmd {
             DistSubcommand::Planes(popts) => {
-                println!("Calculate 3D distance between drones and surrounding planes.\n");
+                eprintln!("Calculate 3D distance between drones and surrounding planes.\n");
 
                 let stats = planes_calculation(ctx, popts).await?;
-                println!("Stats:\n{:?}", stats);
+                eprintln!("Stats:\n{:?}", stats);
             }
         },
         SubCommand::Export(eopts) => match &eopts.subcmd {
             ExportSubCommand::Distances(opts) => {
-                println!("Exporting calculated distances.\n");
+                eprintln!("Exporting calculated distances.\n");
 
                 export_results(ctx, opts).await?;
             }
             ExportSubCommand::Drones(opts) => {
-                println!("Exporting drone data.\n");
+                eprintln!("Exporting drone data.\n");
 
                 export_drone_stats(ctx, opts).await?;
             }
             ExportSubCommand::Encounters(_opts) => unimplemented!(),
         },
         SubCommand::Setup(sopts) => {
-            println!("Setup ACUTE environment in {}.\n", ctx.config["datalake"]);
+            eprintln!("Setup ACUTE environment in {}.\n", ctx.config["datalake"]);
             setup_acute_environment(ctx, sopts).await?;
         }
         SubCommand::Cleanup(copts) => {
-            println!("Remove ACUTE environement in {}.\n", ctx.config["datalake"]);
+            eprintln!("Remove ACUTE environement in {}.\n", ctx.config["datalake"]);
             cleanup_environment(ctx, copts).await?;
         }
         SubCommand::Acute(aopts) => {
-            println!("ACUTE specific commands.\n");
+            eprintln!("ACUTE specific commands.\n");
             run_acute_cmd(ctx, aopts).await?;
         }
         // These are done already.

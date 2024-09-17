@@ -108,7 +108,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     };
 
     let dates = expand_interval(begin, end)?;
-    info!("{} days to process, from {begin} to {end}", dates.len());
+    eprintln!("{} days to process, from {begin} to {end}", dates.len());
 
     // Let us generate the list we want:
     //

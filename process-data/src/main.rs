@@ -40,12 +40,13 @@ async fn main() -> Result<()> {
     match &opts.subcmd {
         SubCommand::Completion(copts) => {
             let generator = copts.shell;
+            eprintln!("Generating completion file for {}", generator);
 
             let mut cmd = Opts::command();
             generate(generator, &mut cmd, NAME, &mut io::stdout());
         }
         SubCommand::Version => {
-            println!("{} v{}+clickhouse", NAME, VERSION);
+            eprintln!("{} v{}+clickhouse", NAME, VERSION);
         }
         _ => handle_cmds(&ctx, &opts).await?,
     }
