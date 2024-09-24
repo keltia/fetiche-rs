@@ -56,7 +56,9 @@ pub struct Context {
     /// All configuration parameters
     pub config: Arc<HashMap<String, String>>,
     /// Database Client.
-    dbh: Pool<ConnectionManager>,
+    pub dbh: Pool<ConnectionManager>,
+    /// Current DB pool size.
+    pub pool_size: usize,
     /// Delay between parallel tasks
     pub wait: u64,
     /// Dry run
@@ -173,9 +175,13 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
             default_database: name.clone(),
         },
     )
-    .await?;
+        .await?;
 
-    let pool = bb8::Pool::builder().max_size(8).build(manager).await?;
+    let pool_size = opts.pool_size;
+    let pool = bb8::Pool::builder()
+        .retry_connection(true)
+        .max_size(pool_size as u32)
+        .build(manager).await?;
 
     let ctx = Context {
         config: HashMap::from([
@@ -184,8 +190,9 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
             ("datalake".to_string(), datalake.clone()),
             ("username".to_string(), user.clone()),
         ])
-        .into(),
+            .into(),
         dbh: pool.clone(),
+        pool_size,
         wait: opts.wait,
         dry_run: opts.dry_run,
     };
