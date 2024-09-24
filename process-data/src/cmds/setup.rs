@@ -79,20 +79,20 @@ async fn add_encounters_table(dbh: &Client) -> Result<()> {
     let sq = r##"
 CREATE
 OR REPLACE TABLE acute.airplane_prox (
-  site             VARCHAR,
+  site             INT,
   en_id            VARCHAR,
   time             TIMESTAMP,
   journey          INT,
   drone_id         VARCHAR,
   model            VARCHAR,
-  drone_lon        FLOAT,
   drone_lat        FLOAT,
+  drone_lon        FLOAT,
   drone_alt_m      FLOAT,
   drone_height_m   FLOAT,
   prox_callsign    VARCHAR,
   prox_id          VARCHAR,
-  prox_lon         FLOAT,
   prox_lat         FLOAT,
+  prox_lon         FLOAT,
   prox_alt_m       FLOAT,
   distance_slant_m INT,
   distance_hor_m   INT,
