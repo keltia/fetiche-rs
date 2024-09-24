@@ -7,8 +7,8 @@
 use std::env;
 
 use clap::Parser;
-use clickhouse::Client;
 use eyre::Result;
+use klickhouse::Client;
 use tracing::info;
 
 use crate::config::Context;
@@ -21,9 +21,6 @@ pub struct SetupOpts {
     /// Create encounters (aka calculation) table
     #[clap(short = 'E', long)]
     pub encounters: bool,
-    /// Create sequences
-    #[clap(short = 'S', long)]
-    pub sequences: bool,
     /// Create permanent tables
     #[clap(short = 'V', long)]
     pub views: bool,
@@ -50,8 +47,9 @@ CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
   ceil(sqrt(pow(dist_2d(dx,dy,px,py), 2) + pow((dz-pz), 2)));
     "##;
 
-    dbh.query(r1).execute().await?;
-    dbh.query(r2).execute().await?;
+    dbh.execute(r1).await?;
+    dbh.execute(r2).await?;
+
     Ok(())
 }
 
@@ -67,8 +65,8 @@ DROP FUNCTION IF EXISTS dist_2d;
 DROP FUNCTION IF EXISTS dist_3d;
     "##;
 
-    dbh.query(r1).execute().await?;
-    dbh.query(r2).execute().await?;
+    dbh.execute(r1).await?;
+    dbh.execute(r2).await?;
     Ok(())
 }
 
@@ -81,20 +79,20 @@ async fn add_encounters_table(dbh: &Client) -> Result<()> {
     let sq = r##"
 CREATE
 OR REPLACE TABLE acute.airplane_prox (
-  site             VARCHAR,
+  site             INT,
   en_id            VARCHAR,
   time             TIMESTAMP,
   journey          INT,
   drone_id         VARCHAR,
   model            VARCHAR,
-  drone_lon        FLOAT,
   drone_lat        FLOAT,
+  drone_lon        FLOAT,
   drone_alt_m      FLOAT,
   drone_height_m   FLOAT,
   prox_callsign    VARCHAR,
   prox_id          VARCHAR,
-  prox_lon         FLOAT,
   prox_lat         FLOAT,
+  prox_lon         FLOAT,
   prox_alt_m       FLOAT,
   distance_slant_m INT,
   distance_hor_m   INT,
@@ -105,7 +103,7 @@ OR REPLACE TABLE acute.airplane_prox (
     COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
     "##;
 
-    Ok(dbh.query(sq).execute().await?)
+    Ok(dbh.execute(sq).await?)
 }
 
 /// Remove the `encounters` table to store short air-prox points
@@ -118,25 +116,7 @@ async fn drop_encounters_table(dbh: &Client) -> Result<()> {
 DROP TABLE IF EXISTS acute.airplane_prox;
     "##;
 
-    Ok(dbh.query(sq).execute().await?)
-}
-
-/// Add the sequences we need
-///
-#[tracing::instrument(skip(_dbh))]
-async fn add_sequences(_dbh: &Client) -> Result<()> {
-    info!("Adding sequences");
-
-    Ok(())
-}
-
-/// Add the sequences we need
-///
-#[tracing::instrument(skip(_dbh))]
-async fn drop_sequences(_dbh: &Client) -> Result<()> {
-    info!("Dropping sequences");
-
-    Ok(())
+    Ok(dbh.execute(sq).await?)
 }
 
 /// Create the two main raw tables
@@ -190,8 +170,8 @@ CREATE OR REPLACE VIEW acute.drones AS
     COMMENT 'View for drones data with distances.'
 "##;
 
-    dbh.query(r1).execute().await?;
-    dbh.query(r2).execute().await?;
+    dbh.execute(r1).await?;
+    dbh.execute(r2).await?;
     Ok(())
 }
 
@@ -209,8 +189,8 @@ DROP VIEW IF EXISTS acute.airplanes;
 DROP VIEW IF EXISTS acute.drones;
     "##;
 
-    dbh.query(rm1).execute().await?;
-    dbh.query(rm2).execute().await?;
+    dbh.execute(rm1).await?;
+    dbh.execute(rm2).await?;
     Ok(())
 }
 
@@ -218,7 +198,7 @@ DROP VIEW IF EXISTS acute.drones;
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
-    let dbh = ctx.db();
+    let dbh = ctx.db().await;
     let dir = ctx.config["datalake"].clone();
 
     // Move here.
@@ -226,14 +206,10 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
     let _ = env::set_current_dir(&dir);
 
     if opts.all {
-        add_sequences(&dbh).await?;
         create_views(&dbh).await?;
         add_macros(&dbh).await?;
         let _ = add_encounters_table(&dbh).await;
     } else {
-        if opts.sequences {
-            add_sequences(&dbh).await?;
-        }
         if opts.macros {
             add_macros(&dbh).await?;
         }
@@ -248,12 +224,11 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
-    let dbh = ctx.db();
+    let dbh = ctx.db().await;
     if opts.all {
         drop_encounters_table(&dbh).await?;
         remove_macros(&dbh).await?;
         drop_views(&dbh).await?;
-        drop_sequences(&dbh).await?;
     } else {
         if opts.macros {
             remove_macros(&dbh).await?;
@@ -263,9 +238,6 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
         }
         if opts.views {
             drop_views(&dbh).await?;
-        }
-        if opts.sequences {
-            drop_sequences(&dbh).await?;
         }
     }
 

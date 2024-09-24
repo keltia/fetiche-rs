@@ -205,9 +205,6 @@ impl Flightaware {
     ///
     #[tracing::instrument(skip(self))]
     fn connect(&self, proxy: Option<String>) -> Result<TlsStream<TcpStream>> {
-        let mut p = progress::SpinningCircle::new();
-        p.set_job_title("Connecting...");
-
         let connector = TlsConnector::new()?;
 
         // FIXME: this only support HTTP proxy, not HTTPS nor SOCKS
@@ -257,7 +254,6 @@ Proxy-Connection: Keep-Alive
         trace!("TCP={:?}", stream);
 
         let stream = connector.connect(SITE, stream)?;
-        p.jobs_done();
         Ok(stream)
     }
 }
@@ -323,22 +319,17 @@ impl Fetchable for Flightaware {
         trace!("req={req}");
         stream.write_all(req.as_bytes())?;
 
-        let mut p = progress::SpinningCircle::new();
-        p.set_job_title("Fetching...");
-
         trace!("read answer, format as an array");
         let buf = BufReader::new(&mut stream);
         let res = buf
             .lines()
             .map(|l| l.unwrap())
             .inspect(|l| {
-                p.tick();
                 trace!("line={l}");
             })
             .collect::<Vec<_>>()
             .join(",\n");
         trace!("End of fetch");
-        p.jobs_done();
 
         drop(stream);
         Ok(out.send(format!("[{res}]"))?)

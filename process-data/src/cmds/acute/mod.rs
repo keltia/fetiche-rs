@@ -4,11 +4,11 @@
 //!
 
 use clap::Parser;
-use clickhouse::Row;
 use eyre::Result;
+use geo::coord;
+use klickhouse::{DateTime, QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use time::Date;
 use tracing::trace;
 
 pub(crate) use antennas::*;
@@ -65,7 +65,7 @@ pub enum CrudSubCommand {
 pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
     trace!("run_acute_cmd");
 
-    let dbh = ctx.db();
+    let dbh = ctx.db().await;
     match opts.subcmd {
         // List all antennas
         //
@@ -83,8 +83,7 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
             // Fetch antennas as Arrow
             //
             let res = dbh
-                .query("select * from antennas")
-                .fetch_all::<Antenna>()
+                .query_collect::<Antenna>("SELECT * FROM antennas")
                 .await?;
 
             println!("Listing all antennas:");
@@ -98,8 +97,8 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
             struct Install {
                 pub id: u32,
                 pub name: String,
-                pub start_at: Date,
-                pub end_at: Date,
+                pub start_at: DateTime,
+                pub end_at: DateTime,
                 pub station_name: String,
                 pub comment: String,
             }
@@ -122,12 +121,11 @@ ORDER BY start_at
         "##;
 
             println!("Listing all installations:");
-            let res = dbh.query(r).fetch_all::<Install>().await?;
+            let res = dbh.query_collect::<Install>(r).await?;
             let res = json!(&res).to_string();
             println!("{res}");
         }
         AcuteSubCommand::Sites(_) => {
-
             #[derive(Debug, Deserialize, Serialize, Row)]
             struct Site {
                 pub id: u32,
@@ -138,11 +136,13 @@ ORDER BY start_at
                 pub distance: f64,
             }
 
+            // This is our current location in Brétigny
+            //
+            let home = coord! {x: 48.600052, y:2.347038};
 
             // Fetch sites
             //
-            let res: Vec<Site> = dbh.query(
-                r##"
+            let r = r##"
 SELECT
   id,
   name,
@@ -150,11 +150,14 @@ SELECT
   longitude,
   latitude,
   ref_altitude,
-  ST_Distance_Spheroid(ref, here) / 1000 AS distance,
-FROM sites
+  dist_2d($1, $2, longitude, latitude) / 1000. AS distance,
+FROM
+  sites
 ORDER BY
   name
-    "##).fetch_all::<Site>().await?;
+    "##;
+            let q = QueryBuilder::new(r).arg(home.y).arg(home.x);
+            let res = dbh.query_collect::<Site>(q).await?;
 
             println!("Listing all sites:");
             let res = json!(&res).to_string();

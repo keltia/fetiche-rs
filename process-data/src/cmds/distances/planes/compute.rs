@@ -3,11 +3,11 @@
 //! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
 //!
 use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
-use clickhouse::{Client, Row};
 use eyre::Result;
+use futures::future::try_join_all;
+use klickhouse::{Client, QueryBuilder, RawRow, Row};
 use serde::{Deserialize, Serialize};
 use std::ops::Add;
-use futures::future::try_join_all;
 use tokio::time::{sleep, Duration, Instant};
 use tracing::{debug, info, trace};
 
@@ -81,10 +81,10 @@ AS SELECT
 FROM
   airplanes
 WHERE
-  site = ? AND
-  toStartOfInterval(time, toIntervalDay(1)) = toDateTime(?) AND
+  site = $1 AND
+  toStartOfInterval(time, toIntervalDay(1)) = toDateTime($2) AND
   palt IS NOT NULL AND
-  pointInEllipses(plon, plat, ?, ?, ?, ?)
+  pointInEllipses(plon, plat, $3, $4, $5, $6)
 ORDER BY time
 "##
         );
@@ -95,26 +95,27 @@ ORDER BY time
         debug!("ellipse=(center={},{},{},{})", lon, lat, dist, dist);
 
         let tm = Instant::now();
-        dbh.query(&r1)
-            .bind(site.id)
-            .bind(time_from)
-            .bind(lon)
-            .bind(lat)
-            .bind(dist)
-            .bind(dist)
-            .execute()
-            .await?;
+        let q = QueryBuilder::new(&r1)
+            .arg(site.id)
+            .arg(time_from)
+            .arg(lon)
+            .arg(lat)
+            .arg(dist)
+            .arg(dist);
+        dbh.execute(q).await?;
         let tm = (Instant::now() - tm).as_millis();
         trace!("CREATE TABLE today{tag} took {tm} ms");
 
         // Check how many
         //
         let r1 = format!("SELECT count() FROM today{tag}");
-        let count = dbh.query(&r1).fetch_one::<usize>().await?;
+        let q = QueryBuilder::new(&r1);
+        let mut count = dbh.query_one::<RawRow>(q).await?;
 
         self.state.push(TempTables::Today);
+        let count: u64 = count.get(0);
         trace!("Total number of planes: {}\n", count);
-        Ok(count)
+        Ok(count as usize)
     }
 
     #[tracing::instrument(skip(dbh))]
@@ -165,30 +166,30 @@ AS SELECT
     home_distance_3d
 FROM drones
 WHERE
-  toStartOfInterval(timestamp, toIntervalDay(1)) = toDateTime(?) AND
-  pointInEllipses(longitude,latitude, ?, ?, ?, ?)
+  toStartOfInterval(timestamp, toIntervalDay(1)) = toDateTime($1) AND
+  pointInEllipses(longitude,latitude, $2, $3, $4, $5)
     "##
         );
+        let q = QueryBuilder::new(&r2)
+            .arg(time_from)
+            .arg(lon)
+            .arg(lat)
+            .arg(dist)
+            .arg(dist);
+        dbh.execute(q).await?;
 
-        dbh.query(&r2)
-            .bind(time_from)
-            .bind(lon)
-            .bind(lat)
-            .bind(dist)
-            .bind(dist)
-            .execute()
-            .await?;
         // Check how many
         //
-        let count = dbh
-            .query(&format!("SELECT COUNT() FROM candidates{tag}"))
-            .fetch_one::<usize>()
+        let mut count = dbh
+            .query_one::<RawRow>(QueryBuilder::new(&format!(
+                "SELECT COUNT() FROM candidates{tag}"
+            )))
             .await?;
 
         self.state.push(TempTables::Candidates);
-
+        let count: u64 = count.get(0);
         trace!("Total number of drones: {}", count);
-        Ok(count)
+        Ok(count as usize)
     }
 
     #[tracing::instrument(skip(dbh))]
@@ -239,29 +240,27 @@ ON
   toStartOfInterval(pt, toIntervalSecond(2)) = toStartOfInterval(c.timestamp, toIntervalSecond(2)) OR
   toStartOfInterval(pt, toIntervalSecond(2)) = toStartOfInterval(addSeconds(c.timestamp, 2), toIntervalSecond(2))
 WHERE
-  dist2d <= ? AND
-  diff_alt < ?
+  dist2d <= $1 AND
+  diff_alt < $1
     "##
         );
 
         let proximity = self.separation;
-        dbh.query(&r)
-            .bind(proximity)
-            .bind(proximity)
-            .execute()
-            .await?;
+        let q = QueryBuilder::new(&r).arg(proximity);
+        dbh.execute(q).await?;
 
         // Check how many
         //
-        let count = dbh
-            .query(&format!("SELECT count() FROM today_close{tag}"))
-            .fetch_one::<usize>()
+        let mut count = dbh
+            .query_one::<RawRow>(&format!("SELECT COUNT() FROM today_close{tag}"))
             .await?;
+
+        let count: u64 = count.get(0);
 
         self.state.push(TempTables::TodayClose);
 
         trace!("Total number of potential encounters: {}", count);
-        Ok(count)
+        Ok(count as usize)
     }
 
     #[tracing::instrument(skip(dbh))]
@@ -281,7 +280,7 @@ CREATE OR REPLACE TABLE ids{tag} (
         );
         self.state.push(TempTables::Ids);
 
-        Ok(dbh.query(&r).execute().await?)
+        Ok(dbh.execute(&r).await?)
     }
 
     #[tracing::instrument(skip(dbh))]
@@ -289,12 +288,13 @@ CREATE OR REPLACE TABLE ids{tag} (
         let tag = format!("_{site}_{day_name}");
 
         let r = format!("SELECT count() FROM today_close{tag}");
-        let total = dbh.query(&r).fetch_one::<usize>().await?;
+        let mut total = dbh.query_one::<RawRow>(&r).await?;
+        let total: u64 = total.get(0);
 
         // This is for the query
         #[derive(Clone, Debug, Default, Serialize, Deserialize, Row)]
         struct Tc {
-            journey: u32,
+            journey: i32,
             drone_id: String,
             callsign: String,
         }
@@ -303,7 +303,7 @@ CREATE OR REPLACE TABLE ids{tag} (
         #[derive(Clone, Debug, Default, Serialize, Deserialize, Row)]
         struct Ids {
             en_id: String,
-            journey: u32,
+            journey: i32,
             drone_id: String,
             callsign: String,
         }
@@ -322,7 +322,7 @@ CREATE OR REPLACE TABLE ids{tag} (
         );
 
         trace!("Fetch close encounters out of {total} from today_close.");
-        let all = dbh.query(&r).fetch_all::<Tc>().await?;
+        let all = dbh.query_collect::<Tc>(&r).await?;
 
         // No close encounters.
         //
@@ -350,18 +350,15 @@ CREATE OR REPLACE TABLE ids{tag} (
         trace!("Insert updated records.");
         // Insert the records
         //
-        let mut batch = dbh.insert(&format!("ids{tag}"))?;
-        for item in all.iter() {
-            batch.write(item).await?;
-        }
-        batch.end().await?;
-
-        let count = dbh
-            .query(&format!("SELECT count() FROM today_close{tag}"))
-            .fetch_one::<usize>()
+        dbh.insert_native_block(&format!("INSERT INTO ids{tag} FORMAT native"), all)
             .await?;
+
+        let mut count = dbh
+            .query_one::<RawRow>(&format!("SELECT count() FROM today_close{tag}"))
+            .await?;
+        let count: u64 = count.get(0);
         trace!("Got {count} IDs");
-        Ok(count)
+        Ok(count as usize)
     }
 
     #[tracing::instrument(skip(dbh))]
@@ -372,8 +369,6 @@ CREATE OR REPLACE TABLE ids{tag} (
         // is minimal.  Gather more information about the encounter, `any_value()` is used to avoid "duplicates".
         // Then the result of this sub-query is inserted (or replaced if we re-ran the calculation) in the
         // `encounters` table.
-        //
-        // FIXME: conflicts are not handled, not sure why.
 
         let site = self.site.clone();
         let name = site.name.clone();
@@ -396,13 +391,13 @@ CREATE OR REPLACE TABLE ids{tag} (
             r##"INSERT INTO airplane_prox
      SELECT
       any_value(tc.site) AS site,
-      id.en_id,
+      id.en_id AS en_id,
       any_value(time) AS time,
-      tc.journey,
-      tc.drone_id,
+      tc.journey AS journey,
+      tc.drone_id AS drone_id,
       any_value(model) AS model,
-      any_value(dlon) AS drone_lon,
       any_value(dlat) AS drone_lat,
+      any_value(dlon) AS drone_lon,
       any_value(dalt) AS drone_alt_m,
       any_value(ABS(dalt - dh)) AS drone_height_m,
       any_value(tc.callsign) AS prox_callsign,
@@ -410,10 +405,10 @@ CREATE OR REPLACE TABLE ids{tag} (
       any_value(plat) AS prox_lat,
       any_value(plon) AS prox_lon,
       any_value(palt) AS prox_alt_m,
+      CEIL(dist_drone_plane) AS distance_slant_m,
       any_value(CEIL(dist2d)) AS distance_hor_m,
       any_value(CEIL(ABS(palt - dalt))) AS distance_vert_m,
-      any_value(CEIL(hdist2d)) as distance_home_m,
-      CEIL(dist_drone_plane) AS distance_slant_m
+      any_value(CEIL(hdist2d)) as distance_home_m
     FROM today_close{tag} AS tc JOIN ids{tag} AS id
       ON id.journey = tc.journey AND id.callsign = tc.callsign
     WHERE
@@ -422,26 +417,25 @@ CREATE OR REPLACE TABLE ids{tag} (
 "##
         );
         trace!("Save encounters.");
-        dbh.query(&r).execute().await?;
+        dbh.execute(&r).await?;
 
         self.state.push(TempTables::Ids);
 
         // Now check how many
         //
         let pattern = format!("%{day_name}%");
-        let count = dbh
-            .query("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE ?")
-            .bind(pattern)
-            .fetch_one::<usize>()
-            .await?;
+        let q = QueryBuilder::new("SELECT COUNT(en_id) FROM airplane_prox WHERE en_id LIKE $1")
+            .arg(pattern);
+        let mut count = dbh.query_one::<RawRow>(q).await?;
 
+        let count: u64 = count.get(0);
         if count == 0 {
             info!("No new encounters.");
-            return Ok(count);
+            return Ok(count as usize);
         } else {
             info!("Inserted {} new encounters", count);
         }
-        Ok(count)
+        Ok(count as usize)
     }
 
     /// Remove temporary tables.
@@ -454,34 +448,32 @@ CREATE OR REPLACE TABLE ids{tag} (
         let tag = format!("_{name}_{day_name}");
 
         let list = self.state.clone();
-        let res = list.into_iter().map(|t| {
-            let tag = tag.clone();
+        let res = list
+            .into_iter()
+            .map(|t| {
+                let tag = tag.clone();
 
-            async move {
-                match t {
-                    TempTables::Today => {
-                        dbh.query(&format!("DROP TABLE IF EXISTS today{tag}", ))
-                            .execute()
-                            .await
-                    }
-                    TempTables::Candidates => {
-                        dbh.query(&format!("DROP TABLE IF EXISTS candidates{tag}", ))
-                            .execute()
-                            .await
-                    }
-                    TempTables::TodayClose => {
-                        dbh.query(&format!("DROP TABLE IF EXISTS today_close{tag}", ))
-                            .execute()
-                            .await
-                    }
-                    TempTables::Ids => {
-                        dbh.query(&format!("DROP TABLE IF EXISTS ids{tag}", ))
-                            .execute()
-                            .await
+                async move {
+                    match t {
+                        TempTables::Today => {
+                            dbh.execute(&format!("DROP TABLE IF EXISTS today{tag}"))
+                                .await
+                        }
+                        TempTables::Candidates => {
+                            dbh.execute(&format!("DROP TABLE IF EXISTS candidates{tag}"))
+                                .await
+                        }
+                        TempTables::TodayClose => {
+                            dbh.execute(&format!("DROP TABLE IF EXISTS today_close{tag}"))
+                                .await
+                        }
+                        TempTables::Ids => {
+                            dbh.execute(&format!("DROP TABLE IF EXISTS ids{tag}")).await
+                        }
                     }
                 }
-            }
-        }).collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
         let _ = try_join_all(res).await;
         Ok(())
     }
@@ -589,7 +581,7 @@ impl Calculate for PlaneDistance {
 
         self.cleanup_temp_tables(dbh).await?;
 
-        dbg!(timings);
+        debug!("timings={timings:?}");
 
         Ok(Stats::Planes(stats.clone()))
     }

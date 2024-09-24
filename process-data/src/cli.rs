@@ -22,9 +22,18 @@ pub struct Opts {
     /// Delay between task in ms
     #[clap(short = 'w', long, default_value = "100")]
     pub wait: u64,
+    /// Database pool size
+    #[clap(short = 'P', long, default_value = "32")]
+    pub pool_size: usize,
     /// Enable telemetry with OTLP.
     #[clap(short = 'T', long)]
     pub use_telemetry: bool,
+    /// Enable logging in hierarchical manner (aka tree)
+    #[clap(short = 'L', long)]
+    pub use_tree: bool,
+    /// This parameter enable logging to a file in that location.
+    #[clap(short = 'F', long)]
+    pub use_file: Option<String>,
     /// Dry run
     #[clap(short = 'n', long)]
     pub dry_run: bool,

@@ -97,6 +97,6 @@ async fn main() -> Result<()> {
 
     worker_thread(&mut out, SLEEP).await?;
 
-    println!("with sleeper, nothing is displayed");
-    std::process::exit(0);
+    eprintln!("with sleeper, nothing is displayed");
+    Ok(())
 }

@@ -20,7 +20,6 @@ maintenance = { status = "actively-developed" }
 [features]
 default = ["clickhouse"]
 clickhouse = []
-duckdb = ["dep:duckdb"]
 
 [[bench]]
 name = "distances"
@@ -47,8 +46,6 @@ thiserror.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-log.workspace = true
-tracing-tree.workspace = true
 
 cached = { version = "0.53", features = ["async", "async_tokio_rt_multi_thread"] }
 clap_complete = "4.5"
@@ -56,8 +53,6 @@ clickhouse = { version = "0.12", features = ["time", "watch", "inserter"] }
 enum_dispatch = "0.3"
 klickhouse = { version = "0.13", features = ["derive", "geo-types", "serde", "bb8"] }
 derive_builder = "0.20"
-duckdb = { version = "1.0", features = ["parquet", "chrono", "csv", "duckdb-loadable-macros"], optional = true }
-futures = "0.3"
 geo = "0.28"
 itertools = "0.13"
 kml = "0.8"
@@ -65,7 +60,6 @@ ml-progress = "0.1"
 rand = "0"
 rayon = "1.10"
 rust-3d = "0.34"
-time = { version = "0.3", features = ["local-offset", "macros", "serde", "serde-human-readable"] }
 
 [dev-dependencies]
 criterion.workspace = true

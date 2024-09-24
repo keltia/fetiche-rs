@@ -19,6 +19,7 @@ fetiche-engine = { version = "0", path = "engine" }
 fetiche-formats = { version = "0", path = "formats" }
 fetiche-macros = { version = "0", path = "macros" }
 fetiche-sources = { version = "0", path = "sources" }
+futures = "0.3"
 hcl-rs = "0.18"
 home = "0.5"
 log = { version = "0.4", features = ["serde", "std"] }

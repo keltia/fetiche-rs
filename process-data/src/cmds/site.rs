@@ -3,7 +3,7 @@
 
 use cached::proc_macro::cached;
 use chrono::{DateTime, Datelike, Utc};
-use clickhouse::Row;
+use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use tracing::debug;
@@ -15,7 +15,7 @@ use crate::error::Status;
 #[derive(Clone, Debug, Deserialize, Row, Serialize)]
 pub struct Site {
     /// auto-increment ID
-    pub id: u32,
+    pub id: i32,
     /// Short name of location (e.g. "BUC")
     pub name: String,
     /// Places code
@@ -46,14 +46,15 @@ impl Display for Site {
     convert = r#"{format!("{}", site)}"#,
 )]
 pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
-    let dbh = ctx.db();
+    let dbh = ctx.db().await;
 
     // Load locations from DB
     //
     let r = r##"
-    SELECT * from sites WHERE name = ?
+    SELECT * from sites WHERE name = $1
     "##;
-    let site = match dbh.query(r).bind(site).fetch_one::<Site>().await {
+    let q = QueryBuilder::new(r).arg(site);
+    let site = match dbh.query_one::<Site>(q).await {
         Ok(site) => site,
         Err(_) => return Err(Status::UnknownSite(site.to_string()).into()),
     };
@@ -64,7 +65,7 @@ pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn enumerate_sites(ctx: &Context, day: DateTime<Utc>) -> eyre::Result<Vec<Site>> {
-    let dbh = ctx.db();
+    let dbh = ctx.db().await;
 
     let day_tag = format!("{:4}-{:02}-{:02}", day.year(), day.month(), day.day());
     let r = r##"
@@ -79,13 +80,14 @@ SELECT
 FROM
     sites AS s, installations
 WHERE (s.id = installations.site_id) AND
-    (toDateTime(?) BETWEEN installations.start_at AND
+    (toDateTime($1) BETWEEN installations.start_at AND
     installations.end_at)
     "##;
+    let q = QueryBuilder::new(r).arg(day_tag);
 
     // Fetch all site IDs for this specific day
     //
-    let sites = dbh.query(r).bind(day_tag).fetch_all::<Site>().await?;
+    let sites = dbh.query_collect::<Site>(q).await?;
     debug!("sites={:?}", sites);
     Ok(sites)
 }

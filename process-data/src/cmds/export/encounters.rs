@@ -18,7 +18,7 @@ pub struct ExpEncOpts {
 
 #[allow(dead_code)]
 pub fn export_encounters_kml(_ctx: &Context, _opts: &ExpEncOpts) -> Result<()> {
-    /*    let dbh = ctx.db();
+    /*    let dbh = ctx.db().await;
 
         let tm = dateparser::parse(&opts.date).unwrap();
         let day = Utc

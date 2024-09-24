@@ -1,10 +1,7 @@
-use clickhouse::Client;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use geo::{point, Point};
+use geo::point;
 use geo::prelude::*;
-
-#[cfg(feature = "duckdb")]
-use duckdb::{Connection, params};
+use klickhouse::{Client, ClientOptions};
 
 struct Pt {
     latitude: f64,
@@ -114,26 +111,6 @@ fn geo_vincenty(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "duckdb")]
-fn duckdb_calc(dbh: &Connection, p1: &Pt, p2: &Pt) {
-    dbh.execute("SELECT ST_Distance_Spheroid(ST_Point(?, ?), ST_Point(?, ?))",
-                params![p1.latitude, p1.longitude, p2.latitude, p2.longitude]).unwrap();
-}
-
-#[cfg(feature = "duckdb")]
-fn duckdb_spheroid(c: &mut Criterion) {
-    let (point1, point2) = setup();
-
-    let dbh = duckdb::Connection::open_in_memory().unwrap();
-    dbh.execute("LOAD spatial", []).unwrap();
-
-    c.bench_function("duckdb_spheroid", |b| {
-        b.iter(|| {
-            black_box(duckdb_calc(&dbh, &point1, &point2))
-        })
-    });
-}
-
 async fn ch_calc_distance(client: Client, point1: &Pt, point2: &Pt) -> f32 {
     let mut res = client.query("SELECT geoDistance(?,?,?,?) AS dist")
         .bind(point1.longitude)
@@ -149,8 +126,19 @@ async fn ch_calc_distance(client: Client, point1: &Pt, point2: &Pt) -> f32 {
 fn ch_geodistance(c: &mut Criterion) {
     let (point1, point2) = setup();
 
-    let url = format!("http://100.92.250.113:8123");
-    let client = Client::default().with_url(url).with_option("wait_end_of_query", "1");
+    let url = std::env::var("KLICKHOUSE_URL")?;
+    let db = std::env::var("CLICKHOUSE_DB")?;
+    let user = std::env::var("CLICKHOUSE_USER")?;
+    let pwd = std::env::var("CLICKHOUSE_PASSWD")?;
+
+    let client = Client::connect(
+        url,
+        ClientOptions {
+            username: user,
+            password: pwd,
+            default_database: db,
+        },
+    )?;
 
     c.bench_function("clickhouse", |b| {
         b.to_async(
@@ -164,20 +152,10 @@ fn ch_geodistance(c: &mut Criterion) {
 }
 
 criterion_group! {
-    name = benches_all;
-    config = Criterion::default();
-    targets = self_haversines, self_cosinuses, geo_geodesic, geo_haversines, geo_vincenty, duckdb_spheroid, ch_geodistance
-}
-
-criterion_group! {
     name = benches;
     config = Criterion::default();
     targets = self_haversines, self_cosinuses, geo_geodesic, geo_haversines, geo_vincenty, ch_geodistance
 }
 
-#[cfg(feature = "duckdb")]
-criterion_main!(benches_all);
-
-#[cfg(not(feature = "duckdb"))]
 criterion_main!(benches);
 

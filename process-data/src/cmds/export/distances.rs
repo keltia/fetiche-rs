@@ -35,14 +35,14 @@ pub struct ExpDistOpts {
 ///
 #[derive(Debug, Deserialize, Row, Serialize)]
 struct Encounter {
-    site: String,
+    site: i32,
     en_id: String,
     time: DateTime,
     journey: i32,
     drone_id: String,
     model: String,
-    drone_lon: f32,
     drone_lat: f32,
+    drone_lon: f32,
     drone_alt_m: f32,
     drone_height_m: f32,
     prox_callsign: String,
@@ -56,7 +56,12 @@ struct Encounter {
     distance_home_m: i32,
 }
 
-
+/// Connect to the clickhouse database using the `klickhouse` client instead of the
+/// official client.
+///
+/// FIXME: this is temporary, we might migrate to this one for all.
+///
+#[tracing::instrument]
 async fn connect_clickhouse() -> Result<Client> {
     let name = std::env::var("CLICKHOUSE_DB")?;
     let user = std::env::var("CLICKHOUSE_USER")?;
@@ -75,14 +80,16 @@ async fn connect_clickhouse() -> Result<Client> {
     Ok(client)
 }
 
+/// Retrieve all the records in `airplane_prox` table.
+///
 #[tracing::instrument(skip(client))]
 async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     trace!("retrieving records from airplane_prox");
 
     let r = r##"
   SELECT
-    en_id,
     site,
+    en_id,
     time,
     journey,
     drone_id,
@@ -96,10 +103,10 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     prox_lat,
     prox_lon,
     prox_alt_m,
+    distance_slant_m,
     distance_hor_m,
     distance_vert_m,
     distance_home_m,
-    distance_slant_m,
   FROM airplane_prox
   ORDER BY time
         "##;
@@ -110,10 +117,11 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     Ok(res)
 }
 
-
+/// Retrieve the subset summary of all encounters from `airplane_prox`
+///
 #[tracing::instrument(skip(client))]
 async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> {
-    trace!("retrieving records from airplane_prox");
+    trace!("retrieving summary records from airplane_prox");
 
     let r = r##"
 CREATE OR REPLACE TABLE airprox_summary
@@ -130,32 +138,12 @@ AS (
     en_id,journey,drone_id
 )"##;
     trace!("Create temp table airprox_summary");
-    let q = QueryBuilder::new(r);
-    let _ = client.execute(q).await?;
+    client.execute(r).await?;
 
     // Match with airprox_summary for export
     //
     let r1 = r##"
-  SELECT
-    a.en_id,
-    a.site,
-    a.time,
-    a.journey,
-    a.drone_id,
-    a.model,
-    a.drone_lat,
-    a.drone_lon,
-    a.drone_alt_m,
-    a.drone_height_m,
-    a.prox_callsign,
-    a.prox_id,
-    a.prox_lat,
-    a.prox_lon,
-    a.prox_alt_m,
-    a.distance_hor_m,
-    a.distance_vert_m,
-    a.distance_home_m,
-    a.distance_slant_m,
+  SELECT *
   FROM
     airplane_prox AS a JOIN airprox_summary AS s
     ON
@@ -166,17 +154,15 @@ AS (
     a.distance_slant_m = s.distance_slant_m
   ORDER BY time
     "##;
-    let q = QueryBuilder::new(r1);
-    let summ = client.query_collect::<Encounter>(q).await?;
+    let summ = client.query_collect::<Encounter>(r1).await?;
     trace!("Summary encounters: {:?}", summ);
     Ok(summ)
 }
 
-/// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
+/// Write the output of `retrieve_all_encounters()` as a CSV file
 ///
 #[tracing::instrument(skip(client))]
-async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()>
-{
+async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()> {
     trace!("Exporting all encounters from airplane_prox");
 
     let data = retrieve_all_encounters(client).await?;
@@ -184,13 +170,12 @@ async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()>
 
     // Prepare the writer
     //
-    let mut wtr = WriterBuilder::new()
-        .has_headers(true)
-        .from_writer(vec![]);
+    let mut wtr = WriterBuilder::new().has_headers(true).from_writer(vec![]);
 
     // Insert data
     //
     data.into_iter().for_each(|rec| {
+        assert!(rec.distance_slant_m >= rec.distance_hor_m);
         wtr.serialize(rec).unwrap();
     });
 
@@ -204,7 +189,8 @@ async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()>
 }
 
 /// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
-/// Same as previous but export as a Parquet file.
+/// Same as previous but export as a Parquet file.  Due to the way DataFrames are handled in
+/// Datafusion, it is easier to generate the CSV and use it to generate a parquet file.
 ///
 #[tracing::instrument(skip(client))]
 async fn export_all_encounters_parquet(client: &Client, fname: &str) -> Result<()> {
@@ -212,7 +198,9 @@ async fn export_all_encounters_parquet(client: &Client, fname: &str) -> Result<(
     let tmpname = csv.path().to_string_lossy().to_string();
     trace!("Creating and saving CSV into {tmpname}");
 
-    let _ = export_all_encounters_csv(client, &tmpname).await?;
+    // Generate the csv file as `tmpname`
+    //
+    export_all_encounters_csv(client, &tmpname).await?;
 
     let ctx = SessionContext::new();
     let df = ctx
@@ -256,16 +244,16 @@ async fn export_all_encounters_text(client: &Client) -> Result<()> {
     prox_lat,
     prox_lon,
     prox_alt_m,
+    distance_slant_m,
     distance_hor_m,
     distance_vert_m,
     distance_home_m,
-    distance_slant_m,
   FROM airplane_prox
   ORDER BY time
   FORMAT PrettyCompact
 "##;
     let q = QueryBuilder::new(r);
-    let _ = client.execute(q).await?;
+    let _ = client.query_collect::<Encounter>(q).await?;
 
     Ok(())
 }
@@ -279,9 +267,7 @@ async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::R
 
     // Prepare the writer
     //
-    let mut wtr = WriterBuilder::new()
-        .has_headers(true)
-        .from_writer(vec![]);
+    let mut wtr = WriterBuilder::new().has_headers(true).from_writer(vec![]);
 
     // Insert data
     //
@@ -298,6 +284,8 @@ async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::R
     Ok(())
 }
 
+/// Main entry point for the various `export distances` subcommand.
+///
 #[tracing::instrument(skip(_ctx))]
 pub async fn export_results(_ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
     let client = connect_clickhouse().await?;
@@ -320,7 +308,7 @@ pub async fn export_results(_ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<
             export_all_encounters_text(&client).await?;
         }
     }
-    drop (client);
+    drop(client);
     info!("Done.");
     Ok(())
 }

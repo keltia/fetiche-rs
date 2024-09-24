@@ -13,8 +13,9 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
-use clickhouse::Client;
 use eyre::Result;
+use klickhouse::bb8::Pool;
+use klickhouse::{bb8, Client, ClientOptions, ConnectionManager};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, trace};
 
@@ -55,7 +56,9 @@ pub struct Context {
     /// All configuration parameters
     pub config: Arc<HashMap<String, String>>,
     /// Database Client.
-    dbh: Client,
+    pub dbh: Pool<ConnectionManager>,
+    /// Current DB pool size.
+    pub pool_size: usize,
     /// Delay between parallel tasks
     pub wait: u64,
     /// Dry run
@@ -64,8 +67,14 @@ pub struct Context {
 
 impl Context {
     #[tracing::instrument(skip(self))]
-    pub fn db(&self) -> Client {
-        self.dbh.clone()
+    pub async fn db(&self) -> Client {
+        let client = self
+            .dbh
+            .get()
+            .await
+            .map_err(|e| Status::ConnectionUnavailable(e.to_string()))
+            .unwrap();
+        client.clone()
     }
 
     #[tracing::instrument(skip(self))]
@@ -88,10 +97,15 @@ impl Debug for Context {
 /// Connect to database and load the extensions.
 ///
 #[tracing::instrument]
-pub fn init_runtime(opts: &Opts) -> Result<Context> {
+pub async fn init_runtime(opts: &Opts) -> Result<Context> {
     // Initialise logging early
     //
-    init_logging(NAME, opts.use_telemetry, true, true)?;
+    init_logging(
+        NAME,
+        opts.use_telemetry,
+        opts.use_tree,
+        opts.use_file.clone(),
+    )?;
     trace!("Logging initialised.");
 
     // We must operate on a database.
@@ -141,7 +155,7 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
         .unwrap_or(opts.database.clone().unwrap_or(database.to_string()));
     let user = std::env::var("CLICKHOUSE_USER").unwrap_or(cfg.user.clone().unwrap());
     let pass = std::env::var("CLICKHOUSE_PASSWD").unwrap_or(cfg.password.clone().unwrap());
-    let endpoint = std::env::var("CLICKHOUSE_URL").unwrap_or(cfg.url.clone());
+    let endpoint = std::env::var("KLICKHOUSE_URL").unwrap_or(cfg.url.clone());
 
     // URL is mandatory, either in environment or in the config file.
     //
@@ -151,11 +165,23 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
     }
 
     info!("Connecting to {} @ {}", name, endpoint);
-    let dbh = Client::default()
-        .with_url(endpoint.clone())
-        .with_database(&name)
-        .with_user(&user)
-        .with_password(pass);
+    trace!("Creating connection pool");
+
+    let manager = ConnectionManager::new(
+        endpoint.clone(),
+        ClientOptions {
+            username: user.clone(),
+            password: pass.clone(),
+            default_database: name.clone(),
+        },
+    )
+        .await?;
+
+    let pool_size = opts.pool_size;
+    let pool = bb8::Pool::builder()
+        .retry_connection(true)
+        .max_size(pool_size as u32)
+        .build(manager).await?;
 
     let ctx = Context {
         config: HashMap::from([
@@ -165,7 +191,8 @@ pub fn init_runtime(opts: &Opts) -> Result<Context> {
             ("username".to_string(), user.clone()),
         ])
             .into(),
-        dbh,
+        dbh: pool.clone(),
+        pool_size,
         wait: opts.wait,
         dry_run: opts.dry_run,
     };

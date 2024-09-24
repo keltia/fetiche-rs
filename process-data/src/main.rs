@@ -26,13 +26,13 @@ pub const AUTHORS: &str = crate_authors!();
 
 /// Use reasonable defaults for tokio threads & workers.
 ///
-#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::main(flavor = "multi_thread", worker_threads = 8)]
 async fn main() -> Result<()> {
     let opts = Opts::parse();
 
     // Initialise our context including logging.
     //
-    let ctx = init_runtime(&opts)?;
+    let ctx = init_runtime(&opts).await?;
 
     banner()?;
 
@@ -40,15 +40,13 @@ async fn main() -> Result<()> {
     match &opts.subcmd {
         SubCommand::Completion(copts) => {
             let generator = copts.shell;
+            eprintln!("Generating completion file for {}", generator);
 
             let mut cmd = Opts::command();
             generate(generator, &mut cmd, NAME, &mut io::stdout());
         }
         SubCommand::Version => {
-            #[cfg(feature = "clickhouse")]
-            println!("{} v{}+clickhouse", NAME, VERSION);
-            #[cfg(feature = "duckdb")]
-            println!("{} v{}+duckdb", NAME, VERSION);
+            eprintln!("{} v{}+clickhouse", NAME, VERSION);
         }
         _ => handle_cmds(&ctx, &opts).await?,
     }
@@ -61,13 +59,10 @@ async fn main() -> Result<()> {
 /// Display banner
 ///
 fn banner() -> Result<()> {
-    #[cfg(feature = "clickhouse")]
     let ver = format!("{} v{}+clickhouse", NAME, VERSION);
-    #[cfg(feature = "duckdb")]
-    let ver = format!("{} v{}+duckdb", NAME, VERSION);
     Ok(eprintln!(
         r##"
-{NAME}/{ver} by {AUTHORS}
+{ver} by {AUTHORS}
 {}
 "##,
         crate_description!()
