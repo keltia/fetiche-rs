@@ -3,9 +3,9 @@
 
 use cached::proc_macro::cached;
 use chrono::{DateTime, Datelike, Utc};
+use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
-use klickhouse::{QueryBuilder, Row};
 use tracing::debug;
 
 use crate::config::Context;
@@ -15,7 +15,7 @@ use crate::error::Status;
 #[derive(Clone, Debug, Deserialize, Row, Serialize)]
 pub struct Site {
     /// auto-increment ID
-    pub id: u32,
+    pub id: i32,
     /// Short name of location (e.g. "BUC")
     pub name: String,
     /// Places code
