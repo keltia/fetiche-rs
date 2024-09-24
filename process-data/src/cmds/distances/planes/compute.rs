@@ -391,13 +391,13 @@ CREATE OR REPLACE TABLE ids{tag} (
             r##"INSERT INTO airplane_prox
      SELECT
       any_value(tc.site) AS site,
-      id.en_id,
+      id.en_id AS en_id,
       any_value(time) AS time,
-      tc.journey,
-      tc.drone_id,
+      tc.journey AS journey,
+      tc.drone_id AS drone_id,
       any_value(model) AS model,
-      any_value(dlon) AS drone_lon,
       any_value(dlat) AS drone_lat,
+      any_value(dlon) AS drone_lon,
       any_value(dalt) AS drone_alt_m,
       any_value(ABS(dalt - dh)) AS drone_height_m,
       any_value(tc.callsign) AS prox_callsign,
@@ -405,10 +405,10 @@ CREATE OR REPLACE TABLE ids{tag} (
       any_value(plat) AS prox_lat,
       any_value(plon) AS prox_lon,
       any_value(palt) AS prox_alt_m,
+      CEIL(dist_drone_plane) AS distance_slant_m,
       any_value(CEIL(dist2d)) AS distance_hor_m,
       any_value(CEIL(ABS(palt - dalt))) AS distance_vert_m,
-      any_value(CEIL(hdist2d)) as distance_home_m,
-      CEIL(dist_drone_plane) AS distance_slant_m
+      any_value(CEIL(hdist2d)) as distance_home_m
     FROM today_close{tag} AS tc JOIN ids{tag} AS id
       ON id.journey = tc.journey AND id.callsign = tc.callsign
     WHERE
