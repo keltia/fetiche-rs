@@ -35,14 +35,14 @@ pub struct ExpDistOpts {
 ///
 #[derive(Debug, Deserialize, Row, Serialize)]
 struct Encounter {
-    site: String,
+    site: i32,
     en_id: String,
     time: DateTime,
     journey: i32,
     drone_id: String,
     model: String,
-    drone_lon: f32,
     drone_lat: f32,
+    drone_lon: f32,
     drone_alt_m: f32,
     drone_height_m: f32,
     prox_callsign: String,
@@ -76,7 +76,7 @@ async fn connect_clickhouse() -> Result<Client> {
             default_database: name,
         },
     )
-    .await?;
+        .await?;
     Ok(client)
 }
 
@@ -88,8 +88,8 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
 
     let r = r##"
   SELECT
-    en_id,
     site,
+    en_id,
     time,
     journey,
     drone_id,
@@ -143,26 +143,7 @@ AS (
     // Match with airprox_summary for export
     //
     let r1 = r##"
-  SELECT
-    a.en_id,
-    a.site,
-    a.time,
-    a.journey,
-    a.drone_id,
-    a.model,
-    a.drone_lat,
-    a.drone_lon,
-    a.drone_alt_m,
-    a.drone_height_m,
-    a.prox_callsign,
-    a.prox_id,
-    a.prox_lat,
-    a.prox_lon,
-    a.prox_alt_m,
-    a.distance_slant_m,
-    a.distance_hor_m,
-    a.distance_vert_m,
-    a.distance_home_m,
+  SELECT *
   FROM
     airplane_prox AS a JOIN airprox_summary AS s
     ON
