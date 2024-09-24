@@ -108,18 +108,18 @@ ORDER BY time
 
         // Check how many
         //
-        let r1 = format!("SELECT count() FROM today{tag} AS count");
+        let r1 = format!("SELECT count() FROM today{tag}");
         let q = QueryBuilder::new(&r1);
         let mut count = dbh.query_one::<RawRow>(q).await?;
 
         self.state.push(TempTables::Today);
-        let count: u32 = count.get("count");
+        let count: u64 = count.get(0);
         trace!("Total number of planes: {}\n", count);
         Ok(count as usize)
     }
 
     #[tracing::instrument(skip(dbh))]
-    async fn select_drones(&mut self, dbh: &Client) -> Result<u32> {
+    async fn select_drones(&mut self, dbh: &Client) -> Result<usize> {
         // All drone points for the same day
         //
         // $1 = date+1
@@ -187,9 +187,9 @@ WHERE
             .await?;
 
         self.state.push(TempTables::Candidates);
-        let count = count.get(0);
+        let count: u64 = count.get(0);
         trace!("Total number of drones: {}", count);
-        Ok(count)
+        Ok(count as usize)
     }
 
     #[tracing::instrument(skip(dbh))]
@@ -255,7 +255,7 @@ WHERE
             .query_one::<RawRow>(&format!("SELECT COUNT() FROM today_close{tag}"))
             .await?;
 
-        let count: u32 = count.get(0);
+        let count: u64 = count.get(0);
 
         self.state.push(TempTables::TodayClose);
 
@@ -289,7 +289,7 @@ CREATE OR REPLACE TABLE ids{tag} (
 
         let r = format!("SELECT count() FROM today_close{tag}");
         let mut total = dbh.query_one::<RawRow>(&r).await?;
-        let total: u32 = total.get(0);
+        let total: u64 = total.get(0);
 
         // This is for the query
         #[derive(Clone, Debug, Default, Serialize, Deserialize, Row)]
@@ -356,7 +356,7 @@ CREATE OR REPLACE TABLE ids{tag} (
         let mut count = dbh
             .query_one::<RawRow>(&format!("SELECT count() FROM today_close{tag}"))
             .await?;
-        let count: u32 = count.get(0);
+        let count: u64 = count.get(0);
         trace!("Got {count} IDs");
         Ok(count as usize)
     }
@@ -428,7 +428,7 @@ CREATE OR REPLACE TABLE ids{tag} (
             .arg(pattern);
         let mut count = dbh.query_one::<RawRow>(q).await?;
 
-        let count: u32 = count.get(0);
+        let count: u64 = count.get(0);
         if count == 0 {
             info!("No new encounters.");
             return Ok(count as usize);
