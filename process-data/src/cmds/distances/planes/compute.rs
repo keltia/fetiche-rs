@@ -294,7 +294,7 @@ CREATE OR REPLACE TABLE ids{tag} (
         // This is for the query
         #[derive(Clone, Debug, Default, Serialize, Deserialize, Row)]
         struct Tc {
-            journey: u32,
+            journey: i32,
             drone_id: String,
             callsign: String,
         }
@@ -303,7 +303,7 @@ CREATE OR REPLACE TABLE ids{tag} (
         #[derive(Clone, Debug, Default, Serialize, Deserialize, Row)]
         struct Ids {
             en_id: String,
-            journey: u32,
+            journey: i32,
             drone_id: String,
             callsign: String,
         }
