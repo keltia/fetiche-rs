@@ -173,6 +173,7 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
             username: user.clone(),
             password: pass.clone(),
             default_database: name.clone(),
+            ..Default::default()
         },
     )
         .await?;

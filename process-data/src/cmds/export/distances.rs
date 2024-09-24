@@ -74,6 +74,7 @@ async fn connect_clickhouse() -> Result<Client> {
             username: user,
             password: pass,
             default_database: name,
+            ..Default::default()
         },
     )
         .await?;
