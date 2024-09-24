@@ -1,13 +1,12 @@
 use std::env::var;
 use std::fs::File;
 
-use clickhouse::{Client, Row};
 use eyre::Result;
+use klickhouse::{Client, ClientOptions, DateTime, Row};
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
 use tokio::fs;
 
-const URL: &str = "http://127.0.0.1:8123";
+const URL: &str = "http://127.0.0.1:9000";
 const DB: &str = "acute";
 const USER: &str = "default";
 const PASS: &str = "";
@@ -33,33 +32,37 @@ pub struct Install {
     pub id: u32,
     pub site_id: u32,
     pub antenna_id: u32,
-    #[serde(with = "clickhouse::serde::time::datetime")]
-    pub start_at: OffsetDateTime,
-    #[serde(with = "clickhouse::serde::time::datetime")]
-    pub end_at: OffsetDateTime,
+    pub start_at: DateTime,
+    pub end_at: DateTime,
     pub comment: String,
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
-    let url = var("CLICKHOUSE_URL").unwrap_or(URL.into());
+    let url = var("KLICKHOUSE_URL").unwrap_or(URL.into());
+    let name = var("CLICKHOUSE_DB").unwrap_or(DB.into());
+    let user = var("CLICKHOUSE_USER").unwrap_or(USER.into());
     let pass = var("CLICKHOUSE_PASSWD").unwrap_or(PASS.into());
 
-    let client = Client::default()
-        .with_url(url)
-        .with_user(USER)
-        .with_password(pass)
-        .with_database(DB)
-        .with_option("wait_end_of_query", "1");
+    let client = Client::connect(
+        url.clone(),
+        ClientOptions {
+            username: user.clone(),
+            password: pass.clone(),
+            default_database: name.clone(),
+            ..Default::default()
+        },
+    )
+    .await?;
 
     let all = client
-        .query("SELECT * FROM acute.installations")
-        .fetch_all::<Install>().await?;
+        .query_collect::<Install>("SELECT * FROM acute.installations")
+        .await?;
 
     let fh = File::create(FNAME)?;
     let mut wtr = csv::Writer::from_writer(fh);
 
-    all.iter().for_each(|row| wtr.serialize(row).unwrap() );
+    all.iter().for_each(|row| wtr.serialize(row).unwrap());
     let _ = wtr.flush()?;
 
     // Check
@@ -69,4 +72,3 @@ async fn main() -> Result<()> {
     }
     Ok(())
 }
-
