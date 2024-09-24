@@ -36,6 +36,7 @@ dateparser.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-macros.workspace = true
+futures.workspace = true
 hcl-rs.workspace = true
 log.workspace = true
 serde.workspace = true
