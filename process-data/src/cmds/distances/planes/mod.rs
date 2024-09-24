@@ -10,12 +10,14 @@ use clap::Parser;
 use derive_builder::Builder;
 use eyre::Result;
 use futures::future::{join_all, try_join_all};
+use itertools::Itertools;
 use tracing::{info, trace};
 
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
-use crate::cmds::{enumerate_sites, find_site, Calculate, PlanesStats, Site, Stats};
+use crate::cmds::{enumerate_sites, find_site, Calculate, DistOpts, PlanesStats, Site, Stats};
 use crate::config::Context;
+use crate::error::Status;
 
 mod compute;
 
@@ -161,23 +163,31 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     let distance = opts.distance;
     let separation = opts.separation;
 
-    // Gather all sites to run calculations on for every day.
-    //
-    let stats: Vec<_> = work_list
-        .into_iter()
-        .map(|(day, site)| {
-            trace!("Calculate for site {site} on day {day}");
-            let site = site.clone();
-            let ctx = ctx.clone();
+    // We have a potentially large set of day+site to compute.  Try to not batch more than out current
+    // pool size
+    let mut all = vec![];
+    for batch in &work_list.into_iter().chunks(ctx.pool_size) {
+        let stats: Vec<_> = batch
+            .into_iter()
+            .map(|(day, site)| async move {
+                trace!("Calculate for site {site} on day {day}");
+                let site = site.clone();
+                let ctx = ctx.clone();
 
-            async move { calculate_one_day_on_site(&ctx, &site, &day, distance, separation).await }
-        })
-        .collect();
-    let stats: Vec<_> = try_join_all(stats).await?;
+                let r = tokio::spawn(async move {
+                    calculate_one_day_on_site(&ctx, &site, &day, distance, separation).await.unwrap()
+                }).await.unwrap();
+                r
+            })
+            .collect();
+        let stats: Vec<_> = join_all(stats).await;
+        all.push(stats);
+    }
+    let all = all.into_iter().flatten().collect::<Vec<_>>();
 
     // Gather all statistics
     //
-    let stats = Stats::summarise(stats);
+    let stats = Stats::summarise(all);
     dbg!(&stats);
     trace!("summary={stats:?}");
 
@@ -195,7 +205,11 @@ async fn calculate_one_day_on_site(
     distance: f64,
     separation: f64,
 ) -> Result<Stats> {
-    let dbh = ctx.db().await;
+    let dbh = ctx
+        .dbh
+        .get()
+        .await
+        .map_err(|e| Status::ConnectionUnavailable(e.to_string()))?;
 
     let day = normalise_day(*day)?;
 
@@ -215,7 +229,7 @@ async fn calculate_one_day_on_site(
     //
 
     let stats = if !ctx.dry_run {
-        work.run(&dbh.clone()).await?
+        work.run(&dbh).await?
     } else {
         trace!("dry run!");
         Stats::Planes(PlanesStats::default())
