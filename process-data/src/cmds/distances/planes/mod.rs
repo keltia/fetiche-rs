@@ -9,13 +9,13 @@ use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use derive_builder::Builder;
 use eyre::Result;
-use futures::future::{join_all, try_join_all};
+use futures::future::join_all;
 use itertools::Itertools;
 use tracing::{info, trace};
 
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
-use crate::cmds::{enumerate_sites, find_site, Calculate, DistOpts, PlanesStats, Site, Stats};
+use crate::cmds::{enumerate_sites, find_site, Calculate, PlanesStats, Site, Stats};
 use crate::config::Context;
 use crate::error::Status;
 
