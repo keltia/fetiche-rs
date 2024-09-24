@@ -84,7 +84,7 @@ WHERE
   site = $1 AND
   toStartOfInterval(time, toIntervalDay(1)) = toDateTime($2) AND
   palt IS NOT NULL AND
-  pointInEllipses(plon, plat, $3, $4, $5, 6)
+  pointInEllipses(plon, plat, $3, $4, $5, $6)
 ORDER BY time
 "##
         );
