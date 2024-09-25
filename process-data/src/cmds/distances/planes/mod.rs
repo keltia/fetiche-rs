@@ -175,8 +175,12 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
                 let ctx = ctx.clone();
 
                 let r = tokio::spawn(async move {
-                    calculate_one_day_on_site(&ctx, &site, &day, distance, separation).await.unwrap()
-                }).await.unwrap();
+                    calculate_one_day_on_site(&ctx, &site, &day, distance, separation)
+                        .await
+                        .unwrap()
+                })
+                .await
+                .unwrap();
                 r
             })
             .collect();
@@ -188,7 +192,6 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     // Gather all statistics
     //
     let stats = Stats::summarise(all);
-    dbg!(&stats);
     trace!("summary={stats:?}");
 
     Ok(stats)
