@@ -4870,6 +4870,7 @@ dependencies = [
  "eyre",
  "fetiche-common",
  "fetiche-macros",
+ "futures",
  "geo",
  "hcl-rs",
  "itertools 0.13.0",
