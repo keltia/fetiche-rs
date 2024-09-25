@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use geo::point;
 use geo::prelude::*;
-use klickhouse::{Client, ClientOptions};
+use klickhouse::{Client, ClientOptions, QueryBuilder, RawRow};
 
 struct Pt {
     latitude: f64,
@@ -17,9 +17,9 @@ impl Pt {
 
         let a = (d_lat / 2.0).sin() * (d_lat / 2.0).sin()
             + self.latitude.to_radians().cos()
-            * other.latitude.to_radians().cos()
-            * (d_lon / 2.0).sin()
-            * (d_lon / 2.0).sin();
+                * other.latitude.to_radians().cos()
+                * (d_lon / 2.0).sin()
+                * (d_lon / 2.0).sin();
 
         let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
         Pt::R * c
@@ -31,8 +31,8 @@ impl Pt {
 
         let a = (self.latitude.to_radians()).sin() * (other.latitude.to_radians()).sin()
             + (self.latitude.to_radians()).cos()
-            * (other.latitude.to_radians()).cos()
-            * d_lon.cos();
+                * (other.latitude.to_radians()).cos()
+                * d_lon.cos();
 
         let c = a.acos();
 
@@ -111,25 +111,30 @@ fn geo_vincenty(c: &mut Criterion) {
     });
 }
 
-async fn ch_calc_distance(client: Client, point1: &Pt, point2: &Pt) -> f32 {
-    let mut res = client.query("SELECT geoDistance(?,?,?,?) AS dist")
-        .bind(point1.longitude)
-        .bind(point1.latitude)
-        .bind(point2.longitude)
-        .bind(point2.latitude)
-        .fetch::<f32>().unwrap();
+async fn ch_calc_distance(client: Client, point1: &Pt, point2: &Pt) -> f64 {
+    let q = QueryBuilder::new("SELECT geoDistance($1,$2,$3,$4) AS dist")
+        .arg(point1.longitude)
+        .arg(point1.latitude)
+        .arg(point2.longitude)
+        .arg(point2.latitude);
 
-    let val: f32 = res.next().await.unwrap().unwrap_or_else(|| 0.);
+    let mut res = client.query_one::<RawRow>(q).await.unwrap();
+    let val: f64 = res.get("dist");
     val
 }
 
 fn ch_geodistance(c: &mut Criterion) {
+    let rt = tokio::runtime::Handle::current();
+    rt.block_on(async { inner_ch_geodistance(c).await });
+}
+
+async fn inner_ch_geodistance(c: &mut Criterion) {
     let (point1, point2) = setup();
 
-    let url = std::env::var("KLICKHOUSE_URL")?;
-    let db = std::env::var("CLICKHOUSE_DB")?;
-    let user = std::env::var("CLICKHOUSE_USER")?;
-    let pwd = std::env::var("CLICKHOUSE_PASSWD")?;
+    let url = std::env::var("KLICKHOUSE_URL").unwrap();
+    let db = std::env::var("CLICKHOUSE_DB").unwrap();
+    let user = std::env::var("CLICKHOUSE_USER").unwrap();
+    let pwd = std::env::var("CLICKHOUSE_PASSWD").unwrap();
 
     let client = Client::connect(
         url,
@@ -138,16 +143,20 @@ fn ch_geodistance(c: &mut Criterion) {
             password: pwd,
             default_database: db,
         },
-    )?;
+    )
+    .await
+    .unwrap();
 
-    c.bench_function("clickhouse", |b| {
+    c.bench_function("klickhouse", |b| {
         b.to_async(
             tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap(),
         )
-            .iter(|| async { let _ = ch_calc_distance(client.clone(), &point1, &point2).await; });
+        .iter(|| async {
+            let _ = ch_calc_distance(client.clone(), &point1, &point2).await;
+        });
     });
 }
 
@@ -158,4 +167,3 @@ criterion_group! {
 }
 
 criterion_main!(benches);
-
