@@ -1,5 +1,3 @@
-use geo::{GeodesicDistance, HaversineDistance};
-
 // Point3D is ( x = lon, y = lat, z = alt )
 // Point is ( lat, lon alt )
 // point! is ( x = lon, y = lat )

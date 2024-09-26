@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
     let pass = std::env::var("CLICKHOUSE_PASSWD")?;
     let endpoint = std::env::var("KLICKHOUSE_URL")?;
 
-    init_logging("export-encounters", false, true, true)?;
+    init_logging("export-encounters", false, true, None)?;
 
     eprintln!("Create connection.");
     let client = Client::connect(
@@ -61,6 +61,7 @@ async fn main() -> Result<()> {
             username: user,
             password: pass,
             default_database: name,
+            ..Default::default()
         },
     )
     .await?;

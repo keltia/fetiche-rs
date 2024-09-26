@@ -1,6 +1,6 @@
 use eyre::Result;
 use fetiche_common::init_logging;
-use klickhouse::{Client, ClientOptions, Progress, QueryBuilder, RawRow, Row, UnitValue, Uuid, Value};
+use klickhouse::{Client, ClientOptions, Progress, QueryBuilder, RawRow, Row, Uuid};
 use tracing::{debug, trace};
 
 #[derive(Debug, Row)]
@@ -15,7 +15,7 @@ async fn main() -> Result<()> {
     let pass = std::env::var("CLICKHOUSE_PASSWD")?;
     let endpoint = std::env::var("KLICKHOUSE_URL")?;
 
-    init_logging("site", false)?;
+    init_logging("site", false, false, None)?;
 
     let client = Client::connect(
         endpoint,
@@ -23,9 +23,10 @@ async fn main() -> Result<()> {
             username: user,
             password: pass,
             default_database: name,
+            ..Default::default()
         },
     )
-        .await?;
+    .await?;
 
     // Retrieve and display query progress events
     //
