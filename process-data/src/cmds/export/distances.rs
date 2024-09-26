@@ -10,7 +10,7 @@ use datafusion::config::TableParquetOptions;
 use datafusion::dataframe::DataFrameWriteOptions;
 use datafusion::prelude::{CsvReadOptions, SessionContext};
 use eyre::Result;
-use klickhouse::{Client, ClientOptions, DateTime, QueryBuilder, Row};
+use klickhouse::{Client, DateTime, QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use tempfile::Builder;
 use tracing::{debug, info, trace};
