@@ -18,5 +18,9 @@ pub enum Status {
     #[error("Error reading configuration({0})")]
     MissingConfigParameter(String),
     #[error("Can't get a connection from pool {0}")]
-    ConnectionUnavailable(String)
+    ConnectionUnavailable(String),
+    #[error("No output file specified, aborting.")]
+    NoOutputFile,
+    #[error("Unknown output format, aborting.")]
+    UnknownFormat(String),
 }

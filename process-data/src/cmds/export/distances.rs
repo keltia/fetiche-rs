@@ -17,6 +17,7 @@ use tracing::{debug, info, trace};
 
 use crate::cmds::Format;
 use crate::config::Context;
+use crate::error::Status;
 
 #[derive(Debug, Parser)]
 pub struct ExpDistOpts {
@@ -199,41 +200,6 @@ async fn export_all_encounters_parquet(client: &Client, fname: &str) -> Result<(
     Ok(())
 }
 
-/// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
-///
-#[tracing::instrument(skip(client))]
-async fn export_all_encounters_text(client: &Client) -> Result<()> {
-    let r = r##"
-  SELECT
-    en_id,
-    site,
-    time,
-    journey,
-    drone_id,
-    model,
-    drone_lat,
-    drone_lon,
-    drone_alt_m,
-    drone_height_m,
-    prox_callsign,
-    prox_id,
-    prox_lat,
-    prox_lon,
-    prox_alt_m,
-    distance_slant_m,
-    distance_hor_m,
-    distance_vert_m,
-    distance_home_m,
-  FROM airplane_prox
-  ORDER BY time
-  FORMAT PrettyCompact
-"##;
-    let q = QueryBuilder::new(r);
-    let _ = client.query_collect::<Encounter>(q).await?;
-
-    Ok(())
-}
-
 #[tracing::instrument(skip(dbh))]
 async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::Result<()> {
     // Create a temp file with all min distances
@@ -276,12 +242,16 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
                 match opts.format {
                     Format::Csv => export_all_encounters_csv(&client, fname).await?,
                     Format::Parquet => export_all_encounters_parquet(&client, fname).await?,
-                    _ => (),
+                    _ => return {
+                        eprintln!("Unknown format specified.");
+                        Err(Status::UnknownFormat(opts.format.to_string()).into())
+                    },
                 }
             };
         }
         None => {
-            export_all_encounters_text(&client).await?;
+            eprintln!("No output file specified.");
+            return Err(Status::NoOutputFile.into());
         }
     }
     drop(client);
