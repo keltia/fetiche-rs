@@ -262,7 +262,7 @@ async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::R
 
 /// Main entry point for the various `export distances` subcommand.
 ///
-#[tracing::instrument(skip(_ctx))]
+#[tracing::instrument(skip(ctx))]
 pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
     let client = ctx.db().await;
 
