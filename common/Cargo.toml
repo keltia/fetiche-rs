@@ -51,5 +51,6 @@ tracing-tree.workspace = true
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
 humantime = "2.1"
+jiff = "0.1"
 rstest.workspace = true
 test-pretty-log = "0.6"
