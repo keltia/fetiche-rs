@@ -33,7 +33,9 @@ pub struct ExportOpts {
 #[derive(Debug, Parser)]
 pub enum ExportSubCommand {
     /// Export the distance calculations
+    #[clap(visible_alias = "dist", visible_alias = "d")]
     Distances(ExpDistOpts),
     /// Export daily or weekly stats for drones
+    #[clap(visible_alias = "dr")]
     Drones(ExpDroneOpts),
 }
