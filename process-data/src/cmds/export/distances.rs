@@ -56,31 +56,6 @@ struct Encounter {
     distance_home_m: i32,
 }
 
-/// Connect to the clickhouse database using the `klickhouse` client instead of the
-/// official client.
-///
-/// FIXME: this is temporary, we might migrate to this one for all.
-///
-#[tracing::instrument]
-async fn connect_clickhouse() -> Result<Client> {
-    let name = std::env::var("CLICKHOUSE_DB")?;
-    let user = std::env::var("CLICKHOUSE_USER")?;
-    let pass = std::env::var("CLICKHOUSE_PASSWD")?;
-    let endpoint = std::env::var("KLICKHOUSE_URL")?;
-
-    let client = Client::connect(
-        endpoint,
-        ClientOptions {
-            username: user,
-            password: pass,
-            default_database: name,
-            ..Default::default()
-        },
-    )
-        .await?;
-    Ok(client)
-}
-
 /// Retrieve all the records in `airplane_prox` table.
 ///
 #[tracing::instrument(skip(client))]
@@ -288,8 +263,8 @@ async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::R
 /// Main entry point for the various `export distances` subcommand.
 ///
 #[tracing::instrument(skip(_ctx))]
-pub async fn export_results(_ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
-    let client = connect_clickhouse().await?;
+pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
+    let client = ctx.db().await;
 
     // Do we export as a csv the "encounters of the day"?
     //
