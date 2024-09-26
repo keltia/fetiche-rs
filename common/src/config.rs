@@ -265,20 +265,21 @@ mod tests {
     #[derive(Debug, Default, Deserialize)]
     struct Bar {
         /// Each site credentials
-        pub site: BTreeMap<String, Auth>,
+        pub use_async: bool,
     }
 
-    pub const CVERSION: usize = 1;
+    pub const CVERSION: usize = 2;
 
     #[test]
     fn test_config_engine_load_default() -> Result<()> {
         // Explicitly load default
         //
-        let cfg = ConfigFile::<Bar>::load(Some("config.hcl"));
+        let cfg = ConfigFile::<Bar>::load(Some("acutectl.hcl"));
         assert!(cfg.is_ok());
         let cfg = cfg?;
         let inner = cfg.inner();
         assert_eq!(CVERSION, inner.version());
+        assert_eq!(false, cfg.inner.unwrap().use_async);
         Ok(())
     }
 
