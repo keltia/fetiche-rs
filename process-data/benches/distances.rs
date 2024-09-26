@@ -17,9 +17,9 @@ impl Pt {
 
         let a = (d_lat / 2.0).sin() * (d_lat / 2.0).sin()
             + self.latitude.to_radians().cos()
-                * other.latitude.to_radians().cos()
-                * (d_lon / 2.0).sin()
-                * (d_lon / 2.0).sin();
+            * other.latitude.to_radians().cos()
+            * (d_lon / 2.0).sin()
+            * (d_lon / 2.0).sin();
 
         let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
         Pt::R * c
@@ -31,8 +31,8 @@ impl Pt {
 
         let a = (self.latitude.to_radians()).sin() * (other.latitude.to_radians()).sin()
             + (self.latitude.to_radians()).cos()
-                * (other.latitude.to_radians()).cos()
-                * d_lon.cos();
+            * (other.latitude.to_radians()).cos()
+            * d_lon.cos();
 
         let c = a.acos();
 
@@ -142,10 +142,11 @@ async fn inner_ch_geodistance(c: &mut Criterion) {
             username: user,
             password: pwd,
             default_database: db,
+            ..Default::default()
         },
     )
-    .await
-    .unwrap();
+        .await
+        .unwrap();
 
     c.bench_function("klickhouse", |b| {
         b.to_async(
@@ -154,9 +155,9 @@ async fn inner_ch_geodistance(c: &mut Criterion) {
                 .build()
                 .unwrap(),
         )
-        .iter(|| async {
-            let _ = ch_calc_distance(client.clone(), &point1, &point2).await;
-        });
+            .iter(|| async {
+                let _ = ch_calc_distance(client.clone(), &point1, &point2).await;
+            });
     });
 }
 
