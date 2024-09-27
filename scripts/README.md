@@ -214,18 +214,9 @@ options:
 
 ## Obsolete utilities
 
-- `reduce.sh`
-
-Takes CSV with full ADS-B data from EMIT and reduces them to pseudo-Cat21 format with specific columns.
-Significant data is lost during the process. Uses the `adsb-hdr.txt` file to add CSV headers.
-
-> NOTE: this is now obsolete as the fetiche workflow does not use or generate pseudo-Cat21 files.
-
 - `convert-csv.ps1`
 
 Automate the conversion of several CSV files into their Parquet equivalent on Windows.
-
-> NOTE: this is now obsolete as the fetiche workflow does not use or generate pseudo-Cat21 files.
 
 ## References
 
