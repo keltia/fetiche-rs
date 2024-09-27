@@ -202,7 +202,7 @@ def import_one_chunk(dir_path, fname):
     if action:
         ret = run(cmd, shell=True, capture_output=True)
         if ret.returncode != 0:
-            logging.error("error", "(", fname, "): ", ret.stderr)
+            logging.error("error", "(", os.path.join(dir_path, fname), "): ", ret.stderr)
             print("error: ", ret.stderr, file=sys.stderr)
             return fname
     else:
