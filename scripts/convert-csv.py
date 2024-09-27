@@ -17,6 +17,7 @@ options:
 
 """
 import argparse
+import logging
 import os
 
 from pathlib import Path
@@ -40,6 +41,7 @@ def convert_one(fn, action, delete):
         print(f"Got a gzip file: {fn}")
         if action:
             print(f"{fname}{ext} -> {fname}")
+            logging.info(f"{fname}{ext} -> {fname}")
             os.system(f"gunzip {fn}")
         ext = Path(fname).suffix
 
@@ -51,6 +53,7 @@ def convert_one(fn, action, delete):
         fname = Path(fname).stem
         outp = f"{fname}.parquet"
         print(f"{fname}{ext} -> {outp}")
+        logging.info(f"{fname}{ext} -> {outp}")
         if action:
             os.system(f"bdt convert  -s -z {fname}{ext} {outp}")
             if delete:
@@ -70,6 +73,17 @@ parser.add_argument('--delete', '-d', action='store_true', help="Remove csv afte
 parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
+importdir = f"{datalake}/import"
+datadir = f"{datalake}/data/adsb"
+bindir = f"{datalake}/bin"
+logdir = f"{datalake}/var/log"
+
+date = datetime.now().strftime('%Y%m%d')
+logfile = f"{logdir}/convert-csv-{date}.log"
+logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                    format='%(asctime)s - %(levelname)s: %(message)s')
+logging.info("Starting")
+
 if args.dry_run:
     action = False
 else:
@@ -86,11 +100,12 @@ for file in files:
     #
     if os.path.isdir(file):
         print(f"Exploring {file}")
+        logging.info(f"Exploring {file}")
         with os.scandir(file) as base:
             for fn in base:
                 if fn.name.endswith(".csv") or fn.name.endswith(".csv.gz"):
-                    print(f"Looking at {fn}")
                     convert_one(fn.name, action, delete)
     else:
         print(f"Just {file}")
+        logging.info(f"Just {file}")
         convert_one(file, action, delete)
