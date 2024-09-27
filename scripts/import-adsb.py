@@ -16,14 +16,13 @@ import argparse
 import logging
 import os
 import re
+import sys
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 from subprocess import run
 from typing import Any
-
-import sys
-import time
 
 # Does the mapping between the site basename and its ID.  Not worth using SQL for that.
 #
@@ -36,6 +35,7 @@ sites = {
     'Gatwick': 7,
     'London': 7,
     'Cyprus': 8,
+    'Larnaca': 8,
     'Bucharest': 9,
     'Bucharest1': 9,
     'Vienna': 10,

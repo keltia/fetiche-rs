@@ -44,6 +44,7 @@ sites = {'Brussels': 'BRU',
          'Bucharest': 'BUC',
          'Bucharest1': 'BUC',
          'Zurich': 'ZUR',
+         'Larnaca': 'CYP',
          }
 
 
