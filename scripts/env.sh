@@ -11,3 +11,4 @@ export CLICKHOUSE_HOST=SITE
 export CLICKHOUSE_DB=somedb
 export CLICKHOUSE_USER=default
 export CLICKHOUSE_PASSWD=bigsecret
+export KLICKHOUSE_URL=SITE:9000
