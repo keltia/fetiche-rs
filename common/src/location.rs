@@ -28,6 +28,8 @@ pub struct Location {
     pub name: String,
     /// Plus code encoded location
     pub code: String,
+    /// geoHash
+    pub hash: Option<String>,
     /// More descriptive name
     pub basename: String,
     /// Latitude
@@ -44,6 +46,7 @@ impl Default for Location {
             id: 0,
             name: String::new(),
             code: String::new(),
+            hash: Some(String::new()),
             basename: String::new(),
             latitude: 0.,
             longitude: 0.,
@@ -197,6 +200,7 @@ mod tests {
             hash: Some("gcex4vv69".to_string()),
             latitude: 54.7,
             longitude: -6.2,
+            ..Default::default()
         };
 
         let bb = BB::from_location(&loc, 25);
@@ -215,6 +219,7 @@ mod tests {
             hash: Some("u150upggr".to_string()),
             latitude: 50.8,
             longitude: 4.4,
+            ..Default::default()
         };
 
         let bb = BB::from_location(&loc, 25);
@@ -232,6 +237,7 @@ mod tests {
             hash: Some("u150upggr".to_string()),
             latitude: 50.8,
             longitude: 4.4,
+            ..Default::default()
         };
 
         let abb = BB::from_location(&loc, 25).to_polygon();

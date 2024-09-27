@@ -124,7 +124,7 @@ async fn ch_calc_distance(client: Client, point1: &Pt, point2: &Pt) -> f64 {
 }
 
 fn ch_geodistance(c: &mut Criterion) {
-    let rt = tokio::runtime::Handle::current();
+    let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async { inner_ch_geodistance(c).await });
 }
 

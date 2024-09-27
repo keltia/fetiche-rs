@@ -17,7 +17,7 @@ struct Foo {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    init_logging("cfg", false)?;
+    init_logging("cfg", false, false, None)?;
 
     let base = directories::BaseDirs::new().unwrap();
     dbg!(&base);

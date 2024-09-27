@@ -29,9 +29,9 @@ impl Point {
 
         let a = (d_lat / 2.0).sin() * (d_lat / 2.0).sin()
             + self.latitude.to_radians().cos()
-            * other.latitude.to_radians().cos()
-            * (d_lon / 2.0).sin()
-            * (d_lon / 2.0).sin();
+                * other.latitude.to_radians().cos()
+                * (d_lon / 2.0).sin()
+                * (d_lon / 2.0).sin();
 
         let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
         R * c
@@ -43,8 +43,8 @@ impl Point {
 
         let a = (self.latitude.to_radians()).sin() * (other.latitude.to_radians()).sin()
             + (self.latitude.to_radians()).cos()
-            * (other.latitude.to_radians()).cos()
-            * d_lon.cos();
+                * (other.latitude.to_radians()).cos()
+                * d_lon.cos();
 
         let c = a.acos();
 
@@ -64,9 +64,10 @@ async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
             username: user,
             password: pwd,
             default_database: db,
+            ..Default::default()
         },
     )
-        .await?;
+    .await?;
 
     let q = QueryBuilder::new("SELECT geoDistance($1,$2,$3,$4) AS dist")
         .arg(point1.longitude)
