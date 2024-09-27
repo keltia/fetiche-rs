@@ -68,11 +68,13 @@ parser = argparse.ArgumentParser(
     prog='convert-csv',
     description='Uncompress and convert every csv file into parquet.')
 
+parser.add_argument('--datalake', '-D', help='Datalake is here.')
 parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
 parser.add_argument('--delete', '-d', action='store_true', help="Remove csv after conversion.")
 parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
+datalake = "/acute"
 importdir = f"{datalake}/import"
 datadir = f"{datalake}/data/adsb"
 bindir = f"{datalake}/bin"
