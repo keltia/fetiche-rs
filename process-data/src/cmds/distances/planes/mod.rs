@@ -174,14 +174,13 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
                 let site = site.clone();
                 let ctx = ctx.clone();
 
-                let r = tokio::spawn(async move {
+                tokio::spawn(async move {
                     calculate_one_day_on_site(&ctx, &site, &day, distance, separation)
                         .await
                         .unwrap()
                 })
                 .await
-                .unwrap();
-                r
+                .unwrap()
             })
             .collect();
         let stats: Vec<_> = join_all(stats).await;

@@ -431,7 +431,6 @@ CREATE OR REPLACE TABLE ids{tag} (
         let count: u64 = count.get(0);
         if count == 0 {
             info!("No new encounters.");
-            return Ok(count as usize);
         } else {
             info!("Inserted {} new encounters", count);
         }
