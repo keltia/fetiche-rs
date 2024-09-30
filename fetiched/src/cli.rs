@@ -25,6 +25,15 @@ pub struct Opts {
     /// Demo mode, no interaction
     #[clap(long)]
     pub demo: bool,
+    /// Enable telemetry with OTLP.
+    #[clap(short = 'T', long)]
+    pub use_telemetry: bool,
+    /// Enable logging in hierarchical manner (aka tree)
+    #[clap(short = 'L', long)]
+    pub use_tree: bool,
+    /// This parameter enable logging to a file in that location.
+    #[clap(short = 'F', long)]
+    pub use_file: Option<String>,
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
     pub verbose: u8,

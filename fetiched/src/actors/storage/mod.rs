@@ -14,9 +14,10 @@ use serde::Deserialize;
 use tokio::fs::File;
 use tracing::{info, trace};
 
+use crate::{response_for, EngineConfig};
 pub use core::*;
-
-use crate::response_for;
+use fetiche_common::{ConfigFile, IntoConfig, Versioned};
+use fetiche_macros::into_configfile;
 
 mod core;
 
@@ -72,10 +73,9 @@ pub struct StreamFile;
 
 // ----- Actor
 
+#[into_configfile(version = 2, filename = "engine.hcl")]
 #[derive(Clone, Debug, Deserialize)]
-struct StorageConfig {
-    /// Usual check for malformed file
-    pub version: usize,
+pub struct StorageConfig {
     /// List of storage types
     pub storage: BTreeMap<String, StorageArea>,
 }
@@ -94,17 +94,9 @@ impl StorageActor {
         trace!("storageactor::new");
 
         let fname = workdir.join(STORAGE_FILE);
-        let data = fs::read_to_string(&fname).unwrap();
-        let cfg: StorageConfig = match hcl::from_str(&data) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                panic!("Invalid {:?} file: {}", fname, e.to_string());
-            }
-        };
-
-        if cfg.version != STORAGE_VERSION {
-            panic!("Bad version in {:?}: {} required.", fname, STORAGE_VERSION);
-        }
+        let root = ConfigFile::<StorageConfig>::load(Some(fname))?;
+        let cfg = root.inner();
+        let home = root.config_path();
 
         // Move ourselves there
         //

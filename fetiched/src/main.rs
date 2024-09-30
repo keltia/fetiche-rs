@@ -14,6 +14,9 @@ use actix_storage::Storage;
 use actix_storage_dashmap::DashMapStore;
 use clap::Parser;
 use eyre::{eyre, Result};
+use fetiche_common::init_logging;
+use fetiche_macros::into_configfile;
+use fetiched::{Bus, ConfigActor, ConfigKeys, ConfigList, ConfigSet, EngineActor, EngineStatus, Fetiched, GetStatus, GetVersion, Param, StateActor, StorageActor, Submit, Sync};
 use tokio::fs;
 use tokio::time::sleep;
 use tracing::error;
@@ -21,11 +24,6 @@ use tracing::{info, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
-
-use fetiched::{
-    Bus, ConfigActor, ConfigKeys, ConfigList, ConfigSet, EngineActor, GetStatus, GetVersion, Param,
-    StateActor, StorageActor, Submit, Sync,
-};
 
 use crate::cli::{Opts, SubCommand};
 use crate::config::default_workdir;
@@ -43,49 +41,13 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
-    // Initialise logging early
-    //
-    let tree = HierarchicalLayer::new(2)
-        .with_targets(true)
-        .with_bracketed_fields(true);
-
-    // Setup Open Telemetry with Jaeger
-    //
-    let tree = HierarchicalLayer::new(2)
-        .with_ansi(true)
-        .with_span_retrace(true)
-        .with_span_modes(true)
-        .with_targets(true)
-        .with_verbose_entry(true)
-        .with_verbose_exit(true)
-        .with_bracketed_fields(true);
-
-    // Setup Open Telemetry with OTLP
-    //
-    let exporter = opentelemetry_otlp::new_exporter().tonic();
-    let tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(exporter)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-
-    // Load filters from environment
-    //
-    let filter = EnvFilter::from_default_env();
-
-    // Combine filter & specific format
-    //
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(tree)
-        .with(telemetry)
-        .init();
+    init_logging(NAME, opts.use_telemetry, opts.use_tree, opts.use_file)?;
     trace!("Logging initialised.");
 
     info!("This is {} starting up…", version());
 
     let workdir = opts.workdir.unwrap_or(default_workdir()?);
-    let pid_file = workdir.join(Path::new("fetiched.pid"));
+    let pid_file = workdir.join("fetiched.pid");
 
     trace!("Working directory is {:?}", workdir);
 
@@ -95,7 +57,7 @@ async fn main() -> Result<()> {
             .await?
             .trim_end()
             .parse::<u32>()?;
-        return Err(eyre!("Check PID {}", pid));
+        return Err(Fetiched::PidExists(pid_file.to_string_lossy().to_string()).into());
     }
 
     info!("PID = {}", std::process::id());
@@ -112,7 +74,7 @@ async fn main() -> Result<()> {
     } else {
         #[cfg(unix)]
         if let Err(err) = start_daemon(&pid_file) {
-            panic!("Can not detach: {}", err.to_string());
+            return Err(Fetiched::CantDetach(err.to_string()).into());
         }
     }
 
@@ -160,13 +122,13 @@ async fn main() -> Result<()> {
 
     match config.send(ConfigList).await? {
         Ok(res) => eprintln!("Config:\n{}", res),
-        Err(e) => error!("Can not read configuration: {}", e.to_string()),
+        Err(e) => return Err(Fetiched::UnreadableConfig(e.to_string()).into()),
     }
 
     let res = config.send(ConfigKeys).await?;
     match res {
         Ok(res) => eprintln!("All config keys={}", res.join(",")),
-        Err(e) => error!("Error getting keys: {}", e.to_string()),
+        Err(e) => return (Fetiched::CannotFetchKeys(e.to_string()).into()),
     };
 
     match engine.send(GetStatus).await {
