@@ -40,16 +40,15 @@ and metrics about our drone and flight data.
 a single interface to multi sources.
 
 `process-data`  works on the drones and flights data through [Clickhouse] and does various SQL-backed procedures to
-gather
-and calculates metrics including distances (2D and 3D).
+gather and calculates metrics including distances (2D and 3D).
 
 `adsb-to-parquet` is a temporary converter between the CSV files we receive the ADS-B data into compressed parquet
-files.
-As my patch to improve [bdt]  has been merged, `bdt` is now used instead.
+files. As my patch to improve [bdt]  has been merged, `bdt` is now used instead.
 
 `opensky-history` is for retrieving historical data from [Opensky]. This access is managed through an SSH-based shell to
 the Impala database. This is for everything older than 1h of real-time data which does complicate things. This utility
-use the [pyopensky] Python module (embedded through the `inline-python` crate).
+use the [pyopensky] Python module (embedded through the `inline-python` crate). There is also a pure python script that
+does the same in `scripts/`.
 
 ## Installation
 
@@ -94,10 +93,7 @@ More details in the specific [Fetiched README.md](fetiched/README.md).
 ### Data Model
 
 Each source has its own data model which complicates things, apart from [ASTERIX] with Cat129 for drone data, each
-company/service provider use their own data model. To ease managing drone data, I started to define my own `DronePoint`
-as a common data model (extracted from the data sent by [ASD] with some fields with different types -- like actual `f32`
-instead of the string format) and real timestamp. In fact, now that I have fixed `Asd` struct fields handling and types,
-it is not needed.
+company/service provider use their own data model.
 
 See the `fetiche-formats` crate for more details.
 
@@ -109,13 +105,19 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 
 * Unix (tested on FreeBSD, Linux and macOS)
 * Windows
+  * Powershell (preferred)
     * cmd.exe
     * [Nushell]
-    * Powershell (preferred)
 
 ## TODO
 
 Here are some of the things I've been working on. Some of these are registered as issues on [GitHub issues].
+
+- Add more tests & benchmarks.
+- [Polars] instead of [Datafusion] to simplify? We are not using (nor plan to) all the datafusion features.
+- Integration of Sennhive and Thales antennas in `formats` and `sources` when we have docs.
+
+Done:
 
 - ~~support more parameters (like dates, etc.)~~
 - ~~fetch and analyse from Aeroscope~~
@@ -134,7 +136,13 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~Support for Flightaware AeroAPI and Firehose.~~
 - ~~Apache Parquet as output format.~~
 - ~~Migrate from the embedded [DuckDB] to a proper server-based DB [Clickhouse]~~
-- Add more tests & benchmarks.
+
+Upcoming refactors:
+
+- Remove `Cat21` and all its derivatives (`Adsb21`, etc.). We do not use this anymore.
+- Merge back `fetiched/src/engine`  into the main `engine`, which imply using actors for the main engine too.
+- Merge `fetiche-formats`  and `fetiche-sources` as they are completely linked and dependent. Maybe create a more
+  general "Plugin" framework.
 
 Uncertain:
 
@@ -195,3 +203,5 @@ I use Git Flow for this package so please use something similar or the usual Git
 [Clickhouse]: https://clickhouse.com/
 
 [bdt]: https://github.com/datafusion-contrib/bdt
+
+[Polars]: https://pola.rs/
