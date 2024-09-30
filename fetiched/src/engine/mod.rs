@@ -24,16 +24,17 @@ use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
 use actix::prelude::*;
+use directories::{BaseDirs, ProjectDirs};
 use eyre::Result;
-#[cfg(unix)]
-use home::home_dir;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use strum::EnumString;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, error, info, trace, warn};
 
-use fetiche_common::makepath;
+pub use error::*;
+use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_formats::Format;
+use fetiche_macros::into_configfile;
 pub use fetiche_sources::{Auth, Fetchable, Filter, Flow, Site, Sources, Streamable};
 pub use job::*;
 pub use parse::*;
@@ -44,6 +45,7 @@ use crate::{
     Bus, ConfigActor, GetState, StateActor, StorageActor, StorageList, Sync, System, UpdateState,
 };
 
+mod error;
 mod job;
 mod parse;
 //mod state;
@@ -67,6 +69,16 @@ const ENGINE_VERSION: usize = 2;
 
 /// Tick is every 30s
 const TICK: u64 = 30;
+
+/// Configuration file format
+#[into_configfile(version = 2, filename = "engine.hcl")]
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct EngineConfig {
+    /// Base directory
+    pub basedir: PathBuf,
+    /// List of storage types
+    pub storage: BTreeMap<String, StorageConfig>,
+}
 
 /// Main `Engine` struct that hold the sources and everything needed to perform
 ///
@@ -119,15 +131,24 @@ impl Engine {
         let store = bus.store.clone();
         let config = bus.config.clone();
 
-        trace!("loading sources");
+        let fname = ENGINE_CONFIG;
+        let root = ConfigFile::<EngineConfig>::load(Some(fname))?;
+        let cfg = root.inner();
+        let home = root.config_path();
+        trace!("Home is in {home:?}");
+
+        // Bail out if different
+        //
+        if cfg.version() != ENGINE_VERSION {
+            error!("Bad config version {}", cfg.version());
+            return Err(EngineStatus::BadConfigVersion(cfg.version(), ENGINE_VERSION).into());
+        }
+
         // Register sources
         //
-        let sources = workdir.join(SOURCES_CONFIG);
-        let src = match Sources::load(&Some(sources.clone())) {
-            Ok(src) => src,
-            Err(e) => panic!("No sources configured in '{:?}':{}", sources, e),
-        };
-        info!("{} sources loaded.", src.len());
+        trace!("load sources");
+        let src = Sources::load()?;
+        info!("{} sources loaded", src.len());
 
         trace!("loading state");
         let ourstate = if let Ok(state) = state.send(GetState::about(System::Engine)).await {
@@ -252,31 +273,14 @@ impl Engine {
             .do_send(UpdateState::service(System::Engine, state)))
     }
 
-    /// Load authentication data
-    ///
-    #[tracing::instrument(skip(self))]
-    pub fn auth(&mut self, db: BTreeMap<String, Auth>) -> &mut Self {
-        // Generate a sources list with credentials
-        //
-        let mut srcs = BTreeMap::<String, Site>::new();
-
-        self.sources.values().for_each(|site: &Site| {
-            let mut s = site.clone();
-            if let Some(auth) = db.get(&s.name().unwrap()) {
-                s.auth(auth.clone());
-            }
-            let n = &s.name().unwrap();
-            srcs.insert(n.clone(), s.clone());
-        });
-        self.sources = Arc::new(Sources::from(srcs));
-        self
-    }
-
     /// Returns the path of the default config directory
     ///
     #[cfg(unix)]
     pub fn config_path() -> PathBuf {
-        let homedir = home_dir().unwrap();
+        let homedir = match BaseDirs::new() {
+            Some(dirs) => dirs.home_dir(),
+            None => std::env::var("HOME").unwrap().into(),
+        };
         homedir.join(".config").join("drone-utils")
     }
 
@@ -284,10 +288,12 @@ impl Engine {
     ///
     #[cfg(windows)]
     pub fn config_path() -> PathBuf {
-        let homedir = env!("LOCALAPPDATA");
+        let basedir = match BaseDirs::new() {
+            Some(dirs) => dirs.data_local_dir(),
+            None => std::env::var("LOCALAPPDATA").unwrap().into(),
+        };
 
-        let def: PathBuf = makepath!(homedir, "drone-utils");
-        def
+        Path::new(basedir).join("drone-utils")
     }
 
     /// Returns the path of the default config file
@@ -317,7 +323,7 @@ impl Engine {
     /// Return a list of all currently available authentication tokens
     ///
     pub fn list_tokens(&self) -> Result<String> {
-        self.sources.list_tokens()
+        self.list_tokens()
     }
 
     /// Return Engine version (and internal modules)
