@@ -105,9 +105,9 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 
 * Unix (tested on FreeBSD, Linux and macOS)
 * Windows
-  - Powershell (preferred)
-  - cmd.exe
-  - [Nushell]
+    - Powershell (preferred)
+    - cmd.exe
+    - [Nushell]
 
 ## TODO
 
