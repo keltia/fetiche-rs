@@ -2,6 +2,120 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### FIX
+
+- Pass the site name, not the struct.
+- Do not inverse the logic.
+- Ordering of fields is wrong.
+- Missing '$'.
+
+### WIP
+
+- Add an "import adsb" command.
+- Trying to rationalise processing.
+- Export encounters & summary out of CH. Can not do it through API.
+- Implement Avionix Cube API for Aero Network (drones).
+- Export all & summary encounters.
+- Use klickhouse.
+
+### Clippy
+
+- Fix warnings.
+- We know the code is not used for now.
+- Use is_empty() and remove & when needed.
+- Remove import and &.
+- Remove warnings.
+- No need for a ref here and remove Client.
+- Fix warnings.
+- Remove borrow.
+
+## [acutectl-v2] - 2024-08-25
+
+### FIX
+
+- Renaming this field was bad.
+
+## [macros-v0.3] - 2024-08-19
+
+### WIP
+
+- Convert to ConfigEngine and simplify.
+
+### Clippy
+
+- Rewrite "match" into "if".
+
+## [sources-v0.15] - 2024-08-17
+
+### FIX
+
+- Handle AuthError now.
+
+### Refactor
+
+- Use calculate_one_day_on_site instead of duplicated code.
+
+### Clippy
+
+- Fix warnings.
+
+## [common-v0.2] - 2024-08-15
+
+### FIX
+
+- Writing parquet 2 now, and we do have a header.
+
+### Playbook
+
+- Replace crontab entries.
+
+### WIP
+
+- Generate en_id ourselves.
+- Insert encounters after generating "en_id".
+- Add tasks for all sites for a given day.
+
+## [sources-v0.14] - 2024-06-19
+
+### API
+
+- Update for datafusion 37 & arrow-rs 51.
+
+### WIP
+
+- Port to Clickhouse.
+- Update to clickhouse client, async, etc.
+- Update to clickhouse client, async, etc.
+- Convert to CH.
+- Convert to CH.
+- Import data into CH.
+- Depth-first traversal for bulk import.
+- Use one function per query while porting to CH.
+- For some reason, it fails.
+- INTO OUTFILE is N/A on HTTP client.
+- Fix queries for CH.
+- Async.
+- Make Batch processing async.
+- Fix SQL queries.
+
+## [process-data-v2] - 2024-04-04
+
+### WIP
+
+- Add Makefile for install binaries and scripts.
+- Port to Clickhouse.
+- Port to Clickhouse.
+- Update to clickhouse client, async, etc.
+- Update to clickhouse client, async, etc.
+- Port to Clickhouse.
+- Port to Clickhouse.
+- Port to Clickhouse.
+- Update to clickhouse client, async, etc.
+- Update to clickhouse client, async, etc.
+- Port to Clickhouse.
+
 ## [end-sprint-3] - 2024-04-01
 
 ### FIX
