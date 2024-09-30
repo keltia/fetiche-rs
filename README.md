@@ -30,24 +30,26 @@ Licensed under the [MIT](LICENSE) license.
 utilities for Aeronautical data about drones and aircraft.
 
 This is now divided into different crates with libraries (`fetiche-engine`, `fetiche-formats`, `fetiche-sources`) shared
-by the binary crates (`acutectl`, `opensky-history`, `adsb-to-parquet` and now `process-data`).
+by the binary crates (`acutectl`, `opensky-history` and now `process-data`).
 
 Binary crates include command-line utilities (`acutectl` and `opensky-history`) to perform import from a file or
 fetch data from different sites. There is now `process-data` which include several tasks aimed at gathering statistics
-and metrics about our drone and flight data. 
+and metrics about our drone and flight data.
 
 `acutectl` is the main data fetching utility, relaying the `fetiche-sources` and `fetiche-formats` crates to provide
 a single interface to multi sources.
 
+`process-data`  works on the drones and flights data through [Clickhouse] and does various SQL-backed procedures to
+gather
+and calculates metrics including distances (2D and 3D).
+
+`adsb-to-parquet` is a temporary converter between the CSV files we receive the ADS-B data into compressed parquet
+files.
+As my patch to improve [bdt]  has been merged, `bdt` is now used instead.
+
 `opensky-history` is for retrieving historical data from [Opensky]. This access is managed through an SSH-based shell to
 the Impala database. This is for everything older than 1h of real-time data which does complicate things. This utility
 use the [pyopensky] Python module (embedded through the `inline-python` crate).
-
-`process-data`  works on the drones and flights data through [Clickhouse] and does various SQL-backed procedures to gather
-and calculates metrics including distances (2D and 3D).
-
-`adsb-to-parquet` is a temporary converter between the CSV files we receive the ADS-B data into compressed parquet files.
-As my patch to improve [bdt]  has been merged, `bdt` is now used instead.
 
 ## Installation
 
@@ -92,7 +94,7 @@ More details in the specific [Fetiched README.md](fetiched/README.md).
 ### Data Model
 
 Each source has its own data model which complicates things, apart from [ASTERIX] with Cat129 for drone data, each
-company/service provider use their own data model. To ease managing drone data, I started to define my own `DronePoint` 
+company/service provider use their own data model. To ease managing drone data, I started to define my own `DronePoint`
 as a common data model (extracted from the data sent by [ASD] with some fields with different types -- like actual `f32`
 instead of the string format) and real timestamp. In fact, now that I have fixed `Asd` struct fields handling and types,
 it is not needed.
@@ -131,15 +133,15 @@ Here are some of the things I've been working on. Some of these are registered a
 - ~~Retrieve historical data from the [Opensky] site.~~
 - ~~Support for Flightaware AeroAPI and Firehose.~~
 - ~~Apache Parquet as output format.~~
+- ~~Migrate from the embedded [DuckDB] to a proper server-based DB [Clickhouse]~~
 - Add more tests & benchmarks.
-- Migrate from the embedded [DuckDB] to a proper server-based DB [Clickhouse]
 
 Uncertain:
+
 - build `fetiched` as the core daemon and making all other talk to it through gRPC.
 - link to HashiCorp Vault for storing credentials and tokens
 - support for Safesky for ADS-B data
 - Support for Sherlock formats and access methods
-- Multicast output?
 
 ## Contributing
 
