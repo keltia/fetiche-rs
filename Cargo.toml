@@ -27,6 +27,7 @@ nom = "7"
 opentelemetry = { version = "0.25", features = ["logs", "metrics"] }
 opentelemetry-otlp = "0.25"
 opentelemetry_sdk = { version = "0.25", features = ["rt-tokio"] }
+polars = { version = "0.43", features = ["async", "serde", "lazy", "sql", "strings", "parquet"] }
 reqwest = { version = "0.12", features = ["blocking", "gzip", "json", "socks", "deflate"] }
 rstest = "0.23"
 serde = { version = "1.0", features = ["derive"] }
