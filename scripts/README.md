@@ -105,7 +105,7 @@ options:
 - `import-adsb.py`
 
 Import a file or a tree of files in parquet or csv format into a [Clickhouse] instance. This version is specific
-to the `airplanes_raw` ADS-B table.
+to the `airplanes_raw` ADS-B table. You *must* have [qsv] somewhere in your PATH.
 
 ```text
 usage: import-adsb [-h] [--datalake DATALAKE] [--dry-run] [--delete] [files ...]
@@ -229,3 +229,5 @@ Automate the conversion of several CSV files into their Parquet equivalent on Wi
 [Firehose]: https://www.flightaware.com/firehose/documentation/
 
 [Flightaware]: https://flightaware.com/
+
+[qsv]: https://crates.io/crates/qsv 
