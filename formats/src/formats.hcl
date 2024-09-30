@@ -32,7 +32,7 @@ format "safesky" {
 
 format "cat21" {
   type        = "adsb"
-  description = "Flattened ASTERIX Cat21 data for ADS-B."
+  description = "Flattened ASTERIX Cat21 data for ADS-B. -- DEPRECATED"
   source      = "ECTL"
   url         = "https://www.eurocontrol.int/asterix/"
 }
@@ -48,7 +48,14 @@ format "avionix" {
   type        = "adsb"
   description = "Flattened ASTERIX cat21-like for Avionix stations."
   source      = "Avionix"
-  url         = "http://www.avionix.pl"
+  url         = "https://www.avionix.eu"
+}
+
+format "cube" {
+  type        = "drone"
+  description = "Drone data from Avionix stations for Aero Network."
+  source      = "Avionix"
+  url         = "https://www.avionix.eu"
 }
 
 format "impala" {

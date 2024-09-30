@@ -1,8 +1,9 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::time::Duration;
 
 use crate::arw::{read_csv, write_chunk};
 use crate::df::parquet_through_df;
+use crate::prs::parquet_through_polars;
 
 fn use_arrow2(c: &mut Criterion) {
     let mut r = 1;
@@ -27,6 +28,13 @@ fn use_df(c: &mut Criterion) {
                 .unwrap(),
         )
         .iter(|| async { parquet_through_df().await.unwrap() });
+    });
+}
+
+fn use_polars(c: &mut Criterion) {
+    eprintln!("start polars");
+    c.bench_function("using_polars", |b| {
+        b.iter(|| black_box(parquet_through_polars().unwrap()))
     });
 }
 
@@ -126,9 +134,8 @@ mod arw {
 }
 
 mod df {
+    use datafusion::config::TableParquetOptions;
     use datafusion::dataframe::DataFrameWriteOptions;
-    use datafusion::parquet::basic::{Compression, Encoding, ZstdLevel};
-    use datafusion::parquet::file::properties::{EnabledStatistics, WriterProperties};
     use datafusion::prelude::*;
     use eyre::Result;
 
@@ -141,30 +148,61 @@ mod df {
         let delim = b':';
 
         let ctx = SessionContext::new();
-        let copts = CsvReadOptions::new().delimiter(delim).has_header(header);
-
-        let df = ctx.read_csv(fname, copts).await?;
+        let df = ctx
+            .read_csv(
+                fname,
+                CsvReadOptions::default()
+                    .delimiter(delim)
+                    .has_header(header),
+            )
+            .await?;
 
         let fname = "../data/test-df.parquet";
 
-        let dopts = DataFrameWriteOptions::default().with_single_file_output(true);
-        let props = WriterProperties::builder()
-            .set_created_by("bench_df".to_string())
-            .set_encoding(Encoding::PLAIN)
-            .set_statistics_enabled(EnabledStatistics::Page)
-            .set_compression(Compression::ZSTD(ZstdLevel::try_new(8)?))
-            .build();
+        let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
 
-        let _ = df.write_parquet(&fname, dopts, Some(props)).await?;
+        let mut options = TableParquetOptions::default();
+        options.global.created_by = "bench_df".to_string();
+        options.global.writer_version = "2.0".to_string();
+        options.global.encoding = Some("plain".to_string());
+        options.global.statistics_enabled = Some("page".to_string());
+        options.global.compression = Some("zstd(8)".to_string());
 
+        let _ = df.write_parquet(fname, dfopts, Some(options)).await?;
+
+        Ok(())
+    }
+}
+
+mod prs {
+    use polars::prelude::*;
+
+    pub fn parquet_through_polars() -> eyre::Result<()> {
+        let fname = "../data/test-bench.csv";
+
+        // nh = no header line (default = false which means has header line).
+        //
+        let header = true;
+        let delim = b':';
+
+        let mut df = CsvReadOptions::default()
+            .with_has_header(header)
+            .with_parse_options(CsvParseOptions::default().with_separator(delim))
+            .try_into_reader_with_file_path(Some(fname.into()))?
+            .finish()?;
+
+        let fname = "../data/test-polars.parquet";
+
+        let mut file = std::fs::File::create(fname)?;
+        ParquetWriter::new(&mut file).finish(&mut df)?;
         Ok(())
     }
 }
 
 criterion_group! {
     name = benches;
-    config = Criterion::default().sample_size(20).warm_up_time(Duration::from_secs(10));
-    targets = use_arrow2, use_df
+    config = Criterion::default().sample_size(20).warm_up_time(Duration::from_secs(15));
+    targets = use_arrow2, use_df, use_polars,
 }
 
 criterion_main!(benches);

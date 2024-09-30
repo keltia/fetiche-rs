@@ -1,6 +1,9 @@
+use darling::ast::NestedMeta;
+use darling::FromMeta;
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput};
+use syn::parse::Parser;
+use syn::{parse_macro_input, Data, DeriveInput, Fields, Ident, LitInt};
 
 /// Most basic proc_macro ever: use as a template.
 ///
@@ -41,4 +44,153 @@ pub fn runnable(input: TokenStream) -> TokenStream {
         }
     );
     outer.into()
+}
+
+/// Add a `version(usize)` with to any given `struct` and implement the `Versioned`trait for it
+///
+#[proc_macro_attribute]
+pub fn add_version(args: TokenStream, input: TokenStream) -> TokenStream {
+    let args = syn::parse::<LitInt>(args)
+        .unwrap_or_else(|_| proc_macro2::Literal::usize_unsuffixed(1).into());
+    let mut input = parse_macro_input!(input as DeriveInput);
+    let ident = &input.ident;
+
+    let version_ident = Ident::new("version", ident.span());
+    let version_type = quote! { usize };
+
+    let output = match input.data {
+        Data::Struct(ref mut data_struct) => {
+            if let Fields::Named(fields) = &mut data_struct.fields {
+                fields.named.push(
+                    syn::Field::parse_named
+                        .parse2(quote! { #version_ident: #version_type })
+                        .unwrap(),
+                )
+            }
+
+            quote! {
+                #input
+
+                impl Versioned for #ident {
+                    fn version(&self) -> #version_type {
+                        self.version
+                    }
+                }
+
+                impl #ident {
+                    pub fn new() -> Self {
+                        Self {
+                            version: #args,
+                            ..Default::default()
+                        }
+                    }
+                }
+            }
+        }
+        _ => panic!("#[add_version)] is only for struct with named fields"),
+    };
+    output.into()
+}
+
+const DEF_VERSION: usize = 1;
+const DEF_FILENAME: &str = "config.hcl";
+
+#[derive(Debug, FromMeta)]
+struct ConfigArgs {
+    version: Option<usize>,
+    filename: Option<String>,
+}
+
+impl Default for ConfigArgs {
+    fn default() -> Self {
+        Self {
+            version: Some(DEF_VERSION),
+            filename: Some(String::from(DEF_FILENAME)),
+        }
+    }
+}
+
+/// Add a `version(usize)` with to any given `struct` and implement the `Versioned`trait for it
+///
+#[proc_macro_attribute]
+pub fn into_configfile(args: TokenStream, input: TokenStream) -> TokenStream {
+    // Parse attributes
+    //
+    let attr_args = NestedMeta::parse_meta_list(args.into()).unwrap_or_else(|_| vec![]);
+
+    // Parse struct
+    //
+    let mut input = parse_macro_input!(input as DeriveInput);
+    let ident = &input.ident;
+
+    // Now transform the attributes into the actual data
+    //
+    let args = if attr_args.is_empty() {
+        ConfigArgs::default()
+    } else {
+        ConfigArgs::from_list(&attr_args).unwrap()
+    };
+
+    let version_value = args.version.unwrap_or(DEF_VERSION);
+    let filename = args.filename.unwrap_or(String::from(DEF_FILENAME));
+
+    // Prepare our substitutions
+    //
+    let version_ident = Ident::new("version", ident.span());
+    let version_type = quote! { usize };
+    let filename_ident = Ident::new("filename", ident.span());
+    let filename_type = quote! { String };
+
+    // Generate output
+    //
+    let output = match input.data {
+        Data::Struct(ref mut data_struct) => {
+            match &mut data_struct.fields {
+                Fields::Named(fields) => {
+                    fields.named.push(
+                        syn::Field::parse_named
+                            .parse2(quote! { #version_ident: #version_type })
+                            .unwrap(),
+                    );
+                    fields.named.push(
+                        syn::Field::parse_named
+                            .parse2(quote! {
+                                #[serde(skip_deserializing)]
+                                #filename_ident: #filename_type
+                            })
+                            .unwrap(),
+                    );
+                }
+                _ => unimplemented!(),
+            }
+
+            quote! {
+                #input
+
+                impl Versioned for #ident {
+                    fn version(&self) -> #version_type {
+                        self.version
+                    }
+                }
+
+                impl #ident {
+                    pub fn new() -> Self {
+                        Self {
+                            version: #version_value,
+                            filename: String::from(#filename),
+                            ..Default::default()
+                        }
+                    }
+                }
+
+                impl IntoConfig for #ident {
+                    fn filename(&self) -> #filename_type {
+                        self.filename.clone()
+                    }
+                }
+            }
+        }
+        _ => panic!("#[into_configfile)] is only for struct with named fields"),
+    };
+    output.into()
 }

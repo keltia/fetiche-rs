@@ -1,0 +1,7 @@
+---
+# vars
+
+planes_fetch: "{{ bindir }}/fetch-ftp-adsb.py"
+planes_convert: "{{ bindir }}/convert-csv.py"
+planes_dispatch: "{{ bindir }}/dispatch-drops.py"
+planes_import: "{{ bindir }}/import-adsb.py"

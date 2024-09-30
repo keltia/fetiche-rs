@@ -1,14 +1,14 @@
 //! This task connects to the database and create some useful macros and tables
 //! to set our work environment up.
 //!
-//! >NOTE: THIS IS DUCKDB-SPECIFIC
+//! >NOTE: THIS IS CLICKHOUSE-SPECIFIC
 //!
 
 use std::env;
 
 use clap::Parser;
-use duckdb::Connection;
 use eyre::Result;
+use klickhouse::Client;
 use tracing::info;
 
 use crate::config::Context;
@@ -18,13 +18,10 @@ pub struct SetupOpts {
     /// Add only macros.
     #[clap(short = 'M', long)]
     pub macros: bool,
-    /// Create encounters table
+    /// Create encounters (aka calculation) table
     #[clap(short = 'E', long)]
     pub encounters: bool,
-    /// Create sequences
-    #[clap(short = 'S', long)]
-    pub sequences: bool,
-    /// Create views
+    /// Create permanent tables
     #[clap(short = 'V', long)]
     pub views: bool,
     /// Everything.
@@ -34,191 +31,174 @@ pub struct SetupOpts {
 
 /// Macros :
 ///
-/// - nm_to_deg     convert nautical miles into degrees
-/// - deg_to_m      convert degrees into meters
-/// - m_to_deg      and back to degrees
 /// - dist_2d       geodesic distance between two points
 /// - dist_3d       3D distance based on geodesic
 ///
 #[tracing::instrument(skip(dbh))]
-fn add_macros(dbh: &Connection) -> Result<()> {
-    info!("Adding macros.");
+async fn add_macros(dbh: &Client) -> Result<()> {
+    eprintln!("Adding functions.");
 
-    let r = r##"
-CREATE OR REPLACE MACRO nm_to_deg(nm) AS
-  nm * 1.852 / 111111.11;
-CREATE OR REPLACE MACRO deg_to_m(deg) AS
-  deg * 111111.11;
-CREATE OR REPLACE MACRO m_to_deg(m) AS
-  m / 111111.11;
-CREATE OR REPLACE MACRO dist_2d(dlat, dlon, plat, plon) AS
-  CEIL(ST_Distance_Spheroid(ST_Point(plat, plon), ST_Point(dlat, dlon)));
-CREATE OR REPLACE MACRO dist_3d(plat, plon, palt, dlat, dlon, dalt) AS
-  CEIL(SQRT(POW(dist_2d(plat, plon, dlat, dlon), 2) + POW((palt - dalt), 2)));
+    let r1 = r##"
+CREATE FUNCTION dist_2d AS (dx, dy, px, py) ->
+  ceil(geoDistance(dx,dy,px,py));
+    "##;
+    let r2 = r##"
+CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
+  ceil(sqrt(pow(dist_2d(dx,dy,px,py), 2) + pow((dz-pz), 2)));
     "##;
 
-    Ok(dbh.execute_batch(r)?)
+    dbh.execute(r1).await?;
+    dbh.execute(r2).await?;
+
+    Ok(())
 }
 
 #[tracing::instrument(skip(dbh))]
-fn remove_macros(dbh: &Connection) -> Result<()> {
-    info!("Removing macros.");
+async fn remove_macros(dbh: &Client) -> Result<()> {
+    eprintln!("Removing macros.");
 
-    let r = r##"
-DROP MACRO IF EXISTS dist_2d;
-DROP MACRO IF EXISTS dist_3d;
-DROP MACRO IF EXISTS nm_to_deg;
-DROP MACRO IF EXISTS deg_to_m;
-DROP MACRO IF EXISTS m_to_deg;
+    let r1 = r##"
+DROP FUNCTION IF EXISTS dist_2d;
     "##;
 
-    Ok(dbh.execute_batch(r)?)
+    let r2 = r##"
+DROP FUNCTION IF EXISTS dist_3d;
+    "##;
+
+    dbh.execute(r1).await?;
+    dbh.execute(r2).await?;
+    Ok(())
 }
 
 /// Create the `encounters` table to store short air-prox points
 ///
 #[tracing::instrument(skip(dbh))]
-fn add_encounters_table(dbh: &Connection) -> Result<()> {
-    info!("Adding encounters table.");
+async fn add_encounters_table(dbh: &Client) -> Result<()> {
+    info!("Adding airplane_prox table.");
 
     let sq = r##"
-CREATE OR REPLACE TABLE airplane_prox (
-  site             VARCHAR,
+CREATE
+OR REPLACE TABLE acute.airplane_prox (
+  site             INT,
   en_id            VARCHAR,
   time             TIMESTAMP,
   journey          INT,
   drone_id         VARCHAR,
   model            VARCHAR,
-  drone_lon        FLOAT,
   drone_lat        FLOAT,
+  drone_lon        FLOAT,
   drone_alt_m      FLOAT,
   drone_height_m   FLOAT,
   prox_callsign    VARCHAR,
   prox_id          VARCHAR,
-  prox_lon         FLOAT,
   prox_lat         FLOAT,
+  prox_lon         FLOAT,
   prox_alt_m       FLOAT,
   distance_slant_m INT,
   distance_hor_m   INT,
   distance_vert_m  INT,
   distance_home_m  INT,
 )
+    ENGINE = ReplacingMergeTree PRIMARY KEY (time, journey)
+    COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
     "##;
 
-    Ok(dbh.execute_batch(sq)?)
+    Ok(dbh.execute(sq).await?)
 }
 
 /// Remove the `encounters` table to store short air-prox points
 ///
 #[tracing::instrument(skip(dbh))]
-fn drop_encounters_table(dbh: &Connection) -> Result<()> {
+async fn drop_encounters_table(dbh: &Client) -> Result<()> {
     info!("Removing encounters table.");
 
     let sq = r##"
-DROP TABLE IF EXISTS airplane_prox;
+DROP TABLE IF EXISTS acute.airplane_prox;
     "##;
 
-    Ok(dbh.execute_batch(sq)?)
+    Ok(dbh.execute(sq).await?)
 }
 
-/// Add the sequences we need
-///
-#[tracing::instrument]
-fn add_sequences(dbh: &Connection) -> Result<()> {
-    info!("Adding sequences");
-
-    let seq = r##"
-CREATE OR REPLACE SEQUENCE id_encounter;
-    "##;
-
-    Ok(dbh.execute_batch(seq)?)
-}
-
-/// Add the sequences we need
-///
-#[tracing::instrument]
-fn drop_sequences(dbh: &Connection) -> Result<()> {
-    info!("Adding sequences");
-
-    let seq = r##"
-DROP SEQUENCE IF EXISTS id_encounter;
-    "##;
-
-    Ok(dbh.execute_batch(seq)?)
-}
-
-/// Create the two main views
-///
-/// Assume that the current directory is the datalake so that we use relative paths
-/// for `read_parquet()`.
+/// Create the two main raw tables
 ///
 #[tracing::instrument(skip(dbh))]
-fn create_views(dbh: &Connection, dir: &str) -> Result<()> {
+async fn create_views(dbh: &Client) -> Result<()> {
     info!("Creating the airplanes and drones views.");
 
-    let r = format!(r##"
+    let r1 = r##"
 CREATE
-OR REPLACE VIEW airplanes AS
-SELECT
-    EmitterCategory,
-    GBS,
-    ModeA,
-    TimeRecPosition,
-    AircraftAddress,
-    Latitude,
-    Longitude,
-    GeometricAltitude,
-    FlightLevel,
-    BarometricVerticalRate,
-    CAST(GeoVertRateExceeded AS DOUBLE) AS GeoVertRateExceeded,
-    CAST(GeometricVerticalRate AS DOUBLE) AS GeometricVerticalRate,
-    GroundSpeed,
-    TrackAngle,
-    regexp_extract(Callsign, '([0-9A-Z]+)') AS Callsign,
-    AircraftStopped,
-    GroundTrackValid,
-    GroundHeadingProvided,
-    MagneticNorth,
-    SurfaceGroundSpeed,
-    SurfaceGroundTrack,
-    CAST(month AS INT) AS month,
-    site,
-    year,
-FROM read_parquet('{}/adsb/**/*.parquet', hive_partitioning = true);
-CREATE
-OR REPLACE VIEW drones
-AS (
-  SELECT journey,ident,model,source,location,timestamp,latitude,longitude,altitude,elevation,
-         gps,rssi,home_lat,home_lon,home_height,speed,heading,station_name,station_latitude,
-         station_longitude,year,month,
-         dist_2d(latitude, longitude, home_lat, home_lon) as home_distance_2d,
-         dist_3d(latitude, longitude, elevation, home_lat, home_lon, home_height) as home_distance_3d
-  FROM read_parquet('{}/drones/**/*.parquet', hive_partitioning = true)
-);
-    "##, dir, dir);
+OR REPLACE VIEW acute.airplanes
+AS
+(
+    SELECT EmitterCategory,
+       (GBS == 1)                     AS GBS,
+       ModeA,
+       TimeRecPosition                AS time,
+       AircraftAddress                AS prox_id,
+       Latitude                       AS prox_lat,
+       Longitude                      AS prox_lon,
+       GeometricAltitude              AS prox_alt,
+       FlightLevel                    AS flight_level,
+       BarometricVerticalRate         AS baro_vert_rate,
+       (GeoVertRateExceeded == '1')   AS geo_vert_exceeded,
+       GeometricVerticalRate          AS geo_vert_rate,
+       GroundSpeed                    AS ground_speed,
+       TrackAngle,
+       replaceRegexpOne(prox_callsign, '\'([0-9A-Z]+)\\s*\'', '\\1') AS prox_callsign,
+       (AircraftStopped == '1')       AS stopped,
+       (GroundTrackValid == '1')      AS GroundTrackValid,
+       (GroundHeadingProvided == '1') AS GroundHeadingProvided,
+       (MagneticNorth == '1')         AS MagneticNorth,
+       SurfaceGroundSpeed,
+       SurfaceGroundTrack,
+       site
+    FROM acute.airplanes_raw AS f
+)
+    COMMENT 'View for airplanes data.'
+"##;
 
-    Ok(dbh.execute_batch(&r)?)
+    let r2 = r##"
+CREATE OR REPLACE VIEW acute.drones AS
+(
+    SELECT
+        *,
+        toUnixTimestamp(timestamp) as time,
+        dist_2d(longitude,latitude,home_lon,home_lat) AS home_distance_2d,
+        dist_3d(longitude,latitude,elevation,home_lon,home_lat,home_height) AS home_distance_3d
+    FROM acute.drones_raw
+)
+    COMMENT 'View for drones data with distances.'
+"##;
+
+    dbh.execute(r1).await?;
+    dbh.execute(r2).await?;
+    Ok(())
 }
 
 /// Remove both views
 ///
 #[tracing::instrument(skip(dbh))]
-fn drop_views(dbh: &Connection) -> Result<()> {
+async fn drop_views(dbh: &Client) -> Result<()> {
     info!("Dropping airplanes and drones views.");
 
-    let rm = r##"
-DROP VIEW IF EXISTS airplanes;
-DROP VIEW IF EXISTS drones;
+    let rm1 = r##"
+DROP VIEW IF EXISTS acute.airplanes;
     "##;
 
-    Ok(dbh.execute_batch(rm)?)
+    let rm2 = r##"
+DROP VIEW IF EXISTS acute.drones;
+    "##;
+
+    dbh.execute(rm1).await?;
+    dbh.execute(rm2).await?;
+    Ok(())
 }
 
 /// Create parts or all of the ACUTE environment
 ///
 #[tracing::instrument(skip(ctx))]
-pub fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
-    let dbh = ctx.db();
+pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
+    let dbh = ctx.db().await;
     let dir = ctx.config["datalake"].clone();
 
     // Move here.
@@ -226,19 +206,15 @@ pub fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
     let _ = env::set_current_dir(&dir);
 
     if opts.all {
-        add_sequences(&dbh)?;
-        create_views(&dbh, &dir)?;
-        add_macros(&dbh)?;
-        add_encounters_table(&dbh)?;
+        create_views(&dbh).await?;
+        add_macros(&dbh).await?;
+        let _ = add_encounters_table(&dbh).await;
     } else {
-        if opts.sequences {
-            add_sequences(&dbh)?;
-        }
         if opts.macros {
-            add_macros(&dbh)?;
+            add_macros(&dbh).await?;
         }
         if opts.encounters {
-            add_encounters_table(&dbh)?;
+            add_encounters_table(&dbh).await?;
         }
     }
     Ok(())
@@ -247,25 +223,21 @@ pub fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
 /// Cleanup by erasing parts or all
 ///
 #[tracing::instrument(skip(ctx))]
-pub fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
-    let dbh = ctx.db();
+pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
+    let dbh = ctx.db().await;
     if opts.all {
-        drop_encounters_table(&dbh)?;
-        remove_macros(&dbh)?;
-        drop_views(&dbh)?;
-        drop_sequences(&dbh)?;
+        drop_encounters_table(&dbh).await?;
+        remove_macros(&dbh).await?;
+        drop_views(&dbh).await?;
     } else {
         if opts.macros {
-            remove_macros(&dbh)?;
+            remove_macros(&dbh).await?;
         }
         if opts.encounters {
-            drop_encounters_table(&dbh)?;
+            drop_encounters_table(&dbh).await?;
         }
         if opts.views {
-            drop_views(&dbh)?;
-        }
-        if opts.sequences {
-            drop_sequences(&dbh)?;
+            drop_views(&dbh).await?;
         }
     }
 
@@ -275,15 +247,18 @@ pub fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
 /// Bootstrapping is a combination of both cleanup/setup to start with a clean slate
 ///
 #[tracing::instrument(skip(ctx))]
-pub fn bootstrap(ctx: &Context) -> Result<()> {
+pub async fn bootstrap(ctx: &Context) -> Result<()> {
     // Remove everything
     //
-    let opts = &SetupOpts { all: true, ..SetupOpts::default() };
-    cleanup_environment(ctx, opts)?;
+    let opts = &SetupOpts {
+        all: true,
+        ..SetupOpts::default()
+    };
+    cleanup_environment(ctx, opts).await?;
 
     // Fiat Lux
     //
-    setup_acute_environment(ctx, opts)?;
+    setup_acute_environment(ctx, opts).await?;
 
     Ok(())
 }

@@ -1,21 +1,17 @@
 //! Read some data as csv and write it into a parquet file
 //!
-use std::path::Path;
 
-use clap::Parser;
-use eyre::Result;
-use tracing::{debug, trace};
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::EnvFilter;
-use tracing_tree::HierarchicalLayer;
-
+use crate::cli::Opts;
 use adsb_to_parquet::{
     arrow2::{read_csv, write_chunk},
     datafusion::parquet_through_df,
     Options,
 };
-
-use crate::cli::Opts;
+use clap::Parser;
+use eyre::Result;
+use fetiche_common::init_logging;
+use std::path::Path;
+use tracing::{debug, trace};
 
 mod cli;
 mod types;
@@ -28,37 +24,7 @@ const NAME: &str = "adsb-to-parquet";
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
-    // Initialise logging early
-    //
-    let tree = HierarchicalLayer::new(2)
-        .with_ansi(true)
-        .with_span_retrace(true)
-        .with_targets(true)
-        .with_verbose_entry(true)
-        .with_verbose_exit(true)
-        .with_higher_precision(true)
-        .with_bracketed_fields(true);
-
-    // Setup Open Telemetry with Jaeger
-    //
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_auto_split_batch(true)
-        .with_max_packet_size(9_216)
-        .with_service_name(NAME)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-
-    // Load filters from environment
-    //
-    let filter = EnvFilter::from_default_env();
-
-    // Combine filter & specific format
-    //
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(tree)
-        .with(telemetry)
-        .init();
+    init_logging(NAME, false, true, true)?;
     trace!("Logging initialised.");
 
     // Generate our basename

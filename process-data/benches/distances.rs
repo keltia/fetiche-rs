@@ -1,8 +1,7 @@
-use clickhouse::Client;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use duckdb::{Connection, params};
-use geo::{point, Point};
+use geo::point;
 use geo::prelude::*;
+use klickhouse::{Client, ClientOptions, QueryBuilder, RawRow};
 
 struct Pt {
     latitude: f64,
@@ -112,57 +111,60 @@ fn geo_vincenty(c: &mut Criterion) {
     });
 }
 
-fn duckdb_calc(dbh: &Connection, p1: &Pt, p2: &Pt) {
-    dbh.execute("SELECT ST_Distance_Spheroid(ST_Point(?, ?), ST_Point(?, ?))",
-                params![p1.latitude, p1.longitude, p2.latitude, p2.longitude]).unwrap();
-}
+async fn ch_calc_distance(client: Client, point1: &Pt, point2: &Pt) -> f64 {
+    let q = QueryBuilder::new("SELECT geoDistance($1,$2,$3,$4) AS dist")
+        .arg(point1.longitude)
+        .arg(point1.latitude)
+        .arg(point2.longitude)
+        .arg(point2.latitude);
 
-fn duckdb_spheroid(c: &mut Criterion) {
-    let (point1, point2) = setup();
-
-    let dbh = duckdb::Connection::open_in_memory().unwrap();
-    dbh.execute("LOAD spatial", []).unwrap();
-
-    c.bench_function("duckdb_spheroid", |b| {
-        b.iter(|| {
-            black_box(duckdb_calc(&dbh, &point1, &point2))
-        })
-    });
-}
-
-async fn ch_calc_distance(client: Client, point1: &Pt, point2: &Pt) -> f32 {
-    let mut res = client.query("SELECT geoDistance(?,?,?,?) AS dist")
-        .bind(point1.longitude)
-        .bind(point1.latitude)
-        .bind(point2.longitude)
-        .bind(point2.latitude)
-        .fetch::<f32>().unwrap();
-
-    let val: f32 = res.next().await.unwrap().unwrap_or_else(|| 0.);
+    let mut res = client.query_one::<RawRow>(q).await.unwrap();
+    let val: f64 = res.get("dist");
     val
 }
 
 fn ch_geodistance(c: &mut Criterion) {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async { inner_ch_geodistance(c).await });
+}
+
+async fn inner_ch_geodistance(c: &mut Criterion) {
     let (point1, point2) = setup();
 
-    let url = format!("http://100.92.250.113:8123");
-    let client = Client::default().with_url(url).with_option("wait_end_of_query", "1");
+    let url = std::env::var("KLICKHOUSE_URL").unwrap();
+    let db = std::env::var("CLICKHOUSE_DB").unwrap();
+    let user = std::env::var("CLICKHOUSE_USER").unwrap();
+    let pwd = std::env::var("CLICKHOUSE_PASSWD").unwrap();
 
-    c.bench_function("clickhouse", |b| {
+    let client = Client::connect(
+        url,
+        ClientOptions {
+            username: user,
+            password: pwd,
+            default_database: db,
+            ..Default::default()
+        },
+    )
+        .await
+        .unwrap();
+
+    c.bench_function("klickhouse", |b| {
         b.to_async(
             tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap(),
         )
-            .iter(|| async { let _ = ch_calc_distance(client.clone(), &point1, &point2).await; });
+            .iter(|| async {
+                let _ = ch_calc_distance(client.clone(), &point1, &point2).await;
+            });
     });
 }
 
 criterion_group! {
     name = benches;
     config = Criterion::default();
-    targets = self_haversines, self_cosinuses, geo_geodesic, geo_haversines, geo_vincenty, duckdb_spheroid, ch_geodistance
+    targets = self_haversines, self_cosinuses, geo_geodesic, geo_haversines, geo_vincenty, ch_geodistance
 }
 
 criterion_main!(benches);

@@ -1,5 +1,6 @@
-use chrono::{DateTime, Utc};
-use criterion::{black_box, Criterion, criterion_group, criterion_main};
+use chrono::Utc;
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use jiff::Timestamp;
 
 fn test_humantime(c: &mut Criterion) {
     let base = "2024-03-08 12:34:56";
@@ -14,6 +15,17 @@ fn test_humantime(c: &mut Criterion) {
     let _ = curr;
 }
 
+fn test_jiff(c: &mut Criterion) {
+    let base = "2024-03-08 12:34:56";
+    let mut curr: Timestamp = base.parse().unwrap();
+
+    c.bench_function("jiff", |b| {
+        b.iter(|| {
+            curr = base.parse().unwrap();
+        })
+    });
+}
+
 fn test_dateparser(c: &mut Criterion) {
     let base = "2024-03-08 12:34:56";
     let mut curr = Utc::now();
@@ -26,7 +38,5 @@ fn test_dateparser(c: &mut Criterion) {
     let _ = curr;
 }
 
-criterion_group!(benches, test_dateparser, test_humantime);
+criterion_group!(benches, test_dateparser, test_humantime, test_jiff);
 criterion_main!(benches);
-
-

@@ -11,6 +11,7 @@
 //! History:
 
 use std::fmt::{Debug, Display, Formatter};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use eyre::{eyre, Result};
@@ -19,10 +20,7 @@ use tracing::trace;
 
 use fetiche_formats::Format;
 
-use crate::{
-    aeroscope::Aeroscope, asd::Asd, flightaware::Flightaware, opensky::Opensky, safesky::Safesky,
-    Auth, Capability, Routes, Streamable,
-};
+use crate::{Aeroscope, Asd, Auth, Capability, Flightaware, Opensky, Routes, Safesky, Streamable};
 use crate::{Fetchable, Sources};
 
 /// Describe what a site is, its capabilities, access methods and authentication method.
@@ -35,7 +33,11 @@ pub struct Site {
     #[serde(rename = "type")]
     pub dtype: DataType,
     /// Name of the site
-    pub name: Option<String>,
+    #[serde(skip_deserializing)]
+    pub name: String,
+    /// Storage path for tokens
+    #[serde(skip_deserializing)]
+    pub token_base: PathBuf,
     /// Type of input
     pub format: String,
     /// Base URL (to avoid repeating)
@@ -91,6 +93,28 @@ impl Display for DataType {
 pub enum Flow {
     Fetchable(Box<dyn Fetchable>),
     Streamable(Box<dyn Streamable>),
+}
+
+impl Flow {
+    /// Return the name of the underlying object
+    ///
+    #[inline]
+    pub fn name(&self) -> String {
+        match self {
+            Flow::Fetchable(s) => s.name(),
+            Flow::Streamable(s) => s.name(),
+        }
+    }
+
+    /// Return the format of the underlying object
+    ///
+    #[inline]
+    pub fn format(&self) -> Format {
+        match self {
+            Flow::Fetchable(s) => s.format(),
+            Flow::Streamable(s) => s.format(),
+        }
+    }
 }
 
 impl Site {
@@ -158,13 +182,6 @@ impl Site {
         }
     }
 
-    /// Add authentication info
-    ///
-    pub fn auth(&mut self, auth: Auth) -> &mut Self {
-        self.auth = Some(auth);
-        self
-    }
-
     /// Return whether a site is streamable
     ///
     pub fn is_streamable(&self) -> bool {
@@ -173,8 +190,8 @@ impl Site {
 
     /// Return the site name
     ///
-    pub fn name(&self) -> Option<String> {
-        self.name.as_ref().map(|name| name.to_string())
+    pub fn name(&self) -> String {
+        self.name.clone()
     }
 
     /// Return the site formats
@@ -240,15 +257,13 @@ mod tests {
 
     use rstest::rstest;
 
-    use fetiche_common::makepath;
-
     use super::*;
 
     fn set_default() -> Sources {
-        let cn: PathBuf = makepath!("src", "sources.hcl");
+        let cn = PathBuf::from("src").join("sources.hcl");
         assert!(cn.try_exists().is_ok());
 
-        let cfg = Sources::load(&Some(cn));
+        let cfg = Sources::load();
         dbg!(&cfg);
         assert!(cfg.is_ok());
 

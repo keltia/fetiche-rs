@@ -19,12 +19,16 @@ impl Stats {
     /// Gather all instances stats into one
     ///
     pub fn summarise(v: Vec<Stats>) -> Stats {
-        assert!(!v.is_empty());
-        let first = v[0].clone();
-        if v.len() == 1 {
-            first
-        } else {
-            fold(v[1..].iter(), first, |a, b| a + b.clone())
+        match v.len() {
+            0 => Stats::Planes(PlanesStats::default()),
+            _ => {
+                let first = v[0].clone();
+                if v.len() == 1 {
+                    first
+                } else {
+                    fold(v[1..].iter(), first, |a, b| a + b.clone())
+                }
+            }
         }
     }
 }
@@ -105,9 +109,9 @@ impl PlanesStats {
 
 impl Display for PlanesStats {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let str = format!("Day {:?}:\n{} drones in potential airprox with {} planes, {} found within {}m in a {} nm radius.\n\
+        let str = format!("{} drones in potential airprox with {} planes, {} found within {}m in a {} nm radius.\n\
         Time spent: {} ms\n",
-                          self.day, self.drones, self.planes, self.encounters, self.proximity, self.distance, self.time);
+                          self.drones, self.planes, self.encounters, self.proximity, self.distance, self.time);
         write!(f, "{}", str)
     }
 }

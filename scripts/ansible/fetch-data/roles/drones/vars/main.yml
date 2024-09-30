@@ -1,0 +1,6 @@
+---
+# vars
+
+drones_fetch: '{{ bindir }}/fetch-asd-drones.py'
+drones_import: '{{ bindir }}/import-drones.py'
+drones_dispatch: '{{ bindir }}/dispatch-drops.py'

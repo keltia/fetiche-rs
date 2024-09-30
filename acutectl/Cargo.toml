@@ -1,6 +1,6 @@
 [package]
 name = "acutectl"
-version = "0.20.0"
+version = "0.23.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "CLI utility to fetch data."
@@ -19,6 +19,10 @@ maintenance = { status = "actively-developed" }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+flightaware = []
+
 [dependencies]
 eyre.workspace = true
 chrono.workspace = true
@@ -27,16 +31,13 @@ datafusion.workspace = true
 dateparser.workspace = true
 env_logger.workspace = true
 fetiche-common.workspace = true
+fetiche-engine.workspace = true
 fetiche-formats.workspace = true
+fetiche-macros.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
-home.workspace = true
 log.workspace = true
 nom.workspace = true
-opentelemetry.workspace = true
-opentelemetry-jaeger.workspace = true
-opentelemetry_sdk.workspace = true
-progress.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -48,20 +49,13 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
-tracing-opentelemetry.workspace = true
-tracing-subscriber.workspace = true
-tracing-tree.workspace = true
 
-fetiche-macros = { version = "0", path = "../macros" }
 clap_complete = "4.5"
+indicatif = "0.17"
 percent-encoding = "2.3"
-quote = "1.0"
-syn = { version = "2.0", features = ["extra-traits"] }
-tap = "1"
-tempfile = "3"
 
 [dev-dependencies]
 assert_cmd = "2.0"
 httpmock = "0.7"
-rstest = "0.18"
+rstest.workspace = true
 

@@ -1,6 +1,6 @@
 [package]
 name = "fetiche-common"
-version = "0.1.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Common library for fetiche modules."
@@ -8,7 +8,7 @@ readme = "README.md"
 license = "MIT"
 repository = "https://github.com/keltia/fetiche-rs"
 categories = ["aerospace::drones"]
-keywords = ["asterix", "drones", "aeronautical-data"]
+keywords = ["drones", "aeronautical-data", "airplanes"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -26,20 +26,31 @@ path = "benches/date_bench.rs"
 [dependencies]
 chrono.workspace = true
 clap.workspace = true
+csv.workspace = true
 dateparser.workspace = true
+directories.workspace = true
 eyre.workspace = true
+fetiche-macros.workspace = true
 hcl-rs.workspace = true
 log.workspace = true
+opentelemetry.workspace = true
+opentelemetry-otlp.workspace = true
+opentelemetry_sdk.workspace = true
 serde.workspace = true
 strum.workspace = true
 tabled.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+tracing-appender = "0.2"
 tracing-log.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
 humantime = "2.1"
+jiff = "0.1"
 rstest.workspace = true
 test-pretty-log = "0.6"

@@ -35,10 +35,11 @@ use clap_complete::shells::Shell;
 use eyre::Result;
 use tracing::{info, trace};
 
-use fetiche_common::{Container, DateOpts};
+use fetiche_common::{list_locations, load_locations, Container, DateOpts};
+use fetiche_engine::Engine;
 use fetiche_formats::Format;
 
-use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
+use crate::{convert_from_to, fetch_from_site, stream_from_site};
 
 /// CLI options
 #[derive(Parser)]
@@ -48,13 +49,22 @@ use crate::{convert_from_to, fetch_from_site, stream_from_site, Engine};
 pub struct Opts {
     /// configuration file.
     #[clap(short = 'c', long)]
-    pub config: Option<PathBuf>,
+    pub config: Option<String>,
     /// debug mode.
     #[clap(short = 'D', long = "debug")]
     pub debug: bool,
     /// Output file.
     #[clap(short = 'o', long)]
     pub output: Option<String>,
+    /// Enable telemetry with OTLP.
+    #[clap(short = 'T', long)]
+    pub use_telemetry: bool,
+    /// Enable logging in hierarchical manner (aka tree)
+    #[clap(short = 'L', long)]
+    pub use_tree: bool,
+    /// This parameter enable logging to a file in that location.
+    #[clap(short = 'F', long)]
+    pub use_file: Option<String>,
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
     pub verbose: u8,
@@ -155,6 +165,8 @@ pub enum ListSubCommand {
     Containers,
     /// List all formats in `formats`
     Formats,
+    /// List all possible sites for antennas.
+    Sites,
     /// List all sources from `sources.hcl`
     Sources,
     /// List all storage areas
@@ -292,6 +304,13 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
                 let str = engine.list_sources()?;
                 eprintln!("{}", str);
             }
+            ListSubCommand::Sites => {
+                info!("Listing all sites:");
+
+                let list = load_locations(None)?;
+                let str = list_locations(&list, 70)?;
+                eprintln!("{}", str);
+            }
             ListSubCommand::Formats => {
                 info!("Listing all formats:");
 
@@ -318,7 +337,5 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
             eprintln!("Modules: \t{}", engine.version());
         }
     }
-    opentelemetry::global::shutdown_tracer_provider();
-
     Ok(())
 }

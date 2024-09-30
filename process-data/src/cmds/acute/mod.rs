@@ -4,9 +4,11 @@
 //!
 
 use clap::Parser;
-use duckdb::arrow::array::RecordBatch;
-use duckdb::arrow::util::pretty::print_batches;
 use eyre::Result;
+use geo::coord;
+use klickhouse::{DateTime, QueryBuilder, Row};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tracing::trace;
 
 pub(crate) use antennas::*;
@@ -60,63 +62,106 @@ pub enum CrudSubCommand {
 // ----- Dispatching
 
 #[tracing::instrument(skip(ctx))]
-pub fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
-    trace!("execute");
+pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
+    trace!("run_acute_cmd");
 
-    let dbh = ctx.db();
+    let dbh = ctx.db().await;
     match opts.subcmd {
+        // List all antennas
+        //
         AcuteSubCommand::Antennas(_) => {
+            #[derive(Debug, Deserialize, Serialize, Row)]
+            struct Antenna {
+                pub id: u32,
+                #[serde(rename = "type")]
+                pub atype: String,
+                pub name: String,
+                pub owned: bool,
+                pub description: String,
+            }
+
             // Fetch antennas as Arrow
             //
-            let mut stmt = dbh.prepare("select * from antennas;")?;
+            let res = dbh
+                .query_collect::<Antenna>("SELECT * FROM antennas")
+                .await?;
 
             println!("Listing all antennas:");
-            let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
-            print_batches(&rbs)?;
+            let res = json!(&res).to_string();
+            println!("{res}");
         }
+        // List all installations
+        //
         AcuteSubCommand::Install(_) => {
+            #[derive(Debug, Deserialize, Serialize, Row)]
+            struct Install {
+                pub id: u32,
+                pub name: String,
+                pub start_at: DateTime,
+                pub end_at: DateTime,
+                pub station_name: String,
+                pub comment: String,
+            }
+
             // Find all installations with sites' name and antenna's ID
             //
-            let mut stmt = dbh.prepare(
-                r##"
+            let r = r##"
 SELECT 
   inst.id,
   sites.name,
   start_at,
   end_at,
   antennas.name AS station_name
+  inst.comment,
 FROM
   installations AS inst
   JOIN antennas ON antennas.id = inst.antenna_id
   JOIN sites ON inst.site_id = sites.id
 ORDER BY start_at
-        "##,
-            )?;
+        "##;
 
             println!("Listing all installations:");
-            let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
-            print_batches(&rbs)?;
+            let res = dbh.query_collect::<Install>(r).await?;
+            let res = json!(&res).to_string();
+            println!("{res}");
         }
         AcuteSubCommand::Sites(_) => {
+            #[derive(Debug, Deserialize, Serialize, Row)]
+            struct Site {
+                pub id: u32,
+                pub name: String,
+                pub code: String,
+                pub home: f64,
+                pub here: f64,
+                pub distance: f64,
+            }
+
+            // This is our current location in Brétigny
+            //
+            let home = coord! {x: 48.600052, y:2.347038};
+
             // Fetch sites
             //
-            let mut stmt = dbh.prepare(
-                r##"
+            let r = r##"
 SELECT
+  id,
   name,
   code,
-  ST_Point2D(2.35, 48.6) AS ref,
-  ST_Point2D(longitude, latitude) AS here,
-  ST_Distance_Spheroid(ref, here) / 1000 AS distance,
-FROM sites
+  longitude,
+  latitude,
+  ref_altitude,
+  dist_2d($1, $2, longitude, latitude) / 1000. AS distance,
+FROM
+  sites
 ORDER BY
   name
-    "##,
-            )?;
+    "##;
+            let q = QueryBuilder::new(r).arg(home.y).arg(home.x);
+            let res = dbh.query_collect::<Site>(q).await?;
 
             println!("Listing all sites:");
-            let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
-            print_batches(&rbs)?;
+            let res = json!(&res).to_string();
+            println!("{res}");
         }
     }
 

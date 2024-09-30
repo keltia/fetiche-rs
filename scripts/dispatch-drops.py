@@ -40,20 +40,39 @@ sites = {'Brussels': 'BRU',
          'London': 'LON',
          'Gatwick': 'LON',
          'Vienna': 'AUS',
+         'Vienna2': 'AUS',
+         'Bucharest': 'BUC',
+         'Bucharest1': 'BUC',
+         'Zurich': 'ZUR',
+         'Larnaca': 'CYP',
          }
 
 
 def move_one(fn, ftype, action):
     """
+    Type-independant move, dispatch to the correct one
+
+    :param fn:
+    :param ftype:
+    :param action:
+    :return:
+    """
+    if ftype == 'adsb':
+        move_one_adsb(fn, action)
+    else:
+        move_one_drone(fn, action)
+
+
+def move_one_adsb(fn, action):
+    """
     Move one file into the Hve tree.
 
     :param fn: filename
-    :param ftype: type of pat, drones or adsb
     :param action: true does move the file
     :return: nothing
     """
-    final = ''
     fname = Path(fn).name
+    ftype = 'adsb'
 
     # Look for specific ADS-B filename format
     #
@@ -82,22 +101,40 @@ def move_one(fn, ftype, action):
             os.makedirs(ourdir)
         final = Path(ourdir) / fname
     else:
-        # Drone pattern
-        #
-        fc = re.search(r'^drones-(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}).parquet$', fname)
-        if fc is not None:
-            year = fc.group('year')
-            month = fc.group('month')
-            ourdir = f"{datadir}/{ftype}/year={year}/month={month:02}"
-            if not Path(ourdir).exists():
-                os.makedirs(ourdir)
-            final = Path(ourdir) / fname
-        else:
-            print(f'Bad file pattern {fn}')
+        print(f"Ignoring {fn}")
 
     if action:
         print(f"Moving {fn} into {final}")
         Path(fn).rename(final)
+
+
+def move_one_drone(fn, action):
+    """
+    Move one file into the Hve tree.
+
+    :param fn: filename
+    :param ftype: type of pat, drones or adsb
+    :param action: true does move the file
+    :return: nothing
+    """
+    fname = Path(fn).name
+    ftype = 'drones'
+
+    # Drone pattern
+    #
+    fc = re.search(r'^drones-(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}).parquet$', fname)
+    if fc is not None:
+        year = fc.group('year')
+        month = fc.group('month')
+        ourdir = f"{datadir}/{ftype}/year={year}/month={month:02}"
+        if not Path(ourdir).exists():
+            os.makedirs(ourdir)
+        final = Path(ourdir) / fname
+        if action:
+            print(f"Moving {fn} into {final}")
+        Path(fn).rename(final)
+    else:
+        print(f"Ignoring {fn}")
 
 
 # Setup arguments

@@ -1,18 +1,12 @@
 //! Read some data as json and write it into a parquet file
 //!
 
+use datafusion::{config::TableParquetOptions, dataframe::DataFrameWriteOptions};
 use datafusion::prelude::*;
-use datafusion::{
-    dataframe::DataFrameWriteOptions,
-    parquet::{
-        basic::{Compression, Encoding, ZstdLevel},
-        file::properties::{EnabledStatistics, WriterProperties},
-    },
-};
 use eyre::Result;
 use tracing::{info, trace};
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::prelude::*;
 use tracing_tree::HierarchicalLayer;
 
 #[tracing::instrument]
@@ -31,23 +25,21 @@ async fn read_write_output(base: &str) -> Result<()> {
     //
     let fname = format!("{}.parquet", base);
 
-    let opts = DataFrameWriteOptions::default().with_single_file_output(true);
+    let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
 
-    let props = WriterProperties::builder()
-        .set_created_by(NAME.to_string())
-        .set_encoding(Encoding::PLAIN)
-        .set_statistics_enabled(EnabledStatistics::Page)
-        .set_compression(Compression::ZSTD(ZstdLevel::try_new(8)?))
-        .build();
+    let mut options = TableParquetOptions::default();
+    options.global.created_by = "acutectl/save".to_string();
+    options.global.writer_version = "2.0".to_string();
+    options.global.encoding = Some("plain".to_string());
+    options.global.statistics_enabled = Some("page".to_string());
+    options.global.compression = Some("zstd(8)".to_string());
 
     info!("Writing in {}", fname);
-    let res = df.write_parquet(&fname, opts, Some(props)).await?;
+    let _ = df.write_parquet(&fname, dfopts, Some(options)).await?;
 
     info!("Done.");
     Ok(())
 }
-
-const NAME: &str = "parquet";
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -59,17 +51,7 @@ async fn main() -> Result<()> {
         .with_targets(true)
         .with_verbose_entry(true)
         .with_verbose_exit(true)
-        .with_higher_precision(true)
         .with_bracketed_fields(true);
-
-    // Setup Open Telemetry with Jaeger
-    //
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_auto_split_batch(true)
-        .with_max_packet_size(9_216)
-        .with_service_name(NAME)
-        .install_simple()?;
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     // Load filters from environment
     //
@@ -80,7 +62,6 @@ async fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(filter)
         .with(tree)
-        .with(telemetry)
         .init();
     trace!("Logging initialised.");
 
@@ -88,6 +69,5 @@ async fn main() -> Result<()> {
 
     let _ = read_write_output(&fname).await?;
 
-    opentelemetry::global::shutdown_tracer_provider();
     Ok(())
 }

@@ -33,7 +33,7 @@ use tracing::trace;
 
 use fetiche_formats::Format;
 
-use crate::{version, Auth, Capability, Fetchable, Site, Streamable};
+use crate::{version, Auth, AuthError, Capability, Fetchable, Site, Streamable};
 
 /// Firehose is out target
 const SITE: &str = "firehose.flightaware.com";
@@ -158,7 +158,7 @@ impl Flightaware {
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("flightaware::load");
 
-        self.name = site.name.as_ref().unwrap().to_owned();
+        self.name = site.name.clone();
         self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
@@ -205,9 +205,6 @@ impl Flightaware {
     ///
     #[tracing::instrument(skip(self))]
     fn connect(&self, proxy: Option<String>) -> Result<TlsStream<TcpStream>> {
-        let mut p = progress::SpinningCircle::new();
-        p.set_job_title("Connecting...");
-
         let connector = TlsConnector::new()?;
 
         // FIXME: this only support HTTP proxy, not HTTPS nor SOCKS
@@ -257,7 +254,6 @@ Proxy-Connection: Keep-Alive
         trace!("TCP={:?}", stream);
 
         let stream = connector.connect(SITE, stream)?;
-        p.jobs_done();
         Ok(stream)
     }
 }
@@ -280,7 +276,7 @@ impl Fetchable for Flightaware {
     /// Credentials are passed in the call the API    
     ///
     #[tracing::instrument(skip(self))]
-    fn authenticate(&self) -> Result<String> {
+    fn authenticate(&self) -> Result<String, AuthError> {
         trace!("fake auth");
 
         Ok(format!("{}:{}", self.login, self.password))
@@ -323,22 +319,17 @@ impl Fetchable for Flightaware {
         trace!("req={req}");
         stream.write_all(req.as_bytes())?;
 
-        let mut p = progress::SpinningCircle::new();
-        p.set_job_title("Fetching...");
-
         trace!("read answer, format as an array");
         let buf = BufReader::new(&mut stream);
         let res = buf
             .lines()
             .map(|l| l.unwrap())
             .inspect(|l| {
-                p.tick();
                 trace!("line={l}");
             })
             .collect::<Vec<_>>()
             .join(",\n");
         trace!("End of fetch");
-        p.jobs_done();
 
         drop(stream);
         Ok(out.send(format!("[{res}]"))?)
@@ -357,7 +348,7 @@ impl Streamable for Flightaware {
     /// All credentials are passed every time we call the API so return a fake token
     ///
     #[tracing::instrument(skip(self))]
-    fn authenticate(&self) -> Result<String> {
+    fn authenticate(&self) -> Result<String, AuthError> {
         trace!("fake auth");
         Ok(format!("{}:{}", self.login, self.password))
     }

@@ -20,6 +20,11 @@ The main actors right now are the `Config` one which is supposed to hold the con
 NOTE: the [Actix] run-time is full-async, using [Tokyo] as its main async engine.  `fetiche-engine` and its submodule
 `fetiche-sources` are full sync and concurrency is not yet an issue so the actors "wrap" the sync components.
 
+There is also the beginning of a job/task description DSL to describe and submit jobs.
+
+> NOTE: this is a fast-changing WIP.
+
+
 ## **fetiche-engine**
 
 ### Engine

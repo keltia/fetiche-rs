@@ -33,8 +33,8 @@ use tracing::{debug, error, info, trace};
 
 use fetiche_formats::{Format, StateList};
 
-use crate::Site;
 use crate::{http_get_basic, Auth, Capability, Fetchable, Filter, Streamable};
+use crate::{AuthError, Site};
 
 /// We can go back only 1h in Opensky API
 const MAX_INTERVAL: i64 = 3600;
@@ -71,6 +71,7 @@ pub struct Opensky {
     pub duration: i32,
 }
 
+#[allow(dead_code)]
 /// This is the struct holding potential parameters to the API
 ///
 #[derive(Debug, Serialize)]
@@ -83,6 +84,7 @@ struct Param {
     pub serials: Option<Vec<u32>>,
 }
 
+#[allow(dead_code)]
 /// Credentials to submit to the site to get the token
 ///
 #[derive(Debug, Serialize)]
@@ -188,7 +190,7 @@ impl Fetchable for Opensky {
     /// All credentials are passed every time we call the API so return a fake token
     ///
     #[tracing::instrument]
-    fn authenticate(&self) -> Result<String> {
+    fn authenticate(&self) -> Result<String, AuthError> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
     }
@@ -219,7 +221,7 @@ impl Fetchable for Opensky {
                 Some(format!("time={}", now - d))
             }
             Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
-            Filter::Stream { .. } | Filter::None => None,
+            _ => None,
         };
 
         let url = match tm {
@@ -262,7 +264,7 @@ impl Streamable for Opensky {
 
     /// All credentials are passed every time we call the API so return a fake token
     ///
-    fn authenticate(&self) -> Result<String> {
+    fn authenticate(&self) -> Result<String, AuthError> {
         trace!("fake token retrieval");
         Ok(format!("{}:{}", self.login, self.password))
     }
@@ -277,10 +279,10 @@ impl Streamable for Opensky {
     ///
     /// The cache might be overkill because keeping only the last timestamp might be enough but:
     /// - it is easy to code and use
-    /// - it helps determining whether we had lack of traffic for a longer time if we have no
+    /// - it helps to determine whether we had lack of traffic for a longer time if we have no
     ///   cached entries
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, out))]
     fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
 

@@ -24,15 +24,15 @@
 //   -h, --help             Print help
 //! ```
 
-mod init;
-
 use clap::{crate_authors, crate_description, crate_version, Parser};
 use eyre::Result;
-use tracing::trace;
+use serde::Deserialize;
+use tracing::{debug, trace};
 
-use crate::init::init_runtime;
-
-use acutectl::{handle_subcmd, Config, Engine, Opts};
+use acutectl::{handle_subcmd, Opts, Status};
+use fetiche_common::{close_logging, init_logging, ConfigFile, IntoConfig, Versioned};
+use fetiche_engine::Engine;
+use fetiche_macros::into_configfile;
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -41,17 +41,38 @@ pub const VERSION: &str = crate_version!();
 /// Authors
 pub const AUTHORS: &str = crate_authors!();
 
-fn main() -> Result<()> {
+/// Config filename
+const CONFIG: &str = "acutectl.hcl";
+/// Current version
+pub const CVERSION: usize = 2;
+
+#[allow(dead_code)]
+/// Configuration for the CLI tool, supposed to include parameters
+///
+#[into_configfile]
+#[derive(Debug, Default, Deserialize)]
+pub struct AcuteConfig {
+    use_async: bool,
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
     let opts = Opts::parse();
-    let cfn = opts.config.clone();
+    let cfn = opts.config.or(Some(CONFIG.into()));
 
     // Initialise tracing.
     //
-    init_runtime(NAME)?;
+    init_logging(NAME, opts.use_telemetry, opts.use_tree, opts.use_file)?;
 
     // Config only has the credentials for every source now.
     //
-    let cfg = Config::load(cfn)?;
+    let cfile = ConfigFile::<AcuteConfig>::load(cfn.as_deref())?;
+    debug!("cfile = {:?}", cfile);
+
+    let cfg = cfile.inner();
+    if cfg.version() != CVERSION {
+        return Err(Status::BadFileVersion(cfg.version()).into());
+    }
 
     // Banner
     //
@@ -62,14 +83,15 @@ fn main() -> Result<()> {
     //
     let mut engine = Engine::new();
 
-    // Load auth data
-    //
-    engine.auth(cfg.site);
-
     trace!("Engine initialised and running.");
 
-    let subcmd = &opts.subcmd;
-    handle_subcmd(&mut engine, subcmd)
+    let subcmd = opts.subcmd;
+
+    // For the moment the whole of Engine is sync so we need to block.
+    //
+    let res = tokio::task::spawn_blocking(move || handle_subcmd(&mut engine, &subcmd)).await?;
+    close_logging();
+    res
 }
 
 /// Return our version number

@@ -1,0 +1,35 @@
+---
+# Fetch ADS-B
+# 15      10      *       *       *       cd /acute/import && /acute/bin/fetch-ftp-adsb.py -D /acute
+# 20      10      *       *       *       cd /acute/import && /acute/bin/convert-csv.py .
+# 22      10      *       *       *       cd /acute/import && /acute/bin/dispatch-drops.py -D /acute .
+# 26      10      *       *       *       cd /acute/import && direnv exec . /acute/bin/import-adsb.py -D /acute .
+
+- name: Fetch from FTP site.
+  ansible.builtin.command: "{{ planes_fetch }} -D {{ basedir }} "
+  tags: doit
+  register: fetch
+  changed_when: fetch.rc != 0
+  args:
+    chdir: "{{ importdir }}"
+- name: Convert into parquet.
+  ansible.builtin.command: "{{ planes_convert }} ."
+  tags: doit
+  register: convert
+  changed_when: convert.rc != 0
+  args:
+    chdir: "{{ importdir }}"
+- name: Move into datalake.
+  ansible.builtin.command: "{{ planes_dispatch }} -D {{ basedir }} ."
+  tags: doit
+  register: move
+  changed_when: move.rc != 0
+  args:
+    chdir: "{{ importdir }}"
+- name: Import into Clickhouse.
+  ansible.builtin.command: "{{ planes_import }} -D {{ basedir }} ."
+  tags: doit
+  register: importc
+  changed_when: importc.rc != 0
+  args:
+    chdir: "{{ importdir }}"

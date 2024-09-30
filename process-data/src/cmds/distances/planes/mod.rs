@@ -5,17 +5,19 @@
 
 use std::env;
 
-use chrono::{Datelike, DateTime, TimeZone, Utc};
+use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use derive_builder::Builder;
 use eyre::Result;
+use futures::future::join_all;
+use itertools::Itertools;
 use tracing::{info, trace};
 
-use fetiche_common::{DateOpts, expand_interval, load_locations, Location};
+use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
-use crate::cmds::{Stats, Status};
-use crate::cmds::batch::Batch;
+use crate::cmds::{enumerate_sites, find_site, Calculate, PlanesStats, Site, Stats};
 use crate::config::Context;
+use crate::error::Status;
 
 mod compute;
 
@@ -26,8 +28,8 @@ pub struct PlanesOpts {
     /// Do calculation(s) on this/these day(s)
     #[clap(subcommand)]
     pub date: DateOpts,
-    /// Do calculations around this station.
-    pub name: String,
+    /// Do calculations around this station (default is all)
+    pub name: Option<String>,
     /// Distance around the site in Nautical Miles.
     #[clap(short = 'D', long, default_value = "70.")]
     pub distance: f64,
@@ -43,20 +45,38 @@ pub struct PlanesOpts {
 #[derive(Builder, Debug)]
 pub struct PlaneDistance {
     /// Name of site
-    pub name: String,
-    /// Coordinates of site
-    pub loc: Location,
+    pub site: Site,
     /// Specific day
     pub date: DateTime<Utc>,
+    /// Optional delay between tasks
+    pub wait: u64,
     /// Max distance we want to consider
     #[builder(default = "70.")]
     pub distance: f64,
     /// proximity
     #[builder(default = "5500.")]
     pub separation: f64,
-    /// table name template for a run
-    #[builder(setter(into, strip_option), default = "None")]
-    pub template: Option<String>,
+    /// Lat of antenna
+    #[builder]
+    pub lat: f64,
+    /// Lon of antenna
+    #[builder]
+    pub lon: f64,
+    /// List of temporary tables created along the way, for cleanup.
+    #[builder(default = "vec![]")]
+    state: Vec<TempTables>,
+}
+
+/// This is the list of temporary tables created during the calculations process.  As we can
+/// bail out a certain points, the cleanup process may include one or more of these tables.
+/// This is registered in the `state` attribute in `PlaneDistance`.
+///
+#[derive(Clone, Debug)]
+pub enum TempTables {
+    Today,
+    Candidates,
+    TodayClose,
+    Ids,
 }
 
 // -----
@@ -64,9 +84,7 @@ pub struct PlaneDistance {
 /// Handle the `distances planes` command.
 ///
 #[tracing::instrument(skip(ctx))]
-pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
-    let dbh = ctx.db();
-
+pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     // Move ourselves to the datalake.
     //
     let datalake = ctx.config.get("datalake").unwrap();
@@ -74,10 +92,8 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
     info!("Datalake: {}", datalake);
     env::set_current_dir(datalake)?;
 
-    // Load locations
+    // Load parameters
     //
-    let list = load_locations(None)?;
-
     let (begin, end) = match DateOpts::parse(opts.date.clone()) {
         Ok((start, stop)) => {
             info!("We have an interval: from {} to {}", start, stop);
@@ -92,87 +108,134 @@ pub fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
             (tm, tm)
         }
     };
-    trace!("From {} to {}", begin, end);
 
     let dates = expand_interval(begin, end)?;
-    trace!("all days: {:?}", dates);
-    info!("{} days to process.", dates.len());
+    eprintln!("{} days to process, from {begin} to {end}", dates.len());
 
-    // Load parameters
+    // Let us generate the list we want:
     //
-    let name = opts.name.clone();
-    let current: Location = if list.get(&name).is_none() {
-        return Err(Status::UnknownSite(name).into());
-    } else {
-        list.get(&name).unwrap().clone()
+    // if there is only one site we want then
+    //     [(day0, site), (day1, site) .. (dayN, site)]
+    // otherwise we want for each day, all sites
+    //     [(day0, site0), (day0, site1) .. (day0, siteN), (day1, site0) ...]
+    //
+    // Basically zip together the two iterators, even if there is only one
+    //
+    // Goal is to have a flattened list of all combinations to run these in parallel
+    //
+    let name = match &opts.name {
+        Some(name) => {
+            if name == "ALL" || name == "*" {
+                ""
+            } else {
+                name.as_str()
+            }
+        }
+        None => "",
     };
+    trace!("Site = {name} (all if empty)");
 
-    // Build our set of batches
+    let work_list: Vec<_> = dates
+        .iter()
+        .map(|&day| async move {
+            // We have a specific site
+            //
+            if !name.is_empty() {
+                let site = find_site(ctx, name).await.unwrap();
+                let res = vec![(day, site)];
+                res
+            } else {
+                // Process all sites
+                //
+                let list = enumerate_sites(ctx, day).await.unwrap();
+                let list: Vec<_> = list.iter().map(|site| (day, site.clone())).collect();
+                list
+            }
+        })
+        .collect::<Vec<_>>();
+    let work_list = join_all(work_list).await;
+
+    // Now flatten it
     //
-    let worklist: Vec<_> = dates.into_iter().map(|day| {
-        let work = PlaneDistanceBuilder::default()
-            .name(opts.name.clone())
-            .loc(current.clone())
-            .distance(opts.distance)
-            .date(day)
-            .separation(opts.separation)
-            .build().unwrap();
+    let work_list: Vec<_> = work_list.into_iter().flatten().collect::<Vec<_>>();
+    trace!("Work list len = {}", work_list.len());
 
-        work
-    }).collect();
-    trace!("All tasks: {:?}", worklist);
+    let distance = opts.distance;
+    let separation = opts.separation;
 
-    let mut batch = Batch::from_vec(&dbh, &worklist);
+    // We have a potentially large set of day+site to compute.  Try to not batch more than out current
+    // pool size
+    let mut all = vec![];
+    for batch in &work_list.into_iter().chunks(ctx.pool_size) {
+        let stats: Vec<_> = batch
+            .into_iter()
+            .map(|(day, site)| async move {
+                trace!("Calculate for site {site} on day {day}");
+                let site = site.clone();
+                let ctx = ctx.clone();
 
-    // Gather stats for the run
+                let r = tokio::spawn(async move {
+                    calculate_one_day_on_site(&ctx, &site, &day, distance, separation)
+                        .await
+                        .unwrap()
+                })
+                .await
+                .unwrap();
+                r
+            })
+            .collect();
+        let stats: Vec<_> = join_all(stats).await;
+        all.push(stats);
+    }
+    let all = all.into_iter().flatten().collect::<Vec<_>>();
+
+    // Gather all statistics
     //
-    let stats = batch.execute()?;
-
-    let stats = Stats::summarise(stats);
+    let stats = Stats::summarise(all);
+    trace!("summary={stats:?}");
 
     Ok(stats)
 }
 
-#[cfg(test)]
-mod tests {
-    use chrono::Days;
-    use duckdb::Connection;
+/// Does the calculation for one specific day on one specific site.
+/// Could be merged with previous, but I think it might be too much overhead for just a few lines.
+///
+#[tracing::instrument(skip(ctx))]
+async fn calculate_one_day_on_site(
+    ctx: &Context,
+    site: &Site,
+    day: &DateTime<Utc>,
+    distance: f64,
+    separation: f64,
+) -> Result<Stats> {
+    let dbh = ctx
+        .dbh
+        .get()
+        .await
+        .map_err(|e| Status::ConnectionUnavailable(e.to_string()))?;
 
-    use super::*;
+    let day = normalise_day(*day)?;
 
-    #[test]
-    fn test_calculations() -> Result<()> {
-        // Store our context
-        //
-        let dbh = Connection::open_in_memory()?;
-        let day = Utc::now();
-        let current = Location { lon: 0., lat: 0., code: "".to_string(), hash: Some("".to_string()) };
-        let name = String::from("test1");
+    let mut work = PlaneDistanceBuilder::default()
+        .site(site.clone())
+        .lat(site.latitude as f64)
+        .lon(site.longitude as f64)
+        .distance(distance)
+        .date(day)
+        .separation(separation)
+        .wait(ctx.wait)
+        .build()?;
 
-        let work1 = PlaneDistanceBuilder::default()
-            .name(name.clone())
-            .loc(current.clone())
-            .date(day)
-            .build()?;
+    trace!("worklist for {:?} on {}: {:?}", site.name, day, work);
 
-        let work2 = PlaneDistanceBuilder::default()
-            .name(name.clone())
-            .loc(current.clone())
-            .date(day + Days::new(1))
-            .build()?;
+    // We use rayon to reduce the overhead during parallel calculations
+    //
 
-        dbg!(&work1);
-        dbg!(&work2);
-        let tasks = vec![work1, work2];
-        let list = Batch::from_vec(&dbh, &tasks);
-
-        dbg!(&list);
-        assert_eq!(2, tasks.len());
-
-        // let v: Vec<Stats> = list.execute()?;
-
-        //let stats = Stats::summarise(v);
-
-        Ok(())
-    }
+    let stats = if !ctx.dry_run {
+        work.run(&dbh).await?
+    } else {
+        trace!("dry run!");
+        Stats::Planes(PlanesStats::default())
+    };
+    Ok(stats)
 }

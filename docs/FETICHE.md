@@ -1,8 +1,5 @@
 # FETICHE
 
-Preliminary name (based on the [Kirikou] movies made by Michel Ocelot, this is a small wooden fetish on top of the 
-Witch's home looking all around and providing surveillance for her).
-
 ## Purpose
 
 We define a program/framework/language to help specify where to fetch data from, what transformations if any we want
@@ -11,6 +8,81 @@ to apply and then export into a final format in various ways.
 The goal is to merge all the different iterations of `aeroscope.sh`, `aeroscope-cdg.sh` or `aeroscope-CDGweekly.sh` into
 a more general purpose data fetch & transform (aka a small-scale [ERP]).  It is not limited to drones and could be used as
 a all-purpose gather/transform/publish engine for surveillance data.
+
+# Description of the curent design of Fetiche and future plans
+
+Updated: Sun Feb 25 19:41:21 CET 2024
+
+## Current Design
+
+`Fetiche` as a framework was mainly born as a refactor of the code used by the `cat21conv` utility whci is the rewrite
+in [RUST] of the original Shell script. Code to handle formats and sites (aka sources) were moved into libraries.
+
+As the ACUTE project evolved, needs did as well and more code was added to handle these.
+
+`Fetiche` has 4 main library component so far:
+
+- `fetiche-common` has now some of the common code used by all crates.
+- `fetiche-formats` is handling the various data structures used throughout the framework, dealing with conversion,
+  serialisation and de-serialisation.
+- `fetiche-sources` contains the code to connect to various sites and fetch or stream data out of them. It also handles
+  authentication, etc.
+- `fetiche-macros` is the specific crate hosting the `RunnableDerive` proc macro for the engines.
+
+### Formats (managed in the `fetiche-formats` crate)
+
+This crate implement the various data models used by the different sources. Included are three [ASTERIX]-like formats --
+generic `Cat21`, a cut-down version of `Cat21` for ADS-B data (dubbed `Adsb21`) and drone-specific `Cat129` -- and
+formats used by different data providers like [Opensky] or [ASD]. This library implement some methods of conversion
+between some of these formats.
+
+The default input format is the one used by the Aeroscope from ASD, but it will soon support the format used
+by [Opensky] site. There is also the [ASD] site which gives you data aggregated from different Aeroscope antennas.
+
+More details in the [Formats README.md](formats/README.md).
+
+### Sources (managed in the `fetiche-sources` crate)
+
+The configuration for the different sources of data is handled by the `fetiche-source` crate in [HCL] file
+format. Note that it is mainly used to avoid hard-coding some parameters like username and API URLs. Adding an entry
+in that file does not mean support except if it is a variation on a known source.
+
+You are not really supposed to edit this file.
+
+More details in the specific [Sources README.md](sources/README.md).
+
+
+There are also several binaries using the framework:
+
+- `cat21conv` is the original script, very tied to the cut-down Cat21-like format which is a CSV-compatible version of
+  the original Cat21 [ASTERIX] binary format.
+- `acutectl` replaces it with better interface, more format support (like JSON, Parquet).
+- `opensky-history` was created to fetch historical data out of the [OPENSKY] site for ADS-B data. It uses the Python
+  package called `pyopensky` through the `inline-python` crate. There is a pure-Python version in the scripts directory.
+- `process-data` is related to `acutectl` as the main user of the data fetched by it. It interacts with a [DuckDB]
+  database which handle all the data for [ACUTE].
+
+`fetiched` is a bit special, it is supposed to be a daemon handling all aspects of data fetching and transformation, and
+it seems that it might not be the best approach for [ACUTE]. It has a fork of the main engine which resides
+inside `acutectl` and they will have to be reunited at some point. It lags behind the other engine at the moment.
+
+## Future Evolution
+
+Right now, having two crates for formats and sources does make modifications a bit complicated as these two have to be
+in sync all the time.
+
+One possible evolution would be to have some kind of plugin for every source. That plugin would handle both data formats
+and data retrieval through some traits.
+
+- ASD with the data formats, connection to site, etc.
+- OpenSky with data format, streaming and historical data, etc.
+
+And `acutectl`  could have crate features to include some of the plugins or not.
+
+### Traits
+
+- Fetchable
+- Streamable
 
 ## Structure
 
@@ -156,10 +228,11 @@ cf. above.
 
 ## Why the name Fetiche?
 
-If you have seen the French animated movie "Kirikou et la sorcière", you know. If not, learn that the main characters
-are Kirikou, a small boy with extraordinary gifts and a sorceress called Karaba. She has some special minions called
-"les fétiches". These are wooden fetishes that do her bidding in all things. One of them is on top of her case and is
-tasked with looking around and doing... surveillance. Hence, the name of its framework.
+Preliminary name (based on the [Kirikou] movies made by Michel Ocelot.  If you have seen the animated movie "Kirikou et 
+la sorcière", you know. If not, learn that the main characters are Kirikou, a small boy with extraordinary gifts and 
+a sorceress called Karaba. She has some special minions called "les fétiches". These are wooden fetishes that do her 
+bidding in all things. One of them is on top of her case and is tasked with looking around and doing... surveillance. 
+Hence, the name of its framework.
 
 ## References
 

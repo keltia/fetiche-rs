@@ -23,7 +23,7 @@ use tracing::{debug, trace};
 use fetiche_formats::Format;
 
 use crate::site::Site;
-use crate::{http_get_auth, http_post, Auth, Capability, Fetchable};
+use crate::{http_get_auth, http_post, Auth, AuthError, Capability, Fetchable};
 
 /// Data to send to authenticate ourselves and get a token
 ///
@@ -125,7 +125,7 @@ impl Fetchable for Aeroscope {
     /// Authenticate to the site with login/password and return a token
     ///
     #[tracing::instrument]
-    fn authenticate(&self) -> Result<String> {
+    fn authenticate(&self) -> Result<String, AuthError> {
         trace!("aeroscope::authenticate({:?})", &self.login);
 
         // Prepare our submission data
@@ -140,9 +140,12 @@ impl Fetchable for Aeroscope {
         let url = format!("{}{}", self.base_url, self.token);
         trace!("Fetching token through {}…", url);
 
-        let resp = http_post!(self, url, &cred)?;
-        let resp = resp.text()?;
-        let res: Token = serde_json::from_str(&resp)?;
+        let resp = http_post!(self, url, &cred).map_err(|e| AuthError::HTTP(e.to_string()))?;
+        let resp = resp
+            .text()
+            .map_err(|_| AuthError::Retrieval(cred.username.clone()))?;
+        let res: Token =
+            serde_json::from_str(&resp).map_err(|e| AuthError::Decoding(e.to_string()))?;
 
         debug!("res={:?}", res);
         Ok(res.access_token)

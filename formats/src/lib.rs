@@ -101,8 +101,10 @@ pub enum Format {
     Aeroscope,
     /// Consolidated drone data, from airspacedrone.com (ASD)
     Asd,
+    /// Aero Network JSON format by Avionix for drones
+    AvionixCube,
     /// ADS-B data from the Avionix appliance
-    Avionix,
+    AvionixCat21,
     /// ECTL Asterix Cat21 flattened CSV
     Cat21,
     /// ECTL Drone specific Asterix Cat129

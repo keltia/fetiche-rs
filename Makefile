@@ -1,29 +1,32 @@
 # Makefile primarily to install binaries and scripts
 #
 # usage:
-# make DATALAKE=/acute install
+# make DESTDIR=/acute install
 #
 # NOTE: This is for GNU make
 #
 DESTDIR ?=	/Users/acute
 
-.VPATH = 	target/release
+.VPATH = 	target/release target/debug
 
-BINARIES =	acuteclt process-data
-SCRIPTS =	convert-csv.py dispatch-drops.py fetch-ftp-adsb.py ftp-all-adsb.txt
+BINARIES =	acutectl process-data
+SCRIPTS =	scripts/convert-csv.py scripts/dispatch-drops.py scripts/fetch-all-adsb.txt scripts/fetch-all-drones.py \
+	scripts/fetch-asd-drones.py scripts/fetch-ftp-adsb.py scripts/fetch-opensky.py scripts/import-adsb.py \
+	scripts/import-drones.py
 TARGET =	target/release
 
-all:
+all:	${BINARIES}
+	cargo build --release
 
-acutectl:
-	cd $@ && cargo build --release
+debug:	${BINARIES}
+	cargo build
 
-process-data:
-	cd $@ && cargo build --release
+acutectl: acutectl/src/main.rs
+
+process-data: process-data/src/main.rs
 
 install: $(BINARIES) $(SCRIPTS)
 	install -c -m 755 -s -o acute target/release/acutectl $(DESTDIR)/bin
 	install -c -m 755 -s -o acute target/release/process-data $(DESTDIR)/bin
-	install -c -m 755 -o acute scripts/*.py $(DESTDIR)/bin
-	install -c -m 644 -o acute scripts/*.txt $(DESTDIR)/bin
+	install -c -m 755 -o acute $(SCRIPTS)  $(DESTDIR)/bin
 

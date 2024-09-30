@@ -1,6 +1,6 @@
 [package]
 name = "opensky-history"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Rust CLI app to fetch historical data through pyopensky."
@@ -33,13 +33,14 @@ fetiche-formats.workspace = true
 hcl-rs.workspace = true
 home.workspace = true
 opentelemetry.workspace = true
-opentelemetry-jaeger.workspace = true
+opentelemetry-otlp.workspace = true
 opentelemetry_sdk.workspace = true
 progress.workspace = true
 serde.workspace = true
 serde_repr.workspace = true
 strum.workspace = true
 tabled.workspace = true
+tempfile.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-log.workspace = true
@@ -50,7 +51,6 @@ tracing-tree.workspace = true
 inline-python = "0.12"
 seek_bufread = "1.2"
 seekable_reader = "0.1"
-tempfile = "3"
 
 [dev-dependencies]
 rstest.workspace = true
