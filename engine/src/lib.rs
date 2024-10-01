@@ -141,7 +141,7 @@ impl Engine {
         //
         Self::load(ENGINE_CONFIG).unwrap_or_else(|e| {
             error!("Can not create Engine: {}", e.to_string());
-            panic!("Error: {}", e.to_string())
+            panic!("Error: {e}")
         })
     }
 
