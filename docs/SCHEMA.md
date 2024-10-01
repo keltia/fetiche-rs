@@ -16,7 +16,7 @@ All tables and macros configuration [here](DUCKDB.md)
 
 ```sql
 CREATE
-DATABASE acute COMMENT 'ACUTE Project data.';
+    DATABASE acute COMMENT 'ACUTE Project data.';
 ```
 
 ### Functions
@@ -24,8 +24,8 @@ DATABASE acute COMMENT 'ACUTE Project data.';
 Geodesic distance rounded to the nearest upper integer.
 
 ```sql
-CREATE FUNCTION dist_2d AS (dx, dy, px, py) ->
-  ceil(geoDistance(dx,dy,px,py));
+CREATE FUNCTION dist_2d AS(dx, dy, px, py) ->
+    ceil(geoDistance(dx, dy, px, py));
 ```
 
 > NOTE: `geoDistance` returns an FLOAT32, not FLOAT64.
@@ -33,8 +33,8 @@ CREATE FUNCTION dist_2d AS (dx, dy, px, py) ->
 3D distance using the 2D Geodesic distance and altitude, rounded to the nearest upper integer.
 
 ```sql
-CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
-  ceil(sqrt(pow(dist_2d(dx,dy,px,py), 2) + pow((dz-pz), 2)));
+CREATE FUNCTION dist_3d AS(dx, dy, dz, px, py, pz) ->
+    ceil(sqrt(pow(dist_2d(dx, dy, px, py), 2) + pow((dz - pz), 2)));
 ```
 
 ### Tables
@@ -48,11 +48,11 @@ CREATE TABLE acute.sites
     name         VARCHAR NOT NULL,
     code         VARCHAR NOT NULL,
     basename     VARCHAR NOT NULL,
-    latitude     FLOAT   NOT NULL,
-    longitude    FLOAT   NOT NULL,
+    latitude  FLOAT NOT NULL,
+    longitude FLOAT NOT NULL,
     ref_altitude FLOAT NOT NULL,
 ) ENGINE MergeTree PRIMARY KEY id ORDER BY id
-    COMMENT 'All sites with an antenna in time.';
+      COMMENT 'All sites with an antenna in time.';
 ```
 
 ```sql
@@ -66,7 +66,7 @@ CREATE TABLE acute.antennas
     owned       BOOLEAN,
     description VARCHAR,
 ) ENGINE MergeTree PRIMARY KEY id ORDER BY id
-    COMMENT 'All known antennas.';
+      COMMENT 'All known antennas.';
 ```
 
 ```sql
@@ -81,39 +81,41 @@ CREATE TABLE acute.installations
     end_at     TIMESTAMP,
     comment    VARCHAR,
 ) ENGINE MergeTree PRIMARY KEY id ORDER BY id
-    COMMENT 'Which antenna on each site in time.';
+      COMMENT 'Which antenna on each site in time.';
 ```
 
 ```sql
 CREATE
-OR REPLACE TABLE acute.airplane_prox (
-  site             VARCHAR,
-  en_id            VARCHAR,
-  time             TIMESTAMP,
-  journey          INT,
-  drone_id         VARCHAR,
-  model            VARCHAR,
-  drone_lon        FLOAT,
-  drone_lat        FLOAT,
-  drone_alt_m      FLOAT,
-  drone_height_m   FLOAT,
-  prox_callsign    VARCHAR,
-  prox_id          VARCHAR,
-  prox_lon         FLOAT,
-  prox_lat         FLOAT,
-  prox_alt_m       FLOAT,
-  distance_slant_m INT,
-  distance_hor_m   INT,
-  distance_vert_m  INT,
-  distance_home_m  INT
+    OR REPLACE TABLE acute.airplane_prox
+(
+    site             VARCHAR,
+    en_id            VARCHAR,
+    time             TIMESTAMP,
+    journey          INT,
+    drone_id         VARCHAR,
+    model            VARCHAR,
+    drone_lon        FLOAT,
+    drone_lat        FLOAT,
+    drone_alt_m      FLOAT,
+    drone_height_m   FLOAT,
+    prox_callsign    VARCHAR,
+    prox_id          VARCHAR,
+    prox_lon         FLOAT,
+    prox_lat         FLOAT,
+    prox_alt_m       FLOAT,
+    distance_slant_m INT,
+    distance_hor_m   INT,
+    distance_vert_m  INT,
+    distance_home_m  INT
 )
     ENGINE = MergeTree PRIMARY KEY (time, journey)
-    COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
+        COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
 ```
 
 ```sql
 CREATE
-OR REPLACE TABLE daily_stats (
+    OR REPLACE TABLE daily_stats
+(
     date       DATE,
     planes     INT,
     drones     INT,
@@ -122,7 +124,7 @@ OR REPLACE TABLE daily_stats (
     distance   FLOAT,
     proximity  FLOAT
 ) ENGINE = MergeTree PRIMARY KEY (date) ORDER BY date
-    COMMENT 'Statistics for a day run.'
+      COMMENT 'Statistics for a day run.'
 ```
 
 This is the schema stored in the parquet files, extracted from the CSV. We will change a few things during import. As
@@ -131,41 +133,41 @@ parquet files.
 
 ```sql
 CREATE
-OR REPLACE TABLE acute.airplanes_raw
+    OR REPLACE TABLE acute.airplanes_raw
 (
-    site                   INT,  
-    EmitterCategory        INT DEFAULT 3,   
-    GBS                    INT,   
-    ModeA                  VARCHAR,  
+    site                   INT,
+    EmitterCategory        INT DEFAULT 3,
+    GBS                    INT,
+    ModeA                  VARCHAR,
     TimeRecPosition        DATETIME64,
-    AircraftAddress        VARCHAR,  
-    Latitude               DOUBLE,   
-    Longitude              DOUBLE,   
-    GeometricAltitude      DOUBLE,   
-    FlightLevel            DOUBLE,   
-    BarometricVerticalRate VARCHAR,   
-    GeoVertRateExceeded    VARCHAR,  
+    AircraftAddress        VARCHAR,
+    Latitude               DOUBLE,
+    Longitude              DOUBLE,
+    GeometricAltitude      DOUBLE,
+    FlightLevel            DOUBLE,
+    BarometricVerticalRate VARCHAR,
+    GeoVertRateExceeded    VARCHAR,
     GeometricVerticalRate  VARCHAR,
-    GroundSpeed            DOUBLE,   
-    TrackAngle             DOUBLE,   
-    Callsign               VARCHAR,  
-    AircraftStopped        VARCHAR,  
-    GroundTrackValid       VARCHAR,  
-    GroundHeadingProvided  VARCHAR,  
-    MagneticNorth          VARCHAR,  
-    SurfaceGroundSpeed     VARCHAR,  
-    SurfaceGroundTrack     VARCHAR  
+    GroundSpeed            DOUBLE,
+    TrackAngle             DOUBLE,
+    Callsign               VARCHAR,
+    AircraftStopped        VARCHAR,
+    GroundTrackValid       VARCHAR,
+    GroundHeadingProvided  VARCHAR,
+    MagneticNorth          VARCHAR,
+    SurfaceGroundSpeed     VARCHAR,
+    SurfaceGroundTrack     VARCHAR
 ) ENGINE = MergeTree PRIMARY KEY (TimeRecPosition, AircraftAddress)
-    COMMENT 'Table for raw ADS-B positions.';
+      COMMENT 'Table for raw ADS-B positions.';
 ```
 
 Then we create the view with our more usable names.
+
 ```sql
-CREATE
-OR REPLACE VIEW acute.airplanes 
+CREATE OR REPLACE VIEW acute.airplanes
 AS
 (
-    SELECT EmitterCategory,
+SELECT EmitterCategory,
        (GBS == 1)                     AS GBS,
        ModeA,
        TimeRecPosition                AS time,
@@ -187,53 +189,72 @@ AS
        SurfaceGroundSpeed,
        SurfaceGroundTrack,
        site
-    FROM acute.airplanes_raw AS f
-)
-    COMMENT 'View for airplanes data.'
+FROM acute.airplanes_raw AS f
+    ) COMMENT 'View for airplanes data.'
 ```
 
 ```sql
-CREATE OR REPLACE TABLE acute.drones_raw (
-    journey            INT, 
-    ident              VARCHAR,
-    model              VARCHAR,
-    source             VARCHAR,
-    location           INT,
-    timestamp          TIMESTAMP,
-    latitude           DOUBLE, 
-    longitude          DOUBLE, 
-    altitude           INTEGER,
-    elevation          INTEGER,
-    gps                INTEGER,
-    rssi               INTEGER,
-    home_lat           DOUBLE,
-    home_lon           DOUBLE,
-    home_height        INT,
-    speed              INT,
-    heading            INT,
-    station_name       VARCHAR,
-    station_latitude   DOUBLE, 
-    station_longitude  DOUBLE
+CREATE OR REPLACE TABLE acute.drones_raw
+(
+    journey           INT,
+    ident             VARCHAR,
+    model             VARCHAR,
+    source            VARCHAR,
+    location          INT,
+    timestamp         TIMESTAMP,
+    latitude          DOUBLE,
+    longitude         DOUBLE,
+    altitude          INTEGER,
+    elevation         INTEGER,
+    gps               INTEGER,
+    rssi              INTEGER,
+    home_lat          DOUBLE,
+    home_lon          DOUBLE,
+    home_height       INT,
+    speed             INT,
+    heading           INT,
+    station_name      VARCHAR,
+    station_latitude  DOUBLE,
+    station_longitude DOUBLE
 )
     ENGINE = MergeTree PRIMARY KEY (journey, timestamp)
-    COMMENT 'Raw positions for drones on all sites.'
+        COMMENT 'Raw positions for drones on all sites.'
 ```
 
 Initial data is loaded with:
+
 ```shell
 clickhouse client -d acute -q "insert into acute.drones from infile 'data/drones/**/*.parquet' format parquet"
 ```
 
 Updating the distances:
+
 ```sql
 CREATE OR REPLACE VIEW acute.drones AS
 (
-    SELECT
-        *,
-        toUnixTimestamp(timestamp) as time,
-        dist_2d(longitude,latitude,home_lon,home_lat) AS home_distance_2d, 
-        dist_3d(longitude,latitude,elevation,home_lon,home_lat,home_height) AS home_distance_3d
-    FROM acute.drones_raw
-)
-    COMMENT 'View for drones data.'
+SELECT *,
+       toUnixTimestamp(timestamp)                                               as time,
+       dist_2d(longitude, latitude, home_lon, home_lat)                         AS home_distance_2d,
+       dist_3d(longitude, latitude, elevation, home_lon, home_lat, home_height) AS home_distance_3d
+FROM acute.drones_raw
+    ) COMMENT 'View for drones data.'
+```
+
+Join the main metadata tables to identify the site on which every antenna was installed on in time.
+
+```sql
+CREATE OR REPLACE VIEW acute.what_where_when AS
+(
+SELECT i.id AS install_id,
+       i.start_at,
+       i.end_at,
+       a.type,
+       a.name,
+       s.name
+FROM installations AS i,
+     antennas AS a,
+     sites AS s
+WHERE (i.antenna_id = a.id)
+  AND (s.id = i.site_id)
+    ) COMMENT 'Find the site for each drone points.'
 ```
