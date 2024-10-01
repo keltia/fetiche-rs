@@ -170,8 +170,25 @@ CREATE OR REPLACE VIEW acute.drones AS
     COMMENT 'View for drones data with distances.'
 "##;
 
+    let r3 = r##"
+CREATE OR REPLACE VIEW acute.what_where_when AS
+(
+    SELECT
+        i.id AS install_id,
+        i.start_at,
+        i.end_at,
+        a.type,
+        a.name,
+        s.name
+    FROM installations AS i, antennas AS a, sites AS s
+    WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
+)
+    COMMENT 'Find the site for each drone points.'
+    "##;
+
     dbh.execute(r1).await?;
     dbh.execute(r2).await?;
+    dbh.execute(r3).await?;
     Ok(())
 }
 
@@ -189,8 +206,13 @@ DROP VIEW IF EXISTS acute.airplanes;
 DROP VIEW IF EXISTS acute.drones;
     "##;
 
-    dbh.execute(rm1).await?;
+    let rm3 = r##"
+DROP VIEW IF EXISTS acute.what_where_when;
+    "##;
+
+    dbh.execute(rm3).await?;
     dbh.execute(rm2).await?;
+    dbh.execute(rm1).await?;
     Ok(())
 }
 
