@@ -21,7 +21,7 @@ import logging
 import os
 import sys
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from subprocess import run
 
@@ -49,10 +49,7 @@ def export_encounters(want_summary, action):
     :param action:
     :return:
     """
-    today = datetime.today()
-    yesterday = (today - timedelta(days=1)).strftime('%Y%m%d')
-    dir = Path(outputdir)
-    fname = f"202107-{yesterday}-encounters"
+    fname = f"encounters"
     if want_summary:
         logging.info(f"Exporting summary encounters for {fname}")
         fname = f"{fname}-summary"
