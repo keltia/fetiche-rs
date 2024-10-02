@@ -1,121 +1,85 @@
 #! /usr/bin/env python3
 #
 """
+Export all encounters (or the summary).
 
+usage: export-encounters [-h] [--datalake DATALAKE] [--dry-run] [--summary] [--output OUTPUT]
+
+Import ADS-B data into CH.
+
+options:
+  -h, --help            show this help message and exit
+  --datalake DATALAKE, -D DATALAKE
+                        Datalake is here.
+  --dry-run, -n         Just show what would happen.
+  --summary, -S         Export summary with MIN distances.
+  --output OUTPUT, -o OUTPUT
+                        Export to a file.
 """
 import argparse
 import logging
 import os
 import sys
 
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
 from subprocess import run
 
 # CONFIG CHANGE HERE or use -D
 #
 datalake = "/acute"
+user = 'acute'
 db = 'acute'
-clickhouse = 'clickhouse-client'
-if sys.platform.startswith('darwin'):
-    clickhouse = 'clickhouse client'
+url = 'reku.eurocontrol.fr:9000'
+export_cmd = "/acute/bin/process-data export distances"
 
 # Import DB data from env.
 #
-host = os.getenv('CLICKHOUSE_HOST')
-user = os.getenv('CLICKHOUSE_USER')
+user = os.getenv('CLICKHOUSE_USER') or user
 pwd = os.getenv('CLICKHOUSE_PASSWD')
-dbn = os.getenv('CLICKHOUSE_DB') or db
+name = os.getenv('CLICKHOUSE_DB') or db
+url = os.getenv('KLICKHOUSE_URL') or url
 
 
-def export_encounters(want_summary, fname):
+def export_encounters(want_summary, action):
+    """
+    Does the export of data.
+
+    :param want_summary:
+    :param action:
+    :return:
+    """
+    today = datetime.today()
+    yesterday = (today - timedelta(days=1)).strftime('%Y%m%d')
+    dir = Path(outputdir)
+    fname = f"202107-{yesterday}-encounters"
     if want_summary:
-        q1 = " \
-CREATE OR REPLACE TABLE airprox_summary \
-ENGINE = Memory \
-AS ( \
-  SELECT \
-    en_id, \
-    journey, \
-    drone_id, \
-    min(distance_slant_m) as distance_slant_m \
-  FROM \
-    airplane_prox \
-  GROUP BY \
-    en_id,journey,drone_id"
-        cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q '{q}'"
-        logging.info(cmd)
-        if action:
-            ret = run(cmd, shell=True, capture_output=True)
-            if ret.returncode != 0:
-                logging.error("error", "(", fname, "): ", ret.stderr)
-                print("error: ", ret.stderr, file=sys.stderr)
-
-        q2 = (f" \
-    SELECT \
-    a.en_id, \
-    a.site, \
-    a.time, \
-    a.journey, \
-    a.drone_id, \
-    a.model, \
-    a.drone_lat, \
-    a.drone_lon, \
-    a.drone_alt_m, \
-    a.drone_height_m, \
-    a.prox_callsign, \
-    a.prox_id, \
-    a.prox_lat, \
-    a.prox_lon, \
-    a.prox_alt_m, \
-    a.distance_hor_m, \
-    a.distance_vert_m, \
-    a.distance_home_m, \
-    a.distance_slant_m, \
-  FROM \
-    airplane_prox AS a JOIN airprox_summary AS s \
-    ON \
-    s.en_id = a.en_id AND \
-    s.journey = a.journey AND \
-    s.drone_id = a.drone_id \
-  WHERE \
-    a.distance_slant_m = s.distance_slant_m \
-  ORDER BY time \
-  INTO OUTFILE '{fname}' FORMAT CSVWithNames")
+        logging.info(f"Exporting summary encounters for {fname}")
+        fname = f"{fname}-summary"
     else:
-        q = (f" \
-    SELECT \
-    en_id, \
-    site, \
-    time, \
-    journey, \
-    drone_id, \
-    model, \
-    drone_lat, \
-    drone_lon, \
-    drone_alt_m, \
-    drone_height_m, \
-    prox_callsign, \
-    prox_id, \
-    prox_lat, \
-    prox_lon, \
-    prox_alt_m, \
-    distance_hor_m, \
-    distance_vert_m, \
-    distance_home_m, \
-    distance_slant_m, \
-  FROM airplane_prox \
-  ORDER BY time \
-  INTO OUTFILE '{fname}' FORMAT CSVWithNames")
+        logging.info(f"Exporting all encounters for {fname}")
+    fname = outputdir.join(Path(fname).with_suffix('.csv'))
+    output = f"-o {fname}"
+    cmd = f"{export_cmd} {output}"
+    logging.info(f"Exporting encounters into {fname}")
+    if action:
+        ret = run(cmd, shell=True, capture_output=True)
+        if ret.returncode != 0:
+            logging.error("error", "(", fname, "): ", ret.stderr)
+            print("error: ", ret.stderr, file=sys.stderr)
+    else:
+        print(f"Running {cmd}")
+    return fname
 
 
 parser = argparse.ArgumentParser(
-    prog='import-adsb',
-    description='Import ADS-B data into CH.')
+    prog='export-encounters',
+    description='Export encounters data from CH.')
 
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
 parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
-parser.add_argument('--summary', '-S', help="Export summary with MIN distances.")
-parser.add_argument('--output', '-o', help="Export to a file.")
+parser.add_argument('--summary', '-S', action='store_true', help="Export summary with MIN distances.")
+parser.add_argument('--output-dir', '-d', help="Export to this directory.")
 args = parser.parse_args()
 
 if args.datalake is not None:
@@ -125,12 +89,16 @@ importdir = f"{datalake}/import"
 datadir = f"{datalake}/data/adsb"
 bindir = f"{datalake}/bin"
 logdir = f"{datalake}/var/log"
+outputdir = f"{datalake}/encounters"
 
 date = datetime.now().strftime('%Y%m%d')
 logfile = f"{logdir}/export-encounters-{date}.log"
 logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
                     format='%(asctime)s - %(levelname)s: %(message)s')
 logging.info("Starting")
+
+if args.output_dir is not None:
+    outputdir = args.output_dir
 
 if args.dry_run:
     action = False
@@ -140,8 +108,8 @@ else:
 if args.summary:
     logging.info("Export only summary.")
     summary = True
+else:
+    summary = False
 
-if args.output is None:
-    output = "export-excounters.csv"
-
-export_encounters(summary, output)
+fname = export_encounters(summary, action)
+print(f"Exported to {fname}")
