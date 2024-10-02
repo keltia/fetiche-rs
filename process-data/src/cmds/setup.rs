@@ -198,6 +198,7 @@ CREATE OR REPLACE VIEW airprox_summary AS
         airplane_prox
     GROUP BY
         en_id,journey,drone_id
+    ORDER BY journey
   )
     COMMENT 'List all encounters ID with the minimum distance.'
     "##;
