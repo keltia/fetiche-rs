@@ -123,7 +123,7 @@ DROP TABLE IF EXISTS acute.airplane_prox;
 ///
 #[tracing::instrument(skip(dbh))]
 async fn create_views(dbh: &Client) -> Result<()> {
-    info!("Creating the airplanes and drones views.");
+    info!("Creating the airplanes, drones and proximy views.");
 
     let r1 = r##"
 CREATE
@@ -186,9 +186,26 @@ CREATE OR REPLACE VIEW acute.what_where_when AS
     COMMENT 'Find the site for each drone points.'
     "##;
 
+    let r4 = r##"
+CREATE OR REPLACE VIEW airprox_summary AS
+(
+    SELECT
+        en_id,
+        journey,
+        drone_id,
+        min(distance_slant_m) as distance_slant_m
+    FROM
+        airplane_prox
+    GROUP BY
+        en_id,journey,drone_id
+  )
+    COMMENT 'List all encounters ID with the minimum distance.'
+    "##;
+
     dbh.execute(r1).await?;
     dbh.execute(r2).await?;
     dbh.execute(r3).await?;
+    dbh.execute(r4).await?;
     Ok(())
 }
 
@@ -196,7 +213,7 @@ CREATE OR REPLACE VIEW acute.what_where_when AS
 ///
 #[tracing::instrument(skip(dbh))]
 async fn drop_views(dbh: &Client) -> Result<()> {
-    info!("Dropping airplanes and drones views.");
+    info!("Dropping all views.");
 
     let rm1 = r##"
 DROP VIEW IF EXISTS acute.airplanes;
@@ -210,6 +227,11 @@ DROP VIEW IF EXISTS acute.drones;
 DROP VIEW IF EXISTS acute.what_where_when;
     "##;
 
+    let rm4 = r##"
+DROP VIEW IF EXISTS acute.airprox_summary
+    "##;
+
+    dbh.execute(rm4).await?;
     dbh.execute(rm3).await?;
     dbh.execute(rm2).await?;
     dbh.execute(rm1).await?;
