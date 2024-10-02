@@ -58,7 +58,7 @@ def export_encounters(want_summary, action):
         fname = f"{fname}-summary"
     else:
         logging.info(f"Exporting all encounters for {fname}")
-    fname = outputdir.join(Path(fname).with_suffix('.csv'))
+    fname = os.path.join(outputdir, Path(fname).with_suffix('.csv'))
     output = f"-o {fname}"
     cmd = f"{export_cmd} {output}"
     logging.info(f"Exporting encounters into {fname}")
