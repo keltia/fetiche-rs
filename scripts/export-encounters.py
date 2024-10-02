@@ -31,7 +31,7 @@ datalake = "/acute"
 user = 'acute'
 db = 'acute'
 url = 'reku.eurocontrol.fr:9000'
-export_cmd = "/acute/bin/process-data export distances"
+export_cmd = "process-data export distances"
 
 # Import DB data from env.
 #
