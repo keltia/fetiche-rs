@@ -100,23 +100,6 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
 async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> {
     trace!("retrieving summary records from airplane_prox");
 
-    let r = r##"
-CREATE OR REPLACE TABLE airprox_summary
-ENGINE = Memory
-AS (
-  SELECT
-    en_id,
-    journey,
-    drone_id,
-    min(distance_slant_m) as distance_slant_m
-  FROM
-    airplane_prox
-  GROUP BY
-    en_id,journey,drone_id
-)"##;
-    trace!("Create temp table airprox_summary");
-    client.execute(r).await?;
-
     // Match with airprox_summary for export
     //
     let r1 = r##"
@@ -244,10 +227,12 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
                 match opts.format {
                     Format::Csv => export_all_encounters_csv(&client, fname).await?,
                     Format::Parquet => export_all_encounters_parquet(&client, fname).await?,
-                    _ => return {
-                        eprintln!("Unknown format specified.");
-                        Err(Status::UnknownFormat(opts.format.to_string()).into())
-                    },
+                    _ => {
+                        return {
+                            eprintln!("Unknown format specified.");
+                            Err(Status::UnknownFormat(opts.format.to_string()).into())
+                        }
+                    }
                 }
             };
         }
