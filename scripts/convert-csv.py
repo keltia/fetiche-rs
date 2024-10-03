@@ -41,10 +41,9 @@ def convert_one(fn, action, delete):
     # We have a gzip file.
     #
     if ext == ".gz":
-        print(f"Got a gzip file: {fn}")
+        print(f"{fname}{ext} -> {fname}")
+        logging.info(f"{fname}{ext} -> {fname}")
         if action:
-            print(f"{fname}{ext} -> {fname}")
-            logging.info(f"{fname}{ext} -> {fname}")
             os.system(f"gunzip {fn}")
         ext = Path(fname).suffix
 
