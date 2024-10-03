@@ -178,8 +178,8 @@ CREATE OR REPLACE VIEW acute.what_where_when AS
         i.start_at,
         i.end_at,
         a.type,
-        a.name,
-        s.name
+        a.name AS name,
+        s.name AS site
     FROM installations AS i, antennas AS a, sites AS s
     WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
 )
