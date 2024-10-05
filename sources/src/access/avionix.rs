@@ -212,7 +212,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             let tx1 = tx.clone();
             thread::spawn(move || {
                 trace!("alarm set to {}s", d);
-                thread::sleep(time::Duration::from_secs(d as u64));
+                thread::sleep(d);
                 tx1.send("TIMEOUT".to_string()).unwrap();
             });
             trace!("end of sleep");
