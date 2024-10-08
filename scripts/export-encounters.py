@@ -50,14 +50,16 @@ def export_encounters(want_summary, action):
     :return:
     """
     fname = f"encounters"
+    add_opt = ""
     if want_summary:
         logging.info(f"Exporting summary encounters for {fname}")
         fname = f"{fname}-summary"
+        add_opt = "-S"
     else:
         logging.info(f"Exporting all encounters for {fname}")
     fname = os.path.join(outputdir, Path(fname).with_suffix('.csv'))
     output = f"-o {fname}"
-    cmd = f"{export_cmd} {output}"
+    cmd = f"{export_cmd} {add_opt} {output}"
     logging.info(f"Exporting encounters into {fname}")
     if action:
         ret = run(cmd, shell=True, capture_output=True)
