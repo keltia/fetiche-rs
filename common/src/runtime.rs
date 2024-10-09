@@ -67,10 +67,10 @@ pub fn init_logging(
     // Combine filters & exporters
     //
     tracing_subscriber::registry()
-        .with(file)
         .with(filter)
         .with(tree)
         .with(otlp)
+        .with(file)
         .init();
 
     Ok(())
