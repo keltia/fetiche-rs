@@ -22,18 +22,20 @@ For cron jobs, we use the `direnv exec` command wrapper.
 This is the current crontab running on `acute.eurocontrol.fr`  on my account.
 
 ```cronexp
-# m h  dom mon dow   command
 # fetch drones
 05      0       *       *       *       cd /acute/import && /acute/bin/fetch-asd-drones.py -D /acute -S lux-me
 10      0       *       *       *       cd /acute/import && direnv exec . /acute/bin/import-drones.py -D /acute .
 15      0       *       *       *       cd /acute/import && /acute/bin/dispatch-drops.py --drones -D /acute .
 # Fetch ADS-B
-15      8       *       *       *       cd /acute/import && /acute/bin/fetch-ftp-adsb.py -D /acute
-20      8       *       *       *       cd /acute/import && /acute/bin/convert-csv.py .
-22      8       *       *       *       cd /acute/import && /acute/bin/dispatch-drops.py -D /acute .
-26      0       *       *       *       cd /acute/import && direnv exec . /acute/bin/import-adsb.py -D /acute .
+15      9       *       *       *       cd /acute/import && /acute/bin/fetch-ftp-adsb.py -D /acute
+20      9       *       *       *       cd /acute/import && /acute/bin/convert-csv.py .
+22      9       *       *       *       cd /acute/import && /acute/bin/dispatch-drops.py -D /acute .
+26      9       *       *       *       cd /acute/import && direnv exec . /acute/bin/import-adsb.py -D /acute -d .
+0       10      *       *       *       cd /acute/import && direnv exec . /acute/bin/process-data -F /acute/var/log distances planes ALL yesterday
+10      10      *       *       *       cd /acute/import && /acute/bin/export-encounters.py -D /acute -d /acute/encounters
+12      10      *       *       *       cd /acute/import && /acute/bin/export-encounters.py -D /acute -d /acute/encounters -S
 # sync new data to NAS
-0       9       *       *       *       cd /acute && rsync -avP ./ /mnt/nas/AcuteLake/
+0       11      *       *       *       cd /acute && rsync -avP ./ /mnt/nas/AcuteLake/
 ```
 
 This is used to avoid hardcoding the different DB parameters into every script
@@ -44,6 +46,7 @@ The current `.envrc` is as follows, suitable for all POSIX/Bourne shell variants
 
 ```shell
 export CLICKHOUSE_URL=http://reku.eurocontrol.fr:8123
+export KLICKHOUSE_URL=reku.eurocontrol.fr:9000
 export CLICKHOUSE_HOST=reku.eurocontrol.fr
 export CLICKHOUSE_DB=acute
 export CLICKHOUSE_USER=default
