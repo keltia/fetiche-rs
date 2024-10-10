@@ -24,9 +24,9 @@ hcl-rs = "0.18"
 home = "0.5"
 log = { version = "0.4", features = ["serde", "std"] }
 nom = "7"
-opentelemetry = { version = "0.25", features = ["logs", "metrics"] }
-opentelemetry-otlp = "0.25"
-opentelemetry_sdk = { version = "0.25", features = ["rt-tokio"] }
+opentelemetry = { version = "0.26", features = ["logs", "metrics"] }
+opentelemetry-otlp = "0.26"
+opentelemetry_sdk = { version = "0.26", features = ["rt-tokio"] }
 polars = { version = "0.43", features = ["async", "serde", "lazy", "sql", "strings", "parquet"] }
 reqwest = { version = "0.12", features = ["blocking", "gzip", "json", "socks", "deflate"] }
 rstest = "0.23"
@@ -42,6 +42,6 @@ thiserror = "1.0"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-log = "0.2"
-tracing-opentelemetry = "0.26"
+tracing-opentelemetry = "0.27"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
 tracing-tree = { version = "0.4", features = ["time"] }
