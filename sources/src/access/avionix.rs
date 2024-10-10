@@ -12,6 +12,7 @@ use mini_moka::sync::Cache;
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
 use std::str::FromStr;
@@ -20,7 +21,6 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{thread, time};
-use serde_json::json;
 use tracing::{debug, error, info, trace};
 
 use crate::access::{StatMsg, Stats};
@@ -162,10 +162,13 @@ impl Streamable for AvionixCube {
                 max,
             } => {
                 (Some(min), Some(max))
-            },
+            }
             _ => (None, None)
         };
 
+        let url = if min.is_some() {
+            format!("{}{}")
+        };
         let url = match tm {
             Some(tm) => format!("{}?{}", url, tm),
             _ => url,
@@ -408,10 +411,5 @@ Duration {}s with {}ms window and cache with {} entries for {}s
         // sync; sync; sync
         //
         Ok(())
-    }
-
-
-
-        todo!()
     }
 }
