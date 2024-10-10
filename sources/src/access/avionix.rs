@@ -140,8 +140,8 @@ impl Streamable for AvionixCube {
     const CACHE_MAX: Duration = Duration::from_secs(30);
     /// Cache max entries
     const CACHE_SIZE: u64 = 20;
-
-
+    /// Stats loop
+    const STATS_LOOP: Duration = Duration::from_secs(30);
 
         let mut stream_duration = Duration::new(0, 0);
         let mut stream_interval = MAX_INTERVAL;
@@ -264,7 +264,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         thread::spawn(move || {
             trace!("stats::display");
             loop {
-                thread::sleep(Duration::from_secs(30_u64));
+                thread::sleep(STATS_LOOP);
                 let _ = disp_tx.send(StatMsg::Print);
             }
         });
