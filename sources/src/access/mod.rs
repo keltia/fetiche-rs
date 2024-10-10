@@ -8,6 +8,7 @@ pub use safesky::*;
 mod aeroscope;
 mod asd;
 mod avionix;
+mod error;
 mod flightaware;
 mod opensky;
 mod safesky;

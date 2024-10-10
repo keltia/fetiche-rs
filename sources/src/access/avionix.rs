@@ -20,6 +20,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{thread, time};
+use serde_json::json;
 use tracing::{debug, error, info, trace};
 
 use crate::access::{StatMsg, Stats};
@@ -59,9 +60,9 @@ impl AvionixCube {
         }
     }
 
-        /// Load some data from in-memory loaded config
+    /// Load some data from in-memory loaded config
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("avionixcube::load");
 
@@ -75,11 +76,12 @@ impl AvionixCube {
                     self.api_key = api_key.to_owned();
                     self.user_key = user_key.to_owned();
                 }
-                _ => panic!("nope"),
+                _ => {
+                    error!("Bad auth parameter: {}", json!(auth));
+                    panic!("nope");
+                }
             }
         }
-        // FIXME: should get the entire set of routes
-        //
         self.get = site.route("stream").unwrap().to_owned();
         self
     }
@@ -130,16 +132,16 @@ impl Streamable for AvionixCube {
     fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
         trace!("avionixcube::stream");
 
-    /// Max time we get data for
-    const MAX_INTERVAL: Duration = Duration::from_secs(5);
-    /// Expiration after insert/get
-    const CACHE_IDLE: Duration = Duration::from_secs(10);
-    /// Expiration after insert
-    const CACHE_MAX: Duration = Duration::from_secs(30);
-    /// Cache max entries
-    const CACHE_SIZE: u64 = 20;
-
-
+        /// Max time we get data for
+        const MAX_INTERVAL: Duration = Duration::from_secs(5);
+        /// Expiration after insert/get
+        const CACHE_IDLE: Duration = Duration::from_secs(10);
+        /// Expiration after insert
+        const CACHE_MAX: Duration = Duration::from_secs(30);
+        /// Cache max entries
+        const CACHE_SIZE: u64 = 20;
+        /// Stats loop
+        const STATS_LOOP: Duration = Duration::from_secs(30);
 
         let mut stream_duration = Duration::new(0, 0);
         let mut stream_interval = MAX_INTERVAL;
@@ -172,13 +174,13 @@ impl Streamable for AvionixCube {
         info!(
             r##"
 StreamURL: {}
-Duration {}s with {}ms delay and cache with {} entries for {}s
+Duration {}s with {}ms window and cache with {} entries for {}s
 
 <number>: data packet / ".": no traffic / "*": cache hit
         "##,
             url,
             stream_duration,
-            stream_delay,
+            stream_interval,
             CACHE_SIZE,
             CACHE_IDLE.as_secs(),
         );
@@ -205,7 +207,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
 
         // Timer set?  If yes, launch a sleeper thread
         //
-        if stream_duration != 0 {
+        if stream_duration != Duration::from_secs(0) {
             trace!("setup wakeup alarm");
 
             let d = stream_duration;
@@ -222,8 +224,8 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         //
         let client = self.client.clone();
 
-        let login = self.login.clone();
-        let password = self.password.clone();
+        let api_key = self.api_key.clone();
+        let user_key = self.user_key.clone();
 
         // Launch stat gathering thread.
         //
@@ -262,7 +264,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         thread::spawn(move || {
             trace!("stats::display");
             loop {
-                thread::sleep(Duration::from_secs(30_u64));
+                thread::sleep(STATS_LOOP);
                 let _ = disp_tx.send(StatMsg::Print);
             }
         });
@@ -284,12 +286,13 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             loop {
                 let resp = client
                     .get(&url)
-                    .basic_auth(&login, Some(&password))
                     .header(
                         "user-agent",
                         format!("{}/{}", crate_name!(), crate_version!()),
                     )
                     .header("content-type", "application/json")
+                    .header("api_key", &api_key)
+                    .header("user_key", &user_key)
                     .send();
 
                 // Do not exit thread on server error, sleep and try to recover

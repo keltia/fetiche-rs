@@ -4,6 +4,8 @@ use thiserror::Error;
 ///
 #[derive(Debug, Error)]
 pub enum AuthError {
+    #[error("Bad parameter {0}")]
+    BadParam(String),
     #[error("No API Key")]
     NoAPIKey,
     #[error("Decoding token: {0}")]
