@@ -8,7 +8,7 @@
 
 use chrono::Utc;
 use clap::{crate_name, crate_version};
-use mini_moka::sync::Cache;
+use mini_moka::sync::{Cache, ConcurrentCacheExt};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -166,6 +166,8 @@ impl Streamable for AvionixCube {
             _ => (None, None)
         };
 
+        // Manage url parameters.
+        //
         let url = if min.is_some() {
             format!("{}{}")
         };
@@ -323,7 +325,7 @@ Duration {}s with {}ms window and cache with {} entries for {}s
                         let h = &resp.headers();
                         eprintln!("Error({}): {:?},", code, h);
                         stat_tx.send(StatMsg::Error).expect("stat::error");
-                        thread::sleep(Duration::from_millis(stream_delay as u64));
+                        thread::sleep(stream_interval);
                         continue;
                     }
                 }
@@ -345,10 +347,10 @@ Duration {}s with {}ms window and cache with {} entries for {}s
                         Some(_time) => {
                             eprint!("*");
                             let _ = stat_tx.send(StatMsg::Hits);
-                            thread::sleep(Duration::from_millis(stream_delay as u64));
+                            thread::sleep(stream_interval);
                             continue;
                         }
-                        // No, send it it and cache its `time`
+                        // No, send it and cache its `time`
                         //
                         _ => {
                             eprint!("{},", sl.time);
@@ -376,8 +378,8 @@ Duration {}s with {}ms window and cache with {} entries for {}s
                 }
 
                 // Whatever happened, sleep for to avoid CPU/network overload
-                if stream_delay != 0 {
-                    thread::sleep(Duration::from_millis(stream_delay as u64));
+                if stream_interval != Duration::from_secs(0) {
+                    thread::sleep(stream_interval);
                 }
             }
         });
