@@ -174,13 +174,13 @@ impl Streamable for AvionixCube {
         info!(
             r##"
 StreamURL: {}
-Duration {}s with {}ms delay and cache with {} entries for {}s
+Duration {}s with {}ms window and cache with {} entries for {}s
 
 <number>: data packet / ".": no traffic / "*": cache hit
         "##,
             url,
             stream_duration,
-            stream_delay,
+            stream_interval,
             CACHE_SIZE,
             CACHE_IDLE.as_secs(),
         );
@@ -207,7 +207,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
 
         // Timer set?  If yes, launch a sleeper thread
         //
-        if stream_duration != 0 {
+        if stream_duration != Duration::from_secs(0) {
             trace!("setup wakeup alarm");
 
             let d = stream_duration;
