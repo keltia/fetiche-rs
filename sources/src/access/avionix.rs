@@ -132,16 +132,16 @@ impl Streamable for AvionixCube {
     fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
         trace!("avionixcube::stream");
 
-    /// Max time we get data for
-    const MAX_INTERVAL: Duration = Duration::from_secs(5);
-    /// Expiration after insert/get
-    const CACHE_IDLE: Duration = Duration::from_secs(10);
-    /// Expiration after insert
-    const CACHE_MAX: Duration = Duration::from_secs(30);
-    /// Cache max entries
-    const CACHE_SIZE: u64 = 20;
-    /// Stats loop
-    const STATS_LOOP: Duration = Duration::from_secs(30);
+        /// Max time we get data for
+        const MAX_INTERVAL: Duration = Duration::from_secs(5);
+        /// Expiration after insert/get
+        const CACHE_IDLE: Duration = Duration::from_secs(10);
+        /// Expiration after insert
+        const CACHE_MAX: Duration = Duration::from_secs(30);
+        /// Cache max entries
+        const CACHE_SIZE: u64 = 20;
+        /// Stats loop
+        const STATS_LOOP: Duration = Duration::from_secs(30);
 
         let mut stream_duration = Duration::new(0, 0);
         let mut stream_interval = MAX_INTERVAL;
