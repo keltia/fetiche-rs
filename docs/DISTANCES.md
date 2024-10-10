@@ -6,16 +6,14 @@ See [SCHEMA.md](SCHEMA.md) for the description of the various tables & macros in
 
 ### Main static data (stored in parquet files)
 
-- Parquet files for ASD data from 2021/7 to 2024/1      (490k entries)
-- Parquet files for ADS-B from 2023/1 to 2024/1 for different sites (2.9g entries)
+- Parquet files for ASD data from 2021/7 to 2024/10      (1M entries)
+- Parquet files for ADS-B from 2023/1 to 2024/10 for different sites (7.2B entries)
 
 During the calculations, tables will be created to store the intermediate selections for drones and airplanes. These
 will be named `today` for the planes and `candidates` for the drones. The results will be store into a general table
 called `today_close` from which we will derive our final results for the minimal distance (`encounters`) and the list of
-planes nearby each drone point.
-
-> NOTE: This schema require all calculations to be made in sequence, not in parallel. A possible evolution could be to
-> allow for parallel processing by creating temporary tables named from the "year/month/day".
+planes nearby each drone point. Note that with `process-data` v0.4 these tables are created with a day-specific name
+which enable parallel processing.
 
 ## List of calculations
 
