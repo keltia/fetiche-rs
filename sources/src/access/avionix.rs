@@ -20,6 +20,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{thread, time};
+use serde_json::json;
 use tracing::{debug, error, info, trace};
 
 use crate::access::{StatMsg, Stats};
@@ -59,9 +60,9 @@ impl AvionixCube {
         }
     }
 
-        /// Load some data from in-memory loaded config
+    /// Load some data from in-memory loaded config
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("avionixcube::load");
 
@@ -75,11 +76,12 @@ impl AvionixCube {
                     self.api_key = api_key.to_owned();
                     self.user_key = user_key.to_owned();
                 }
-                _ => panic!("nope"),
+                _ => {
+                    error!("Bad auth parameter: {}", json!(auth));
+                    panic!("nope");
+                }
             }
         }
-        // FIXME: should get the entire set of routes
-        //
         self.get = site.route("stream").unwrap().to_owned();
         self
     }
@@ -212,7 +214,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             let tx1 = tx.clone();
             thread::spawn(move || {
                 trace!("alarm set to {}s", d);
-                thread::sleep(time::Duration::from_secs(d as u64));
+                thread::sleep(d);
                 tx1.send("TIMEOUT".to_string()).unwrap();
             });
             trace!("end of sleep");
@@ -222,8 +224,8 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         //
         let client = self.client.clone();
 
-        let login = self.login.clone();
-        let password = self.password.clone();
+        let api_key = self.api_key.clone();
+        let user_key = self.user_key.clone();
 
         // Launch stat gathering thread.
         //
@@ -284,12 +286,13 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             loop {
                 let resp = client
                     .get(&url)
-                    .basic_auth(&login, Some(&password))
                     .header(
                         "user-agent",
                         format!("{}/{}", crate_name!(), crate_version!()),
                     )
                     .header("content-type", "application/json")
+                    .header("api_key", &api_key)
+                    .header("user_key", &user_key)
                     .send();
 
                 // Do not exit thread on server error, sleep and try to recover
