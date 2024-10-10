@@ -23,7 +23,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-datalake = "/acute"
+datalake = os.getenv('ACUTE_DATALAKE') or '/acute'
 
 
 def convert_one(fn, action, delete):
