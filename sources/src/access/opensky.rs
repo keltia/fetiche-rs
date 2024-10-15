@@ -121,7 +121,7 @@ impl Display for Stats {
 /// Messages to send to the stats threads
 ///
 #[derive(Clone, Debug, Serialize)]
-pub(crate) enum StatMsg {
+enum StatMsg {
     Pkts,
     Bytes(u64),
     Hits,
