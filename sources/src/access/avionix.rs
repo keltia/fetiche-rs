@@ -5,30 +5,51 @@
 //! There are one trait implementation:
 //! - `Streamable`
 //!
+//! There are two options here:
+//! - HTTP call on usual TLS port, not more than 1 call/s with a 5s window
+//! - streaming JSONL records by connecting to port 50007
+//!
+//! We implement the 2nd one as it is simpler and does not need any cache..
+//!
 
 use chrono::Utc;
 use clap::{crate_name, crate_version};
-use mini_moka::sync::{Cache, ConcurrentCacheExt};
-use reqwest::blocking::Client;
-use reqwest::StatusCode;
+use polars::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
+use std::io::Write;
+use std::net::TcpStream;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
+use std::thread;
 use std::time::{Duration, Instant};
-use std::{thread, time};
 use tracing::{debug, error, info, trace};
+use url::Url;
 
-use crate::access::{StatMsg, Stats};
+use crate::access::Stats;
 use crate::{Auth, AuthError, Capability, Filter, Site, Streamable};
 use fetiche_formats::{Format, StateList};
 
-const DEF_SITE: &str = "https://aero-network.com/api";
+/// TCP streaming URL
+const DEF_SITE: &str = "tcp.aero-network.com";
+/// TCP streaming port
+const DEF_PORT: u16 = 50007;
 
+/// Messages to send to the stats threads
+///
+#[derive(Clone, Debug, Serialize)]
+enum StatMsg {
+    Pkts(u32),
+    Bytes(u64),
+    Empty,
+    Error,
+    Print,
+    Exit,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AvionixCube {
@@ -42,10 +63,6 @@ pub struct AvionixCube {
     pub user_key: String,
     /// API site
     pub base_url: String,
-    /// Add this to `base_url` to fetch data
-    pub get: String,
-    /// reqwest blocking client
-    pub client: Client,
     /// Running time (for streams)
     pub duration: i32,
 }
@@ -82,7 +99,6 @@ impl AvionixCube {
                 }
             }
         }
-        self.get = site.route("stream").unwrap().to_owned();
         self
     }
 }
@@ -95,8 +111,6 @@ impl Default for AvionixCube {
             api_key: String::new(),
             user_key: String::new(),
             base_url: String::from(DEF_SITE),
-            get: String::from("/json"),
-            client: Client::new(),
             duration: 0,
         }
     }
@@ -113,7 +127,7 @@ impl Streamable for AvionixCube {
 
     fn authenticate(&self) -> eyre::Result<String, AuthError> {
         trace!("fake token retrieval");
-        Ok(format!("{}:{}", self.api_key, self.user_key))
+        Ok(String::from(""))
     }
 
     /// The main stream function, inspired by Opensky one.
@@ -132,26 +146,27 @@ impl Streamable for AvionixCube {
     fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
         trace!("avionixcube::stream");
 
-        /// Max time we get data for
-        const MAX_INTERVAL: Duration = Duration::from_secs(5);
-        /// Expiration after insert/get
-        const CACHE_IDLE: Duration = Duration::from_secs(10);
-        /// Expiration after insert
-        const CACHE_MAX: Duration = Duration::from_secs(30);
-        /// Cache max entries
-        const CACHE_SIZE: u64 = 20;
         /// Stats loop
         const STATS_LOOP: Duration = Duration::from_secs(30);
+        /// Buffer size
+        const BUFSIZ: usize = 65_536;
+        /// Start the streaming
+        const START_MARKER: &str = "\x02";
 
-        let mut stream_duration = Duration::new(0, 0);
-        let mut stream_interval = MAX_INTERVAL;
+        // Do the connection
+        //
+        let mut conn = TcpStream::connect(&self.base_url)?;
 
-        let now = Utc::now().timestamp();
+        // Send credentials
+        //
+        let auth_str = format!("{}\n{}\n", self.api_key, self.user_key);
+        conn.write(auth_str.as_bytes())?;
+
+        let stream_duration = Duration::new(0, 0);
 
         trace!("avionixcube::stream(as {}:{})", self.api_key, self.user_key);
 
-        let url = format!("{}{}", self.base_url, self.get);
-        trace!("Streaming data from {}…", url);
+        trace!("Streaming data from {}…", self.base_url);
 
         // FIXME: we can have only one argument
         //
@@ -166,28 +181,28 @@ impl Streamable for AvionixCube {
             _ => (None, None)
         };
 
-        // Manage url parameters.
+        // Manage url parameters.  Assume that if one is defined, the other is as well.
         //
-        let url = if min.is_some() {
-            format!("{}{}")
-        };
-        let url = match tm {
-            Some(tm) => format!("{}?{}", url, tm),
-            _ => url,
+        if min.is_some() {
+            let min = min.unwrap();
+            let min_str = format!("min_altitude={min}\n");
+            conn.write(min_str.as_bytes())?;
+        }
+        if max.is_some() {
+            let max = max.unwrap();
+            let max_str = format!("max_altitude={max}\n");
+            conn.write(max_str.as_bytes())?;
         };
 
         info!(
             r##"
 StreamURL: {}
-Duration {}s with {}ms window and cache with {} entries for {}s
+Duration {}s
 
 <number>: data packet / ".": no traffic / "*": cache hit
         "##,
-            url,
-            stream_duration,
-            stream_interval,
-            CACHE_SIZE,
-            CACHE_IDLE.as_secs(),
+            self.base_url,
+            stream_duration.as_secs()
         );
 
         // Infinite loop until we get cancelled or timeout expire
@@ -218,19 +233,12 @@ Duration {}s with {}ms window and cache with {} entries for {}s
             let d = stream_duration;
             let tx1 = tx.clone();
             thread::spawn(move || {
-                trace!("alarm set to {}s", d);
+                trace!("alarm set to {}s", d.as_secs());
                 thread::sleep(d);
                 tx1.send("TIMEOUT".to_string()).unwrap();
             });
             trace!("end of sleep");
         }
-
-        // reqwest::blocking::Client
-        //
-        let client = self.client.clone();
-
-        let api_key = self.api_key.clone();
-        let user_key = self.user_key.clone();
 
         // Launch stat gathering thread.
         //
@@ -242,9 +250,7 @@ Duration {}s with {}ms window and cache with {} entries for {}s
             let mut stats = Stats::default();
             while let Ok(msg) = st_rx.recv() {
                 match msg {
-                    StatMsg::Pkts => stats.pkts += 1,
-                    StatMsg::Hits => stats.hits += 1,
-                    StatMsg::Miss => stats.miss += 1,
+                    StatMsg::Pkts(n) => stats.pkts += n,
                     StatMsg::Empty => stats.empty += 1,
                     StatMsg::Error => stats.err += 1,
                     StatMsg::Bytes(n) => stats.bytes += n,
@@ -277,110 +283,42 @@ Duration {}s with {}ms window and cache with {} entries for {}s
         // Worker thread1
         //
         let stat_tx = st_tx.clone();
+        let conn_wt = conn.clone();
         thread::spawn(move || {
             trace!("Starting worker thread");
 
-            // Cache is local to the worker thread
+            let mut buf = [0u8; BUFSIZ];
+
+            // Start stream
             //
-            let cache = Cache::builder()
-                .max_capacity(CACHE_SIZE)
-                .time_to_idle(CACHE_IDLE)
-                .time_to_live(CACHE_MAX)
-                .build();
-
+            conn_wt.write(START_MARKER)?;
+            conn.flush()?;
             loop {
-                let resp = client
-                    .get(&url)
-                    .header(
-                        "user-agent",
-                        format!("{}/{}", crate_name!(), crate_version!()),
-                    )
-                    .header("content-type", "application/json")
-                    .header("api_key", &api_key)
-                    .header("user_key", &user_key)
-                    .send();
-
-                // Do not exit thread on server error, sleep and try to recover
-                //
-                let resp = match resp {
-                    Ok(resp) => resp,
+                match conn_wt.read(&mut buf) {
+                    Ok(size) => {
+                        trace!("{} bytes read.", size);
+                    }
                     Err(e) => {
                         error!("worker-thread: {}", e.to_string());
                         stat_tx.send(StatMsg::Error).expect("stat::error");
-                        thread::sleep(Duration::from_secs(2));
-                        continue;
-                    }
-                };
-                debug!("{:?}", &resp);
 
-                // Check status of request.  We will ignore any error for now as the server
-                // does not seem to be very stable.  It tends to returns 502 for transient errors.
-                // So we sleep and continue
-                //
-                match resp.status() {
-                    StatusCode::OK => {
-                        trace!("OK");
-                    }
-                    code => {
-                        let h = &resp.headers();
-                        eprintln!("Error({}): {:?},", code, h);
-                        stat_tx.send(StatMsg::Error).expect("stat::error");
-                        thread::sleep(stream_interval);
+                        conn_wt.close()?;
+
+                        // Do the connection again
+                        //
+                        conn_wt = TcpStream::connect(&self.base_url)?;
                         continue;
                     }
                 }
+                debug!("buf={buf}");
 
-                let buf = resp.text().unwrap();
+                let df = JsonLineReader::new(buf).finish()?;
+                debug!("{:?}", df);
 
-                // Retrieve answer and look into it, if answer was empty this should be rather fast
-                //
-                let sl: StateList = serde_json::from_str(buf.as_str()).expect("broken data");
+                let _ = stat_tx.send(StatMsg::Pkts(df.len() as u32));
+                let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
 
-                // Check whether data was returned
-                //
-                if sl.states.is_some() {
-                    // Check whether we've seen it before
-                    //
-                    match cache.get(&sl.time) {
-                        // We have seen it, loop
-                        //
-                        Some(_time) => {
-                            eprint!("*");
-                            let _ = stat_tx.send(StatMsg::Hits);
-                            thread::sleep(stream_interval);
-                            continue;
-                        }
-                        // No, send it and cache its `time`
-                        //
-                        _ => {
-                            eprint!("{},", sl.time);
-
-                            let _ = stat_tx.send(StatMsg::Miss);
-                            let _ = stat_tx.send(StatMsg::Pkts);
-                            let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
-
-                            tx.send(buf).expect("send");
-                            cache.insert(sl.time, true);
-                        }
-                    }
-                } else {
-                    // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
-                    //
-                    let _ = stat_tx.send(StatMsg::Empty);
-
-                    cache.sync();
-                    if cache.entry_count() == 0 {
-                        eprintln!("No traffic, waiting for 2s.");
-                        thread::sleep(Duration::from_secs(2_u64));
-                    } else {
-                        eprint!(".");
-                    }
-                }
-
-                // Whatever happened, sleep for to avoid CPU/network overload
-                if stream_interval != Duration::from_secs(0) {
-                    thread::sleep(stream_interval);
-                }
+                tx.send(buf).expect("send");
             }
         });
 
