@@ -8,7 +8,7 @@ site "aeroscope" {
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
   auth     = "token"
-  routes   = {
+  routes = {
     get = "/drone/get"
   }
 }
@@ -19,7 +19,7 @@ site "asd" {
   format   = "asd"
   base_url = "https://eur.airspacedrone.com/api"
   auth     = "token"
-  routes   = {
+  routes = {
     get = "/journeys/filteredlocations"
   }
 }
@@ -30,7 +30,7 @@ site "lux" {
   format   = "asd"
   base_url = "https://eur.airspacedrone.com/api"
   auth     = "token"
-  routes   = {
+  routes = {
     list = "/journeys"
     get  = "/journeys/$1"
   }
@@ -42,7 +42,7 @@ site "opensky" {
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
   auth     = "login"
-  routes   = {
+  routes = {
     get = "/states/own"
   }
 }
@@ -65,7 +65,18 @@ site "safesky" {
   format   = "safesky"
   base_url = "https://public-api.safesky.app"
   auth     = "api_key"
-  routes   = {
+  routes = {
     get = "/v1/beacons"
+  }
+}
+
+site "avionix" {
+  features = ["fetch"]
+  type     = "drone"
+  format   = "avionixcube"
+  base_url = "tcp.aero-network.com"
+  auth = {
+    api_key  = ""
+    user_key = ""
   }
 }
