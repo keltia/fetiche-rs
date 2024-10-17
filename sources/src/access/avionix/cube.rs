@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
-use std::io::{Read, Write};
+use std::io::{Cursor, Read, Write};
 use std::net::TcpStream;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
@@ -23,6 +23,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tracing::{debug, error, info, trace};
 
+use crate::access::avionix::BUFSIZ;
 use crate::access::Stats;
 use crate::{Auth, AuthError, Capability, Site, Streamable};
 use fetiche_formats::Format;
@@ -128,8 +129,6 @@ impl Streamable for AvionixCube {
 
         /// Stats loop
         const STATS_LOOP: Duration = Duration::from_secs(30);
-        /// Buffer size
-        const BUFSIZ: usize = 65_536;
 
         let stream_duration = Duration::new(0, 0);
 
@@ -229,14 +228,14 @@ Duration {}s
         thread::spawn(move || {
             trace!("Starting worker thread");
 
-            let mut buf = [0u8; BUFSIZ];
+            let mut buf = String::with_capacity(BUFSIZ);
 
             // Start stream
             //
-            let mut conn_wt = TcpStream::connect(&self.base_url)?;
+            let mut conn_wt = TcpStream::connect(&self.base_url).expect("connect socket");
 
             loop {
-                match conn_wt.read(&mut buf) {
+                match conn_wt.read(&mut buf.as_ref()) {
                     Ok(size) => {
                         trace!("{} bytes read.", size);
                     }
@@ -246,16 +245,17 @@ Duration {}s
 
                         // Do the connection again
                         //
-                        conn_wt = TcpStream::connect(&self.base_url)?;
+                        conn_wt = TcpStream::connect(&self.base_url).expect("connect socket");
                         continue;
                     }
                 }
                 debug!("buf={buf}");
 
-                let df = JsonLineReader::new(buf).finish()?;
+                let cur = Cursor::new(buf.as_bytes());
+                let df = JsonLineReader::new(cur).finish().unwrap();
                 debug!("{:?}", df);
 
-                let _ = stat_tx.send(StatMsg::Pkts(df.len() as u32));
+                let _ = stat_tx.send(StatMsg::Pkts(df.iter().len() as u32));
                 let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
 
                 tx.send(buf).expect("send");
@@ -278,7 +278,7 @@ Duration {}s
                     _ => {
                         // Every record is separated with LF
                         //
-                        out.send(format!("{}\n", msg))?;
+                        out.send(format!("{}\n", msg)).expect("send data");
                     }
                 },
                 _ => continue,
