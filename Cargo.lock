@@ -2627,7 +2627,7 @@ dependencies = [
 
 [[package]]
 name = "fetiche-formats"
-version = "0.17.1"
+version = "0.17.2"
 dependencies = [
  "chrono",
  "csv",
