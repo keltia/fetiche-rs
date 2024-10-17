@@ -5,18 +5,78 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
+use serde_with::{serde_as, serde_conv};
 use strum::EnumString;
+
+#[allow(unused_doc_comments)]
+/// Enable deserialization from either i32/f64 into the final i32.
+///
+/// Example:
+/// ```rust
+/// # use eyre::Result;
+/// # use serde_with::{serde_as, serde_conv};
+/// # use serde_json::from_str;
+/// # use serde::Deserialize;
+///
+/// serde_conv!(
+///     FloatAsInt,
+///     u32,
+///     |x: &u32| *x as f64,
+///     |value: f64| -> Result<_, std::convert::Infallible> {
+///         Ok((value + 0.5) as u32)
+///     }
+/// );
+///
+/// #[serde_as]
+///  #[derive(Debug, Deserialize)]
+///  struct Bar {
+///     #[serde_as(as = "FloatAsInt")]
+///     pub trk: u32,
+/// }
+///
+/// fn main() -> Result<()> {
+///    let str = r##"{"trk": 42.3765}"##;
+///    let b: Bar = from_str(str)?;
+///    assert_eq!(b.trk, 42u32);
+///
+///    let str = r##"{"trk": 42.7765}"##;
+///    let b: Bar = from_str(str)?;
+///    assert_eq!(b.trk, 43u32);
+///
+///    let str = r##"{"trk": 666}"##;
+///    let c: Bar = from_str(str)?;
+///    assert_eq!(c.trk, 666u32);
+///
+///     Ok(())
+/// }
+/// ```
+///
+serde_conv!(
+    FloatAsInt,
+    u32,
+    |x: &u32| *x as f64,
+    |value: f64| -> Result<_, std::convert::Infallible> {
+        Ok((value + 0.5) as u32)
+    }
+);
 
 /// Avionix CUBE drone antenna output format
 ///
-/// This is used in the [Aero Network API](https://aero-network.com/api) for drone data..
+/// This is used in the [Aero Network API](https://aero-network.com/api) for drone data
+/// AND
+/// This is used when connecting to the antenna directly through selected port.
+/// Port is 50005/tcp for the json payload.
 ///
-/// Payload is in JSON.
+/// This effectively group all sources into one stream:
+/// - 1090 MHz for ADS-B
+/// - 868 MHz for OGN/FLARM/ADS-L
+/// - 2.4 GHz for Remote-ID
+///
+/// Payload is in JSONL.
 ///
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AvionixData {
+pub struct AvionixCube {
     #[serde(rename = "uti")]
     /// - uti   Timestamp of last message, seconds since 1.1.1970 00:00 UTC -- Integer -- 1576153180
     pub time: u32,
@@ -51,8 +111,9 @@ pub struct AvionixData {
     pub squ: String,
     /// - vrt   Vertical Rate in ft/min -- Integer -- -128
     pub vrt: i32,
-    /// - trk   True track in degrees -- Float -- 154.5
-    pub trk: f64,
+    /// - trk   True track in degrees -- Float -- 154.5 XXX
+    #[serde_as(as = "FloatAsInt")]
+    pub trk: u32,
     /// - mop   Operational performance (0=DO260, 1=DO260A, 2=DO260B) -- Integer -- 0
     pub mop: u32,
     /// - lla   Age of last position update, in seconds -- Integer -- 0
@@ -75,79 +136,6 @@ pub struct AvionixData {
     pub reg: Option<String>,
     /// - cou   Country* -- String -- “Germany”
     pub cou: Option<String>,
-}
-
-/// Avionix CUBE drone antenna output format
-///
-/// This is used when connecting to the antenna directly through selected port.
-/// Port is 50005/tcp for the json payload.
-///
-/// This effectively group all sources into one stream:
-/// - 1090 MHz for ADS-B
-/// - 868 MHz for OGN/FLARM/ADS-L
-/// - 2.4 GHz for Remote-ID
-///
-/// Payload is in JSON.
-///
-#[serde_as]
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CubeData {
-    #[serde(rename = "uti")]
-    /// - uti   Timestamp of last message, seconds since 1.1.1970 00:00 UTC -- Integer -- 1576153180
-    pub time: u32,
-    /// - dat   UTC timestamp of message, time in nanosecond resolution -- String -- “2019-12-12 12:19:40.291276211”
-    pub dat: String,
-    /// - hex   ICAO 24-bit Hex transponder ID -- String -- “44ce6f”
-    pub hex: String,
-    /// - tim   Timestamp of last received message, nanosecond resolution -- String -- “12:19:40.29127621”
-    pub tim: String,
-    /// - fli   Flight Identification/Call Sign -- String -- “EWG3ZX”
-    pub fli: String,
-    /// - lat   Latitude (WGS-84) in decimal degrees -- Float -- 50.902073
-    pub lat: f64,
-    /// - lon   Longitude (WGS-84) in decimal degrees -- Float -- 2.4822274
-    pub lon: f64,
-    /// - gda   Ground/Air status A=Air G=GND -- String -- “G”
-    pub gda: String,
-    /// - src   Source of position -- See  `Src`
-    pub src: String,
-    /// - alt   Altitude in feet 1013 hPa Standard Atmosphere -- Integer -- 5440
-    pub alt: u32,
-    /// - spd   Ground speed in knots -- Integer -- 49
-    pub spd: u32,
-    /// - trk   True track in degrees -- Integer -- 154
-    pub trk: i32,
-    /// - cat   Empty if not known, or A0-C7 for ADS-B/MLAT/Remote-ID or
-    ///         O1-O15 for data on SRD860 (see `Category`) -- String -- “A0”
-    pub cat: String,
-    /// - hgt   Difference between barometric and geometric altitude in ft* -- Integer -- -225
-    pub hgt: Option<i32>,
-    /// - shd   Selected heading* -- Integer -- 293
-    pub shd: Option<u32>,
-    /// - org   ICAO code airport of origin* -- String “EDDK”
-    pub org: Option<String>,
-    /// - dst   ICAO code airport of destination* -- String -- “EPKK”
-    pub dst: Option<String>,
-    /// - opr   Operator* -- String -- “GWI”
-    pub opr: Option<String>,
-    /// - typ   Aircraft type* -- String “A319”
-    pub typ: Option<String>,
-    /// - reg   Registration* -- String “D-AKNM”
-    pub reg: Option<String>,
-    /// - squ   Squawk SSR Mode A code (4 digit octal) -- String -- “5763”
-    pub squ: String,
-    /// - dis   Distance from receiver in km -- Float --
-    pub dis: f64,
-    /// - cou   Country* -- String -- “Germany”
-    pub cou: Option<String>,
-    /// - mop   Operational performance (0=DO260, 1=DO260A, 2=DO260B) -- Integer -- 0
-    pub mop: Option<u32>,
-    /// - tru   Number of packets received for tracked flight -- Integer -- 213
-    pub tru: usize,
-    /// - vrt   Vertical Rate in ft/min -- Integer -- -128239.25
-    pub vrt: i32,
-    /// - lla   Age of last position update, in seconds -- Integer -- 0
-    pub lla: u32,
 }
 
 // -----
