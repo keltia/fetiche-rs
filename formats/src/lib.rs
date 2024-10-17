@@ -105,6 +105,8 @@ pub enum Format {
     AvionixCube,
     /// ADS-B data from the Avionix appliance
     AvionixCat21,
+    /// Avionix ADS-B/FLARM/OGN/RID data from antenna
+    AvionixData,
     /// ECTL Asterix Cat21 flattened CSV
     Cat21,
     /// ECTL Drone specific Asterix Cat129

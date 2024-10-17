@@ -16,7 +16,7 @@ use strum::EnumString;
 ///
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AvionixServer {
+pub struct AvionixData {
     #[serde(rename = "uti")]
     /// - uti   Timestamp of last message, seconds since 1.1.1970 00:00 UTC -- Integer -- 1576153180
     pub time: u32,
@@ -91,7 +91,7 @@ pub struct AvionixServer {
 ///
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AvionixCube {
+pub struct CubeData {
     #[serde(rename = "uti")]
     /// - uti   Timestamp of last message, seconds since 1.1.1970 00:00 UTC -- Integer -- 1576153180
     pub time: u32,
