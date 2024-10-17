@@ -71,9 +71,9 @@ site "safesky" {
 }
 
 site "avionix" {
-  features = ["fetch"]
+  features = ["stream"]
   type     = "drone"
-  format   = "avionixcube"
+  format = "avionixserver"
   base_url = "tcp.aero-network.com"
   auth = {
     api_key  = ""
