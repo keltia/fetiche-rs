@@ -61,6 +61,7 @@ enum_dispatch = "0.3"
 mini-moka = "0.10"
 native-tls = "0.2"
 percent-encoding = "2.3"
+polars-core = "0.43"
 signal-hook = "0.3"
 tap = "1"
 

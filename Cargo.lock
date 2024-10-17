@@ -2692,6 +2692,7 @@ dependencies = [
  "native-tls",
  "percent-encoding",
  "polars",
+ "polars-core",
  "reqwest",
  "rstest",
  "serde",
