@@ -21,7 +21,7 @@ serde_conv!(
     u32,
     |x: &u32| *x as f64,
     |value: f64| -> Result<_, std::convert::Infallible> {
-        Ok(value as u32)
+        Ok((value + 0.5) as u32)
     }
 );
 
@@ -49,11 +49,15 @@ fn main() -> Result<()> {
 
     let str = r##"{"trk": 42.3765}"##;
     let b: Bar = from_str(str)?;
-    dbg!(&b);
+    assert_eq!(b.trk, 42u32);
+
+    let str = r##"{"trk": 42.7765}"##;
+    let b: Bar = from_str(str)?;
+    assert_eq!(b.trk, 43u32);
 
     let str = r##"{"trk": 666}"##;
     let c: Bar = from_str(str)?;
-    dbg!(&c);
+    assert_eq!(c.trk, 666u32);
 
     Ok(())
 }
