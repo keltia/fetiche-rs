@@ -12,14 +12,7 @@
 //! We implement the 2nd one as it is simpler and does not need any cache..
 //!
 
-use chrono::Utc;
-use clap::{crate_name, crate_version};
-use polars::prelude::*;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use signal_hook::consts::TERM_SIGNALS;
-use signal_hook::flag;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
@@ -27,6 +20,14 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
+
+use chrono::Utc;
+use clap::{crate_name, crate_version};
+use polars::prelude::*;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use signal_hook::consts::TERM_SIGNALS;
+use signal_hook::flag;
 use tracing::{debug, error, info, trace};
 
 use crate::access::Stats;
@@ -117,7 +118,7 @@ impl Default for AvionixServer {
 
 impl Streamable for AvionixServer {
     fn format(&self) -> Format {
-        Format::
+        self.format
     }
 
     fn name(&self) -> String {
@@ -282,7 +283,7 @@ Duration {}s
         // Worker thread1
         //
         let stat_tx = st_tx.clone();
-        let conn_wt = conn.clone();
+        let mut conn_wt = conn;
         thread::spawn(move || {
             trace!("Starting worker thread");
 
@@ -290,7 +291,7 @@ Duration {}s
 
             // Start stream
             //
-            conn_wt.write(START_MARKER)?;
+            conn_wt.write(START_MARKER.as_ref())?;
             conn.flush()?;
             loop {
                 match conn_wt.read(&mut buf) {

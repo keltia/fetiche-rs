@@ -8,8 +8,6 @@
 //! TCP Streaming on port 50005
 //!
 
-use chrono::Utc;
-use clap::{crate_name, crate_version};
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -26,8 +24,8 @@ use std::time::{Duration, Instant};
 use tracing::{debug, error, info, trace};
 
 use crate::access::Stats;
-use crate::{Auth, AuthError, Capability, Filter, Site, Streamable};
-use fetiche_formats::{CubeData, Format};
+use crate::{Auth, AuthError, Capability, Site, Streamable};
+use fetiche_formats::Format;
 
 /// TCP streaming port
 const DEF_PORT: u16 = 50005;
@@ -125,47 +123,19 @@ impl Streamable for AvionixCube {
     ///   cached entries
     ///
     #[tracing::instrument(skip(self, out))]
-    fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
+    fn stream(&self, out: Sender<String>, _token: &str, _args: &str) -> eyre::Result<()> {
         trace!("avionixcube::stream");
 
         /// Stats loop
         const STATS_LOOP: Duration = Duration::from_secs(30);
         /// Buffer size
         const BUFSIZ: usize = 65_536;
-        /// Start the streaming
-        const START_MARKER: &str = "\x02";
 
         let stream_duration = Duration::new(0, 0);
 
         trace!("avionixcube::stream");
 
         trace!("Streaming data from {}…", self.base_url);
-
-        // FIXME: we can have only one argument
-        //
-        let args = Filter::from(args);
-        let (min, max) = match args {
-            Filter::Altitude {
-                min,
-                max,
-            } => {
-                (Some(min), Some(max))
-            }
-            _ => (None, None)
-        };
-
-        // Manage url parameters.  Assume that if one is defined, the other is as well.
-        //
-        if min.is_some() {
-            let min = min.unwrap();
-            let min_str = format!("min_altitude={min}\n");
-            conn.write(min_str.as_bytes())?;
-        }
-        if max.is_some() {
-            let max = max.unwrap();
-            let max_str = format!("max_altitude={max}\n");
-            conn.write(max_str.as_bytes())?;
-        };
 
         info!(
             r##"
@@ -273,8 +243,6 @@ Duration {}s
                     Err(e) => {
                         error!("worker-thread: {}", e.to_string());
                         stat_tx.send(StatMsg::Error).expect("stat::error");
-
-                        conn_wt.close()?;
 
                         // Do the connection again
                         //
