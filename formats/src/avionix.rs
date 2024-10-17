@@ -16,7 +16,7 @@ use strum::EnumString;
 ///
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AvionixCube {
+pub struct AvionixServer {
     #[serde(rename = "uti")]
     /// - uti   Timestamp of last message, seconds since 1.1.1970 00:00 UTC -- Integer -- 1576153180
     pub time: u32,
@@ -41,7 +41,7 @@ pub struct AvionixCube {
     /// - altg  Geometric altitude in feet -- Integer -- 5400
     pub altg: u32,
     /// - hgt   Difference between barometric and geometric altitude in ft* -- Integer -- -225
-    pub hgt: i32,
+    pub hgt: Option<i32>,
     /// - spd   Ground speed in knots -- Integer -- 49
     pub spd: u32,
     /// - cat   Empty if not known, or A0-C7 for ADS-B/MLAT/Remote-ID or
@@ -62,19 +62,92 @@ pub struct AvionixCube {
     /// - dbm   Signal strentgh of last received message -- Integer -- -91
     pub dbm: i32,
     /// - shd   Selected heading* -- Integer -- 293
-    pub shd: u32,
+    pub shd: Option<u32>,
     /// - org   ICAO code airport of origin* -- String “EDDK”
-    pub org: String,
+    pub org: Option<String>,
     /// - dst   ICAO code airport of destination* -- String -- “EPKK”
-    pub dst: String,
+    pub dst: Option<String>,
     /// - opr   Operator* -- String -- “GWI”
-    pub opr: String,
+    pub opr: Option<String>,
     /// - typ   Aircraft type* -- String “A319”
-    pub typ: String,
+    pub typ: Option<String>,
     /// - reg   Registration* -- String “D-AKNM”
-    pub reg: String,
+    pub reg: Option<String>,
     /// - cou   Country* -- String -- “Germany”
-    pub cou: String,
+    pub cou: Option<String>,
+}
+
+/// Avionix CUBE drone antenna output format
+///
+/// This is used when connecting to the antenna directly through selected port.
+/// Port is 50005/tcp for the json payload.
+///
+/// This effectively group all sources into one stream:
+/// - 1090 MHz for ADS-B
+/// - 868 MHz for OGN/FLARM/ADS-L
+/// - 2.4 GHz for Remote-ID
+///
+/// Payload is in JSON.
+///
+#[serde_as]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct AvionixCube {
+    #[serde(rename = "uti")]
+    /// - uti   Timestamp of last message, seconds since 1.1.1970 00:00 UTC -- Integer -- 1576153180
+    pub time: u32,
+    /// - dat   UTC timestamp of message, time in nanosecond resolution -- String -- “2019-12-12 12:19:40.291276211”
+    pub dat: String,
+    /// - hex   ICAO 24-bit Hex transponder ID -- String -- “44ce6f”
+    pub hex: String,
+    /// - tim   Timestamp of last received message, nanosecond resolution -- String -- “12:19:40.29127621”
+    pub tim: String,
+    /// - fli   Flight Identification/Call Sign -- String -- “EWG3ZX”
+    pub fli: String,
+    /// - lat   Latitude (WGS-84) in decimal degrees -- Float -- 50.902073
+    pub lat: f64,
+    /// - lon   Longitude (WGS-84) in decimal degrees -- Float -- 2.4822274
+    pub lon: f64,
+    /// - gda   Ground/Air status A=Air G=GND -- String -- “G”
+    pub gda: String,
+    /// - src   Source of position -- See  `Src`
+    pub src: String,
+    /// - alt   Altitude in feet 1013 hPa Standard Atmosphere -- Integer -- 5440
+    pub alt: u32,
+    /// - spd   Ground speed in knots -- Integer -- 49
+    pub spd: u32,
+    /// - trk   True track in degrees -- Integer -- 154
+    pub trk: i32,
+    /// - cat   Empty if not known, or A0-C7 for ADS-B/MLAT/Remote-ID or
+    ///         O1-O15 for data on SRD860 (see `Category`) -- String -- “A0”
+    pub cat: String,
+    /// - hgt   Difference between barometric and geometric altitude in ft* -- Integer -- -225
+    pub hgt: Option<i32>,
+    /// - shd   Selected heading* -- Integer -- 293
+    pub shd: Option<u32>,
+    /// - org   ICAO code airport of origin* -- String “EDDK”
+    pub org: Option<String>,
+    /// - dst   ICAO code airport of destination* -- String -- “EPKK”
+    pub dst: Option<String>,
+    /// - opr   Operator* -- String -- “GWI”
+    pub opr: Option<String>,
+    /// - typ   Aircraft type* -- String “A319”
+    pub typ: Option<String>,
+    /// - reg   Registration* -- String “D-AKNM”
+    pub reg: Option<String>,
+    /// - squ   Squawk SSR Mode A code (4 digit octal) -- String -- “5763”
+    pub squ: String,
+    /// - dis   Distance from receiver in km -- Float --
+    pub dis: f64,
+    /// - cou   Country* -- String -- “Germany”
+    pub cou: Option<String>,
+    /// - mop   Operational performance (0=DO260, 1=DO260A, 2=DO260B) -- Integer -- 0
+    pub mop: Option<u32>,
+    /// - tru   Number of packets received for tracked flight -- Integer -- 213
+    pub tru: usize,
+    /// - vrt   Vertical Rate in ft/min -- Integer -- -128239.25
+    pub vrt: i32,
+    /// - lla   Age of last position update, in seconds -- Integer -- 0
+    pub lla: u32,
 }
 
 // -----
@@ -101,6 +174,8 @@ pub struct AvionixCube {
 /// - VRT: Vertical rate
 /// - MPS: MOPS
 /// - NIC: NucP_NIC
+///
+/// ** DEPRECATED **
 ///
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
