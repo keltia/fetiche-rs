@@ -80,3 +80,10 @@ site "avionix" {
     user_key = ""
   }
 }
+
+site "cube" {
+  features = ["stream"]
+  type     = "drone"
+  format   = "avionixcube"
+  base_url = "PUT_IP_HERE"
+}
