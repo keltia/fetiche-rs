@@ -227,6 +227,44 @@ Initial data is loaded with:
 clickhouse client -d acute -q "insert into acute.drones from infile 'data/drones/**/*.parquet' format parquet"
 ```
 
+AVIONIX streaming data:
+
+```sql
+CREATE OR REPLACE TABLE acute.avionix_drones_raw
+(
+    uti  INT,
+    dat  VARCHAR, ,
+    hex  VARCHAR,
+    tim  VARCHAR,
+    fli  VARCHAR,
+    lat  DOUBLE,
+    lon  DOUBLE,
+    gda  VARCHAR,
+    src  VARCHAR,
+    alt  INT,
+    altg INT,
+    hgt  INT,
+    spd  INT,
+    cat  VARCHAR,
+    squ  VARCHAR,
+    vrt  INT,
+    trk  DOUBLE,
+    mop  INT,
+    lla  INT,
+    tru  INT,
+    dbm  INT,
+    shd  INT,
+    org  INT,
+    dst  INT,
+    opr  VARCHAR,
+    typ  VARCHAR,
+    reg  VARCHAR,
+    cou  VARCHAR,
+)
+    ENGINE = MergeTree PRIMARY KEY (uti, fli)
+        COMMENT 'Raw positions for drones from Cube.'
+```
+
 Updating the distances:
 
 ```sql
