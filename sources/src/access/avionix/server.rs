@@ -12,8 +12,10 @@
 //! We implement the 2nd one as it is simpler and does not need any cache..
 //!
 
+use std::fmt::{Display, Formatter};
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::mem::copy;
+use std::net::{Shutdown, TcpStream};
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
@@ -72,9 +74,7 @@ impl AvionixServer {
     pub fn new() -> Self {
         trace!("avionixserver::new");
 
-        Self {
-            ..Self::default()
-        }
+        Self { ..Self::default() }
     }
 
     /// Load some data from in-memory loaded config
@@ -87,9 +87,7 @@ impl AvionixServer {
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
             match auth {
-                Auth::UserKey {
-                    api_key, user_key
-                } => {
+                Auth::UserKey { api_key, user_key } => {
                     self.api_key = api_key.to_owned();
                     self.user_key = user_key.to_owned();
                 }
@@ -117,10 +115,6 @@ impl Default for AvionixServer {
 }
 
 impl Streamable for AvionixServer {
-    fn format(&self) -> Format {
-        self.format
-    }
-
     fn name(&self) -> String {
         String::from("AvionixServer")
     }
@@ -132,15 +126,8 @@ impl Streamable for AvionixServer {
 
     /// The main stream function, inspired by Opensky one.
     ///
-    /// We have a 5s window for drone movements so we need to poll every 5s, we cache all records
-    /// during that 5s window to avoid dups.
-    ///
     /// Right now it runs until killed by Ctrl+C or the timer expire (if set).
     ///
-    /// The cache might be overkill because keeping only the last timestamp might be enough but:
-    /// - it is easy to code and use
-    /// - it helps to determine whether we had lack of traffic for a longer time if we have no
-    ///   cached entries
     ///
     #[tracing::instrument(skip(self, out))]
     fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
@@ -152,6 +139,23 @@ impl Streamable for AvionixServer {
         const BUFSIZ: usize = 65_536;
         /// Start the streaming
         const START_MARKER: &str = "\x02";
+
+        struct BUFFER([u8; BUFSIZ]);
+
+        impl FromStr for BUFFER {
+            type Err = ();
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                let b = s.as_bytes();
+                b.try_conv()
+            }
+        }
+
+        impl Display for BUFFER {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", self.to_string())
+            }
+        }
 
         // Do the connection
         //
@@ -172,13 +176,8 @@ impl Streamable for AvionixServer {
         //
         let args = Filter::from(args);
         let (min, max) = match args {
-            Filter::Altitude {
-                min,
-                max,
-            } => {
-                (Some(min), Some(max))
-            }
-            _ => (None, None)
+            Filter::Altitude { min, max } => (Some(min), Some(max)),
+            _ => (None, None),
         };
 
         // Manage url parameters.  Assume that if one is defined, the other is as well.
@@ -223,7 +222,7 @@ Duration {}s
         // out as a `dyn Write` is not `Send` so we can not use it within a thread.  Use channels
         // to work around this.
         //
-        let (tx, rx) = channel::<String>();
+        let (tx, rx) = channel::<BUFFER>();
 
         // Timer set?  If yes, launch a sleeper thread
         //
@@ -235,7 +234,7 @@ Duration {}s
             thread::spawn(move || {
                 trace!("alarm set to {}s", d.as_secs());
                 thread::sleep(d);
-                tx1.send("TIMEOUT".to_string()).unwrap();
+                tx1.send("TIMEOUT".into()).unwrap();
             });
             trace!("end of sleep");
         }
@@ -294,7 +293,7 @@ Duration {}s
             conn_wt.write(START_MARKER.as_ref())?;
             conn.flush()?;
             loop {
-                match conn_wt.read(&mut buf) {
+                match conn.read(&mut buf) {
                     Ok(size) => {
                         trace!("{} bytes read.", size);
                     }
@@ -302,23 +301,21 @@ Duration {}s
                         error!("worker-thread: {}", e.to_string());
                         stat_tx.send(StatMsg::Error).expect("stat::error");
 
-                        conn_wt.close()?;
+                        conn.shutdown(Shutdown::Both)?;
 
                         // Do the connection again
                         //
-                        conn_wt = TcpStream::connect(&self.base_url)?;
+                        conn = TcpStream::connect(&self.base_url)?;
                         continue;
                     }
                 }
-                debug!("buf={buf}");
-
-                let df = JsonLineReader::new(buf).finish()?;
+                let df = JsonLineReader::new(&buf[..]).finish()?;
                 debug!("{:?}", df);
 
                 let _ = stat_tx.send(StatMsg::Pkts(df.len() as u32));
                 let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
 
-                tx.send(buf).expect("send");
+                tx.send(buf.into()).expect("send");
             }
         });
 
@@ -351,5 +348,9 @@ Duration {}s
         // sync; sync; sync
         //
         Ok(())
+    }
+
+    fn format(&self) -> Format {
+        Format::CubeData
     }
 }
