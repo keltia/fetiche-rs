@@ -15,7 +15,7 @@ mod flightaware;
 mod opensky;
 mod safesky;
 
-/// Statistics gathering struct
+/// Statistics gathering struct, should be generic enough for most sources
 ///
 #[derive(Clone, Debug, Default, Serialize)]
 pub(crate) struct Stats {
