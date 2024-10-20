@@ -33,6 +33,7 @@ use tracing::{debug, error, info, trace};
 
 use fetiche_formats::{Format, StateList};
 
+use crate::access::Stats;
 use crate::{http_get_basic, Auth, Capability, Fetchable, Filter, Streamable};
 use crate::{AuthError, Site};
 
