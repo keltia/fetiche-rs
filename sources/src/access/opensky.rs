@@ -12,7 +12,6 @@
 //! So now we cache them.
 //!
 
-use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
