@@ -4,7 +4,6 @@
 //
 
 use std::io::{stderr, Write};
-use std::thread;
 use std::time::Duration;
 
 use eyre::Result;
@@ -13,10 +12,12 @@ use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
 use tokio::signal::windows::ctrl_c;
 use tokio::sync::mpsc;
+use tokio::time::sleep;
 
 // If 0, infinite wait, need SIGINT to sop
 //
 const SLEEP: u64 = 20;
+const WAIT: Duration = Duration::from_secs(2u64);
 
 async fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
     // Launch it!
@@ -32,8 +33,8 @@ async fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
         //
         eprintln!("setup alarm");
         tokio::spawn(async move {
-            thread::sleep(Duration::from_secs(SLEEP));
-            tx1.send("bing!").await.unwrap();
+            sleep(Duration::from_secs(SLEEP)).await;
+            tx1.send("\nbing!").await.unwrap();
         });
     }
 
@@ -50,8 +51,10 @@ async fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
     eprintln!("working...");
     tokio::spawn(async move {
         loop {
-            thread::sleep(Duration::from_secs(2_u64));
-            tx.send(".").await.unwrap();
+            sleep(WAIT).await;
+            if let Err(_) = tx.send(".").await {
+                break;
+            }
         }
     });
 
