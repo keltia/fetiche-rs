@@ -34,6 +34,11 @@ Which DB to use
 - `CLICKHOUSE_USER`
 - `CLICKHOUSE_PASSWD`
 
+- `KLICKHOUSE_URL`
+
+URL to connect to the [Clickhouse] database through the native protocol and not HTTP. Default port is 9000. No schema,
+just a host and port.
+
 ## Shell (UNIX)
 
 - `env.sh`
