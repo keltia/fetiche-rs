@@ -8,12 +8,7 @@
 //! TCP Streaming on port 50005
 //!
 
-use polars::prelude::*;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use signal_hook::consts::TERM_SIGNALS;
-use signal_hook::flag;
-use std::io::{Cursor, Read, Write};
+use std::io::{BufReader, Cursor, Read};
 use std::net::TcpStream;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
@@ -21,6 +16,13 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
+
+use polars::prelude::*;
+use reqwest::Url;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use signal_hook::consts::TERM_SIGNALS;
+use signal_hook::flag;
 use tracing::{debug, error, info, trace};
 
 use crate::access::avionix::BUFSIZ;
@@ -37,6 +39,7 @@ const DEF_PORT: u16 = 50005;
 enum StatMsg {
     Pkts(u32),
     Bytes(u64),
+    Reconnect,
     Empty,
     Error,
     Print,
@@ -60,9 +63,7 @@ impl AvionixCube {
     pub fn new() -> Self {
         trace!("avionixcube::new");
 
-        Self {
-            ..Self::default()
-        }
+        Self { ..Self::default() }
     }
 
     /// Load some data from in-memory loaded config
@@ -195,6 +196,7 @@ Duration {}s
                     StatMsg::Pkts(n) => stats.pkts += n,
                     StatMsg::Empty => stats.empty += 1,
                     StatMsg::Error => stats.err += 1,
+                    StatMsg::Reconnect => stats.reconnect += 1,
                     StatMsg::Bytes(n) => stats.bytes += n,
                     StatMsg::Print => {
                         stats.tm = start.elapsed().as_secs();
@@ -222,20 +224,28 @@ Duration {}s
             }
         });
 
+        let url = self.base_url.clone();
+        // if url has no port, add it
+        //
+        let url = match Url::from_str(&url)?.port() {
+            Some(_) => url,
+            None => format!("{}:{}", url, DEF_PORT),
+        };
+
         // Worker thread1
         //
         let stat_tx = st_tx.clone();
         thread::spawn(move || {
             trace!("Starting worker thread");
 
-            let mut buf = String::with_capacity(BUFSIZ);
-
             // Start stream
             //
-            let mut conn_wt = TcpStream::connect(&self.base_url).expect("connect socket");
+            let mut conn_wt = BufReader::new(TcpStream::connect(&url).expect("connect socket"));
 
             loop {
-                match conn_wt.read(&mut buf.as_ref()) {
+                let mut buf = [0u8; BUFSIZ];
+
+                match conn_wt.read(&mut buf) {
                     Ok(size) => {
                         trace!("{} bytes read.", size);
                     }
@@ -245,20 +255,22 @@ Duration {}s
 
                         // Do the connection again
                         //
-                        conn_wt = TcpStream::connect(&self.base_url).expect("connect socket");
+                        stat_tx.send(StatMsg::Reconnect).expect("stat::exit");
+                        conn_wt = BufReader::new(TcpStream::connect(&url).expect("connect socket"));
                         continue;
                     }
                 }
-                debug!("buf={buf}");
+                debug!("buf={buf:?}");
 
-                let cur = Cursor::new(buf.as_bytes());
+                let cur = Cursor::new(&buf);
                 let df = JsonLineReader::new(cur).finish().unwrap();
                 debug!("{:?}", df);
 
                 let _ = stat_tx.send(StatMsg::Pkts(df.iter().len() as u32));
-                let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
+                let _ = stat_tx.send(StatMsg::Bytes(buf.as_ref().len() as u64));
 
-                tx.send(buf).expect("send");
+                tx.send(String::from_utf8(buf.to_vec()).unwrap())
+                    .expect("send");
             }
         });
 

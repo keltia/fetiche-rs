@@ -12,7 +12,7 @@
 //! We implement the 2nd one as it is simpler and does not need any cache..
 //!
 
-use std::io::{Cursor, Read, Write};
+use std::io::{BufReader, BufWriter, Cursor, Read, Write};
 use std::net::{Shutdown, TcpStream};
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
@@ -22,6 +22,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use polars::prelude::*;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use signal_hook::consts::TERM_SIGNALS;
@@ -44,6 +45,7 @@ const DEF_PORT: u16 = 50007;
 enum StatMsg {
     Pkts(u32),
     Bytes(u64),
+    Reconnect,
     Empty,
     Error,
     Print,
@@ -186,6 +188,7 @@ impl Streamable for AvionixServer {
                     StatMsg::Pkts(n) => stats.pkts += n,
                     StatMsg::Empty => stats.empty += 1,
                     StatMsg::Error => stats.err += 1,
+                    StatMsg::Reconnect => stats.reconnect += 1,
                     StatMsg::Bytes(n) => stats.bytes += n,
                     StatMsg::Print => {
                         stats.tm = start.elapsed().as_secs();
@@ -216,21 +219,33 @@ impl Streamable for AvionixServer {
         // Worker thread1
         //
         let stat_tx = st_tx.clone();
-        let args = args.clone();
+        let args = args.to_owned();
         let url = self.base_url.clone();
         let api_key = self.api_key.clone();
         let user_key = self.user_key.clone();
+
+        // if url has no port, add it
+        //
+        let url = match Url::from_str(&url)?.port() {
+            Some(_) => url,
+            None => format!("{}:{}", url, DEF_PORT),
+        };
+
         thread::spawn(move || {
             trace!("Starting worker thread");
 
             // Do the connection
             //
-            let mut conn = TcpStream::connect(url).expect("connect failed");
+            let mut conn = TcpStream::connect(&url).expect("connect socket");
+            let mut conn_in = BufReader::new(&conn);
+            let mut conn_out = BufWriter::new(&conn);
 
             // Send credentials
             //
-            let auth_str = format!("{}\n{}\n", self.api_key, self.user_key);
-            conn.write(auth_str.as_bytes()).expect("auth write failed");
+            let auth_str = format!("{}\n{}\n", api_key, user_key);
+            conn_out
+                .write(auth_str.as_bytes())
+                .expect("auth write failed");
 
             trace!("avionixcube::stream(as {}:{})", api_key, user_key);
 
@@ -247,16 +262,16 @@ impl Streamable for AvionixServer {
             if min.is_some() {
                 let min = min.unwrap();
                 let min_str = format!("min_altitude={min}\n");
-                conn.write(min_str.as_bytes()).expect("write failed");
+                let _ = conn_out.write(min_str.as_bytes());
             }
             if max.is_some() {
                 let max = max.unwrap();
                 let max_str = format!("max_altitude={max}\n");
-                conn.write(max_str.as_bytes()).expect("write failed");
+                let _ = conn_out.write(max_str.as_bytes());
             };
 
             info!(
-            r##"
+                r##"
 StreamURL: {}
 Duration {}s
 
@@ -266,14 +281,15 @@ Duration {}s
                 stream_duration.as_secs()
             );
 
-            let mut buf = String::with_capacity(BUFSIZ);
-
             // Start stream
             //
-            conn.write(START_MARKER.as_ref()).expect("failed to write marker");
-            conn.flush().expect("flush marker");
+            let _ = conn_out.write(START_MARKER.as_ref());
+            let _ = conn_out.flush().expect("flush marker");
+
             loop {
-                match conn.read(&mut buf.as_ref()) {
+                let mut buf = [0u8; BUFSIZ];
+
+                match conn_in.read(&mut buf) {
                     Ok(size) => {
                         trace!("{} bytes read.", size);
                     }
@@ -283,20 +299,30 @@ Duration {}s
 
                         conn.shutdown(Shutdown::Both).expect("shutdown socket");
 
+                        // We need to drop otherwise `conn`  still remains.
+                        //
+                        drop(conn_in);
+                        drop(conn_out);
+
+                        let _ = stat_tx.send(StatMsg::Reconnect).expect("stat::reconnect");
+
                         // Do the connection again
                         //
-                        conn = TcpStream::connect(&self.base_url).expect("connect socket");
+                        conn = TcpStream::connect(&url).expect("connect socket");
+                        conn_in = BufReader::new(&conn);
+                        conn_out = BufWriter::new(&conn);
                         continue;
                     }
                 }
-                let cur = Cursor::new(buf.as_bytes());
+                let cur = Cursor::new(&buf);
                 let df = JsonLineReader::new(cur).finish().expect("create dataframe");
                 debug!("{:?}", df);
 
                 let _ = stat_tx.send(StatMsg::Pkts(df.iter().len() as u32));
                 let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
 
-                tx.send(buf).expect("send");
+                tx.send(String::from_utf8(buf.to_vec()).unwrap())
+                    .expect("send");
             }
         });
 
