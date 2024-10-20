@@ -95,29 +95,6 @@ struct Credentials {
     password: String,
 }
 
-/// Statistics gathering struct
-///
-#[derive(Clone, Debug, Default, Serialize)]
-pub(crate) struct Stats {
-    pub tm: u64,
-    pub pkts: u32,
-    pub bytes: u64,
-    pub hits: u32,
-    pub miss: u32,
-    pub empty: u32,
-    pub err: u32,
-}
-
-impl Display for Stats {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "time={}s pkts={} bytes={} hits={} miss={} empty={} errors={}",
-            self.tm, self.pkts, self.bytes, self.hits, self.miss, self.empty, self.err
-        )
-    }
-}
-
 /// Messages to send to the stats threads
 ///
 #[derive(Clone, Debug, Serialize)]
