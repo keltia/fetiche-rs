@@ -1,20 +1,49 @@
 //! Preliminary results:
 //!
+//! Mac Studio 2020, M2 Pro, 64 GB RAM, 4 TB SSD
 //! ```text
 //!      Running benches/csv-to-parquet.rs (/Users/roberto/Src/Rust/src/fetiche-ch/target/release/deps/csv_to_parquet-db04090f49b98705)
-//! Gnuplot not found, using plotters backend
-//! start arrow2
+//!
 //! using_arrow2            time:   [179.19 ms 182.50 ms 186.09 ms]
 //!
-//! start df
 //! using_df                time:   [111.15 ms 113.77 ms 116.77 ms]
 //! Found 1 outliers among 20 measurements (5.00%)
 //!   1 (5.00%) high mild
 //!
-//! start polars
 //! using_polars            time:   [68.143 ms 69.217 ms 70.438 ms]
 //! Found 1 outliers among 20 measurements (5.00%)
 //!   1 (5.00%) high mild
+//! ```
+//!
+//! PC, Windows 10, Core i5 9600K, 12 GB, 500 MB SSD
+//! ```text
+//!
+//!      Running benches\csv-to-parquet.rs (C:\Users\roberto\Src\rs\src\fetiche-rs\target\release\deps\csv_to_parquet-61edbcd77c3f9daa.exe)
+//!
+//! using_arrow2            time:   [357.84 ms 361.03 ms 364.42 ms]
+//!                         change: [-13.136% -8.2239% -4.0771%] (p = 0.00 < 0.05)
+//!
+//! using_df                time:   [347.12 ms 352.41 ms 358.39 ms]
+//!                         change: [-17.955% -10.217% -2.9559%] (p = 0.01 < 0.05)
+//! Found 2 outliers among 20 measurements (10.00%)
+//!   2 (10.00%) high mild
+//!
+//! using_polars            time:   [59.110 ms 60.930 ms 63.295 ms]
+//!                         change: [-2.8290% +0.4680% +4.5345%] (p = 0.83 > 0.05)
+//!
+//! Found 3 outliers among 20 measurements (15.00%)
+//!   1 (5.00%) high mild
+//!   2 (10.00%) high severe
+//! ```
+//!
+//! File sizes for 9999 records.
+//! ```text
+//! Mode                 LastWriteTime         Length Name
+//! ----                 -------------         ------ ----
+//! -a---          10/09/2024    18:49        3178176 test-bench.csv
+//! -a---          21/10/2024    18:14         651711 test-arrow2.parquet
+//! -a---          21/10/2024    18:14         667616 test-df.parquet
+//! -a---          21/10/2024    18:15         603072 test-polars.parquet
 //! ```
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
@@ -46,7 +75,7 @@ fn use_df(c: &mut Criterion) {
                 .build()
                 .unwrap(),
         )
-            .iter(|| async { parquet_through_df().await.unwrap() });
+        .iter(|| async { parquet_through_df().await.unwrap() });
     });
 }
 
