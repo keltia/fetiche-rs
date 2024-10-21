@@ -1,6 +1,6 @@
 //! Avionix Cube module.
 //!
-//! This module is for the Avionix Cube antenna direct access which means no filters and no auth
+//! This module is for the Avionix Cube antenna direct access which means reduced filters and no auth.
 //!
 //! There are one trait implementation:
 //! - `Streamable`
@@ -27,7 +27,7 @@ use tracing::{debug, error, info, trace};
 
 use crate::access::avionix::BUFSIZ;
 use crate::access::Stats;
-use crate::{Auth, AuthError, Capability, Site, Streamable};
+use crate::{Auth, AuthError, Capability, Filter, Site, Streamable};
 use fetiche_formats::Format;
 
 /// TCP streaming port
@@ -99,10 +99,6 @@ impl Default for AvionixCube {
 }
 
 impl Streamable for AvionixCube {
-    fn format(&self) -> Format {
-        self.format
-    }
-
     fn name(&self) -> String {
         String::from("AvionixCube")
     }
@@ -125,15 +121,18 @@ impl Streamable for AvionixCube {
     ///   cached entries
     ///
     #[tracing::instrument(skip(self, out))]
-    fn stream(&self, out: Sender<String>, _token: &str, _args: &str) -> eyre::Result<()> {
+    fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
         trace!("avionixcube::stream");
 
         /// Stats loop
         const STATS_LOOP: Duration = Duration::from_secs(30);
 
-        let stream_duration = Duration::new(0, 0);
+        let args = Filter::from(args);
 
-        trace!("avionixcube::stream");
+        let stream_duration = match args {
+            Filter::Altitude { duration, .. } => { Duration::from_secs(duration as u64) }
+            _ => Duration::new(0, 0)
+        };
 
         trace!("Streaming data from {}…", self.base_url);
 
@@ -141,8 +140,6 @@ impl Streamable for AvionixCube {
             r##"
 StreamURL: {}
 Duration {}s
-
-<number>: data packet / ".": no traffic / "*": cache hit
         "##,
             self.base_url,
             stream_duration.as_secs()
@@ -303,5 +300,9 @@ Duration {}s
         // sync; sync; sync
         //
         Ok(())
+    }
+
+    fn format(&self) -> Format {
+        self.format
     }
 }

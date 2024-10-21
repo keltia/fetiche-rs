@@ -130,13 +130,18 @@ impl Streamable for AvionixServer {
     ///
     #[tracing::instrument(skip(self, out))]
     fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
-        trace!("avionixcube::stream");
+        trace!("avionixserver::stream");
 
         /// Stats loop
         const STATS_LOOP: Duration = Duration::from_secs(30);
         const START_MARKER: &str = "\x02";
 
-        let stream_duration = Duration::new(0, 0);
+        let args = Filter::from(args);
+
+        let stream_duration = match args {
+            Filter::Altitude { duration, .. } => { Duration::from_secs(duration as u64) }
+            _ => Duration::new(0, 0)
+        };
 
         trace!("Streaming data from {}…", self.base_url);
 
@@ -170,6 +175,7 @@ impl Streamable for AvionixServer {
             thread::spawn(move || {
                 trace!("alarm set to {}s", d.as_secs());
                 thread::sleep(d);
+                info!("DING for {}", d.as_secs());
                 tx1.send("TIMEOUT".into()).unwrap();
             });
             trace!("end of sleep");
@@ -192,7 +198,7 @@ impl Streamable for AvionixServer {
                     StatMsg::Bytes(n) => stats.bytes += n,
                     StatMsg::Print => {
                         stats.tm = start.elapsed().as_secs();
-                        eprintln!("Stats: {}", stats)
+                        info!("Stats: {}", stats)
                     }
                     // The end
                     StatMsg::Exit => {
@@ -201,7 +207,7 @@ impl Streamable for AvionixServer {
                     }
                 }
             }
-            eprintln!("\nSession: {}", stats);
+            info!("\nSession: {}", stats);
             trace!("end of stats thread");
         });
 
@@ -212,6 +218,7 @@ impl Streamable for AvionixServer {
             trace!("stats::display");
             loop {
                 thread::sleep(STATS_LOOP);
+                trace!("TICK");
                 let _ = disp_tx.send(StatMsg::Print);
             }
         });
@@ -219,7 +226,6 @@ impl Streamable for AvionixServer {
         // Worker thread1
         //
         let stat_tx = st_tx.clone();
-        let args = args.to_owned();
         let url = self.base_url.clone();
         let api_key = self.api_key.clone();
         let user_key = self.user_key.clone();
@@ -236,6 +242,7 @@ impl Streamable for AvionixServer {
 
             // Do the connection
             //
+            trace!("tcp::connect");
             let mut conn = TcpStream::connect(&url).expect("connect socket");
             let mut conn_in = BufReader::new(&conn);
             let mut conn_out = BufWriter::new(&conn);
@@ -251,9 +258,8 @@ impl Streamable for AvionixServer {
 
             // FIXME: we can have only one argument
             //
-            let args = Filter::from(args);
             let (min, max) = match args {
-                Filter::Altitude { min, max } => (Some(min), Some(max)),
+                Filter::Altitude { min, max, .. } => (Some(min), Some(max)),
                 _ => (None, None),
             };
 
@@ -274,8 +280,6 @@ impl Streamable for AvionixServer {
                 r##"
 StreamURL: {}
 Duration {}s
-
-<number>: data packet / ".": no traffic / "*": cache hit
         "##,
                 url,
                 stream_duration.as_secs()
@@ -285,7 +289,7 @@ Duration {}s
             //
             let _ = conn_out.write(START_MARKER.as_ref());
             let _ = conn_out.flush().expect("flush marker");
-
+            trace!("avionixcube::stream started");
             loop {
                 let mut buf = [0u8; BUFSIZ];
 
