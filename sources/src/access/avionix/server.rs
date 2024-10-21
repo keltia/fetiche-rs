@@ -9,7 +9,9 @@
 //! - HTTP call on usual TLS port, not more than 1 call/s with a 5s window
 //! - streaming JSONL records by connecting to port 50007
 //!
-//! We implement the 2nd one as it is simpler and does not need any cache..
+//! We implement the 2nd one as it is simpler and does not need any cache.
+//!
+//! NOTE: the flow includes several kind of data, drones and airplanes.
 //!
 
 use std::io::{BufReader, BufWriter, Cursor, Read, Write};

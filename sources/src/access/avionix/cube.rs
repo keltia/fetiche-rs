@@ -7,6 +7,8 @@
 //!
 //! TCP Streaming on port 50005
 //!
+//! NOTE: the flow includes several kind of data, drones and airplanes.
+//!
 
 use std::io::{BufReader, Cursor, Read};
 use std::net::TcpStream;
