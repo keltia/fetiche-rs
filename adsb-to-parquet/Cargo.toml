@@ -33,7 +33,6 @@ log.workspace = true
 opentelemetry.workspace = true
 opentelemetry-otlp.workspace = true
 opentelemetry_sdk.workspace = true
-parquet2.workspace = true
 serde.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -43,6 +42,7 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 arrow2 = { version = "0.18", features = ["io_csv", "io_parquet"] }
+parquet2 = "0.17"
 rayon = "1.10"
 polars = { version = "0.43", features = ["lazy", "parquet", "csv"] }
 [dev-dependencies]
