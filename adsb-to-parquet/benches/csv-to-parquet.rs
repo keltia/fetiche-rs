@@ -1,6 +1,6 @@
 //! Preliminary results:
 //!
-//! Mac Studio 2020, M2 Pro, 64 GB RAM, 4 TB SSD
+//! Mac Studio 2020, M2 Pro, 64 GB RAM, 4 TB NVMe SSD, macOS 14.6 Sonoma
 //! ```text
 //!      Running benches/csv-to-parquet.rs (/Users/roberto/Src/Rust/src/fetiche-ch/target/release/deps/csv_to_parquet-db04090f49b98705)
 //!
@@ -15,7 +15,7 @@
 //!   1 (5.00%) high mild
 //! ```
 //!
-//! PC, Windows 10, Core i5 9600K, 12 GB, 500 MB SSD
+//! PC, Windows 10 22H2, Core i5 9600K, 16 GB, 500 MB M2 SSD
 //! ```text
 //!
 //!      Running benches\csv-to-parquet.rs (C:\Users\roberto\Src\rs\src\fetiche-rs\target\release\deps\csv_to_parquet-61edbcd77c3f9daa.exe)
