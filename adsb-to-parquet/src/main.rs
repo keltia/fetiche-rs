@@ -24,7 +24,7 @@ const NAME: &str = "adsb-to-parquet";
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
-    init_logging(NAME, false, true, true)?;
+    init_logging(NAME, false, true, Some("".to_string()))?;
     trace!("Logging initialised.");
 
     // Generate our basename
