@@ -9,7 +9,8 @@ use serde_with::{serde_as, serde_conv};
 use strum::EnumString;
 
 #[allow(unused_doc_comments)]
-/// Enable deserialization from either i32/f64 into the final i32.
+/// Enable deserialization from either i32/f64 into the final i32.  Value is rounded up or down as
+/// needed.
 ///
 /// Example:
 /// ```rust
