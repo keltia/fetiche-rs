@@ -4,8 +4,8 @@
 //! This is used to pass arguments to sources but maybe be extended in the future.  This is different
 //! from an argument or a set of arguments.
 //!
-//! XXX It might be useful to simplify all this, maybe at some point a nom-based parser?  We have
-//!     to define a syntax first.
+//! FIXME It might be useful to simplify all this, maybe at some point a nom-based parser?  We have
+//!       to define a syntax first.
 //!
 
 use chrono::{DateTime, Utc};
@@ -28,7 +28,11 @@ pub enum Filter {
     /// Duration as length of time in seconds (can be negative to go in the past for N seconds)
     Duration(i32),
     /// Altitude is for min and max altitude you want drone data for (`AvionixCube`).
-    Altitude { min: u32, max: u32 },
+    Altitude {
+        duration: u32,
+        min: u32,
+        max: u32,
+    },
     /// Special interval for stream: do we go back slightly in time?  For how long?  Do we have a
     /// delay between calls?
     Stream {
@@ -99,6 +103,7 @@ impl Display for Filter {
 
         #[derive(Debug, Serialize)]
         struct Altitude {
+            duration: u32,
             min: u32,
             max: u32,
         }
@@ -112,8 +117,9 @@ impl Display for Filter {
                 };
                 json!(m).to_string()
             }
-            Filter::Altitude { min, max } => {
+            Filter::Altitude { duration, min, max } => {
                 let m = Altitude {
+                    duration: *duration,
                     min: *min,
                     max: *max,
                 };
