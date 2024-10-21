@@ -1,3 +1,22 @@
+//! Preliminary results:
+//!
+//! ```text
+//!      Running benches/csv-to-parquet.rs (/Users/roberto/Src/Rust/src/fetiche-ch/target/release/deps/csv_to_parquet-db04090f49b98705)
+//! Gnuplot not found, using plotters backend
+//! start arrow2
+//! using_arrow2            time:   [179.19 ms 182.50 ms 186.09 ms]
+//!
+//! start df
+//! using_df                time:   [111.15 ms 113.77 ms 116.77 ms]
+//! Found 1 outliers among 20 measurements (5.00%)
+//!   1 (5.00%) high mild
+//!
+//! start polars
+//! using_polars            time:   [68.143 ms 69.217 ms 70.438 ms]
+//! Found 1 outliers among 20 measurements (5.00%)
+//!   1 (5.00%) high mild
+//! ```
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::time::Duration;
 
@@ -27,7 +46,7 @@ fn use_df(c: &mut Criterion) {
                 .build()
                 .unwrap(),
         )
-        .iter(|| async { parquet_through_df().await.unwrap() });
+            .iter(|| async { parquet_through_df().await.unwrap() });
     });
 }
 
