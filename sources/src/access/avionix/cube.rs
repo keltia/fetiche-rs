@@ -112,15 +112,7 @@ impl Streamable for AvionixCube {
 
     /// The main stream function, inspired by Opensky one.
     ///
-    /// We have a 5s window for drone movements so we need to poll every 5s, we cache all records
-    /// during that 5s window to avoid dups.
-    ///
-    /// Right now it runs until killed by Ctrl+C or the timer expire (if set).
-    ///
-    /// The cache might be overkill because keeping only the last timestamp might be enough but:
-    /// - it is easy to code and use
-    /// - it helps to determine whether we had lack of traffic for a longer time if we have no
-    ///   cached entries
+    /// No cache is needed because it is plain TCP streaming.
     ///
     #[tracing::instrument(skip(self, out))]
     fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
