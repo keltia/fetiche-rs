@@ -5,11 +5,13 @@
 
 use clap::Parser;
 use eyre::Result;
+use futures::StreamExt;
 use geo::coord;
-use klickhouse::{DateTime, QueryBuilder, Row};
+use klickhouse::{DateTime, QueryBuilder, RawRow, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::trace;
+use std::fs::read_to_string;
+use tracing::{debug, trace};
 
 pub(crate) use antennas::*;
 pub(crate) use install::*;
@@ -95,7 +97,7 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
         AcuteSubCommand::Install(_) => {
             #[derive(Debug, Deserialize, Serialize, Row)]
             struct Install {
-                pub id: u32,
+                pub id: i32,
                 pub name: String,
                 pub start_at: DateTime,
                 pub end_at: DateTime,
@@ -106,34 +108,35 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
             // Find all installations with sites' name and antenna's ID
             //
             let r = r##"
-SELECT 
-  inst.id,
-  sites.name,
-  start_at,
-  end_at,
-  antennas.name AS station_name,
-  inst.comment,
-FROM
-  installations AS inst
-  JOIN antennas ON antennas.id = inst.antenna_id
-  JOIN sites ON inst.site_id = sites.id
-ORDER BY start_at
-        "##;
+SELECT
+    inst.id,
+    sites.name,
+    start_at,
+    end_at,
+    antennas.name AS station_name,
+    inst.comment
+FROM installations AS inst
+INNER JOIN antennas ON antennas.id = inst.antenna_id
+INNER JOIN sites ON inst.site_id = sites.id
+ORDER BY start_at ASC
+INTO OUTFILE '/tmp/installations.txt' AND STDOUT
+FORMAT Pretty
+           "##;
 
-            println!("Listing all installations:");
-            let res = dbh.query_collect::<Install>(r).await?;
-            let res = json!(&res).to_string();
+            eprintln!("Listing all installations:");
+            let _ = dbh.execute(r).await?;
+            let res = read_to_string("/tmp/installations.txt")?;
             println!("{res}");
         }
         AcuteSubCommand::Sites(_) => {
             #[derive(Debug, Deserialize, Serialize, Row)]
             struct Site {
-                pub id: u32,
+                pub id: i32,
                 pub name: String,
                 pub code: String,
-                pub home: f64,
-                pub here: f64,
-                pub distance: f64,
+                pub home: f32,
+                pub here: f32,
+                pub distance: f32,
             }
 
             // This is our current location in Brétigny
@@ -150,7 +153,7 @@ SELECT
   longitude,
   latitude,
   ref_altitude,
-  dist_2d($1, $2, longitude, latitude) / 1000. AS distance,
+  floor(dist_2d($1, $2, longitude, latitude) / 1000.) AS distance_km
 FROM
   sites
 ORDER BY
