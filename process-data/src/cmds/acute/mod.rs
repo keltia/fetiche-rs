@@ -111,7 +111,7 @@ SELECT
   sites.name,
   start_at,
   end_at,
-  antennas.name AS station_name
+  antennas.name AS station_name,
   inst.comment,
 FROM
   installations AS inst
