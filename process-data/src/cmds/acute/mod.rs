@@ -5,13 +5,12 @@
 
 use clap::Parser;
 use eyre::Result;
-use futures::StreamExt;
 use geo::coord;
-use klickhouse::{DateTime, QueryBuilder, RawRow, Row};
+use klickhouse::{DateTime, QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fs::read_to_string;
-use tracing::{debug, trace};
+use tracing::trace;
 
 pub(crate) use antennas::*;
 pub(crate) use install::*;
