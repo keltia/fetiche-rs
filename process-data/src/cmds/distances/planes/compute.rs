@@ -106,11 +106,19 @@ ORDER BY time
         let tm = (Instant::now() - tm).as_millis();
         trace!("CREATE TABLE today{tag} took {tm} ms");
 
-        // Check how many
+        // If there were no planes, then the query succeeds, but the table was not created. Counting
+        // WILL fail.  We need to handle that.
         //
-        let r1 = format!("SELECT count() FROM today{tag}");
-        let q = QueryBuilder::new(&r1);
-        let mut count = dbh.query_one::<RawRow>(q).await?;
+        let mut count = match dbh
+            .query_one::<RawRow>(&format!("SELECT count() FROM today{tag}"))
+            .await
+        {
+            Ok(count) => count,
+            Err(_) => {
+                trace!("Table today{tag} was not created, assume 0");
+                return Ok(0);
+            }
+        };
 
         self.state.push(TempTables::Today);
         let count: u64 = count.get(0);
@@ -180,11 +188,16 @@ WHERE
 
         // Check how many
         //
-        let mut count = dbh
-            .query_one::<RawRow>(QueryBuilder::new(&format!(
-                "SELECT COUNT() FROM candidates{tag}"
-            )))
-            .await?;
+        let mut count = match dbh
+            .query_one::<RawRow>(&format!("SELECT COUNT() FROM candidates{tag}"))
+            .await
+        {
+            Ok(count) => count,
+            Err(_) => {
+                trace!("Table candidates{tag} was not created, assume 0");
+                return Ok(0);
+            }
+        };
 
         self.state.push(TempTables::Candidates);
         let count: u64 = count.get(0);
