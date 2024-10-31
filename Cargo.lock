@@ -2700,6 +2700,7 @@ dependencies = [
  "datafusion",
  "dateparser",
  "enum_dispatch",
+ "env_logger",
  "eyre",
  "fetiche-common",
  "fetiche-formats",

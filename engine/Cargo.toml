@@ -28,6 +28,7 @@ chrono.workspace = true
 csv.workspace = true
 datafusion.workspace = true
 dateparser.workspace = true
+env_logger.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-formats.workspace = true
