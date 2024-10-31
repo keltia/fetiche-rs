@@ -1,11 +1,13 @@
+use std::fmt::{Display, Formatter};
+
+use serde::Serialize;
+
 pub use aeroscope::*;
 pub use asd::*;
 pub use avionix::*;
 pub use flightaware::*;
 pub use opensky::*;
 pub use safesky::*;
-use serde::Serialize;
-use std::fmt::{Display, Formatter};
 
 mod aeroscope;
 mod asd;
