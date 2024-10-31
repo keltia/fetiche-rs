@@ -6,15 +6,19 @@ use strum::{EnumString, VariantNames};
 
 pub use distances::*;
 pub use drones::*;
+pub use encounters::*;
 
 mod distances;
 mod drones;
+mod encounters;
 
 #[derive(Clone, Copy, Debug, EnumString, VariantNames, strum::Display)]
 #[strum(serialize_all = "lowercase")]
 pub(crate) enum Format {
     /// Classic CSV.
     Csv,
+    /// KML for trajectories
+    Kml,
     /// Parquet compressed format.
     Parquet,
     /// Text for stdout
@@ -38,4 +42,7 @@ pub enum ExportSubCommand {
     /// Export daily or weekly stats for drones
     #[clap(visible_alias = "dr")]
     Drones(ExpDroneOpts),
+    /// Export encounters as KML files
+    #[clap(visible_alias = "enc", visible_alias = "e")]
+    Encounters(ExpEncountOpts),
 }
