@@ -10,12 +10,18 @@ fn main() -> eyre::Result<()> {
         None => panic!("grr"),
     }
 
+    #[cfg(windows)]
     let homedir = std::env::var("LOCALAPPDATA")
         .map_err(|e| error!("No LOCALAPPDATA variable defined, can not continue"))
         .unwrap();
+
+    #[cfg(not(windows))]
+    let homedir = std::env::var("HOME")
+        .map_err(|e| error!("No HOME variable defined, can not continue"))
+        .unwrap();
     println!("home={homedir}");
 
-    let config = ConfigFile::<SourcesConfig>::load(Some("config.hcl"))?;
+    let config = ConfigFile::<SourcesConfig>::load(Some("sources.hcl"))?;
     println!("basedir = {:?}", config.config_path());
     println!("config={:?}", config.inner());
     Ok(())
