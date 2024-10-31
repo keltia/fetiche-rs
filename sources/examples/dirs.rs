@@ -1,7 +1,6 @@
 use directories::ProjectDirs;
 use fetiche_common::ConfigFile;
-use fetiche_sources::{Sources, SourcesConfig};
-use tracing::error;
+use fetiche_sources::SourcesConfig;
 
 fn main() -> eyre::Result<()> {
     let p = ProjectDirs::from("", "", "drone-utils");
@@ -12,12 +11,12 @@ fn main() -> eyre::Result<()> {
 
     #[cfg(windows)]
     let homedir = std::env::var("LOCALAPPDATA")
-        .map_err(|e| error!("No LOCALAPPDATA variable defined, can not continue"))
+        .map_err(|_| eprintln!("No LOCALAPPDATA variable defined, can not continue"))
         .unwrap();
 
     #[cfg(not(windows))]
     let homedir = std::env::var("HOME")
-        .map_err(|e| error!("No HOME variable defined, can not continue"))
+        .map_err(|_| eprintln!("No HOME variable defined, can not continue"))
         .unwrap();
     println!("home={homedir}");
 
