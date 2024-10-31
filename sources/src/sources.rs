@@ -313,16 +313,17 @@ mod tests {
         let cn = PathBuf::from("src").join("sources.hcl");
         assert!(cn.try_exists().is_ok());
 
-        let cfile = ConfigFile::<Sources>::load(Some(&cn.to_string_lossy().to_string()));
+        let cfile = ConfigFile::<SourcesConfig>::load(Some(&cn.to_string_lossy().to_string()));
         assert!(cfile.is_ok());
 
-        let cfg = cfile.unwrap().inner();
-        assert!(!cfg.is_empty());
-        assert_eq!(5, cfg.len());
+        let cfile = cfile.unwrap();
+        let cfg = cfile.inner();
+        assert!(!cfg.site.is_empty());
+        assert_eq!(5, cfg.site.len());
 
         // Check one
         //
-        if let Some(site) = cfg.get("eih") {
+        if let Some(site) = cfg.site.get("eih") {
             assert_eq!("http://127.0.0.1:2400", site.base_url);
             assert_eq!(DataType::Drone, site.dtype);
             match &site.auth {
@@ -341,7 +342,7 @@ mod tests {
 
         // Check another one
         //
-        if let Some(site) = cfg.get("opensky") {
+        if let Some(site) = cfg.site.get("opensky") {
             assert_eq!("https://opensky-network.org/api", site.base_url);
             assert_eq!(DataType::Adsb, site.dtype);
             match &site.auth {
