@@ -134,7 +134,7 @@ const WAIT: Duration = Duration::from_secs(2);
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let (_ws, hs) = Actor::spawn(Some("sigs".into()), Signals, ()).await?;
+    let (ws, _hs) = Actor::spawn(Some("sigs".into()), Signals, ()).await?;
 
     let (w1, h1) = Actor::spawn(Some("r1".to_string()), Worker, ".".into()).await?;
     w1.send_interval(WAIT, || WorkerMsg::Tick);
@@ -144,9 +144,9 @@ async fn main() -> Result<()> {
     w2.send_interval(WAIT, || WorkerMsg::Tick);
     w2.exit_after(SLEEP);
 
-    h2.await?;
+    ws.kill();
     h1.await?;
-    hs.await?;
+    h2.await?;
     eprintln!("with sleeper, nothing is displayed");
     Ok(())
 }
