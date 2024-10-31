@@ -93,11 +93,24 @@ impl Actor for Signals {
         let mut stream = signal(SignalKind::interrupt())?;
 
         let workers = String::from(PG_NAME);
+        #[cfg(windows)]
         tokio::select! {
             _ = sig.recv() => {
                 pg::get_members(&workers).iter().for_each(|cell| {
                     cell.stop(Some("ctrl-C pressed".into()));
                 })
+            },
+            else => ()
+        }
+
+        #[cfg(unix)]
+        tokio::select! {
+            Some(_) = stream.recv() => {
+                eprintln!("Got SIGINT");
+                pg::get_members(&workers).iter().for_each(|cell| {
+                    cell.stop(Some("ctrl-C pressed".into()));
+                });
+                myself.kill()
             },
             else => ()
         }
