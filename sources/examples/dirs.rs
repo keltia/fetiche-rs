@@ -1,6 +1,6 @@
 use directories::ProjectDirs;
 use fetiche_common::ConfigFile;
-use fetiche_sources::Sources;
+use fetiche_sources::{Sources, SourcesConfig};
 use tracing::error;
 
 fn main() -> eyre::Result<()> {
@@ -15,7 +15,8 @@ fn main() -> eyre::Result<()> {
         .unwrap();
     println!("home={homedir}");
 
-    let config = ConfigFile::<Sources>::load(Some("config.hcl"))?;
+    let config = ConfigFile::<SourcesConfig>::load(Some("config.hcl"))?;
     println!("basedir = {:?}", config.config_path());
     println!("config={:?}", config.inner());
+    Ok(())
 }
