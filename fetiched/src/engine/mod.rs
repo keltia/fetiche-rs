@@ -25,7 +25,7 @@ use std::thread::JoinHandle;
 
 use actix::prelude::*;
 use directories::{BaseDirs, ProjectDirs};
-use eyre::Result;
+use eyre::{bail, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use strum::EnumString;
@@ -42,7 +42,8 @@ pub use parse::*;
 pub use task::*;
 
 use crate::{
-    Bus, ConfigActor, GetState, StateActor, StorageActor, StorageList, Sync, System, UpdateState,
+    Bus, ConfigActor, GetState, StateActor, StorageActor, StorageConfig, StorageList, Sync, System,
+    UpdateState,
 };
 
 mod error;
@@ -141,7 +142,7 @@ impl Engine {
         //
         if cfg.version() != ENGINE_VERSION {
             error!("Bad config version {}", cfg.version());
-            return Err(EngineStatus::BadConfigVersion(cfg.version(), ENGINE_VERSION).into());
+            panic!("Bad config version {}", cfg.version())
         }
 
         // Register sources
