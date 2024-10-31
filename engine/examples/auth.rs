@@ -4,7 +4,7 @@ use tokio::task;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    init_logging("auth", false)?;
+    init_logging("auth", false, false, None)?;
 
     let engine = Engine::new();
     dbg!(&engine);
