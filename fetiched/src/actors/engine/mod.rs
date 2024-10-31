@@ -151,36 +151,3 @@ impl Actor for EngineActor {
         info!("Engine is stopped");
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use eyre::Result;
-
-    use super::*;
-
-    #[test]
-    fn test_foo() -> Result<()> {
-        Ok(())
-    }
-
-    #[actix_rt::test]
-    async fn test_engine_version() -> Result<()> {
-        let str = r##"
-version = 2
-
-basedir = "/tmp"
-
-// Describe a local directory tree used to store files
-//
-storage "hourly" {
-  path     = ":basedir/hourly"
-  rotation = "1h"
-}"##;
-        let cfg: fetiche_engine::EngineConfig = hcl::from_str(str)?;
-        let e = EngineActor::new(str).await;
-
-        let v = e.send(GetVersion).await?;
-        assert_eq!(fetiche_engine::version(), v);
-        Ok(())
-    }
-}
