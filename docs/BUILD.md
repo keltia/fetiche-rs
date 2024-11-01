@@ -11,16 +11,19 @@ packages but most of them have rather old ones (i.e. Debian) so I'd recommend in
 fetch and install the toolchains (see above).
 
 On macOS, `rustup` is available through [Homebrew] and this is the way I'd recommend to use:
+
 ```text
 brew install rustup-init
 ```
 
 For Windows, I've been using [Scoop] with great success to install, again, `rustup`:
+
 ```text
 scoop install rustup
 ```
 
 After `rustup` is installed, you need to install the toolchain(s) you need:
+
 ```text
 rustup toolchain install stable
 ```
@@ -29,6 +32,7 @@ to get the latest version in the "stable" channel. To compile at least one of th
 may need to install the "nightly" version which is update every few days. See [rustup] for more details.
 
 After installing the toolchain, just verify you can access the main utilities like `rustc`, `cargo`, etc.:
+
 ```text
 ❯ cargo version
 cargo 1.79.0 (ffa9cf99a 2024-06-03)
@@ -41,11 +45,13 @@ rustc 1.79.0 (129f3b996 2024-06-10)
 Fetiche is hosted primarily on [Github] with clones on the different machines I work on.
 
 If you are not connected already on your GitHub account or, you don't have one.
+
 ```text
 git clone https://github.com/keltia/fetiche-rs
 ```
 
 However, it is better to use the SSH-based client if you have a GitHub account:
+
 ```text
 git clone git@github.com:keltia/fetiche-rs
 ```
@@ -58,7 +64,7 @@ for eventual proxy setup, etc.
 
 As explained in [FETICHE.md](FETICHE.md), fetiche is separated into several parts (called "crates" in Rust ecosystem)
 and the various `Cargo.toml` files you can find in the tree specify the metadata linking all of this together.   
-This is also where dependencies are specified for every crate.  There can be workspaces and shared dependencies as well, 
+This is also where dependencies are specified for every crate. There can be workspaces and shared dependencies as well,
 see the [Top Cargo.toml](../Cargo.toml).
 
 ### Libraries
@@ -70,6 +76,7 @@ sections in `Cargo.toml` and will be built for the binaries when you compile the
 
 As we are still using the "nightly" toolchain for the `opensky-history` binary, one can not just run `cargo build` from
 the top directory, you will have to build both `acutectl` and `process-data` separately:
+
 ```text
 cd acutectl && cargo build
 cd process-data && cargo build
@@ -83,22 +90,25 @@ There is also a pure Python version of `opensky-history` in the `scripts` direct
 ### Branches
 
 The fetiche repository contains several important branches, some long-lived (`main`, `develop`) and some temporary ones
-depending on the current development streams (`fetiche-ch`, `feature/whatever`, etc.). As of July 2024, `develop`
-contains the branch compiling with the [DuckDB] embedded database whereas `fetiche-ch` is the branch for
-the [Clickhouse] port. Fetiche is compliant with the [gitflow] process for editing and merging branches.
+depending on the current development streams (`fetiche-ch`, `feature/whatever`, etc.). The `fetiche-ch` branch has been
+renamed as `develop`  while the latter has been moved to a legacy [DuckDB] one. We are fully on the Clickhouse
+database now in production.
+
+Fetiche is compliant with the [gitflow] process for editing and merging branches.
 
 You can change branches in-place with `git checkout fetiche-ch` or, even better, use worktrees like this:
+
 ```text
 $ git clone git@github.com:keltia/fetiche-rs
 $ cd fetiche-rs
 <work in the default branch>
-$ git worktree add ../fetiche-ch fetiche-ch
-$ cd ../fetiche-ch
-<work in the fetiche-ch branch>
+$ git worktree add ../fetiche-foo new-longterm-branch
+$ cd ../fetiche-foo
+<work in the new-longterm-branch branch>
 ```
 
-the two directories `fetiche-rs` and `fetiche-ch` shares the same `.git` direcory with all git metadata.  If you commit in
-`fetiche-ch` it will be reflected when you push, etc.
+the two directories `fetiche-rs` and `fetiche-foo` shares the same `.git` direcory with all git metadata. If you commit
+in `fetiche-foo` it will be reflected when you push, etc.
 
 ## Scripts
 
