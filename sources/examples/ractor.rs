@@ -11,6 +11,7 @@ use ractor::{async_trait, pg, Actor, ActorProcessingErr, ActorRef};
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
 use tokio::signal::windows::ctrl_c;
+use tokio::time::sleep;
 
 const PG_NAME: &str = "workers";
 #[derive(Debug)]
@@ -18,7 +19,7 @@ struct Worker;
 
 enum WorkerMsg {
     Tick,
-    Stop(String),
+    Change(String),
 }
 
 #[async_trait]
@@ -51,9 +52,9 @@ impl Actor for Worker {
                 state.push_str(&chr);
                 eprintln!("{state}");
             }
-            WorkerMsg::Stop(msg) => {
-                eprintln!("Stopping because {msg}");
-                myself.stop(Some(msg));
+            WorkerMsg::Change(c) => {
+                state.push_str(&c);
+                eprintln!("character changed to {c}");
             }
         }
         Ok(())
@@ -143,6 +144,9 @@ async fn main() -> Result<()> {
     let (w2, h2) = Actor::spawn(Some("r2".to_string()), Worker, "+".into()).await?;
     w2.send_interval(WAIT, || WorkerMsg::Tick);
     w2.exit_after(SLEEP);
+
+    sleep(Duration::from_secs(7u64)).await;
+    let _ = w1.cast(WorkerMsg::Change("*".into()));
 
     ws.kill();
     h1.await?;
