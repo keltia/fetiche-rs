@@ -47,9 +47,9 @@ shared drive `AcuteLake`.
 These are local time (Europe/Paris).
 
 ```cronexp
-0   8    *      *       *       cd /Users/acute && rsync -avP acute-sync:/acute/{encounters,data} .
+0   8    *      *       *       cd /Users/acute && rsync -avP acute-sync:/acute/{encounters,data,files} .
 # windows shares need this apparently
-10  8    *      *       *   cd /Users/acute && rsync -avP -@1 {encounters,data} /Volumes/Corporate/AcuteLake/
+10  8    *      *       *   cd /Users/acute && rsync -avP -@1 {encounters,data,files} /Volumes/Corporate/AcuteLake/
 ```
 
 ### `.envrc`
