@@ -6,7 +6,7 @@
 use std::time::Duration;
 
 use eyre::Result;
-use ractor::{async_trait, pg, Actor, ActorProcessingErr, ActorRef};
+use ractor::{async_trait, pg, registry, Actor, ActorProcessingErr, ActorRef};
 #[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
@@ -42,7 +42,7 @@ impl Actor for Worker {
 
     async fn handle(
         &self,
-        myself: ActorRef<Self::Msg>,
+        _myself: ActorRef<Self::Msg>,
         message: Self::Msg,
         state: &mut Self::State,
     ) -> std::result::Result<(), ActorProcessingErr> {
@@ -61,47 +61,56 @@ impl Actor for Worker {
     }
 }
 
-struct Signals;
+// If 0, infinite wait, need SIGINT to sop
+//
+const SLEEP: Duration = Duration::from_secs(20);
+const WAIT: Duration = Duration::from_secs(2);
 
-#[async_trait]
-impl Actor for Signals {
-    type Msg = ();
-    type State = ();
-    type Arguments = ();
+#[tokio::main]
+async fn main() -> Result<()> {
+    let (w1, h1) = Actor::spawn(Some("r1".to_string()), Worker, ".".into()).await?;
+    w1.send_interval(WAIT, || WorkerMsg::Tick);
+    w1.exit_after(SLEEP);
 
-    async fn pre_start(
-        &self,
-        _myself: ActorRef<Self::Msg>,
-        _args: Self::Arguments,
-    ) -> std::result::Result<Self::State, ActorProcessingErr> {
-        eprintln!("Signals starting...");
-        Ok(())
-    }
+    let (w2, h2) = Actor::spawn(Some("r2".to_string()), Worker, "+".into()).await?;
+    w2.send_interval(WAIT, || WorkerMsg::Tick);
+    w2.exit_after(SLEEP);
 
-    async fn post_start(
-        &self,
-        myself: ActorRef<Self::Msg>,
-        state: &mut Self::State,
-    ) -> std::result::Result<Self::State, ActorProcessingErr> {
-        eprintln!("Setting up signal handling...");
+    let list = registry::registered();
+    eprintln!("Currently registered actors:");
+    list.iter().for_each(|actor| {
+        eprintln!("  {actor}");
+    });
 
+    let wt1 = w1.clone();
+    tokio::spawn(async move {
+        sleep(Duration::from_secs(7u64)).await;
+        wt1.cast(WorkerMsg::Change("*".into()))
+    })
+    .await?
+    .expect("TODO: panic message");
+
+    tokio::spawn(async move {
         // setup ctrl-c handled
         //
         #[cfg(windows)]
-        let mut sig = ctrl_c()?;
+        let mut sig = ctrl_c().unwrap();
 
         #[cfg(unix)]
-        let mut stream = signal(SignalKind::interrupt())?;
+        let mut stream = signal(SignalKind::interrupt()).unwrap();
 
         let workers = String::from(PG_NAME);
         #[cfg(windows)]
         tokio::select! {
             _ = sig.recv() => {
+                eprintln!("^C pressed.");
                 pg::get_members(&workers).iter().for_each(|cell| {
                     cell.stop(Some("ctrl-C pressed".into()));
                 })
             },
-            else => ()
+            else => {
+                eprintln!("Ctrl-something pressed.");
+            }
         }
 
         #[cfg(unix)]
@@ -115,42 +124,14 @@ impl Actor for Signals {
             },
             else => ()
         }
+    })
+    .await?;
 
-        Ok(())
-    }
-
-    async fn handle(
-        &self,
-        _myself: ActorRef<Self::Msg>,
-        _message: Self::Msg,
-        _state: &mut Self::State,
-    ) -> std::result::Result<(), ActorProcessingErr> {
-        Ok(())
-    }
-}
-// If 0, infinite wait, need SIGINT to sop
-//
-const SLEEP: Duration = Duration::from_secs(20);
-const WAIT: Duration = Duration::from_secs(2);
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    let (ws, _hs) = Actor::spawn(Some("sigs".into()), Signals, ()).await?;
-
-    let (w1, h1) = Actor::spawn(Some("r1".to_string()), Worker, ".".into()).await?;
-    w1.send_interval(WAIT, || WorkerMsg::Tick);
-    w1.exit_after(SLEEP);
-
-    let (w2, h2) = Actor::spawn(Some("r2".to_string()), Worker, "+".into()).await?;
-    w2.send_interval(WAIT, || WorkerMsg::Tick);
-    w2.exit_after(SLEEP);
-
-    sleep(Duration::from_secs(7u64)).await;
-    let _ = w1.cast(WorkerMsg::Change("*".into()));
-
-    ws.kill();
     h1.await?;
     h2.await?;
-    eprintln!("with sleeper, nothing is displayed");
+    let list = registry::registered();
+    assert!(list.is_empty());
+
+    eprintln!("No more actors");
     Ok(())
 }
