@@ -2676,6 +2676,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
+ "ractor",
  "rstest",
  "serde",
  "strum",
