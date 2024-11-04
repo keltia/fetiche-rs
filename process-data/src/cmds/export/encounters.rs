@@ -372,13 +372,7 @@ mod create {
     fn from_points_to_ls(points: &Vec<DataPoint>) -> eyre::Result<LineString> {
         let coords = points
             .into_iter()
-            .map(|p| {
-                Coord::new(
-                    p.longitude as f64,
-                    p.latitude as f64,
-                    Some(p.altitude as f64),
-                )
-            })
+            .map(|p| Coord::new(p.longitude, p.latitude, Some(p.altitude)))
             .collect::<Vec<_>>();
 
         Ok(LineString {
