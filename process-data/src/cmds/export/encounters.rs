@@ -7,7 +7,7 @@ use colorsys::Rgb;
 use eyre::{format_err, Result};
 use futures::future::join_all;
 use itertools::Itertools;
-use klickhouse::{QueryBuilder, RawRow, Row};
+use klickhouse::{QueryBuilder, Row};
 use kml::Kml::Document;
 use kml::{Kml, KmlDocument, KmlVersion};
 use regex::Regex;
@@ -224,20 +224,7 @@ async fn export_all_encounter(ctx: &Context, output: &PathBuf) -> Result<usize> 
 
     assert!(output.is_dir(), "output must be a directory!");
 
-    let r = r##"
-SELECT
-  en_id
-FROM
-  airprox_summary
-ORDER BY
-  en_id
-    "##;
-    let list = client
-        .query_collect::<RawRow>(r)
-        .await?
-        .iter_mut()
-        .map(|e| e.get(0))
-        .collect::<Vec<String>>();
+    let list = data::fetch_all_en_id(&client).await?;
     let n = list.len();
     trace!("Found {n} encounters to export.");
 
@@ -293,7 +280,7 @@ mod data {
 
     use chrono::{DateTime, Utc};
     use eyre::Result;
-    use klickhouse::{Client, QueryBuilder};
+    use klickhouse::{Client, QueryBuilder, RawRow};
     use tracing::{debug, trace};
 
     #[tracing::instrument(skip(client))]
@@ -355,6 +342,24 @@ ORDER BY time
         debug!("planes={:?}", planes);
 
         Ok(planes)
+    }
+
+    pub(crate) async fn fetch_all_en_id(client: &Client) -> Result<Vec<String>> {
+        let r = r##"
+SELECT
+  en_id
+FROM
+  airprox_summary
+ORDER BY
+  en_id
+    "##;
+        let list = client
+            .query_collect::<RawRow>(r)
+            .await?
+            .iter_mut()
+            .map(|e| e.get(0))
+            .collect::<Vec<String>>();
+        Ok(list)
     }
 }
 
