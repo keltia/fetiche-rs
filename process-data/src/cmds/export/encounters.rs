@@ -198,6 +198,8 @@ WHERE en_id = $1
     let drone = create::from_traj_to_placemark(&drone_id, &drones, "droneStyle")?;
     let plane = create::from_traj_to_placemark(&prox_callsign, &planes, "planeStyle")?;
 
+    // Not sure why there is no `Kml::Document()` like all others.
+    //
     let doc = Document {
         attrs: [("name".into(), format!("{id}.kml"))].into(),
         elements: vec![d_style, p_style, drone, plane],
