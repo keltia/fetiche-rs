@@ -1,17 +1,14 @@
 //! Module for exporting encounters into KML files.
 //!
 
-use chrono::{DateTime, Utc};
 use clap::Parser;
 use colorsys::Rgb;
 use eyre::{format_err, Result};
 use futures::future::join_all;
 use itertools::Itertools;
-use klickhouse::Row;
 use kml::Kml::Document;
 use kml::{Kml, KmlDocument, KmlVersion};
 use regex::Regex;
-use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
@@ -34,27 +31,6 @@ pub struct ExpEncounterOpts {
     /// Output file or directory.
     #[clap(short = 'o', long)]
     output: Option<PathBuf>,
-}
-
-/// Main struct for data points, both drone and plane
-///
-#[derive(Clone, Debug, Row, Serialize)]
-struct DataPoint {
-    timestamp: DateTime<Utc>,
-    latitude: f64,
-    longitude: f64,
-    altitude: f64,
-}
-
-/// What we need from the `airplane_prox` table.
-///
-#[derive(Clone, Debug, Row, Serialize)]
-struct Encounter {
-    en_id: String,
-    journey: i32,
-    drone_id: String,
-    prox_id: String,
-    prox_callsign: String,
 }
 
 /// Export one or all existing encounters as KML files into a single file/directory
@@ -269,12 +245,32 @@ async fn export_all_encounter(ctx: &Context, output: &PathBuf) -> Result<usize> 
 /// Small internal module for clickhouse data fetching
 ///
 mod data {
-    use super::{DataPoint, Encounter};
-
     use chrono::{DateTime, Utc};
     use eyre::Result;
-    use klickhouse::{Client, QueryBuilder, RawRow};
+    use klickhouse::{Client, QueryBuilder, RawRow, Row};
+    use serde::Serialize;
     use tracing::{debug, trace};
+
+    /// Main struct for data points, both drone and plane
+    ///
+    #[derive(Clone, Debug, Row, Serialize)]
+    pub(crate) struct DataPoint {
+        pub timestamp: DateTime<Utc>,
+        pub latitude: f64,
+        pub longitude: f64,
+        pub altitude: f64,
+    }
+
+    /// What we need from the `airplane_prox` table.
+    ///
+    #[derive(Clone, Debug, Row, Serialize)]
+    pub(crate) struct Encounter {
+        pub en_id: String,
+        pub journey: i32,
+        pub drone_id: String,
+        pub prox_id: String,
+        pub prox_callsign: String,
+    }
 
     #[tracing::instrument(skip(client))]
     pub(crate) async fn fetch_drones(
@@ -376,7 +372,7 @@ ORDER BY
 /// Small internal module to manipulate XML data types
 ///
 mod create {
-    use super::DataPoint;
+    use super::data::DataPoint;
     use kml::{
         types::{AltitudeMode, Coord, Geometry, LineString, LineStyle, Placemark, Style},
         Kml,
