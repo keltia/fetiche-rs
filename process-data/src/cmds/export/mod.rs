@@ -44,5 +44,5 @@ pub enum ExportSubCommand {
     Drones(ExpDroneOpts),
     /// Export encounters as KML files
     #[clap(visible_alias = "enc", visible_alias = "e")]
-    Encounters(ExpEncountOpts),
+    Encounters(ExpEncounterOpts),
 }

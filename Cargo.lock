@@ -6085,6 +6085,7 @@ dependencies = [
  "pprof",
  "rand",
  "rayon",
+ "regex",
  "rstest",
  "rust-3d",
  "serde",
