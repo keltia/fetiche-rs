@@ -216,8 +216,6 @@ WHERE en_id = $1
 
 /// Export all encounters
 ///
-/// TODO: write it.
-///
 #[tracing::instrument(skip(ctx))]
 async fn export_all_encounter(ctx: &Context, output: &PathBuf) -> Result<usize> {
     let client = ctx.db().await;
