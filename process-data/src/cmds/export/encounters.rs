@@ -89,7 +89,7 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
                 }
             }
         };
-        let _ = fs::write(&output, kml).await?;
+        fs::write(&output, kml).await?;
         eprintln!("Exported {en_id} in {output:?}");
     }
     Ok(())
@@ -120,7 +120,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     };
     debug!("name: {}, date: {}, journey: {}", name, date, journey);
 
-    let res = data::fetch_one_encounter(&client, &id).await?;
+    let res = data::fetch_one_encounter(&client, id).await?;
 
     assert_eq!(res.en_id, id);
     assert_eq!(res.journey, journey);
@@ -178,7 +178,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     //
     let kml = Kml::KmlDocument(KmlDocument {
         version: KmlVersion::V23,
-        elements: vec![doc.into()],
+        elements: vec![doc],
         attrs: HashMap::new(),
     });
 
@@ -293,7 +293,7 @@ ident = $2
 ORDER BY timestamp
     "##;
 
-        let q = QueryBuilder::new(rpp).arg(journey).arg(&drone_id);
+        let q = QueryBuilder::new(rpp).arg(journey).arg(drone_id);
         let drones = client.query_collect::<DataPoint>(q).await?;
         trace!("Found {} drone points for en_id {}", drones.len(), drone_id);
 
@@ -384,7 +384,7 @@ mod create {
     #[tracing::instrument]
     fn from_points_to_ls(points: &Vec<DataPoint>) -> eyre::Result<LineString> {
         let coords = points
-            .into_iter()
+            .iter()
             .map(|p| Coord::new(p.longitude, p.latitude, Some(p.altitude)))
             .collect::<Vec<_>>();
 
@@ -392,7 +392,7 @@ mod create {
             tessellate: false,
             extrude: true,
             altitude_mode: AltitudeMode::Absolute,
-            coords: coords.into(),
+            coords,
             ..Default::default()
         })
     }
@@ -425,7 +425,7 @@ mod create {
         let style_url = format!("#{style}");
         Ok(Kml::Placemark(Placemark {
             name: Some(name.into()),
-            geometry: Some(Geometry::LineString(ls.into())),
+            geometry: Some(Geometry::LineString(ls)),
             attrs: HashMap::from([("styleUrl".into(), style_url)]),
             ..Default::default()
         }))

@@ -123,7 +123,7 @@ FORMAT Pretty
            "##;
 
             eprintln!("Listing all installations:");
-            let _ = dbh.execute(r).await?;
+            dbh.execute(r).await?;
             let res = read_to_string("/tmp/installations.txt")?;
             println!("{res}");
         }
