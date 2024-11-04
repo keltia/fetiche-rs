@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use colorsys::Rgb;
 use dateparser::parse;
 use eyre::Result;
 use klickhouse::Row;
@@ -16,8 +17,16 @@ struct DataPoint {
 }
 
 fn from_traj_to_ls(points: &Vec<DataPoint>) -> Result<LineString> {
-    let coords = points.into_iter().map(|p|
-        Coord::new(p.longitude as f64, p.latitude as f64, Some(p.altitude as f64))).collect::<Vec<_>>();
+    let coords = points
+        .into_iter()
+        .map(|p| {
+            Coord::new(
+                p.longitude as f64,
+                p.latitude as f64,
+                Some(p.altitude as f64),
+            )
+        })
+        .collect::<Vec<_>>();
 
     let ls = LineString {
         tessellate: false,
@@ -88,5 +97,15 @@ fn main() -> Result<()> {
     w.write(&doc)?;
 
     println!("{}", String::from_utf8(buf)?);
+
+    let red = Rgb::from((255., 0., 0., 1.0));
+    let green = Rgb::from((0., 255., 0., 1.0));
+
+    let red_str = format!("#{}ff", red.to_hex_string());
+    let green_str = format!("#{}ff", green.to_hex_string());
+
+    println!("{}", red_str);
+    println!("{}", green_str);
+
     Ok(())
 }
