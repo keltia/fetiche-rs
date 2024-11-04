@@ -7,7 +7,7 @@ use colorsys::Rgb;
 use eyre::{format_err, Result};
 use futures::future::join_all;
 use itertools::Itertools;
-use klickhouse::{QueryBuilder, Row};
+use klickhouse::Row;
 use kml::Kml::Document;
 use kml::{Kml, KmlDocument, KmlVersion};
 use regex::Regex;
@@ -44,6 +44,17 @@ struct DataPoint {
     latitude: f64,
     longitude: f64,
     altitude: f64,
+}
+
+/// What we need from the `airplane_prox` table.
+///
+#[derive(Clone, Debug, Row, Serialize)]
+struct Encounter {
+    en_id: String,
+    journey: i32,
+    drone_id: String,
+    prox_id: String,
+    prox_callsign: String,
 }
 
 /// Export one or all existing encounters as KML files into a single file/directory
@@ -133,25 +144,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     };
     debug!("name: {}, date: {}, journey: {}", name, date, journey);
 
-    #[derive(Clone, Debug, Row)]
-    struct Encounter {
-        en_id: String,
-        journey: i32,
-        drone_id: String,
-        prox_id: String,
-        prox_callsign: String,
-    }
-
-    // Fetch the drone & airplane IDs
-    //
-    let rp = r##"
-SELECT
-  en_id, journey, drone_id, prox_callsign, prox_id
-FROM airplane_prox
-WHERE en_id = $1
-    "##;
-    let q = QueryBuilder::new(rp).arg(id);
-    let res = client.query_one::<Encounter>(q).await?;
+    let res = data::fetch_one_encounter(&client, &id).await?;
 
     assert_eq!(res.en_id, id);
     assert_eq!(res.journey, journey);
@@ -276,7 +269,7 @@ async fn export_all_encounter(ctx: &Context, output: &PathBuf) -> Result<usize> 
 /// Small internal module for clickhouse data fetching
 ///
 mod data {
-    use super::DataPoint;
+    use super::{DataPoint, Encounter};
 
     use chrono::{DateTime, Utc};
     use eyre::Result;
@@ -344,6 +337,23 @@ ORDER BY time
         Ok(planes)
     }
 
+    #[tracing::instrument(skip(client))]
+    pub(crate) async fn fetch_one_encounter(client: &Client, id: &str) -> Result<Encounter> {
+        // Fetch the drone & airplane IDs
+        //
+        let rp = r##"
+SELECT
+  en_id, journey, drone_id, prox_callsign, prox_id
+FROM airplane_prox
+WHERE en_id = $1
+    "##;
+        let q = QueryBuilder::new(rp).arg(id);
+        let res = client.query_one::<Encounter>(q).await?;
+
+        Ok(res)
+    }
+
+    #[tracing::instrument(skip(client))]
     pub(crate) async fn fetch_all_en_id(client: &Client) -> Result<Vec<String>> {
         let r = r##"
 SELECT
