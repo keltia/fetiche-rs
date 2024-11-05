@@ -216,7 +216,16 @@ async fn export_all_encounter(ctx: &Context, output: &PathBuf) -> Result<usize> 
                 let id = en_id.clone();
 
                 let kml =
-                    tokio::spawn(async move { export_one_encounter(&ctx, &id).await.unwrap() })
+                    tokio::spawn(async move {
+                        let res = match export_one_encounter(&ctx, &id).await {
+                            Ok(res) => res,
+                            Err(e) => {
+                                eprintln!("Error: {e}");
+                                return Err(format_err!("Err: {e}"));
+                            }
+                        };
+                        Ok(res)
+                    })
                         .await
                         .unwrap();
                 (en_id, kml)
@@ -228,11 +237,14 @@ async fn export_all_encounter(ctx: &Context, output: &PathBuf) -> Result<usize> 
         //
         let hlist: Vec<_> = kmls
             .into_iter()
+            .filter(|(en_id, kml)| { kml.is_ok() })
             .map(|(en_id, kml)| async move {
                 let fname = output.join(en_id);
-                fs::write(&fname, kml).await.unwrap();
+                eprint!("{fname:?} ");
+                let fname = fname.with_extension("kml");
+                fs::write(&fname, &kml.unwrap()).await;
             })
-            .collect::<Vec<_>>();
+            .collect();
         join_all(hlist).await;
     }
 
@@ -408,7 +420,7 @@ mod create {
                 width: size,
                 ..Default::default()
             }
-            .into(),
+                .into(),
             ..Default::default()
         })
     }
