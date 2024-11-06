@@ -23,4 +23,12 @@ pub enum Status {
     NoOutputFile,
     #[error("Unknown output format, aborting.")]
     UnknownFormat(String),
+    #[error("Unknown date format {0}.")]
+    BadDateFormat(String),
+    #[error("Invalid encounter ID {0}.")]
+    BadEncounterID(String),
+    #[error("Not enough {0} data for a trajectory.")]
+    NotEnoughData(String),
+    #[error("{0}: Not a directory!.")]
+    NotADirectory(String),
 }

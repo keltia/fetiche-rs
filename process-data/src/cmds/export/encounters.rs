@@ -16,6 +16,7 @@ use tracing::{debug, trace};
 
 use crate::cmds::Format;
 use crate::config::Context;
+use crate::error::Status;
 
 #[derive(Debug, Parser)]
 pub struct ExpEncounterOpts {
@@ -56,10 +57,7 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
         //
         if let Some(output) = output {
             if !output.is_dir() {
-                return Err(format_err!(
-                    "output path {:?} given, expected a directory",
-                    output
-                ));
+                return Err(Status::NotADirectory(output.to_string_lossy().to_string()).into());
             }
 
             let n = export_all_encounter(ctx, output).await?;
@@ -108,7 +106,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
 
         let re = Regex::new(r##"^(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})$"##)?;
         if re.captures(date).is_none() {
-            return Err(format_err!("Bad date format in {id}"));
+            return Err(Status::BadDateFormat(id.to_string()).into());
         }
         (
             &caps["name"].to_string(),
@@ -116,7 +114,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
             caps["journey"].parse::<i32>()?,
         )
     } else {
-        return Err(format_err!("bad en_id"));
+        return Err(Status::BadEncounterID(id.to_string()).into());
     };
     debug!("name: {}, date: {}, journey: {}", name, date, journey);
 
@@ -134,7 +132,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
 
     let drones = data::fetch_drones(&client, journey, &drone_id).await?;
     if drones.len() <= 1 {
-        return Err(format_err!("no drones found"));
+        return Err(Status::NotEnoughData("drones".to_string()).into());
     }
 
     // Extract first and last timestamp to have a suitable interval for plane points.
@@ -146,7 +144,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     //
     let planes = data::fetch_planes(&client, &prox_id, first, last).await?;
     if planes.len() <= 1 {
-        return Err(format_err!("no planes found"));
+        return Err(Status::NotEnoughData("planes".to_string()).into());
     }
 
     // Define our styles
@@ -208,44 +206,32 @@ async fn export_all_encounter(ctx: &Context, output: &PathBuf) -> Result<usize> 
     for batch in &list.into_iter().chunks(ctx.pool_size) {
         // Generate KML data for each `en_id`
         //
-        let kmls = batch
+        let kmls: Vec<_> = batch
             .into_iter()
             .map(|en_id| async move {
                 trace!("Generating KML for {en_id}");
                 let ctx = ctx.clone();
                 let id = en_id.clone();
+                let output = output.clone();
 
-                let kml =
-                    tokio::spawn(async move {
-                        let res = match export_one_encounter(&ctx, &id).await {
-                            Ok(res) => res,
-                            Err(e) => {
-                                eprintln!("Error: {e}");
-                                return Err(format_err!("Err: {e}"));
-                            }
-                        };
-                        Ok(res)
-                    })
-                        .await
-                        .unwrap();
-                (en_id, kml)
-            })
-            .collect::<Vec<_>>();
-        let kmls: Vec<(_, _)> = join_all(kmls).await;
-
-        // Now write every file in the batch.
-        //
-        let hlist: Vec<_> = kmls
-            .into_iter()
-            .filter(|(en_id, kml)| { kml.is_ok() })
-            .map(|(en_id, kml)| async move {
-                let fname = output.join(en_id);
-                eprint!("{fname:?} ");
-                let fname = fname.with_extension("kml");
-                fs::write(&fname, &kml.unwrap()).await;
+                tokio::spawn(async move {
+                    let fname = output.join(&id);
+                    match export_one_encounter(&ctx, &id).await {
+                        Ok(res) => {
+                            eprint!("{} ", fname.file_stem().unwrap().to_string_lossy());
+                            let fname = fname.with_extension("kml");
+                            let _ = fs::write(&fname, &res).await;
+                        }
+                        Err(e) => {
+                            eprintln!("({e}");
+                        }
+                    };
+                })
+                .await
+                .unwrap();
             })
             .collect();
-        join_all(hlist).await;
+        let _ = join_all(kmls).await;
     }
 
     eprintln!("Exporting all encounters in {output:?}... ");
@@ -420,7 +406,7 @@ mod create {
                 width: size,
                 ..Default::default()
             }
-                .into(),
+            .into(),
             ..Default::default()
         })
     }
