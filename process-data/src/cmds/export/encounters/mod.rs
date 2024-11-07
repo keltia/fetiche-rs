@@ -20,7 +20,6 @@ use itertools::Itertools;
 use kml::Kml::Document;
 use kml::{Kml, KmlDocument, KmlVersion};
 use regex::Regex;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
 use tracing::{debug, trace};
@@ -33,11 +32,11 @@ pub struct ExpEncounterOpts {
     /// Export that Encounter ID
     #[clap(long)]
     id: Option<String>,
-    /// Format (default is KML)
+    /// Output Format
     #[clap(short = 'F', long, default_value = "kml", value_parser)]
     format: Format,
     /// Output file or directory.
-    #[clap(short = 'o', long)]
+    #[clap(short = 'o', long, default_value = ".")]
     output: Option<PathBuf>,
     /// Date (today, yesterday, etc.)
     #[clap(subcommand)]
