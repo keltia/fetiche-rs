@@ -19,8 +19,8 @@ pub enum Status {
     MissingConfigParameter(String),
     #[error("Can't get a connection from pool {0}")]
     ConnectionUnavailable(String),
-    #[error("No output file specified, aborting.")]
-    NoOutputFile,
+    #[error("No output destination specified, aborting.")]
+    NoOutputDestination,
     #[error("Unknown output format, aborting.")]
     UnknownFormat(String),
     #[error("Unknown date format {0}.")]
@@ -31,4 +31,10 @@ pub enum Status {
     NotEnoughData(String),
     #[error("{0}: Not a directory!.")]
     NotADirectory(String),
+    #[error("Either -A or a date, not both!")]
+    NoAllAndDate,
+    #[error("Either -A or --id, not both!")]
+    NoAllAndENID,
+    #[error("No encounter ID specified.")]
+    NoEncounterSpecified,
 }

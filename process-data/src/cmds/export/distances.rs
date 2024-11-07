@@ -238,7 +238,7 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
         }
         None => {
             eprintln!("No output file specified.");
-            return Err(Status::NoOutputFile.into());
+            return Err(Status::NoOutputDestination.into());
         }
     }
     drop(client);
