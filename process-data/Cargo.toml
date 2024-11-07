@@ -48,13 +48,13 @@ tempfile.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
-cached = { version = "0.53", features = ["async", "async_tokio_rt_multi_thread"] }
+cached = { version = "0.54", features = ["async", "async_tokio_rt_multi_thread"] }
 clap_complete = "4.5"
 colorsys = "0.6"
 enum_dispatch = "0.3"
 klickhouse = { version = "0.13", features = ["derive", "geo-types", "serde", "bb8"] }
 derive_builder = "0.20"
-geo = "0.28"
+geo = "0.29"
 itertools = "0.13"
 kml = "0.8"
 ml-progress = "0.1"
