@@ -100,8 +100,7 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
         if !output.is_dir() {
             return Err(Status::NotADirectory(output.to_string_lossy().to_string()).into());
         }
-        let n = export_encounter_list(ctx, &list, output).await?;
-        eprintln!("Exported {} encounters.", n);
+        let _ = export_encounter_list(ctx, &list, output).await?;
     } else {
         return Err(Status::NoOutputDestination.into());
     }
