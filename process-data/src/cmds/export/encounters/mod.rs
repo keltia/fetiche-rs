@@ -220,7 +220,7 @@ async fn export_encounter_list(ctx: &Context, list: &Vec<String>, output: &PathB
 
     // Run the big batch in chunk to limit CPU usage and number of threads.
     //
-    for batch in &list.into_iter().chunks(ctx.pool_size) {
+    for batch in &list.iter().chunks(ctx.pool_size) {
         // Generate KML data for each `en_id`
         //
         let kmls: Vec<_> = batch
