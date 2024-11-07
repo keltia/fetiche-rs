@@ -79,6 +79,7 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
 
         match date {
             Some(date) => {
+                trace!("Exporting all encounters for {date:?}...");
                 fetch_encounters_on(&client, date).await?
             }
             None => {

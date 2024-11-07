@@ -129,10 +129,12 @@ ORDER BY
 
 /// Select a list of en_id on a date specification.
 ///
+#[tracing::instrument(skip(client))]
 pub(crate) async fn fetch_encounters_on(client: &Client, date: DateOpts) -> Result<Vec<String>> {
     let (begin, _) = DateOpts::parse(date)?;
-    let en_id_pat = format!("{:4}{:2}{:2}", begin.year(), begin.month(), begin.day());
+    let en_id_pat = format!("{:4}{:02}{:02}", begin.year(), begin.month(), begin.day());
 
+    debug!("en_id_pat={}", en_id_pat);
     let r = format!(r##"
 SELECT
   en_id
