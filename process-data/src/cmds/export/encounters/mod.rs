@@ -165,6 +165,10 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
         return Err(Status::NotEnoughData("planes".to_string()).into());
     }
 
+    // Pre-load default styles
+    //
+    let def_styles = default_styles();
+
     // Define our styles
     //
     let red = Rgb::from((255., 0., 0., 1.0));
@@ -187,7 +191,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     //
     let doc = Document {
         attrs: [("name".into(), format!("{id}.kml"))].into(),
-        elements: vec![d_style, p_style, drone, plane],
+        elements: vec![def_styles, d_style, p_style, drone, plane],
     };
 
     // Create the final KML
@@ -195,7 +199,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     let kml = Kml::KmlDocument(KmlDocument {
         version: KmlVersion::V23,
         elements: vec![doc],
-        attrs: HashMap::new(),
+        ..Default::default()
     });
 
     Ok(kml.to_string())

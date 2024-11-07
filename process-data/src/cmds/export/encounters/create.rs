@@ -42,6 +42,38 @@ pub(crate) fn make_style(name: &str, colour: &str, size: f64) -> Kml {
     })
 }
 
+/// Generate a default style list.
+///
+#[tracing::instrument]
+pub(crate) fn default_styles() -> Kml {
+    r##"
+      <Style id="lineStyleNormal">
+        <LineStyle><color>64F0FA14</color><width>4</width></LineStyle>
+        <PolyStyle><color>32F0F014</color></PolyStyle>
+      </Style>
+      <Style id="lineStyleHighlight">
+        <LineStyle><color>641400E6</color><width>4</width></LineStyle>
+        <PolyStyle><color>321400FF</color></PolyStyle>
+        </Style>
+      <StyleMap id="lineStyle">
+        <Pair><key>normal</key><styleUrl>#lineStyleNormal</styleUrl></Pair>
+        <Pair><key>highlight</key><styleUrl>#lineStyleHighlight</styleUrl></Pair>
+      /StyleMap>
+      <StyleMap id="pointStyle">
+        <Pair><key>normal</key><styleUrl>#pointStyleNormal</styleUrl></Pair>
+        <Pair><key>highlight</key><styleUrl>#pointStyleHighlight</styleUrl></Pair>
+      /StyleMap>
+      <Style id="pointStyleNormal">
+        <IconStyle><color>ff00ffff</color></IconStyle>
+        <LabelStyle><color>ff00ffff</color></LabelStyle>
+      /Style>
+      <Style id="pointStyleHighlight">
+        <IconStyle><color>ff0000ff</color><scale>1.2</scale></IconStyle>
+        <LabelStyle><color>ff0000ff</color></LabelStyle>
+      /Style>
+    "##.parse().unwrap()
+}
+
 /// Create a `Placemark` given a name (like drone or plane ID) and its trajectory using the
 /// requested style.
 ///
