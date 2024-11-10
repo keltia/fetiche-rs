@@ -48,7 +48,7 @@ enum StatMsg {
     Exit,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AvionixCube {
     /// Describe the different features of the source
     pub features: Vec<Capability>,
@@ -124,8 +124,8 @@ impl Streamable for AvionixCube {
         let args = Filter::from(args);
 
         let stream_duration = match args {
-            Filter::Altitude { duration, .. } => { Duration::from_secs(duration as u64) }
-            _ => Duration::new(0, 0)
+            Filter::Altitude { duration, .. } => Duration::from_secs(duration as u64),
+            _ => Duration::new(0, 0),
         };
 
         trace!("Streaming data from {}…", self.base_url);
