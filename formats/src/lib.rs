@@ -121,6 +121,8 @@ pub enum Format {
     PandaStateVector,
     /// ADS-B data  from the Safesky API
     Safesky,
+    /// Drone data from Thales Senhive API
+    Senhive,
 }
 
 /// This is the special hex string for ICAO codes
