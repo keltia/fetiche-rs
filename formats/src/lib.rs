@@ -27,7 +27,9 @@ pub use avionix::*;
 #[cfg(feature = "flightaware")]
 pub use flightaware::*;
 pub use opensky::*;
+#[cfg(feature = "safesky")]
 pub use safesky::*;
+pub use senhive::*;
 
 mod aeroscope;
 mod asd;
@@ -36,7 +38,9 @@ mod avionix;
 #[cfg(feature = "flightaware")]
 mod flightaware;
 mod opensky;
+#[cfg(feature = "safesky")]
 mod safesky;
+mod senhive;
 
 /// Current formats.hcl version
 ///
@@ -123,32 +127,6 @@ pub enum Format {
 ///
 pub type ICAOString = [u8; 6];
 
-/// Macro to create the code which deserialize known types.
-///
-/// It takes three arguments:
-/// - from
-/// - object
-/// - list of types
-///
-macro_rules! into_cat21 {
-    ($from: ident, $rec:ident, $($name:ident),+) => {
-        match $from {
-        $(
-            Format::$name => {
-                let l: $name = match $rec.deserialize(None) {
-                    Ok(rec) => rec,
-                    Err(e) => {
-                        panic!("{}", e.to_string());
-                    }
-                };
-                Cat21::from(&l)
-            }
-        )+
-            _ => panic!("unknown format"),
-        }
-    };
-}
-
 /// Generate a converter called `$name` which takes `&str` and
 /// output a `Vec<$to>`.  `input` is deserialized from JSON as
 /// `$from`.
@@ -197,34 +175,6 @@ macro_rules! convert_to {
             }
         }
     };
-}
-
-impl Format {
-    /// Process each record coming from the input source, apply `Cat::from()` onto it
-    /// and return the list.  This is used when reading from the csv files.
-    ///
-    /// TODO: use arrow2 & serde_arrow instead.
-    ///
-    #[tracing::instrument(skip(self))]
-    pub fn from_csv<R>(self, rdr: &mut Reader<R>) -> Result<Vec<Cat21>>
-    where
-        R: Read + Debug,
-    {
-        debug!("Reading & transforming…");
-        let res: Vec<_> = rdr
-            .records()
-            .enumerate()
-            .inspect(|(n, _)| trace!("record #{}", n))
-            .map(|(cnt, rec)| {
-                let rec = rec.unwrap();
-                debug!("rec={:?}", rec);
-                let mut line = into_cat21!(self, rec, Aeroscope, Asd, Safesky, PandaStateVector);
-                line.rec_num = cnt;
-                line
-            })
-            .collect();
-        Ok(res)
-    }
 }
 
 impl Format {
