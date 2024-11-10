@@ -12,21 +12,22 @@ supported sources. Currently, we support:
 
 ## Sources
 
-A source can support one or more operation like `Fetch` and `Stream`. At this moment, only Opensky support streaming.
+A source can support one or more operation like `Fetch` and `Stream`. At this moment, only Opensky support streaming.he
+different supported sources are enabled through Cargo features.
 
-### Aeroscope
+### Aeroscope (feature `aeroscope`)
 
 This is the data extracted from a local Aeroscope antenna, considering you are supposed to have a local server attached
 to the antenna. Software supplied by DJI store data in its [MongoDB] database and there is a local API to access said
 data. Our antenna was supplied by [ASD] and interestingly enough the data model and access methods are not exactly the
 same.
 
-### ASD
+### ASD (feature `asd`)
 
 This source is for data aggregated by [ASD] on the `airspacedrones.com` through their own API. The data model & API are
 different from the local access in the previous one because you can have multiple antennas from a single API endpoint.
 
-### Avionix Cube
+### Avionix Cube (feature `avionix`)
 
 Avionix has developed a drone surveillance system with their own antenna, supporting only [RemoteID] as wire protocol.  
 Many DJI drones already implement RemoteID so it will be interesting to see how different the traffic is when using
@@ -35,13 +36,13 @@ former has either poll-based calls or a TCP streaming fee, whereas the antenna o
 
 Avionix Cube sends both ADS-B and RemoteID data.
 
-### Thales Senhive
+### Thales Senhive (feature `senhive`)
 
 Thales has its own drone surveillance system as well, called Senhive. This is yet another way to fetch the data, as
 they are using [AMQP] and its topic-based architecture. We will be using [Lapin] as our main AMQP client library, see
 [this example](examples/senhive-amqp.rs) for details.
 
-### Opensky
+### Opensky (feature `opensky`)
 
 Opensky is different from the previous two sources as it is an ADS-B data site, not a drone-specific one. We use Opensky
 for sites that do not have access to our own set of ADS-B antennas (called EMIT). The API is radically different from
@@ -52,16 +53,14 @@ I am currently cheating there by repeatedly calling the API (there are no API li
 antennas) and generating a stream from this. I have included a caching system to avoid sending the data several times
 as the API can (and will) send you the same dataset sometimes.
 
-### Safesky
+### Safesky (feature `safesky`)
 
 Safesky is an alternate ADS-B source we thought we'd be working with at some point so partial support is there but has
 not been tested. See the [source](src/access/safesky.rs). This is under the feature `safesky`.
 
-### Flightaware
+### Flightaware (feature `flightaware`)
 
 Flightaware Hose ADS-B data feed is now supported as well, although we do not have an account for now.
-
-This is under the feature `flightaware`"
 
 ## Configuration
 

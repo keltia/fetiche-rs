@@ -11,10 +11,17 @@ categories = ["aerospace::drones"]
 keywords = ["drones", "aeronautical-data", "fetiche"]
 
 [features]
-default = ["privacy"]
+default = ["privacy", 'asd', "avionix", "senhive"]
 async = []
 json = []
 privacy = []
+aeroscope = []
+asd = []
+avionix = []
+flightaware = []
+opensky = []
+safesky = []
+senhive = []
 
 [package.metadata.docs.rs]
 all-features = true
