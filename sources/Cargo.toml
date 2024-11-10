@@ -64,11 +64,6 @@ tracing.workspace = true
 tracing-log.workspace = true
 tracing-subscriber.workspace = true
 
-actix = "0.13"
-actix-rt = "2.10"
-actix-storage = { version = "0.3", features = ["serde", "serde-json", "serde-cbor"] }
-actix-storage-dashmap = { version = "0.3", features = ["actor", "delay-queue"] }
-dashmap = { version = "6.1", features = ["serde"] }
 base64_light = "0.1"
 enum_dispatch = "0.3"
 lapin = { version = "2.5", features = ["serde_json"] }

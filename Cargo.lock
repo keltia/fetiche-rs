@@ -3112,16 +3112,11 @@ dependencies = [
 name = "fetiche-sources"
 version = "0.17.0"
 dependencies = [
- "actix",
- "actix-rt",
- "actix-storage",
- "actix-storage-dashmap",
  "base64_light",
  "chrono",
  "clap",
  "criterion",
  "csv",
- "dashmap 6.1.0",
  "dateparser",
  "directories",
  "enum_dispatch",
