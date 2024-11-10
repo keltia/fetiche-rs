@@ -6,6 +6,8 @@ use futures_util::stream::StreamExt;
 use lapin::{options::*, types::FieldTable, Connection, ConnectionProperties, Consumer};
 use std::env;
 
+use fetiche_formats::StateMsg;
+
 #[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
@@ -72,10 +74,12 @@ async fn main() -> Result<()> {
             },
             Some(state) = state.next() => {
                 let delivery = state?;
-                println!(
-                    "Received state message: {:?}",
-                    std::str::from_utf8(&delivery.data).unwrap()
-                );
+                eprintln!("Received state message:");
+
+                let data = String::from_utf8_lossy(&delivery.data).to_string();
+                let data_st: StateMsg = serde_json::from_str(&data)?;
+
+                eprintln!("Received state from: {}", data_st.sensors.first().unwrap().serial);
             },
             Some(_) = stream.recv() => {
                 eprintln!("Got SIGINT");
@@ -94,17 +98,19 @@ async fn main() -> Result<()> {
             },
             Some(alert) = alert.next() => {
                 let delivery = alert?;
-                println!(
+                eprintln!(
                     "Received alert message: {:?}",
                     std::str::from_utf8(&delivery.data).unwrap()
                 );
             },
             Some(state) = state.next() => {
                 let delivery = state?;
-                println!(
-                    "Received state message: {:?}",
-                    std::str::from_utf8(&delivery.data).unwrap()
-                );
+                eprintln!("Received state message:");
+
+                let data = String::from_utf8_lossy(&delivery.data).to_string();
+                let data_st: StateMsg = serde_json::from_str(&data)?;
+
+                eprintln!("Received state from: {}", data_st.sensors.first().unwrap().serial);
             },
             _ = sig.recv() => {
                 eprintln!("^C pressed.");
