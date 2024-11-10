@@ -71,3 +71,10 @@ format "flightaware" {
   source      = "Flightaware"
   url         = "https://flightaware.com/commercial/firehose/documentation/summary"
 }
+
+format "senhive" {
+  type        = "drone"
+  description = "Drone data coming from the Thales Sennhive antenna."
+  source      = "Senhive"
+  url         = "https://www.senhive.com"
+}
