@@ -178,7 +178,7 @@ impl Site {
                     _ => Err(eyre!("invalid site {}", name)),
                 }
             }
-            None => Err(eyre!("no such site {name}")),
+            None => Err(AccessError::UnknownSite(name).into()),
         }
     }
 

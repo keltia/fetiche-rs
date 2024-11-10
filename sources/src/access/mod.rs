@@ -2,6 +2,8 @@ use std::fmt::{Display, Formatter};
 
 use serde::Serialize;
 
+pub use error::*;
+
 #[cfg(feature = "aeroscope")]
 pub use aeroscope::*;
 #[cfg(feature = "asd")]

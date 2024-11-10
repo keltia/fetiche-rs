@@ -6,4 +6,8 @@ use thiserror::Error;
 pub enum AccessError {
     #[error("Bad configuration parameter: {0}")]
     BadParam(String),
+    #[error("No such site {0}")]
+    UnknownSite(String),
+    #[error("Invalid site {0}")]
+    InvalidSite(String),
 }
