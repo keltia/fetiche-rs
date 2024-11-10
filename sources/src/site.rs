@@ -167,9 +167,7 @@ impl Site {
                     Format::CubeData => {
                         let s = AvionixCube::new().load(site).clone();
 
-                        if site.is_streamable() {
-                            Ok(Flow::Streamable(Box::new(s)))
-                        }
+                        Ok(Flow::Streamable(Box::new(s)))
                     }
                     #[cfg(feature = "safesky")]
                     Format::Safesky => {
@@ -205,9 +203,8 @@ impl Site {
                     #[cfg(feature = "senhive")]
                     Format::Senhive => {
                         let s = Senhive::new().load(site).clone();
-                        if site.is_streamable() {
-                            Ok(Flow::Streamable(Box::new(s)))
-                        }
+
+                        Ok(Flow::Streamable(Box::new(s)))
                     }
                     _ => Err(AccessError::InvalidSite(name.to_string()).into()),
                 }
