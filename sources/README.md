@@ -3,7 +3,7 @@
 This is the main crate implementing the site-specific ways of accessing, authenticating and fetching data from the
 supported sources. Currently, we support:
 
-- Aeroscope (obsolete)
+- Aeroscope
 - ASD
 - Opensky
 - Avionix Cube (WIP)
@@ -14,7 +14,7 @@ supported sources. Currently, we support:
 
 A source can support one or more operation like `Fetch` and `Stream`. At this moment, only Opensky support streaming.
 
-### Aeroscope **OBSOLETE**
+### Aeroscope
 
 This is the data extracted from a local Aeroscope antenna, considering you are supposed to have a local server attached
 to the antenna. Software supplied by DJI store data in its [MongoDB] database and there is a local API to access said
@@ -35,10 +35,10 @@ former has either poll-based calls or a TCP streaming fee, whereas the antenna o
 
 Avionix Cube sends both ADS-B and RemoteID data.
 
-### Thales Sennhive
+### Thales Senhive
 
-Thales has its own drone surveillance system as well, called Sennhive. This is yet another way to fetch the data, as
-they are using [AMQP] and its topic-based architecture. They are using [RabbitMQ] and AMQP 0.9.
+Thales has its own drone surveillance system as well, called Senhive. This is yet another way to fetch the data, as
+they are using [AMQP] and its topic-based architecture.
 
 ### Opensky
 
