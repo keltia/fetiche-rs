@@ -209,10 +209,10 @@ impl Site {
                             Ok(Flow::Streamable(Box::new(s)))
                         }
                     }
-                    _ => Err(AccessError::InvalidSite(name).into()),
+                    _ => Err(AccessError::InvalidSite(name.to_string()).into()),
                 }
             }
-            None => Err(AccessError::UnknownSite(name).into()),
+            None => Err(AccessError::UnknownSite(name.to_string()).into()),
         }
     }
 
