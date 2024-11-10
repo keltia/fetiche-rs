@@ -8,6 +8,7 @@ pub use avionix::*;
 pub use flightaware::*;
 pub use opensky::*;
 pub use safesky::*;
+pub use senhive::*;
 
 mod aeroscope;
 mod asd;
@@ -16,6 +17,7 @@ mod error;
 mod flightaware;
 mod opensky;
 mod safesky;
+mod senhive;
 
 /// Statistics gathering struct, should be generic enough for most sources
 ///
