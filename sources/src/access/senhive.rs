@@ -1,9 +1,11 @@
 //! This is the module for the Thales Senhive antenna
 //!
 
+use std::sync::mpsc::Sender;
+
 use serde::{Deserialize, Serialize};
 
-use crate::{Capability, Site};
+use crate::{AuthError, Capability, Site, Streamable};
 
 use fetiche_formats::Format;
 
@@ -45,7 +47,7 @@ impl Senhive {
         }
     }
 
-    pub fn load(&self, s: Site) -> Self {
+    pub fn load(&self, _s: &Site) -> Self {
         Senhive::default()
     }
 }
@@ -53,5 +55,23 @@ impl Senhive {
 impl Default for Senhive {
     fn default() -> Self {
         Senhive::new()
+    }
+}
+
+impl Streamable for Senhive {
+    fn name(&self) -> String {
+        String::from("Senhive")
+    }
+
+    fn authenticate(&self) -> eyre::Result<String, AuthError> {
+        todo!()
+    }
+
+    fn stream(&self, out: Sender<String>, token: &str, args: &str) -> eyre::Result<()> {
+        todo!()
+    }
+
+    fn format(&self) -> Format {
+        Format::CubeData
     }
 }
