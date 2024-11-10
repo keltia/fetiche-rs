@@ -115,7 +115,7 @@ Here are some of the things I've been working on. Some of these are registered a
 
 - Add more tests & benchmarks.
 - [Polars] instead of [Datafusion] to simplify? We are not using (nor plan to) all the datafusion features.
-- Integration of Sennhive and Thales antennas in `formats` and `sources` when we have docs.
+- Integration of Avionix and Thales/Senhive antennas in `formats` and `sources` when we have docs.
 
 Done:
 
