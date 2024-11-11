@@ -175,18 +175,18 @@ async fn main() -> Result<()> {
                 let delivery = data?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
-                let data_st: FusedData = serde_json::from_str(&data)?;
-
                 fd.write(&delivery.data).await?;
+
+                let data_st: FusedData = serde_json::from_str(&data)?;
             },
             Some(data) = dl_data.next() => {
                 eprint!("d");
                 let delivery = data?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
-                let data_st: FusedData = serde_json::from_str(&data)?;
-
                 fd.write(&delivery.data).await?;
+
+                let data_st: FusedData = serde_json::from_str(&data)?;
             },
             Some(alert) = alert.next() => {
                 eprint!("A");
