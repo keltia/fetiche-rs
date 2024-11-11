@@ -48,6 +48,8 @@ async fn main() -> Result<()> {
     let mut alert = subscribe(&conn, "system_alert").await?;
     let mut state = subscribe(&conn, "system_state").await?;
 
+    let mut dl_data = subscribe(&conn, "dl_fused_data").await?;
+
     println!("Waiting for messages...");
 
     // setup ctrl-c handled
@@ -67,6 +69,13 @@ async fn main() -> Result<()> {
                 let delivery = data?;
                 println!(
                     "Received data message: {:?}",
+                    std::str::from_utf8(&delivery.data).unwrap()
+                );
+            },
+            Some(data) = dl_data.next() => {
+                let delivery = data?;
+                println!(
+                    "Received oldish data message: {:?}",
                     std::str::from_utf8(&delivery.data).unwrap()
                 );
             },
@@ -98,6 +107,13 @@ async fn main() -> Result<()> {
                 let delivery = data?;
                 println!(
                     "Received data message: {:?}",
+                    std::str::from_utf8(&delivery.data).unwrap()
+                );
+            },
+            Some(data) = dl_data.next() => {
+                let delivery = data?;
+                println!(
+                    "Received oldish data message: {:?}",
                     std::str::from_utf8(&delivery.data).unwrap()
                 );
             },
