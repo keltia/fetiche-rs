@@ -3,10 +3,11 @@
 
 // ----- queue: `fused_data`
 
+use crate::senhive::Coordinates;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-
-use crate::senhive::Coordinates;
+use serde_with::{serde_as, DisplayFromStr, PickFirst};
+use strum::EnumString;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Location1 {
@@ -70,6 +71,7 @@ pub struct VehicleState {
     pub state: i64,
 }
 
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VehicleIdentification {
     pub serial: Option<String>,
@@ -77,19 +79,26 @@ pub struct VehicleIdentification {
     pub make: Option<String>,
     pub model: Option<String>,
     #[serde(rename = "uavType")]
+    #[serde_as(as = "PickFirst<(_, DisplayFromStr)>")]
     pub uav_type: UAVType,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[repr(u8)]
+#[derive(Debug, Deserialize, strum::Display, EnumString, strum::VariantNames, Serialize)]
 pub enum FusionType {
     Cooperative = 0,
     Surveillance = 1,
     Both = 2,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[repr(u8)]
+#[derive(
+    Debug,
+    Default,
+    Deserialize,
+    strum::Display,
+    EnumString,
+    strum::VariantNames,
+    Serialize
+)]
 pub enum UAVType {
     #[default]
     Unknown = 0,
@@ -100,9 +109,11 @@ pub enum UAVType {
     Other = 15,
 }
 
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FusionState {
     #[serde(rename = "fusionType")]
+    #[serde_as(as = "PickFirst<(_, DisplayFromStr)>")]
     pub fusion_type: FusionType,
     #[serde(rename = "sourceSerials")]
     pub source_serials: Vec<String>,
