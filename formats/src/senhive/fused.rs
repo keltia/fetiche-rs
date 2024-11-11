@@ -72,7 +72,6 @@ pub struct VehicleState {
     #[serde(rename = "verticalSpeed")]
     pub vertical_speed: Option<FusedValue>,
     pub orientation: Option<FusedValue>,
-    #[serde(default_value = "15")]
     pub state: Option<i8>,
 }
 
