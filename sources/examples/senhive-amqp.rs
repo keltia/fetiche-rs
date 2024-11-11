@@ -1,18 +1,20 @@
 //! Connect to a Thales Senhive antenna and fetch messages through Lapin as AMQP client.
 //!
 
+use std::env;
+
 use eyre::Result;
 use futures_util::stream::StreamExt;
 use lapin::{options::*, types::FieldTable, Connection, ConnectionProperties, Consumer};
-use std::env;
-
-use fetiche_formats::StateMsg;
-
-use fetiche_common::init_logging;
+use tokio::fs;
+use tokio::io::AsyncWriteExt;
 #[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
 use tokio::signal::windows::ctrl_c;
+
+use fetiche_common::init_logging;
+use fetiche_formats::StateMsg;
 
 async fn subscribe(conn: &Connection, name: &str) -> Result<Consumer> {
     // Create a channel
@@ -60,6 +62,8 @@ async fn main() -> Result<()> {
     #[cfg(unix)]
     let mut stream = signal(SignalKind::interrupt()).unwrap();
 
+    let mut fh = fs::File::create("fused_data.json").await?;
+
     // Process each message
     //
     loop {
@@ -67,17 +71,13 @@ async fn main() -> Result<()> {
         tokio::select! {
             Some(data) = data.next() => {
                 let delivery = data?;
-                println!(
-                    "Received data message: {:?}",
-                    std::str::from_utf8(&delivery.data).unwrap()
-                );
+                eprint!("d");
+                fh.write(&delivery.data).await?;
             },
             Some(data) = dl_data.next() => {
                 let delivery = data?;
-                println!(
-                    "Received oldish data message: {:?}",
-                    std::str::from_utf8(&delivery.data).unwrap()
-                );
+                eprint!("D");
+                fh.write_all(&delivery.data).await?;
             },
             Some(alert) = alert.next() => {
                 let delivery = alert?;
@@ -105,17 +105,13 @@ async fn main() -> Result<()> {
         tokio::select! {
             Some(data) = data.next() => {
                 let delivery = data?;
-                println!(
-                    "Received data message: {:?}",
-                    std::str::from_utf8(&delivery.data).unwrap()
-                );
+                eprint!("d");
+                fh.write(&delivery.data).await?;
             },
             Some(data) = dl_data.next() => {
                 let delivery = data?;
-                println!(
-                    "Received oldish data message: {:?}",
-                    std::str::from_utf8(&delivery.data).unwrap()
-                );
+                eprint!("D");
+                fh.write_all(&delivery.data).await?;
             },
             Some(alert) = alert.next() => {
                 let delivery = alert?;
