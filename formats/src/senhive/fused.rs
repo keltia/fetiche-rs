@@ -6,7 +6,7 @@
 use crate::senhive::Coordinates;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::serde_as;
 use strum::EnumString;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -79,8 +79,7 @@ pub struct VehicleIdentification {
     pub make: Option<String>,
     pub model: Option<String>,
     #[serde(rename = "uavType")]
-    #[serde_as(as = "DisplayFromStr")]
-    pub uav_type: UAVType,
+    pub uav_type: u8,
 }
 
 #[derive(Debug, Deserialize, strum::Display, EnumString, strum::VariantNames, Serialize)]
@@ -113,8 +112,7 @@ pub enum UAVType {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FusionState {
     #[serde(rename = "fusionType")]
-    #[serde_as(as = "DisplayFromStr")]
-    pub fusion_type: FusionType,
+    pub fusion_type: u8,
     #[serde(rename = "sourceSerials")]
     pub source_serials: Vec<String>,
 }
