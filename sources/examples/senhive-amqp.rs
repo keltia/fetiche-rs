@@ -8,6 +8,7 @@ use std::env;
 
 use fetiche_formats::StateMsg;
 
+use fetiche_common::init_logging;
 #[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
@@ -32,6 +33,10 @@ async fn subscribe(conn: &Connection, name: &str) -> Result<Consumer> {
 #[tokio::main]
 async fn main() -> Result<()> {
     let url = env::var("LAPIN_URL").expect("LAPIN_URL must be set");
+
+    // Create logging early.
+    //
+    init_logging("senhive-amqp", false, false, Some("/acute".to_string()))?;
 
     // Connect to the AMQP server
     let conn = Connection::connect(&url, ConnectionProperties::default()).await?;
