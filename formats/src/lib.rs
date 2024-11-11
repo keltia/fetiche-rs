@@ -29,7 +29,6 @@ pub use flightaware::*;
 pub use opensky::*;
 #[cfg(feature = "safesky")]
 pub use safesky::*;
-pub use senhive::*;
 
 mod aeroscope;
 mod asd;
@@ -40,7 +39,7 @@ mod flightaware;
 mod opensky;
 #[cfg(feature = "safesky")]
 mod safesky;
-mod senhive;
+pub mod senhive;
 
 /// Current formats.hcl version
 ///
