@@ -39,10 +39,10 @@ pub struct FusedValue {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Altitudes {
-    pub ato: FusedValue,
-    pub agl: FusedValue,
+    pub ato: Option<FusedValue>,
+    pub agl: Option<FusedValue>,
     pub amsl: Option<FusedValue>,
-    pub geodetic: FusedValue,
+    pub geodetic: Option<FusedValue>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -53,6 +53,16 @@ pub struct Location {
     pub likelihood: String,
 }
 
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub enum VehiculeStateType {
+    MotorOff = 0,
+    MotorOn = 1,
+    Airborn = 2,
+    #[default]
+    Unknown = 15,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VehicleState {
     pub location: Location,
@@ -60,9 +70,10 @@ pub struct VehicleState {
     #[serde(rename = "groundSpeed")]
     pub ground_speed: Option<FusedValue>,
     #[serde(rename = "verticalSpeed")]
-    pub vertical_speed: Option<f64>,
+    pub vertical_speed: Option<FusedValue>,
     pub orientation: Option<FusedValue>,
-    pub state: i64,
+    #[serde(default_value = "15")]
+    pub state: Option<i8>,
 }
 
 #[serde_as]
