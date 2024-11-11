@@ -46,12 +46,6 @@ pub struct Altitudes {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Coordinates1 {
-    pub lon: f64,
-    pub lat: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct Location {
     pub coordinates: Coordinates,
     pub uncertainty: Option<f64>,
@@ -64,10 +58,10 @@ pub struct VehicleState {
     pub location: Location,
     pub altitudes: Altitudes,
     #[serde(rename = "groundSpeed")]
-    pub ground_speed: FusedValue,
+    pub ground_speed: Option<FusedValue>,
     #[serde(rename = "verticalSpeed")]
     pub vertical_speed: Option<f64>,
-    pub orientation: FusedValue,
+    pub orientation: Option<FusedValue>,
     pub state: i64,
 }
 
