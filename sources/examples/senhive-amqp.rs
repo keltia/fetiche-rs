@@ -209,7 +209,7 @@ async fn main() -> Result<()> {
 
                 ss.write(&delivery.data).await?;
             },
-            Some(state) = state.next() => {
+            Some(state) = dl_state.next() => {
                 eprint!("s");
                 let delivery = state?;
 

@@ -61,7 +61,7 @@ ml-progress = "0.1"
 rand = "0"
 rayon = "1.10"
 rust-3d = "0.34"
-regex = "1.11.0"
+regex = "1.11"
 
 [dev-dependencies]
 criterion.workspace = true
