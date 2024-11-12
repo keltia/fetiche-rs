@@ -49,7 +49,7 @@ pub struct Sensor {
     pub serial: String,
     pub name: String,
     #[serde(rename = "type")]
-    pub r#type: SensorType,
+    pub r#type: String,
     pub coordinates: Option<Coordinates>,
     pub altitude: Altitude,
     /// Defined as a WKT POLYGON
