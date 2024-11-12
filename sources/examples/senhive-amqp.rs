@@ -57,22 +57,6 @@ impl Feed {
     }
 }
 
-async fn subscribe(conn: &Connection, name: &str) -> Result<Consumer> {
-    // Create a channel
-    let data_ch = conn.create_channel().await?;
-    println!("Created {name} channel");
-
-    let data = data_ch
-        .basic_consume(
-            name,
-            "drone_tag",
-            BasicConsumeOptions::default(),
-            FieldTable::default(),
-        )
-        .await?;
-    Ok(data)
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let url = env::var("LAPIN_URL").expect("LAPIN_URL must be set");
@@ -87,13 +71,13 @@ async fn main() -> Result<()> {
 
     // Subscribe to topics
     //
-    let mut data = subscribe(&conn, "fused_data").await?;
-    let mut alert = subscribe(&conn, "system_alert").await?;
-    let mut state = subscribe(&conn, "system_state").await?;
+    let mut data = Feed::new(&conn, "fused_data", "data").await?;
+    let mut alert = Feed::new(&conn, "system_alert", "oob").await?;
+    let mut state = Feed::new(&conn, "system_state", "state").await?;
 
-    let mut dl_data = subscribe(&conn, "dl_fused_data").await?;
-    let mut dl_alert = subscribe(&conn, "dl_system_alert").await?;
-    let mut dl_state = subscribe(&conn, "dl_system_state").await?;
+    let mut dl_data = Feed::new(&conn, "dl_fused_data", "data").await?;
+    let mut dl_alert = Feed::new(&conn, "dl_system_alert", "oob").await?;
+    let mut dl_state = Feed::new(&conn, "dl_system_state", "state").await?;
 
     println!("Waiting for messages...");
 
@@ -114,53 +98,53 @@ async fn main() -> Result<()> {
     loop {
         #[cfg(unix)]
         tokio::select! {
-            Some(data) = data.next() => {
+            Some(data) = data.inp.next() => {
                 eprint!("D");
                 let delivery = data?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
-                let data_st: FusedData = serde_json::from_str(&data)?;
+                let _: FusedData = serde_json::from_str(&data)?;
 
                 fd.write(&delivery.data).await?;
             },
-            Some(data) = dl_data.next() => {
+            Some(data) = dl_data.inp.next() => {
                 eprint!("d");
                 let delivery = data?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
-                let data_st: FusedData = serde_json::from_str(&data)?;
-
                 fd.write(&delivery.data).await?;
+
+                let _: FusedData = serde_json::from_str(&data)?;
             },
-            Some(alert) = alert.next() => {
+            Some(alert) = alert.inp.next() => {
                 eprint!("A");
                 let delivery = alert?;
 
                 sa.write(&delivery.data).await?;
             },
-            Some(alert) = dl_alert.next() => {
+            Some(alert) = dl_alert.inp.next() => {
                 eprint!("a");
                 let delivery = alert?;
 
                 sa.write(&delivery.data).await?;
             },
-            Some(state) = state.next() => {
+            Some(state) = state.inp.next() => {
                 eprint!("S");
                 let delivery = state?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
-                let data_st: StateMsg = serde_json::from_str(&data)?;
-
                 ss.write(&delivery.data).await?;
+
+                let _: StateMsg = serde_json::from_str(&data)?;
             },
-            Some(state) = dl_state.next() => {
+            Some(state) = dl_state.inp.next() => {
                 eprint!("s");
                 let delivery = state?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
-                let data_st: StateMsg = serde_json::from_str(&data)?;
-
                 ss.write(&delivery.data).await?;
+
+                let _: StateMsg = serde_json::from_str(&data)?;
             },
             Some(_) = stream.recv() => {
                 eprintln!("Got SIGINT");
@@ -170,53 +154,53 @@ async fn main() -> Result<()> {
 
         #[cfg(windows)]
         tokio::select! {
-            Some(data) = data.next() => {
+            Some(data) = data.inp.next() => {
                 eprint!("D");
                 let delivery = data?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
-                fd.write(&delivery.data).await?;
+                let _: FusedData = serde_json::from_str(&data)?;
 
-                let data_st: FusedData = serde_json::from_str(&data)?;
+                fd.write(&delivery.data).await?;
             },
-            Some(data) = dl_data.next() => {
+            Some(data) = dl_data.inp.next() => {
                 eprint!("d");
                 let delivery = data?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
                 fd.write(&delivery.data).await?;
 
-                let data_st: FusedData = serde_json::from_str(&data)?;
+                let _: FusedData = serde_json::from_str(&data)?;
             },
-            Some(alert) = alert.next() => {
+            Some(alert) = alert.inp.next() => {
                 eprint!("A");
                 let delivery = alert?;
 
                 sa.write(&delivery.data).await?;
             },
-            Some(alert) = dl_alert.next() => {
+            Some(alert) = dl_alert.inp.next() => {
                 eprint!("a");
                 let delivery = alert?;
 
                 sa.write(&delivery.data).await?;
             },
-            Some(state) = state.next() => {
+            Some(state) = state.inp.next() => {
                 eprint!("S");
                 let delivery = state?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
-                let data_st: StateMsg = serde_json::from_str(&data)?;
-
                 ss.write(&delivery.data).await?;
+
+                let _: StateMsg = serde_json::from_str(&data)?;
             },
-            Some(state) = dl_state.next() => {
+            Some(state) = dl_state.inp.next() => {
                 eprint!("s");
                 let delivery = state?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
-                let data_st: StateMsg = serde_json::from_str(&data)?;
-
                 ss.write(&delivery.data).await?;
+
+                let _: StateMsg = serde_json::from_str(&data)?;
             },
             _ = sig.recv() => {
                 eprintln!("^C pressed.");
