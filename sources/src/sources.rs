@@ -118,8 +118,9 @@ impl Sources {
                     Auth::Anon => "open",
                     Auth::Key { .. } => "API key",
                     Auth::UserKey { .. } => "API+User keys",
+                    Auth::Vhost { .. } => "Virtual Host+login",
                 }
-                .to_string()
+                    .to_string()
             } else {
                 "anon".to_owned()
             };
