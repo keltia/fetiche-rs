@@ -101,6 +101,9 @@ async fn main() -> Result<()> {
             Some(data) = data.inp.next() => {
                 eprint!("D");
                 let delivery = data?;
+                delivery
+                    .ack(BasicAckOptions::default())
+                    .await?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
                 let _: FusedData = serde_json::from_str(&data)?;
@@ -110,6 +113,9 @@ async fn main() -> Result<()> {
             Some(data) = dl_data.inp.next() => {
                 eprint!("d");
                 let delivery = data?;
+                delivery
+                    .ack(BasicAckOptions::default())
+                    .await?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
                 fd.write(&delivery.data).await?;
@@ -131,6 +137,9 @@ async fn main() -> Result<()> {
             Some(state) = state.inp.next() => {
                 eprint!("S");
                 let delivery = state?;
+                delivery
+                    .ack(BasicAckOptions::default())
+                    .await?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
                 ss.write(&delivery.data).await?;
@@ -140,7 +149,9 @@ async fn main() -> Result<()> {
             Some(state) = dl_state.inp.next() => {
                 eprint!("s");
                 let delivery = state?;
-
+                delivery
+                    .ack(BasicAckOptions::default())
+                    .await?;
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
                 ss.write(&delivery.data).await?;
 
@@ -157,6 +168,9 @@ async fn main() -> Result<()> {
             Some(data) = data.inp.next() => {
                 eprint!("D");
                 let delivery = data?;
+                delivery
+                    .ack(BasicAckOptions::default())
+                    .await?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
                 let _: FusedData = serde_json::from_str(&data)?;
@@ -166,6 +180,9 @@ async fn main() -> Result<()> {
             Some(data) = dl_data.inp.next() => {
                 eprint!("d");
                 let delivery = data?;
+                delivery
+                    .ack(BasicAckOptions::default())
+                    .await?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
                 fd.write(&delivery.data).await?;
@@ -175,18 +192,27 @@ async fn main() -> Result<()> {
             Some(alert) = alert.inp.next() => {
                 eprint!("A");
                 let delivery = alert?;
+                delivery
+                    .ack(BasicAckOptions::default())
+                    .await?;
 
                 sa.write(&delivery.data).await?;
             },
             Some(alert) = dl_alert.inp.next() => {
                 eprint!("a");
                 let delivery = alert?;
+                delivery
+                    .ack(BasicAckOptions::default())
+                    .await?;
 
                 sa.write(&delivery.data).await?;
             },
             Some(state) = state.inp.next() => {
                 eprint!("S");
                 let delivery = state?;
+                delivery
+                    .ack(BasicAckOptions::default())
+                    .await?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
                 ss.write(&delivery.data).await?;
@@ -196,6 +222,9 @@ async fn main() -> Result<()> {
             Some(state) = dl_state.inp.next() => {
                 eprint!("s");
                 let delivery = state?;
+                delivery
+                    .ack(BasicAckOptions::default())
+                    .await?;
 
                 let data = String::from_utf8_lossy(&delivery.data).to_string();
                 ss.write(&delivery.data).await?;
