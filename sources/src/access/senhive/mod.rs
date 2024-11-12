@@ -1,14 +1,45 @@
 //! This is the module for the Thales Senhive antenna
 //!
+//! The Senhive system uses AMQP to send out different kind of messages:
+//!
+//! - regular data from the `fused_data`  topic.  Each message has to be ACK'd within 5s
+//! - system alerts from the `system_alert` topic
+//! - system state from the `system_state`.  This is sent every minute.
+//!
+//! If any of these messages are not ACK'd within 5s, they are move to the Dead Letter equivalent queues:
+//! - `dl_fused_data`
+//! - `dl_system_alert`
+//! - `dl_ system_state`
+//!
+//! System state messages are not that interesting but serve as a kind of watchdog.
+//!
+//! So our principle is, in order to never lose a message, is to start by draining the `dl_fused_data` topic,
+//! then switch to the regular `fused_data` topic.
+//!
+//! This is using the new `AsyncStreamable` trait.
 
-use std::str::FromStr;
-use std::sync::mpsc::Sender;
+mod stream;
 
-use crate::{Auth, AuthError, Capability, Site, Streamable};
+use eyre::Result;
+use lapin::options::BasicConsumeOptions;
+use lapin::types::FieldTable;
+use lapin::{Connection, ConnectionProperties, Consumer};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{error, trace};
+use signal_hook::consts::TERM_SIGNALS;
+use signal_hook::flag;
+use std::path::Path;
+use std::str::FromStr;
+use std::sync::atomic::AtomicBool;
+use std::sync::mpsc::{channel, Sender};
+use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, Instant};
+use tracing::{error, info, trace};
 
+use crate::{Auth, AuthError, Capability, Filter, Site};
+
+use crate::access::Stats;
 use fetiche_formats::Format;
 
 /// AMQP default site
@@ -53,6 +84,8 @@ pub struct Senhive {
     pub vhost: String,
     /// Running time (for streams)
     pub duration: i32,
+    /// AMQP connection.
+    pub conn: Option<Arc<Connection>>,
 }
 
 impl Senhive {
@@ -67,13 +100,13 @@ impl Senhive {
             base_url: "".to_owned(),
             vhost: "".to_owned(),
             duration: 0,
+            conn: None,
         }
     }
 
     #[tracing::instrument]
     pub fn load(&mut self, site: &Site) -> &mut Self {
         self.format = Format::from_str(&site.format).unwrap();
-        self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
             match auth {
                 Auth::Vhost { vhost, username, password } => {
@@ -87,6 +120,8 @@ impl Senhive {
                 }
             }
         }
+        let base_url = site.base_url.to_owned();
+        self.base_url = format!("amqp://{}:{}@{}/{}", self.login, self.password, base_url, self.vhost);
         self
     }
 }
@@ -97,20 +132,30 @@ impl Default for Senhive {
     }
 }
 
-impl Streamable for Senhive {
-    fn name(&self) -> String {
-        String::from("Senhive")
-    }
+#[derive(Debug)]
+pub struct Feed {
+    pub name: String,
+    pub inp: Consumer,
+}
 
-    fn authenticate(&self) -> eyre::Result<String, AuthError> {
-        todo!()
-    }
+impl Feed {
+    pub async fn new(conn: &Connection, name: &str, tag: &str) -> Result<Self> {
+        // Create a channel
+        let data_ch = conn.create_channel().await?;
+        println!("Created {name} channel");
 
-    fn stream(&self, out: Sender<String>, token: &str, args: &str) -> eyre::Result<()> {
-        todo!()
-    }
+        let data = data_ch
+            .basic_consume(
+                name,
+                tag,
+                BasicConsumeOptions::default(),
+                FieldTable::default(),
+            )
+            .await?;
 
-    fn format(&self) -> Format {
-        Format::Senhive
+        Ok(Feed {
+            name: name.into(),
+            inp: data,
+        })
     }
 }
