@@ -55,7 +55,7 @@ pub struct Sensor {
     /// Defined as a WKT POLYGON
     #[serde(rename = "estimatedCoverage")]
     pub estimated_coverage: Option<String>,
-    pub state: State,
+    pub state: String,
     #[serde(rename = "lastOnline")]
     pub last_online: Option<DateTime<Utc>>,
     #[serde(rename = "metaData")]
