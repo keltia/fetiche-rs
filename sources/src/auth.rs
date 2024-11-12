@@ -22,6 +22,8 @@ pub enum Auth {
     },
     /// Using plain login/password
     Login { username: String, password: String },
+    /// Using plain login/password inside a specific virtual host
+    Vhost { vhost: String, username: String, password: String },
 }
 
 impl Display for Auth {
@@ -30,7 +32,6 @@ impl Display for Auth {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // Hide passwords & API keys
         //
-        //let auth = self.clone();
         let auth = match self.clone() {
             Auth::Key { .. } => Auth::Key {
                 api_key: "HIDDEN".to_string(),
@@ -46,6 +47,11 @@ impl Display for Auth {
             Auth::Token { login, token, .. } => Auth::Token {
                 login,
                 token,
+                password: "HIDDEN".to_string(),
+            },
+            Auth::Vhost { vhost, username, .. } => Auth::Vhost {
+                vhost,
+                username,
                 password: "HIDDEN".to_string(),
             },
             _ => Auth::Anon,
