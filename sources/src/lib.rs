@@ -6,11 +6,13 @@
 //! - fetching data (GET or POST, etc.).
 //!
 
-use enum_dispatch::enum_dispatch;
-use eyre::Result;
-use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display, Formatter};
 use std::sync::mpsc::Sender;
+
+use enum_dispatch::enum_dispatch;
+use eyre::Result;
+use ractor::async_trait;
+use serde::{Deserialize, Serialize};
 
 use fetiche_formats::Format;
 
@@ -95,6 +97,24 @@ pub trait Streamable: Debug {
     fn authenticate(&self) -> Result<String, AuthError>;
     /// Stream actual data
     fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()>;
+    /// Returns the input formats
+    fn format(&self) -> Format;
+}
+
+/// This trait enables us to manage different ways of connecting and streaming data under
+/// a single interface.  The object can connect to a TCP stream or create one by repeatedly calling
+/// some API (cf. Opensky).
+///
+/// This is the async version of `Streamable`, making it easier to use async clients and/or actors.
+///
+#[async_trait]
+pub trait AsyncStreamable: Debug {
+    /// Return site's name
+    fn name(&self) -> String;
+    /// If credentials are needed, get a token for subsequent operations
+    async fn authenticate(&self) -> Result<String, AuthError>;
+    /// Stream actual data
+    async fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()>;
     /// Returns the input formats
     fn format(&self) -> Format;
 }
