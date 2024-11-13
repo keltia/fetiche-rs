@@ -1,8 +1,8 @@
 //! Module for exporting encounters into KML files.
 //!
 
-mod data;
 mod create;
+mod data;
 
 use crate::cmds::Format;
 use crate::config::Context;
@@ -13,7 +13,7 @@ use data::*;
 
 use clap::Parser;
 use colorsys::Rgb;
-use eyre::{format_err, Result};
+use eyre::Result;
 use fetiche_common::DateOpts;
 use futures::future::join_all;
 use itertools::Itertools;
@@ -206,16 +206,20 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
 /// Export a list of encounters.
 ///
 #[tracing::instrument(skip(ctx))]
-async fn export_encounter_list(ctx: &Context, list: &Vec<String>, output: &PathBuf) -> Result<usize> {
+async fn export_encounter_list(
+    ctx: &Context,
+    list: &Vec<String>,
+    output: &PathBuf,
+) -> Result<usize> {
     assert!(output.is_dir(), "output must be a directory!");
 
     let n = list.len();
     trace!("Found {n} encounters to export.");
 
-    // Sanity check.
+    // No new encounters to export is fine.
     //
     if n == 0 {
-        return Err(format_err!("no encounters found!"));
+        return Ok(0);
     }
 
     // Run the big batch in chunk to limit CPU usage and number of threads.
@@ -244,8 +248,8 @@ async fn export_encounter_list(ctx: &Context, list: &Vec<String>, output: &PathB
                         }
                     };
                 })
-                    .await
-                    .unwrap();
+                .await
+                .unwrap();
             })
             .collect();
         let _ = join_all(kmls).await;
@@ -254,4 +258,3 @@ async fn export_encounter_list(ctx: &Context, list: &Vec<String>, output: &PathB
     eprintln!("Exporting {n} encounters in {output:?}... ");
     Ok(n)
 }
-
