@@ -1,21 +1,25 @@
 use std::sync::atomic::AtomicBool;
+use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use eyre::Result;
 use lapin::{Connection, ConnectionProperties};
+use ractor::Actor;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
-use tokio::sync::mpsc::{channel, Sender};
 use tokio::time::sleep;
 use tracing::{info, trace};
 
 use fetiche_formats::Format;
 
 use crate::access::senhive::StatMsg;
-use crate::access::Stats;
+use crate::actors::{StatOps, StatsActor};
+use crate::Stats;
 use crate::{AsyncStreamable, AuthError, Filter, Senhive};
+
+const TICK: Duration = Duration::from_secs(30);
 
 impl AsyncStreamable for Senhive {
     fn name(&self) -> String {
@@ -43,8 +47,8 @@ impl AsyncStreamable for Senhive {
         // 0 means forever.
         //
         let stream_duration = match args {
-            Filter::Duration(duration) => { Duration::from_secs(duration as u64) }
-            _ => Duration::new(0, 0)
+            Filter::Duration(duration) => Duration::from_secs(duration as u64),
+            _ => Duration::new(0, 0),
         };
 
         trace!("Streaming data from {}…", self.base_url);
@@ -64,69 +68,26 @@ impl AsyncStreamable for Senhive {
             flag::register(*sig, Arc::clone(&term))?;
         }
 
-        let (tx, rx) = channel::<String>(10);
+        let (tx, rx) = channel::<String>();
 
-        // Timer set?  If yes, launch a sleeper thread
+        // Start the stats gathering actor.
+        //
+        trace!("starting stats actor.");
+        let tag = String::from("senhive::stream");
+        let (w, h) = Actor::spawn(Some(tag), StatsActor, ()).await?;
+
+        // Every TICK, we display stats.
+        //
+        w.send_interval(TICK, || StatOps::Print).await?;
+
+        // Set the clock ticking unless duration is 0
         //
         if stream_duration != Duration::from_secs(0) {
-            trace!("setup wakeup alarm");
-
-            let d = stream_duration;
-            let tx1 = tx.clone();
-            tokio::spawn(async move {
-                trace!("alarm set to {}s", d.as_secs());
-                sleep(d).await;
-                info!("DING for {}", d.as_secs());
-                tx1.send("TIMEOUT".into()).unwrap();
-            });
-            trace!("end of sleep");
+            w.exit_after(stream_duration).await?;
         }
-
-        // Launch stat gathering thread.
-        //
-        let (st_tx, st_rx) = channel::<StatMsg>();
-        tokio::spawn(async move {
-            trace!("stats::thread");
-
-            let start = Instant::now();
-            let mut stats = Stats::default();
-            while let Ok(msg) = st_rx.recv() {
-                match msg {
-                    StatMsg::Pkts(n) => stats.pkts += n,
-                    StatMsg::Empty => stats.empty += 1,
-                    StatMsg::Error => stats.err += 1,
-                    StatMsg::Reconnect => stats.reconnect += 1,
-                    StatMsg::Bytes(n) => stats.bytes += n,
-                    StatMsg::Print => {
-                        stats.tm = start.elapsed().as_secs();
-                        info!("Stats: {}", stats)
-                    }
-                    // The end
-                    StatMsg::Exit => {
-                        stats.tm = start.elapsed().as_secs();
-                        break;
-                    }
-                }
-            }
-            info!("\nSession: {}", stats);
-            trace!("end of stats thread");
-        });
-
-        // Launch a thread that sleep for 30s then ask for statistics
-        //
-        let disp_tx = st_tx.clone();
-        tokio::spawn(async move {
-            trace!("stats::display");
-            loop {
-                sleep(STATS_LOOP).await;
-                trace!("TICK");
-                let _ = disp_tx.send(StatMsg::Print);
-            }
-        });
 
         // Worker thread1
         //
-        let stat_tx = st_tx.clone();
         let url = self.base_url.clone();
 
         // We have to use an async thread. Actor, anyone?
@@ -137,13 +98,14 @@ impl AsyncStreamable for Senhive {
             // Do the connection
             //
             trace!("tcp::connect");
-            let conn = Connection::connect(&url, ConnectionProperties::default()).await
+            let conn = Connection::connect(&url, ConnectionProperties::default())
+                .await
                 .expect("connect failed");
         });
 
         // End threads
         //
-        let _ = st_tx.send(StatMsg::Exit);
+        let _ = w.stop("end".into()).await?;
 
         Ok(())
     }
