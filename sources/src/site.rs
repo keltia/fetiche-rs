@@ -35,7 +35,9 @@ use crate::Safesky;
 #[cfg(feature = "senhive")]
 use crate::Senhive;
 
-use crate::{AccessError, Auth, Capability, Fetchable, Routes, Sources, Streamable};
+use crate::{
+    AccessError, AsyncStreamable, Auth, Capability, Fetchable, Routes, Sources, Streamable,
+};
 
 /// Describe what a site is, its capabilities, access methods and authentication method.
 ///
@@ -107,6 +109,7 @@ impl Display for DataType {
 pub enum Flow {
     Fetchable(Box<dyn Fetchable>),
     Streamable(Box<dyn Streamable>),
+    AsyncStreamable(Box<dyn AsyncStreamable>),
 }
 
 impl Flow {
@@ -117,6 +120,7 @@ impl Flow {
         match self {
             Flow::Fetchable(s) => s.name(),
             Flow::Streamable(s) => s.name(),
+            Flow::AsyncStreamable(s) => s.name(),
         }
     }
 
@@ -127,6 +131,7 @@ impl Flow {
         match self {
             Flow::Fetchable(s) => s.format(),
             Flow::Streamable(s) => s.format(),
+            Flow::AsyncStreamable(s) => s.format(),
         }
     }
 }
