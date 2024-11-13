@@ -37,7 +37,7 @@ struct State {
 
 impl Display for State {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: start={}", self.tag, self.start)
+        write!(f, "start={} {}", self.start, self.stat)
     }
 }
 
