@@ -39,7 +39,7 @@ use tracing::{error, info, trace};
 
 use crate::{Auth, AuthError, Capability, Filter, Site};
 
-use crate::access::Stats;
+use crate::Stats;
 use fetiche_formats::Format;
 
 /// AMQP default site
@@ -109,7 +109,11 @@ impl Senhive {
         self.format = Format::from_str(&site.format).unwrap();
         if let Some(auth) = &site.auth {
             match auth {
-                Auth::Vhost { vhost, username, password } => {
+                Auth::Vhost {
+                    vhost,
+                    username,
+                    password,
+                } => {
                     self.vhost = vhost.to_owned();
                     self.login = username.to_owned();
                     self.password = password.to_owned();
@@ -121,7 +125,10 @@ impl Senhive {
             }
         }
         let base_url = site.base_url.to_owned();
-        self.base_url = format!("amqp://{}:{}@{}/{}", self.login, self.password, base_url, self.vhost);
+        self.base_url = format!(
+            "amqp://{}:{}@{}/{}",
+            self.login, self.password, base_url, self.vhost
+        );
         self
     }
 }
