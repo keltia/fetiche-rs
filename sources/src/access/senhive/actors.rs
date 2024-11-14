@@ -29,6 +29,7 @@ impl WorkerState {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) enum WorkerMsg {
     Start(String),
     Tick,
