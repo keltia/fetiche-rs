@@ -10,13 +10,13 @@ use tracing::{info, trace};
 use crate::Stats;
 
 /// Name of the Actor "process group"
-const PG_SOURCES: &str = "fetiche_sources";
+pub const PG_SOURCES: &str = "fetiche_sources";
 
 // -----
 pub struct StatsActor;
 
 #[derive(Debug)]
-pub enum StatOps {
+pub enum StatsMsg {
     /// stat updates
     Pkts(u32),
     Bytes(u64),
@@ -30,7 +30,7 @@ pub enum StatOps {
 }
 
 #[derive(Debug)]
-struct State {
+pub struct State {
     pub start: i64,
     pub stat: Stats,
 }
@@ -43,8 +43,9 @@ impl Display for State {
 
 /// stats gathering actor.  You run one actor per task, each with a different `tag`
 ///
+#[ractor::async_trait]
 impl Actor for StatsActor {
-    type Msg = StatOps;
+    type Msg = StatsMsg;
     type State = State;
     type Arguments = ();
 
@@ -73,21 +74,21 @@ impl Actor for StatsActor {
     ) -> Result<(), ActorProcessingErr> {
         match message {
             // updates
-            StatOps::Pkts(n) => state.stat.pkts += n,
-            StatOps::Empty => state.stat.empty += 1,
-            StatOps::Error => state.stat.err += 1,
-            StatOps::Reconnect => state.stat.reconnect += 1,
-            StatOps::Bytes(n) => state.stat.bytes += n,
+            StatsMsg::Pkts(n) => state.stat.pkts += n,
+            StatsMsg::Empty => state.stat.empty += 1,
+            StatsMsg::Error => state.stat.err += 1,
+            StatsMsg::Reconnect => state.stat.reconnect += 1,
+            StatsMsg::Bytes(n) => state.stat.bytes += n,
             // commands
-            StatOps::Print => {
+            StatsMsg::Print => {
                 state.stat.tm = (Utc::now().timestamp() - state.start) as u64;
                 info!("Stats: {}", state);
             }
-            StatOps::Reset => {
+            StatsMsg::Reset => {
                 state.stat = Stats::default();
             }
             // The end
-            StatOps::Exit => {
+            StatsMsg::Exit => {
                 state.stat.tm = (Utc::now().timestamp() - state.start) as u64;
                 myself.kill();
             }

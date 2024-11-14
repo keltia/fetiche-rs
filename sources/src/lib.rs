@@ -75,7 +75,7 @@ impl Display for Capability {
 /// Statistics gathering struct, should be generic enough for most sources
 ///
 #[derive(Clone, Debug, Default, Serialize)]
-pub(crate) struct Stats {
+pub struct Stats {
     pub tm: u64,
     pub pkts: u32,
     pub reconnect: usize,
