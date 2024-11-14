@@ -35,11 +35,6 @@ use fetiche_formats::Format;
 
 use crate::{Auth, Capability, Site};
 
-/// AMQP default site
-const DEF_AMQP: &str = "senegress.senair.io:5672";
-/// Default vhost
-const DEF_VHOST: &str = "eurocontrol";
-
 /// Credentials to submit to the site to get the token
 ///
 #[derive(Debug, Deserialize, Serialize)]
