@@ -32,6 +32,7 @@ use signal_hook::flag;
 use tracing::{debug, error, info, trace};
 
 use super::BUFSIZ;
+use crate::actors::StatsMsg;
 use crate::{Auth, AuthError, Capability, Filter, Site, Stats, Streamable};
 use fetiche_formats::Format;
 
@@ -39,19 +40,6 @@ use fetiche_formats::Format;
 const DEF_SITE: &str = "tcp.aero-network.com";
 /// TCP streaming port
 const DEF_PORT: u16 = 50007;
-
-/// Messages to send to the stats threads
-///
-#[derive(Clone, Debug, Serialize)]
-enum StatMsg {
-    Pkts(u32),
-    Bytes(u64),
-    Reconnect,
-    Empty,
-    Error,
-    Print,
-    Exit,
-}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AvionixServer {
@@ -184,7 +172,7 @@ impl Streamable for AvionixServer {
 
         // Launch stat gathering thread.
         //
-        let (st_tx, st_rx) = channel::<StatMsg>();
+        let (st_tx, st_rx) = channel::<StatsMsg>();
         thread::spawn(move || {
             trace!("stats::thread");
 
@@ -192,17 +180,17 @@ impl Streamable for AvionixServer {
             let mut stats = Stats::default();
             while let Ok(msg) = st_rx.recv() {
                 match msg {
-                    StatMsg::Pkts(n) => stats.pkts += n,
-                    StatMsg::Empty => stats.empty += 1,
-                    StatMsg::Error => stats.err += 1,
-                    StatMsg::Reconnect => stats.reconnect += 1,
-                    StatMsg::Bytes(n) => stats.bytes += n,
-                    StatMsg::Print => {
+                    StatsMsg::Pkts(n) => stats.pkts += n,
+                    StatsMsg::Error => stats.err += 1,
+                    StatsMsg::Reconnect => stats.reconnect += 1,
+                    StatsMsg::Bytes(n) => stats.bytes += n,
+                    StatsMsg::Print => {
                         stats.tm = start.elapsed().as_secs();
                         info!("Stats: {}", stats)
                     }
+                    StatsMsg::Reset => (),
                     // The end
-                    StatMsg::Exit => {
+                    StatsMsg::Exit => {
                         stats.tm = start.elapsed().as_secs();
                         break;
                     }
@@ -220,7 +208,7 @@ impl Streamable for AvionixServer {
             loop {
                 thread::sleep(STATS_LOOP);
                 trace!("TICK");
-                let _ = disp_tx.send(StatMsg::Print);
+                let _ = disp_tx.send(StatsMsg::Print);
             }
         });
 
@@ -252,7 +240,7 @@ impl Streamable for AvionixServer {
             //
             let auth_str = format!("{}\n{}\n", api_key, user_key);
             conn_out
-                .write(auth_str.as_bytes())
+                .write_all(auth_str.as_bytes())
                 .expect("auth write failed");
 
             trace!("avionixcube::stream(as {}:{})", api_key, user_key);
@@ -289,7 +277,8 @@ Duration {}s
             // Start stream
             //
             let _ = conn_out.write(START_MARKER.as_ref());
-            let _ = conn_out.flush().expect("flush marker");
+            conn_out.flush().expect("flush marker");
+
             trace!("avionixcube::stream started");
             loop {
                 let mut buf = [0u8; BUFSIZ];
@@ -300,7 +289,7 @@ Duration {}s
                     }
                     Err(e) => {
                         error!("worker-thread: {}", e.to_string());
-                        stat_tx.send(StatMsg::Error).expect("stat::error");
+                        stat_tx.send(StatsMsg::Error).expect("stat::error");
 
                         conn.shutdown(Shutdown::Both).expect("shutdown socket");
 
@@ -309,7 +298,7 @@ Duration {}s
                         drop(conn_in);
                         drop(conn_out);
 
-                        let _ = stat_tx.send(StatMsg::Reconnect).expect("stat::reconnect");
+                        stat_tx.send(StatsMsg::Reconnect).expect("stat::reconnect");
 
                         // Do the connection again
                         //
@@ -323,8 +312,8 @@ Duration {}s
                 let df = JsonLineReader::new(cur).finish().expect("create dataframe");
                 debug!("{:?}", df);
 
-                let _ = stat_tx.send(StatMsg::Pkts(df.iter().len() as u32));
-                let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
+                let _ = stat_tx.send(StatsMsg::Pkts(df.iter().len() as u32));
+                let _ = stat_tx.send(StatsMsg::Bytes(buf.len() as u64));
 
                 tx.send(String::from_utf8(buf.to_vec()).unwrap())
                     .expect("send");
@@ -355,7 +344,7 @@ Duration {}s
         }
         // End threads
         //
-        let _ = st_tx.send(StatMsg::Exit);
+        let _ = st_tx.send(StatsMsg::Exit);
 
         // sync; sync; sync
         //

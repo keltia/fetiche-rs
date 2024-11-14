@@ -28,24 +28,12 @@ use signal_hook::flag;
 use tracing::{debug, error, info, trace};
 
 use crate::access::avionix::BUFSIZ;
+use crate::actors::StatsMsg;
 use crate::{Auth, AuthError, Capability, Filter, Site, Stats, Streamable};
 use fetiche_formats::Format;
 
 /// TCP streaming port
 const DEF_PORT: u16 = 50005;
-
-/// Messages to send to the stats threads
-///
-#[derive(Clone, Debug, Serialize)]
-enum StatMsg {
-    Pkts(u32),
-    Bytes(u64),
-    Reconnect,
-    Empty,
-    Error,
-    Print,
-    Exit,
-}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AvionixCube {
@@ -175,7 +163,7 @@ Duration {}s
 
         // Launch stat gathering thread.
         //
-        let (st_tx, st_rx) = channel::<StatMsg>();
+        let (st_tx, st_rx) = channel::<StatsMsg>();
         thread::spawn(move || {
             trace!("stats::thread");
 
@@ -183,17 +171,17 @@ Duration {}s
             let mut stats = Stats::default();
             while let Ok(msg) = st_rx.recv() {
                 match msg {
-                    StatMsg::Pkts(n) => stats.pkts += n,
-                    StatMsg::Empty => stats.empty += 1,
-                    StatMsg::Error => stats.err += 1,
-                    StatMsg::Reconnect => stats.reconnect += 1,
-                    StatMsg::Bytes(n) => stats.bytes += n,
-                    StatMsg::Print => {
+                    StatsMsg::Pkts(n) => stats.pkts += n,
+                    StatsMsg::Error => stats.err += 1,
+                    StatsMsg::Reconnect => stats.reconnect += 1,
+                    StatsMsg::Bytes(n) => stats.bytes += n,
+                    StatsMsg::Print => {
                         stats.tm = start.elapsed().as_secs();
                         eprintln!("Stats: {}", stats)
                     }
+                    StatsMsg::Reset => (),
                     // The end
-                    StatMsg::Exit => {
+                    StatsMsg::Exit => {
                         stats.tm = start.elapsed().as_secs();
                         break;
                     }
@@ -210,7 +198,7 @@ Duration {}s
             trace!("stats::display");
             loop {
                 thread::sleep(STATS_LOOP);
-                let _ = disp_tx.send(StatMsg::Print);
+                let _ = disp_tx.send(StatsMsg::Print);
             }
         });
 
@@ -241,11 +229,11 @@ Duration {}s
                     }
                     Err(e) => {
                         error!("worker-thread: {}", e.to_string());
-                        stat_tx.send(StatMsg::Error).expect("stat::error");
+                        stat_tx.send(StatsMsg::Error).expect("stat::error");
 
                         // Do the connection again
                         //
-                        stat_tx.send(StatMsg::Reconnect).expect("stat::exit");
+                        stat_tx.send(StatsMsg::Reconnect).expect("stat::exit");
                         conn_wt = BufReader::new(TcpStream::connect(&url).expect("connect socket"));
                         continue;
                     }
@@ -256,8 +244,8 @@ Duration {}s
                 let df = JsonLineReader::new(cur).finish().unwrap();
                 debug!("{:?}", df);
 
-                let _ = stat_tx.send(StatMsg::Pkts(df.iter().len() as u32));
-                let _ = stat_tx.send(StatMsg::Bytes(buf.as_ref().len() as u64));
+                let _ = stat_tx.send(StatsMsg::Pkts(df.iter().len() as u32));
+                let _ = stat_tx.send(StatsMsg::Bytes(buf.as_ref().len() as u64));
 
                 tx.send(String::from_utf8(buf.to_vec()).unwrap())
                     .expect("send");
@@ -288,7 +276,7 @@ Duration {}s
         }
         // End threads
         //
-        let _ = st_tx.send(StatMsg::Exit);
+        let _ = st_tx.send(StatsMsg::Exit);
 
         // sync; sync; sync
         //

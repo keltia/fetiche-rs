@@ -4,7 +4,6 @@
 use chrono::Utc;
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef};
 use std::fmt::{Display, Formatter};
-use std::time::{Duration, Instant};
 use tracing::{info, trace};
 
 use crate::Stats;
@@ -21,7 +20,6 @@ pub enum StatsMsg {
     Pkts(u32),
     Bytes(u64),
     Reconnect,
-    Empty,
     Error,
     /// commands
     Reset,
@@ -75,7 +73,6 @@ impl Actor for StatsActor {
         match message {
             // updates
             StatsMsg::Pkts(n) => state.stat.pkts += n,
-            StatsMsg::Empty => state.stat.empty += 1,
             StatsMsg::Error => state.stat.err += 1,
             StatsMsg::Reconnect => state.stat.reconnect += 1,
             StatsMsg::Bytes(n) => state.stat.bytes += n,
