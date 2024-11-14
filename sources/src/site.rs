@@ -14,7 +14,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use eyre::{eyre, Result};
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tracing::trace;
 
