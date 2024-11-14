@@ -32,6 +32,10 @@ pub(crate) enum WorkerMsg {
     Tick,
 }
 
+/// Worker Actor.
+///
+/// Do we want one actor for all topics or one actor per topic?
+///
 #[ractor::async_trait]
 impl Actor for Worker {
     type Msg = WorkerMsg;
