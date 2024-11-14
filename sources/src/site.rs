@@ -209,7 +209,7 @@ impl Site {
                     Format::Senhive => {
                         let s = Senhive::new().load(site).clone();
 
-                        Ok(Flow::Streamable(Box::new(s)))
+                        Ok(Flow::AsyncStreamable(Box::new(s)))
                     }
                     _ => Err(AccessError::InvalidSite(name.to_string()).into()),
                 }
