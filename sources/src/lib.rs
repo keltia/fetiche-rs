@@ -9,6 +9,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::sync::mpsc::Sender;
 
+use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
@@ -138,6 +139,7 @@ pub trait Streamable: Debug {
 ///
 /// This is the async version of `Streamable`, making it easier to use async clients and/or actors.
 ///
+#[async_trait]
 pub trait AsyncStreamable: Debug {
     /// Return site's name
     fn name(&self) -> String;
