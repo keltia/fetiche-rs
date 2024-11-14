@@ -19,28 +19,21 @@
 //! This is using the new `AsyncStreamable` trait.
 
 mod stream;
+mod actors;
+
+use std::str::FromStr;
 
 use eyre::Result;
 use lapin::options::BasicConsumeOptions;
 use lapin::types::FieldTable;
-use lapin::{Connection, ConnectionProperties, Consumer};
+use lapin::{Connection, Consumer};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use signal_hook::consts::TERM_SIGNALS;
-use signal_hook::flag;
-use std::path::Path;
-use std::str::FromStr;
-use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{channel, Sender};
-use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, Instant};
-use tracing::{error, info, trace};
+use tracing::{error, trace};
 
-use crate::{Auth, AuthError, Capability, Filter, Site};
-
-use crate::Stats;
 use fetiche_formats::Format;
+
+use crate::{Auth, Capability, Site};
 
 /// AMQP default site
 const DEF_AMQP: &str = "senegress.senair.io:5672";
@@ -55,17 +48,6 @@ struct Credentials {
     username: String,
     /// Password
     password: String,
-}
-
-#[derive(Clone, Debug, Serialize)]
-enum StatMsg {
-    Pkts(u32),
-    Bytes(u64),
-    Reconnect,
-    Empty,
-    Error,
-    Print,
-    Exit,
 }
 
 #[derive(Clone, Debug)]
@@ -84,8 +66,6 @@ pub struct Senhive {
     pub vhost: String,
     /// Running time (for streams)
     pub duration: i32,
-    /// AMQP connection.
-    pub conn: Option<Arc<Connection>>,
 }
 
 impl Senhive {
@@ -100,7 +80,6 @@ impl Senhive {
             base_url: "".to_owned(),
             vhost: "".to_owned(),
             duration: 0,
-            conn: None,
         }
     }
 
