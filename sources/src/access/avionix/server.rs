@@ -31,9 +31,8 @@ use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
 use tracing::{debug, error, info, trace};
 
-use crate::access::avionix::BUFSIZ;
-use crate::access::Stats;
-use crate::{Auth, AuthError, Capability, Filter, Site, Streamable};
+use super::BUFSIZ;
+use crate::{Auth, AuthError, Capability, Filter, Site, Stats, Streamable};
 use fetiche_formats::Format;
 
 /// TCP streaming URL

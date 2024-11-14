@@ -28,8 +28,7 @@ use signal_hook::flag;
 use tracing::{debug, error, info, trace};
 
 use crate::access::avionix::BUFSIZ;
-use crate::access::Stats;
-use crate::{Auth, AuthError, Capability, Filter, Site, Streamable};
+use crate::{Auth, AuthError, Capability, Filter, Site, Stats, Streamable};
 use fetiche_formats::Format;
 
 /// TCP streaming port

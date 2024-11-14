@@ -1,7 +1,3 @@
-use std::fmt::Display;
-
-use serde::Serialize;
-
 pub use error::*;
 
 #[cfg(feature = "aeroscope")]
