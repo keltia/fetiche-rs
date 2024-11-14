@@ -2,10 +2,7 @@
 //!
 
 use futures_util::stream::StreamExt;
-use lapin::{
-    options::BasicAckOptions, Connection,
-    ConnectionProperties,
-};
+use lapin::{options::BasicAckOptions, Connection, ConnectionProperties};
 use ractor::{pg::join, Actor, ActorProcessingErr, ActorRef};
 use std::sync::mpsc::Sender;
 use tracing::{error, trace, warn};
@@ -41,12 +38,21 @@ impl Actor for Worker {
     type State = WorkerState;
     type Arguments = WorkerState;
 
-    async fn pre_start(&self, myself: ActorRef<Self::Msg>, args: Self::Arguments) -> Result<Self::State, ActorProcessingErr> {
+    async fn pre_start(
+        &self,
+        myself: ActorRef<Self::Msg>,
+        args: Self::Arguments,
+    ) -> Result<Self::State, ActorProcessingErr> {
         join(PG_SOURCES.into(), vec![myself.get_cell()]);
         Ok(args)
     }
 
-    async fn handle(&self, myself: ActorRef<Self::Msg>, message: Self::Msg, state: &mut Self::State) -> Result<(), ActorProcessingErr> {
+    async fn handle(
+        &self,
+        myself: ActorRef<Self::Msg>,
+        message: Self::Msg,
+        state: &mut Self::State,
+    ) -> Result<(), ActorProcessingErr> {
         let out = state.out.clone();
         let stat = state.stat.clone();
 
@@ -181,4 +187,3 @@ impl Actor for Worker {
         }
     }
 }
-
