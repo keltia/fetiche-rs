@@ -9,14 +9,13 @@
 
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::io::Read;
 
-use csv::{Reader, WriterBuilder};
+use csv::WriterBuilder;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
 use tabled::{builder::Builder, settings::Style};
-use tracing::{debug, trace};
+use tracing::trace;
 
 // Re-export for convenience
 //

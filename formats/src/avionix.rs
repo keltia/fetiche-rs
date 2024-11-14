@@ -222,6 +222,7 @@ enum Gda {
 /// Special enum for type of source, always ADS-B for Avionix
 ///
 #[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
+#[strum(serialize_all = "UPPERCASE")]
 enum Src {
     /// ADS-B
     A,
@@ -236,9 +237,9 @@ enum Src {
     /// OGN
     O,
     /// Remote-ID
-    RID,
+    Rid,
     /// 4G/5G
-    LTE,
+    Lte,
     /// PilotAware
     P,
     /// FANET
