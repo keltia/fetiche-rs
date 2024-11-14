@@ -11,3 +11,9 @@ pub enum AccessError {
     #[error("Invalid site {0}")]
     InvalidSite(String),
 }
+
+#[derive(Debug, Error)]
+pub enum DataError {
+    #[error("Invalid packet received, can not decode.")]
+    BadPacketData,
+}
