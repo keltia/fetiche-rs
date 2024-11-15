@@ -11,8 +11,10 @@ categories = ["aerospace::drones"]
 keywords = ["asterix", "drones", "aeronautical-data", "ads-b"]
 
 [features]
-default = []
+default = ["polars"]
 flightaware = []
+datafusion = ["dep:datafusion"]
+polars = ["dep:polars"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -26,7 +28,6 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 chrono.workspace = true
 csv.workspace = true
-datafusion.workspace = true
 dateparser.workspace = true
 env_logger.workspace = true
 eyre.workspace = true
@@ -52,6 +53,9 @@ tracing-log.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
+
+datafusion = { version = "43", features = ["zstd", "async-compression", "serde"], optional = true }
+polars = { version = "0.44", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json"], optional = true }
 
 enum_dispatch = "0.3"
 percent-encoding = "2.3"

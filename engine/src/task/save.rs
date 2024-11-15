@@ -8,9 +8,15 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
-use datafusion::config::TableParquetOptions;
-use datafusion::dataframe::DataFrameWriteOptions;
-use datafusion::prelude::{CsvReadOptions, SessionContext};
+#[cfg(feature = "datafusion")]
+use datafusion::{
+    config::TableParquetOptions,
+    dataframe::DataFrameWriteOptions,
+    prelude::{CsvReadOptions, SessionContext},
+};
+#[cfg(feature = "polars")]
+use polars::prelude::*;
+
 use eyre::Result;
 use tempfile::Builder;
 use tokio::runtime::Runtime;
@@ -116,6 +122,7 @@ impl Save {
     }
 }
 
+#[cfg(feature = "datafusion")]
 /// Write parquet through datafusion.
 ///
 #[tracing::instrument]
@@ -134,6 +141,26 @@ async fn write_parquet(from: &str, to: &str) -> Result<()> {
     options.global.compression = Some("zstd(8)".to_string());
 
     let _ = df.write_parquet(to, dfopts, Some(options)).await?;
+    Ok(())
+}
+
+#[cfg(feature = "polars")]
+/// Write parquet through Polars
+///
+#[tracing::instrument]
+async fn write_parquet(from: &str, to: &str) -> Result<()> {
+    // nh = no header line (default = false which means has header line).
+    //
+    let header = true;
+
+    let mut df = CsvReadOptions::default()
+        .with_has_header(header)
+        .with_parse_options(CsvParseOptions::default())
+        .try_into_reader_with_file_path(Some(from.into()))?
+        .finish()?;
+
+    let mut file = fs::File::create(to)?;
+    ParquetWriter::new(&mut file).finish(&mut df)?;
     Ok(())
 }
 
