@@ -100,6 +100,14 @@ impl Stream {
 
                     let args = self.args.clone();
                     site.stream(stdout, &token, &args).unwrap();
+                } else if let Flow::AsyncStreamable(site) = site {
+                    let rt = tokio::runtime::Runtime::new().unwrap();
+                    rt.block_on(async move {
+                        let token = site.authenticate().await.unwrap();
+
+                        let args = self.args.clone();
+                        site.stream(stdout, &token, &args).await.unwrap();
+                    })
                 }
             }
             None => return Err(EngineStatus::NoSiteDefined.into()),
