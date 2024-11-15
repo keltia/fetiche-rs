@@ -18,8 +18,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 maintenance = { status = "actively-developed" }
 
 [features]
-default = ["clickhouse"]
+default = ["clickhouse", "datafusion"]
 clickhouse = []
+datafusion = ["dep:datafusion"]
+polars = ["dep:polars"]
 
 [[bench]]
 name = "distances"
@@ -52,12 +54,13 @@ clap_complete = "4.5"
 colorsys = "0.6"
 datafusion = { version = "43", features = ["zstd", "async-compression", "serde"], optional = true }
 enum_dispatch = "0.3"
-klickhouse = { version = "0.13", features = ["derive", "geo-types", "serde", "bb8"] }
 derive_builder = "0.20"
 geo = "0.29"
 itertools = "0.13"
+klickhouse = { version = "0.13", features = ["derive", "geo-types", "serde", "bb8"] }
 kml = "0.8"
 ml-progress = "0.1"
+polars = { version = "0.44", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json"], optional = true }
 rand = "0"
 rayon = "1.10"
 rust-3d = "0.34"
