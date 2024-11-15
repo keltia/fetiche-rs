@@ -9,7 +9,6 @@ chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 criterion = { version = "0.5", features = ["async_tokio"] }
 csv = "1.3"
-datafusion = { version = "43", features = ["zstd", "async-compression", "serde"] }
 dateparser = "0.2"
 directories = "5"
 env_logger = "0.11"
@@ -27,7 +26,6 @@ nom = "7"
 opentelemetry = { version = "0.26", features = ["logs", "metrics"] }
 opentelemetry-otlp = "0.26"
 opentelemetry_sdk = { version = "0.26", features = ["rt-tokio"] }
-polars = { version = "0.44", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json"] }
 ractor = "0.13"
 reqwest = { version = "0.12", features = ["blocking", "gzip", "json", "socks", "deflate"] }
 rstest = "0.23"
