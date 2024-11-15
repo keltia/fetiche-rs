@@ -1,12 +1,12 @@
 //! Read some data as json and write it into a parquet file
 //!
 
-use datafusion::{config::TableParquetOptions, dataframe::DataFrameWriteOptions};
 use datafusion::prelude::*;
+use datafusion::{config::TableParquetOptions, dataframe::DataFrameWriteOptions};
 use eyre::Result;
 use tracing::{info, trace};
-use tracing_subscriber::EnvFilter;
 use tracing_subscriber::prelude::*;
+use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 #[tracing::instrument]
