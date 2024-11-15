@@ -68,6 +68,9 @@ pub struct Opts {
     /// Verbose mode.
     #[clap(short = 'v', long, action = clap::ArgAction::Count)]
     pub verbose: u8,
+    /// Quiet mode (like for emitting completion).
+    #[clap(short = 'q', long)]
+    pub quiet: bool,
     /// Sub-commands (see below).
     #[clap(subcommand)]
     pub subcmd: SubCommand,

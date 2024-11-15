@@ -76,7 +76,9 @@ async fn main() -> Result<()> {
 
     // Banner
     //
-    banner()?;
+    if !opts.quiet {
+        banner();
+    }
 
     trace!("Engine starting.");
     // Instantiate Engine
@@ -103,8 +105,8 @@ pub fn version() -> String {
 
 /// Display banner
 ///
-fn banner() -> Result<()> {
-    Ok(eprintln!(
+fn banner() {
+    eprintln!(
         r##"
 {}/{} by {}
 {}
@@ -113,5 +115,5 @@ fn banner() -> Result<()> {
         VERSION,
         AUTHORS,
         crate_description!()
-    ))
+    )
 }
