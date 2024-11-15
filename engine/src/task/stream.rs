@@ -86,7 +86,7 @@ impl Stream {
 
     /// The heart of the matter: fetch data
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, _data, stdout))]
     pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Stream::run()");
 
