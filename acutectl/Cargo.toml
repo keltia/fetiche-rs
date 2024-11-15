@@ -27,7 +27,6 @@ flightaware = []
 eyre.workspace = true
 chrono.workspace = true
 clap.workspace = true
-datafusion.workspace = true
 dateparser.workspace = true
 env_logger.workspace = true
 fetiche-common.workspace = true
