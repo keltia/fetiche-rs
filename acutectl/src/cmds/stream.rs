@@ -5,13 +5,13 @@ use eyre::{eyre, Result};
 use fetiche_engine::{Convert, Engine, Store, Stream, Tee};
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
-use tracing::{error, info, trace};
+use tracing::{debug, error, info, trace};
 
 use crate::{Status, StreamOpts};
 
 /// Actual fetching of data from a given site
 ///
-#[tracing::instrument]
+#[tracing::instrument(skip(engine))]
 pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
     trace!("stream_from_site({:?})", sopts.site);
 
@@ -20,9 +20,10 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
     let name = &sopts.site;
     let srcs = engine.sources().clone();
     let site = Site::load(name, &engine.sources())?;
+    debug!("{:?}", site);
     match site {
-        Flow::Streamable(ref s) => s,
-        Flow::AsyncStreamable(ref s) => s,
+        Flow::Streamable(_) => (),
+        Flow::AsyncStreamable(_) => (),
         _ => {
             error!("Site {} is not Streamable!", site.name());
             return Err(Status::SiteNotStreamable(site.name()).into());
@@ -35,7 +36,7 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
     // Full json array with all point
     //
     let mut task = Stream::new(name, srcs);
-    task.site(site.name()).with(filter);
+    task.site(name.to_string()).with(filter);
 
     // Create job with first task
     //
