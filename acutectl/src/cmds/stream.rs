@@ -22,6 +22,7 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
     let site = Site::load(name, &engine.sources())?;
     match site {
         Flow::Streamable(ref s) => s,
+        Flow::AsyncStreamable(ref s) => s,
         _ => {
             error!("Site {} is not Streamable!", site.name());
             return Err(Status::SiteNotStreamable(site.name()).into());
