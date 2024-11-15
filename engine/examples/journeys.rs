@@ -2,9 +2,9 @@ use datafusion::arrow::array::{Array, Int32Array, RecordBatch};
 use datafusion::prelude::*;
 use eyre::Result;
 use tracing::trace;
-use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
 use fetiche_formats::Asd;
