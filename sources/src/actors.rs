@@ -145,14 +145,15 @@ impl Actor for Supervisor {
         match message {
             SupervisionEvent::ActorTerminated(cell, ..) => {
                 trace!("Actor {} is finished.", cell.get_name().unwrap());
-                myself.kill();
             }
             SupervisionEvent::ActorFailed(cell, err) => {
                 trace!("Actor {} terminated with: {err}", cell.get_name().unwrap());
-                myself.kill();
             }
-            _ => {
-                trace!("Unhandled event.");
+            SupervisionEvent::ProcessGroupChanged(msg) => {
+                trace!("Process group changed {msg:?}");
+            }
+            SupervisionEvent::ActorStarted(cell) => {
+                trace!("Actor {} is started.", cell.get_name().unwrap());
             }
         }
         Ok(())
