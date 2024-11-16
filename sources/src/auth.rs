@@ -20,10 +20,14 @@ pub enum Auth {
         password: String,
         token: String,
     },
+    /// Using plain login/password inside a specific virtual host
+    Vhost {
+        vhost: String,
+        username: String,
+        password: String,
+    },
     /// Using plain login/password
     Login { username: String, password: String },
-    /// Using plain login/password inside a specific virtual host
-    Vhost { vhost: String, username: String, password: String },
 }
 
 impl Display for Auth {
@@ -33,6 +37,13 @@ impl Display for Auth {
         // Hide passwords & API keys
         //
         let auth = match self.clone() {
+            Auth::Vhost {
+                vhost, username, ..
+            } => Auth::Vhost {
+                vhost,
+                username,
+                password: "HIDDEN".to_string(),
+            },
             Auth::Key { .. } => Auth::Key {
                 api_key: "HIDDEN".to_string(),
             },
@@ -47,11 +58,6 @@ impl Display for Auth {
             Auth::Token { login, token, .. } => Auth::Token {
                 login,
                 token,
-                password: "HIDDEN".to_string(),
-            },
-            Auth::Vhost { vhost, username, .. } => Auth::Vhost {
-                vhost,
-                username,
                 password: "HIDDEN".to_string(),
             },
             _ => Auth::Anon,
