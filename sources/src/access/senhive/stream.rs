@@ -1,15 +1,13 @@
 //! Module that implement the `AsyncStreamable` trait.
 //!
 
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{channel, Sender};
 use std::time::Duration;
 
 use async_trait::async_trait;
 use eyre::Result;
 use ractor::pg::join;
-use ractor::rpc::cast;
-use ractor::time::{exit_after, send_interval};
-use ractor::{pg, Actor};
+use ractor::{pg, Actor, RpcReplyPort};
 #[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
@@ -56,11 +54,14 @@ impl AsyncStreamable for Senhive {
         // 0 means forever.
         //
         let stream_duration = match args {
-            Filter::Duration(duration) => Duration::from_secs(duration as u64),
+            Filter::Stream { duration, .. } => Duration::from_secs(duration as u64),
             _ => Duration::new(0, 0),
         };
-
-        trace!("Streaming data from {}…", self.base_url);
+        trace!(
+            "Streaming data from {} for {}s",
+            self.base_url,
+            stream_duration.as_secs()
+        );
 
         // setup ctrl-c handled
         //
@@ -97,7 +98,10 @@ impl AsyncStreamable for Senhive {
 
         // Insert each actor in the PG_SOURCES group.
         //
-        join(PG_SOURCES.into(), vec![worker.get_cell(), stat.get_cell()]);
+        join(
+            PG_SOURCES.into(),
+            vec![sup.get_cell(), worker.get_cell(), stat.get_cell()],
+        );
 
         info!("List of actors.");
         let list = pg::get_members(&PG_SOURCES.to_string());
@@ -107,40 +111,71 @@ impl AsyncStreamable for Senhive {
 
         // Every TICK, we display stats.
         //
-        let _ = send_interval(TICK, stat.get_cell(), || StatsMsg::Print).await;
+        let _ = stat.send_interval(TICK, || StatsMsg::Print);
+
+        // Setup signal handling.
+        //
+        tokio::spawn(async move {
+            trace!("SIGINT thread running.");
+            loop {
+                // Wait for completion or interrupt
+                //
+                #[cfg(unix)]
+                if let Some(_) = stream.recv().await {
+                    info!("Got SIGINT.");
+                    break;
+                }
+
+                #[cfg(windows)]
+                sig.recv().await;
+                info!("^C pressed.");
+
+                // Stop everyone in the group.
+                //
+                pg::get_members(&PG_SOURCES.to_string())
+                    .iter()
+                    .for_each(|member| {
+                        member.stop(Some("^C ^pressed, ending.".to_string()));
+                    });
+                std::process::exit(0);
+            }
+        });
 
         // Start the processing.
         //
-        let _ = cast(
-            &worker.get_cell(),
-            WorkerMsg::Consume("fused_data".into(), "data".into()),
-        )?;
+        let r = worker
+            .call(
+                |_: RpcReplyPort<String>| WorkerMsg::Consume("fused_data".into(), "data".into()),
+                None,
+            )
+            .await?;
 
         // Set the clock ticking unless duration is 0
         //
         info!("Get clock ticking.");
         if stream_duration != Duration::from_secs(0) {
-            let _ = exit_after(stream_duration, worker.get_cell()).await;
+            info!("Sleeping for {}s.", stream_duration.as_secs());
+            let _ = worker.exit_after(stream_duration);
             tokio::time::sleep(stream_duration).await;
+            info!("Timer expired.");
         } else {
-            // Wait for completion or interrupt
+            // We somehow needs to wait for a ^C.
             //
-            #[cfg(unix)]
-            if let Some(_) = stream.recv().await {
-                info!("Got SIGINT.");
-            }
-
-            #[cfg(windows)]
-            if (sig.recv().await).is_some() {
-                info!("^C pressed.");
-            }
+            let (tx, rx) = channel::<()>();
+            rx.recv().expect("Something failed here.");
         }
+
         // End threads
         //
         trace!("Senhive::stream stopping.");
 
-        let _ = stat.stop(Some("end".into()));
-        let _ = worker.stop(None);
+        // Stop everyone in the group.
+        //
+        pg::get_members(&PG_SOURCES.to_string())
+            .iter()
+            .for_each(|member| {
+                member.stop(Some("Ending.".to_string()));
+            });
 
         Ok(())
     }
