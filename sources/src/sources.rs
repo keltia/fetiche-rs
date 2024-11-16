@@ -113,12 +113,12 @@ impl Sources {
             row.push(&base_url);
             let auth = if let Some(auth) = &s.auth {
                 match auth {
+                    Auth::Vhost { .. } => "Virtual Host+login",
                     Auth::Login { .. } => "login",
                     Auth::Token { .. } => "token",
                     Auth::Anon => "open",
                     Auth::Key { .. } => "API key",
                     Auth::UserKey { .. } => "API+User keys",
-                    Auth::Vhost { .. } => "Virtual Host+login",
                 }
                     .to_string()
             } else {
