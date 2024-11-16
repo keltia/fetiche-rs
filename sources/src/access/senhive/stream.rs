@@ -126,23 +126,13 @@ impl AsyncStreamable for Senhive {
             // Wait for completion or interrupt
             //
             #[cfg(unix)]
-            loop {
-                tokio::select! {
-                    Some(_) = stream.recv() => {
-                        info!("Got SIGINT");
-                        break;
-                    },
-                }
+            if let Some(_) = stream.recv() {
+                info!("Got SIGINT.");
             }
 
             #[cfg(windows)]
-            loop {
-                tokio::select! {
-                    _ = sig.recv() => {
-                        info!("^C pressed.");
-                        break;
-                    },
-                }
+            if (sig.recv().await).is_some() {
+                info!("^C pressed.");
             }
         }
         // End threads
