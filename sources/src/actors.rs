@@ -2,7 +2,7 @@
 //!
 
 use chrono::Utc;
-use ractor::{pg, Actor, ActorCell, ActorProcessingErr, ActorRef, SupervisionEvent};
+use ractor::{pg, Actor, ActorProcessingErr, ActorRef, SupervisionEvent};
 use std::fmt::{Display, Formatter};
 use tracing::{info, trace};
 
@@ -143,7 +143,7 @@ impl Actor for Supervisor {
         _state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            SupervisionEvent::ActorTerminated(cell, state, msg) => {
+            SupervisionEvent::ActorTerminated(cell, ..) => {
                 trace!("Actor {} is finished.", cell.get_name().unwrap());
                 myself.kill();
             }
