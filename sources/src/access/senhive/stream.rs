@@ -7,9 +7,9 @@ use std::time::Duration;
 use async_trait::async_trait;
 use eyre::Result;
 use ractor::pg::join;
-use ractor::rpc::{call, cast};
+use ractor::rpc::cast;
 use ractor::time::{exit_after, send_interval};
-use ractor::{call, cast, pg, Actor};
+use ractor::{pg, Actor};
 #[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
@@ -18,7 +18,7 @@ use tracing::{info, trace};
 
 use fetiche_formats::Format;
 
-use super::actors::{Worker, WorkerArgs, WorkerMsg, WorkerState};
+use super::actors::{Worker, WorkerArgs, WorkerMsg};
 use crate::actors::{StatsActor, StatsMsg, Supervisor, PG_SOURCES};
 use crate::{AsyncStreamable, AuthError, Filter, Senhive};
 
@@ -92,7 +92,8 @@ impl AsyncStreamable for Senhive {
             stat: stat.clone(),
         };
         let tag = String::from("senhive::worker");
-        let (worker, handle) = Actor::spawn_linked(Some(tag), Worker, args, sup.get_cell()).await?;
+        let (worker, _handle) =
+            Actor::spawn_linked(Some(tag), Worker, args, sup.get_cell()).await?;
 
         // Insert each actor in the PG_SOURCES group.
         //
@@ -106,11 +107,10 @@ impl AsyncStreamable for Senhive {
 
         // Every TICK, we display stats.
         //
-        let _ = send_interval(TICK, stat.get_cell(), || StatsMsg::Print);
+        let _ = send_interval(TICK, stat.get_cell(), || StatsMsg::Print).await;
 
         // Start the processing.
         //
-        let url = self.base_url.clone();
         let _ = cast(
             &worker.get_cell(),
             WorkerMsg::Consume("fused_data".into(), "data".into()),
@@ -120,7 +120,7 @@ impl AsyncStreamable for Senhive {
         //
         info!("Get clock ticking.");
         if stream_duration != Duration::from_secs(0) {
-            let _ = exit_after(stream_duration, worker.get_cell());
+            let _ = exit_after(stream_duration, worker.get_cell()).await;
             tokio::time::sleep(stream_duration).await;
         } else {
             // Wait for completion or interrupt

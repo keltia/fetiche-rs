@@ -29,7 +29,7 @@ use lapin::types::FieldTable;
 use lapin::{Connection, Consumer};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{debug, error, trace};
+use tracing::{error, trace};
 
 use fetiche_formats::Format;
 

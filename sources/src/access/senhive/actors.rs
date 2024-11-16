@@ -5,11 +5,11 @@
 
 use futures_util::stream::StreamExt;
 use lapin::{options::BasicAckOptions, Connection, ConnectionProperties};
-use ractor::{cast, pg::join, rpc::cast, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use ractor::{Actor, ActorProcessingErr, ActorRef};
 use std::sync::mpsc::Sender;
 use tracing::{error, trace, warn};
 
-use fetiche_formats::senhive::{FusedData, StateMsg};
+use fetiche_formats::senhive::FusedData;
 
 use crate::actors::StatsMsg;
 use crate::{DataError, Feed};
