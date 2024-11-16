@@ -11,6 +11,7 @@
 //!
 //! So now we cache them.
 //!
+//! FIXME: use a similar pattern as Senhive with actors.
 
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
@@ -243,7 +244,7 @@ impl Streamable for Opensky {
     ///
     fn authenticate(&self) -> Result<String, AuthError> {
         trace!("fake token retrieval");
-        Ok(format!("{}:{}", self.login, self.password))
+        Ok("".into())
     }
 
     /// The main stream function
@@ -260,7 +261,7 @@ impl Streamable for Opensky {
     ///   cached entries
     ///
     #[tracing::instrument(skip(self, out))]
-    fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()> {
+    fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
 
         let mut stream_duration = 0;
@@ -268,8 +269,8 @@ impl Streamable for Opensky {
 
         let now = Utc::now().timestamp();
 
-        let res: Vec<&str> = token.split(':').collect();
-        let (login, password) = (res[0], res[1]);
+        let login = self.login.clone();
+        let password = self.password.clone();
         trace!("opensky::stream(as {}:{})", login, password);
 
         let url = format!("{}{}", self.base_url, self.get);
