@@ -2,7 +2,7 @@
 //!
 
 use chrono::Utc;
-use ractor::{pg, Actor, ActorProcessingErr, ActorRef};
+use ractor::{pg, Actor, ActorCell, ActorProcessingErr, ActorRef, SupervisionEvent};
 use std::fmt::{Display, Formatter};
 use tracing::{info, trace};
 
@@ -12,6 +12,7 @@ use crate::Stats;
 pub const PG_SOURCES: &str = "fetiche_sources";
 
 // -----
+
 pub struct StatsActor;
 
 #[derive(Debug)]
@@ -39,21 +40,23 @@ impl Display for State {
     }
 }
 
-/// stats gathering actor.  You run one actor per task, each with a different `tag`
+/// stats gathering actor.  You run one actor per task, each with a different `tag`, as passed in
+/// the arguments.
 ///
 #[ractor::async_trait]
 impl Actor for StatsActor {
     type Msg = StatsMsg;
     type State = State;
-    type Arguments = ();
+    type Arguments = String;
 
+    #[tracing::instrument(skip(self, args))]
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
-        _args: Self::Arguments,
+        args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
         let name = myself.get_name().unwrap();
-        trace!("{name} starting.");
+        trace!("{name}({args}) starting.");
 
         // Register ourselves
         //
@@ -64,6 +67,7 @@ impl Actor for StatsActor {
         })
     }
 
+    #[tracing::instrument(skip(self))]
     async fn handle(
         &self,
         myself: ActorRef<Self::Msg>,
@@ -88,6 +92,67 @@ impl Actor for StatsActor {
             StatsMsg::Exit => {
                 state.stat.tm = (Utc::now().timestamp() - state.start) as u64;
                 myself.kill();
+            }
+        }
+        Ok(())
+    }
+}
+
+// -----
+
+/// This actor will act as a supervisor to child actors.
+///
+pub struct Supervisor;
+
+#[ractor::async_trait]
+impl Actor for Supervisor {
+    type State = ();
+    type Msg = ();
+    type Arguments = ();
+
+    /// We are not doing anything by ourselves.
+    ///
+    #[tracing::instrument(skip(self, _myself))]
+    async fn handle(
+        &self,
+        _myself: ActorRef<Self::Msg>,
+        _message: Self::Msg,
+        _state: &mut Self::State,
+    ) -> Result<(), ActorProcessingErr> {
+        Ok(())
+    }
+
+    /// Nothing to do on startup.
+    ///
+    #[tracing::instrument(skip(self, _myself))]
+    async fn pre_start(
+        &self,
+        _myself: ActorRef<Self::Msg>,
+        _args: Self::Arguments,
+    ) -> Result<Self::State, ActorProcessingErr> {
+        Ok(())
+    }
+
+    /// All the work is done here.
+    ///
+    #[tracing::instrument(skip(self, myself))]
+    async fn handle_supervisor_evt(
+        &self,
+        myself: ActorRef<Self::Msg>,
+        message: SupervisionEvent,
+        _state: &mut Self::State,
+    ) -> Result<(), ActorProcessingErr> {
+        match message {
+            SupervisionEvent::ActorTerminated(cell, state, msg) => {
+                trace!("Actor {} is finished.", cell.get_name().unwrap());
+                myself.kill();
+            }
+            SupervisionEvent::ActorFailed(cell, err) => {
+                trace!("Actor {} terminated with: {err}", cell.get_name().unwrap());
+                myself.kill();
+            }
+            _ => {
+                trace!("Unhandled event.");
             }
         }
         Ok(())
