@@ -7,13 +7,19 @@ use std::time::Duration;
 use async_trait::async_trait;
 use eyre::Result;
 use ractor::pg::join;
-use ractor::Actor;
-use tracing::trace;
+use ractor::rpc::{call, cast};
+use ractor::time::{exit_after, send_interval};
+use ractor::{call, cast, pg, Actor};
+#[cfg(unix)]
+use tokio::signal::unix::{signal, SignalKind};
+#[cfg(windows)]
+use tokio::signal::windows::ctrl_c;
+use tracing::{info, trace};
 
 use fetiche_formats::Format;
 
-use super::actors::{Worker, WorkerMsg, WorkerState};
-use crate::actors::{StatsActor, StatsMsg, PG_SOURCES};
+use super::actors::{Worker, WorkerArgs, WorkerMsg, WorkerState};
+use crate::actors::{StatsActor, StatsMsg, Supervisor, PG_SOURCES};
 use crate::{AsyncStreamable, AuthError, Filter, Senhive};
 
 const TICK: Duration = Duration::from_secs(30);
@@ -32,7 +38,15 @@ impl AsyncStreamable for Senhive {
 
     /// Set up streaming from the AMQP queues.
     ///
-    /// We start by draining the `dl_fused_data` queue, then switch to the regular `fused_data` one
+    /// We now use different actors (see [actor.rs]) to handle the manage the different
+    /// topics/queues.
+    ///
+    /// - `Supervisor` to manage the worker and stats actors
+    /// - `StatsActor` is sent a `Tick` message every 30s to display stats and called on each packet
+    ///   to accumulate stats
+    /// - `Worker` is then launched to read `fused_data` and its dead letter equivalent to
+    ///   get both stored and current data.
+    ///
     ///
     async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
         trace!("Senhive::stream");
@@ -48,42 +62,95 @@ impl AsyncStreamable for Senhive {
 
         trace!("Streaming data from {}…", self.base_url);
 
+        // setup ctrl-c handled
+        //
+        #[cfg(windows)]
+        let mut sig = ctrl_c().unwrap();
+
+        #[cfg(unix)]
+        let mut stream = signal(SignalKind::interrupt()).unwrap();
+
+        // We have a generic supervisor actor.
+        //
+        let tag = String::from("senhive:supervisor");
+        let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await?;
+
         // Start the stats gathering actor.
         //
         trace!("starting stats actor.");
         let tag = String::from("senhive::stats");
-        let (stat, _h) = Actor::spawn(Some(tag), StatsActor, ()).await?;
-
-        // Every TICK, we display stats.
-        //
-        stat.send_interval(TICK, || StatsMsg::Print).await?;
-
-        // Set the clock ticking unless duration is 0
-        //
-        if stream_duration != Duration::from_secs(0) {
-            stat.exit_after(stream_duration).await?;
-        }
+        let (stat, _h) =
+            Actor::spawn_linked(Some(tag), StatsActor, "senhive".into(), sup.get_cell()).await?;
 
         // Launch the worker actor
         //
+        let url = self.base_url.clone();
         trace!("Starting worker actor.");
-        let args = WorkerState::new(out.clone(), stat.clone());
+        let args = WorkerArgs {
+            url,
+            out,
+            stat: stat.clone(),
+        };
         let tag = String::from("senhive::worker");
-        let (worker, _handle) = Actor::spawn(Some(tag), Worker, args).await?;
+        let (worker, handle) = Actor::spawn_linked(Some(tag), Worker, args, sup.get_cell()).await?;
+
+        // Insert each actor in the PG_SOURCES group.
+        //
+        join(PG_SOURCES.into(), vec![worker.get_cell(), stat.get_cell()]);
+
+        info!("List of actors.");
+        let list = pg::get_members(&PG_SOURCES.to_string());
+        list.iter().for_each(|member| {
+            info!("  {}", member.get_name().unwrap_or("<anon>".into()));
+        });
+
+        // Every TICK, we display stats.
+        //
+        let _ = send_interval(TICK, stat.get_cell(), || StatsMsg::Print);
 
         // Start the processing.
         //
         let url = self.base_url.clone();
-        let _ = worker.cast(WorkerMsg::Start(url))?;
+        let _ = cast(
+            &worker.get_cell(),
+            WorkerMsg::Consume("fused_data".into(), "data".into()),
+        )?;
 
+        // Set the clock ticking unless duration is 0
+        //
+        info!("Get clock ticking.");
+        if stream_duration != Duration::from_secs(0) {
+            let _ = exit_after(stream_duration, worker.get_cell());
+            tokio::time::sleep(stream_duration).await;
+        } else {
+            // Wait for completion or interrupt
+            //
+            #[cfg(unix)]
+            loop {
+                tokio::select! {
+                    Some(_) = stream.recv() => {
+                        info!("Got SIGINT");
+                        break;
+                    },
+                }
+            }
+
+            #[cfg(windows)]
+            loop {
+                tokio::select! {
+                    _ = sig.recv() => {
+                        info!("^C pressed.");
+                        break;
+                    },
+                }
+            }
+        }
         // End threads
         //
         trace!("Senhive::stream stopping.");
 
         let _ = stat.stop(Some("end".into()));
         let _ = worker.stop(None);
-
-        join(PG_SOURCES.into(), vec![worker.get_cell(), stat.get_cell()]);
 
         Ok(())
     }
@@ -92,4 +159,3 @@ impl AsyncStreamable for Senhive {
         Format::Senhive
     }
 }
-

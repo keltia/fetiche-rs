@@ -18,8 +18,8 @@
 //!
 //! This is using the new `AsyncStreamable` trait.
 
-mod stream;
 mod actors;
+mod stream;
 
 use std::str::FromStr;
 
@@ -29,7 +29,7 @@ use lapin::types::FieldTable;
 use lapin::{Connection, Consumer};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{error, trace};
+use tracing::{debug, error, trace};
 
 use fetiche_formats::Format;
 
