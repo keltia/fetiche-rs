@@ -3057,6 +3057,7 @@ dependencies = [
  "nom",
  "percent-encoding",
  "polars",
+ "polars-core",
  "reqwest",
  "rstest",
  "serde",
