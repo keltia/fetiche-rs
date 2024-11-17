@@ -29,8 +29,9 @@ Licensed under the [MIT](LICENSE) license.
 **Fetiche** is a framework with a set of libraries and utilities dealing with various data formats and import/conversion
 utilities for Aeronautical data about drones and aircraft.
 
-This is now divided into different crates with libraries (`fetiche-engine`, `fetiche-formats`, `fetiche-sources`) shared
-by the binary crates (`acutectl`, `opensky-history` and now `process-data`).
+This is now divided into different crates with libraries (`fetiche-engine`, `fetiche-formats`, `fetiche-sources`,
+`fetiche-common` and `fetiche-macros`) shared by the binary crates (`acutectl`, `opensky-history` and now
+`process-data`).
 
 Binary crates include command-line utilities (`acutectl` and `opensky-history`) to perform import from a file or
 fetch data from different sites. There is now `process-data` which include several tasks aimed at gathering statistics
@@ -52,16 +53,19 @@ does the same in `scripts/`.
 
 ## Installation
 
-It might be available at some point as crates on [Crates.io]  but for the moment just as a private repository on
+It might be available at some point as crates on [Crates.io]  but for the moment just as a public repository on
 [GitHub]. Installation can be done either through a compiled binary for your platform or by cloning the repo and
 compiling.
 
-### Cargo Features
+You should be able to compile Fetiche by simply:
 
-There is one feature enabled by default, called `privacy`. This is for truncating the drone ID to a less-easily
-identifiable value. See `Cargo.toml` for this.
+```shell
+$ git clone https://github.com/keltia/fetiche-rs
+$ cd fetiche-rs
+$ cargo install --path .
+```
 
-This is intentionally *not* a run-time option but a compile-time one.
+to compile and install `acutectl` and `process-data`.
 
 ## Usage
 
@@ -69,7 +73,7 @@ For the moment, there are 3 binaries called `acutectl` (with `.exe` on Windows),
 The former is used to fetch data into their native format (csv, json). It uses `fetiche-engine` for all the code related
 to accessing, authenticating and fetching data in various ways.
 
-Right now, `acutectl` use blocking HTTP calls and is not using any `async` features.
+Right now, `fetiche-engine` use blocking HTTP calls and is not using any `async` features.
 
 However, while working on streaming support for Opensky, I have been experimenting with [tokio] for async support and
 `acutectl` might eventually become fully-async. It does help for some stuff including signal (read ^C) support.
@@ -83,12 +87,12 @@ On UNIX systems, there is a new command called `fetiched`. It is a daemon runnin
 from the terminal and accepting requests through an [GRPC] interface. The Windows version will have to be run from a
 specific terminal with the `serve` command.
 
-In the near future, `fetiched` is evolving into an Actor-based subsystem (using [Actix] ) to manage
+In the near future, `fetiched` is evolving into an Actor-based subsystem (using [Actix] or [ractor]) to manage
 orchestration between the internal modules. We do have an engine actor, a configuration actor, etc.
 
 More details in the specific [Fetiched README.md](fetiched/README.md).
 
-> NOTE: This is WIP
+> NOTE: This is still WIP
 
 ### Data Model
 
@@ -96,6 +100,16 @@ Each source has its own data model which complicates things, apart from [ASTERIX
 company/service provider use their own data model.
 
 See the `fetiche-formats` crate for more details.
+
+### Cargo Features
+
+Some of the crates like `fetiche-formats` and `fetiche-sources` have specific features for different manufacturers.  
+It helps reduces compilation time. See the specific `Cargo.toml` in each.
+
+There is one feature enabled by default, called `privacy`. This is for truncating the drone ID to a less-easily
+identifiable value. See `Cargo.toml` for this.
+
+This is intentionally *not* a run-time option but a compile-time one.
 
 ## MSRV
 
