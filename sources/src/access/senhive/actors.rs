@@ -3,10 +3,15 @@
 //! We currently have only one actor: `Worker`.
 //!
 
+use std::io::Cursor;
+use std::num::NonZeroUsize;
+use std::sync::mpsc::Sender;
+
 use futures_util::stream::StreamExt;
 use lapin::{options::BasicAckOptions, Connection, ConnectionProperties};
+use polars::io::{SerReader, SerWriter};
+use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
-use std::sync::mpsc::Sender;
 use tracing::{error, trace, warn};
 
 use fetiche_formats::senhive::FusedData;
@@ -97,6 +102,10 @@ impl Actor for Worker {
 
     /// Message handler.
     ///
+    /// The only interesting message is Consume() with a topic name and a topic tag.
+    /// We subscribe to both the main and dead letter topic and to the alert one, just in case.
+    /// Every packet received is transformed into a JSONL one, easier to deal with afterward.
+    ///
     #[tracing::instrument(skip(self))]
     async fn handle(
         &self,
@@ -138,7 +147,7 @@ impl Actor for Worker {
                                 .ack(BasicAckOptions::default())
                                 .await?;
 
-                            let data = String::from_utf8_lossy(&delivery.data).to_string();
+                            let data = from_json_to_nl(&delivery.data)?;
                             let len = data.len() as u64;
                             trace!("data: size={len}");
 
@@ -155,7 +164,7 @@ impl Actor for Worker {
                                 }
                             };
 
-                            out.send(data.clone())?;
+                            out.send(data)?;
                         },
                         // This drains the `dl_fused_data` topic, we expect this to happen upon startup.
                         //
@@ -194,7 +203,7 @@ impl Actor for Worker {
                                 .ack(BasicAckOptions::default())
                                 .await?;
 
-                            let data = String::from_utf8_lossy(&delivery.data).to_string();
+                            let data = from_json_to_nl(&delivery.data)?;
                             stat.cast(StatsMsg::Error)?;
 
                             warn!("alert={}", data);
@@ -208,4 +217,21 @@ impl Actor for Worker {
             }
         }
     }
+}
+
+/// Helper to convert from multi-line JSON into proper JSONL records.
+///
+#[inline]
+fn from_json_to_nl(data: &[u8]) -> eyre::Result<String> {
+    let cur = Cursor::new(data);
+    let mut df = JsonReader::new(cur)
+        .with_json_format(JsonFormat::Json)
+        .infer_schema_len(NonZeroUsize::new(3))
+        .finish()?;
+
+    let mut buf = vec![];
+    JsonWriter::new(&mut buf)
+        .with_json_format(JsonFormat::JsonLines)
+        .finish(&mut df)?;
+    Ok(String::from_utf8(buf)?)
 }
