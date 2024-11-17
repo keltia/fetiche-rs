@@ -114,8 +114,7 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 Here are some of the things I've been working on. Some of these are registered as issues on [GitHub issues].
 
 - Add more tests & benchmarks.
-- [Polars] instead of [Datafusion] to simplify? We are not using (nor plan to) all the datafusion features.
-- Integration of Avionix and Thales/Senhive antennas in `formats` and `sources` when we have docs.
+- Convert the current Avionix streaming code to the actor-based one in Senhive using [ractor].
 
 Done:
 
@@ -136,6 +135,8 @@ Done:
 - ~~Support for Flightaware AeroAPI and Firehose.~~
 - ~~Apache Parquet as output format.~~
 - ~~Migrate from the embedded [DuckDB] to a proper server-based DB [Clickhouse]~~
+- ~~[Polars] instead of [Datafusion] to simplify? We are not using (nor plan to) all the datafusion features.~~
+- ~~Integration of Avionix and Thales/Senhive antennas in `formats` and `sources` when we have docs.~~
 
 Upcoming refactors:
 
@@ -150,6 +151,7 @@ Uncertain:
 - link to HashiCorp Vault for storing credentials and tokens
 - support for Safesky for ADS-B data
 - Support for Sherlock formats and access methods
+- `acutectl` and `process-data` could be merged at some point, not sure if it is useful.
 
 ## Contributing
 
@@ -196,8 +198,6 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [Nushell]: https://nushell.sh/
 
-[Actix]: https://actix.rs/
-
 [DuckDB]: https://duckdb.org/
 
 [Clickhouse]: https://clickhouse.com/
@@ -205,3 +205,5 @@ I use Git Flow for this package so please use something similar or the usual Git
 [bdt]: https://github.com/datafusion-contrib/bdt
 
 [Polars]: https://pola.rs/
+
+[ractor]: https://crates.io/crates/ractor
