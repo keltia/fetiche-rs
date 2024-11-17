@@ -5,8 +5,12 @@ use chrono::{Datelike, Utc};
 use eyre::Result;
 use futures_util::stream::StreamExt;
 use lapin::{options::*, types::FieldTable, Connection, ConnectionProperties, Consumer};
-use std::env;
+use polars::io::{SerReader, SerWriter};
+use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
+use std::io::Cursor;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
+use std::{env, vec};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 #[cfg(unix)]
@@ -172,10 +176,11 @@ async fn main() -> Result<()> {
                     .ack(BasicAckOptions::default())
                     .await?;
 
-                let data = String::from_utf8_lossy(&delivery.data).to_string();
+                //let data = String::from_utf8_lossy(&delivery.data).to_string();
+                let data = from_json_to_nl(&delivery.data)?;
                 let _: FusedData = serde_json::from_str(&data)?;
 
-                fd.write(&delivery.data).await?;
+                fd.write(data.as_bytes()).await?;
             },
             Some(data) = dl_data.inp.next() => {
                 eprint!("d");
@@ -184,8 +189,9 @@ async fn main() -> Result<()> {
                     .ack(BasicAckOptions::default())
                     .await?;
 
-                let data = String::from_utf8_lossy(&delivery.data).to_string();
-                fd.write(&delivery.data).await?;
+                //let data = String::from_utf8_lossy(&delivery.data).to_string();
+                let data = from_json_to_nl(&delivery.data)?;
+                fd.write(data.as_bytes()).await?;
 
                 let _: FusedData = serde_json::from_str(&data)?;
             },
@@ -214,8 +220,8 @@ async fn main() -> Result<()> {
                     .ack(BasicAckOptions::default())
                     .await?;
 
-                let data = String::from_utf8_lossy(&delivery.data).to_string();
-                ss.write(&delivery.data).await?;
+                let data = from_json_to_nl(&delivery.data)?;
+                ss.write(data.as_bytes()).await?;
 
                 let _: StateMsg = serde_json::from_str(&data)?;
             },
@@ -226,8 +232,8 @@ async fn main() -> Result<()> {
                     .ack(BasicAckOptions::default())
                     .await?;
 
-                let data = String::from_utf8_lossy(&delivery.data).to_string();
-                ss.write(&delivery.data).await?;
+                let data = from_json_to_nl(&delivery.data)?;
+                ss.write(data.as_bytes()).await?;
 
                 let _: StateMsg = serde_json::from_str(&data)?;
             },
@@ -238,4 +244,18 @@ async fn main() -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn from_json_to_nl(data: &[u8]) -> Result<String> {
+    let cur = Cursor::new(data);
+    let mut df = JsonReader::new(cur)
+        .with_json_format(JsonFormat::Json)
+        .infer_schema_len(NonZeroUsize::new(3))
+        .finish()?;
+    let mut buf = vec![];
+    //let mut res = BufWriter::new(&mut buf);
+    JsonWriter::new(&mut buf)
+        .with_json_format(JsonFormat::JsonLines)
+        .finish(&mut df)?;
+    Ok(String::from_utf8(buf)?)
 }
