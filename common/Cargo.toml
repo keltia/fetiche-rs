@@ -32,7 +32,6 @@ directories.workspace = true
 eyre.workspace = true
 fetiche-macros.workspace = true
 hcl-rs.workspace = true
-log.workspace = true
 opentelemetry.workspace = true
 opentelemetry-otlp.workspace = true
 opentelemetry_sdk.workspace = true

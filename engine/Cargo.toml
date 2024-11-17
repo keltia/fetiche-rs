@@ -36,7 +36,6 @@ fetiche-formats.workspace = true
 fetiche-macros.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
-log.workspace = true
 nom.workspace = true
 reqwest.workspace = true
 serde.workspace = true

@@ -32,7 +32,6 @@ dateparser.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
 hcl-rs.workspace = true
-log.workspace = true
 nom.workspace = true
 reqwest.workspace = true
 serde.workspace = true

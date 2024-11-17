@@ -250,7 +250,6 @@ dependencies = [
  "hcl-rs",
  "httpmock",
  "indicatif",
- "log",
  "nom",
  "percent-encoding",
  "reqwest",
@@ -293,7 +292,6 @@ dependencies = [
  "datafusion",
  "eyre",
  "fetiche-common",
- "log",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
@@ -3021,7 +3019,6 @@ dependencies = [
  "hcl-rs",
  "humantime",
  "jiff",
- "log",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
@@ -3057,7 +3054,6 @@ dependencies = [
  "fetiche-macros",
  "fetiche-sources",
  "hcl-rs",
- "log",
  "nom",
  "percent-encoding",
  "polars",
@@ -3091,7 +3087,6 @@ dependencies = [
  "eyre",
  "fetiche-common",
  "hcl-rs",
- "log",
  "nom",
  "percent-encoding",
  "reqwest",
@@ -3144,7 +3139,6 @@ dependencies = [
  "futures-util",
  "hcl-rs",
  "lapin",
- "log",
  "mini-moka",
  "native-tls",
  "percent-encoding",
@@ -3189,7 +3183,6 @@ dependencies = [
  "fetiche-macros",
  "fetiche-sources",
  "hcl-rs",
- "log",
  "nom",
  "opentelemetry",
  "opentelemetry-otlp",
@@ -4727,7 +4720,6 @@ version = "0.4.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 dependencies = [
- "serde",
  "value-bag",
 ]
 
@@ -6447,7 +6439,6 @@ dependencies = [
  "itertools 0.13.0",
  "klickhouse",
  "kml",
- "log",
  "ml-progress",
  "polars",
  "pprof",

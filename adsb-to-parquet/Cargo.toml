@@ -28,7 +28,6 @@ chrono.workspace = true
 clap.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
-log.workspace = true
 opentelemetry.workspace = true
 opentelemetry-otlp.workspace = true
 opentelemetry_sdk.workspace = true

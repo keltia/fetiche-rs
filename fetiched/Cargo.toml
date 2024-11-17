@@ -24,7 +24,6 @@ fetiche-macros.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
 directories.workspace = true
-log.workspace = true
 nom.workspace = true
 opentelemetry.workspace = true
 opentelemetry-otlp.workspace = true
