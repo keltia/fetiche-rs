@@ -156,7 +156,7 @@ impl AsyncStreamable for Senhive {
         } else {
             // We somehow needs to wait for a ^C.
             //
-            let (_, rx) = channel::<()>();
+            let (_tx, rx) = channel::<()>();
             rx.recv().expect("Something failed here.");
         }
 
