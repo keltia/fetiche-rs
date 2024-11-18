@@ -2,11 +2,16 @@
 //!
 
 use chrono::{Datelike, Utc};
+use csv::{QuoteStyle, WriterBuilder};
 use eyre::Result;
+use fetiche_common::init_logging;
+use fetiche_formats::senhive::{DronePoint, FusedData, StateMsg};
 use futures_util::stream::StreamExt;
 use lapin::{options::*, types::FieldTable, Connection, ConnectionProperties, Consumer};
 use polars::io::{SerReader, SerWriter};
-use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
+use polars::prelude::{CsvWriter, JsonFormat, JsonReader, JsonWriter};
+use serde::Serialize;
+use std::fmt::Debug;
 use std::io::Cursor;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
@@ -17,9 +22,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
 use tokio::signal::windows::ctrl_c;
-
-use fetiche_common::init_logging;
-use fetiche_formats::senhive::{FusedData, StateMsg};
+use tracing::trace;
 
 #[derive(Debug, Clone)]
 pub enum Output {
@@ -94,6 +97,7 @@ async fn main() -> Result<()> {
     let mut stream = signal(SignalKind::interrupt()).unwrap();
 
     let mut fd = fs::File::create("fused_data.json").await?;
+    let mut fc = fs::File::create("fused_data.csv").await?;
     let mut sa = fs::File::create("system_alert.json").await?;
     let mut ss = fs::File::create("system_state.json").await?;
 
@@ -176,11 +180,12 @@ async fn main() -> Result<()> {
                     .ack(BasicAckOptions::default())
                     .await?;
 
-                //let data = String::from_utf8_lossy(&delivery.data).to_string();
                 let data = from_json_to_nl(&delivery.data)?;
-                let _: FusedData = serde_json::from_str(&data)?;
-
+                let line = from_json_to_csv(&delivery.data)?;
                 fd.write(data.as_bytes()).await?;
+                fc.write(line.as_bytes()).await?;
+
+                let _: FusedData = serde_json::from_str(&data)?;
             },
             Some(data) = dl_data.inp.next() => {
                 eprint!("d");
@@ -189,9 +194,10 @@ async fn main() -> Result<()> {
                     .ack(BasicAckOptions::default())
                     .await?;
 
-                //let data = String::from_utf8_lossy(&delivery.data).to_string();
                 let data = from_json_to_nl(&delivery.data)?;
+                let line = from_json_to_csv(&delivery.data)?;
                 fd.write(data.as_bytes()).await?;
+                fc.write(line.as_bytes()).await?;
 
                 let _: FusedData = serde_json::from_str(&data)?;
             },
@@ -258,4 +264,36 @@ fn from_json_to_nl(data: &[u8]) -> Result<String> {
         .with_json_format(JsonFormat::JsonLines)
         .finish(&mut df)?;
     Ok(String::from_utf8(buf)?)
+}
+
+fn from_json_to_csv(data: &[u8]) -> Result<String> {
+    let cur = Cursor::new(data);
+    let data: FusedData = serde_json::from_reader(cur)?;
+    let data: DronePoint = data.into();
+
+    let data = prepare_csv(data)?;
+    Ok(data)
+}
+
+#[tracing::instrument]
+pub fn prepare_csv<T>(data: T) -> Result<String>
+where
+    T: Serialize + Debug,
+{
+    trace!("Generating output…");
+    // Prepare the writer
+    //
+    let mut wtr = WriterBuilder::new()
+        .has_headers(false)
+        .quote_style(QuoteStyle::NonNumeric)
+        .from_writer(vec![]);
+
+    // Insert data
+    //
+    wtr.serialize(data)?;
+
+    // Output final csv
+    //
+    let data = String::from_utf8(wtr.into_inner()?)?;
+    Ok(data)
 }
