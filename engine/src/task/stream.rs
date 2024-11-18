@@ -99,9 +99,9 @@ impl Stream {
                     let token = site.authenticate()?;
 
                     let args = self.args.clone();
-                    site.stream(stdout, &token, &args).unwrap();
+                    site.stream(stdout, &token, &args)?;
                 } else if let Flow::AsyncStreamable(site) = site {
-                    let rt = tokio::runtime::Runtime::new().unwrap();
+                    let rt = tokio::runtime::Runtime::new()?;
                     rt.block_on(async move {
                         let token = site.authenticate().await.unwrap();
 
