@@ -7,7 +7,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use eyre::Result;
 use ractor::pg::join;
-use ractor::{pg, Actor, RpcReplyPort};
+use ractor::{pg, Actor};
 #[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
