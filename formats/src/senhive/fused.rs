@@ -32,7 +32,7 @@ pub enum LocationType {
 pub struct PilotState {
     pub location: Location,
     #[serde(rename = "locationType")]
-    pub location_type: LocationType,
+    pub location_type: u8,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -86,7 +86,7 @@ pub struct VehicleState {
     #[serde(rename = "verticalSpeed")]
     pub vertical_speed: Option<FusedValue>,
     pub orientation: Option<FusedValue>,
-    pub state: Option<VehicleStateType>,
+    pub state: Option<u8>,
 }
 
 #[serde_as]
@@ -97,7 +97,7 @@ pub struct VehicleIdentification {
     pub make: Option<String>,
     pub model: Option<String>,
     #[serde(rename = "uavType")]
-    pub uav_type: UAVType,
+    pub uav_type: u8,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -124,7 +124,7 @@ pub enum UAVType {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FusionState {
     #[serde(rename = "fusionType")]
-    pub fusion_type: FusionType,
+    pub fusion_type: u8,
     #[serde(rename = "sourceSerials")]
     pub source_serials: Vec<String>,
 }
@@ -179,9 +179,9 @@ pub struct DronePoint {
     /// Model of the drone -- vehicle_identification.model
     pub model: Option<String>,
     /// UAV Type -- vehicle_identification.uav_type
-    pub uav_type: UAVType,
+    pub uav_type: u8,
     /// Source -- system.fusion_state.fusion_type
-    pub source: FusionType,
+    pub source: u8,
     /// Latitude -- vehicle_state.location.coordinates.lat
     pub latitude: f64,
     /// Longitude -- vehicle_state.location.coordinates.lon
@@ -201,7 +201,7 @@ pub struct DronePoint {
     /// True heading -- vehicle_state.orientation
     pub heading: f64,
     /// Vehicle state -- vehicle_state.state
-    pub state: Option<VehicleStateType>,
+    pub state: Option<u8>,
     /// Name of detecting point -- system.fusion_state.source_serials
     pub station_name: Option<String>,
 }
