@@ -16,6 +16,10 @@ privacy = []
 flightaware = []
 safesky = []
 
+[[bench]]
+name = "dronepoint"
+harness = false
+
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
@@ -53,3 +57,4 @@ zstd = "0.13"
 
 [dev-dependencies]
 rstest.workspace = true
+criterion.workspace = true

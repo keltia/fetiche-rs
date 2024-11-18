@@ -3083,6 +3083,7 @@ name = "fetiche-formats"
 version = "0.18.0"
 dependencies = [
  "chrono",
+ "criterion",
  "csv",
  "dateparser",
  "eyre",
