@@ -76,6 +76,7 @@ impl Store {
         }
 
         let curr = base.join("current");
+        #[cfg(unix)]
         if curr.exists() {
             if let Err(e) = fs::remove_file(&curr) {
                 let curr = curr.to_string_lossy().to_string();
@@ -85,19 +86,19 @@ impl Store {
             }
         }
 
-        #[cfg(windows)]
-        if let Err(e) = std::os::windows::fs::symlink_dir(&path, &curr) {
-            let path = path.to_string_lossy().to_string();
-            let curr = curr.to_string_lossy().to_string();
-
-            error!(
-                "Store: can not create symlink to {} as {}: {}",
-                path,
-                curr,
-                e.to_string()
-            );
-            return Err(EngineStatus::CreateLink(path, curr).into());
-        }
+        // #[cfg(windows)]
+        // if let Err(e) = std::os::windows::fs::symlink_dir(&path, &curr) {
+        //     let path = path.to_string_lossy().to_string();
+        //     let curr = curr.to_string_lossy().to_string();
+        //
+        //     error!(
+        //         "Store: can not create symlink to {} as {}: {}",
+        //         path,
+        //         curr,
+        //         e.to_string()
+        //     );
+        //     return Err(EngineStatus::CreateLink(path, curr).into());
+        // }
 
         #[cfg(unix)]
         if let Err(e) = std::os::unix::fs::symlink(&path, &curr) {
