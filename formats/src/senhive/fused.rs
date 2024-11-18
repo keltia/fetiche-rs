@@ -42,7 +42,7 @@ pub struct PilotIdentification {
     pub other: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct FusedValue {
     pub value: f64,
     pub uncertainty: Option<f64>,
@@ -67,7 +67,7 @@ pub struct Altitudes {
     pub geodetic: Option<FusedValue>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum VehicleStateType {
     MotorOff = 0,
@@ -100,7 +100,7 @@ pub struct VehicleIdentification {
     pub uav_type: u8,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[repr(u8)]
 pub enum FusionType {
     Cooperative = 0,
@@ -108,7 +108,7 @@ pub enum FusionType {
     Both = 2,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 #[repr(u8)]
 pub enum UAVType {
     #[default]
@@ -166,7 +166,7 @@ pub struct FusedData {
 /// This is a flattened struct representing items of value from the JSON record.
 /// It mimics the `[Asd`](../asd.rs) struct.
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DronePoint {
     /// timestamp -- system.timestamp
     pub time: DateTime<Utc>,
