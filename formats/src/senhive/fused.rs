@@ -9,19 +9,31 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use strum::EnumString;
 
+// ----- Original raw data format
+
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Location1 {
+pub struct Location {
     pub coordinates: Coordinates,
     pub uncertainty: Option<f64>,
     /// This is a string with a 7-point WKT Polygon
     pub likelihood: Option<String>,
 }
+/// "Measurement type as Integer. Can be 'Take-off location' (0), 'UAV Home location' (1), 'Live measurement update' (2), or 'unknown' (15)"
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum LocationType {
+    TakeOff = 0,
+    Home = 1,
+    Live = 2,
+    #[default]
+    Unknown = 15,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PilotState {
-    pub location: Location1,
+    pub location: Location,
     #[serde(rename = "locationType")]
-    pub location_type: i64,
+    pub location_type: LocationType,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,25 +49,28 @@ pub struct FusedValue {
     pub uncertainty: Option<f64>,
 }
 
+impl From<FusedValue> for f64 {
+    /// Easy conversion into plain f64
+    fn from(fv: FusedValue) -> Self {
+        fv.value
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Altitudes {
+    /// Above take-off location [m]
     pub ato: Option<FusedValue>,
+    /// Above ground level [m]
     pub agl: Option<FusedValue>,
+    /// Above mean sea level [m]
     pub amsl: Option<FusedValue>,
+    /// Real geodetic altitude.
     pub geodetic: Option<FusedValue>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Location {
-    pub coordinates: Coordinates,
-    pub uncertainty: Option<f64>,
-    /// This is a string with a 7-point WKT Polygon
-    pub likelihood: String,
-}
-
-
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub enum VehiculeStateType {
+#[repr(u8)]
+pub enum VehicleStateType {
     MotorOff = 0,
     MotorOn = 1,
     Airborn = 2,
@@ -87,6 +102,7 @@ pub struct VehicleIdentification {
 }
 
 #[derive(Debug, Deserialize, strum::Display, EnumString, strum::VariantNames, Serialize)]
+#[repr(u8)]
 pub enum FusionType {
     Cooperative = 0,
     Surveillance = 1,
@@ -102,6 +118,7 @@ pub enum FusionType {
     strum::VariantNames,
     Serialize
 )]
+#[repr(u8)]
 pub enum UAVType {
     #[default]
     Unknown = 0,
@@ -151,4 +168,53 @@ pub struct FusedData {
     pub pilot_identification: Option<PilotIdentification>,
     #[serde(rename = "pilotState")]
     pub pilot_state: PilotState,
+}
+
+// ----- New `DronePoint`, flattened struct
+
+/// This is a flattened struct representing items of value from the JSON record.
+/// It mimics the `[Asd`](../asd.rs) struct.
+///
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DronePoint {
+    /// timestamp -- system.timestamp
+    pub time: DateTime<Utc>,
+    /// Each record is part of a drone journey with a specific ID -- system.track_id
+    pub journey: String,
+    /// Identifier for the drone -- vehicle_identification.serial
+    pub ident: Option<String>,
+    /// Maker of the drone -- vehicle_identification.make
+    pub make: Option<String>,
+    /// Model of the drone -- vehicle_identification.model
+    pub model: Option<String>,
+    /// UAV Type -- vehicle_identification.uav_type
+    pub uav_type: UAVType,
+    /// Source -- system.fusion_state.fusion_type
+    pub source: FusionType,
+    /// Latitude -- vehicle_state.location.coordinates.lat
+    pub latitude: f32,
+    /// Longitude -- vehicle_state.location.coordinates.lon
+    pub longitude: f32,
+    /// Altitude -- vehicle_state.altitudes.geodetic
+    pub altitude: Option<u32>,
+    /// Distance to ground -- vehicle_state.altitudes.ato.value
+    pub elevation: Option<u32>,
+    /// Operator lat -- pilot_state.location.coordinates.lat
+    pub home_lat: Option<f32>,
+    /// Operator lon -- pilot_state.location.coordinates.lon
+    pub home_lon: Option<f32>,
+    /// Altitude from takeoff point -- (vehicle_state.altitudes.ato.value - )
+    pub home_height: Option<f32>,
+    /// Current speed -- vehicle_state.ground_speed
+    pub speed: f32,
+    /// True heading -- vehicle_state.orientation
+    pub heading: f32,
+    /// Vehicle state -- vehicle_state.state
+    pub state: Option<VehicleStateType>,
+    /// Name of detecting point -- system.fusion_state.source_serials
+    pub station_name: Option<String>,
+    /// Latitude -- site latitude
+    pub station_latitude: Option<f32>,
+    /// Longitude -- site longitude
+    pub station_longitude: Option<f32>,
 }
