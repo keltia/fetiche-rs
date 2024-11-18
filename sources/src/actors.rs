@@ -135,7 +135,7 @@ impl Actor for Supervisor {
 
     /// All the work is done here.
     ///
-    #[tracing::instrument(skip(self, myself))]
+    #[tracing::instrument(skip(self, _myself))]
     async fn handle_supervisor_evt(
         &self,
         _myself: ActorRef<Self::Msg>,
