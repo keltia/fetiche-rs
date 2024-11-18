@@ -138,7 +138,7 @@ impl Actor for Supervisor {
     #[tracing::instrument(skip(self, myself))]
     async fn handle_supervisor_evt(
         &self,
-        myself: ActorRef<Self::Msg>,
+        _myself: ActorRef<Self::Msg>,
         message: SupervisionEvent,
         _state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {

@@ -143,12 +143,7 @@ impl AsyncStreamable for Senhive {
 
         // Start the processing.
         //
-        let r = worker
-            .call(
-                |_: RpcReplyPort<String>| WorkerMsg::Consume("fused_data".into(), "data".into()),
-                None,
-            )
-            .await?;
+        let _ = worker.cast(WorkerMsg::Consume("fused_data".into(), "data".into()))?;
 
         // Set the clock ticking unless duration is 0
         //
@@ -161,7 +156,7 @@ impl AsyncStreamable for Senhive {
         } else {
             // We somehow needs to wait for a ^C.
             //
-            let (tx, rx) = channel::<()>();
+            let (_, rx) = channel::<()>();
             rx.recv().expect("Something failed here.");
         }
 
