@@ -7,7 +7,6 @@ use crate::senhive::Coordinates;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use strum::EnumString;
 
 // ----- Original raw data format
 
@@ -87,7 +86,7 @@ pub struct VehicleState {
     #[serde(rename = "verticalSpeed")]
     pub vertical_speed: Option<FusedValue>,
     pub orientation: Option<FusedValue>,
-    pub state: Option<i8>,
+    pub state: Option<VehicleStateType>,
 }
 
 #[serde_as]
@@ -98,10 +97,10 @@ pub struct VehicleIdentification {
     pub make: Option<String>,
     pub model: Option<String>,
     #[serde(rename = "uavType")]
-    pub uav_type: u8,
+    pub uav_type: UAVType,
 }
 
-#[derive(Debug, Deserialize, strum::Display, EnumString, strum::VariantNames, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[repr(u8)]
 pub enum FusionType {
     Cooperative = 0,
@@ -109,15 +108,7 @@ pub enum FusionType {
     Both = 2,
 }
 
-#[derive(
-    Debug,
-    Default,
-    Deserialize,
-    strum::Display,
-    EnumString,
-    strum::VariantNames,
-    Serialize
-)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[repr(u8)]
 pub enum UAVType {
     #[default]
@@ -133,7 +124,7 @@ pub enum UAVType {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FusionState {
     #[serde(rename = "fusionType")]
-    pub fusion_type: u8,
+    pub fusion_type: FusionType,
     #[serde(rename = "sourceSerials")]
     pub source_serials: Vec<String>,
 }
@@ -192,29 +183,53 @@ pub struct DronePoint {
     /// Source -- system.fusion_state.fusion_type
     pub source: FusionType,
     /// Latitude -- vehicle_state.location.coordinates.lat
-    pub latitude: f32,
+    pub latitude: f64,
     /// Longitude -- vehicle_state.location.coordinates.lon
-    pub longitude: f32,
+    pub longitude: f64,
     /// Altitude -- vehicle_state.altitudes.geodetic
-    pub altitude: Option<u32>,
+    pub altitude: Option<f64>,
     /// Distance to ground -- vehicle_state.altitudes.ato.value
-    pub elevation: Option<u32>,
+    pub elevation: Option<f64>,
     /// Operator lat -- pilot_state.location.coordinates.lat
-    pub home_lat: Option<f32>,
+    pub home_lat: Option<f64>,
     /// Operator lon -- pilot_state.location.coordinates.lon
-    pub home_lon: Option<f32>,
+    pub home_lon: Option<f64>,
     /// Altitude from takeoff point -- (vehicle_state.altitudes.ato.value - )
-    pub home_height: Option<f32>,
+    pub home_height: Option<f64>,
     /// Current speed -- vehicle_state.ground_speed
-    pub speed: f32,
+    pub speed: f64,
     /// True heading -- vehicle_state.orientation
-    pub heading: f32,
+    pub heading: f64,
     /// Vehicle state -- vehicle_state.state
     pub state: Option<VehicleStateType>,
     /// Name of detecting point -- system.fusion_state.source_serials
     pub station_name: Option<String>,
-    /// Latitude -- site latitude
-    pub station_latitude: Option<f32>,
-    /// Longitude -- site longitude
-    pub station_longitude: Option<f32>,
+}
+
+/// Now define the converter.
+///
+impl From<FusedData> for DronePoint {
+    fn from(value: FusedData) -> Self {
+        let station_name = value.system.fusion_state.source_serials[0].clone();
+        Self {
+            time: value.system.timestamp,
+            journey: value.system.track_id.clone(),
+            ident: value.vehicle_identification.serial.clone(),
+            make: value.vehicle_identification.make.clone(),
+            model: value.vehicle_identification.model.clone(),
+            uav_type: value.vehicle_identification.uav_type.into(),
+            source: value.system.fusion_state.fusion_type.into(),
+            latitude: value.vehicle_state.location.coordinates.lat,
+            longitude: value.vehicle_state.location.coordinates.lon,
+            altitude: Some(value.vehicle_state.altitudes.geodetic.unwrap().value),
+            elevation: Some(value.vehicle_state.altitudes.ato.unwrap().value),
+            home_lat: Some(value.pilot_state.location.coordinates.lat),
+            home_lon: Some(value.pilot_state.location.coordinates.lon),
+            home_height: None,
+            speed: value.vehicle_state.ground_speed.unwrap().value,
+            heading: value.vehicle_state.orientation.unwrap().value,
+            state: Some(value.vehicle_state.state.unwrap().into()),
+            station_name: Some(station_name),
+        }
+    }
 }
