@@ -1,21 +1,20 @@
 //! Connect to a Thales Senhive antenna and fetch messages through Lapin as AMQP client.
 //!
 
-use chrono::{Datelike, Utc};
-use csv::{QuoteStyle, WriterBuilder};
-use eyre::Result;
-use fetiche_common::init_logging;
-use fetiche_formats::senhive::{DronePoint, FusedData, StateMsg};
-use futures_util::stream::StreamExt;
-use lapin::{options::*, types::FieldTable, Connection, ConnectionProperties, Consumer};
-use polars::io::{SerReader, SerWriter};
-use polars::prelude::{CsvWriter, JsonFormat, JsonReader, JsonWriter};
-use serde::Serialize;
 use std::fmt::Debug;
 use std::io::Cursor;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::{env, vec};
+
+use chrono::{Datelike, Utc};
+use csv::{QuoteStyle, WriterBuilder};
+use eyre::Result;
+use futures_util::stream::StreamExt;
+use lapin::{options::*, types::FieldTable, Connection, ConnectionProperties, Consumer};
+use polars::io::{SerReader, SerWriter};
+use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
+use serde::Serialize;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 #[cfg(unix)]
@@ -23,6 +22,9 @@ use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
 use tokio::signal::windows::ctrl_c;
 use tracing::trace;
+
+use fetiche_common::init_logging;
+use fetiche_formats::senhive::{DronePoint, FusedData, StateMsg};
 
 #[derive(Debug, Clone)]
 pub enum Output {
