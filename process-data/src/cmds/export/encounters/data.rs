@@ -26,6 +26,7 @@ pub(crate) struct DataPoint {
 pub(crate) struct Encounter {
     pub en_id: String,
     pub journey: i32,
+    pub timestamp: DateTime<Utc>,
     pub drone_id: String,
     pub prox_id: String,
     pub prox_callsign: String,
@@ -98,7 +99,7 @@ pub(crate) async fn fetch_one_encounter(client: &Client, id: &str) -> Result<Enc
     //
     let rp = r##"
 SELECT
-  en_id, journey, drone_id, prox_callsign, prox_id
+  en_id, journey, time, drone_id, prox_callsign, prox_id
 FROM airplane_prox
 WHERE en_id = $1
     "##;

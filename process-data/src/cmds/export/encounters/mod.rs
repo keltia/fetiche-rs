@@ -139,6 +139,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     assert_eq!(res.en_id, id);
     assert_eq!(res.journey, journey);
 
+    let encounter_timestamp = res.timestamp;
     let drone_id = res.drone_id.clone();
 
     // ICAO string is unique, whereas callsign can change
@@ -188,7 +189,10 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     // Not sure why there is no `Kml::Document()` like all others.
     //
     let doc = Document {
-        attrs: [("name".into(), format!("{id}.kml"))].into(),
+        attrs: [
+            ("name".into(), format!("{id}.kml")),
+            ("time".into(), encounter_timestamp.to_string())
+        ].into(),
         elements: vec![def_styles, d_style, p_style, drone, plane],
     };
 
@@ -248,8 +252,8 @@ async fn export_encounter_list(
                         }
                     };
                 })
-                .await
-                .unwrap();
+                    .await
+                    .unwrap();
             })
             .collect();
         let _ = join_all(kmls).await;
