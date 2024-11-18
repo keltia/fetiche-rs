@@ -174,7 +174,7 @@ impl Actor for Worker {
                                 .ack(BasicAckOptions::default())
                                 .await?;
 
-                            let data = String::from_utf8_lossy(&delivery.data).to_string();
+                            let data = from_json_to_nl(&delivery.data)?;
                             let len = data.len() as u64;
                             trace!("drain: size={len}");
 
