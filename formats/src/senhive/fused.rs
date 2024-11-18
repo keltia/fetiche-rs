@@ -208,8 +208,8 @@ pub struct DronePoint {
 
 /// Now define the converter.
 ///
-impl From<FusedData> for DronePoint {
-    fn from(value: FusedData) -> Self {
+impl From<&FusedData> for DronePoint {
+    fn from(value: &FusedData) -> Self {
         let station_name = value.system.fusion_state.source_serials[0].clone();
         Self {
             time: value.system.timestamp,
@@ -221,13 +221,13 @@ impl From<FusedData> for DronePoint {
             source: value.system.fusion_state.fusion_type.into(),
             latitude: value.vehicle_state.location.coordinates.lat,
             longitude: value.vehicle_state.location.coordinates.lon,
-            altitude: Some(value.vehicle_state.altitudes.geodetic.unwrap().value),
-            elevation: Some(value.vehicle_state.altitudes.ato.unwrap().value),
+            altitude: Some(value.vehicle_state.altitudes.geodetic.unwrap().into()),
+            elevation: Some(value.vehicle_state.altitudes.ato.unwrap().into()),
             home_lat: Some(value.pilot_state.location.coordinates.lat),
             home_lon: Some(value.pilot_state.location.coordinates.lon),
             home_height: None,
-            speed: value.vehicle_state.ground_speed.unwrap().value,
-            heading: value.vehicle_state.orientation.unwrap().value,
+            speed: value.vehicle_state.ground_speed.unwrap().into(),
+            heading: value.vehicle_state.orientation.unwrap().into(),
             state: Some(value.vehicle_state.state.unwrap().into()),
             station_name: Some(station_name),
         }
