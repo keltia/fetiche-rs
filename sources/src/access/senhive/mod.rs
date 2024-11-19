@@ -21,19 +21,24 @@
 mod actors;
 mod stream;
 
+use std::io::Cursor;
+use std::num::NonZeroUsize;
 use std::str::FromStr;
 
+use csv::{QuoteStyle, WriterBuilder};
 use eyre::Result;
 use lapin::options::BasicConsumeOptions;
 use lapin::types::FieldTable;
 use lapin::{Connection, Consumer};
+use polars::io::{SerReader, SerWriter};
+use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, trace};
 
-use fetiche_formats::Format;
-
 use crate::{Auth, Capability, Site};
+use fetiche_formats::senhive::{DronePoint, FusedData};
+use fetiche_formats::Format;
 
 /// Credentials to submit to the site to get the token
 ///
@@ -139,4 +144,45 @@ impl Feed {
             inp: data,
         })
     }
+}
+
+/// Helper to convert from multi-line JSON into proper JSONL records.
+///
+#[inline]
+fn from_json_to_nl(data: &[u8]) -> Result<String> {
+    let cur = Cursor::new(data);
+    let mut df = JsonReader::new(cur)
+        .with_json_format(JsonFormat::Json)
+        .infer_schema_len(NonZeroUsize::new(3))
+        .finish()?;
+
+    let mut buf = vec![];
+    JsonWriter::new(&mut buf)
+        .with_json_format(JsonFormat::JsonLines)
+        .finish(&mut df)?;
+    Ok(String::from_utf8(buf)?)
+}
+
+/// Take the JSON and turn it into our own `DronePoint`.
+///
+#[inline]
+fn from_json_to_csv(data: &[u8]) -> Result<String> {
+    let cur = Cursor::new(data);
+    let data: FusedData = serde_json::from_reader(cur)?;
+    let data: DronePoint = (&data).into();
+
+    let mut wtr = WriterBuilder::new()
+        .has_headers(false)
+        .quote_style(QuoteStyle::NonNumeric)
+        .from_writer(vec![]);
+
+    // Insert data
+    //
+    wtr.serialize(data)?;
+
+    // Output final csv line
+    //
+    let data = String::from_utf8(wtr.into_inner()?)?;
+
+    Ok(data)
 }
