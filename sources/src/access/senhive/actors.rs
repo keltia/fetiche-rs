@@ -138,6 +138,7 @@ impl Actor for Worker {
                 //
                 let mut alert = Feed::new(&state.conn, "system_alert", "oob").await?;
 
+                eprintln!("d: dl_fused_data - D: fused_data - A: alert.");
                 // Process each message
                 //
                 loop {
@@ -145,6 +146,7 @@ impl Actor for Worker {
                         // This is for regular events, one data packet at a time
                         //
                         Some(data) = data.inp.next() => {
+                            eprintln!("d");
                             let delivery = data?;
                             delivery
                                 .ack(BasicAckOptions::default())
@@ -174,6 +176,7 @@ impl Actor for Worker {
                         // This drains the `dl_fused_data` topic, we expect this to happen upon startup.
                         //
                         Some(data) = dl_data.inp.next() => {
+                            eprintln!("D");
                             let delivery = data?;
                             delivery
                                 .ack(BasicAckOptions::default())
@@ -205,6 +208,7 @@ impl Actor for Worker {
                         // FIXME: do we stop when getting an alert?
                         //
                         Some(alert) = alert.inp.next() => {
+                            eprintln!("A");
                             let delivery = alert?;
                             delivery
                                 .ack(BasicAckOptions::default())

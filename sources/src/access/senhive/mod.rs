@@ -123,7 +123,7 @@ impl Feed {
     pub async fn new(conn: &Connection, name: &str, tag: &str) -> Result<Self> {
         // Create a channel
         let data_ch = conn.create_channel().await?;
-        println!("Created {name} channel");
+        eprintln!("Created {name} channel");
 
         let data = data_ch
             .basic_consume(
