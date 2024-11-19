@@ -4,19 +4,14 @@
 //!
 
 use std::fmt::Debug;
-use std::io::Cursor;
-use std::num::NonZeroUsize;
 use std::sync::mpsc::Sender;
 
-use csv::{QuoteStyle, WriterBuilder};
 use futures_util::stream::StreamExt;
 use lapin::{options::BasicAckOptions, Connection, ConnectionProperties};
-use polars::io::{SerReader, SerWriter};
-use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use tracing::{error, trace, warn};
 
-use fetiche_formats::senhive::{DronePoint, FusedData};
+use fetiche_formats::senhive::FusedData;
 
 use super::{from_json_to_csv, from_json_to_nl};
 use crate::actors::StatsMsg;
