@@ -3,10 +3,12 @@
 //! We currently have only one actor: `Worker`.
 //!
 
+use std::fmt::Debug;
 use std::io::Cursor;
 use std::num::NonZeroUsize;
 use std::sync::mpsc::Sender;
 
+use csv::{QuoteStyle, WriterBuilder};
 use futures_util::stream::StreamExt;
 use lapin::{options::BasicAckOptions, Connection, ConnectionProperties};
 use polars::io::{SerReader, SerWriter};
@@ -14,7 +16,7 @@ use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use tracing::{error, trace, warn};
 
-use fetiche_formats::senhive::FusedData;
+use fetiche_formats::senhive::{DronePoint, FusedData};
 
 use crate::actors::StatsMsg;
 use crate::{DataError, Feed};
@@ -104,9 +106,10 @@ impl Actor for Worker {
     ///
     /// The only interesting message is Consume() with a topic name and a topic tag.
     /// We subscribe to both the main and dead letter topic and to the alert one, just in case.
-    /// Every packet received is transformed into a JSONL one, easier to deal with afterward.
+    /// Every packet received is converted into a `DronePoint` and saved as CSV, easier to store
+    /// inside a DB.
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, myself))]
     async fn handle(
         &self,
         myself: ActorRef<Self::Msg>,
@@ -147,7 +150,9 @@ impl Actor for Worker {
                                 .ack(BasicAckOptions::default())
                                 .await?;
 
-                            let data = from_json_to_nl(&delivery.data)?;
+                            // Save as a csv with `DronePoint`s
+                            //
+                            let data = from_json_to_csv(&delivery.data)?;
                             let len = data.len() as u64;
                             trace!("data: size={len}");
 
@@ -174,7 +179,9 @@ impl Actor for Worker {
                                 .ack(BasicAckOptions::default())
                                 .await?;
 
-                            let data = from_json_to_nl(&delivery.data)?;
+                            // Save as a csv with `DronePoint`s
+                            //
+                            let data = from_json_to_csv(&delivery.data)?;
                             let len = data.len() as u64;
                             trace!("drain: size={len}");
 
@@ -234,4 +241,28 @@ fn from_json_to_nl(data: &[u8]) -> eyre::Result<String> {
         .with_json_format(JsonFormat::JsonLines)
         .finish(&mut df)?;
     Ok(String::from_utf8(buf)?)
+}
+
+/// Take the JSON and turn it into our own `DronePoint`.
+///
+#[inline]
+fn from_json_to_csv(data: &[u8]) -> eyre::Result<String> {
+    let cur = Cursor::new(data);
+    let data: FusedData = serde_json::from_reader(cur)?;
+    let data: DronePoint = (&data).into();
+
+    let mut wtr = WriterBuilder::new()
+        .has_headers(false)
+        .quote_style(QuoteStyle::NonNumeric)
+        .from_writer(vec![]);
+
+    // Insert data
+    //
+    wtr.serialize(data)?;
+
+    // Output final csv line
+    //
+    let data = String::from_utf8(wtr.into_inner()?)?;
+
+    Ok(data)
 }
