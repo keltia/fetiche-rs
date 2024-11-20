@@ -12,10 +12,12 @@
 //! We implement the 2nd one as it is simpler and does not need any cache..
 //!
 
+pub use actors::*;
 pub use cube::*;
 pub use server::*;
 
 /// This is the code to access the TCP streaming port on a given antenna
+mod actors;
 mod cube;
 /// This is the code used when accessing the Avionix API or TCP streaming server
 mod server;

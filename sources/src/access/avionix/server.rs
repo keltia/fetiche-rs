@@ -24,6 +24,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use polars::prelude::*;
+use ractor::pg::join;
+use ractor::{pg, Actor};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -31,15 +33,18 @@ use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
 use tracing::{debug, error, info, trace};
 
+use super::actors::{Worker, WorkerArgs, WorkerMsg};
 use super::BUFSIZ;
-use crate::actors::StatsMsg;
-use crate::{Auth, AuthError, Capability, Filter, Site, Stats, Streamable};
+use crate::actors::{StatsActor, StatsMsg, Supervisor, PG_SOURCES};
+use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, Site, Stats};
 use fetiche_formats::Format;
 
 /// TCP streaming URL
 const DEF_SITE: &str = "tcp.aero-network.com";
 /// TCP streaming port
 const DEF_PORT: u16 = 50007;
+
+const TICK: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AvionixServer {
@@ -102,12 +107,12 @@ impl Default for AvionixServer {
     }
 }
 
-impl Streamable for AvionixServer {
+impl AsyncStreamable for AvionixServer {
     fn name(&self) -> String {
         String::from("AvionixServer")
     }
 
-    fn authenticate(&self) -> eyre::Result<String, AuthError> {
+    async fn authenticate(&self) -> eyre::Result<String, AuthError> {
         trace!("fake token retrieval");
         Ok(String::from(""))
     }
@@ -118,7 +123,7 @@ impl Streamable for AvionixServer {
     ///
     ///
     #[tracing::instrument(skip(self, out))]
-    fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
+    async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
         trace!("avionixserver::stream");
 
         /// Stats loop
@@ -128,8 +133,8 @@ impl Streamable for AvionixServer {
         let args = Filter::from(args);
 
         let stream_duration = match args {
-            Filter::Altitude { duration, .. } => { Duration::from_secs(duration as u64) }
-            _ => Duration::new(0, 0)
+            Filter::Altitude { duration, .. } => Duration::from_secs(duration as u64),
+            _ => Duration::new(0, 0),
         };
 
         trace!("Streaming data from {}…", self.base_url);
@@ -148,6 +153,54 @@ impl Streamable for AvionixServer {
             flag::register_conditional_shutdown(*sig, 1, Arc::clone(&term))?;
             flag::register(*sig, Arc::clone(&term))?;
         }
+
+        // We have a generic supervisor actor.
+        //
+        trace!("starting supervisor actor.");
+        let tag = String::from("avionixserver::supervisor");
+        let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await?;
+
+        // Start the stats gathering actor.
+        //
+        trace!("starting stats actor.");
+        let tag = String::from("senhive::stats");
+        let (stat, _h) = Actor::spawn_linked(
+            Some(tag),
+            StatsActor,
+            "avionixserver".into(),
+            sup.get_cell(),
+        )
+            .await?;
+
+        // Launch the worker actor
+        //
+        let url = self.base_url.clone();
+        trace!("Starting worker actor.");
+        let args = WorkerArgs {
+            url,
+            out,
+            stat: stat.clone(),
+        };
+        let tag = String::from("senhive::worker");
+        let (worker, _handle) =
+            Actor::spawn_linked(Some(tag), Worker, args, sup.get_cell()).await?;
+
+        info!("List of actors.");
+        let list = pg::get_members(&PG_SOURCES.to_string());
+        list.iter().for_each(|member| {
+            info!("  {}", member.get_name().unwrap_or("<anon>".into()));
+        });
+
+        // Every TICK, we display stats.
+        //
+        let _ = stat.send_interval(TICK, || StatsMsg::Print);
+
+        // Insert each actor in the PG_SOURCES group.
+        //
+        join(
+            PG_SOURCES.into(),
+            vec![sup.get_cell(), worker.get_cell(), stat.get_cell()],
+        );
 
         // out as a `dyn Write` is not `Send` so we can not use it within a thread.  Use channels
         // to work around this.
@@ -169,48 +222,6 @@ impl Streamable for AvionixServer {
             });
             trace!("end of sleep");
         }
-
-        // Launch stat gathering thread.
-        //
-        let (st_tx, st_rx) = channel::<StatsMsg>();
-        thread::spawn(move || {
-            trace!("stats::thread");
-
-            let start = Instant::now();
-            let mut stats = Stats::default();
-            while let Ok(msg) = st_rx.recv() {
-                match msg {
-                    StatsMsg::Pkts(n) => stats.pkts += n,
-                    StatsMsg::Error => stats.err += 1,
-                    StatsMsg::Reconnect => stats.reconnect += 1,
-                    StatsMsg::Bytes(n) => stats.bytes += n,
-                    StatsMsg::Print => {
-                        stats.tm = start.elapsed().as_secs();
-                        info!("Stats: {}", stats)
-                    }
-                    StatsMsg::Reset => (),
-                    // The end
-                    StatsMsg::Exit => {
-                        stats.tm = start.elapsed().as_secs();
-                        break;
-                    }
-                }
-            }
-            info!("\nSession: {}", stats);
-            trace!("end of stats thread");
-        });
-
-        // Launch a thread that sleep for 30s then ask for statistics
-        //
-        let disp_tx = st_tx.clone();
-        thread::spawn(move || {
-            trace!("stats::display");
-            loop {
-                thread::sleep(STATS_LOOP);
-                trace!("TICK");
-                let _ = disp_tx.send(StatsMsg::Print);
-            }
-        });
 
         // Worker thread1
         //
