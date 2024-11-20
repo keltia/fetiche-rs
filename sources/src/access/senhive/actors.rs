@@ -11,11 +11,9 @@ use lapin::{options::BasicAckOptions, Connection, ConnectionProperties};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use tracing::{error, trace, warn};
 
-use fetiche_formats::senhive::FusedData;
-
 use super::{from_json_to_csv, from_json_to_nl};
 use crate::actors::StatsMsg;
-use crate::{DataError, Feed};
+use crate::Feed;
 
 /// This is the worker that will consume a given topic.
 ///
@@ -142,7 +140,7 @@ impl Actor for Worker {
                         // This is for regular events, one data packet at a time
                         //
                         Some(data) = data.inp.next() => {
-                            eprint!("d");
+                            eprint!("D");
                             let delivery = data?;
                             delivery
                                 .ack(BasicAckOptions::default())
@@ -157,22 +155,12 @@ impl Actor for Worker {
                             stat.cast(StatsMsg::Bytes(len))?;
                             stat.cast(StatsMsg::Pkts(1))?;
 
-                            let _: FusedData = match serde_json::from_str(&data) {
-                                Ok(pdu) => pdu,
-                                Err(err) => {
-                                    error!("Invalid packet: {data}: {err}");
-                                    let _ = stat.cast(StatsMsg::Error)?;
-
-                                    return Err(DataError::BadPacketData.into());
-                                }
-                            };
-
                             out.send(data)?;
                         },
                         // This drains the `dl_fused_data` topic, we expect this to happen upon startup.
                         //
                         Some(data) = dl_data.inp.next() => {
-                            eprint!("D");
+                            eprint!("d");
                             let delivery = data?;
                             delivery
                                 .ack(BasicAckOptions::default())
@@ -186,16 +174,6 @@ impl Actor for Worker {
 
                             stat.cast(StatsMsg::Bytes(len))?;
                             stat.cast(StatsMsg::Pkts(1))?;
-
-                            let _: FusedData = match serde_json::from_str(&data) {
-                                Ok(pdu) => pdu,
-                                Err(err) => {
-                                    error!("Invalid packet: {data}: {err}");
-                                    let _ = stat.cast(StatsMsg::Error);
-
-                                    return Err(DataError::BadPacketData.into());
-                                }
-                            };
 
                             out.send(data.clone())?;
                         },
