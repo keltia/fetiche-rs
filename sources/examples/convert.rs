@@ -44,7 +44,7 @@ fn main() -> Result<()> {
     let rdr = BufReader::new(inp);
 
     let ind_read = ProgressBar::no_length().with_style(ProgressStyle::with_template(
-        "[{elapsed_precise}: {human_pos} -- {per_sec}",
+        "Reading [{elapsed_precise}]: {human_pos} -- {per_sec}",
     )?);
 
     let data = rdr.lines();
@@ -57,6 +57,7 @@ fn main() -> Result<()> {
             r
         })
         .collect::<Vec<_>>();
+    ind_read.finish();
 
     let length = data.len();
     let output = Path::new(input).file_stem().unwrap().to_str().unwrap();
@@ -67,8 +68,17 @@ fn main() -> Result<()> {
         .quote_style(QuoteStyle::NonNumeric)
         .from_writer(out);
 
-    data.iter().for_each(|r| wtr.serialize(r).unwrap());
+    let ind_write = ProgressBar::no_length().with_style(ProgressStyle::with_template(
+        "Writing [{elapsed_precise}]: {human_pos} -- {per_sec}",
+    )?);
+
+    let iter = data.iter();
+
+    ind_write
+        .wrap_iter(iter)
+        .for_each(|r| wtr.serialize(r).unwrap());
     wtr.flush()?;
+    ind_write.finish();
 
     eprintln!("\n{input} converted to {output:?} with {length} lines");
     Ok(())
