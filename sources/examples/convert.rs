@@ -31,11 +31,11 @@ fn main() -> Result<()> {
         "[{elapsed_precise}: {human_pos} -- {per_sec}",
     )?);
 
-    let data = rdr.lines().enumerate();
+    let data = rdr.lines();
 
     let data = ind_read
         .wrap_iter(data)
-        .map(|(n, r)| {
+        .map(|r| {
             let r: FusedData = serde_json::from_str(&r.unwrap()).unwrap();
             let r: DronePoint = (&r).into();
             r
