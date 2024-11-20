@@ -7,12 +7,12 @@
 //! file which will define the input formats and the transformations needed.
 //!
 
-use std::collections::BTreeMap;
-use std::fmt::Debug;
-
+use chrono::{DateTime, Utc};
 use csv::WriterBuilder;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::fmt::Debug;
 use strum::EnumString;
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
@@ -256,6 +256,83 @@ impl Default for Position {
             longitude: 0.0,
         }
     }
+}
+
+// ----- New `DronePoint`, flattened struct
+
+/// This is a flattened struct trying to gather all elements we can find in a given drone-related
+/// feed (Avionix, Senhive) into a common type: `DronePoint`.
+///
+/// It mimics the `[Asd`](../asd.rs) struct.
+///
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DronePoint {
+    /// timestamp
+    pub time: DateTime<Utc>,
+    /// Each record is part of a drone journey with a specific ID
+    pub journey: String,
+    /// Identifier for the drone
+    pub ident: Option<String>,
+    /// Maker of the drone
+    pub make: Option<String>,
+    /// Model of the drone
+    pub model: Option<String>,
+    /// UAV Type
+    pub uav_type: u8,
+    /// Source
+    pub source: u8,
+    /// Latitude
+    pub latitude: f64,
+    /// Longitude
+    pub longitude: f64,
+    /// Geodesic aka true altitude
+    pub altitude: Option<f64>,
+    /// Distance to ground
+    pub elevation: Option<f64>,
+    /// Operator lat
+    pub home_lat: Option<f64>,
+    /// Operator lon
+    pub home_lon: Option<f64>,
+    /// Altitude from takeoff point
+    pub home_height: Option<f64>,
+    /// Current speed
+    pub speed: f64,
+    /// True heading
+    pub heading: f64,
+    /// Vehicle state
+    pub state: Option<u8>,
+    /// Name of detecting point -- system.fusion_state.source_serials
+    pub station_name: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum VehicleStateType {
+    MotorOff = 0,
+    MotorOn = 1,
+    Airborn = 2,
+    #[default]
+    Unknown = 15,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[repr(u8)]
+pub enum FusionType {
+    Cooperative = 0,
+    Surveillance = 1,
+    Both = 2,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
+#[repr(u8)]
+pub enum UAVType {
+    #[default]
+    Unknown = 0,
+    FixedWing = 1,
+    MultiRotor = 2,
+    Gyroplane = 3,
+    HybridLift = 4,
+    Other = 15,
 }
 
 #[derive(Debug, Default, Serialize)]
