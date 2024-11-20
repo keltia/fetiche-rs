@@ -142,7 +142,7 @@ impl Actor for Worker {
                         // This is for regular events, one data packet at a time
                         //
                         Some(data) = data.inp.next() => {
-                            eprintln!("d");
+                            eprint!("d");
                             let delivery = data?;
                             delivery
                                 .ack(BasicAckOptions::default())
@@ -172,7 +172,7 @@ impl Actor for Worker {
                         // This drains the `dl_fused_data` topic, we expect this to happen upon startup.
                         //
                         Some(data) = dl_data.inp.next() => {
-                            eprintln!("D");
+                            eprint!("D");
                             let delivery = data?;
                             delivery
                                 .ack(BasicAckOptions::default())
@@ -204,7 +204,7 @@ impl Actor for Worker {
                         // FIXME: do we stop when getting an alert?
                         //
                         Some(alert) = alert.inp.next() => {
-                            eprintln!("A");
+                            eprint!("A");
                             let delivery = alert?;
                             delivery
                                 .ack(BasicAckOptions::default())
