@@ -3140,6 +3140,7 @@ dependencies = [
  "fetiche-macros",
  "futures-util",
  "hcl-rs",
+ "indicatif",
  "lapin",
  "mini-moka",
  "native-tls",
