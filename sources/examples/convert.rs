@@ -4,17 +4,15 @@
 //! ```text
 //! ❯ hyperfine --warmup 3 -i  "..\target\debug\examples\convert.exe ..\data\all-senhive.json"
 //! Benchmark 1: ..\target\debug\examples\convert.exe ..\data\all-senhive.json
-//!   Time (mean ± σ):      3.522 s ±  0.138 s    [User: 3.160 s, System: 0.112 s]
-//!   Range (min … max):    3.438 s …  3.907 s    10 runs
-//! ```
+//!   Time (mean ± σ):      3.437 s ±  0.053 s    [User: 3.286 s, System: 0.094 s]
+//!   Range (min … max):    3.372 s …  3.550 s    10 runs//! ```
 //!
 //! Release:
 //! ```text
 //! ❯ hyperfine --warmup 3 -i  "..\target\release\examples\convert.exe ..\data\all-senhive.json"
 //! Benchmark 1: ..\target\release\examples\convert.exe ..\data\all-senhive.json
-//!   Time (mean ± σ):     363.8 ms ±   6.0 ms    [User: 285.9 ms, System: 63.4 ms]
-//!   Range (min … max):   355.8 ms … 372.8 ms    10 runs
-//! ```
+//!   Time (mean ± σ):     333.0 ms ±   2.7 ms    [User: 273.1 ms, System: 45.3 ms]
+//!   Range (min … max):   328.0 ms … 335.4 ms    10 runs//! ```
 //!
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
@@ -43,23 +41,6 @@ fn main() -> Result<()> {
     let inp = File::open(input)?;
     let rdr = BufReader::new(inp);
 
-    let ind_read = ProgressBar::no_length().with_style(ProgressStyle::with_template(
-        "Reading [{elapsed_precise}]: {human_pos} -- {per_sec}",
-    )?);
-
-    let data = rdr.lines();
-
-    let data = ind_read
-        .wrap_iter(data)
-        .map(|r| {
-            let r: FusedData = serde_json::from_str(&r.unwrap()).unwrap();
-            let r: DronePoint = (&r).into();
-            r
-        })
-        .collect::<Vec<_>>();
-    ind_read.finish();
-
-    let length = data.len();
     let output = Path::new(input).file_stem().unwrap().to_str().unwrap();
     let output = Path::new(output).with_extension("csv");
 
@@ -68,18 +49,20 @@ fn main() -> Result<()> {
         .quote_style(QuoteStyle::NonNumeric)
         .from_writer(out);
 
-    let ind_write = ProgressBar::no_length().with_style(ProgressStyle::with_template(
-        "Writing [{elapsed_precise}]: {human_pos} -- {per_sec}",
+    let progress = ProgressBar::no_length().with_style(ProgressStyle::with_template(
+        "Converting [{elapsed_precise}]: {human_pos} -- {per_sec}",
     )?);
 
-    let iter = data.iter();
+    let data = rdr.lines();
 
-    ind_write
-        .wrap_iter(iter)
-        .for_each(|r| wtr.serialize(r).unwrap());
+    progress.wrap_iter(data).for_each(|r| {
+        let r: FusedData = serde_json::from_str(&r.unwrap()).unwrap();
+        let r: DronePoint = (&r).into();
+        wtr.serialize(r).unwrap();
+    });
+    progress.finish();
     wtr.flush()?;
-    ind_write.finish();
 
-    eprintln!("\n{input} converted to {output:?} with {length} lines");
+    eprintln!("\n{input} converted to {output:?}.");
     Ok(())
 }
