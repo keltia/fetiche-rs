@@ -73,6 +73,7 @@ impl AsyncStreamable for Senhive {
 
         // We have a generic supervisor actor.
         //
+        trace!("starting supervisor actor.");
         let tag = String::from("senhive:supervisor");
         let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await?;
 
