@@ -3,6 +3,7 @@
 //! URL: http://www.avionix.pl
 //!
 
+use crate::DronePoint;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, serde_conv};
@@ -55,9 +56,7 @@ serde_conv!(
     FloatAsInt,
     u32,
     |x: &u32| *x as f64,
-    |value: f64| -> Result<_, std::convert::Infallible> {
-        Ok((value + 0.5) as u32)
-    }
+    |value: f64| -> Result<_, std::convert::Infallible> { Ok((value + 0.5) as u32) }
 );
 
 /// Avionix CUBE drone antenna output format
@@ -136,6 +135,51 @@ pub struct CubeData {
     pub reg: Option<String>,
     /// - cou   Country* -- String -- “Germany”
     pub cou: Option<String>,
+}
+
+/// Now define the mapping between our type `CubeData` and `DronePoint`:
+///
+///     /// timestamp -- uti
+///     pub time: DateTime<Utc>,
+///     /// Each record is part of a drone journey with a specific ID
+///     pub journey: String,
+///     /// Identifier for the drone -- vehicle_identification.serial
+///     pub ident: Option<String>,
+///     /// Maker of the drone -- vehicle_identification.make
+///     pub make: Option<String>,
+///     /// Model of the drone -- vehicle_identification.model
+///     pub model: Option<String>,
+///     /// UAV Type -- vehicle_identification.uav_type
+///     pub uav_type: u8,
+///     /// Source -- system.fusion_state.fusion_type
+///     pub source: u8,
+///     /// Latitude -- vehicle_state.location.coordinates.lat
+///     pub latitude: f64,
+///     /// Longitude -- vehicle_state.location.coordinates.lon
+///     pub longitude: f64,
+///     /// Altitude -- vehicle_state.altitudes.geodetic
+///     pub altitude: Option<f64>,
+///     /// Distance to ground -- vehicle_state.altitudes.ato.value
+///     pub elevation: Option<f64>,
+///     /// Operator lat -- pilot_state.location.coordinates.lat
+///     pub home_lat: Option<f64>,
+///     /// Operator lon -- pilot_state.location.coordinates.lon
+///     pub home_lon: Option<f64>,
+///     /// Altitude from takeoff point -- (vehicle_state.altitudes.ato.value - )
+///     pub home_height: Option<f64>,
+///     /// Current speed -- vehicle_state.ground_speed
+///     pub speed: f64,
+///     /// True heading -- vehicle_state.orientation
+///     pub heading: f64,
+///     /// Vehicle state -- vehicle_state.state
+///     pub state: Option<u8>,
+///     /// Name of detecting point -- system.fusion_state.source_serials
+///     pub station_name: Option<String>,
+///
+impl From<CubeData> for DronePoint {
+    fn from(value: CubeData) -> Self {
+        todo!()
+    }
 }
 
 // -----
