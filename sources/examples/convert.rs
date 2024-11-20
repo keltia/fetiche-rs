@@ -1,5 +1,7 @@
 //! Simple `FusedData` to `DronePoint` streaming converter.
 //!
+//! Usage: convert [input-file]
+//!
 //! Debug:
 //! ```text
 //! ❯ hyperfine --warmup 3 -i  "..\target\debug\examples\convert.exe ..\data\all-senhive.json"
