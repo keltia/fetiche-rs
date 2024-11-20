@@ -1,5 +1,21 @@
 //! Simple `FusedData` to `DronePoint` streaming converter.
 //!
+//! Debug:
+//! ```text
+//! ❯ hyperfine --warmup 3 -i  "..\target\debug\examples\convert.exe ..\data\all-senhive.json"
+//! Benchmark 1: ..\target\debug\examples\convert.exe ..\data\all-senhive.json
+//!   Time (mean ± σ):      3.522 s ±  0.138 s    [User: 3.160 s, System: 0.112 s]
+//!   Range (min … max):    3.438 s …  3.907 s    10 runs
+//! ```
+//!
+//! Release:
+//! ```text
+//! ❯ hyperfine --warmup 3 -i  "..\target\release\examples\convert.exe ..\data\all-senhive.json"
+//! Benchmark 1: ..\target\release\examples\convert.exe ..\data\all-senhive.json
+//!   Time (mean ± σ):     363.8 ms ±   6.0 ms    [User: 285.9 ms, System: 63.4 ms]
+//!   Range (min … max):   355.8 ms … 372.8 ms    10 runs
+//! ```
+//!
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use csv::QuoteStyle;
