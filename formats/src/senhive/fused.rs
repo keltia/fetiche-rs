@@ -55,6 +55,15 @@ impl From<FusedValue> for f64 {
     }
 }
 
+impl Default for FusedValue {
+    fn default() -> Self {
+        Self {
+            value: 0.0,
+            uncertainty: None,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Altitudes {
     /// Above take-off location [m]
@@ -211,6 +220,7 @@ pub struct DronePoint {
 impl From<&FusedData> for DronePoint {
     fn from(value: &FusedData) -> Self {
         let station_name = value.system.fusion_state.source_serials[0].clone();
+
         Self {
             time: value.system.timestamp,
             journey: value.system.track_id.clone(),
@@ -221,13 +231,35 @@ impl From<&FusedData> for DronePoint {
             source: value.system.fusion_state.fusion_type.into(),
             latitude: value.vehicle_state.location.coordinates.lat,
             longitude: value.vehicle_state.location.coordinates.lon,
-            altitude: Some(value.vehicle_state.altitudes.geodetic.unwrap().into()),
-            elevation: Some(value.vehicle_state.altitudes.ato.unwrap().into()),
+            altitude: Some(
+                value
+                    .vehicle_state
+                    .altitudes
+                    .geodetic
+                    .unwrap_or(FusedValue::default())
+                    .into(),
+            ),
+            elevation: Some(
+                value
+                    .vehicle_state
+                    .altitudes
+                    .ato
+                    .unwrap_or(FusedValue::default())
+                    .into(),
+            ),
             home_lat: Some(value.pilot_state.location.coordinates.lat),
             home_lon: Some(value.pilot_state.location.coordinates.lon),
             home_height: None,
-            speed: value.vehicle_state.ground_speed.unwrap().into(),
-            heading: value.vehicle_state.orientation.unwrap().into(),
+            speed: value
+                .vehicle_state
+                .ground_speed
+                .unwrap_or(FusedValue::default())
+                .into(),
+            heading: value
+                .vehicle_state
+                .orientation
+                .unwrap_or(FusedValue::default())
+                .into(),
             state: Some(value.vehicle_state.state.unwrap().into()),
             station_name: Some(station_name),
         }
