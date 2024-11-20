@@ -5,15 +5,24 @@
 //! ❯ hyperfine --warmup 3 -i  "..\target\debug\examples\convert.exe ..\data\all-senhive.json"
 //! Benchmark 1: ..\target\debug\examples\convert.exe ..\data\all-senhive.json
 //!   Time (mean ± σ):      3.437 s ±  0.053 s    [User: 3.286 s, System: 0.094 s]
-//!   Range (min … max):    3.372 s …  3.550 s    10 runs//! ```
+//!   Range (min … max):    3.372 s …  3.550 s    10 runs
+//! ```
 //!
 //! Release:
 //! ```text
 //! ❯ hyperfine --warmup 3 -i  "..\target\release\examples\convert.exe ..\data\all-senhive.json"
 //! Benchmark 1: ..\target\release\examples\convert.exe ..\data\all-senhive.json
-//!   Time (mean ± σ):     333.0 ms ±   2.7 ms    [User: 273.1 ms, System: 45.3 ms]
-//!   Range (min … max):   328.0 ms … 335.4 ms    10 runs//! ```
+//!   Time (mean ± σ):     314.6 ms ±   4.8 ms    [User: 242.8 ms, System: 58.7 ms]
+//!   Range (min … max):   309.1 ms … 325.0 ms    10 runs
+//! ```
 //!
+//! Release options
+//! ```toml
+//! [profile.release]
+//! incremental = true
+//! lto = "fat"
+//! strip = "debuginfo"
+//! ```
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use csv::QuoteStyle;
