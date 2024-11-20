@@ -28,7 +28,7 @@ fn main() -> Result<()> {
     let rdr = BufReader::new(inp);
 
     let ind_read = ProgressBar::no_length().with_style(ProgressStyle::with_template(
-        "[{elapsed_precise}: {human_pos}",
+        "[{elapsed_precise}: {human_pos} -- {per_sec}",
     )?);
 
     let data = rdr.lines().enumerate();
@@ -42,10 +42,11 @@ fn main() -> Result<()> {
         })
         .collect::<Vec<_>>();
 
+    let length = data.len();
     let output = Path::new(input).file_stem().unwrap().to_str().unwrap();
     let output = Path::new(output).with_extension("csv");
 
-    let out = File::create(output)?;
+    let out = File::create(&output)?;
     let mut wtr = csv::WriterBuilder::new()
         .quote_style(QuoteStyle::NonNumeric)
         .from_writer(out);
@@ -53,5 +54,6 @@ fn main() -> Result<()> {
     data.iter().for_each(|r| wtr.serialize(r).unwrap());
     wtr.flush()?;
 
+    eprintln!("\n{input} converted to {output:?} with {length} lines");
     Ok(())
 }
