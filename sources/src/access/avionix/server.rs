@@ -40,9 +40,9 @@ use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, Site, Stats};
 use fetiche_formats::Format;
 
 /// TCP streaming URL
-const DEF_SITE: &str = "tcp.aero-network.com";
+pub(crate) const DEF_SITE: &str = "tcp.aero-network.com";
 /// TCP streaming port
-const DEF_PORT: u16 = 50007;
+pub(crate) const DEF_PORT: u16 = 50007;
 
 const TICK: Duration = Duration::from_secs(30);
 
@@ -112,6 +112,7 @@ impl AsyncStreamable for AvionixServer {
         String::from("AvionixServer")
     }
 
+    #[tracing::instrument(skip(self))]
     async fn authenticate(&self) -> eyre::Result<String, AuthError> {
         trace!("fake token retrieval");
         Ok(String::from(""))
@@ -163,7 +164,7 @@ impl AsyncStreamable for AvionixServer {
         // Start the stats gathering actor.
         //
         trace!("starting stats actor.");
-        let tag = String::from("senhive::stats");
+        let tag = String::from("avionix::stats");
         let (stat, _h) = Actor::spawn_linked(
             Some(tag),
             StatsActor,
@@ -174,14 +175,14 @@ impl AsyncStreamable for AvionixServer {
 
         // Launch the worker actor
         //
-        let url = self.base_url.clone();
+        let url = format!("tcp://{}:{}@{}", self.api_key, self.user_key, self.base_url.clone());
         trace!("Starting worker actor.");
         let args = WorkerArgs {
             url,
             out,
             stat: stat.clone(),
         };
-        let tag = String::from("senhive::worker");
+        let tag = String::from("avionixserver::worker");
         let (worker, _handle) =
             Actor::spawn_linked(Some(tag), Worker, args, sup.get_cell()).await?;
 

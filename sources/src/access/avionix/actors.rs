@@ -1,19 +1,24 @@
-use crate::access::avionix::BUFSIZ;
-use crate::actors::StatsMsg;
-use crate::Filter;
+use std::fmt::Debug;
+use std::io::{BufReader, BufWriter, Cursor, Write};
+use std::net::Shutdown;
+use std::sync::mpsc::Sender;
+
 use lapin::{Connection, ConnectionProperties};
 use polars::prelude::JsonLineReader;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
-use std::fmt::Debug;
-use std::io::{BufReader, BufWriter, Cursor};
-use std::net::Shutdown;
-use std::sync::mpsc::Sender;
+use reqwest::Url;
 use tokio::net::TcpStream;
 use tracing::{debug, error, info, trace};
 
+
+use crate::access::avionix::BUFSIZ;
+use crate::access::{DEF_PORT, DEF_SITE};
+use crate::actors::StatsMsg;
+use crate::Filter;
+
 #[derive(Debug)]
 pub(crate) enum WorkerMsg {
-    Consume(String),
+    Consume(String, Filter),
 }
 
 #[derive(Debug)]
@@ -32,7 +37,7 @@ pub(crate) struct WorkerArgs {
 #[derive(Debug)]
 pub(crate) struct WorkerState {
     /// Connection to the TCP server
-    pub conn: TcpStream,
+    pub url: String,
     /// Channel to send data packets to
     pub out: Sender<String>,
     /// Who to send statistics-related events to
@@ -47,7 +52,7 @@ pub(crate) struct Worker;
 ///
 #[ractor::async_trait]
 impl Actor for Worker {
-    type Msg = ();
+    type Msg = WorkerMsg;
     type State = WorkerState;
     type Arguments = WorkerArgs;
 
@@ -58,13 +63,8 @@ impl Actor for Worker {
     ) -> Result<Self::State, ActorProcessingErr> {
         trace!("Starting worker actor {}", myself.get_cell().get_id());
 
-        // Do the connection
-        //
-        trace!("tcp::connect");
-        let conn = TcpStream::connect(&args.url).await.expect("connect failed");
-
         Ok(WorkerState {
-            conn,
+            url: args.url,
             out: args.out,
             stat: args.stat,
         })
@@ -78,10 +78,18 @@ impl Actor for Worker {
     ) -> Result<(), ActorProcessingErr> {
         trace!("Starting worker thread");
 
+        let url = Url::parse(state.url.as_str())?;
+        let site = url.host_str().unwrap_or(DEF_SITE);
+        let port = url.port().unwrap_or(DEF_PORT);
+
+        let user_key = url.password().unwrap_or("");
+        let api_key = url.username();
+
         // Do the connection
         //
         trace!("tcp::connect");
-        let mut conn = &state.conn;
+        let conn = TcpStream::connect(format!("{site}:{port}")).await.expect("connect failed");
+
         let mut conn_in = BufReader::new(&conn);
         let mut conn_out = BufWriter::new(&conn);
 
@@ -96,6 +104,7 @@ impl Actor for Worker {
 
         // FIXME: we can have only one argument
         //
+        if let WorkerMsg::Consume(host, filter) = message {}
         let (min, max) = match args {
             Filter::Altitude { min, max, .. } => (Some(min), Some(max)),
             _ => (None, None),
