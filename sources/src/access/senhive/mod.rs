@@ -37,8 +37,8 @@ use serde_json::json;
 use tracing::{error, trace};
 
 use crate::{Auth, Capability, Site};
-use fetiche_formats::senhive::{DronePoint, FusedData};
-use fetiche_formats::Format;
+use fetiche_formats::senhive::FusedData;
+use fetiche_formats::{DronePoint, Format};
 
 /// Credentials to submit to the site to get the token
 ///
