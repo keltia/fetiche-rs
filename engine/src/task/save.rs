@@ -153,9 +153,10 @@ async fn write_parquet(from: &str, to: &str) -> Result<()> {
     //
     let header = true;
 
+    let opts = CsvParseOptions::default().with_try_parse_dates(true);
     let mut df = CsvReadOptions::default()
         .with_has_header(header)
-        .with_parse_options(CsvParseOptions::default())
+        .with_parse_options(opts)
         .try_into_reader_with_file_path(Some(from.into()))?
         .finish()?;
 
