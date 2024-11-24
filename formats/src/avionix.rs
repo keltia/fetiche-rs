@@ -178,7 +178,20 @@ pub struct CubeData {
 ///
 impl From<CubeData> for DronePoint {
     fn from(value: CubeData) -> Self {
-        todo!()
+        let src: Source = value.src.into();
+        let src: u8 = src.into();
+        DronePoint {
+            time: DateTime::from_timestamp_nanos((value.time as i64) * 1_000_000_000i64),
+            ident: Some(value.fli.clone()),
+            make: None,
+            model: value.typ.clone(),
+            uav_type: UAVType::default() as u8,
+            source: src,
+            latitude: value.lat,
+            longitude: value.lon,
+            altitude: Some(to_meters(value.alt as f32) as f64),
+            elevation:,
+        }
     }
 }
 
