@@ -335,6 +335,53 @@ pub enum UAVType {
     Other = 15,
 }
 
+/// Special enum for type of source
+///
+#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
+#[strum(serialize_all = "UPPERCASE")]
+pub enum Source {
+    /// ADS-B
+    A,
+    /// MLAT
+    M,
+    /// UAT,
+    U,
+    /// ADS-L
+    L,
+    /// FLARM
+    F,
+    /// OGN
+    O,
+    /// Remote-ID
+    Rid,
+    /// 4G/5G
+    Lte,
+    /// PilotAware
+    P,
+    /// FANET
+    N,
+    /// Asterix
+    X,
+}
+
+impl From<Source> for u8 {
+    fn from(value: Source) -> Self {
+        match value {
+            Source::A => 0,
+            Source::M => 1,
+            Source::U => 2,
+            Source::L => 3,
+            Source::F => 4,
+            Source::O => 5,
+            Source::Rid => 6,
+            Source::Lte => 7,
+            Source::P => 8,
+            Source::N => 9,
+            Source::X => 10,
+        }
+    }
+}
+
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum TodCalculated {
@@ -365,6 +412,13 @@ pub fn to_feet(a: f32) -> u32 {
 #[inline]
 pub fn to_knots(a: f32) -> f32 {
     a * 0.54
+}
+
+/// Convert to meters
+///
+#[inline]
+pub fn to_meters(a: f32) -> f32 {
+    a / 3.28084
 }
 
 /// Output the final csv file with a different delimiter 'now ":")

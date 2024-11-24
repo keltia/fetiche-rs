@@ -3,7 +3,7 @@
 //! URL: http://www.avionix.pl
 //!
 
-use crate::DronePoint;
+use crate::{to_meters, DronePoint, Source, UAVType};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, serde_conv};
@@ -261,35 +261,6 @@ enum Gda {
     A,
     /// Ground
     G,
-}
-
-/// Special enum for type of source, always ADS-B for Avionix
-///
-#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
-#[strum(serialize_all = "UPPERCASE")]
-enum Src {
-    /// ADS-B
-    A,
-    /// MLAT
-    M,
-    /// UAT,
-    U,
-    /// ADS-L
-    L,
-    /// FLARM
-    F,
-    /// OGN
-    O,
-    /// Remote-ID
-    Rid,
-    /// 4G/5G
-    Lte,
-    /// PilotAware
-    P,
-    /// FANET
-    N,
-    /// Asterix
-    X,
 }
 
 /// Object type
