@@ -14,29 +14,24 @@
 //! NOTE: the flow includes several kind of data, drones and airplanes.
 //!
 
-use std::io::{BufReader, BufWriter, Cursor, Read, Write};
-use std::net::{Shutdown, TcpStream};
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use polars::prelude::*;
+use async_trait::async_trait;
 use ractor::pg::join;
 use ractor::{pg, Actor};
-use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
-use tracing::{debug, error, info, trace};
+use tracing::{error, info, trace};
 
-use super::actors::{Worker, WorkerArgs, WorkerMsg};
-use super::BUFSIZ;
+use super::actors::{Worker, WorkerArgs};
 use crate::actors::{StatsActor, StatsMsg, Supervisor, PG_SOURCES};
-use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, Site, Stats};
+use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, Site};
 use fetiche_formats::Format;
 
 /// TCP streaming URL
@@ -107,6 +102,7 @@ impl Default for AvionixServer {
     }
 }
 
+#[async_trait]
 impl AsyncStreamable for AvionixServer {
     fn name(&self) -> String {
         String::from("AvionixServer")
@@ -126,10 +122,6 @@ impl AsyncStreamable for AvionixServer {
     #[tracing::instrument(skip(self, out))]
     async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
         trace!("avionixserver::stream");
-
-        /// Stats loop
-        const STATS_LOOP: Duration = Duration::from_secs(30);
-        const START_MARKER: &str = "\x02";
 
         let args = Filter::from(args);
 
@@ -175,7 +167,12 @@ impl AsyncStreamable for AvionixServer {
 
         // Launch the worker actor
         //
-        let url = format!("tcp://{}:{}@{}", self.api_key, self.user_key, self.base_url.clone());
+        let url = format!(
+            "tcp://{}:{}@{}",
+            self.api_key,
+            self.user_key,
+            self.base_url.clone()
+        );
         trace!("Starting worker actor.");
         let args = WorkerArgs {
             url,
@@ -203,163 +200,33 @@ impl AsyncStreamable for AvionixServer {
             vec![sup.get_cell(), worker.get_cell(), stat.get_cell()],
         );
 
-        // out as a `dyn Write` is not `Send` so we can not use it within a thread.  Use channels
-        // to work around this.
+        // Set the clock ticking unless duration is 0
         //
-        let (tx, rx) = channel::<String>();
-
-        // Timer set?  If yes, launch a sleeper thread
-        //
+        info!("Get clock ticking.");
         if stream_duration != Duration::from_secs(0) {
-            trace!("setup wakeup alarm");
-
-            let d = stream_duration;
-            let tx1 = tx.clone();
-            thread::spawn(move || {
-                trace!("alarm set to {}s", d.as_secs());
-                thread::sleep(d);
-                info!("DING for {}", d.as_secs());
-                tx1.send("TIMEOUT".into()).unwrap();
-            });
-            trace!("end of sleep");
+            info!("Sleeping for {}s.", stream_duration.as_secs());
+            let _ = worker.exit_after(stream_duration);
+            tokio::time::sleep(stream_duration).await;
+            info!("Timer expired.");
+        } else {
+            // We somehow needs to wait for a ^C.
+            //
+            let (_tx, rx) = channel::<()>();
+            rx.recv().expect("Something failed here.");
         }
 
-        // Worker thread1
-        //
-        let stat_tx = st_tx.clone();
-        let url = self.base_url.clone();
-        let api_key = self.api_key.clone();
-        let user_key = self.user_key.clone();
-
-        // if url has no port, add it
-        //
-        let url = match Url::from_str(&url)?.port() {
-            Some(_) => url,
-            None => format!("{}:{}", url, DEF_PORT),
-        };
-
-        thread::spawn(move || {
-            trace!("Starting worker thread");
-
-            // Do the connection
-            //
-            trace!("tcp::connect");
-            let mut conn = TcpStream::connect(&url).expect("connect socket");
-            let mut conn_in = BufReader::new(&conn);
-            let mut conn_out = BufWriter::new(&conn);
-
-            // Send credentials
-            //
-            let auth_str = format!("{}\n{}\n", api_key, user_key);
-            conn_out
-                .write_all(auth_str.as_bytes())
-                .expect("auth write failed");
-
-            trace!("avionixcube::stream(as {}:{})", api_key, user_key);
-
-            // FIXME: we can have only one argument
-            //
-            let (min, max) = match args {
-                Filter::Altitude { min, max, .. } => (Some(min), Some(max)),
-                _ => (None, None),
-            };
-
-            // Manage url parameters.  Assume that if one is defined, the other is as well.
-            //
-            if min.is_some() {
-                let min = min.unwrap();
-                let min_str = format!("min_altitude={min}\n");
-                let _ = conn_out.write(min_str.as_bytes());
-            }
-            if max.is_some() {
-                let max = max.unwrap();
-                let max_str = format!("max_altitude={max}\n");
-                let _ = conn_out.write(max_str.as_bytes());
-            };
-
-            info!(
-                r##"
-StreamURL: {}
-Duration {}s
-        "##,
-                url,
-                stream_duration.as_secs()
-            );
-
-            // Start stream
-            //
-            let _ = conn_out.write(START_MARKER.as_ref());
-            conn_out.flush().expect("flush marker");
-
-            trace!("avionixcube::stream started");
-            loop {
-                let mut buf = [0u8; BUFSIZ];
-
-                match conn_in.read(&mut buf) {
-                    Ok(size) => {
-                        trace!("{} bytes read.", size);
-                    }
-                    Err(e) => {
-                        error!("worker-thread: {}", e.to_string());
-                        stat_tx.send(StatsMsg::Error).expect("stat::error");
-
-                        conn.shutdown(Shutdown::Both).expect("shutdown socket");
-
-                        // We need to drop otherwise `conn`  still remains.
-                        //
-                        drop(conn_in);
-                        drop(conn_out);
-
-                        stat_tx.send(StatsMsg::Reconnect).expect("stat::reconnect");
-
-                        // Do the connection again
-                        //
-                        conn = TcpStream::connect(&url).expect("connect socket");
-                        conn_in = BufReader::new(&conn);
-                        conn_out = BufWriter::new(&conn);
-                        continue;
-                    }
-                }
-                let cur = Cursor::new(&buf);
-                let df = JsonLineReader::new(cur).finish().expect("create dataframe");
-                debug!("{:?}", df);
-
-                let _ = stat_tx.send(StatsMsg::Pkts(df.iter().len() as u32));
-                let _ = stat_tx.send(StatsMsg::Bytes(buf.len() as u64));
-
-                tx.send(String::from_utf8(buf.to_vec()).unwrap())
-                    .expect("send");
-            }
-        });
-
-        // Now data gathering loop.  Should this be another thread?
-        //
-        loop {
-            match rx.recv() {
-                Ok(msg) => match msg.as_str() {
-                    // Timer expired
-                    //
-                    "TIMEOUT" => {
-                        trace!("End of scheduled run.");
-                        break;
-                    }
-                    // Anything else is sent
-                    //
-                    _ => {
-                        // Every record is separated with LF
-                        //
-                        out.send(format!("{}\n", msg))?;
-                    }
-                },
-                _ => continue,
-            }
-        }
         // End threads
         //
-        let _ = st_tx.send(StatsMsg::Exit);
+        trace!("avionixserver::stream stopping.");
 
-        // sync; sync; sync
+        // Stop everyone in the group.
         //
+        pg::get_members(&PG_SOURCES.to_string())
+            .iter()
+            .for_each(|member| {
+                member.stop(Some("Ending.".to_string()));
+            });
+
         Ok(())
     }
 

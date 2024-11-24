@@ -1,28 +1,28 @@
-use std::fmt::Debug;
-use std::io::{BufReader, BufWriter, Cursor, Write};
-use std::net::Shutdown;
-use std::sync::mpsc::Sender;
-
-use lapin::{Connection, ConnectionProperties};
+use polars::io::SerReader;
 use polars::prelude::JsonLineReader;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use reqwest::Url;
-use tokio::net::TcpStream;
+use std::fmt::Debug;
+use std::io::{BufReader, BufWriter, Cursor, Read, Write};
+use std::net::{Shutdown, TcpStream};
+use std::sync::mpsc::Sender;
+use std::time::Duration;
 use tracing::{debug, error, info, trace};
 
-
+use super::{DEF_PORT, DEF_SITE};
 use crate::access::avionix::BUFSIZ;
-use crate::access::{DEF_PORT, DEF_SITE};
 use crate::actors::StatsMsg;
 use crate::Filter;
 
+const START_MARKER: &str = "\x02";
+
 #[derive(Debug)]
-pub(crate) enum WorkerMsg {
-    Consume(String, Filter),
+pub enum WorkerMsg {
+    Consume(Filter, u64),
 }
 
 #[derive(Debug)]
-pub(crate) struct WorkerArgs {
+pub struct WorkerArgs {
     /// URL to connect to
     pub url: String,
     /// Where to send the data fetched
@@ -35,7 +35,7 @@ pub(crate) struct WorkerArgs {
 /// We also have the address of the stat gathering actor.
 ///
 #[derive(Debug)]
-pub(crate) struct WorkerState {
+pub struct WorkerState {
     /// Connection to the TCP server
     pub url: String,
     /// Channel to send data packets to
@@ -44,7 +44,7 @@ pub(crate) struct WorkerState {
     pub stat: ActorRef<StatsMsg>,
 }
 
-pub(crate) struct Worker;
+pub struct Worker;
 
 /// Worker Actor.
 ///
@@ -72,7 +72,7 @@ impl Actor for Worker {
 
     async fn handle(
         &self,
-        myself: ActorRef<Self::Msg>,
+        _myself: ActorRef<Self::Msg>,
         message: Self::Msg,
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
@@ -88,7 +88,7 @@ impl Actor for Worker {
         // Do the connection
         //
         trace!("tcp::connect");
-        let conn = TcpStream::connect(format!("{site}:{port}")).await.expect("connect failed");
+        let mut conn = TcpStream::connect(format!("{site}:{port}")).expect("connect failed");
 
         let mut conn_in = BufReader::new(&conn);
         let mut conn_out = BufWriter::new(&conn);
@@ -104,11 +104,18 @@ impl Actor for Worker {
 
         // FIXME: we can have only one argument
         //
-        if let WorkerMsg::Consume(host, filter) = message {}
-        let (min, max) = match args {
-            Filter::Altitude { min, max, .. } => (Some(min), Some(max)),
-            _ => (None, None),
+        let (stream_duration, params) = match message {
+            WorkerMsg::Consume(filter, duration) => {
+                let (min, max) = match filter {
+                    Filter::Altitude { min, max, .. } => (Some(min), Some(max)),
+                    _ => (None, None),
+                };
+                let duration = Duration::from_secs(duration);
+                (duration, (min, max))
+            }
         };
+
+        let (min, max) = (params.0, params.1);
 
         // Manage url parameters.  Assume that if one is defined, the other is as well.
         //
@@ -123,6 +130,8 @@ impl Actor for Worker {
             let _ = conn_out.write(max_str.as_bytes());
         };
 
+        let out = state.out.clone();
+
         info!(
             r##"
 StreamURL: {}
@@ -136,7 +145,7 @@ Duration {}s
 
         // Start stream
         //
-        let _ = conn_out.write(crate::access::avionix::server::START_MARKER.as_ref());
+        let _ = conn_out.write(START_MARKER.as_ref());
         conn_out.flush().expect("flush marker");
 
         trace!("avionixcube::stream started");
@@ -149,7 +158,7 @@ Duration {}s
                 }
                 Err(e) => {
                     error!("worker-thread: {}", e.to_string());
-                    stat.send(StatsMsg::Error).expect("stat::error");
+                    stat.cast(StatsMsg::Error).expect("stat::error");
 
                     conn.shutdown(Shutdown::Both).expect("shutdown socket");
 
@@ -158,11 +167,12 @@ Duration {}s
                     drop(conn_in);
                     drop(conn_out);
 
-                    stat_tx.send(StatsMsg::Reconnect).expect("stat::reconnect");
+                    stat.cast(StatsMsg::Reconnect).expect("stat::reconnect");
+
+                    conn = TcpStream::connect(format!("{site}:{port}")).expect("connect failed");
 
                     // Do the connection again
                     //
-                    conn = std::net::TcpStream::connect(&url).expect("connect socket");
                     conn_in = BufReader::new(&conn);
                     conn_out = BufWriter::new(&conn);
                     continue;
@@ -172,13 +182,11 @@ Duration {}s
             let df = JsonLineReader::new(cur).finish().expect("create dataframe");
             debug!("{:?}", df);
 
-            let _ = stat_tx.send(StatsMsg::Pkts(df.iter().len() as u32));
-            let _ = stat_tx.send(StatsMsg::Bytes(buf.len() as u64));
+            let _ = stat.cast(StatsMsg::Pkts(df.iter().len() as u32));
+            let _ = stat.cast(StatsMsg::Bytes(buf.len() as u64));
 
-            tx.send(String::from_utf8(buf.to_vec()).unwrap())
+            out.send(String::from_utf8(buf.to_vec()).unwrap())
                 .expect("send");
         }
-
-        todo!()
     }
 }

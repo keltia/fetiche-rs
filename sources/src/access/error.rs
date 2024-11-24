@@ -10,6 +10,8 @@ pub enum AccessError {
     UnknownSite(String),
     #[error("Invalid site {0}")]
     InvalidSite(String),
+    #[error("Bad Filter.")]
+    BadFilter,
 }
 
 #[derive(Debug, Error)]
