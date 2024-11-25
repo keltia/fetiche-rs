@@ -155,9 +155,10 @@ Duration {}s
         loop {
             let mut buf = [0u8; 4096];
 
-            match conn_in.read(&mut buf[..]) {
+            let n = match conn_in.read(&mut buf[..]) {
                 Ok(size) => {
                     trace!("{} bytes read.", size);
+                    size
                 }
                 Err(e) => {
                     error!("worker-thread: {}", e.to_string());
@@ -180,8 +181,8 @@ Duration {}s
                     conn_out = BufWriter::new(&conn);
                     continue;
                 }
-            }
-            let raw = String::from_utf8_lossy(&buf[..]).to_string();
+            };
+            let raw = String::from_utf8_lossy(&buf[..n]).trim_end().to_string();
             debug!("raw={}", raw);
 
             let _ = stat.cast(StatsMsg::Pkts(buf.len() as u32));
