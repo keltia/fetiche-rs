@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 use std::io::{BufReader, BufWriter, Cursor, Read, Write};
 use std::net::{Shutdown, TcpStream};
-use std::num::{NonZeroI32, NonZeroUsize};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 
@@ -9,14 +8,12 @@ use polars::io::SerReader;
 use polars::prelude::{JsonFormat, JsonLineReader, JsonReader};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use reqwest::Url;
-use tracing::field::debug;
 use tracing::{debug, error, info, trace};
 
 use super::{DEF_PORT, DEF_SITE};
 use crate::access::avionix::BUFSIZ;
 use crate::actors::StatsMsg;
 use crate::Filter;
-use fetiche_formats::CubeData;
 
 const START_MARKER: &str = "\x02";
 
@@ -183,11 +180,13 @@ Duration {}s
                     continue;
                 }
             }
-            debug!("{}", String::from_utf8(buf.to_vec())?);
-
             let data = String::from_utf8(buf.to_vec())?;
-            let cur = Cursor::new(data);
-            let df = JsonReader::new(cur).with_json_format(JsonFormat::JsonLines).finish()?;
+            debug!("raw={}", data);
+
+            let cur = Cursor::new(data.as_str());
+            let df = JsonReader::new(cur)
+                .with_json_format(JsonFormat::JsonLines)
+                .infer_schema_len(None).finish()?;
 
             let _ = stat.cast(StatsMsg::Pkts(df.iter().len() as u32));
             let _ = stat.cast(StatsMsg::Bytes(buf.len() as u64));
