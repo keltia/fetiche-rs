@@ -153,7 +153,7 @@ Duration {}s
 
         trace!("avionixcube::stream started");
         loop {
-            let mut buf = [0u8; 4096];
+            let mut buf = vec![0u8; 4096];
 
             let n = match conn_in.read(&mut buf[..]) {
                 Ok(size) => {
@@ -182,13 +182,13 @@ Duration {}s
                     continue;
                 }
             };
-            let raw = String::from_utf8_lossy(&buf[..n]).trim_end().to_string();
+            let raw = String::from_utf8_lossy(&buf[..n]);
             debug!("raw={}", raw);
 
             let _ = stat.cast(StatsMsg::Pkts(buf.len() as u32));
-            let _ = stat.cast(StatsMsg::Bytes(buf.len() as u64));
+            let _ = stat.cast(StatsMsg::Bytes(n as u64));
 
-            out.send(String::from_utf8(buf.to_vec())?)
+            out.send(String::from_utf8(buf[..n].to_vec())?)
                 .expect("send");
         }
     }
