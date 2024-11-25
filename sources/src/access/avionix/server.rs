@@ -200,6 +200,10 @@ impl AsyncStreamable for AvionixServer {
             info!("  {}", member.get_name().unwrap_or("<anon>".into()));
         });
 
+        // Get the ball rolling.
+        //
+        let _ = worker.cast(WorkerMsg::Consume(filter, stream_duration.as_secs()))?;
+
         // Set the clock ticking unless duration is 0
         //
         info!("Get clock ticking.");
@@ -214,8 +218,6 @@ impl AsyncStreamable for AvionixServer {
             let (_tx, rx) = channel::<()>();
             rx.recv().expect("Something failed here.");
         }
-
-        let _ = worker.cast(WorkerMsg::Consume(filter, stream_duration.as_secs()))?;
 
         // End threads
         //
