@@ -31,7 +31,7 @@ use tracing::{error, info, trace};
 
 use super::actors::{Worker, WorkerArgs};
 use crate::actors::{StatsActor, StatsMsg, Supervisor, PG_SOURCES};
-use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, Site};
+use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, Site, WorkerMsg};
 use fetiche_formats::Format;
 
 /// TCP streaming URL
@@ -41,7 +41,7 @@ pub(crate) const DEF_PORT: u16 = 50007;
 
 const TICK: Duration = Duration::from_secs(30);
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AvionixServer {
     /// Describe the different features of the source
     pub features: Vec<Capability>,
@@ -123,9 +123,9 @@ impl AsyncStreamable for AvionixServer {
     async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
         trace!("avionixserver::stream");
 
-        let args = Filter::from(args);
+        let filter = Filter::from(args);
 
-        let stream_duration = match args {
+        let stream_duration = match filter {
             Filter::Altitude { duration, .. } => Duration::from_secs(duration as u64),
             _ => Duration::new(0, 0),
         };
@@ -183,12 +183,6 @@ impl AsyncStreamable for AvionixServer {
         let (worker, _handle) =
             Actor::spawn_linked(Some(tag), Worker, args, sup.get_cell()).await?;
 
-        info!("List of actors.");
-        let list = pg::get_members(&PG_SOURCES.to_string());
-        list.iter().for_each(|member| {
-            info!("  {}", member.get_name().unwrap_or("<anon>".into()));
-        });
-
         // Every TICK, we display stats.
         //
         let _ = stat.send_interval(TICK, || StatsMsg::Print);
@@ -199,6 +193,12 @@ impl AsyncStreamable for AvionixServer {
             PG_SOURCES.into(),
             vec![sup.get_cell(), worker.get_cell(), stat.get_cell()],
         );
+
+        info!("List of actors.");
+        let list = pg::get_members(&PG_SOURCES.to_string());
+        list.iter().for_each(|member| {
+            info!("  {}", member.get_name().unwrap_or("<anon>".into()));
+        });
 
         // Set the clock ticking unless duration is 0
         //
@@ -214,6 +214,8 @@ impl AsyncStreamable for AvionixServer {
             let (_tx, rx) = channel::<()>();
             rx.recv().expect("Something failed here.");
         }
+
+        let _ = worker.cast(WorkerMsg::Consume(filter, stream_duration.as_secs()))?;
 
         // End threads
         //
