@@ -184,10 +184,7 @@ Duration {}s
             let raw = String::from_utf8_lossy(&buf[..]).to_string();
             debug!("raw={}", raw);
 
-            //let cur = Cursor::new(buf.as_str());
-            let data: Vec<CubeData> = buf.lines().map(|r| serde_json::from_str(r.unwrap().as_str()).unwrap()).collect();
-
-            let _ = stat.cast(StatsMsg::Pkts(data.len() as u32));
+            let _ = stat.cast(StatsMsg::Pkts(buf.len() as u32));
             let _ = stat.cast(StatsMsg::Bytes(buf.len() as u64));
 
             out.send(String::from_utf8(buf.to_vec())?)
