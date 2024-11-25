@@ -155,7 +155,7 @@ Duration {}s
 
         trace!("avionixcube::stream started");
         loop {
-            let mut buf = String::new().as_bytes();
+            let mut buf = [0u8; BUFSIZ];
 
             match conn_in.read(&mut buf) {
                 Ok(size) => {
