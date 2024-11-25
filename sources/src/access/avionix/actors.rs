@@ -1,20 +1,16 @@
 use std::fmt::Debug;
-use std::io::{BufRead, BufReader, BufWriter, Cursor, Read, Write};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::net::{Shutdown, TcpStream};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 
-use polars::io::SerReader;
-use polars::prelude::{JsonFormat, JsonLineReader, JsonReader};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use reqwest::Url;
 use tracing::{debug, error, info, trace};
 
 use super::{DEF_PORT, DEF_SITE};
-use crate::access::avionix::BUFSIZ;
 use crate::actors::StatsMsg;
 use crate::Filter;
-use fetiche_formats::CubeData;
 
 const START_MARKER: &str = "\x02";
 
