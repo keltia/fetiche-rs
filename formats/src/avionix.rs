@@ -199,9 +199,18 @@ impl From<CubeData> for DronePoint {
             home_height: None,
             speed: (value.spd as f64) * 1_852.,
             heading: value.trk as f64,
-            state: None,
+            state: Some(gda_to_state(&value.gda)),
             station_name: None,
         }
+    }
+}
+
+#[inline]
+fn gda_to_state(gda: &str) -> u8 {
+    match gda {
+        "G" => 1,
+        "A" => 2,
+        _ => 15,
     }
 }
 
