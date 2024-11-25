@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use std::io::{BufReader, BufWriter, Cursor, Read, Write};
+use std::io::{BufRead, BufReader, BufWriter, Cursor, Read, Write};
 use std::net::{Shutdown, TcpStream};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
@@ -14,6 +14,7 @@ use super::{DEF_PORT, DEF_SITE};
 use crate::access::avionix::BUFSIZ;
 use crate::actors::StatsMsg;
 use crate::Filter;
+use fetiche_formats::CubeData;
 
 const START_MARKER: &str = "\x02";
 
@@ -152,9 +153,9 @@ Duration {}s
 
         trace!("avionixcube::stream started");
         loop {
-            let mut buf = [0u8; BUFSIZ];
+            let mut buf = [0u8; 4096];
 
-            match conn_in.read(&mut buf) {
+            match conn_in.read(&mut buf[..]) {
                 Ok(size) => {
                     trace!("{} bytes read.", size);
                 }
@@ -180,13 +181,16 @@ Duration {}s
                     continue;
                 }
             }
-            let data = String::from_utf8(buf.to_vec())?;
-            debug!("raw={}", data);
+            let raw = String::from_utf8_lossy(&buf[..]).to_string();
+            debug!("raw={}", raw);
 
-            let _ = stat.cast(StatsMsg::Pkts(1));
+            //let cur = Cursor::new(buf.as_str());
+            let data: Vec<CubeData> = buf.lines().map(|r| serde_json::from_str(r.unwrap().as_str()).unwrap()).collect();
+
+            let _ = stat.cast(StatsMsg::Pkts(data.len() as u32));
             let _ = stat.cast(StatsMsg::Bytes(buf.len() as u64));
 
-            out.send(data.clone())
+            out.send(String::from_utf8(buf.to_vec())?)
                 .expect("send");
         }
     }
