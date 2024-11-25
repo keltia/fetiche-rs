@@ -143,37 +143,37 @@ pub struct CubeData {
 ///     pub time: DateTime<Utc>,
 ///     /// Each record is part of a drone journey with a specific ID
 ///     pub journey: String,
-///     /// Identifier for the drone -- vehicle_identification.serial
+///     /// Identifier for the drone
 ///     pub ident: Option<String>,
-///     /// Maker of the drone -- vehicle_identification.make
+///     /// Maker of the drone
 ///     pub make: Option<String>,
-///     /// Model of the drone -- vehicle_identification.model
+///     /// Model of the drone
 ///     pub model: Option<String>,
-///     /// UAV Type -- vehicle_identification.uav_type
+///     /// UAV Type
 ///     pub uav_type: u8,
-///     /// Source -- system.fusion_state.fusion_type
+///     /// Source (see [lib.rs](lib.rs)
 ///     pub source: u8,
-///     /// Latitude -- vehicle_state.location.coordinates.lat
+///     /// Latitude
 ///     pub latitude: f64,
-///     /// Longitude -- vehicle_state.location.coordinates.lon
+///     /// Longitude
 ///     pub longitude: f64,
-///     /// Altitude -- vehicle_state.altitudes.geodetic
+///     /// Altitude
 ///     pub altitude: Option<f64>,
-///     /// Distance to ground -- vehicle_state.altitudes.ato.value
+///     /// Distance to ground
 ///     pub elevation: Option<f64>,
-///     /// Operator lat -- pilot_state.location.coordinates.lat
+///     /// Operator lat
 ///     pub home_lat: Option<f64>,
-///     /// Operator lon -- pilot_state.location.coordinates.lon
+///     /// Operator lon
 ///     pub home_lon: Option<f64>,
-///     /// Altitude from takeoff point -- (vehicle_state.altitudes.ato.value - )
+///     /// Altitude from takeoff point
 ///     pub home_height: Option<f64>,
-///     /// Current speed -- vehicle_state.ground_speed
+///     /// Current speed
 ///     pub speed: f64,
-///     /// True heading -- vehicle_state.orientation
+///     /// True heading
 ///     pub heading: f64,
-///     /// Vehicle state -- vehicle_state.state
+///     /// Vehicle state
 ///     pub state: Option<u8>,
-///     /// Name of detecting point -- system.fusion_state.source_serials
+///     /// Name of detecting point
 ///     pub station_name: Option<String>,
 ///
 /// FIXME: there are several fields that do not apply because Avionix mixes planes and drones.
