@@ -382,6 +382,28 @@ impl From<Source> for u8 {
     }
 }
 
+impl Source {
+    /// Direct mapping between a string and the u8 value as a source.
+    ///
+    pub fn str_to_source(value: &str) -> u8 {
+        match value {
+            "A" => 0,
+            "M" => 1,
+            "U" => 2,
+            "L" => 3,
+            "F" => 4,
+            "O" => 5,
+            "Rid" => 6,
+            "Lte" => 7,
+            "P" => 8,
+            "N" => 9,
+            "X" => 10,
+            _ => 255,
+        }
+    }
+}
+
+
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum TodCalculated {

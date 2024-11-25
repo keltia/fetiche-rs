@@ -176,21 +176,31 @@ pub struct CubeData {
 ///     /// Name of detecting point -- system.fusion_state.source_serials
 ///     pub station_name: Option<String>,
 ///
+/// FIXME: there are several fields that do not apply because Avionix mixes planes and drones.
+///        there is no journey, we might need to generate our own.
+///        there is no notion of home, nor station_name.
+///
 impl From<CubeData> for DronePoint {
     fn from(value: CubeData) -> Self {
-        let src: Source = value.src.into();
-        let src: u8 = src.into();
         DronePoint {
             time: DateTime::from_timestamp_nanos((value.time as i64) * 1_000_000_000i64),
             ident: Some(value.fli.clone()),
+            journey: String::from(""),
             make: None,
             model: value.typ.clone(),
             uav_type: UAVType::default() as u8,
-            source: src,
+            source: Source::str_to_source(&value.src),
             latitude: value.lat,
             longitude: value.lon,
             altitude: Some(to_meters(value.alt as f32) as f64),
-            elevation:,
+            elevation: Some(value.altg as f64),
+            home_lat: None,
+            home_lon: None,
+            home_height: None,
+            speed: (value.spd as f64) * 1_852.,
+            heading: value.trk as f64,
+            state: None,
+            station_name: None,
         }
     }
 }
