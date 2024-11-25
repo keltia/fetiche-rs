@@ -183,15 +183,10 @@ Duration {}s
             let data = String::from_utf8(buf.to_vec())?;
             debug!("raw={}", data);
 
-            let cur = Cursor::new(data.as_str());
-            let df = JsonReader::new(cur)
-                .with_json_format(JsonFormat::JsonLines)
-                .infer_schema_len(None).finish()?;
-
-            let _ = stat.cast(StatsMsg::Pkts(df.iter().len() as u32));
+            let _ = stat.cast(StatsMsg::Pkts(1));
             let _ = stat.cast(StatsMsg::Bytes(buf.len() as u64));
 
-            out.send(String::from_utf8(buf.to_vec()).unwrap())
+            out.send(data.clone())
                 .expect("send");
         }
     }
