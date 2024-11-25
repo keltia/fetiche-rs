@@ -99,6 +99,7 @@ impl Actor for Worker {
         conn_out
             .write_all(auth_str.as_bytes())
             .expect("auth write failed");
+        conn_out.flush().expect("flush auth");
 
         trace!("avionixcube::stream(as {}:{})", api_key, user_key);
 
