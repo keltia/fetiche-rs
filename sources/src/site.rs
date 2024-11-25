@@ -35,9 +35,7 @@ use crate::Safesky;
 #[cfg(feature = "senhive")]
 use crate::Senhive;
 
-use crate::{
-    AccessError, AsyncStreamable, Auth, Capability, Fetchable, Routes, Sources, Streamable,
-};
+use crate::{AccessError, AsyncStreamable, Auth, AvionixServer, Capability, Fetchable, Routes, Sources, Streamable};
 
 /// Describe what a site is, its capabilities, access methods and authentication method.
 ///
@@ -170,9 +168,13 @@ impl Site {
                     }
                     #[cfg(feature = "avionix")]
                     Format::CubeData => {
-                        let s = AvionixCube::new().load(site).clone();
-
-                        Ok(Flow::Streamable(Box::new(s)))
+                        if let Some(Auth::UserKey { .. }) = site.auth {
+                            let s = AvionixServer::new().load(site).clone();
+                            Ok(Flow::AsyncStreamable(Box::new(s)))
+                        } else {
+                            let s = AvionixCube::new().load(site).clone();
+                            Ok(Flow::Streamable(Box::new(s)))
+                        }
                     }
                     #[cfg(feature = "safesky")]
                     Format::Safesky => {
