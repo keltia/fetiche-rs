@@ -9,31 +9,41 @@
 
 // Re-export for convenience
 //
-pub use aeroscope::*;
-pub use asd::*;
-pub use asterix::*;
-pub use avionix::*;
 pub use common::*;
 pub use dronepoint::*;
+pub use format::*;
+
+#[cfg(feature = "aeroscope")]
+pub use aeroscope::*;
+#[cfg(feature = "asd")]
+pub use asd::*;
+pub use asterix::*;
+#[cfg(feature = "avionix")]
+pub use avionix::*;
 #[cfg(feature = "flightaware")]
 pub use flightaware::*;
-pub use format::*;
+#[cfg(feature = "opensky")]
 pub use opensky::*;
 #[cfg(feature = "safesky")]
 pub use safesky::*;
 
+#[cfg(feature = "aeroscope")]
 mod aeroscope;
+#[cfg(feature = "asd")]
 mod asd;
 mod asterix;
+#[cfg(feature = "avionix")]
 mod avionix;
 mod common;
 mod dronepoint;
 #[cfg(feature = "flightaware")]
 mod flightaware;
 mod format;
+#[cfg(feature = "opensky")]
 mod opensky;
 #[cfg(feature = "safesky")]
 mod safesky;
+#[cfg(feature = "senhive")]
 pub mod senhive;
 
 /// Generate a converter called `$name` which takes `&str` and
