@@ -3,7 +3,7 @@
 //! URL: http://www.avionix.pl
 //!
 
-use crate::{to_meters, DronePoint, Source, UAVType};
+use crate::{to_meters, DataSource, DronePoint, UAVType};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, serde_conv};
@@ -189,7 +189,7 @@ impl From<CubeData> for DronePoint {
             make: None,
             model: value.typ.clone(),
             uav_type: UAVType::default() as u8,
-            source: Source::str_to_source(&value.src),
+            source: DataSource::str_to_source(&value.src),
             latitude: value.lat,
             longitude: value.lon,
             altitude: Some(to_meters(value.alt as f32) as f64),
