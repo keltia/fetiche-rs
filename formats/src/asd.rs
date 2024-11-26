@@ -9,9 +9,9 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr, PickFirst};
-use tracing::debug;
 
-use crate::{convert_to, to_feet, to_knots, Cat21, TodCalculated};
+#[cfg(feature = "asterix")]
+use crate::{convert_to, get_drone_id, to_feet, to_knots, Cat21, TodCalculated};
 
 /// Our input structure from the json file coming out of the main ASD site
 ///
@@ -80,6 +80,7 @@ pub struct Asd {
     pub station_longitude: Option<f32>,
 }
 
+#[cfg(feature = "asterix")]
 convert_to!(from_asd, Asd, Cat21);
 
 impl Asd {
@@ -94,18 +95,8 @@ impl Asd {
     }
 }
 
-/// For privacy reasons, we truncate the drone ID value to something not unique
-///
-#[cfg(feature = "privacy")]
-fn get_drone_id(id: &str) -> String {
-    id[2..10].to_owned()
-}
 
-#[cfg(not(feature = "privacy"))]
-fn get_drone_id(id: &str) -> String {
-    id.to_owned()
-}
-
+#[cfg(feature = "asterix")]
 impl From<&Asd> for Cat21 {
     /// Makes the loading and transformations
     ///
