@@ -192,8 +192,8 @@ impl From<&FusedData> for DronePoint {
             ident: value.vehicle_identification.serial.clone(),
             make: value.vehicle_identification.make.clone(),
             model: value.vehicle_identification.model.clone(),
-            uav_type: value.vehicle_identification.uav_type.into(),
-            source: value.system.fusion_state.fusion_type.into(),
+            uav_type: value.vehicle_identification.uav_type,
+            source: value.system.fusion_state.fusion_type,
             latitude: value.vehicle_state.location.coordinates.lat,
             longitude: value.vehicle_state.location.coordinates.lon,
             altitude: Some(
@@ -201,7 +201,7 @@ impl From<&FusedData> for DronePoint {
                     .vehicle_state
                     .altitudes
                     .geodetic
-                    .unwrap_or(FusedValue::default())
+                    .unwrap_or_default()
                     .into(),
             ),
             elevation: Some(
@@ -209,7 +209,7 @@ impl From<&FusedData> for DronePoint {
                     .vehicle_state
                     .altitudes
                     .ato
-                    .unwrap_or(FusedValue::default())
+                    .unwrap_or_default()
                     .into(),
             ),
             home_lat: Some(value.pilot_state.location.coordinates.lat),
@@ -218,14 +218,14 @@ impl From<&FusedData> for DronePoint {
             speed: value
                 .vehicle_state
                 .ground_speed
-                .unwrap_or(FusedValue::default())
+                .unwrap_or_default()
                 .into(),
             heading: value
                 .vehicle_state
                 .orientation
-                .unwrap_or(FusedValue::default())
+                .unwrap_or_default()
                 .into(),
-            state: Some(value.vehicle_state.state.unwrap().into()),
+            state: Some(value.vehicle_state.state.unwrap()),
             station_name: Some(station_name),
         }
     }
