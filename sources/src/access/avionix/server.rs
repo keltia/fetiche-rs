@@ -30,6 +30,7 @@ use signal_hook::flag;
 use tracing::{error, info, trace};
 
 use super::actors::{Worker, WorkerArgs};
+use crate::access::TICK;
 use crate::actors::{StatsActor, StatsMsg, Supervisor, PG_SOURCES};
 use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, Site, WorkerMsg};
 use fetiche_formats::Format;
@@ -38,8 +39,6 @@ use fetiche_formats::Format;
 pub(crate) const DEF_SITE: &str = "tcp.aero-network.com";
 /// TCP streaming port
 pub(crate) const DEF_PORT: u16 = 50007;
-
-const TICK: Duration = Duration::from_secs(30);
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AvionixServer {

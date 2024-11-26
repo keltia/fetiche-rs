@@ -15,6 +15,7 @@
 pub use actors::*;
 pub use cube::*;
 pub use server::*;
+use std::time::Duration;
 
 mod actors;
 /// This is the code to access the TCP streaming port on a given antenna
@@ -22,5 +23,6 @@ mod cube;
 /// This is the code used when accessing the Avionix API or TCP streaming server
 mod server;
 
-/// Buffer size
-const BUFSIZ: usize = 65_536;
+/// We display stats every TICK seconds.
+pub(crate) const TICK: Duration = Duration::from_secs(30);
+
