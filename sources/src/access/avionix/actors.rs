@@ -203,3 +203,144 @@ Duration {}s
         }
     }
 }
+
+pub struct LocalWorker;
+
+/// Worker Actor.
+///
+/// Do we want one actor for all topics or one actor per topic?
+///
+#[ractor::async_trait]
+impl Actor for LocalWorker {
+    type Msg = WorkerMsg;
+    type State = WorkerState;
+    type Arguments = WorkerArgs;
+
+    async fn pre_start(
+        &self,
+        myself: ActorRef<Self::Msg>,
+        args: Self::Arguments,
+    ) -> Result<Self::State, ActorProcessingErr> {
+        trace!("Starting worker actor {}", myself.get_cell().get_id());
+
+        Ok(WorkerState {
+            url: args.url,
+            out: args.out,
+            stat: args.stat,
+        })
+    }
+
+    async fn handle(
+        &self,
+        _myself: ActorRef<Self::Msg>,
+        message: Self::Msg,
+        state: &mut Self::State,
+    ) -> Result<(), ActorProcessingErr> {
+        trace!("Starting worker thread");
+
+        let url = Url::parse(state.url.as_str())?;
+        let site = url.host_str().unwrap_or(DEF_SITE);
+        let port = url.port().unwrap_or(DEF_PORT);
+
+        // Do the connection
+        //
+        trace!("tcp::connect");
+        let mut conn = TcpStream::connect(format!("{site}:{port}")).expect("connect failed");
+
+        let mut conn_in = BufReader::new(&conn);
+        let mut conn_out = BufWriter::new(&conn);
+
+        trace!("avionix::stream(local)");
+
+        // FIXME: we can have only one argument
+        //
+        let (stream_duration, params) = match message {
+            WorkerMsg::Consume(filter, duration) => {
+                let (min, max) = match filter {
+                    Filter::Altitude { min, max, .. } => (Some(min), Some(max)),
+                    _ => (None, None),
+                };
+                let duration = Duration::from_secs(duration);
+                (duration, (min, max))
+            }
+        };
+
+        let (min, max) = (params.0, params.1);
+
+        // Manage url parameters.  Assume that if one is defined, the other is as well.
+        //
+        if min.is_some() {
+            let min = min.unwrap();
+            let min_str = format!("min_altitude={min}\n");
+            let _ = conn_out.write(min_str.as_bytes());
+        }
+        if max.is_some() {
+            let max = max.unwrap();
+            let max_str = format!("max_altitude={max}\n");
+            let _ = conn_out.write(max_str.as_bytes());
+        };
+
+        let out = state.out.clone();
+
+        info!(
+            r##"
+StreamURL: {}
+Duration {}s
+        "##,
+            url,
+            stream_duration.as_secs()
+        );
+
+        let stat = state.stat.clone();
+
+        // Start stream
+        //
+        let _ = conn_out.write(START_MARKER.as_ref());
+        conn_out.flush().expect("flush marker");
+
+        trace!("avionixcube::stream started");
+        loop {
+            let mut buf = vec![0u8; 4096];
+
+            let n = match conn_in.read(&mut buf[..]) {
+                Ok(size) => {
+                    trace!("{} bytes read.", size);
+                    size
+                }
+                Err(e) => {
+                    error!("worker-thread: {}", e.to_string());
+                    stat.cast(StatsMsg::Error).expect("stat::error");
+
+                    conn.shutdown(Shutdown::Both).expect("shutdown socket");
+
+                    // We need to drop otherwise `conn`  still remains.
+                    //
+                    drop(conn_in);
+                    drop(conn_out);
+
+                    stat.cast(StatsMsg::Reconnect).expect("stat::reconnect");
+
+                    conn = TcpStream::connect(format!("{site}:{port}")).expect("connect failed");
+
+                    // Do the connection again
+                    //
+                    conn_in = BufReader::new(&conn);
+                    conn_out = BufWriter::new(&conn);
+
+                    continue;
+                }
+            };
+            let raw = String::from_utf8_lossy(&buf[..n]);
+            debug!("raw={}", raw);
+
+            let _ = stat.cast(StatsMsg::Pkts(buf.len() as u32));
+            let _ = stat.cast(StatsMsg::Bytes(n as u64));
+
+            out.send(String::from_utf8(buf[..n].to_vec())?)
+                .expect("send");
+        }
+    }
+}
+
+
+
