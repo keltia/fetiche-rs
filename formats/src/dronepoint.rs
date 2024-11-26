@@ -108,8 +108,8 @@ pub enum DataSource {
     X,
 }
 
-impl From<crate::DataSource> for u8 {
-    fn from(value: crate::DataSource) -> Self {
+impl From<DataSource> for u8 {
+    fn from(value: DataSource) -> Self {
         match value {
             crate::DataSource::A => 0,
             crate::DataSource::M => 1,
@@ -126,7 +126,7 @@ impl From<crate::DataSource> for u8 {
     }
 }
 
-impl crate::DataSource {
+impl DataSource {
     /// Direct mapping between a string and the u8 value as a source.
     ///
     pub fn str_to_source(value: &str) -> u8 {
@@ -146,5 +146,3 @@ impl crate::DataSource {
         }
     }
 }
-
-
