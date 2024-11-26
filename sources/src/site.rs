@@ -173,7 +173,7 @@ impl Site {
                             Ok(Flow::AsyncStreamable(Box::new(s)))
                         } else {
                             let s = AvionixCube::new().load(site).clone();
-                            Ok(Flow::Streamable(Box::new(s)))
+                            Ok(Flow::AsyncStreamable(Box::new(s)))
                         }
                     }
                     #[cfg(feature = "safesky")]

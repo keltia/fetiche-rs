@@ -10,22 +10,20 @@
 //! NOTE: the flow includes several kind of data, drones and airplanes.
 //!
 
-use std::io::{BufReader, Cursor, Read};
-use std::net::TcpStream;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use polars::prelude::*;
+use ractor::pg::join;
+use ractor::{pg, Actor};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
-use tracing::{debug, error, info, trace};
+use tracing::{error, info, trace};
 
 use crate::access::TICK;
 use crate::actors::{StatsActor, StatsMsg, Supervisor, PG_SOURCES};
@@ -87,12 +85,13 @@ impl Default for AvionixCube {
     }
 }
 
-impl Streamable for AvionixCube {
+#[ractor::async_trait]
+impl AsyncStreamable for AvionixCube {
     fn name(&self) -> String {
         String::from("AvionixCube")
     }
 
-    fn authenticate(&self) -> eyre::Result<String, AuthError> {
+    async fn authenticate(&self) -> eyre::Result<String, AuthError> {
         trace!("fake token retrieval");
         Ok(String::from(""))
     }
@@ -102,15 +101,12 @@ impl Streamable for AvionixCube {
     /// No cache is needed because it is plain TCP streaming.
     ///
     #[tracing::instrument(skip(self, out))]
-    fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
+    async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
         trace!("avionixcube::stream");
 
-        /// Stats loop
-        const STATS_LOOP: Duration = Duration::from_secs(30);
+        let filter = Filter::from(args);
 
-        let args = Filter::from(args);
-
-        let stream_duration = match args {
+        let stream_duration = match filter {
             Filter::Altitude { duration, .. } => Duration::from_secs(duration as u64),
             _ => Duration::new(0, 0),
         };
@@ -141,145 +137,95 @@ Duration {}s
             flag::register(*sig, Arc::clone(&term))?;
         }
 
-        // out as a `dyn Write` is not `Send` so we can not use it within a thread.  Use channels
-        // to work around this.
+        // We have a generic supervisor actor.
         //
-        let (tx, rx) = channel::<String>();
+        trace!("starting supervisor actor.");
+        let tag = String::from("avionixcube::supervisor");
+        let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await?;
 
-        // Timer set?  If yes, launch a sleeper thread
+        // Start the stats gathering actor.
         //
-        if stream_duration != Duration::from_secs(0) {
-            trace!("setup wakeup alarm");
+        trace!("starting stats actor.");
+        let tag = String::from("avionix::stats");
+        let (stat, _h) = Actor::spawn_linked(
+            Some(tag),
+            StatsActor,
+            "avionixcube".into(),
+            sup.get_cell(),
+        )
+            .await?;
 
-            let d = stream_duration;
-            let tx1 = tx.clone();
-            thread::spawn(move || {
-                trace!("alarm set to {}s", d.as_secs());
-                thread::sleep(d);
-                tx1.send("TIMEOUT".to_string()).unwrap();
-            });
-            trace!("end of sleep");
-        }
-
-        // Launch stat gathering thread.
+        // Launch the worker actor
         //
-        let (st_tx, st_rx) = channel::<StatsMsg>();
-        thread::spawn(move || {
-            trace!("stats::thread");
-
-            let start = Instant::now();
-            let mut stats = Stats::default();
-            while let Ok(msg) = st_rx.recv() {
-                match msg {
-                    StatsMsg::Pkts(n) => stats.pkts += n,
-                    StatsMsg::Error => stats.err += 1,
-                    StatsMsg::Reconnect => stats.reconnect += 1,
-                    StatsMsg::Bytes(n) => stats.bytes += n,
-                    StatsMsg::Print => {
-                        stats.tm = start.elapsed().as_secs();
-                        eprintln!("Stats: {}", stats)
-                    }
-                    StatsMsg::Reset => (),
-                    // The end
-                    StatsMsg::Exit => {
-                        stats.tm = start.elapsed().as_secs();
-                        break;
-                    }
-                }
-            }
-            eprintln!("\nSession: {}", stats);
-            trace!("end of stats thread");
-        });
-
-        // Launch a thread that sleep for 30s then ask for statistics
-        //
-        let disp_tx = st_tx.clone();
-        thread::spawn(move || {
-            trace!("stats::display");
-            loop {
-                thread::sleep(STATS_LOOP);
-                let _ = disp_tx.send(StatsMsg::Print);
-            }
-        });
-
-        let url = self.base_url.clone();
-        // if url has no port, add it
+        let url = format!(
+            "tcp://{}",
+            self.base_url.clone()
+        );
+        // Do not forget port is there is none specified.
         //
         let url = match Url::from_str(&url)?.port() {
             Some(_) => url,
             None => format!("{}:{}", url, DEF_PORT),
         };
 
-        // Worker thread1
+        trace!("Starting worker actor.");
+        let args = WorkerArgs {
+            url,
+            out,
+            stat: stat.clone(),
+        };
+        let tag = String::from("avionixcube::worker");
+        let (worker, _handle) =
+            Actor::spawn_linked(Some(tag), LocalWorker, args, sup.get_cell()).await?;
+
+        // Every TICK, we display stats.
         //
-        let stat_tx = st_tx.clone();
-        thread::spawn(move || {
-            trace!("Starting worker thread");
+        let _ = stat.send_interval(TICK, || StatsMsg::Print);
 
-            // Start stream
-            //
-            let mut conn_wt = BufReader::new(TcpStream::connect(&url).expect("connect socket"));
+        // Insert each actor in the PG_SOURCES group.
+        //
+        join(
+            PG_SOURCES.into(),
+            vec![sup.get_cell(), worker.get_cell(), stat.get_cell()],
+        );
 
-            loop {
-                let mut buf = [0u8; BUFSIZ];
-
-                match conn_wt.read(&mut buf) {
-                    Ok(size) => {
-                        trace!("{} bytes read.", size);
-                    }
-                    Err(e) => {
-                        error!("worker-thread: {}", e.to_string());
-                        stat_tx.send(StatsMsg::Error).expect("stat::error");
-
-                        // Do the connection again
-                        //
-                        stat_tx.send(StatsMsg::Reconnect).expect("stat::exit");
-                        conn_wt = BufReader::new(TcpStream::connect(&url).expect("connect socket"));
-                        continue;
-                    }
-                }
-                debug!("buf={buf:?}");
-
-                let cur = Cursor::new(&buf);
-                let df = JsonLineReader::new(cur).finish().unwrap();
-                debug!("{:?}", df);
-
-                let _ = stat_tx.send(StatsMsg::Pkts(df.iter().len() as u32));
-                let _ = stat_tx.send(StatsMsg::Bytes(buf.as_ref().len() as u64));
-
-                tx.send(String::from_utf8(buf.to_vec()).unwrap())
-                    .expect("send");
-            }
+        info!("List of actors.");
+        let list = pg::get_members(&PG_SOURCES.to_string());
+        list.iter().for_each(|member| {
+            info!("  {}", member.get_name().unwrap_or("<anon>".into()));
         });
 
-        // Now data gathering loop.  Should this be another thread?
+        // Get the ball rolling.
         //
-        loop {
-            match rx.recv() {
-                Ok(msg) => match msg.as_str() {
-                    // Timer expired
-                    //
-                    "TIMEOUT" => {
-                        trace!("End of scheduled run.");
-                        break;
-                    }
-                    // Anything else is sent
-                    //
-                    _ => {
-                        // Every record is separated with LF
-                        //
-                        out.send(format!("{}\n", msg)).expect("send data");
-                    }
-                },
-                _ => continue,
-            }
+        let _ = worker.cast(WorkerMsg::Consume(filter, stream_duration.as_secs()))?;
+
+        // Set the clock ticking unless duration is 0
+        //
+        info!("Get clock ticking.");
+        if stream_duration != Duration::from_secs(0) {
+            info!("Sleeping for {}s.", stream_duration.as_secs());
+            let _ = worker.exit_after(stream_duration);
+            tokio::time::sleep(stream_duration).await;
+            info!("Timer expired.");
+        } else {
+            // We somehow needs to wait for a ^C.
+            //
+            let (_tx, rx) = channel::<()>();
+            rx.recv().expect("Something failed here.");
         }
+
         // End threads
         //
-        let _ = st_tx.send(StatsMsg::Exit);
+        trace!("avionixcube::stream stopping.");
 
-        // sync; sync; sync
+        // Stop everyone in the group.
         //
+        pg::get_members(&PG_SOURCES.to_string())
+            .iter()
+            .for_each(|member| {
+                member.stop(Some("Ending.".to_string()));
+            });
+
         Ok(())
     }
 
