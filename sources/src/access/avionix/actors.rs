@@ -99,7 +99,7 @@ impl Actor for Worker {
             .expect("auth write failed");
         conn_out.flush().expect("flush auth");
 
-        trace!("avionixcube::stream(as {}:{})", api_key, user_key);
+        trace!("avionix::stream(as {}:{})", api_key, user_key);
 
         // FIXME: we can have only one argument
         //
@@ -175,6 +175,20 @@ Duration {}s
                     //
                     conn_in = BufReader::new(&conn);
                     conn_out = BufWriter::new(&conn);
+
+                    // Send credentials again
+                    //
+                    let auth_str = format!("{}\n{}\n", api_key, user_key);
+                    conn_out
+                        .write_all(auth_str.as_bytes())
+                        .expect("auth write failed");
+                    conn_out.flush().expect("flush auth");
+
+                    // Send marker again
+                    //
+                    let _ = conn_out.write(START_MARKER.as_ref());
+                    conn_out.flush().expect("flush marker");
+
                     continue;
                 }
             };
