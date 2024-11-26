@@ -78,16 +78,6 @@ pub struct Altitudes {
     pub geodetic: Option<FusedValue>,
 }
 
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
-#[repr(u8)]
-pub enum VehicleStateType {
-    MotorOff = 0,
-    MotorOn = 1,
-    Airborn = 2,
-    #[default]
-    Unknown = 15,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VehicleState {
     pub location: Location,
@@ -111,25 +101,6 @@ pub struct VehicleIdentification {
     pub uav_type: u8,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-#[repr(u8)]
-pub enum FusionType {
-    Cooperative = 0,
-    Surveillance = 1,
-    Both = 2,
-}
-
-#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
-#[repr(u8)]
-pub enum UAVType {
-    #[default]
-    Unknown = 0,
-    FixedWing = 1,
-    MultiRotor = 2,
-    Gyroplane = 3,
-    HybridLift = 4,
-    Other = 15,
-}
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
