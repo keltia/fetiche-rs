@@ -39,7 +39,7 @@ pub struct AvionixCube {
     pub features: Vec<Capability>,
     /// Input formats
     pub format: Format,
-    /// API site
+    /// Local IP of the antenna
     pub base_url: String,
     /// Running time (for streams)
     pub duration: i32,
