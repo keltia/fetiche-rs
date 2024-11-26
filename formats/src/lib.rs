@@ -17,6 +17,7 @@ pub use format::*;
 pub use aeroscope::*;
 #[cfg(feature = "asd")]
 pub use asd::*;
+#[cfg(feature = "asterix")]
 pub use asterix::*;
 #[cfg(feature = "avionix")]
 pub use avionix::*;
@@ -31,6 +32,7 @@ pub use safesky::*;
 mod aeroscope;
 #[cfg(feature = "asd")]
 mod asd;
+#[cfg(feature = "asterix")]
 mod asterix;
 #[cfg(feature = "avionix")]
 mod avionix;
