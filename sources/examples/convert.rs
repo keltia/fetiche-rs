@@ -26,14 +26,17 @@
 //! strip = "debuginfo"
 //! ```
 
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
-use csv::QuoteStyle;
-use eyre::Result;
-use fetiche_formats::senhive::{DronePoint, FusedData};
-use indicatif::{ProgressBar, ProgressStyle};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+
+use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use csv::QuoteStyle;
+use eyre::Result;
+use indicatif::{ProgressBar, ProgressStyle};
+
+use fetiche_formats::{avionix::CubeData, senhive::FusedData};
+use fetiche_formats::{DronePoint, Format};
 
 /// CLI options
 #[derive(Parser)]
@@ -41,6 +44,8 @@ use std::path::Path;
 #[clap(name = crate_name!(), about = crate_description!())]
 #[clap(version = crate_version!(), author = crate_authors!())]
 struct Opts {
+    #[clap(value_parser, default_value = "cubedata")]
+    pub from: Format,
     input: String,
 }
 
@@ -66,10 +71,18 @@ fn main() -> Result<()> {
 
     let data = rdr.lines();
 
-    progress.wrap_iter(data).for_each(|r| {
-        let r: FusedData = serde_json::from_str(&r.unwrap()).unwrap();
-        let r: DronePoint = (&r).into();
-        wtr.serialize(r).unwrap();
+    progress.wrap_iter(data).for_each(|r| match opts.from {
+        Format::CubeData => {
+            let r: CubeData = serde_json::from_str(&r.unwrap()).unwrap();
+            let r: DronePoint = (&r).into();
+            wtr.serialize(r).unwrap();
+        }
+        Format::Senhive => {
+            let r: FusedData = serde_json::from_str(&r.unwrap()).unwrap();
+            let r: DronePoint = (&r).into();
+            wtr.serialize(r).unwrap();
+        }
+        _ => unimplemented!(),
     });
     progress.finish();
     wtr.flush()?;
