@@ -19,8 +19,6 @@ pub use aeroscope::*;
 pub use asd::*;
 #[cfg(feature = "asterix")]
 pub use asterix::*;
-#[cfg(feature = "avionix")]
-pub use avionix::*;
 #[cfg(feature = "flightaware")]
 pub use flightaware::*;
 #[cfg(feature = "opensky")]
@@ -35,7 +33,7 @@ mod asd;
 #[cfg(feature = "asterix")]
 mod asterix;
 #[cfg(feature = "avionix")]
-mod avionix;
+pub mod avionix;
 mod common;
 mod dronepoint;
 #[cfg(feature = "flightaware")]
@@ -97,4 +95,3 @@ macro_rules! convert_to {
         }
     };
 }
-
