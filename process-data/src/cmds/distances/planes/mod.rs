@@ -11,7 +11,7 @@ use derive_builder::Builder;
 use eyre::Result;
 use futures::future::join_all;
 use itertools::Itertools;
-use tracing::{info, trace};
+use tracing::{error, info, trace};
 
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
@@ -171,16 +171,21 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
             .into_iter()
             .map(|(day, site)| async move {
                 trace!("Calculate for site {site} on day {day}");
-                let site = site.clone();
+                let lsite = site.clone();
                 let ctx = ctx.clone();
 
-                tokio::spawn(async move {
-                    calculate_one_day_on_site(&ctx, &site, &day, distance, separation)
+                match tokio::spawn(async move {
+                    calculate_one_day_on_site(&ctx, &lsite, &day, distance, separation)
                         .await
                         .unwrap()
                 })
-                .await
-                .unwrap()
+                    .await {
+                    Ok(res) => res,
+                    Err(e) => {
+                        error!("Error for day {day} on {site}: {}", e.to_string(), day = day);
+                        Stats::Planes(PlanesStats::default())
+                    }
+                }
             })
             .collect();
         let stats: Vec<_> = join_all(stats).await;
