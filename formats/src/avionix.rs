@@ -74,7 +74,7 @@ serde_conv!(
 /// Payload is in JSONL.
 ///
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct CubeData {
     #[serde(rename = "uti")]
     /// - uti   Timestamp of last message, seconds since 1.1.1970 00:00 UTC -- Integer -- 1576153180
