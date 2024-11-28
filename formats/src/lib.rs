@@ -7,6 +7,13 @@
 //! file which will define the input formats and the transformations needed.
 //!
 
+use std::fmt::Debug;
+use std::io::Cursor;
+
+use csv::{QuoteStyle, WriterBuilder};
+use eyre::Result;
+use serde::de::DeserializeOwned;
+
 // Re-export for convenience
 //
 pub use common::*;
@@ -54,12 +61,10 @@ pub mod senhive;
 ///
 /// You will need to `use` these in every file you use the macro
 /// ```no_run
-/// use eyre::Result;
 /// use log::debug;
 /// ```
 /// or
 /// ```no_run
-/// use eyre::Result;
 /// use tracing::debug;
 /// ```
 ///
@@ -76,7 +81,7 @@ macro_rules! convert_to {
             #[doc = concat!("This is ", stringify!($name), " which convert a json string into a ", stringify!($to), "object")]
             ///
             #[tracing::instrument]
-            pub fn $name(input: &str) -> Result<Vec<$to>> {
+            pub fn $name(input: &str) -> eyre::Result<Vec<$to>> {
                 debug!("IN={:?}", input);
                 let stream = ::std::io::BufReader::new(input.as_bytes());
                 let res = ::serde_json::Deserializer::from_reader(stream).into_iter::<$from>();
@@ -95,3 +100,43 @@ macro_rules! convert_to {
         }
     };
 }
+
+/// Take some struct in JSON and turn it into our own `DronePoint` as a CSV.
+///
+/// Example:
+/// ```no_run
+/// # use fetiche_formats::avionix::CubeData;
+/// use fetiche_formats::from_json_to_csv;
+///
+/// # let data: CubeData = CubeData::default();
+/// # let input = String::from("");
+///
+/// let res = from_json_to_csv(&input.into_bytes(), &data)?;
+/// eprintln!("res = {res}");
+/// ```
+///
+/// NOTE: `_fake`  is only there to make it a generic.
+///
+#[inline]
+pub fn from_json_to_csv<T>(data: &[u8], _fake: &T) -> Result<String>
+where
+    T: DeserializeOwned + Debug,
+{
+    let cur = Cursor::new(data);
+    let data: T = serde_json::from_reader(cur)?;
+    let data: DronePoint = (&data).into();
+
+    let mut wtr = WriterBuilder::new()
+        .has_headers(false)
+        .quote_style(QuoteStyle::NonNumeric)
+        .from_writer(vec![]);
+
+    // Insert data
+    //
+    wtr.serialize(data)?;
+    wtr.flush()?;
+
+    let res = String::from_utf8(wtr.into_inner()?.to_vec())?;
+    Ok(res)
+}
+
