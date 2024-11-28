@@ -9,7 +9,7 @@ use klickhouse::{Client, QueryBuilder, RawRow, Row};
 use serde::{Deserialize, Serialize};
 use std::ops::Add;
 use tokio::time::{sleep, Duration, Instant};
-use tracing::{debug, info, trace};
+use tracing::{debug, error, info, trace};
 
 #[derive(Debug, Default, Deserialize)]
 struct Timings {
@@ -264,9 +264,15 @@ WHERE
 
         // Check how many
         //
-        let mut count = dbh
+        let mut count = match dbh
             .query_one::<RawRow>(&format!("SELECT COUNT() FROM today_close{tag}"))
-            .await?;
+            .await {
+            Ok(count) => count,
+            Err(_) => {
+                error!("today_close{tag} was not created, assume 0.");
+                return Ok(0);
+            }
+        };
 
         let count: u64 = count.get(0);
 
