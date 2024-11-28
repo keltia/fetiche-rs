@@ -49,9 +49,12 @@ site "opensky" {
 
 site "fa-belfast" {
   features = ["fetch"]
-  type     = "adsb"
-  format   = "flightaware"
-  auth     = "login"
+  type   = "adsb"
+  format = "flightaware"
+  auth = {
+    login    = "USERNAME"
+    password = "HIDDEN"
+  }
   base_url = "firehose.flightaware.com:1501"
   routes = {
     get = "range"
@@ -59,31 +62,47 @@ site "fa-belfast" {
   }
 }
 
+// Incomplete support.
+//
 site "safesky" {
   features = ["fetch"]
   type     = "adsb"
   format   = "safesky"
   base_url = "https://public-api.safesky.app"
-  auth     = "api_key"
+  auth = {
+    api_key = "api_key"
+  }
   routes = {
     get = "/v1/beacons"
   }
 }
 
+// Avionix Cube on the roof, using the TCP Streaming server.
+//
 site "avionix" {
   features = ["stream"]
   type     = "drone"
-  format = "avionixserver"
-  base_url = "tcp.aero-network.com"
+  format   = "cubedata"
+  base_url = "tcp.aero-network.com:50007"
   auth = {
-    api_key  = ""
-    user_key = ""
+    user_key = "USERKEY"
+    api_key  = "APIKEY"
   }
 }
 
-site "cube" {
+// Thales Senhive antenna on the EIH roof.
+//
+// It uses AMQP
+//
+site "eih-senhive" {
   features = ["stream"]
   type     = "drone"
-  format   = "avionixcube"
-  base_url = "PUT_IP_HERE"
+  format   = "senhive"
+  base_url = "senegress.senair.io:5672"
+  auth = {
+    vhost    = "VHOST"
+    username = "USER"
+    password = "PASSWORD"
+  }
 }
+
