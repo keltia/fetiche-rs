@@ -6,11 +6,10 @@ use std::fs;
 
 use clap::Parser;
 use csv::WriterBuilder;
-use datafusion::config::TableParquetOptions;
-use datafusion::dataframe::DataFrameWriteOptions;
-use datafusion::prelude::{CsvReadOptions, SessionContext};
 use eyre::Result;
 use klickhouse::{Client, DateTime, Row};
+use polars::io::SerReader;
+use polars::prelude::{CsvParseOptions, ParquetWriter};
 use serde::{Deserialize, Serialize};
 use tempfile::Builder;
 use tracing::{debug, info, trace};
@@ -162,21 +161,21 @@ async fn export_all_encounters_parquet(client: &Client, fname: &str) -> Result<(
     //
     export_all_encounters_csv(client, &tmpname).await?;
 
-    let ctx = SessionContext::new();
-    let df = ctx
-        .read_csv(&tmpname, CsvReadOptions::default().has_header(true))
-        .await?;
-    let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
-
-    let mut options = TableParquetOptions::default();
-    options.global.created_by = "process-data/export".to_string();
-    options.global.writer_version = "2.0".to_string();
-    options.global.encoding = Some("plain".to_string());
-    options.global.statistics_enabled = Some("page".to_string());
-    options.global.compression = Some("zstd(8)".to_string());
-
     trace!("Writing {fname} as parquet.");
-    let _ = df.write_parquet(fname, dfopts, Some(options)).await?;
+
+    // nh = no header line (default = false which means has header line).
+    //
+    let header = true;
+
+    let opts = CsvParseOptions::default().with_try_parse_dates(true);
+    let mut df = polars::prelude::CsvReadOptions::default()
+        .with_has_header(header)
+        .with_parse_options(opts)
+        .try_into_reader_with_file_path(Some(tmpname.into()))?
+        .finish()?;
+
+    let mut file = fs::File::create(fname)?;
+    ParquetWriter::new(&mut file).finish(&mut df)?;
 
     eprintln!("Summary file {fname}");
 

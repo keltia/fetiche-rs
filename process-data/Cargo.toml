@@ -18,7 +18,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 maintenance = { status = "actively-developed" }
 
 [features]
-default = ["clickhouse", "datafusion"]
+default = ["clickhouse", "polars"]
 clickhouse = []
 datafusion = ["dep:datafusion"]
 polars = ["dep:polars"]
@@ -60,6 +60,7 @@ klickhouse = { version = "0.13", features = ["derive", "geo-types", "serde", "bb
 kml = "0.8"
 ml-progress = "0.1"
 polars = { version = "0.44", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json"], optional = true }
+polars-core = "0.44"
 rand = "0"
 rayon = "1.10"
 rust-3d = "0.34"
