@@ -16,10 +16,6 @@ use fetiche_macros::RunnableDerive;
 
 use crate::{Runnable, IO};
 
-pub trait ConvertInto {
-    fn convert(&self, into: Format) -> String;
-}
-
 #[derive(Clone, Debug, RunnableDerive)]
 pub struct Convert {
     io: IO,
