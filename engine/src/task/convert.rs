@@ -51,7 +51,7 @@ impl Convert {
     ///
     #[tracing::instrument(skip(self))]
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
-        trace!("into::execute");
+        trace!("convert::execute");
 
         // Bow out early
         //
