@@ -128,7 +128,8 @@ The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
 Here are some of the things I've been working on. Some of these are registered as issues on [GitHub issues].
 
 - Add more tests & benchmarks.
-- Convert the current Avionix streaming code to the actor-based one in Senhive using [ractor].
+- convert the opensky code to use actors.
+- add a feeder that dispatch different events in the avionix flow into separate AMQP queues.
 
 Done:
 
@@ -151,6 +152,7 @@ Done:
 - ~~Migrate from the embedded [DuckDB] to a proper server-based DB [Clickhouse]~~
 - ~~[Polars] instead of [Datafusion] to simplify? We are not using (nor plan to) all the datafusion features.~~
 - ~~Integration of Avionix and Thales/Senhive antennas in `formats` and `sources` when we have docs.~~
+- ~~Convert the current Avionix streaming code to the actor-based one in Senhive using [ractor].~~
 
 Upcoming refactors:
 
