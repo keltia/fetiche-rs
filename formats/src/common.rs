@@ -46,7 +46,6 @@ impl Default for Position {
     }
 }
 
-
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum TodCalculated {
@@ -116,6 +115,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Format;
 
     #[test]
     fn test_source_default() {
@@ -146,4 +146,3 @@ mod tests {
         );
     }
 }
-
