@@ -121,10 +121,11 @@ macro_rules! convert_to {
 pub fn from_json_to_csv<T>(data: &[u8], _fake: &T) -> Result<String>
 where
     T: DeserializeOwned + Debug,
+    DronePoint: From<T>,
 {
     let cur = Cursor::new(data);
     let data: T = serde_json::from_reader(cur)?;
-    let data: DronePoint = (&data).into();
+    let data: DronePoint = data.into();
 
     let mut wtr = WriterBuilder::new()
         .has_headers(false)
@@ -139,4 +140,3 @@ where
     let res = String::from_utf8(wtr.into_inner()?.to_vec())?;
     Ok(res)
 }
-
