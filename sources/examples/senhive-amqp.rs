@@ -24,7 +24,8 @@ use tokio::signal::windows::ctrl_c;
 use tracing::trace;
 
 use fetiche_common::init_logging;
-use fetiche_formats::senhive::{DronePoint, FusedData, StateMsg};
+use fetiche_formats::senhive::{FusedData, StateMsg};
+use fetiche_formats::DronePoint;
 
 #[derive(Debug, Clone)]
 pub enum Output {
@@ -271,7 +272,7 @@ fn from_json_to_nl(data: &[u8]) -> Result<String> {
 fn from_json_to_csv(data: &[u8]) -> Result<String> {
     let cur = Cursor::new(data);
     let data: FusedData = serde_json::from_reader(cur)?;
-    let data: DronePoint = (&data).into();
+    let data: DronePoint = data.into();
 
     let data = prepare_csv(data)?;
     Ok(data)
