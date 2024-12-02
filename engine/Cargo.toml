@@ -27,8 +27,6 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 chrono.workspace = true
-csv.workspace = true
-dateparser.workspace = true
 env_logger.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
@@ -37,30 +35,19 @@ fetiche-macros.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
 nom.workspace = true
-reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serde_repr.workspace = true
-serde_with.workspace = true
 strum.workspace = true
 tabled.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-log.workspace = true
-tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 datafusion = { version = "43", features = ["zstd", "async-compression", "serde"], optional = true }
 polars = { version = "0.44", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json"], optional = true }
-polars-core = "0.44"
-
-enum_dispatch = "0.3"
-percent-encoding = "2.3"
-tap = "1.0"
-zstd = "0.13"
 
 [dev-dependencies]
 rstest.workspace = true

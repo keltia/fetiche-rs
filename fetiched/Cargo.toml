@@ -25,9 +25,6 @@ fetiche-sources.workspace = true
 hcl-rs.workspace = true
 directories.workspace = true
 nom.workspace = true
-opentelemetry.workspace = true
-opentelemetry-otlp.workspace = true
-reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
@@ -35,8 +32,6 @@ tabled.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-log.workspace = true
-tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
@@ -44,15 +39,11 @@ actix = "0.13"
 actix-rt = "2.10"
 actix-storage = { version = "0.3", features = ["serde", "serde-json", "serde-cbor"] }
 actix-storage-dashmap = { version = "0.3", features = ["actor", "delay-queue"] }
-dashmap = { version = "6.1", features = ["serde"] }
 parquet = { version = "53.0", features = ["json", "async", "cli"] }
-parquet_derive = "53.0"
-tmpdir = "1.0"
 
 [target.'cfg(unix)'.dependencies]
 daemonize = "0.5"
 
 [dev-dependencies]
-assert_cmd = "2.0"
 rstest.workspace = true
 

@@ -25,35 +25,20 @@ flightaware = []
 
 [dependencies]
 eyre.workspace = true
-chrono.workspace = true
 clap.workspace = true
-dateparser.workspace = true
-env_logger.workspace = true
 fetiche-common.workspace = true
 fetiche-engine.workspace = true
 fetiche-formats.workspace = true
 fetiche-macros.workspace = true
 fetiche-sources.workspace = true
-hcl-rs.workspace = true
-nom.workspace = true
-reqwest.workspace = true
 serde.workspace = true
-serde_json.workspace = true
-serde_repr.workspace = true
-serde_with.workspace = true
-strum.workspace = true
-tabled.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-log.workspace = true
 
 clap_complete = "4.5"
 indicatif = "0.17"
-percent-encoding = "2.3"
 
 [dev-dependencies]
 assert_cmd = "2.0"
-httpmock = "0.7"
-rstest.workspace = true
 

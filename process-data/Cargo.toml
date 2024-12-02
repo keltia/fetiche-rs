@@ -38,11 +38,9 @@ eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-macros.workspace = true
 futures.workspace = true
-hcl-rs.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
-serde_with.workspace = true
 thiserror.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
@@ -60,15 +58,12 @@ klickhouse = { version = "0.13", features = ["derive", "geo-types", "serde", "bb
 kml = "0.8"
 ml-progress = "0.1"
 polars = { version = "0.44", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json"], optional = true }
-polars-core = "0.44"
 rand = "0"
-rayon = "1.10"
 rust-3d = "0.34"
 regex = "1.11"
 
 [dev-dependencies]
 criterion.workspace = true
-rstest.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 pprof = { version = "0.13", features = ["criterion", "flamegraph"] }

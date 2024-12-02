@@ -38,28 +38,16 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 chrono.workspace = true
 csv.workspace = true
-dateparser.workspace = true
 eyre.workspace = true
-fetiche-common.workspace = true
 hcl-rs.workspace = true
 nom.workspace = true
-reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_repr.workspace = true
 serde_with.workspace = true
 strum.workspace = true
 tabled.workspace = true
-tokio.workspace = true
 tracing.workspace = true
-tracing-log.workspace = true
-tracing-opentelemetry.workspace = true
-tracing-subscriber.workspace = true
-tracing-tree.workspace = true
-
-percent-encoding = "2.3"
-tap = "1.0"
-zstd = "0.13"
 
 [dev-dependencies]
 rstest.workspace = true
