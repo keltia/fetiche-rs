@@ -101,7 +101,6 @@ pub struct VehicleIdentification {
     pub uav_type: u8,
 }
 
-
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FusionState {
@@ -182,8 +181,8 @@ pub struct FusedData {
 ///     /// Name of detecting point -- system.fusion_state.source_serials
 ///     pub station_name: Option<String>,
 ///
-impl From<&FusedData> for DronePoint {
-    fn from(value: &FusedData) -> Self {
+impl From<FusedData> for DronePoint {
+    fn from(value: FusedData) -> Self {
         let station_name = value.system.fusion_state.source_serials[0].clone();
 
         Self {
@@ -204,27 +203,12 @@ impl From<&FusedData> for DronePoint {
                     .unwrap_or_default()
                     .into(),
             ),
-            elevation: Some(
-                value
-                    .vehicle_state
-                    .altitudes
-                    .ato
-                    .unwrap_or_default()
-                    .into(),
-            ),
+            elevation: Some(value.vehicle_state.altitudes.ato.unwrap_or_default().into()),
             home_lat: Some(value.pilot_state.location.coordinates.lat),
             home_lon: Some(value.pilot_state.location.coordinates.lon),
             home_height: None,
-            speed: value
-                .vehicle_state
-                .ground_speed
-                .unwrap_or_default()
-                .into(),
-            heading: value
-                .vehicle_state
-                .orientation
-                .unwrap_or_default()
-                .into(),
+            speed: value.vehicle_state.ground_speed.unwrap_or_default().into(),
+            heading: value.vehicle_state.orientation.unwrap_or_default().into(),
             state: Some(value.vehicle_state.state.unwrap()),
             station_name: Some(station_name),
         }
