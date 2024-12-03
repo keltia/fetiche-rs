@@ -6,10 +6,10 @@ We define a program/framework/language to help specify where to fetch data from,
 to apply and then export into a final format in various ways.
 
 The goal is to merge all the different iterations of `aeroscope.sh`, `aeroscope-cdg.sh` or `aeroscope-CDGweekly.sh` into
-a more general purpose data fetch & transform (aka a small-scale [ERP]).  It is not limited to drones and could be used as
-a all-purpose gather/transform/publish engine for surveillance data.
+a more general purpose data fetch & transform (aka a small-scale [ERP]). It is not limited to drones and could be used
+as an all-purpose gather/transform/publish engine for surveillance data.
 
-# Description of the curent design of Fetiche and future plans
+# Description of the current design of Fetiche and future plans
 
 Updated: Sun Feb 25 19:41:21 CET 2024
 
@@ -23,11 +23,12 @@ As the ACUTE project evolved, needs did as well and more code was added to handl
 `Fetiche` has 4 main library component so far:
 
 - `fetiche-common` has now some of the common code used by all crates.
+- `fetiche-engine` is the main fetch/stream component, using the formats and sources crates.
 - `fetiche-formats` is handling the various data structures used throughout the framework, dealing with conversion,
   serialisation and de-serialisation.
 - `fetiche-sources` contains the code to connect to various sites and fetch or stream data out of them. It also handles
   authentication, etc.
-- `fetiche-macros` is the specific crate hosting the `RunnableDerive` proc macro for the engines.
+- `fetiche-macros` is the specific crate hosting useful macros such as the `RunnableDerive` proc macro for the engines.
 
 ### Formats (managed in the `fetiche-formats` crate)
 
@@ -50,7 +51,6 @@ in that file does not mean support except if it is a variation on a known source
 You are not really supposed to edit this file.
 
 More details in the specific [Sources README.md](sources/README.md).
-
 
 There are also several binaries using the framework:
 
@@ -83,6 +83,7 @@ And `acutectl`  could have crate features to include some of the plugins or not.
 
 - Fetchable
 - Streamable
+- AsyncStreamable
 
 ## Structure
 
@@ -110,7 +111,7 @@ plugin) but that's longer term work.
 
 ### Sources Configuration
 
-Starting with a [HCL] configuration file like the one we have in the `sources` crate, we can either define a new one or
+Starting with an [HCL] configuration file like the one we have in the `sources` crate, we can either define a new one or
 extend this one.
 
 Currently, we have something like this:
@@ -122,7 +123,7 @@ site "eih" {
   features = ["fetch"]
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
-  auth     = {
+  auth = {
     login    = "SOMETHING"
     password = "NOPE"
     token    = "/login"
@@ -136,7 +137,7 @@ site "asd" {
   features = ["fetch"]
   format   = "asd"
   base_url = "https://eur.airspacedrone.com"
-  auth     = {
+  auth = {
     login    = "USERNAME"
     password = "GUESS"
     token    = "/api/security"
@@ -154,8 +155,8 @@ With this we obtain a `HashMap` with the site name as key (e.g. `eih`) and the r
 # Extension Language
 
 To minimize the amount of modifications necessary during the life of the product, it is intended for many parts to be
-written in an embedded language.  This could be something homegrown with a specific grammar and a `nom`  parser 
-(or equivalent).  This also could be a language easy to embed like Lua or Typescript.
+written in an embedded language. This could be something homegrown with a specific grammar and a `nom`  parser
+(or equivalent). This also could be a language easy to embed like Lua or Typescript.
 
 Said language would have access to the various Rust data structures and methods which means generating bindings unless
 we use our own system.
@@ -181,10 +182,10 @@ If we base ourselves to HCL and extend it, we could have something like this:
 
 ```hcl
 task "weekly/asd" {
-  site     = "asd"            // cf. sources/src input format is implied e.g. json or csv
-  fetch    = "cmd.get"
+  site = "asd"            // cf. sources/src input format is implied e.g. json or csv
+  fetch = "cmd.get"
   schedule = "Sun@01:00"  // ?? is it needed?  How do we schedule in practice?  cron is the ideal candidate
-  into     = "cat21"          // cf. formats/output, maybe `output =  FORMAT`
+  into  = "cat21"          // cf. formats/output, maybe `output =  FORMAT`
   //...
 }
 ```
@@ -209,10 +210,10 @@ sched.new(<TaskRequest>{
 ```
 
 Typescript opens more opportunities to interact with the engine core. Filters, transformations could be written in
-Typescript as well.  There are binding generators to tia the Rust API and use it in TS.
+Typescript as well. There are binding generators to tia the Rust API and use it in TS.
 
-NOTE: It is yet not clear where the boundaries of Rust and Typescript lie.  Even the source crate or the format-specs one
-could be seen in [TS] as well.  Having a proper definition of what is available to [TS] is essential.
+NOTE: It is yet not clear where the boundaries of Rust and Typescript lie. Even the source crate or the format-specs one
+could be seen in [TS] as well. Having a proper definition of what is available to [TS] is essential.
 
 ### Lua
 
@@ -228,10 +229,10 @@ cf. above.
 
 ## Why the name Fetiche?
 
-Preliminary name (based on the [Kirikou] movies made by Michel Ocelot.  If you have seen the animated movie "Kirikou et 
-la sorcière", you know. If not, learn that the main characters are Kirikou, a small boy with extraordinary gifts and 
-a sorceress called Karaba. She has some special minions called "les fétiches". These are wooden fetishes that do her 
-bidding in all things. One of them is on top of her case and is tasked with looking around and doing... surveillance. 
+Preliminary name (based on the [Kirikou] movies made by Michel Ocelot. If you have seen the animated movie "Kirikou et
+la sorcière", you know. If not, learn that the main characters are Kirikou, a small boy with extraordinary gifts and
+a sorceress called Karaba. She has some special minions called "les fétiches". These are wooden fetishes that do her
+bidding in all things. One of them is on top of her case and is tasked with looking around and doing... surveillance.
 Hence, the name of its framework.
 
 ## References
