@@ -116,10 +116,12 @@ async fn main() -> Result<()> {
                     .ack(BasicAckOptions::default())
                     .await?;
 
-                let data = String::from_utf8_lossy(&delivery.data).to_string();
-                let _: FusedData = serde_json::from_str(&data)?;
+                let data = from_json_to_nl(&delivery.data)?;
+                let line = from_json_to_csv(&delivery.data)?;
+                fd.write(data.as_bytes()).await?;
+                fc.write(line.as_bytes()).await?;
 
-                fd.write(&delivery.data).await?;
+                let _: FusedData = serde_json::from_str(&data)?;
             },
             Some(data) = dl_data.inp.next() => {
                 eprint!("d");
@@ -128,8 +130,10 @@ async fn main() -> Result<()> {
                     .ack(BasicAckOptions::default())
                     .await?;
 
-                let data = String::from_utf8_lossy(&delivery.data).to_string();
+                let data = from_json_to_nl(&delivery.data)?;
+                let line = from_json_to_csv(&delivery.data)?;
                 fd.write(&delivery.data).await?;
+                fc.write(line.as_bytes()).await?;
 
                 let _: FusedData = serde_json::from_str(&data)?;
             },

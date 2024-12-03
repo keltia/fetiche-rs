@@ -120,9 +120,10 @@ async fn main() -> Result<()> {
                 pg::get_members(&workers).iter().for_each(|cell| {
                     cell.stop(Some("ctrl-C pressed".into()));
                 });
-                myself.kill()
             },
-            else => ()
+            else => {
+                eprintln!("Ctrl-something pressed.");
+            }
         }
     })
     .await?;
