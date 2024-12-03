@@ -67,7 +67,6 @@ mini-moka = "0.10"
 native-tls = "0.2"
 percent-encoding = "2.3"
 polars = { version = "0.44", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json"] }
-polars-core = "0.44"
 signal-hook = "0.3"
 tap = "1"
 futures-util = "0.3.31"
