@@ -34,13 +34,13 @@ sites = {
     'Bordeaux': 6,
     'Gatwick': 7,
     'London': 7,
-    'Cyprus': 8,
     'Larnaca': 8,
     'Bucharest': 9,
     'Bucharest1': 9,
     'Vienna': 10,
     'Vienna2': 10,
     'Zurich': 11,
+    'Cyprus': 12,
 }
 
 # CONFIG CHANGE HERE or use -D
