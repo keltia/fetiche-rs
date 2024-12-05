@@ -11,8 +11,17 @@ use eyre::Result;
 use serde_json::json;
 use tracing::trace;
 
-use fetiche_formats::{prepare_csv, Cat21, Format, StateList};
+use fetiche_formats::{prepare_csv, DronePoint, Format};
 use fetiche_macros::RunnableDerive;
+
+#[cfg(feature = "avionix")]
+use fetiche_formats::avionix::CubeData;
+#[cfg(feature = "senhive")]
+use fetiche_formats::senhive::FusedData;
+#[cfg(feature = "asterix")]
+use fetiche_formats::Cat21;
+#[cfg(feature = "opensky")]
+use fetiche_formats::StateList;
 
 use crate::{Runnable, IO};
 
@@ -56,8 +65,10 @@ impl Convert {
         // Bow out early
         //
         let res = match self.into {
+            #[cfg(feature = "asterix")]
             Format::Cat21 => {
                 let res: Vec<_> = match self.from {
+                    #[cfg(feature = "opensky")]
                     Format::Opensky => {
                         trace!("opensky:json to cat21: {}", data);
 
@@ -67,6 +78,7 @@ impl Convert {
                         trace!("data={}", data);
                         Cat21::from_opensky(&data)?
                     }
+                    #[cfg(feature = "asd")]
                     Format::Asd => {
                         trace!("asd:json to cat21: {}", data);
 
@@ -77,6 +89,30 @@ impl Convert {
                         trace!("flightaware:json to cat21: {}", data);
 
                         Cat21::from_flightaware(&data)?
+                    }
+                    _ => unimplemented!(),
+                };
+                prepare_csv(res, false)?
+            }
+            // This one is always enabled.
+            //
+            Format::DronePoint => {
+                let res: Vec<_> = match self.from {
+                    #[cfg(feature = "avionix")]
+                    Format::CubeData => {
+                        trace!("cube_data:json to dronepoint: {}", data);
+
+                        let r: Vec<CubeData> = serde_json::from_str(&data)?;
+                        let r: Vec<_> = r.iter().map(|e| DronePoint::from(e)).collect();
+                        r
+                    }
+                    #[cfg(feature = "senhive")]
+                    Format::Senhive => {
+                        trace!("senhive:json to dronepoint: {}", data);
+
+                        let r: Vec<FusedData> = serde_json::from_str(&data)?;
+                        let r: Vec<_> = r.iter().map(|e| DronePoint::from(e)).collect();
+                        r
                     }
                     _ => unimplemented!(),
                 };
