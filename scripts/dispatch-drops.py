@@ -36,7 +36,6 @@ sites = {'Brussels': 'BRU',
          'Bordeaux': 'BDX',
          'Bretigny': 'BRE',
          'Belfast': 'BEL',
-         'Cyprus': 'CYP',
          'London': 'LON',
          'Gatwick': 'LON',
          'Vienna': 'AUS',
@@ -45,6 +44,7 @@ sites = {'Brussels': 'BRU',
          'Bucharest1': 'BUC',
          'Zurich': 'ZUR',
          'Larnaca': 'CYP',
+         'Cyprus': 'PAP',
          }
 
 
