@@ -3,24 +3,24 @@
 This is the main crate implementing the site-specific ways of accessing, authenticating and fetching data from the
 supported sources. Currently, we support:
 
-- Aeroscope
+- Aeroscope (deprecated)
 - ASD
 - Opensky
-- Avionix Cube (WIP)
-- Thales Senhive (WIP)
+- Avionix Cube
+- Thales Senhive
 - Safesky (incomplete)
 
 ## Sources
 
-A source can support one or more operation like `Fetch` and `Stream`. At this moment, only Opensky support streaming.he
-different supported sources are enabled through Cargo features.
+A source can support one or more operation like `Fetch` and `Stream`. At this moment, We have several sources for
+streaming (Opensky, Senhive and Avionix). The different supported sources are enabled through Cargo features.
 
 ### Aeroscope (feature `aeroscope`)
 
 This is the data extracted from a local Aeroscope antenna, considering you are supposed to have a local server attached
 to the antenna. Software supplied by DJI store data in its [MongoDB] database and there is a local API to access said
 data. Our antenna was supplied by [ASD] and interestingly enough the data model and access methods are not exactly the
-same.
+same. This source is for the moment deprecated.
 
 ### ASD (feature `asd`)
 
@@ -56,7 +56,7 @@ as the API can (and will) send you the same dataset sometimes.
 ### Safesky (feature `safesky`)
 
 Safesky is an alternate ADS-B source we thought we'd be working with at some point so partial support is there but has
-not been tested. See the [source](src/access/safesky.rs). This is under the feature `safesky`.
+not been tested. See the [source](src/access/safesky.rs).
 
 ### Flightaware (feature `flightaware`)
 
