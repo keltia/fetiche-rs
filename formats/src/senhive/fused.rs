@@ -181,8 +181,8 @@ pub struct FusedData {
 ///     /// Name of detecting point -- system.fusion_state.source_serials
 ///     pub station_name: Option<String>,
 ///
-impl From<FusedData> for DronePoint {
-    fn from(value: FusedData) -> Self {
+impl From<&FusedData> for DronePoint {
+    fn from(value: &FusedData) -> Self {
         let station_name = value.system.fusion_state.source_serials[0].clone();
 
         Self {

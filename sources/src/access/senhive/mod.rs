@@ -169,7 +169,7 @@ fn from_json_to_nl(data: &[u8]) -> Result<String> {
 fn from_json_to_csv(data: &[u8]) -> Result<String> {
     let cur = Cursor::new(data);
     let data: FusedData = serde_json::from_reader(cur)?;
-    let data: DronePoint = data.into();
+    let data: DronePoint = (&data).into();
 
     let mut wtr = WriterBuilder::new()
         .has_headers(false)

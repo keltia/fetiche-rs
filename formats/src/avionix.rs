@@ -180,8 +180,8 @@ pub struct CubeData {
 ///        there is no journey, we might need to generate our own.
 ///        there is no notion of home, nor station_name.
 ///
-impl From<CubeData> for DronePoint {
-    fn from(value: CubeData) -> Self {
+impl From<&CubeData> for DronePoint {
+    fn from(value: &CubeData) -> Self {
         DronePoint {
             time: DateTime::from_timestamp_nanos((value.time as i64) * 1_000_000_000i64),
             ident: Some(value.fli.clone()),
