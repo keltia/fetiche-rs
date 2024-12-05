@@ -16,6 +16,13 @@ format "asd" {
   url         = "https://airspacedrone.com/"
 }
 
+format "dronepoint" {
+  type        = "drone"
+  description = "Generic format for drone data."
+  source      = "ECTL"
+  url         = "https://www.eurocontrol.int/"
+}
+
 format "opensky" {
   type        = "adsb"
   description = "Data coming from the Opensky site, mostly ADS-B."
