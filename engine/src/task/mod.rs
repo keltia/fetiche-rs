@@ -32,7 +32,7 @@ mod tee;
 #[derive(Debug, strum::Display, strum::VariantNames, EnumIter, PartialEq)]
 #[strum(serialize_all = "PascalCase")]
 pub enum Cmds {
-    /// Convert into Cat21 data
+    /// Convert between `Format`
     Convert,
     /// Basic raw copy
     Copy,
