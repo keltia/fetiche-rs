@@ -73,6 +73,8 @@ pub enum Format {
     Safesky,
     /// Drone data from Thales Senhive API
     Senhive,
+    /// Genetic format for drone data.
+    DronePoint,
 }
 
 impl Format {
@@ -133,4 +135,3 @@ impl Format {
         Ok(str)
     }
 }
-
