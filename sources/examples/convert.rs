@@ -74,12 +74,12 @@ fn main() -> Result<()> {
     progress.wrap_iter(data).for_each(|r| match opts.from {
         Format::CubeData => {
             let r: CubeData = serde_json::from_str(&r.unwrap()).unwrap();
-            let r: DronePoint = r.into();
+            let r: DronePoint = (&r).into();
             wtr.serialize(r).unwrap();
         }
         Format::Senhive => {
             let r: FusedData = serde_json::from_str(&r.unwrap()).unwrap();
-            let r: DronePoint = r.into();
+            let r: DronePoint = (&r).into();
             wtr.serialize(r).unwrap();
         }
         _ => unimplemented!(),
