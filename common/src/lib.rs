@@ -9,15 +9,15 @@ pub use dateopts::*;
 pub use daterange::*;
 use eyre::Result;
 pub use location::*;
-pub use runtime::*;
+pub use logging::*;
 
 mod config;
 mod container;
 mod dateopts;
 mod daterange;
 mod location;
+mod logging;
 mod macros;
-mod runtime;
 
 const NAME: &str = crate_name!();
 const VERSION: &str = crate_version!();
