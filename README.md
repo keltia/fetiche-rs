@@ -2,7 +2,7 @@
 
 # fetiche-rs
 
-[![Fetiche Logo](docs/fetiche-rs-icon.jpg)]
+<img src="docs/fetiche-rs-icon.jpg" alt="Fetiche Logo from Kirikou movie" />
 
 > **FETICHE: Framework to import/fetch/transform various aeronautical data**
 
