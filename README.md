@@ -2,6 +2,8 @@
 
 # fetiche-rs
 
+[![Fetiche Logo](docs/fetiche-rs-icon.jpg)]
+
 > **FETICHE: Framework to import/fetch/transform various aeronautical data**
 
 [![Build status](https://github.com/keltia/fetiche-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/keltia/fetiche-rs/actions/workflows/rust.yml)
