@@ -28,6 +28,7 @@ clap.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
 opentelemetry.workspace = true
+polars.workspace = true
 serde.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -35,6 +36,5 @@ tracing.workspace = true
 datafusion = { version = "43", features = ["zstd", "async-compression", "serde"], optional = true }
 parquet2 = "0.17"
 rayon = "1.10"
-polars = { version = "0.44", features = ["lazy", "parquet", "csv"] }
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }

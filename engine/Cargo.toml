@@ -11,7 +11,7 @@ categories = ["aerospace::drones"]
 keywords = ["asterix", "drones", "aeronautical-data", "ads-b"]
 
 [features]
-default = ["polars", "asd", "senhive", "avionix"]
+default = ["asd", "senhive", "avionix"]
 asd = []
 asterix = []
 avionix = []
@@ -20,7 +20,6 @@ opensky = []
 safesky = []
 senhive = []
 datafusion = ["dep:datafusion"]
-polars = ["dep:polars"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -41,6 +40,8 @@ fetiche-macros.workspace = true
 fetiche-sources.workspace = true
 hcl-rs.workspace = true
 nom.workspace = true
+polars.workspace = true
+ractor.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
@@ -53,7 +54,6 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 datafusion = { version = "43", features = ["zstd", "async-compression", "serde"], optional = true }
-polars = { version = "0.44", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json"], optional = true }
 
 [dev-dependencies]
 rstest.workspace = true
