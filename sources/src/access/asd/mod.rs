@@ -17,6 +17,7 @@
 //! [NDJSON]: https://en.wikipedia.org/wiki/NDJSON
 
 use std::fs;
+use std::io::Cursor;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -25,6 +26,10 @@ use std::sync::mpsc::Sender;
 use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use clap::{crate_name, crate_version};
 use eyre::{eyre, Result};
+use polars::datatypes::Int64Chunked;
+use polars::io::SerWriter;
+use polars::prelude::{Column, CsvWriter, IntoColumn, SerReader};
+use polars::prelude::{CsvParseOptions, CsvReadOptions};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -394,7 +399,25 @@ impl Fetchable for Asd {
 
         trace!("Fetched {}", data.filename);
 
-        Ok(out.send(data.content)?)
+        // We need to fix the timestamp field.
+        //
+        let cur = Cursor::new(&data.content);
+        let opts = CsvParseOptions::default().with_try_parse_dates(false);
+        let mut df = CsvReadOptions::default()
+            .with_has_header(true)
+            .with_parse_options(opts)
+            .into_reader_with_file_handle(cur)
+            .finish()?;
+
+        // Fix timestamp by replacing the parsed date with its 64-bit timestamp.
+        //
+        let r = df.apply("timestamp", into_timestamp)?;
+
+        let mut data = vec![];
+        CsvWriter::new(&mut data).finish(r)?;
+
+        let data = String::from_utf8(data).unwrap();
+        Ok(out.send(data)?)
     }
 
     /// Return the site's input formats
@@ -402,6 +425,17 @@ impl Fetchable for Asd {
     fn format(&self) -> Format {
         Format::Asd
     }
+}
+
+/// This is the polars equivalent of the `fix_tm()`  function below.
+///
+fn into_timestamp(col: &Column) -> Column {
+    col.str()
+        .unwrap()
+        .into_iter()
+        .map(|d: Option<&str>| d.map(|d: &str| dateparser::parse(d).unwrap().timestamp()))
+        .collect::<Int64Chunked>()
+        .into_column()
 }
 
 /// ASD is sending us an anonymous JSON array
