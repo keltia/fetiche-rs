@@ -1,3 +1,6 @@
+//! Example on how to use a function to transform a specific column in a Dataframe with polars.
+//!
+
 use eyre::Result;
 use polars::datatypes::Int64Chunked;
 use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, IntoColumn, SerReader};
@@ -22,7 +25,7 @@ fn main() -> Result<()> {
         .finish()?;
 
     let r = df.apply("timestamp", into_timestamp)?;
-    dbg!(r.select_columns(["timestamp"]));
+    dbg!(r.select_columns(["timestamp"])?);
 
     Ok(())
 }
