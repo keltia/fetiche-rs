@@ -4,22 +4,13 @@
 //!
 
 use std::fs;
-use std::io::Write;
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
-#[cfg(feature = "datafusion")]
-use datafusion::{
-    config::TableParquetOptions,
-    dataframe::DataFrameWriteOptions,
-    prelude::{CsvReadOptions, SessionContext},
-};
-#[cfg(feature = "polars")]
 use polars::prelude::*;
 
 use eyre::Result;
-use tempfile::Builder;
-use tokio::runtime::Runtime;
 use tracing::{info, trace};
 
 use fetiche_common::Container;
@@ -64,6 +55,7 @@ impl Save {
 
     /// Set the input path (for files)
     ///
+    #[tracing::instrument(skip(self))]
     pub fn path(&mut self, name: &str) -> &mut Self {
         trace!("Add path: {}", name);
         self.path = match name {
@@ -75,7 +67,7 @@ impl Save {
 
     /// The heart of the matter: save data
     ///
-    #[tracing::instrument(skip(data))]
+    #[tracing::instrument(skip(self, data))]
     pub fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
         trace!("Save::execute()");
 
@@ -94,21 +86,18 @@ impl Save {
                     Format::Asd => {
                         trace!("from asd(csv) to parquet");
 
-                        // Write into temporary file.
-                        //
-                        let mut tmpf = Builder::new().suffix(".csv").tempfile()?;
-                        let _ = tmpf.write(data.as_bytes())?;
+                        let cur = Cursor::new(&data);
+                        let opts = CsvParseOptions::default().with_try_parse_dates(false);
+                        let mut df = CsvReadOptions::default()
+                            .with_has_header(true)
+                            .with_parse_options(opts)
+                            .into_reader_with_file_handle(cur)
+                            .finish()?;
 
-                        let fname = tmpf.path().to_string_lossy().to_string();
-                        info!("fname={}, p={}", fname, p);
+                        info!("writing {}", p);
+                        let mut file = fs::File::create(p)?;
 
-                        // Create tokio runtime
-                        //
-                        let rt = Runtime::new()?;
-
-                        rt.block_on(async {
-                            write_parquet(&fname, p).await.unwrap();
-                        });
+                        ParquetWriter::new(&mut file).finish(&mut df)?;
                     }
                     _ => return Err(EngineStatus::OnlyAsdToParquet.into()),
                 },
@@ -120,49 +109,6 @@ impl Save {
         }
         Ok(())
     }
-}
-
-#[cfg(feature = "datafusion")]
-/// Write parquet through datafusion.
-///
-#[tracing::instrument]
-async fn write_parquet(from: &str, to: &str) -> Result<()> {
-    let ctx = SessionContext::new();
-    let df = ctx
-        .read_csv(from, CsvReadOptions::default().has_header(true))
-        .await?;
-    let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
-
-    let mut options = TableParquetOptions::default();
-    options.global.created_by = "acutectl/save".to_string();
-    options.global.writer_version = "2.0".to_string();
-    options.global.encoding = Some("plain".to_string());
-    options.global.statistics_enabled = Some("page".to_string());
-    options.global.compression = Some("zstd(8)".to_string());
-
-    let _ = df.write_parquet(to, dfopts, Some(options)).await?;
-    Ok(())
-}
-
-#[cfg(feature = "polars")]
-/// Write parquet through Polars
-///
-#[tracing::instrument]
-async fn write_parquet(from: &str, to: &str) -> Result<()> {
-    // nh = no header line (default = false which means has header line).
-    //
-    let header = true;
-
-    let opts = CsvParseOptions::default().with_try_parse_dates(true);
-    let mut df = CsvReadOptions::default()
-        .with_has_header(header)
-        .with_parse_options(opts)
-        .try_into_reader_with_file_path(Some(from.into()))?
-        .finish()?;
-
-    let mut file = fs::File::create(to)?;
-    ParquetWriter::new(&mut file).finish(&mut df)?;
-    Ok(())
 }
 
 impl Default for Save {
