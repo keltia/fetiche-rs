@@ -41,6 +41,7 @@ sites = {
     'Vienna2': 10,
     'Zurich': 11,
     'Cyprus': 12,
+    'Sarajevo': 13,
 }
 
 # CONFIG CHANGE HERE or use -D
