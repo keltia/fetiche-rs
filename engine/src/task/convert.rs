@@ -8,7 +8,6 @@
 use std::sync::mpsc::Sender;
 
 use eyre::Result;
-use serde_json::json;
 use tracing::trace;
 
 use fetiche_formats::{prepare_csv, DronePoint, Format};
