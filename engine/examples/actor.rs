@@ -1,3 +1,6 @@
+//! Example of an actor-wrapped Fetiche engine.
+//!
+
 use eyre::Result;
 use fetiche_engine::Engine;
 use ractor::{async_trait, call, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
