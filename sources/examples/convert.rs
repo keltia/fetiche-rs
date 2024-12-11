@@ -1,4 +1,4 @@
-//! Simple `FusedData` to `DronePoint` streaming converter.
+//! Simple `FusedData`/`CubeData` JSON to `DronePoint` CSV streaming converter.
 //!
 //! Usage: convert [input-file]
 //!
