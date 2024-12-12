@@ -45,8 +45,8 @@ pub(crate) fn make_style(name: &str, colour: &str, size: f64) -> Kml {
 /// Generate a default style list.
 ///
 #[tracing::instrument]
-pub(crate) fn default_styles() -> Kml {
-    r##"
+pub(crate) fn default_styles() -> Vec<Kml<f64>> {
+    let str = r##"
    	<StyleMap id="default">
 		<Pair>
 			<key>normal</key>
@@ -132,9 +132,13 @@ pub(crate) fn default_styles() -> Kml {
 			<width>1.2</width>
 		</LineStyle>
 	</Style>
-    "##
-        .parse()
-        .unwrap()
+    "##;
+
+    let s = str.parse::<Kml>().unwrap();
+    if let Kml::Document { attrs, elements } = s {
+        return elements;
+    }
+    vec![s]
 }
 
 /// Create a `Placemark` given a name (like drone or plane ID) and its trajectory using the
@@ -150,6 +154,7 @@ pub(crate) fn from_traj_to_placemark(
     Ok(Kml::Placemark(Placemark {
         name: Some(name.into()),
         geometry: Some(Geometry::LineString(ls)),
+        style_url: Some(style.into()),
         attrs: HashMap::from([("styleUrl".into(), style.into())]),
         ..Default::default()
     }))
@@ -193,8 +198,9 @@ pub(crate) fn from_point_to_placemark(
     Ok(Kml::Placemark(Placemark {
         name: Some(name.into()),
         description: Some("Closest point".into()),
+        style_url: Some(style_url.into()),
         geometry: Some(Geometry::LineString(ls)),
-        attrs: HashMap::from([("styleUrl".into(), style_url.into())]),
+        attrs: HashMap::new(),
         ..Default::default()
     }))
 }

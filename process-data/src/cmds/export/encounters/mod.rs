@@ -177,15 +177,18 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     let drone = from_traj_to_placemark(&drone_id, &drones, "#msn_ylw-pushpin0")?;
     let plane = from_traj_to_placemark(&prox_callsign, &planes, "#default")?;
 
-    // Not sure why there is no `Kml::Document()` like all others.
-    //
+    let mut elements = def_styles.clone();
+    elements.push(drone);
+    elements.push(plane);
+    elements.push(point);
+
     let doc = Document {
         attrs: [
             ("name".into(), format!("{id}.kml")),
             ("time".into(), encounter_timestamp.to_string()),
         ]
             .into(),
-        elements: vec![def_styles, drone, plane, point],
+        elements: elements.into(),
     };
 
     // Create the final KML
