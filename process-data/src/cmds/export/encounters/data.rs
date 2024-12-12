@@ -71,12 +71,14 @@ pub(crate) async fn fetch_planes(
 ) -> Result<Vec<DataPoint>> {
     // Fetch plane points
     //
+    // We need to convert altitude into meters.
+    //
     let rdp = r##"
 SELECT
   time,
   prox_lat AS latitude,
   prox_lon AS longitude,
-  prox_alt AS altitude
+  (prox_alt * 0.305) AS altitude
 FROM airplanes
 WHERE
   prox_id = $1 AND
@@ -136,7 +138,8 @@ pub(crate) async fn fetch_encounters_on(client: &Client, date: DateOpts) -> Resu
     let en_id_pat = format!("{:4}{:02}{:02}", begin.year(), begin.month(), begin.day());
 
     debug!("en_id_pat={}", en_id_pat);
-    let r = format!(r##"
+    let r = format!(
+        r##"
 SELECT
   en_id
 FROM
@@ -145,7 +148,8 @@ WHERE
   en_id LIKE '%{en_id_pat}%'
 ORDER BY
   en_id
-        "##);
+        "##
+    );
 
     let list = client
         .query_collect::<RawRow>(r)
