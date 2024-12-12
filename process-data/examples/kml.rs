@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use colorsys::Rgb;
+use colorsys::{ColorAlpha, Rgb};
 use dateparser::parse;
 use eyre::Result;
 use klickhouse::Row;
@@ -98,9 +98,11 @@ fn main() -> Result<()> {
 
     println!("{}", String::from_utf8(buf)?);
 
-    let red = Rgb::from((255., 0., 0., 1.0));
+    let mut red = Rgb::from((255., 0., 0.));
+    red.opacify(-0.3);
     let green = Rgb::from((0., 255., 0., 1.0));
 
+    dbg!(&red);
     let red_str = format!("#{}ff", red.to_hex_string());
     let green_str = format!("#{}ff", green.to_hex_string());
 

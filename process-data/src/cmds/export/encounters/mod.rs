@@ -187,7 +187,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
             ("name".into(), format!("{id}.kml")),
             ("time".into(), encounter_timestamp.to_string()),
         ]
-            .into(),
+        .into(),
         elements: elements.into(),
     };
 
@@ -247,8 +247,8 @@ async fn export_encounter_list(
                         }
                     };
                 })
-                    .await
-                    .unwrap();
+                .await
+                .unwrap();
             })
             .collect();
         let _ = join_all(kmls).await;
