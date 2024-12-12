@@ -28,8 +28,14 @@ pub(crate) struct Encounter {
     pub journey: i32,
     pub timestamp: DateTime<Utc>,
     pub drone_id: String,
+    pub drone_lat: f32,
+    pub drone_lon: f32,
+    pub drone_alt_m: f32,
     pub prox_id: String,
     pub prox_callsign: String,
+    pub prox_lat: f32,
+    pub prox_lon: f32,
+    pub prox_alt_m: f32,
 }
 
 #[tracing::instrument(skip(client))]
@@ -101,7 +107,7 @@ pub(crate) async fn fetch_one_encounter(client: &Client, id: &str) -> Result<Enc
     //
     let rp = r##"
 SELECT
-  en_id, journey, time, drone_id, prox_callsign, prox_id
+  en_id, journey, time, drone_id, drone_lat, drone_lon, drone_alt_m, prox_id, prox_callsign, prox_lat, prox_lon, prox_alt_m
 FROM airplane_prox
 WHERE en_id = $1
     "##;

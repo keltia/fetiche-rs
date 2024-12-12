@@ -168,32 +168,24 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     //
     let def_styles = default_styles();
 
-    // Define our styles
+    // Create `Placemark` for the encounter itself.
     //
-    let red = Rgb::from((255., 0., 0., 1.0));
-    let green = Rgb::from((0., 255., 0., 1.0));
-
-    // We need the alpha channel for some reason
-    //
-    let red_str = format!("#{}ff", red.to_hex_string());
-    let green_str = format!("#{}ff", green.to_hex_string());
-
-    let d_style = make_style("droneStyle", &red_str, 4.);
-    let p_style = make_style("planeStyle", &green_str, 4.);
+    let point = from_point_to_placemark("Encounter", &res, "#msn_ylw-pushpin")?;
 
     // Create `Placemark` for each trajectory
     //
-    let drone = from_traj_to_placemark(&drone_id, &drones, "droneStyle")?;
-    let plane = from_traj_to_placemark(&prox_callsign, &planes, "planeStyle")?;
+    let drone = from_traj_to_placemark(&drone_id, &drones, "#msn_ylw-pushpin0")?;
+    let plane = from_traj_to_placemark(&prox_callsign, &planes, "#default")?;
 
     // Not sure why there is no `Kml::Document()` like all others.
     //
     let doc = Document {
         attrs: [
             ("name".into(), format!("{id}.kml")),
-            ("time".into(), encounter_timestamp.to_string())
-        ].into(),
-        elements: vec![def_styles, d_style, p_style, drone, plane],
+            ("time".into(), encounter_timestamp.to_string()),
+        ]
+            .into(),
+        elements: vec![def_styles, drone, plane, point],
     };
 
     // Create the final KML
