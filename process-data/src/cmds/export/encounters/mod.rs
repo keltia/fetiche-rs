@@ -194,7 +194,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     // Create the final KML
     //
     let kml = Kml::KmlDocument(KmlDocument {
-        version: KmlVersion::V23,
+        version: KmlVersion::V22,
         elements: vec![doc],
         ..Default::default()
     });
