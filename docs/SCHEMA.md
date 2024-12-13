@@ -16,7 +16,7 @@ All tables and macros configuration [here](DUCKDB.md)
 
 ```sql
 CREATE
-    DATABASE acute COMMENT 'ACUTE Project data.';
+DATABASE acute COMMENT 'ACUTE Project data.';
 ```
 
 ### Functions
@@ -48,8 +48,8 @@ CREATE TABLE acute.sites
     name         VARCHAR NOT NULL,
     code         VARCHAR NOT NULL,
     basename     VARCHAR NOT NULL,
-    latitude  FLOAT NOT NULL,
-    longitude FLOAT NOT NULL,
+    latitude     FLOAT NOT NULL,
+    longitude    FLOAT NOT NULL,
     ref_altitude FLOAT NOT NULL,
 ) ENGINE MergeTree PRIMARY KEY id ORDER BY id
       COMMENT 'All sites with an antenna in time.';
@@ -86,7 +86,7 @@ CREATE TABLE acute.installations
 
 ```sql
 CREATE
-    OR REPLACE TABLE acute.airplane_prox
+OR REPLACE TABLE acute.airplane_prox
 (
     site             VARCHAR,
     en_id            VARCHAR,
@@ -114,7 +114,7 @@ CREATE
 
 ```sql
 CREATE
-    OR REPLACE TABLE daily_stats
+OR REPLACE TABLE daily_stats
 (
     date       DATE,
     planes     INT,
@@ -133,7 +133,7 @@ parquet files.
 
 ```sql
 CREATE
-    OR REPLACE TABLE acute.airplanes_raw
+OR REPLACE TABLE acute.airplanes_raw
 (
     site                   INT,
     EmitterCategory        INT DEFAULT 3,
@@ -164,7 +164,8 @@ CREATE
 Then we create the view with our more usable names.
 
 ```sql
-CREATE OR REPLACE VIEW acute.airplanes
+CREATE
+OR REPLACE VIEW acute.airplanes
 AS
 (
 SELECT EmitterCategory,
@@ -174,7 +175,7 @@ SELECT EmitterCategory,
        AircraftAddress                AS prox_id,
        Latitude                       AS prox_lat,
        Longitude                      AS prox_lon,
-       GeometricAltitude              AS prox_alt,
+       truncate(GeometricAltitude * 0.305)  AS prox_alt_m,
        FlightLevel                    AS flight_level,
        BarometricVerticalRate         AS baro_vert_rate,
        (GeoVertRateExceeded == '1')   AS geo_vert_exceeded,
@@ -194,7 +195,8 @@ FROM acute.airplanes_raw AS f
 ```
 
 ```sql
-CREATE OR REPLACE TABLE acute.drones_raw
+CREATE
+OR REPLACE TABLE acute.drones_raw
 (
     journey           INT,
     ident             VARCHAR,
@@ -230,7 +232,8 @@ clickhouse client -d acute -q "insert into acute.drones from infile 'data/drones
 AVIONIX streaming data:
 
 ```sql
-CREATE OR REPLACE TABLE acute.avionix_drones_raw
+CREATE
+OR REPLACE TABLE acute.avionix_drones_raw
 (
     uti  INT,
     dat  VARCHAR, ,
@@ -268,7 +271,8 @@ CREATE OR REPLACE TABLE acute.avionix_drones_raw
 Updating the distances:
 
 ```sql
-CREATE OR REPLACE VIEW acute.drones AS
+CREATE
+OR REPLACE VIEW acute.drones AS
 (
 SELECT *,
        toUnixTimestamp(timestamp)                                               as time,
@@ -281,18 +285,29 @@ FROM acute.drones_raw
 Join the main metadata tables to identify the site on which every antenna was installed on in time.
 
 ```sql
-CREATE OR REPLACE VIEW acute.what_where_when AS
+CREATE
+MATERIALIZED VIEW acute.deployments
 (
-SELECT i.id AS install_id,
+    `install_id` Int32,
+    `start_at` DateTime,
+    `end_at` DateTime,
+    `type` String,
+    `antenna_name` String,
+    `site_name` String
+)
+ENGINE = MergeTree
+ORDER BY install_id
+COMMENT 'Find the site for each drone points.'
+AS
+SELECT i.id   AS install_id,
        i.start_at,
        i.end_at,
        a.type,
-       a.name,
-       s.name
-FROM installations AS i,
-     antennas AS a,
-     sites AS s
+       a.name AS antenna_name,
+       s.name AS site_name
+FROM acute.installations AS i,
+     acute.antennas AS a,
+     acute.sites AS s
 WHERE (i.antenna_id = a.id)
-  AND (s.id = i.site_id)
-    ) COMMENT 'Find the site for each drone points.'
+  AND (s.id = i.site_id) 
 ```
