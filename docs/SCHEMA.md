@@ -48,9 +48,9 @@ CREATE TABLE acute.sites
     name         VARCHAR NOT NULL,
     code         VARCHAR NOT NULL,
     basename     VARCHAR NOT NULL,
-    latitude     FLOAT NOT NULL,
-    longitude    FLOAT NOT NULL,
-    ref_altitude FLOAT NOT NULL,
+    latitude     FLOAT   NOT NULL,
+    longitude    FLOAT   NOT NULL,
+    ref_altitude FLOAT   NOT NULL,
 ) ENGINE MergeTree PRIMARY KEY id ORDER BY id
       COMMENT 'All sites with an antenna in time.';
 ```
