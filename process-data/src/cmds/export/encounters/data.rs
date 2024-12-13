@@ -84,7 +84,7 @@ SELECT
   time,
   prox_lat AS latitude,
   prox_lon AS longitude,
-  (prox_alt * 0.305) AS altitude
+  prox_alt_m AS altitude
 FROM airplanes
 WHERE
   prox_id = $1 AND
