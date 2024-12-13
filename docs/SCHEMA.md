@@ -164,33 +164,32 @@ OR REPLACE TABLE acute.airplanes_raw
 Then we create the view with our more usable names.
 
 ```sql
-CREATE
-OR REPLACE VIEW acute.airplanes
+CREATE VIEW acute.airplanes
 AS
 (
 SELECT EmitterCategory,
-       (GBS == 1)                     AS GBS,
+       (GBS == 1) AS GBS,
        ModeA,
-       TimeRecPosition                AS time,
-       AircraftAddress                AS prox_id,
-       Latitude                       AS prox_lat,
-       Longitude                      AS prox_lon,
-       truncate(GeometricAltitude * 0.305)  AS prox_alt_m,
-       FlightLevel                    AS flight_level,
-       BarometricVerticalRate         AS baro_vert_rate,
-       (GeoVertRateExceeded == '1')   AS geo_vert_exceeded,
-       GeometricVerticalRate          AS geo_vert_rate,
-       GroundSpeed                    AS ground_speed,
-       TrackAngle,
-       Callsign                       AS prox_callsign,
-       (AircraftStopped == '1')       AS stopped,
-       (GroundTrackValid == '1')      AS GroundTrackValid,
-       (GroundHeadingProvided == '1') AS GroundHeadingProvided,
-       (MagneticNorth == '1')         AS MagneticNorth,
-       SurfaceGroundSpeed,
-       SurfaceGroundTrack,
-       site
-FROM acute.airplanes_raw AS f
+       TimeRecPosition AS time,
+    AircraftAddress AS prox_id,
+    Latitude AS prox_lat,
+    Longitude AS prox_lon,
+    truncate (GeometricAltitude * 0.305) AS prox_alt_m,
+    FlightLevel AS flight_level,
+    BarometricVerticalRate AS baro_vert_rate,
+    (GeoVertRateExceeded == '1') AS geo_vert_exceeded,
+    GeometricVerticalRate AS geo_vert_rate,
+    GroundSpeed AS ground_speed,
+    TrackAngle,
+    Callsign AS prox_callsign,
+    (AircraftStopped == '1') AS stopped,
+    (GroundTrackValid == '1') AS GroundTrackValid,
+    (GroundHeadingProvided == '1') AS GroundHeadingProvided,
+    (MagneticNorth == '1') AS MagneticNorth,
+    SurfaceGroundSpeed,
+    SurfaceGroundTrack,
+    site
+FROM acute.airplanes_raw
     ) COMMENT 'View for airplanes data.'
 ```
 

@@ -77,7 +77,7 @@ AS SELECT
   prox_callsign AS callsign,
   prox_lon AS plon,
   prox_lat AS plat,
-  CAST(prox_alt AS DOUBLE) * 0.305 AS palt
+  prox_alt_m AS palt
 FROM
   airplanes
 WHERE
@@ -266,7 +266,8 @@ WHERE
         //
         let mut count = match dbh
             .query_one::<RawRow>(&format!("SELECT COUNT() FROM today_close{tag}"))
-            .await {
+            .await
+        {
             Ok(count) => count,
             Err(_) => {
                 error!("today_close{tag} was not created, assume 0.");
