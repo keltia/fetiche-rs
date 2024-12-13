@@ -30,7 +30,7 @@ pub(crate) struct Encounter {
     pub drone_id: String,
     pub drone_lat: f32,
     pub drone_lon: f32,
-    pub drone_alt_m: u32,
+    pub drone_alt_m: f32,
     pub prox_id: String,
     pub prox_callsign: String,
     pub prox_lat: f32,
