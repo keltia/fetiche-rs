@@ -13,26 +13,23 @@
 //!
 
 use std::collections::BTreeMap;
-use std::io::Write;
+use std::fs;
+use std::io::Cursor;
 
 use chrono::prelude::*;
 use clap::{crate_authors, crate_version, Parser};
-use datafusion::config::{CsvOptions, TableParquetOptions};
-use datafusion::dataframe::DataFrameWriteOptions;
-use datafusion::prelude::*;
 use eyre::{eyre, Result};
-use inline_python::{Context, python};
-use tempfile::Builder;
+use inline_python::{python, Context};
+use polars::io::SerReader;
+use polars::prelude::{CsvParseOptions, CsvReadOptions, ParquetWriter};
 use tracing::{info, trace};
 
-use fetiche_common::{BB, list_locations, load_locations, Location};
+use fetiche_common::{init_logging, list_locations, load_locations, Location, BB};
 
-use crate::cli::{banner, Opts, Otype, version};
-use crate::init::init_runtime;
+use crate::cli::{banner, version, Opts, Otype};
 use crate::segment::extract_segments;
 
 mod cli;
-mod init;
 mod segment;
 
 /// Binary name, using a different binary name
@@ -51,7 +48,7 @@ async fn main() -> Result<()> {
 
     // Initialise logging.
     //
-    init_runtime(NAME)?;
+    init_logging(NAME, false, false, None)?;
 
     // Banner
     //
@@ -85,14 +82,14 @@ async fn main() -> Result<()> {
         Some(start) => dateparser::parse(&start),
         None => Ok(Utc::now()),
     }
-        .unwrap();
+    .unwrap();
     trace!("start={}", start);
 
     let end = match opts.end {
         Some(end) => dateparser::parse(&end),
         None => Ok(Utc::now()),
     }
-        .unwrap();
+    .unwrap();
     trace!("end={}", end);
 
     // Convert into UNIX timestamps
@@ -157,29 +154,24 @@ async fn main() -> Result<()> {
     //
     trace!("data={}", &data);
 
-    // Write into temporary file.
-    //
-    let mut tmpf = Builder::new().suffix(".csv").tempfile()?;
-    let _ = tmpf.write(data.as_bytes())?;
-
-    let ctx = SessionContext::new();
-    let fname = tmpf.path().to_string_lossy().to_string();
-    let df = ctx.read_csv(fname, CsvReadOptions::default().has_header(false)).await?;
-    let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
-
     let output = opts.output;
 
     if opts.otype == Otype::Parquet {
-        let mut options = TableParquetOptions::default();
-        options.global.created_by = "acutectl/save".to_string();
-        options.global.encoding = Some("plain".to_string());
-        options.global.statistics_enabled = Some("page".to_string());
-        options.global.compression = Some("zstd(8)".to_string());
+        let cur = Cursor::new(data);
 
-        let _ = df.write_parquet(&output, dfopts, Some(options)).await?;
+        let opts = CsvParseOptions::default().with_try_parse_dates(false);
+        let mut df = CsvReadOptions::default()
+            .with_has_header(true)
+            .with_parse_options(opts)
+            .into_reader_with_file_handle(cur)
+            .finish()?;
+
+        info!("writing {}", output);
+        let mut file = fs::File::create(output)?;
+
+        ParquetWriter::new(&mut file).finish(&mut df)?;
     } else {
-        let props = CsvOptions::default();
-        let _ = df.write_csv(&output, dfopts, Some(props)).await?;
+        fs::write(output, data)?;
     }
     Ok(())
 }
