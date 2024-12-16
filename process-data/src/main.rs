@@ -60,11 +60,12 @@ async fn main() -> Result<()> {
 ///
 fn banner() -> Result<()> {
     let ver = format!("{} v{}+clickhouse", NAME, VERSION);
-    Ok(eprintln!(
+    eprintln!(
         r##"
 {ver} by {AUTHORS}
 {}
 "##,
         crate_description!()
-    ))
+    );
+    Ok(())
 }

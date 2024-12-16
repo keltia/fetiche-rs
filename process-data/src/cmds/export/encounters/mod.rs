@@ -12,7 +12,6 @@ use create::*;
 use data::*;
 
 use clap::Parser;
-use colorsys::Rgb;
 use eyre::Result;
 use fetiche_common::DateOpts;
 use futures::future::join_all;
@@ -186,7 +185,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
             ("time".into(), encounter_timestamp.to_string()),
         ]
         .into(),
-        elements: elements.into(),
+        elements,
     };
 
     // Create the final KML
