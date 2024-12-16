@@ -185,7 +185,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
             ("time".into(), encounter_timestamp.to_string()),
         ]
         .into(),
-        elements: elements.into(),
+        elements,
     };
 
     // Create the final KML

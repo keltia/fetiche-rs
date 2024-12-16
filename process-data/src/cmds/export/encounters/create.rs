@@ -135,7 +135,7 @@ pub(crate) fn default_styles() -> Vec<Kml<f64>> {
     "##;
 
     let s = str.parse::<Kml>().unwrap();
-    if let Kml::Document { attrs, elements } = s {
+    if let Kml::Document { elements, .. } = s {
         return elements;
     }
     vec![s]
@@ -168,7 +168,7 @@ pub(crate) fn from_point_to_placemark(
     res: &Encounter,
     style_url: &str,
 ) -> eyre::Result<Kml> {
-    let points = vec![
+    let points = [
         DataPoint {
             latitude: res.drone_lat as f64,
             longitude: res.drone_lon as f64,
