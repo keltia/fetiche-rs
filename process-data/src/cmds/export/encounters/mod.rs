@@ -142,11 +142,6 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     let encounter_timestamp = res.timestamp;
     let drone_id = res.drone_id.clone();
 
-    // ICAO string is unique, whereas callsign can change
-    //
-    let prox_id = res.prox_id.clone();
-    let prox_callsign = res.prox_callsign.clone();
-
     let drones = fetch_drones(&client, journey, &drone_id).await?;
     if drones.len() <= 1 {
         return Err(Status::NotEnoughData("drones".to_string()).into());
@@ -157,8 +152,11 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     let first = drones.first().unwrap().timestamp;
     let last = drones.last().unwrap().timestamp;
 
-    // We use `prox_id` because this one does not change whereas callsign can and will
+    // ICAO string is unique, whereas callsign can change
     //
+    let prox_id = res.prox_id.clone();
+    let prox_callsign = res.prox_callsign.clone();
+
     let planes = fetch_planes(&client, &prox_id, first, last).await?;
     if planes.len() <= 1 {
         return Err(Status::NotEnoughData("planes".to_string()).into());
