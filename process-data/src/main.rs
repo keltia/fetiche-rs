@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
     //
     let ctx = init_runtime(&opts).await?;
 
-    banner()?;
+    eprintln!("{}", banner()?);
 
     trace!("Execute commands.");
     match &opts.subcmd {
@@ -58,14 +58,13 @@ async fn main() -> Result<()> {
 
 /// Display banner
 ///
-fn banner() -> Result<()> {
+fn banner() -> Result<String> {
     let ver = format!("{} v{}+clickhouse", NAME, VERSION);
-    eprintln!(
+    Ok(format!(
         r##"
 {ver} by {AUTHORS}
 {}
 "##,
         crate_description!()
-    );
-    Ok(())
+    ))
 }
