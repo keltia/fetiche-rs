@@ -107,7 +107,17 @@ pub enum SubCommand {
 
 /// Options for extracting streaming data and archive it.
 #[derive(Debug, Parser)]
-pub struct ArchvOpts;
+pub struct ArchvOpts {
+    /// Job number (default will be current)
+    #[clap(short = 'j', long)]
+    pub job: Option<usize>,
+    /// Site name.
+    pub site: String,
+    /// Output file, extension will be used for finding final format.
+    pub output: String,
+}
+
+// ------
 
 /// Options for fetching data with basic filtering and an optional output file.
 ///
