@@ -3,6 +3,11 @@
 
 version = 1
 
+cmds "archive" {
+  type        = "Consumer"
+  description = "Take files from the runtime directory and archive it."
+}
+
 cmds "convert" {
   type        = "Filter"
   description = "Convert between the various formats into Cat21."
