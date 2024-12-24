@@ -80,6 +80,7 @@ pub struct Opts {
 
 /// All sub-commands:
 ///
+/// `archive`
 /// `completion SHELL`
 /// `fetch [-B date] [-E date] [--today] [-o FILE] site`
 /// `import (file|site) OPTS`
@@ -87,6 +88,7 @@ pub struct Opts {
 ///
 #[derive(Debug, Parser)]
 pub enum SubCommand {
+    Archive(ArchvOpts),
     /// Generate Completion stuff
     Completion(ComplOpts),
     /// Convert between formats
@@ -99,6 +101,20 @@ pub enum SubCommand {
     Stream(StreamOpts),
     /// List all package versions
     Version,
+}
+
+// ------
+
+/// Options for extracting streaming data and archive it.
+#[derive(Debug, Parser)]
+pub struct ArchvOpts {
+    /// Job number (default will be current)
+    #[clap(short = 'j', long)]
+    pub job: Option<usize>,
+    /// Site name.
+    pub site: String,
+    /// Output file, extension will be used for finding final format.
+    pub output: String,
 }
 
 // ------
@@ -250,6 +266,10 @@ pub struct ConvertOpts {
 #[tracing::instrument(skip(engine))]
 pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
     match subcmd {
+        // Handle `archive site`
+        //
+        SubCommand::Archive(_aopts) => todo!(),
+
         // Handle `fetch site`
         //
         SubCommand::Fetch(fopts) => {
