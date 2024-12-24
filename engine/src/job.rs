@@ -72,7 +72,7 @@ impl Job {
     ///
     /// The returned value is the last "output" channel which is the result of the pipeline run.
     ///
-    /// For now we ignore the handle for all threads, should we store them and `join()` later?  They
+    /// For now, we ignore the handle for all threads, should we store them and `join()` later?  They
     /// are launched in parallel but each one depends on the reading of the "in" pipe.
     ///
     /// By using only channels between all threads, we should avoid any issues with passing something
