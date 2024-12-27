@@ -11,6 +11,28 @@ use fetiche_formats::Format;
 use fetiche_sources::Sources;
 
 impl Engine {
+    /// Returns the path of the default state file in basedir
+    ///
+    #[inline]
+    pub fn state_file(&self) -> PathBuf {
+        self.home.join(STATE_FILE)
+    }
+
+    /// Sync all state into a file
+    ///
+    #[tracing::instrument(skip(self))]
+    pub fn sync(&self) -> Result<()> {
+        trace!("engine::sync");
+        let mut data = self.state.write().unwrap();
+        *data = State {
+            tm: Utc::now().timestamp(),
+            last: *data.queue.back().unwrap_or(&1),
+            queue: data.queue.clone(),
+        };
+        let data = json!(*data).to_string();
+        Ok(fs::write(self.state_file(), data)?)
+    }
+
     /// Return an `Arc::clone` of the Engine sources
     ///
     pub fn sources(&self) -> Arc<Sources> {
