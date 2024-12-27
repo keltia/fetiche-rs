@@ -2777,6 +2777,7 @@ version = "0.24.0"
 dependencies = [
  "chrono",
  "datafusion",
+ "enum_dispatch",
  "env_logger",
  "eyre",
  "fetiche-common",

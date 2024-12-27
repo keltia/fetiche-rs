@@ -34,7 +34,7 @@
 //! FIXME: at some point, a `[u8]`  might be preferable to a `String`.
 //!
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
@@ -43,6 +43,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
+use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::Deserialize;
 use strum::EnumString;
@@ -55,7 +56,8 @@ use fetiche_sources::Sources;
 
 pub use error::*;
 pub use job::*;
-pub use parse::*;
+//pub use parse::*;
+pub use queue::*;
 pub use state::*;
 pub use storage::*;
 pub use task::*;
@@ -63,7 +65,8 @@ pub use tokens::*;
 
 mod error;
 mod job;
-mod parse;
+//mod parse;
+mod queue;
 mod state;
 mod storage;
 mod task;
@@ -127,7 +130,7 @@ pub struct Engine {
     /// Current state
     pub state: Arc<RwLock<State>>,
     /// Job Queue
-    pub jobs: Arc<RwLock<VecDeque<usize>>>,
+    pub jobs: Arc<RwLock<JobQueue>>,
 }
 
 impl Engine {
@@ -207,7 +210,7 @@ impl Engine {
         };
         trace!("state={:?}", state);
 
-        let jobs = VecDeque::<usize>::new();
+        let jobs = JobQueue::new();
 
         // Instantiate everything
         //
@@ -245,10 +248,7 @@ impl Engine {
         // Insert into job queue
         //
         let mut jobs = self.jobs.write().unwrap();
-        jobs.push_back(nextid);
-
-        // Ensure lock goes away
-        //
+        jobs.add(job.clone());
         drop(jobs);
 
         // Update state
@@ -256,9 +256,6 @@ impl Engine {
         let mut state = self.state.write().unwrap();
         state.last = nextid;
         state.queue.push_back(nextid);
-
-        // Ensure lock goes away
-        //
         drop(state);
 
         trace!("job {} created.", nextid);
@@ -282,6 +279,18 @@ impl Engine {
 
         trace!("sync");
         self.sync()
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub fn get_job(&self, id: usize) -> Result<Job> {
+        let state = self.jobs.read().unwrap();
+        let job = match state.get(id) {
+            Some(job) => job,
+            None => {
+                return Err(EngineStatus::JobNotFound(id).into());
+            }
+        };
+        Ok(job.clone())
     }
 
     /// Return an `Arc::clone` of the Engine sources
@@ -377,6 +386,7 @@ pub enum IO {
 /// ```
 ///
 ///
+#[enum_dispatch(Task)]
 pub trait Runnable: Debug {
     fn cap(&self) -> IO;
     fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);

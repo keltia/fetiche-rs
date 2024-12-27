@@ -3,9 +3,9 @@
 
 use std::collections::BTreeMap;
 
+use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::Deserialize;
-use strum::EnumIter;
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
@@ -31,9 +31,10 @@ mod store;
 mod stream;
 mod tee;
 
-#[derive(Debug, strum::Display, strum::VariantNames, EnumIter, PartialEq)]
+#[enum_dispatch]
+#[derive(Clone, Debug, strum::Display, strum::VariantNames)]
 #[strum(serialize_all = "PascalCase")]
-pub enum Cmds {
+pub enum Task {
     /// Extract streaming data and generate csv/parquet.
     Archive,
     /// Convert between `Format`
