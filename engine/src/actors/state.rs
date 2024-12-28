@@ -19,6 +19,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{info, trace};
 
+/// Main state data file, will be created in `basedir`.
+pub(crate) const STATE_FILE: &str = "state";
+
 /// The actor itself.
 ///
 pub struct StateActor;
@@ -31,8 +34,6 @@ pub enum StateMsg {
     Remove(usize),
     /// Get next available id.
     Next(RpcReplyPort<usize>),
-    /// Save current PID to file.
-    SavePid(PathBuf),
     /// Get current PID.
     GetPid(RpcReplyPort<u32>),
     /// Sync unto state file on disk.
@@ -43,7 +44,7 @@ pub enum StateMsg {
 pub struct State {
     /// Our state file path.
     #[serde(skip_deserializing, skip_serializing)]
-    pub fname: String,
+    pub fname: PathBuf,
     /// Timestamp of last sync
     pub tm: i64,
     /// Last job ID
@@ -61,7 +62,7 @@ pub struct StateArgs;
 impl Actor for StateActor {
     type Msg = StateMsg;
     type State = State;
-    type Arguments = String;
+    type Arguments = PathBuf;
 
     async fn pre_start(
         &self,
@@ -69,9 +70,20 @@ impl Actor for StateActor {
         args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
         trace!("stateactor::pre_start({:?}", args);
-        let data = fs::read_to_string(&args)?;
+
+        let basedir = args.clone();
+        let fname = basedir.join(STATE_FILE);
+
+        let data = fs::read_to_string(&fname)?;
         let mut data: State = serde_json::from_str(&data)?;
-        data.fname = args.clone();
+
+        data.fname = fname;
+        data.pid = std::process::id();
+
+        let pidfile = basedir.join(ENGINE_PID);
+        fs::write(&pidfile, format!("{}", data.pid))
+            .unwrap_or_else(|_| panic!("can not write {}", pidfile.to_string_lossy()));
+        info!("PID {} written in {:?}", data.pid, pidfile);
         myself.send_interval(Duration::from_secs(30), || StateMsg::Sync);
 
         Ok(data)
@@ -102,17 +114,6 @@ impl Actor for StateActor {
                 trace!("stateactor::next({})", state.last);
 
                 sender.send(state.last + 1)?;
-            }
-            StateMsg::SavePid(dir) => {
-                trace!("stateactor::savepid({:?})", dir);
-
-                let pid = std::process::id();
-                state.pid = pid;
-                let pidfile = dir.join(ENGINE_PID);
-                fs::write(&pidfile, format!("{pid}"))
-                    .unwrap_or_else(|_| panic!("can not write {}", pidfile.to_string_lossy()));
-
-                info!("PID {} written in {:?}", pid, pidfile);
             }
             StateMsg::GetPid(sender) => {
                 trace!("stateactor::getpid()");

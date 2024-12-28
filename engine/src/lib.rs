@@ -33,44 +33,42 @@
 //!
 //! FIXME: at some point, a `[u8]`  might be preferable to a `String`.
 //!
-
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::fs;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
+use ractor::{call, cast, Actor, ActorRef};
 use serde::Deserialize;
 use strum::EnumString;
 use tracing::{debug, error, info, trace, warn};
 
-use fetiche_common::{ConfigFile, Container, IntoConfig, Versioned};
-use fetiche_formats::Format;
+use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
-use fetiche_sources::Sources;
 
-pub use actors::*;
+//pub use parse::*;
 pub use error::*;
 pub use job::*;
-//pub use parse::*;
 pub use queue::*;
-pub use state::*;
+//pub use state::*;
 pub use storage::*;
 pub use subr::*;
 pub use task::*;
 pub use tokens::*;
+
+use crate::actors::*;
 
 mod actors;
 mod error;
 mod job;
 //mod parse;
 mod queue;
-mod state;
+//mod state;
 mod storage;
 mod subr;
 mod task;
@@ -90,9 +88,6 @@ const ENGINE_PID: &str = "acutectl.pid";
 
 /// Configuration file version
 const ENGINE_VERSION: usize = 2;
-
-/// Main state data file, will be created in `basedir`.
-pub(crate) const STATE_FILE: &str = "state";
 
 /// Configuration file format
 #[into_configfile(version = 2, filename = "engine.hcl")]
@@ -122,17 +117,17 @@ pub struct Engine {
     /// Current process DI
     pub pid: u32,
     /// Next job ID
-    pub next: Arc<AtomicUsize>,
+    pub next: usize,
     /// Main area where state is saved (PID, jobs, etc.)
     pub home: Arc<PathBuf>,
     /// Sources
-    pub sources: Arc<Sources>,
+    pub sources: ActorRef<SourcesMsg>,
     /// Storage area for long-running jobs
     pub storage: Arc<Storage>,
     /// Storage are for auth tokens
     pub tokens: Arc<TokenStorage>,
     /// Current state
-    pub state: Arc<RwLock<State>>,
+    pub state: ActorRef<StateMsg>,
     /// Job Queue
     pub jobs: Arc<RwLock<JobQueue>>,
 }
@@ -141,12 +136,12 @@ impl Engine {
     /// Create an instance
     ///
     #[tracing::instrument]
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         trace!("new engine");
 
         // Load storage areas from `engine.hcl`
         //
-        Self::load(ENGINE_CONFIG).unwrap_or_else(|e| {
+        Self::load(ENGINE_CONFIG).await.unwrap_or_else(|e| {
             error!("Can not create Engine: {}", e.to_string());
             panic!("Error: {e}")
         })
@@ -157,7 +152,7 @@ impl Engine {
     /// Takes a string or anything that can be turned into a `PathBuf`.
     ///
     #[tracing::instrument]
-    pub fn load(fname: &str) -> Result<Self> {
+    pub async fn load(fname: &str) -> Result<Self> {
         trace!("reading({:?}", fname);
 
         let root = ConfigFile::<EngineConfig>::load(Some(fname))?;
@@ -172,9 +167,22 @@ impl Engine {
             return Err(EngineStatus::BadConfigVersion(cfg.version(), ENGINE_VERSION).into());
         }
 
+        // ----- Start actors
+        //
+
+        // Start sources service
+        //
         trace!("load sources");
-        let src = Sources::load()?;
-        info!("{} sources loaded", src.len());
+        let (src, _h) = Actor::spawn(Some("engine::sources".into()), SourcesActor, ()).await?;
+        let count = call!(src, |port| SourcesMsg::Count(port))?;
+        info!("{} sources loaded", count);
+
+        // Start state service
+        //
+        trace!("load state.");
+        let (state, _h) =
+            Actor::spawn(Some("engine::state".into()), StateActor, home.clone()).await?;
+        trace!("state={:?}", state);
 
         // Register storage areas
         //
@@ -189,50 +197,34 @@ impl Engine {
         let tokens = TokenStorage::register(&tokens_area);
         info!("{} tokens loaded", tokens.len());
 
-        // Save PID
+        // Get PID from the state service
         //
-        let pid = std::process::id();
-        let pidfile = home.join(ENGINE_PID);
-        fs::write(&pidfile, format!("{pid}"))
-            .unwrap_or_else(|_| panic!("can not write {}", pidfile.to_string_lossy()));
+        let pid = call!(state, |port| StateMsg::GetPid(port))?;
 
-        info!("PID {} written in {:?}", pid, pidfile);
-
-        // Load state
+        // Sync is every 30s
         //
-        let fname = home.join(STATE_FILE);
-        let state = match State::from(fname.clone()) {
-            Ok(state) => {
-                info!("State loaded from {}", fname.to_string_lossy());
-                debug!("{:?}", state);
-                state
-            }
-            Err(e) => {
-                warn!("Can not load state, creating new: {}", e.to_string());
-                State::new()
-            }
-        };
-        trace!("state={:?}", state);
+        let _ = state.send_interval(Duration::from_secs(30), || StateMsg::Sync);
 
         let jobs = JobQueue::new();
+        let last = call!(state, |port| StateMsg::Next(port))?;
 
         // Instantiate everything
         //
         let engine = Engine {
             pid,
-            next: Arc::new(AtomicUsize::new(state.last + 1)),
-            home: Arc::new(home.clone()),
-            sources: Arc::new(src.clone()),
+            next: last,
+            home: Arc::new(home),
+            sources: src.clone(),
             storage: Arc::new(areas),
             tokens: Arc::new(tokens),
-            state: Arc::new(RwLock::new(state)),
+            state: state.clone(),
             jobs: Arc::new(RwLock::new(jobs)),
         };
-        info!("New Engine loaded");
+        info!("New Engine loaded pid={}", pid);
 
         // Sync immediately, ensuring state is clean
         //
-        engine.sync().expect("can not sync");
+        let _ = cast!(state, StateMsg::Sync);
 
         Ok(engine)
     }
@@ -240,10 +232,10 @@ impl Engine {
     /// Create a new job queue
     ///
     #[tracing::instrument(skip(self))]
-    pub fn create_job(&mut self, s: &str) -> Job {
+    pub async fn create_job(&mut self, s: &str) -> Result<Job> {
         // Fetch next ID
         //
-        let nextid = self.next.fetch_add(1, Ordering::SeqCst);
+        let nextid = call!(self.state, |port| StateMsg::Next(port))?;
 
         // Initialise job
         //
@@ -257,15 +249,12 @@ impl Engine {
 
         // Update state
         //
-        let mut state = self.state.write().unwrap();
-        state.last = nextid;
-        state.queue.push_back(nextid);
-        drop(state);
+        let _ = cast!(self.state, StateMsg::Add(nextid))?;
 
         trace!("job {} created.", nextid);
-        self.sync().expect("can not sync");
+        self.sync()?;
 
-        job
+        Ok(job)
     }
 
     /// Remove a job
@@ -274,12 +263,7 @@ impl Engine {
     pub fn remove_job(&mut self, job: Job) -> Result<()> {
         trace!("grab lock");
 
-        let mut state = self.state.try_write().unwrap();
-        state.remove_job(job.id);
-
-        // Prevent deadlock by dropping ownership here, must be a better way to handle this
-        //
-        drop(state);
+        let _ = cast!(self.state, StateMsg::Remove(job.id))?;
 
         trace!("sync");
         self.sync()

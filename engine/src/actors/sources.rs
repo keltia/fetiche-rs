@@ -8,6 +8,7 @@ use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 pub enum SourcesMsg {
     Get(String),
     Count(RpcReplyPort<usize>),
+    List(RpcReplyPort<Sources>),
 }
 
 pub struct SourcesActor;
