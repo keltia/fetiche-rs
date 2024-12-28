@@ -89,6 +89,9 @@ const ENGINE_PID: &str = "acutectl.pid";
 /// Configuration file version
 const ENGINE_VERSION: usize = 2;
 
+/// Engine process group for the actors
+const ENGINE_PG: &str = "engine.pg";
+
 /// Configuration file format
 #[into_configfile(version = 2, filename = "engine.hcl")]
 #[derive(Clone, Debug, Default, Deserialize)]

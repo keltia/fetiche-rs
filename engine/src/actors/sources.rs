@@ -1,8 +1,9 @@
 //! Actor maintaining the different sources we have loaded.
 //!
 
+use crate::ENGINE_PG;
 use fetiche_sources::Sources;
-use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
 #[derive(Debug)]
 pub enum SourcesMsg {
@@ -21,9 +22,11 @@ impl Actor for SourcesActor {
 
     async fn pre_start(
         &self,
-        _myself: ActorRef<Self::Msg>,
+        myself: ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
+        pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
+
         let sources = Sources::load()?;
         Ok(sources)
     }

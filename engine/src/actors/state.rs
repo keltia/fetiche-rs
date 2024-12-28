@@ -12,12 +12,13 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::ENGINE_PID;
 use chrono::Utc;
-use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{info, trace};
+
+use crate::{ENGINE_PG, ENGINE_PID};
 
 /// Main state data file, will be created in `basedir`.
 pub(crate) const STATE_FILE: &str = "state";
@@ -85,6 +86,8 @@ impl Actor for StateActor {
             .unwrap_or_else(|_| panic!("can not write {}", pidfile.to_string_lossy()));
         info!("PID {} written in {:?}", data.pid, pidfile);
         myself.send_interval(Duration::from_secs(30), || StateMsg::Sync);
+
+        pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
 
         Ok(data)
     }
