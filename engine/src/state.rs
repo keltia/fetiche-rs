@@ -8,10 +8,7 @@ use std::path::PathBuf;
 use chrono::Utc;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tracing::trace;
-
-use crate::{Engine, STATE_FILE};
 
 /// Register the state of the running `Engine`.
 ///
