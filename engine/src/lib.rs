@@ -54,6 +54,7 @@ use fetiche_formats::Format;
 use fetiche_macros::into_configfile;
 use fetiche_sources::Sources;
 
+pub use actors::*;
 pub use error::*;
 pub use job::*;
 //pub use parse::*;
@@ -64,6 +65,7 @@ pub use subr::*;
 pub use task::*;
 pub use tokens::*;
 
+mod actors;
 mod error;
 mod job;
 //mod parse;
