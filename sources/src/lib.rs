@@ -104,6 +104,40 @@ impl Display for Stats {
     }
 }
 
+/// We have three different traits now
+///
+#[enum_dispatch]
+#[derive(Debug)]
+pub enum Flow {
+    Fetchable(Box<dyn Fetchable>),
+    Streamable(Box<dyn Streamable>),
+    AsyncStreamable(Box<dyn AsyncStreamable>),
+}
+
+impl Flow {
+    /// Return the name of the underlying object
+    ///
+    #[inline]
+    pub fn name(&self) -> String {
+        match self {
+            Flow::Fetchable(s) => s.name(),
+            Flow::Streamable(s) => s.name(),
+            Flow::AsyncStreamable(s) => s.name(),
+        }
+    }
+
+    /// Return the format of the underlying object
+    ///
+    #[inline]
+    pub fn format(&self) -> Format {
+        match self {
+            Flow::Fetchable(s) => s.format(),
+            Flow::Streamable(s) => s.format(),
+            Flow::AsyncStreamable(s) => s.format(),
+        }
+    }
+}
+
 /// This trait enables us to manage different ways of connecting and fetching data under
 /// a single interface.
 ///

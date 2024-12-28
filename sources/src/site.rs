@@ -14,6 +14,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tracing::trace;
@@ -35,7 +36,10 @@ use crate::Safesky;
 #[cfg(feature = "senhive")]
 use crate::Senhive;
 
-use crate::{AccessError, AsyncStreamable, Auth, AvionixServer, Capability, Fetchable, Routes, Sources, Streamable};
+use crate::{
+    AccessError, AsyncStreamable, Auth, AvionixServer, Capability, Fetchable, Flow, Routes,
+    Sources, Streamable,
+};
 
 /// Describe what a site is, its capabilities, access methods and authentication method.
 ///
@@ -101,39 +105,6 @@ impl Display for DataType {
     }
 }
 
-/// We have two different traits now
-///
-#[derive(Debug)]
-pub enum Flow {
-    Fetchable(Box<dyn Fetchable>),
-    Streamable(Box<dyn Streamable>),
-    AsyncStreamable(Box<dyn AsyncStreamable>),
-}
-
-impl Flow {
-    /// Return the name of the underlying object
-    ///
-    #[inline]
-    pub fn name(&self) -> String {
-        match self {
-            Flow::Fetchable(s) => s.name(),
-            Flow::Streamable(s) => s.name(),
-            Flow::AsyncStreamable(s) => s.name(),
-        }
-    }
-
-    /// Return the format of the underlying object
-    ///
-    #[inline]
-    pub fn format(&self) -> Format {
-        match self {
-            Flow::Fetchable(s) => s.format(),
-            Flow::Streamable(s) => s.format(),
-            Flow::AsyncStreamable(s) => s.format(),
-        }
-    }
-}
-
 impl Site {
     /// Basic `new()`
     ///
@@ -143,6 +114,8 @@ impl Site {
     }
 
     /// Load site by checking whether it is present in the configuration file
+    ///
+    /// FIXME: this API is horrible.
     ///
     #[tracing::instrument(skip(cfg))]
     pub fn load(name: &str, cfg: &Sources) -> Result<Flow> {
