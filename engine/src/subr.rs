@@ -1,19 +1,19 @@
 //! Misc. utility members for `Engine`.
 //!
 
-use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use chrono::Utc;
 use eyre::Result;
-use serde_json::json;
+use ractor::{call, cast};
 use tracing::trace;
 
-use crate::{version, Engine, State, Storage, STATE_FILE};
 use fetiche_common::Container;
 use fetiche_formats::Format;
 use fetiche_sources::Sources;
+
+use crate::actors::{SourcesMsg, StateMsg};
+use crate::{version, Engine, Storage, STATE_FILE};
 
 impl Engine {
     /// Returns the path of the default state file in basedir
@@ -26,22 +26,18 @@ impl Engine {
     /// Sync all state into a file
     ///
     #[tracing::instrument(skip(self))]
+    #[inline]
     pub fn sync(&self) -> Result<()> {
         trace!("engine::sync");
-        let mut data = self.state.write().unwrap();
-        *data = State {
-            tm: Utc::now().timestamp(),
-            last: *data.queue.back().unwrap_or(&1),
-            queue: data.queue.clone(),
-        };
-        let data = json!(*data).to_string();
-        Ok(fs::write(self.state_file(), data)?)
+
+        Ok(cast!(self.state, StateMsg::Sync)?)
     }
 
     /// Return an `Arc::clone` of the Engine sources
     ///
-    pub fn sources(&self) -> Arc<Sources> {
-        Arc::clone(&self.sources)
+    pub async fn sources(&self) -> Result<Sources> {
+        let src = call!(self.sources, |port| SourcesMsg::List(port))?;
+        Ok(src)
     }
 
     /// Return an `Arc::clone` of the Engine storage areas
@@ -58,8 +54,10 @@ impl Engine {
 
     /// Return a description of all supported sources
     ///
-    pub fn list_sources(&self) -> Result<String> {
-        self.sources.list()
+    pub async fn list_sources(&self) -> Result<String> {
+        let src = call!(self.sources, |port| SourcesMsg::List(port))?;
+        let str = src.list()?;
+        Ok(str)
     }
 
     /// Return a descriptions of all supported data formats
