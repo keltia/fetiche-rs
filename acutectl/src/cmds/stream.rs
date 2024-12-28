@@ -1,8 +1,8 @@
 use std::fs::File;
 use std::io::stdout;
 
-use eyre::{eyre, Result};
-use fetiche_engine::{Convert, Engine, Store, Stream, Tee};
+use eyre::Result;
+use fetiche_engine::{Convert, Engine, Store, Stream, Task, Tee};
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 use tracing::{debug, error, info, trace};
@@ -12,14 +12,14 @@ use crate::{Status, StreamOpts};
 /// Actual fetching of data from a given site
 ///
 #[tracing::instrument(skip(engine))]
-pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
+pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
     trace!("stream_from_site({:?})", sopts.site);
 
     check_args(sopts)?;
 
     let name = &sopts.site;
-    let srcs = engine.sources().clone();
-    let site = Site::load(name, &engine.sources())?;
+    let srcs = engine.sources().await?.clone();
+    let site = Site::load(name, &srcs)?;
     debug!("{:?}", site);
     match site {
         Flow::Streamable(_) => (),
@@ -37,17 +37,18 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
     //
     let mut task = Stream::new(name, srcs);
     task.site(name.to_string()).with(filter);
+    let task = Task::from(task);
 
     // Create job with first task
     //
-    let mut job = engine.create_job("stream_from_site");
-    job.add(Box::new(task));
+    let mut job = engine.create_job("stream_from_site").await?;
+    let _ = job.add(task);
 
     // Do we want a copy of the raw data (often before converting it)
     //
     if let Some(tee) = &sopts.tee {
-        let copy = Tee::into(tee);
-        job.add(Box::new(copy));
+        let copy = Task::from(Tee::into(tee));
+        let _ = job.add(copy);
     }
 
     // If a conversion is requested, insert it
@@ -57,7 +58,8 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
     if let Some(_into) = &sopts.into {
         let mut convert = Convert::new();
         convert.from(site.format()).into(Format::Cat21);
-        job.add(Box::new(convert));
+        let convert = Task::from(convert);
+        let _ = job.add(convert);
     };
 
     // If split is required, add a consumer for it at the end.
@@ -68,8 +70,8 @@ pub fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
 
         // Store must be the last one, it is a pure consumer
         //
-        let store = Store::new(basedir, job.id)?;
-        job.add(Box::new(store));
+        let store = Task::from(Store::new(basedir, job.id)?);
+        let _ = job.add(store);
 
         job.run(&mut stdout())?;
     } else {
@@ -125,12 +127,12 @@ fn check_args(opts: &StreamOpts) -> Result<()> {
     // Do we have options for filter
     //
     if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
-        return Err(eyre!("Can not specify --today and -B/-E"));
+        return Err(Status::TodayOrBeginEnd.into());
     }
 
     if (opts.begin.is_some() && opts.end.is_none()) || (opts.begin.is_none() && opts.end.is_some())
     {
-        return Err(eyre!("We need both -B/-E or none"));
+        return Err(Status::BothOrNone.into());
     }
 
     Ok(())

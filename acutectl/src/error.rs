@@ -15,4 +15,8 @@ pub enum Status {
     SiteNotFetchable(String),
     #[error("Site {0} is not Streamable!")]
     SiteNotStreamable(String),
+    #[error("We need both -B/-E or none")]
+    BothOrNone,
+    #[error("Can not specify --today and -B/-E")]
+    TodayOrBeginEnd,
 }

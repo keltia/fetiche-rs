@@ -91,9 +91,9 @@ async fn main() -> Result<()> {
 
     // For the moment the whole of Engine is sync so we need to block.
     //
-    let res = tokio::task::spawn_blocking(move || handle_subcmd(&mut engine, &subcmd)).await?;
+    let _ = handle_subcmd(&mut engine, &subcmd).await?;
     close_logging();
-    res
+    Ok(())
 }
 
 /// Return our version number

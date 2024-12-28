@@ -264,7 +264,7 @@ pub struct ConvertOpts {
 }
 
 #[tracing::instrument(skip(engine))]
-pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
+pub async fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
     match subcmd {
         // Handle `archive site`
         //
@@ -275,7 +275,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Fetch(fopts) => {
             trace!("fetch");
 
-            fetch_from_site(engine, fopts)?;
+            fetch_from_site(engine, fopts).await?;
         }
 
         // Handle `stream site`
@@ -283,7 +283,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Stream(sopts) => {
             trace!("stream");
 
-            stream_from_site(engine, sopts)?;
+            stream_from_site(engine, sopts).await?;
         }
 
         // Handle `convert from to`
@@ -291,7 +291,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Convert(copts) => {
             trace!("convert");
 
-            convert_from_to(engine, copts)?;
+            convert_from_to(engine, copts).await?;
         }
 
         // Standalone completion generation
@@ -324,7 +324,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
             ListSubCommand::Sources => {
                 info!("Listing all sources:");
 
-                let str = engine.list_sources()?;
+                let str = engine.list_sources().await?;
                 eprintln!("{}", str);
             }
             ListSubCommand::Sites => {

@@ -1,15 +1,15 @@
 //! This is the module handling the `fetch` sub-command.
 //!
 
+use eyre::Result;
+use indicatif::ProgressBar;
 use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
-use eyre::Result;
-use indicatif::ProgressBar;
 use tracing::{error, info, trace};
 
 use fetiche_common::{Container, DateOpts};
-use fetiche_engine::{Convert, Engine, Fetch, Save, Tee};
+use fetiche_engine::{Convert, Engine, Fetch, Save, Task, Tee};
 use fetiche_formats::Format;
 use fetiche_sources::{Filter, Flow, Site};
 
@@ -18,12 +18,12 @@ use crate::{FetchOpts, Status};
 /// Actual fetching of data from a given site
 ///
 #[tracing::instrument(skip(engine))]
-pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
+pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
 
     let name = &fopts.site;
-    let srcs = engine.sources();
-    let site = Site::load(name, &engine.sources())?;
+    let srcs = engine.sources().await?;
+    let site = srcs.get(name)?;
     match site {
         Flow::Fetchable(ref s) => s,
         _ => {
@@ -39,19 +39,20 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     // Full json array with all points
     //
     let mut task = Fetch::new(name, srcs);
-
     task.site(site.name()).with(filter);
+
+    let task = Task::from(task);
 
     let mut data = vec![];
 
-    let mut job = engine.create_job("fetch_from_site");
-    job.add(Box::new(task));
+    let mut job = engine.create_job("fetch_from_site").await?;
+    job.add(task);
 
     // Do we want a copy of the raw data (often before converting it)
     //
     if let Some(tee) = &fopts.tee {
-        let copy = Tee::into(tee);
-        job.add(Box::new(copy));
+        let copy = Task::from(Tee::into(tee));
+        job.add(copy);
     }
 
     // If a conversion is requested, insert it
@@ -61,7 +62,8 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     let input = if let Some(_into) = &fopts.into {
         let mut convert = Convert::new();
         convert.from(site.format()).into(Format::Cat21);
-        job.add(Box::new(convert));
+        let convert = Task::from(convert);
+        job.add(convert);
 
         Format::Cat21
     } else {
@@ -97,7 +99,8 @@ pub fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     //
     let mut save = Save::new(final_output, input, fmt);
     save.path(final_output);
-    job.add(Box::new(save));
+    let save = Task::from(save);
+    job.add(save);
 
     eprintln!("Fetching {final_output}");
     let bar = ProgressBar::new_spinner();
