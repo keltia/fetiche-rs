@@ -12,7 +12,7 @@
 [![Docs](https://img.shields.io/docsrs/dmarc-rs)](https://docs.rs/fetiche-rs)
 [![GitHub release](https://img.shields.io/github/release/keltia/dmarc-rs.svg)](https://github.com/keltia/fetiche-rs/releases/)
 [![GitHub issues](https://img.shields.io/github/issues/keltia/fetiche-rs.svg)](https://github.com/keltia/fetiche-rs/issues)
-[![fetiche-rs: 1.56+]][Rust 1.56]
+[![fetiche-rs: 1.78+]][Rust 1.78]
 [![SemVer](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/spec/v2.0.0.html)
 [![License](https://img.shields.io/crates/l/mit)](https://opensource.org/licenses/MIT)
 
@@ -69,6 +69,18 @@ $ cargo install --path .
 
 to compile and install `acutectl` and `process-data`.
 
+You can also use [jujutsu] to fetch and develop for fetiche.
+
+```shell
+$ jj git clone https://github.com/keltia/fetiche-rs
+$ cd fetiche-rs
+$ cargo install --path .
+```
+
+See [jujutsu] documentation on how to use it instead of git.
+
+> NOTE: I do use [jujustu] myself now.
+
 ## Usage
 
 For the moment, there are 3 binaries called `acutectl` (with `.exe` on Windows), `opensky-history` and `process-data`.
@@ -115,7 +127,8 @@ This is intentionally *not* a run-time option but a compile-time one.
 
 ## MSRV
 
-The Minimum Supported Rust Version is *1.56* due to the 2021 Edition.
+The Minimum Supported Rust Version is *1.78* due to the `async traits` used throught `fetiche-sources`  and
+`fetiche-engine`.
 
 ## Supported platforms
 
@@ -190,7 +203,7 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [ASTERIX]: https://www.eurocontrol.int/asterix/
 
-[fetiche-rs: 1.56+]: https://img.shields.io/badge/Rust%20version-1.56%2B-lightgrey
+[fetiche-rs: 1.78+]: https://img.shields.io/badge/Rust%20version-1.78%2B-lightgrey
 
 [Mozilla]: https://mozilla.org/
 
@@ -200,7 +213,7 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [RUST]: https://www.rust-lang.org/
 
-[Rust 1.56]: https://blog.rust-lang.org/2021/10/21/Rust-1.56.0.html
+[Rust 1.78]: https://blog.rust-lang.org/2024/05/02/Rust-1.78.0.html
 
 [Safesky]: https://safesky.app/
 
@@ -225,3 +238,5 @@ I use Git Flow for this package so please use something similar or the usual Git
 [Polars]: https://pola.rs/
 
 [ractor]: https://crates.io/crates/ractor
+
+[jujutsu]: https://jj-vcs.github.io/jj/latest/
