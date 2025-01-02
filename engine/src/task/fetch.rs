@@ -23,7 +23,7 @@ pub struct Fetch {
     /// Shared ref to the sources parameters
     pub srcs: Arc<Sources>,
     /// Site
-    pub site: Option<String>,
+    pub site: Option<Site>,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
 }
@@ -43,7 +43,9 @@ impl Fetch {
     ///
     pub fn site(&mut self, s: String) -> &mut Self {
         trace!("Add site {} as {}", self.name, s);
-        self.site = Some(s);
+        if let Some(&site) = &self.srcs.get(&s) {
+            self.site = Some(site);
+        }
         self
     }
 
@@ -61,28 +63,26 @@ impl Fetch {
     fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Fetch::execute()");
         trace!("received: {}", data);
-        // Fetch data as bytes
-        //
-        match &self.site {
-            Some(site) => {
-                let site = Site::load(site, &self.srcs)?;
-                if let Flow::Fetchable(site) = site {
-                    let token = site.authenticate();
 
-                    // If token has expired
-                    //
+        if &self.site.is_none() {
+            return Err(EngineStatus::NoSiteDefined.into());
+        }
 
-                    let token = match token {
-                        Err(e) => match e {
-                            AuthError::Expired => site.authenticate()?,
-                            _ => return Err(EngineStatus::TokenError(e.to_string()).into()),
-                        },
-                        Ok(token) => token,
-                    };
-                    site.fetch(stdout, &token, &self.args)?;
-                }
-            }
-            None => return Err(EngineStatus::NoSiteDefined.into()),
+        let site = &self.site.unwrap().clone();
+        if let Flow::Fetchable(site) = site {
+            let token = site.authenticate();
+
+            // If token has expired
+            //
+
+            let token = match token {
+                Err(e) => match e {
+                    AuthError::Expired => site.authenticate()?,
+                    _ => return Err(EngineStatus::TokenError(e.to_string()).into()),
+                },
+                Ok(token) => token,
+            };
+            site.fetch(stdout, &token, &self.args)?;
         }
         Ok(())
     }

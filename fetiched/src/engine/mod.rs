@@ -148,7 +148,7 @@ impl Engine {
         // Register sources
         //
         trace!("load sources");
-        let src = Sources::load()?;
+        let src = Sources::new()?;
         info!("{} sources loaded", src.len());
 
         trace!("loading state");

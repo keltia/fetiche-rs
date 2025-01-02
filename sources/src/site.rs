@@ -274,7 +274,7 @@ mod tests {
         let cn = PathBuf::from("src").join("sources.hcl");
         assert!(cn.try_exists().is_ok());
 
-        let cfg = Sources::load();
+        let cfg = Sources::new();
         dbg!(&cfg);
         assert!(cfg.is_ok());
 

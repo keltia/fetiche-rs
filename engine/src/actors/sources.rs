@@ -27,7 +27,7 @@ impl Actor for SourcesActor {
     ) -> Result<Self::State, ActorProcessingErr> {
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
 
-        let sources = Sources::load()?;
+        let sources = Sources::new()?;
         Ok(sources)
     }
 

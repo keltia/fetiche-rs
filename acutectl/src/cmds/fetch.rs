@@ -36,9 +36,7 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
 
     info!("Fetching from network site {}", name);
 
-    // Full json array with all points
-    //
-    let mut task = Fetch::new(name, srcs);
+    let mut task = Fetch::new(name, srcs.into());
     task.site(site.name()).with(filter);
 
     let task = Task::from(task);

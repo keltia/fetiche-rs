@@ -57,7 +57,7 @@ impl From<Vec<(String, Site)>> for Sources {
 
 impl Sources {
     #[tracing::instrument]
-    pub fn load() -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let src_file = ConfigFile::<SourcesConfig>::load(Some("sources.hcl"))?;
         let src = src_file.inner();
 
@@ -77,7 +77,7 @@ impl Sources {
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn get(&self, name: &str) -> Result<Flow> {
+    pub fn load(&self, name: &str) -> Result<Flow> {
         trace!("Loading site {}", name);
 
         match self.site.get(name) {
