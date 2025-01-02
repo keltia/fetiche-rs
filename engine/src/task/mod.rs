@@ -9,7 +9,6 @@ use serde::Deserialize;
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
-pub use archive::*;
 pub use common::*;
 pub use convert::*;
 pub use fetch::*;
@@ -21,7 +20,6 @@ pub use tee::*;
 
 use crate::{Engine, IO};
 
-mod archive;
 mod common;
 mod convert;
 mod fetch;
