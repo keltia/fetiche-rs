@@ -106,9 +106,20 @@ pub struct Supervisor;
 
 #[ractor::async_trait]
 impl Actor for Supervisor {
-    type State = ();
     type Msg = ();
+    type State = ();
     type Arguments = ();
+
+    /// Nothing to do on startup.
+    ///
+    #[tracing::instrument(skip(self, _myself))]
+    async fn pre_start(
+        &self,
+        _myself: ActorRef<Self::Msg>,
+        _args: Self::Arguments,
+    ) -> Result<Self::State, ActorProcessingErr> {
+        Ok(())
+    }
 
     /// We are not doing anything by ourselves.
     ///
@@ -119,17 +130,6 @@ impl Actor for Supervisor {
         _message: Self::Msg,
         _state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        Ok(())
-    }
-
-    /// Nothing to do on startup.
-    ///
-    #[tracing::instrument(skip(self, _myself))]
-    async fn pre_start(
-        &self,
-        _myself: ActorRef<Self::Msg>,
-        _args: Self::Arguments,
-    ) -> Result<Self::State, ActorProcessingErr> {
         Ok(())
     }
 
