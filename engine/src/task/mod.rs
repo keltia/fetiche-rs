@@ -9,7 +9,7 @@ use serde::Deserialize;
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
-pub use archive;
+pub use archive::*;
 pub use common::*;
 pub use convert::*;
 pub use fetch::*;
