@@ -49,11 +49,11 @@ tracing.workspace = true
 cached = { version = "0.54", features = ["async", "async_tokio_rt_multi_thread"] }
 clap_complete = "4.5"
 colorsys = "0.6"
-datafusion = { version = "43", features = ["zstd", "async-compression", "serde"], optional = true }
+datafusion = { version = "44", features = ["zstd", "async-compression", "serde"], optional = true }
 enum_dispatch = "0.3"
 derive_builder = "0.20"
 geo = "0.29"
-itertools = "0.13"
+itertools = "0.14"
 klickhouse = { version = "0.13", features = ["derive", "geo-types", "serde", "bb8"] }
 kml = { version = "0.8", path = "../../kml" }
 ml-progress = "0.1"
@@ -65,5 +65,5 @@ regex = "1.11"
 criterion.workspace = true
 
 [target.'cfg(unix)'.dependencies]
-pprof = { version = "0.13", features = ["criterion", "flamegraph"] }
+pprof = { version = "0.14", features = ["criterion", "flamegraph"] }
 
