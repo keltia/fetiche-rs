@@ -162,7 +162,7 @@ impl AsyncStreamable for AvionixServer {
             "avionixserver".into(),
             sup.get_cell(),
         )
-            .await?;
+        .await?;
 
         // Launch the worker actor
         //

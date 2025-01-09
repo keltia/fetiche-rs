@@ -27,7 +27,9 @@ use tracing::{error, info, trace};
 
 use crate::access::TICK;
 use crate::actors::{StatsActor, StatsMsg, Supervisor, PG_SOURCES};
-use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, LocalWorker, Site, WorkerArgs, WorkerMsg};
+use crate::{
+    AsyncStreamable, Auth, AuthError, Capability, Filter, LocalWorker, Site, WorkerArgs, WorkerMsg,
+};
 use fetiche_formats::Format;
 
 /// TCP streaming port
@@ -147,20 +149,13 @@ Duration {}s
         //
         trace!("starting stats actor.");
         let tag = String::from("avionix::stats");
-        let (stat, _h) = Actor::spawn_linked(
-            Some(tag),
-            StatsActor,
-            "avionixcube".into(),
-            sup.get_cell(),
-        )
-            .await?;
+        let (stat, _h) =
+            Actor::spawn_linked(Some(tag), StatsActor, "avionixcube".into(), sup.get_cell())
+                .await?;
 
         // Launch the worker actor
         //
-        let url = format!(
-            "tcp://{}",
-            self.base_url.clone()
-        );
+        let url = format!("tcp://{}", self.base_url.clone());
         // Do not forget port is there is none specified.
         //
         let url = match Url::from_str(&url)?.port() {
