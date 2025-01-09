@@ -112,7 +112,7 @@ impl AsyncStreamable for Senhive {
 
         // Every TICK, we display stats.
         //
-        let _ = stat.send_interval(TICK, || StatsMsg::Print);
+        stat.send_interval(TICK, || StatsMsg::Print);
 
         // Setup signal handling.
         //
@@ -151,7 +151,7 @@ impl AsyncStreamable for Senhive {
         info!("Get clock ticking.");
         if stream_duration != Duration::from_secs(0) {
             info!("Sleeping for {}s.", stream_duration.as_secs());
-            let _ = worker.exit_after(stream_duration);
+            worker.exit_after(stream_duration);
             tokio::time::sleep(stream_duration).await;
             info!("Timer expired.");
         } else {
