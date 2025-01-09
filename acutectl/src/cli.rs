@@ -86,11 +86,13 @@ pub struct Opts {
 /// `import (file|site) OPTS`
 /// `list`
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub enum SubCommand {
     Archive(ArchvOpts),
     /// Generate Completion stuff
     Completion(ComplOpts),
+    /// Display the configuration file path
+    Config,
     /// Convert between formats
     Convert(ConvertOpts),
     /// Fetch data from specified site
@@ -106,7 +108,7 @@ pub enum SubCommand {
 // ------
 
 /// Options for extracting streaming data and archive it.
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub struct ArchvOpts {
     /// Job number (default will be current)
     #[clap(short = 'j', long)]
@@ -121,7 +123,7 @@ pub struct ArchvOpts {
 
 /// Options for fetching data with basic filtering and an optional output file.
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub struct FetchOpts {
     /// Our different date options
     #[clap(subcommand)]
@@ -155,7 +157,7 @@ pub struct FetchOpts {
 
 /// Options to generate completion files at runtime
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub struct ComplOpts {
     #[clap(value_parser)]
     pub shell: Shell,
@@ -168,7 +170,7 @@ pub struct ComplOpts {
 /// `list formats`
 /// `list sources`
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub struct ListOpts {
     #[clap(value_parser)]
     pub cmd: ListSubCommand,
@@ -198,7 +200,7 @@ pub enum ListSubCommand {
 
 /// Options for fetching data with basic filtering and an optional output file.
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub struct StreamOpts {
     // ASD
     //
@@ -249,7 +251,7 @@ pub struct StreamOpts {
 
 /// Options for the `convert` command, take a filename and format
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub struct ConvertOpts {
     /// Input format
     #[clap(long)]
@@ -358,6 +360,10 @@ pub async fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<(
         //
         SubCommand::Version => {
             eprintln!("Modules: \t{}", engine.version());
+        }
+
+        _ => {
+            eprintln!("booo");
         }
     }
     Ok(())
