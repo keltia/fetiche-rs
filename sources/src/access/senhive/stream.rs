@@ -118,28 +118,27 @@ impl AsyncStreamable for Senhive {
         //
         tokio::spawn(async move {
             trace!("SIGINT thread running.");
-            loop {
-                // Wait for completion or interrupt
-                //
-                #[cfg(unix)]
-                if let Some(_) = stream.recv().await {
-                    info!("Got SIGINT.");
-                    break;
-                }
 
-                #[cfg(windows)]
-                sig.recv().await;
-                info!("^C pressed.");
-
-                // Stop everyone in the group.
-                //
-                pg::get_members(&PG_SOURCES.to_string())
-                    .iter()
-                    .for_each(|member| {
-                        member.stop(Some("^C ^pressed, ending.".to_string()));
-                    });
-                std::process::exit(0);
+            // Wait for completion or interrupt
+            //
+            #[cfg(unix)]
+            if let Some(_) = stream.recv().await {
+                info!("Got SIGINT.");
+                break;
             }
+            #[cfg(windows)]
+            sig.recv().await;
+
+            info!("^C pressed.");
+
+            // Stop everyone in the group.
+            //
+            pg::get_members(&PG_SOURCES.to_string())
+                .iter()
+                .for_each(|member| {
+                    member.stop(Some("^C ^pressed, ending.".to_string()));
+                });
+            std::process::exit(0);
         });
 
         // Start the processing.
