@@ -16,6 +16,15 @@ use tabled::builder::Builder;
 use tabled::settings::Style;
 use tracing::trace;
 
+#[cfg(feature = "aeroscope")]
+use crate::Aeroscope;
+#[cfg(feature = "flightaware")]
+use crate::Flightaware;
+#[cfg(feature = "opensky")]
+use crate::Opensky;
+#[cfg(feature = "safesky")]
+use crate::Safesky;
+
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_formats::Format;
 use fetiche_macros::into_configfile;
