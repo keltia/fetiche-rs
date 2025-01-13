@@ -106,7 +106,6 @@ impl Display for Stats {
 
 /// We have three different traits now
 ///
-#[enum_dispatch]
 #[derive(Debug)]
 pub enum Flow {
     Fetchable(Box<dyn Fetchable>),
