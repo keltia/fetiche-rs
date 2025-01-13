@@ -23,7 +23,7 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
 
     let name = &fopts.site;
     let srcs = engine.sources().await?;
-    let site = srcs.get(name)?;
+    let site = srcs.load(name)?;
     match site {
         Flow::Fetchable(ref s) => s,
         _ => {

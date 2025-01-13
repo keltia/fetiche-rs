@@ -23,7 +23,7 @@ pub struct Fetch {
     /// Shared ref to the sources parameters
     pub srcs: Arc<Sources>,
     /// Site
-    pub site: Option<Site>,
+    pub site: Option<String>,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
 }
@@ -43,9 +43,7 @@ impl Fetch {
     ///
     pub fn site(&mut self, s: String) -> &mut Self {
         trace!("Add site {} as {}", self.name, s);
-        if let Some(&site) = &self.srcs.get(&s) {
-            self.site = Some(site);
-        }
+        self.site = Some(s);
         self
     }
 
@@ -64,11 +62,12 @@ impl Fetch {
         trace!("Fetch::execute()");
         trace!("received: {}", data);
 
-        if &self.site.is_none() {
+        if self.site.is_none() {
             return Err(EngineStatus::NoSiteDefined.into());
         }
+        let site = self.site.clone().unwrap();
 
-        let site = &self.site.unwrap().clone();
+        let site = self.srcs.load(&site)?;
         if let Flow::Fetchable(site) = site {
             let token = site.authenticate();
 

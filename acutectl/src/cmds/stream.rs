@@ -19,7 +19,7 @@ pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result
 
     let name = &sopts.site;
     let srcs = engine.sources().await?.clone();
-    let site = Site::load(name, &srcs)?;
+    let site = srcs.load(name)?;
     debug!("{:?}", site);
     match site {
         Flow::Streamable(_) => (),
@@ -35,7 +35,7 @@ pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result
 
     // Full json array with all point
     //
-    let mut task = Stream::new(name, srcs);
+    let mut task = Stream::new(name, srcs.into());
     task.site(name.to_string()).with(filter);
     let task = Task::from(task);
 
