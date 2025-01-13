@@ -137,6 +137,29 @@ impl Flow {
     }
 }
 
+/// This is the enum used to do static dispatch (as opposed to the dynamic one of `Flow`).
+///
+#[enum_dispatch]
+#[derive(Debug)]
+pub enum Source {
+    #[cfg(feature = "asd")]
+    AsdFetch(Asd),
+    #[cfg(feature = "aeroscope")]
+    AeroscopeFetch(Aeroscope),
+    #[cfg(feature = "avionix")]
+    AvionixCubeStream(AvionixCube),
+    #[cfg(feature = "avionix")]
+    AvionixServerStream(AvionixServer),
+    #[cfg(feature = "flightaware")]
+    FlightawareStream(Flightaware),
+    #[cfg(feature = "opensky")]
+    OpenskyStream(Opensky),
+    #[cfg(feature = "safesky")]
+    SafeskyFetch(Safesky),
+    #[cfg(feature = "senhive")]
+    SenhiveAsyncStream(Senhive),
+}
+
 /// This trait enables us to manage different ways of connecting and fetching data under
 /// a single interface.
 ///
