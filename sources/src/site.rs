@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::Format;
 
-use crate::{AsyncStreamable, Auth, Capability, Fetchable, Routes, Sources, Streamable};
+use crate::{Auth, Capability, Routes};
 
 /// Describe what a site is, its capabilities, access methods and authentication method.
 ///
