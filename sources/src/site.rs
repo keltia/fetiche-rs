@@ -14,32 +14,11 @@ use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use enum_dispatch::enum_dispatch;
-use eyre::Result;
 use serde::{Deserialize, Serialize};
-use tracing::trace;
 
 use fetiche_formats::Format;
 
-#[cfg(feature = "aeroscope")]
-use crate::Aeroscope;
-#[cfg(feature = "asd")]
-use crate::Asd;
-#[cfg(feature = "avionix")]
-use crate::AvionixCube;
-#[cfg(feature = "flightaware")]
-use crate::Flightaware;
-#[cfg(feature = "opensky")]
-use crate::Opensky;
-#[cfg(feature = "safesky")]
-use crate::Safesky;
-#[cfg(feature = "senhive")]
-use crate::Senhive;
-
-use crate::{
-    AccessError, AsyncStreamable, Auth, AvionixServer, Capability, Fetchable, Flow, Routes,
-    Sources, Streamable,
-};
+use crate::{AsyncStreamable, Auth, Capability, Fetchable, Routes, Sources, Streamable};
 
 /// Describe what a site is, its capabilities, access methods and authentication method.
 ///
@@ -111,86 +90,6 @@ impl Site {
     #[tracing::instrument]
     pub fn new() -> Self {
         Site::default()
-    }
-
-    /// Load site by checking whether it is present in the configuration file
-    ///
-    /// FIXME: this API is horrible.
-    ///
-    #[tracing::instrument(skip(cfg))]
-    pub fn load(name: &str, cfg: &Sources) -> Result<Flow> {
-        trace!("Loading site {}", name);
-        match cfg.get(name) {
-            Some(site) => {
-                trace!("site={}", site);
-                let fmt = site.format();
-
-                // We have to explicitly list all supported formats as we return
-                // an enum whether the site will be streamable or not
-                //
-                match fmt {
-                    #[cfg(feature = "asd")]
-                    Format::Asd => {
-                        let s = Asd::new().load(site).clone();
-                        Ok(Flow::Fetchable(Box::new(s)))
-                    }
-                    #[cfg(feature = "aeroscope")]
-                    Format::Aeroscope => {
-                        let s = Aeroscope::new().load(site).clone();
-                        Ok(Flow::Fetchable(Box::new(s)))
-                    }
-                    #[cfg(feature = "avionix")]
-                    Format::CubeData => {
-                        if let Some(Auth::UserKey { .. }) = site.auth {
-                            let s = AvionixServer::new().load(site).clone();
-                            Ok(Flow::AsyncStreamable(Box::new(s)))
-                        } else {
-                            let s = AvionixCube::new().load(site).clone();
-                            Ok(Flow::AsyncStreamable(Box::new(s)))
-                        }
-                    }
-                    #[cfg(feature = "safesky")]
-                    Format::Safesky => {
-                        let s = Safesky::new().load(site).clone();
-                        Ok(Flow::Fetchable(Box::new(s)))
-                    }
-                    // For now, only Opensky support streaming
-                    //
-                    #[cfg(feature = "opensky")]
-                    Format::Opensky => {
-                        let s = Opensky::new().load(site).clone();
-
-                        // FIXME: handle both cases
-                        //
-                        if site.is_streamable() {
-                            Ok(Flow::Streamable(Box::new(s)))
-                        } else {
-                            Ok(Flow::Fetchable(Box::new(s)))
-                        }
-                    }
-                    #[cfg(feature = "flightaware")]
-                    Format::Flightaware => {
-                        let s = Flightaware::new().load(site).clone();
-
-                        // FIXME: Handle both cases
-                        //
-                        if site.is_streamable() {
-                            Ok(Flow::Streamable(Box::new(s)))
-                        } else {
-                            Ok(Flow::Fetchable(Box::new(s)))
-                        }
-                    }
-                    #[cfg(feature = "senhive")]
-                    Format::Senhive => {
-                        let s = Senhive::new().load(site).clone();
-
-                        Ok(Flow::AsyncStreamable(Box::new(s)))
-                    }
-                    _ => Err(AccessError::InvalidSite(name.to_string()).into()),
-                }
-            }
-            None => Err(AccessError::UnknownSite(name.to_string()).into()),
-        }
     }
 
     /// Return whether a site is streamable
@@ -288,7 +187,7 @@ mod tests {
     fn test_site_new_good() {
         let cfg = set_default();
 
-        let s = Site::load("eih", &cfg);
+        let s = cfg.load("eih");
         assert!(s.is_ok());
     }
 
@@ -296,7 +195,7 @@ mod tests {
     fn test_site_new_unknown() {
         let cfg = set_default();
 
-        let s = Site::load("bar", &cfg);
+        let s = cfg.load("bar");
         assert!(s.is_err());
     }
 
