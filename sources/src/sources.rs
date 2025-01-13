@@ -9,7 +9,6 @@ use std::fs;
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
 
-use crate::{AccessError, Asd, Auth, AvionixCube, AvionixServer, Flow, Senhive, Site, CONFIG};
 use eyre::Result;
 use serde::Deserialize;
 use tabled::builder::Builder;
@@ -18,12 +17,21 @@ use tracing::trace;
 
 #[cfg(feature = "aeroscope")]
 use crate::Aeroscope;
+#[cfg(feature = "asd")]
+use crate::Asd;
+#[cfg(feature = "avionix")]
+use crate::AvionixCube;
+#[cfg(feature = "avionix")]
+use crate::AvionixServer;
 #[cfg(feature = "flightaware")]
 use crate::Flightaware;
 #[cfg(feature = "opensky")]
 use crate::Opensky;
 #[cfg(feature = "safesky")]
 use crate::Safesky;
+#[cfg(feature = "senhive")]
+use crate::Senhive;
+use crate::{AccessError, Auth, Flow, Site, CONFIG};
 
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_formats::Format;
