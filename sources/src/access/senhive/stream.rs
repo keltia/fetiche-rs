@@ -112,34 +112,32 @@ impl AsyncStreamable for Senhive {
 
         // Every TICK, we display stats.
         //
-        let _ = stat.send_interval(TICK, || StatsMsg::Print);
+        stat.send_interval(TICK, || StatsMsg::Print);
 
         // Setup signal handling.
         //
         tokio::spawn(async move {
             trace!("SIGINT thread running.");
-            loop {
-                // Wait for completion or interrupt
-                //
-                #[cfg(unix)]
-                if let Some(_) = stream.recv().await {
-                    info!("Got SIGINT.");
-                    break;
-                }
 
-                #[cfg(windows)]
-                sig.recv().await;
-                info!("^C pressed.");
-
-                // Stop everyone in the group.
-                //
-                pg::get_members(&PG_SOURCES.to_string())
-                    .iter()
-                    .for_each(|member| {
-                        member.stop(Some("^C ^pressed, ending.".to_string()));
-                    });
-                std::process::exit(0);
+            // Wait for completion or interrupt
+            //
+            #[cfg(unix)]
+            if let Some(_) = stream.recv().await {
+                info!("Got SIGINT.");
             }
+            #[cfg(windows)]
+            sig.recv().await;
+
+            info!("^C pressed.");
+
+            // Stop everyone in the group.
+            //
+            pg::get_members(&PG_SOURCES.to_string())
+                .iter()
+                .for_each(|member| {
+                    member.stop(Some("^C ^pressed, ending.".to_string()));
+                });
+            std::process::exit(0);
         });
 
         // Start the processing.
@@ -151,7 +149,7 @@ impl AsyncStreamable for Senhive {
         info!("Get clock ticking.");
         if stream_duration != Duration::from_secs(0) {
             info!("Sleeping for {}s.", stream_duration.as_secs());
-            let _ = worker.exit_after(stream_duration);
+            worker.exit_after(stream_duration);
             tokio::time::sleep(stream_duration).await;
             info!("Timer expired.");
         } else {

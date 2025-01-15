@@ -10,7 +10,7 @@ use crate::normalise_day;
 
 /// Enum of supported options for the date formats.
 ///
-#[derive(Clone, Debug, Parser)]
+#[derive(Clone, Debug, PartialEq, Parser)]
 pub enum DateOpts {
     /// Basic from to
     From { begin: String, end: String },

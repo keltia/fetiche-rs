@@ -11,9 +11,6 @@ use serde::{Deserialize, Serialize};
 pub struct Routes(BTreeMap<String, String>);
 
 impl Routes {
-    /// Wrap the usual methods
-    ///
-
     /// Wrap `get`
     ///
     #[inline]

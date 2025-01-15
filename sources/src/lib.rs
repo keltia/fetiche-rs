@@ -104,6 +104,62 @@ impl Display for Stats {
     }
 }
 
+/// We have three different traits now
+///
+#[derive(Debug)]
+pub enum Flow {
+    Fetchable(Box<dyn Fetchable>),
+    Streamable(Box<dyn Streamable>),
+    AsyncStreamable(Box<dyn AsyncStreamable>),
+}
+
+impl Flow {
+    /// Return the name of the underlying object
+    ///
+    #[inline]
+    pub fn name(&self) -> String {
+        match self {
+            Flow::Fetchable(s) => s.name(),
+            Flow::Streamable(s) => s.name(),
+            Flow::AsyncStreamable(s) => s.name(),
+        }
+    }
+
+    /// Return the format of the underlying object
+    ///
+    #[inline]
+    pub fn format(&self) -> Format {
+        match self {
+            Flow::Fetchable(s) => s.format(),
+            Flow::Streamable(s) => s.format(),
+            Flow::AsyncStreamable(s) => s.format(),
+        }
+    }
+}
+
+/// This is the enum used to do static dispatch (as opposed to the dynamic one of `Flow`).
+///
+#[enum_dispatch]
+#[derive(Debug)]
+pub enum Source {
+    #[cfg(feature = "asd")]
+    AsdFetch(Asd),
+    #[cfg(feature = "aeroscope")]
+    AeroscopeFetch(Aeroscope),
+    #[cfg(feature = "avionix")]
+    AvionixCubeStream(AvionixCube),
+    #[cfg(feature = "avionix")]
+    AvionixServerStream(AvionixServer),
+    #[cfg(feature = "flightaware")]
+    FlightawareStream(Flightaware),
+    #[cfg(feature = "opensky")]
+    OpenskyStream(Opensky),
+    #[cfg(feature = "safesky")]
+    SafeskyFetch(Safesky),
+    #[cfg(feature = "senhive")]
+    SenhiveAsyncStream(Senhive),
+}
+
 /// This trait enables us to manage different ways of connecting and fetching data under
 /// a single interface.
 ///

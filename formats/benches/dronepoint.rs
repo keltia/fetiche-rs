@@ -1,5 +1,5 @@
 //! Benchmark for part of the conversion from json to struct to dronepoint to csv.
-//!
+//! Intel Core i5-9600K @3.2 GHz
 //! ```text
 //! deserialize             time:   [5.5826 µs 5.6216 µs 5.6608 µs]
 //!                         change: [-12.078% -7.8350% -3.6909%] (p = 0.00 < 0.05)
@@ -22,10 +22,27 @@
 //!   5 (5.00%) high mild
 //!   1 (1.00%) high severe
 //! ```
+//! AMD Ryzen 7 7700X @5.4 GHz
 //!
+//! deserialize             time:   [2.8480 µs 2.8520 µs 2.8562 µs]
+//! Found 8 outliers among 100 measurements (8.00%)
+//!   6 (6.00%) high mild
+//!   2 (2.00%) high severe
+//!
+//! convert                 time:   [127.31 ns 127.42 ns 127.55 ns]
+//! Found 7 outliers among 100 measurements (7.00%)
+//!   1 (1.00%) low mild
+//!   3 (3.00%) high mild
+//!   3 (3.00%) high severe
+//!
+//! prepare                 time:   [916.47 ns 917.25 ns 917.98 ns]
+//! Found 1 outliers among 100 measurements (1.00%)
+//!   1 (1.00%) high mild
+//! 
 
 use csv::{QuoteStyle, WriterBuilder};
-use fetiche_formats::senhive::{DronePoint, FusedData};
+use fetiche_formats::senhive::FusedData;
+use fetiche_formats::DronePoint;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::io::Cursor;

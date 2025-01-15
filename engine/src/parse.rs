@@ -20,7 +20,7 @@ use nom::{
     IResult,
 };
 
-use crate::Cmds;
+use crate::Task;
 
 /// Delimiter for strings, only " supported
 const DELIM: &str = "\"";
@@ -39,11 +39,8 @@ fn parse_keyword(input: &str) -> IResult<&str, &str> {
 
 /// Parse a job definition, currently <command>\s+"<string>"
 ///
-pub fn parse_job(input: &str) -> IResult<&str, (Cmds, String)> {
-    let m = |(_k, m): (&str, &str)| (Cmds::Message, m.to_string());
-
-    let line = tuple((parse_keyword, preceded(space1, parse_string)));
-    map(line, m)(input)
+pub fn parse_job(input: &str) -> IResult<&str, (Task, String)> {
+    todo!();
 }
 
 #[cfg(test)]

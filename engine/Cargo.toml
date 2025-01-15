@@ -54,6 +54,7 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 datafusion = { version = "43", features = ["zstd", "async-compression", "serde"], optional = true }
+enum_dispatch = "0.3"
 
 [dev-dependencies]
 rstest.workspace = true

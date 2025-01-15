@@ -11,7 +11,10 @@ struct EngineState {
     pub e: Engine,
 }
 
+#[derive(Debug)]
 enum EngineMsg {
+    CreateJob(String, RpcReplyPort<usize>),
+    RemoveJob(usize),
     Sources(RpcReplyPort<usize>),
     Version(RpcReplyPort<String>),
 }
@@ -38,16 +41,22 @@ impl Actor for EngineActor {
         state: &mut Self::State,
     ) -> std::result::Result<(), ActorProcessingErr> {
         match message {
+            EngineMsg::CreateJob(name, sender) => {
+                let job = state.e.create_job(&name);
+                let _ = sender.send(job.id);
+            }
+            EngineMsg::RemoveJob(id) => {
+                let _ = state.e.remove_job(id);
+            }
             EngineMsg::Version(sender) => {
                 let _ = sender.send(state.e.version());
-                Ok(())
             }
-            EngineMsg::Sources(port) => {
+            EngineMsg::Sources(sender) => {
                 let srcs = state.e.sources();
-                let _ = port.send(srcs.len());
-                Ok(())
+                let _ = sender.send(srcs.len());
             }
         }
+        Ok(())
     }
 }
 

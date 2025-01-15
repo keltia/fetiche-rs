@@ -29,7 +29,7 @@ use eyre::Result;
 use serde::Deserialize;
 use tracing::{debug, trace};
 
-use acutectl::{handle_subcmd, Opts, Status};
+use acutectl::{handle_subcmd, Opts, Status, SubCommand};
 use fetiche_common::{close_logging, init_logging, ConfigFile, IntoConfig, Versioned};
 use fetiche_engine::Engine;
 use fetiche_macros::into_configfile;
@@ -89,11 +89,17 @@ async fn main() -> Result<()> {
 
     let subcmd = opts.subcmd;
 
+    if subcmd == SubCommand::Config {
+        let p = cfile.config_path().join(CONFIG);
+        println!("Config path: {:?}", p);
+        close_logging();
+        return Ok(());
+    }
     // For the moment the whole of Engine is sync so we need to block.
     //
-    let res = tokio::task::spawn_blocking(move || handle_subcmd(&mut engine, &subcmd)).await?;
+    let _ = handle_subcmd(&mut engine, &subcmd).await?;
     close_logging();
-    res
+    Ok(())
 }
 
 /// Return our version number

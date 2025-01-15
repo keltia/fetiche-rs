@@ -90,27 +90,27 @@ impl Stream {
     pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
         trace!("Stream::run()");
 
+        if self.site.is_none() {
+            return Err(EngineStatus::NoSiteDefined.into());
+        }
+        let site = self.site.clone().unwrap();
+
         // Stream data as bytes
         //
-        match &self.site {
-            Some(site) => {
-                let site = Site::load(site, &self.srcs)?;
-                if let Flow::Streamable(site) = site {
-                    let token = site.authenticate()?;
+        let site = self.srcs.load(&site)?;
+        if let Flow::Streamable(site) = site {
+            let token = site.authenticate()?;
 
-                    let args = self.args.clone();
-                    site.stream(stdout, &token, &args)?;
-                } else if let Flow::AsyncStreamable(site) = site {
-                    let rt = tokio::runtime::Runtime::new()?;
-                    rt.block_on(async move {
-                        let token = site.authenticate().await.unwrap();
+            let args = self.args.clone();
+            site.stream(stdout, &token, &args)?;
+        } else if let Flow::AsyncStreamable(site) = site {
+            let rt = tokio::runtime::Runtime::new()?;
+            rt.block_on(async move {
+                let token = site.authenticate().await.unwrap();
 
-                        let args = self.args.clone();
-                        site.stream(stdout, &token, &args).await.unwrap();
-                    })
-                }
-            }
-            None => return Err(EngineStatus::NoSiteDefined.into()),
+                let args = self.args.clone();
+                site.stream(stdout, &token, &args).await.unwrap();
+            })
         }
         Ok(())
     }

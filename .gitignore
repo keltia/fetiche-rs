@@ -14,9 +14,13 @@ target/
 # JB files
 .idea
 
+# JJ metadata
+.jj
+
 # Rest
 *.json
 *.csv
 *.parquet
+*.kml
 data
 venv

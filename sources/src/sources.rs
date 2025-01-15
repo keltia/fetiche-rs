@@ -13,10 +13,28 @@ use eyre::Result;
 use serde::Deserialize;
 use tabled::builder::Builder;
 use tabled::settings::Style;
+use tracing::trace;
 
-use crate::{Auth, Site, CONFIG};
+#[cfg(feature = "aeroscope")]
+use crate::Aeroscope;
+#[cfg(feature = "asd")]
+use crate::Asd;
+#[cfg(feature = "avionix")]
+use crate::AvionixCube;
+#[cfg(feature = "avionix")]
+use crate::AvionixServer;
+#[cfg(feature = "flightaware")]
+use crate::Flightaware;
+#[cfg(feature = "opensky")]
+use crate::Opensky;
+#[cfg(feature = "safesky")]
+use crate::Safesky;
+#[cfg(feature = "senhive")]
+use crate::Senhive;
+use crate::{AccessError, Auth, Flow, Site, CONFIG};
 
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
+use fetiche_formats::Format;
 use fetiche_macros::into_configfile;
 
 /// List of sources, this is the only exposed struct from here.
@@ -56,7 +74,7 @@ impl From<Vec<(String, Site)>> for Sources {
 
 impl Sources {
     #[tracing::instrument]
-    pub fn load() -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let src_file = ConfigFile::<SourcesConfig>::load(Some("sources.hcl"))?;
         let src = src_file.inner();
 
@@ -75,6 +93,82 @@ impl Sources {
         Ok(s)
     }
 
+    #[tracing::instrument(skip(self))]
+    pub fn load(&self, name: &str) -> Result<Flow> {
+        trace!("Loading site {}", name);
+
+        match self.site.get(name) {
+            Some(site) => {
+                trace!("site={}", site);
+                let fmt = site.format();
+
+                // We have to explicitly list all supported formats as we return
+                // an enum whether the site will be streamable or not
+                //
+                match fmt {
+                    #[cfg(feature = "asd")]
+                    Format::Asd => {
+                        let s = Asd::new().load(site).clone();
+                        Ok(Flow::Fetchable(Box::new(s)))
+                    }
+                    #[cfg(feature = "aeroscope")]
+                    Format::Aeroscope => {
+                        let s = Aeroscope::new().load(site).clone();
+                        Ok(Flow::Fetchable(Box::new(s)))
+                    }
+                    #[cfg(feature = "avionix")]
+                    Format::CubeData => {
+                        if let Some(Auth::UserKey { .. }) = site.auth {
+                            let s = AvionixServer::new().load(site).clone();
+                            Ok(Flow::AsyncStreamable(Box::new(s)))
+                        } else {
+                            let s = AvionixCube::new().load(site).clone();
+                            Ok(Flow::AsyncStreamable(Box::new(s)))
+                        }
+                    }
+                    #[cfg(feature = "safesky")]
+                    Format::Safesky => {
+                        let s = Safesky::new().load(site).clone();
+                        Ok(Flow::Fetchable(Box::new(s)))
+                    }
+                    // For now, only Opensky support streaming
+                    //
+                    #[cfg(feature = "opensky")]
+                    Format::Opensky => {
+                        let s = Opensky::new().load(site).clone();
+
+                        // FIXME: handle both cases
+                        //
+                        if site.is_streamable() {
+                            Ok(Flow::Streamable(Box::new(s)))
+                        } else {
+                            Ok(Flow::Fetchable(Box::new(s)))
+                        }
+                    }
+                    #[cfg(feature = "flightaware")]
+                    Format::Flightaware => {
+                        let s = Flightaware::new().load(site).clone();
+
+                        // FIXME: Handle both cases
+                        //
+                        if site.is_streamable() {
+                            Ok(Flow::Streamable(Box::new(s)))
+                        } else {
+                            Ok(Flow::Fetchable(Box::new(s)))
+                        }
+                    }
+                    #[cfg(feature = "senhive")]
+                    Format::Senhive => {
+                        let s = Senhive::new().load(site).clone();
+
+                        Ok(Flow::AsyncStreamable(Box::new(s)))
+                    }
+                    _ => Err(AccessError::InvalidSite(name.to_string()).into()),
+                }
+            }
+            None => Err(AccessError::UnknownSite(name.to_string()).into()),
+        }
+    }
     /// Install default files
     ///
     #[tracing::instrument]
@@ -120,7 +214,7 @@ impl Sources {
                     Auth::Key { .. } => "API key",
                     Auth::UserKey { .. } => "API+User keys",
                 }
-                    .to_string()
+                .to_string()
             } else {
                 "anon".to_owned()
             };

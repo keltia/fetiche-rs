@@ -13,18 +13,18 @@ use eyre::Result;
 use tracing::{info, trace};
 use tracing::{span, Level};
 
-use crate::{EngineStatus, Runnable, IO};
+use crate::{EngineStatus, Runnable, Task, IO};
 
 /// The engine is processing jobs, made of runnable tasks
 ///
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Job {
     /// Job ID
     pub id: usize,
     /// Name of the job
     pub name: String,
     /// FIFO list of tasks
-    pub list: VecDeque<Box<dyn Runnable>>,
+    pub list: VecDeque<Task>,
 }
 
 impl Job {
@@ -59,7 +59,7 @@ impl Job {
     /// Add a task to the queue
     ///
     #[inline]
-    pub fn add(&mut self, t: Box<dyn Runnable>) -> &mut Self {
+    pub fn add(&mut self, t: Task) -> &mut Self {
         trace!("Job::add({t:?}");
         let _ = &self.list.push_back(t);
         self
@@ -72,7 +72,7 @@ impl Job {
     ///
     /// The returned value is the last "output" channel which is the result of the pipeline run.
     ///
-    /// For now we ignore the handle for all threads, should we store them and `join()` later?  They
+    /// For now, we ignore the handle for all threads, should we store them and `join()` later?  They
     /// are launched in parallel but each one depends on the reading of the "in" pipe.
     ///
     /// By using only channels between all threads, we should avoid any issues with passing something

@@ -80,15 +80,19 @@ pub struct Opts {
 
 /// All sub-commands:
 ///
+/// `archive`
 /// `completion SHELL`
 /// `fetch [-B date] [-E date] [--today] [-o FILE] site`
 /// `import (file|site) OPTS`
 /// `list`
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub enum SubCommand {
+    Archive(ArchvOpts),
     /// Generate Completion stuff
     Completion(ComplOpts),
+    /// Display the configuration file path
+    Config,
     /// Convert between formats
     Convert(ConvertOpts),
     /// Fetch data from specified site
@@ -103,9 +107,23 @@ pub enum SubCommand {
 
 // ------
 
+/// Options for extracting streaming data and archive it.
+#[derive(Debug, PartialEq, Parser)]
+pub struct ArchvOpts {
+    /// Job number (default will be current)
+    #[clap(short = 'j', long)]
+    pub job: Option<usize>,
+    /// Site name.
+    pub site: String,
+    /// Output file, extension will be used for finding final format.
+    pub output: String,
+}
+
+// ------
+
 /// Options for fetching data with basic filtering and an optional output file.
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub struct FetchOpts {
     /// Our different date options
     #[clap(subcommand)]
@@ -139,7 +157,7 @@ pub struct FetchOpts {
 
 /// Options to generate completion files at runtime
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub struct ComplOpts {
     #[clap(value_parser)]
     pub shell: Shell,
@@ -152,7 +170,7 @@ pub struct ComplOpts {
 /// `list formats`
 /// `list sources`
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub struct ListOpts {
     #[clap(value_parser)]
     pub cmd: ListSubCommand,
@@ -182,7 +200,7 @@ pub enum ListSubCommand {
 
 /// Options for fetching data with basic filtering and an optional output file.
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub struct StreamOpts {
     // ASD
     //
@@ -233,7 +251,7 @@ pub struct StreamOpts {
 
 /// Options for the `convert` command, take a filename and format
 ///
-#[derive(Debug, Parser)]
+#[derive(Debug, PartialEq, Parser)]
 pub struct ConvertOpts {
     /// Input format
     #[clap(long)]
@@ -248,14 +266,18 @@ pub struct ConvertOpts {
 }
 
 #[tracing::instrument(skip(engine))]
-pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
+pub async fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
     match subcmd {
+        // Handle `archive site`
+        //
+        SubCommand::Archive(_aopts) => todo!(),
+
         // Handle `fetch site`
         //
         SubCommand::Fetch(fopts) => {
             trace!("fetch");
 
-            fetch_from_site(engine, fopts)?;
+            fetch_from_site(engine, fopts).await?;
         }
 
         // Handle `stream site`
@@ -263,7 +285,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Stream(sopts) => {
             trace!("stream");
 
-            stream_from_site(engine, sopts)?;
+            stream_from_site(engine, sopts).await?;
         }
 
         // Handle `convert from to`
@@ -271,7 +293,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         SubCommand::Convert(copts) => {
             trace!("convert");
 
-            convert_from_to(engine, copts)?;
+            convert_from_to(engine, copts).await?;
         }
 
         // Standalone completion generation
@@ -304,7 +326,7 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
             ListSubCommand::Sources => {
                 info!("Listing all sources:");
 
-                let str = engine.list_sources()?;
+                let str = engine.list_sources().await?;
                 eprintln!("{}", str);
             }
             ListSubCommand::Sites => {
@@ -338,6 +360,10 @@ pub fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
         //
         SubCommand::Version => {
             eprintln!("Modules: \t{}", engine.version());
+        }
+
+        _ => {
+            eprintln!("booo");
         }
     }
     Ok(())

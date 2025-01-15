@@ -36,4 +36,6 @@ pub enum EngineStatus {
     TokenError(String),
     #[error("Uninitialised Read")]
     UninitialisedRead,
+    #[error("Unknown job {0}")]
+    JobNotFound(usize),
 }
