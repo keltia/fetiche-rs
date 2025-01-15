@@ -46,6 +46,7 @@ sites = {'Brussels': 'BRU',
          'Larnaca': 'CYP',
          'Cyprus': 'PAP',
          'Sarajevo': 'SAR',
+         'Sarajevo1': 'SAR',
          }
 
 
