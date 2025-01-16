@@ -227,7 +227,7 @@ fn prepare_asd_data(data: Param) -> String {
     )
 }
 
-/// This is the polars equivalent of the `fix_tm()`  function below.
+/// Generate a UNIX timestamp from the non-standard date string used by Asd.
 ///
 fn into_timestamp(col: &Column) -> Column {
     col.str()
