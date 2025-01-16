@@ -3,7 +3,7 @@
 //! It takes a path or a job number and takes all files streamed so far and generate a complete
 //! file in different format.
 
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use eyre::Result;
@@ -22,6 +22,7 @@ pub struct Archive {
 impl Archive {
     #[tracing::instrument(skip(srcs))]
     pub fn new(s: &str, srcs: Arc<Sources>) -> Self {
+        trace!("Creating archive {s}");
         Archive {
             io: IO::Consumer,
             srcs: srcs.clone(),

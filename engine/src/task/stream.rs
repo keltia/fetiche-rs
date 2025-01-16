@@ -9,7 +9,7 @@ use eyre::Result;
 use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
-use fetiche_sources::{Filter, Flow, Site, Sources};
+use fetiche_sources::{Filter, Flow, Sources};
 
 use crate::{EngineStatus, Runnable, IO};
 

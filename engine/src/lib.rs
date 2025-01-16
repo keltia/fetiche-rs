@@ -46,7 +46,7 @@ use eyre::Result;
 use ractor::{call, cast, Actor, ActorRef};
 use serde::Deserialize;
 use strum::EnumString;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{error, info, trace, warn};
 
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
@@ -57,7 +57,6 @@ pub use job::*;
 pub use queue::*;
 //pub use state::*;
 pub use storage::*;
-pub use subr::*;
 pub use task::*;
 pub use tokens::*;
 
@@ -227,7 +226,7 @@ impl Engine {
 
         // Sync immediately, ensuring state is clean
         //
-        let _ = cast!(state, StateMsg::Sync);
+        let _ = engine.sync()?;
 
         Ok(engine)
     }

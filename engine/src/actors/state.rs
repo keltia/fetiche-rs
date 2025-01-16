@@ -57,8 +57,6 @@ pub struct State {
     pub queue: VecDeque<usize>,
 }
 
-pub struct StateArgs;
-
 #[ractor::async_trait]
 impl Actor for StateActor {
     type Msg = StateMsg;
