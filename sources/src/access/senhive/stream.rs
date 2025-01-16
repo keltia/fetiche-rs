@@ -122,7 +122,7 @@ impl AsyncStreamable for Senhive {
             // Wait for completion or interrupt
             //
             #[cfg(unix)]
-            if let Some(_) = stream.recv().await {
+            if (stream.recv().await).is_some() {
                 info!("Got SIGINT.");
             }
             #[cfg(windows)]
