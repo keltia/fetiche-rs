@@ -115,9 +115,10 @@ impl Actor for Supervisor {
     #[tracing::instrument(skip(self, _myself))]
     async fn pre_start(
         &self,
-        _myself: ActorRef<Self::Msg>,
+        myself: ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
+        pg::join(PG_SOURCES.into(), vec![myself.get_cell()]);
         Ok(())
     }
 
