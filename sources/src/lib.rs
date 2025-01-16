@@ -147,9 +147,9 @@ pub enum Source {
     #[cfg(feature = "aeroscope")]
     AeroscopeFetch(Aeroscope),
     #[cfg(feature = "avionix")]
-    AvionixCubeStream(AvionixCube),
+    AvionixCubeAsyncStream(AvionixCube),
     #[cfg(feature = "avionix")]
-    AvionixServerStream(AvionixServer),
+    AvionixServerAsyncStream(AvionixServer),
     #[cfg(feature = "flightaware")]
     FlightawareStream(Flightaware),
     #[cfg(feature = "opensky")]

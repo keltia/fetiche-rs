@@ -3,7 +3,7 @@
 //! This module is for the Avionix Cube antenna API which supports only streams.
 //!
 //! There are one trait implementation:
-//! - `Streamable`
+//! - `AsyncStreamable`
 //!
 //! There are two options here:
 //! - HTTP call on usual TLS port, not more than 1 call/s with a 5s window

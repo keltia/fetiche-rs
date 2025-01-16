@@ -3,7 +3,7 @@
 //! This module is for the Avionix Cube antenna direct access which means reduced filters and no auth.
 //!
 //! There are one trait implementation:
-//! - `Streamable`
+//! - `AsyncStreamable`
 //!
 //! TCP Streaming on port 50005
 //!
