@@ -1,4 +1,15 @@
-//! This module will have the various Actors this crate use.
+//! This module will have the various Actors this crate use.  Various system-dependant actors will
+//! access these.
+//!
+//! Actors:
+//!
+//! `Stats`
+//!
+//! This actor accumulates statistics about packets/bytes received, etc.
+//!
+//! `Supervisor`
+//!
+//! This actor will be the father of all actors spawned by `sources`.
 //!
 
 use chrono::Utc;
@@ -112,7 +123,7 @@ impl Actor for Supervisor {
 
     /// Nothing to do on startup.
     ///
-    #[tracing::instrument(skip(self, _myself))]
+    #[tracing::instrument(skip(self, myself))]
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
