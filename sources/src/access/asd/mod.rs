@@ -27,7 +27,7 @@ use polars::prelude::{Column, IntoColumn};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, VariantNames};
-use tracing::{trace, warn};
+use tracing::{debug, trace, warn};
 
 use fetiche_formats::Format;
 
