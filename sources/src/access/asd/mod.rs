@@ -27,7 +27,10 @@ use polars::prelude::{Column, IntoColumn};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, VariantNames};
-use tracing::{debug, trace, warn};
+use tracing::{error, trace, warn};
+
+#[cfg(feature = "json")]
+use tracing::debug;
 
 use fetiche_formats::Format;
 
@@ -40,6 +43,7 @@ use serde_json::json;
 mod fetch;
 pub mod token;
 
+use crate::init::{init_sources_runtime, Context};
 pub use token::*;
 
 /// Default token
@@ -111,6 +115,8 @@ pub struct Asd {
     pub get: String,
     /// reqwest blocking client
     pub client: Client,
+    /// supervisor and stats actors references
+    pub ctx: Context,
 }
 
 impl Asd {
@@ -190,6 +196,19 @@ impl Asd {
 
 impl Default for Asd {
     fn default() -> Self {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        let ctx = runtime.block_on(async move {
+            let ctx = match init_sources_runtime().await {
+                Ok(ctx) => ctx,
+                Err(e) => {
+                    error!("Can not initialize sources: {e}");
+                    std::process::exit(1);
+                }
+            };
+            ctx
+        });
         Asd {
             features: vec![Capability::Fetch],
             site: "NONE".to_string(),
@@ -201,6 +220,7 @@ impl Default for Asd {
             token: "".to_owned(),
             get: "".to_owned(),
             client: Client::new(),
+            ctx,
         }
     }
 }
