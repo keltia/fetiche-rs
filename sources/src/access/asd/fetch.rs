@@ -7,6 +7,7 @@ use clap::{crate_name, crate_version};
 use eyre::eyre;
 use polars::io::SerWriter;
 use polars::prelude::{CsvParseOptions, CsvReadOptions, CsvWriter, SerReader};
+use ractor::cast;
 use reqwest::StatusCode;
 use tap::Tap;
 use tracing::{debug, error, trace, warn};
@@ -16,6 +17,7 @@ use fetiche_formats::Format;
 use crate::access::asd::{
     into_timestamp, prepare_asd_data, Credentials, Param, Payload, Source, DEF_TOKEN,
 };
+use crate::actors::StatsMsg;
 use crate::{http_post, Asd, AsdToken, AuthError, Expirable, Fetchable, Filter};
 
 impl Fetchable for Asd {
@@ -199,7 +201,12 @@ impl Fetchable for Asd {
         let mut data = vec![];
         CsvWriter::new(&mut data).finish(r)?;
 
-        let data = String::from_utf8(data).unwrap();
+        // Send statistics
+        //
+        let _ = cast!(self.ctx.stats, StatsMsg::Pkts(data.len() as u32));
+        let _ = cast!(self.ctx.stats, StatsMsg::Bytes(resp.len() as u64));
+
+        let data = String::from_utf8(data)?;
         Ok(out.send(data)?)
     }
 
