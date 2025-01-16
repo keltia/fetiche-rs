@@ -151,9 +151,9 @@ pub enum Source {
     #[cfg(feature = "avionix")]
     AvionixServerAsyncStream(AvionixServer),
     #[cfg(feature = "flightaware")]
-    FlightawareStream(Flightaware),
+    FlightawareAsyncStream(Flightaware),
     #[cfg(feature = "opensky")]
-    OpenskyStream(Opensky),
+    OpenskyAsyncStream(Opensky),
     #[cfg(feature = "safesky")]
     SafeskyFetch(Safesky),
     #[cfg(feature = "senhive")]
