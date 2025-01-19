@@ -28,21 +28,6 @@ mod fetch;
 mod read;
 mod save;
 mod store;
-/// The `save` module is responsible for saving individual datasets to specified
-/// storage locations. This module ensures data is persisted in a reliable and reusable
-/// manner.
-///
-/// # Functionality
-/// - Handles the I/O operations required to save datasets.
-/// - Can save datasets in various formats depending on the configuration.
-///
-/// # Usage
-/// This module is internally used when the `Save` task is executed within the pipeline.
-/// It interacts with the `Engine` to carry out its operations.
-///
-/// # Notes
-/// - Works seamlessly with other tasks like `Read`, `Convert`, or `Store` to enable end-to-end
-///   data pipeline workflows.
 mod stream;
 mod tee;
 
