@@ -11,7 +11,7 @@
 //!
 //! // Instantiate Engine
 //! //
-//! let engine = Engine::new();
+//! let engine = Engine::new().await;
 //! trace!("Engine initialised and running.");
 //!
 //! // For the moment the whole of Engine is sync so we need to block.
