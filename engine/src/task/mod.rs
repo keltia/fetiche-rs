@@ -31,6 +31,22 @@ mod store;
 mod stream;
 mod tee;
 
+/// The `Task` enum represents all available tasks/commands that can be used.
+/// Each variant corresponds to a specific operation or process.
+///
+/// Variants:
+///
+/// - `Archive`: Extract streaming data and generate `CSV` or `Parquet`.
+/// - `Convert`: Convert between different `Format` representations.
+/// - `Copy`: Perform a basic raw copy operation.
+/// - `Fetch`: Fetch a single dataset from a specific source.
+/// - `Message`: Display a message.
+/// - `Nothing`: Represents a no-operation (NOP) task.
+/// - `Read`: Read data from a single file.
+/// - `Save`: Save a single dataset to a specific destination.
+/// - `Store`: Organize and store datasets into a directory structure.
+/// - `Stream`: Fetch and process a continuous stream of data.
+/// - `Tee`: Copy data into a file and pass the data forward unchanged.
 #[enum_dispatch]
 #[derive(Clone, Debug, strum::Display, strum::VariantNames)]
 #[strum(serialize_all = "PascalCase")]
