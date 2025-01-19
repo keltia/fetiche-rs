@@ -4,7 +4,7 @@ use std::io::stdout;
 use eyre::Result;
 use fetiche_engine::{Convert, Engine, Store, Stream, Task, Tee};
 use fetiche_formats::Format;
-use fetiche_sources::{Filter, Flow, Site};
+use fetiche_sources::{Filter, Flow};
 use tracing::{debug, error, info, trace};
 
 use crate::{Status, StreamOpts};

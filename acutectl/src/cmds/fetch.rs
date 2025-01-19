@@ -11,7 +11,7 @@ use tracing::{error, info, trace};
 use fetiche_common::{Container, DateOpts};
 use fetiche_engine::{Convert, Engine, Fetch, Save, Task, Tee};
 use fetiche_formats::Format;
-use fetiche_sources::{Filter, Flow, Site};
+use fetiche_sources::{Filter, Flow};
 
 use crate::{FetchOpts, Status};
 
