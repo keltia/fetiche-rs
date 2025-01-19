@@ -112,7 +112,60 @@ pub enum StorageConfig {
     Hive { path: PathBuf },
 }
 
-/// Main `Engine` struct that hold the sources and everything needed to perform
+/// The `Engine` struct is the main structure for coordinating all tasks, jobs, storage,
+/// and actors within the application. It provides functionality for managing the runtime
+/// environment, including sources, storage, token management, state synchronization,
+/// and job queue management.
+///
+/// # Fields
+///
+/// - `pid`
+///     The current process ID for the engine. Retrieved from the state service.
+///
+/// - `next`
+///     The next job ID to be used. Tracked for managing job identifiers.
+///
+/// - `home`
+///     The root directory where state is saved. This directory includes the configuration file,
+///     PID file, and other engine-related paths.
+///
+/// - `sources`
+///     An actor reference for the sources service. Handles loading and management of source objects.
+///
+/// - `storage`
+///     A reference to the `Storage` struct that handles storage areas for long-running jobs.
+///
+/// - `tokens`
+///     A reference to the `TokenStorage` struct that manages authentication tokens used by the engine.
+///
+/// - `state`
+///     An actor reference for the state service, which manages the engine's internal state,
+///     including synchronization and saving runtime information.
+///
+/// - `jobs`
+///     A thread-safe, read-write lock to the `JobQueue`, which maintains a pipeline of tasks and jobs.
+///
+/// # Usage
+///
+/// The `Engine` struct can be instantiated using either the `new` method or by loading
+/// a configuration file using the `load` method. It integrates with other components of the
+/// system through actors and performs various initialization routines.
+///
+/// Example:
+///
+/// ```no_run
+/// # use tokio;
+/// # use fetiche_engine::Engine;
+/// #[tokio::main]
+/// async fn main() {
+///     // Initialize a new engine asynchronously
+///     let engine = Engine::new().await;
+///     println!("Engine initialized with PID: {}", engine.pid);
+/// }
+/// ```
+///
+/// The engine ensures proper initialization of all necessary services, such as source loading,
+/// state synchronization, and storage registration, during its setup process.
 ///
 #[derive(Clone, Debug)]
 pub struct Engine {

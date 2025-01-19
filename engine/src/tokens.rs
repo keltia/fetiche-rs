@@ -42,6 +42,17 @@ impl TokenStorage {
                         );
                     } else {
                         unimplemented!()
+                        ///
+                        /// This example demonstrates basic usage of the `TokenStorage` struct
+                        /// to manage token storage and retrieval operations, as well as
+                        /// listing all stored tokens in a directory.
+                        ///
+                        /// The `TokenStorage` struct simplifies working with serialized token
+                        /// files by providing helper methods to store, load, and enumerate
+                        /// token metadata.
+                        ///
+                        /// Ensure the directory path specified during registration exists and
+                        /// contains appropriately formatted token files for proper functionality.
                     }
                 }
             });

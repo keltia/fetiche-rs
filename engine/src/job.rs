@@ -13,7 +13,7 @@ use eyre::Result;
 use tracing::{info, trace};
 use tracing::{span, Level};
 
-use crate::{EngineStatus, Runnable, Task, IO};
+use crate::{EngineStatus, Nothing, Runnable, Task, IO};
 
 /// The engine is processing jobs, made of runnable tasks
 ///
@@ -43,8 +43,38 @@ impl Job {
         }
     }
 
-    /// Create job with a specific ID
+    /// Creates a new `Job` instance with a specified name and ID.
     ///
+    /// This function allows the creation of a new `Job` with a given name and ID.
+    /// It initializes an empty task queue (`list`) for the job, which can later be populated
+    /// as needed. The provided `id` is assigned directly, while the `name` is cloned
+    /// from the given string slice.
+    ///
+    /// # Parameters
+    /// - `name`: A string slice representing the name of the job. This will be cloned into
+    ///    the `Job` structure as an owned `String`.
+    /// - `id`: A unique identifier for the job, which is assigned directly to the `Job` instance.
+    ///
+    /// # Returns
+    /// A new instance of the `Job` struct with the specified `name`, provided `id`,
+    /// and an empty task list.
+    ///
+    /// # Panics
+    /// This function does not perform any validation on the provided `name` or `id`.
+    /// Invalid inputs, such as an empty string for the name, may lead to unintended behavior
+    /// in other parts of the program.
+    ///
+    /// # Example
+    /// ```rust
+    /// use std::collections::VecDeque;
+    /// use fetiche_engine::Job;
+    ///
+    /// let job = Job::new_with_id("Data Processing", 1);
+    ///
+    /// assert_eq!(job.name, "Data Processing".to_string());
+    /// assert_eq!(job.id, 1);
+    /// assert!(job.list.is_empty());
+    /// ```
     #[tracing::instrument]
     #[inline]
     pub fn new_with_id(name: &str, id: usize) -> Self {
@@ -65,18 +95,121 @@ impl Job {
         self
     }
 
-    /// Run all tasks and accumulate results into a single stream
+    /// Runs the job by executing its pipeline of tasks in order and writing the final
     ///
-    /// For each task, `run()` create a channel, launch a thread for the task and pass the receiver
-    /// to the next thread.
+    /// output to the provided writer.
     ///
-    /// The returned value is the last "output" channel which is the result of the pipeline run.
+    /// # Overview
+    /// - This function validates the pipeline before execution.
+    /// - It creates a communication channel for passing messages between tasks.
+    /// - Tasks are executed sequentially, forming a pipeline where each task's output
+    ///   acts as the input for the next task.
+    /// - Final output is collected from the pipeline's last stage and written to the
+    /// Validates and executes the tasks in the job's pipeline, writing the pipeline's
+    /// output to the specified writer.
     ///
-    /// For now, we ignore the handle for all threads, should we store them and `join()` later?  They
-    /// are launched in parallel but each one depends on the reading of the "in" pipe.
+    /// This method works by processing tasks sequentially according to the order in the queue.
+    /// The output of one task is piped as the input to the next, forming a producer-consumer pipeline.
+    /// The final result is written to the specified `out` writer.
     ///
-    /// By using only channels between all threads, we should avoid any issues with passing something
-    /// more complicated like we did with `out`.
+    /// # Parameters
+    /// - `&mut self`: The job instance containing the pipeline of tasks.
+    /// - `out: &mut dyn Write`: The output stream where the final result will be written.
+    ///
+    /// # Returns
+    /// - `Ok(())`: If the job runs successfully.
+    /// - `Err(anyhow::Error)`: If an error occurs during pipeline validation or execution.
+    ///
+    /// # Errors
+    /// - An error is returned if:
+    ///   - The task queue is empty.
+    ///   - The first task is not a producer, or
+    ///   - The last task is neither a consumer nor a filter.
+    /// - Errors can also occur during inter-task communication or while writing to the output.
+    ///
+    /// # Example
+    /// ```rust
+    /// use std::io::Cursor;
+    /// use fetiche_engine::{Job, Nothing, Task};
+    ///
+    /// let mut job = Job::new("Example Job");
+    /// job.add(Task::from(Nothing::new()));
+    ///
+    /// let mut output = Cursor::new(Vec::new());
+    /// let result = job.run(&mut output);
+    ///
+    /// assert!(result.is_ok());
+    /// ```
+    ///
+    /// # Logging
+    /// - Logs the start of the run process and details of each task's execution.
+    /// - Uses the `tracing` crate for finer-grained observability.
+    ///
+    /// # Implementation
+    /// - The pipeline is executed step by step, with intermediate outputs handled automatically.
+    /// - Any encountered validation or runtime error will halt execution and propagate the error.
+    ///   `out` writer.
+    ///
+    /// # Parameters
+    /// - `&mut self`: A mutable reference to the `Job` that contains the list of tasks (`VecDeque<Task>`) to execute.
+    /// - `out: &mut dyn Write`: A writer to which the final task's output will be written (e.g., terminal, file, etc.).
+    ///
+    /// # Returns
+    /// - `Ok(())` if the job runs successfully and writes its output.
+    /// - `Err(anyhow::Error)` if an error occurs during validation or execution.
+    ///
+    /// # Errors
+    /// - Returns an error if the pipeline is invalid:
+    ///   - If the task list is empty, the job cannot run (`EngineStatus::EmptyTaskList`).
+    ///   - If the first task is not a "Producer" (`IO::Producer`), the pipeline sequence is incorrect (`EngineStatus::NoFirstProducer`).
+    ///   - If the last task is not a "Consumer" (`IO::Consumer`) or "Filter" (`IO::Filter`), the pipeline's termination is invalid (`EngineStatus::NoLastConsumer`).
+    /// - Returns an error if there are issues with inter-task communication or writing to the output.
+    ///
+    /// # Behavior and Execution Process
+    /// 1. Logs the start of the `Job::run()` process for tracing purposes.
+    /// 2. Validates the pipeline based on these rules:
+    ///    - The first task must be a `Producer`.
+    ///    - The pipeline must have at least one task.
+    ///    - If there are multiple tasks, the last one must be a `Consumer` or a `Filter`.
+    /// 3. Creates a communication channel (`channel`) through which task messages are passed.
+    /// 4. Sequentially executes tasks using a `fold()` to chain their outputs.
+    /// 5. Sends a "start" signal to kick off the pipeline, and then gracefully closes the input channel.
+    /// 6. Collects the final output messages from the pipeline and writes them to the provided `out` writer.
+    ///
+    /// # Example Usage
+    /// ```rust
+    /// use std::io::Cursor;
+    /// use fetiche_engine::{Job, Nothing, Task};
+    ///
+    /// // Create a sample job with tasks (details of tasks omitted)
+    /// let mut job = Job::new_with_id("Example Job", 1);
+    /// let nop = Nothing::new();
+    /// let task = Task::from(nop);
+    /// job.add(task);
+    ///
+    /// // Prepare an output writer
+    /// let mut output = Cursor::new(Vec::new());
+    ///
+    /// // Execute the job
+    /// let result = job.run(&mut output);
+    ///
+    /// // Check results
+    /// assert!(result.is_ok());
+    /// let output_str = String::from_utf8(output.into_inner()).unwrap();
+    /// println!("Job Output: {}", output_str);
+    /// ```
+    ///
+    /// # Logging
+    /// - The function uses `tracing::span` for detailed, structured tracing of execution flow.
+    /// - High-level information is logged using `info!` (e.g., job ID, name, and task count).
+    /// - Detailed information is logged using `trace!` (e.g., pipeline creation, pipeline completion).
+    ///
+    /// # Notes
+    /// - Tasks in the pipeline should conform to the `Runnable` trait, which ensures they implement the necessary
+    ///   `cap()` and `run()` methods.
+    /// - Each task communicates with others using the producer-consumer approach.
+    /// - The function assumes the `Task` types (like `Copy`, `Nothing`, `Message`, etc.) implement valid I/O capabilities
+    ///   (`Producer`, `Consumer`, or `Filter`).
     ///
     pub fn run(&mut self, out: &mut dyn Write) -> Result<()> {
         let span = span!(Level::TRACE, "job::run");
@@ -155,6 +288,34 @@ mod tests {
     use crate::{Copy, Engine, Message, Nothing};
 
     use super::*;
+
+    #[test]
+    fn test_new_with_id() {
+        let job = Job::new_with_id("Test Job", 42);
+
+        assert_eq!(job.name, "Test Job");
+        assert_eq!(job.id, 42);
+        assert!(job.list.is_empty());
+    }
+
+    #[test]
+    fn test_new_with_id_empty_name() {
+        let job = Job::new_with_id("", 123);
+
+        assert_eq!(job.name, "");
+        assert_eq!(job.id, 123);
+        assert!(job.list.is_empty());
+    }
+
+    #[test]
+    fn test_new_with_id_unique_id() {
+        let job1 = Job::new_with_id("Job One", 1);
+        let job2 = Job::new_with_id("Job Two", 2);
+
+        assert_ne!(job1.id, job2.id);
+        assert_eq!(job1.name, "Job One");
+        assert_eq!(job2.name, "Job Two");
+    }
 
     #[test]
     fn test_job_run_nothing() {
