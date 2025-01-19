@@ -95,75 +95,36 @@ impl Job {
         self
     }
 
-    /// Runs the job by executing its pipeline of tasks in order and writing the final
-    ///
-    /// output to the provided writer.
+    /// Executes the tasks in the order they are stored in the pipeline and ensures that
+    /// the output of one task flows properly to the following task, creating a producer-consumer chain.
     ///
     /// # Overview
-    /// - This function validates the pipeline before execution.
-    /// - It creates a communication channel for passing messages between tasks.
-    /// - Tasks are executed sequentially, forming a pipeline where each task's output
-    ///   acts as the input for the next task.
-    /// - Final output is collected from the pipeline's last stage and written to the
-    /// Validates and executes the tasks in the job's pipeline, writing the pipeline's
-    /// output to the specified writer.
-    ///
-    /// This method works by processing tasks sequentially according to the order in the queue.
-    /// The output of one task is piped as the input to the next, forming a producer-consumer pipeline.
-    /// The final result is written to the specified `out` writer.
+    /// This function performs the following:
+    /// 1. Validates the job's pipeline, ensuring it has a valid start and end.
+    /// 2. Sequentially executes all tasks using their `run()` method.
+    /// 3. Writes the final task's output into the provided `out` writer.
     ///
     /// # Parameters
-    /// - `&mut self`: The job instance containing the pipeline of tasks.
-    /// - `out: &mut dyn Write`: The output stream where the final result will be written.
+    /// - `&mut self`: A mutable reference to the job object, enabling changes to its internal state as required.
+    /// - `out: &mut dyn Write`: A mutable reference to a writer object where the final output will be stored.
     ///
     /// # Returns
-    /// - `Ok(())`: If the job runs successfully.
-    /// - `Err(anyhow::Error)`: If an error occurs during pipeline validation or execution.
+    /// - `Ok(())`: Indicates success in running the pipeline to completion and writing the result to `out`.
+    /// - `Err(anyhow::Error)`: Indicates errors during pipeline validation, task execution, or IO operations.
     ///
     /// # Errors
-    /// - An error is returned if:
-    ///   - The task queue is empty.
-    ///   - The first task is not a producer, or
-    ///   - The last task is neither a consumer nor a filter.
-    /// - Errors can also occur during inter-task communication or while writing to the output.
+    /// This method can fail due to:
+    /// 1. Pipeline validation errors:
+    ///    - No tasks found in the pipeline.
+    ///    - Missing a starting `IO::Producer` task or ending `IO::Filter` or `IO::Consumer` task.
+    /// 2. Issues with inter-task communication or passing data between tasks.
+    /// 3. Failures while writing the final output to the provided `out` writer.
     ///
-    /// # Example
-    /// ```rust
-    /// use std::io::Cursor;
-    /// use fetiche_engine::{Job, Nothing, Task};
-    ///
-    /// let mut job = Job::new("Example Job");
-    /// job.add(Task::from(Nothing::new()));
-    ///
-    /// let mut output = Cursor::new(Vec::new());
-    /// let result = job.run(&mut output);
-    ///
-    /// assert!(result.is_ok());
-    /// ```
-    ///
-    /// # Logging
-    /// - Logs the start of the run process and details of each task's execution.
-    /// - Uses the `tracing` crate for finer-grained observability.
-    ///
-    /// # Implementation
-    /// - The pipeline is executed step by step, with intermediate outputs handled automatically.
-    /// - Any encountered validation or runtime error will halt execution and propagate the error.
+    /// # Notes
+    /// - Tasks in the pipeline must implement the `Runnable` trait and adhere to its constraints.
+    /// - If the execution halts due to errors, the output writer may remain unchanged.
+    /// - Useful for executing a sequence of dependent operations in a structured manner.
     ///   `out` writer.
-    ///
-    /// # Parameters
-    /// - `&mut self`: A mutable reference to the `Job` that contains the list of tasks (`VecDeque<Task>`) to execute.
-    /// - `out: &mut dyn Write`: A writer to which the final task's output will be written (e.g., terminal, file, etc.).
-    ///
-    /// # Returns
-    /// - `Ok(())` if the job runs successfully and writes its output.
-    /// - `Err(anyhow::Error)` if an error occurs during validation or execution.
-    ///
-    /// # Errors
-    /// - Returns an error if the pipeline is invalid:
-    ///   - If the task list is empty, the job cannot run (`EngineStatus::EmptyTaskList`).
-    ///   - If the first task is not a "Producer" (`IO::Producer`), the pipeline sequence is incorrect (`EngineStatus::NoFirstProducer`).
-    ///   - If the last task is not a "Consumer" (`IO::Consumer`) or "Filter" (`IO::Filter`), the pipeline's termination is invalid (`EngineStatus::NoLastConsumer`).
-    /// - Returns an error if there are issues with inter-task communication or writing to the output.
     ///
     /// # Behavior and Execution Process
     /// 1. Logs the start of the `Job::run()` process for tracing purposes.
@@ -203,13 +164,6 @@ impl Job {
     /// - The function uses `tracing::span` for detailed, structured tracing of execution flow.
     /// - High-level information is logged using `info!` (e.g., job ID, name, and task count).
     /// - Detailed information is logged using `trace!` (e.g., pipeline creation, pipeline completion).
-    ///
-    /// # Notes
-    /// - Tasks in the pipeline should conform to the `Runnable` trait, which ensures they implement the necessary
-    ///   `cap()` and `run()` methods.
-    /// - Each task communicates with others using the producer-consumer approach.
-    /// - The function assumes the `Task` types (like `Copy`, `Nothing`, `Message`, etc.) implement valid I/O capabilities
-    ///   (`Producer`, `Consumer`, or `Filter`).
     ///
     pub fn run(&mut self, out: &mut dyn Write) -> Result<()> {
         let span = span!(Level::TRACE, "job::run");
