@@ -92,7 +92,7 @@ pub enum SubCommand {
     /// Generate Completion stuff
     Completion(ComplOpts),
     /// Display the configuration file path
-    Config,
+    Config(ConfigOpts),
     /// Convert between formats
     Convert(ConvertOpts),
     /// Fetch data from specified site
@@ -117,6 +117,21 @@ pub struct ArchvOpts {
     pub site: String,
     /// Output file, extension will be used for finding final format.
     pub output: String,
+}
+
+// -----
+
+#[derive(Debug, PartialEq, Parser)]
+pub struct ConfigOpts {
+    #[clap(subcommand)]
+    pub subcmd: ConfigCmd,
+}
+
+#[derive(Debug, PartialEq, Parser)]
+pub enum ConfigCmd {
+    Acutectl,
+    Engine,
+    Sources,
 }
 
 // ------
