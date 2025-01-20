@@ -69,11 +69,13 @@ $ cargo install --path .
 
 to compile and install `acutectl` and `process-data`.
 
-You can also use [jujutsu] to fetch and develop for fetiche.
+If you want to use [jujutsu] alongside with git, it is also very easy:
 
 ```shell
-$ jj git clone https://github.com/keltia/fetiche-rs
+$ git clone https://github.com/keltia/fetiche-rs
 $ cd fetiche-rs
+$ jj git init --colocate
+$ jj b track main@origin develop@origin
 $ cargo install --path .
 ```
 
@@ -106,7 +108,7 @@ orchestration between the internal modules. We do have an engine actor, a config
 
 More details in the specific [Fetiched README.md](fetiched/README.md).
 
-> NOTE: This is still WIP
+> NOTE: This is still WIP and most of it is already in `fetiche-sources`.  [ractor] is used right now.
 
 ### Data Model
 
