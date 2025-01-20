@@ -1,6 +1,6 @@
 ## VERSION INFORMATION
 
-This is release v0.50.
+This is release v0.50.99 (next version TBD)
 
 It has many fundamental changes under the hood:
 
@@ -9,19 +9,19 @@ It has many fundamental changes under the hood:
 - `acutectl` is now *async* except for the `Engine` itself which still runs in a sync environment.
 - There are many more Python scripts in the `scripts` directory.
 - Most of the import and conversion processes make use of the [bdt] and [qsv] utilities.
+- more actors are implemented within `fetiche-sources`.
 - `fetiched` is currently not working and will be updated in the near-future.
 
 Main dependencies:
 
-- datafusion v41
-- arrow/parquet v52
+- polars 0.45 (it has replaced datafusion & arrow/parquet)
 
 Current crates versions:
 
-- acutectl/0.23.0
-- process-data/0.4.0+clickhouse
-- fetiche-engine/0.23.0
-- fetiche-formats/0.17.1
-- fetiche-sources/0.16.0
+- acutectl/0.23.1
+- process-data/0.5.2+clickhouse
+- fetiche-engine/0.24.0
+- fetiche-formats/0.18.0
+- fetiche-sources/0.18.0
 - fetiche-common/0.4.0
 - fetiche-macros/0.3.0
