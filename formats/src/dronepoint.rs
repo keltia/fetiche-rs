@@ -111,17 +111,17 @@ pub enum DataSource {
 impl From<DataSource> for u8 {
     fn from(value: DataSource) -> Self {
         match value {
-            crate::DataSource::A => 0,
-            crate::DataSource::M => 1,
-            crate::DataSource::U => 2,
-            crate::DataSource::L => 3,
-            crate::DataSource::F => 4,
-            crate::DataSource::O => 5,
-            crate::DataSource::Rid => 6,
-            crate::DataSource::Lte => 7,
-            crate::DataSource::P => 8,
-            crate::DataSource::N => 9,
-            crate::DataSource::X => 10,
+            DataSource::A => 0,
+            DataSource::M => 1,
+            DataSource::U => 2,
+            DataSource::L => 3,
+            DataSource::F => 4,
+            DataSource::O => 5,
+            DataSource::Rid => 6,
+            DataSource::Lte => 7,
+            DataSource::P => 8,
+            DataSource::N => 9,
+            DataSource::X => 10,
         }
     }
 }
