@@ -57,7 +57,7 @@ site "fa-belfast" {
   }
   base_url = "firehose.flightaware.com:1501"
   routes = {
-    get = "range"
+    get    = "range"
     stream = "live"
   }
 }
@@ -77,9 +77,27 @@ site "safesky" {
   }
 }
 
-// Avionix Cube on the roof, using the TCP Streaming server.
+// Avionix Cube on the EIH roof - ADS-B flow
+// using the TCP Streaming server.
 //
-site "avionix" {
+site "avionix-adsb" {
+  features = ["stream"]
+  type     = "adsb"
+  format   = "cubedata"
+  base_url = "tcp.aero-network.com:50007"
+  auth = {
+    user_key = "USERKEY"
+    api_key  = "APIKEY"
+  }
+  routes = {
+    get = "A"
+  }
+}
+
+// Avionix Cube on the EIH roof - -RemoteID flow
+// using the TCP Streaming server.
+//
+site "avionix-rid" {
   features = ["stream"]
   type     = "drone"
   format   = "cubedata"
@@ -87,6 +105,9 @@ site "avionix" {
   auth = {
     user_key = "USERKEY"
     api_key  = "APIKEY"
+  }
+  routes = {
+    get = "RID"
   }
 }
 
