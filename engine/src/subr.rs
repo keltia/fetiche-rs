@@ -1,5 +1,7 @@
 //! Misc. utility members for `Engine`.
 //!
+//! Most functions will be just wrappers for the messages to the `SourcesActor`.
+//!
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -33,7 +35,7 @@ impl Engine {
         Ok(cast!(self.state, StateMsg::Sync)?)
     }
 
-    /// Return an `Arc::clone` of the Engine sources
+    /// Return a copy of the Engine sources
     ///
     pub async fn sources(&self) -> Result<Sources> {
         let src = call!(self.sources, |port| SourcesMsg::List(port))?;
