@@ -15,7 +15,7 @@ use fetiche_formats::Format;
 use fetiche_sources::Sources;
 
 use crate::actors::{SourcesMsg, StateMsg};
-use crate::{version, Engine, Storage, STATE_FILE};
+use crate::{version, Engine, Storage, ENGINE_CONFIG, STATE_FILE};
 
 impl Engine {
     /// Returns the path of the default state file in basedir
@@ -77,6 +77,12 @@ impl Engine {
     ///
     pub fn list_tokens(&self) -> Result<String> {
         self.tokens.list()
+    }
+
+    /// Return the path of the `engine.hcl` file.
+    ///
+    pub fn config_file(&self) -> PathBuf {
+        self.home.join(ENGINE_CONFIG)
     }
 
     /// Return Engine version (and internal modules)
