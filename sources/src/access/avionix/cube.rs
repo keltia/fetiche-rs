@@ -10,6 +10,7 @@
 //! NOTE: the flow includes several kind of data, drones and airplanes.
 //!
 
+use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Sender};
@@ -23,12 +24,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
-use tracing::{error, info, trace};
+use tracing::{error, info, trace, warn};
 
 use crate::access::TICK;
 use crate::actors::{StatsActor, StatsMsg, Supervisor, PG_SOURCES};
 use crate::{
-    AsyncStreamable, Auth, AuthError, Capability, Filter, LocalWorker, Site, WorkerArgs, WorkerMsg,
+    AsyncStreamable, Auth, AuthError, Capability, Filter, LocalWorker, Routes, Site, WorkerArgs,
+    WorkerMsg,
 };
 use fetiche_formats::Format;
 
@@ -45,6 +47,8 @@ pub struct AvionixCube {
     pub base_url: String,
     /// Running time (for streams)
     pub duration: i32,
+    /// Filter the source
+    pub src: String,
 }
 
 impl AvionixCube {
@@ -63,6 +67,20 @@ impl AvionixCube {
 
         self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
+
+        // the "get" route is used to filter RID vs A sources
+        //
+        let routes = site.routes.clone().unwrap_or_else(|| {
+            // If no routes have been defined, assume we want only RID
+            //
+            warn!("No routes defined for AvionixServer");
+
+            let mut bt = BTreeMap::new();
+            bt.insert("get".to_string(), "RID".to_string());
+            Routes::from(bt.clone())
+        });
+        self.src = routes.get("get").unwrap().to_owned();
+
         if let Some(auth) = &site.auth {
             match auth {
                 Auth::Anon => {}
@@ -83,6 +101,7 @@ impl Default for AvionixCube {
             format: Format::CubeData,
             base_url: String::from("CHANGEME"),
             duration: 0,
+            src: String::from("RID"),
         }
     }
 }
@@ -166,6 +185,7 @@ Duration {}s
         trace!("Starting worker actor.");
         let args = WorkerArgs {
             url,
+            traffic: self.src.clone(),
             out,
             stat: stat.clone(),
         };
