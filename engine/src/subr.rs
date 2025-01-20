@@ -55,9 +55,8 @@ impl Engine {
     /// Return a description of all supported sources
     ///
     pub async fn list_sources(&self) -> Result<String> {
-        let src = call!(self.sources, |port| SourcesMsg::List(port))?;
-        let str = src.list()?;
-        Ok(str)
+        let src = call!(self.sources, |port| SourcesMsg::Table(port))?;
+        Ok(src)
     }
 
     /// Return a descriptions of all supported data formats

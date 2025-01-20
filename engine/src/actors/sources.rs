@@ -10,6 +10,7 @@ pub enum SourcesMsg {
     Get(String),
     Count(RpcReplyPort<usize>),
     List(RpcReplyPort<Sources>),
+    Table(RpcReplyPort<String>),
 }
 
 pub struct SourcesActor;
@@ -34,9 +35,28 @@ impl Actor for SourcesActor {
     async fn handle(
         &self,
         _myself: ActorRef<Self::Msg>,
-        _message: Self::Msg,
-        _state: &mut Self::State,
+        message: Self::Msg,
+        state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        todo!()
+        match message {
+            SourcesMsg::Get(key) => {
+                todo!()
+            }
+            SourcesMsg::List(sender) => {
+                let sources = state.clone();
+                sender.send(sources)?;
+            }
+            SourcesMsg::Table(sender) => {
+                let sources = state.clone();
+                let table = sources.list()?;
+                sender.send(table)?;
+            }
+            SourcesMsg::Count(sender) => {
+                let sources = state.clone();
+                let res = sources.len();
+                sender.send(res)?;
+            }
+        }
+        Ok(())
     }
 }

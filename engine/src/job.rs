@@ -13,7 +13,7 @@ use eyre::Result;
 use tracing::{info, trace};
 use tracing::{span, Level};
 
-use crate::{EngineStatus, Nothing, Runnable, Task, IO};
+use crate::{EngineStatus, Runnable, Task, IO};
 
 /// A `Job` represents a pipeline of tasks to be executed sequentially.
 ///
