@@ -154,3 +154,9 @@ impl<'a> IntoIterator for &'a Routes {
         self.0.iter()
     }
 }
+
+impl From<BTreeMap<String, String>> for Routes {
+    fn from(value: BTreeMap<String, String>) -> Self {
+        Self(value)
+    }
+}
