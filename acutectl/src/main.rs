@@ -90,8 +90,12 @@ async fn main() -> Result<()> {
     let subcmd = opts.subcmd;
 
     if subcmd == SubCommand::Config {
-        let p = cfile.config_path().join(CONFIG);
-        println!("Config path: {:?}", p);
+        let p = cfile
+            .config_path()
+            .join(CONFIG)
+            .to_string_lossy()
+            .to_string();
+        println!("{p}");
         close_logging();
         return Ok(());
     }
