@@ -91,7 +91,21 @@ const ENGINE_VERSION: usize = 2;
 /// Engine process group for the actors
 const ENGINE_PG: &str = "engine.pg";
 
-/// Configuration file format
+/// The `EngineConfig` struct provides the configuration options used to initialize
+/// and manage the `Engine`. It is loaded from the `engine.hcl` file or other sources
+/// and defines the base runtime parameters for the engine.
+///
+/// # Fields
+///
+/// - `basedir`
+///     The base directory where engine-related files, such as state, jobs, and tasks,
+///     are stored. This path acts as the root directory for engine operations.
+///
+/// - `storage`
+///     A `BTreeMap` defining various storage configurations. This can include
+///     settings for in-memory caching, directory-based storage, or Hive-based
+///     sharding. Each storage configuration must conform to the `StorageConfig` enum.
+///
 #[into_configfile(version = 2, filename = "engine.hcl")]
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct EngineConfig {
@@ -101,6 +115,24 @@ pub struct EngineConfig {
     pub storage: BTreeMap<String, StorageConfig>,
 }
 
+/// The `StorageConfig` enum defines different storage types supported by the engine.
+/// It allows the engine to specify and configure storage modules based on the operational
+/// requirements (e.g., in-memory caching, local filesystem storage, or Hive-based sharding).
+///
+/// # Variants
+///
+/// - `Cache`
+///     Defines an in-memory key-value store configuration, typically connected to a service
+///     like DragonflyDB or REDIS. Requires a `url` to connect.
+///
+/// - `Directory`
+///     Represents storage based on the local filesystem. Includes a `path` to the directory
+///     and a `rotation` mechanism for maintaining storage consistency or archival.
+///
+/// - `Hive`
+///     Adds support for Hive-based sharding. Designed for scalable and distributed storage.
+///     Includes a `path` for file-based Hive shards.
+///
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
 pub enum StorageConfig {
@@ -202,9 +234,45 @@ impl Engine {
         })
     }
 
-    /// Load configuration file for the engine.
+    /// Load an engine configuration file and initialize the `Engine`.
     ///
-    /// Takes a string or anything that can be turned into a `PathBuf`.
+    /// This method reads the specified configuration file, validates its version, and initializes
+    /// the required engine components like actors, state, storage, and token management. It also
+    /// ensures that the `Engine` syncs its runtime state upon creation to maintain consistency.
+    ///
+    /// # Parameters
+    ///
+    /// - `fname`: A string slice representing the path to the configuration file.
+    ///
+    /// # Returns
+    ///
+    /// - On success, returns an instance of the `Engine` struct initialized with the provided configuration.
+    /// - On failure, returns an `Err` containing details about the error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use fetiche_engine::Engine;
+    /// # use tokio;
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let engine = Engine::load("path/to/config.hcl").await?;
+    ///     println!("Engine PID: {}", engine.pid);
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// The function will return an error in the following cases:
+    /// - If the configuration file cannot be loaded or parsed.
+    /// - If the configuration version does not match the expected `ENGINE_VERSION`.
+    /// - If any of the actors fail to spawn or initialize correctly.
+    ///
+    /// # Tracing
+    /// This method uses tracing to log detailed events during execution, including loading sources,
+    /// initializing storage, syncing state, and handling errors. Ensure tracing is set up correctly
+    /// to observe these events.
     ///
     #[tracing::instrument]
     pub async fn load(fname: &str) -> Result<Self> {
@@ -284,8 +352,46 @@ impl Engine {
         Ok(engine)
     }
 
-    /// Create a new job queue
+    /// Create a new job
     ///
+    /// This method creates a new job with the specified string identifier (`s`)
+    /// and assigns it a unique ID fetched from the state service. The job
+    /// is then added to the internal job queue and synchronized with the engine state.
+    ///
+    /// # Arguments
+    ///
+    /// - `s`: A string slice representing the name or identifier of the new job.
+    ///
+    /// # Returns
+    ///
+    /// - On success, returns the newly created `Job` instance.
+    /// - On failure, returns an `Err` containing details about the error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use fetiche_engine::Engine;
+    /// # use tokio;
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut engine = Engine::load("path/to/config.hcl").await?;
+    ///     let job = engine.create_job("example_job").await?;
+    ///     println!("Job ID: {}", job.id);
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error in the following cases:
+    ///
+    /// - If the state service fails to generate a new job ID.
+    /// - If the job fails to synchronize with the engine state after creation.
+    ///
+    /// # Tracing
+    /// This method uses tracing to log detailed events during execution, including
+    /// job creation, state updates, and synchronization. Ensure tracing is set up
+    /// correctly to observe these events.
     #[tracing::instrument(skip(self))]
     pub async fn create_job(&mut self, s: &str) -> Result<Job> {
         // Fetch next ID
@@ -314,6 +420,51 @@ impl Engine {
 
     /// Remove a job
     ///
+    /// This method removes an existing job from the engine by its `Job` instance.
+    /// It will ensure that the job is deleted both from the internal job queue
+    /// and the state service.
+    ///
+    /// # Arguments
+    ///
+    /// - `job`: A `Job` instance that represents the job to be removed.
+    ///
+    /// # Returns
+    ///
+    /// - On success, it returns `Ok(())` indicating the job has been removed successfully.
+    /// - On failure, returns an `Err` containing details about the error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use fetiche_engine::Engine;
+    /// # use tokio;
+    /// # use fetiche_engine::Job;
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let mut engine = Engine::load("path/to/config.hcl").await?;
+    ///     let job = engine.create_job("example_job").await?;
+    ///     engine.remove_job(job)?;
+    ///     println!("Job removed successfully");
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error in the following cases:
+    ///
+    /// - If the job cannot be removed from the state service.
+    /// - If synchronization with the engine state fails after the job's removal.
+    ///
+    /// # Tracing
+    ///
+    /// Tracing events provide logs about the removal process:
+    /// - Lock acquisition for the job queue.
+    /// - Job removal success or failure.
+    /// - Synchronization status after job removal.
+    ///
+    /// Ensure that tracing is set up in your application to observe these events.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn remove_job(&mut self, job: Job) -> Result<()> {
         trace!("grab lock");
@@ -324,6 +475,51 @@ impl Engine {
         self.sync()
     }
 
+    /// Retrieve a job by its unique ID
+    ///
+    /// This method takes a job ID (of type `usize`) and attempts to retrieve the
+    /// corresponding job from the internal job queue. If a job with the specified ID
+    /// exists, it is returned; otherwise, an error is generated indicating the job
+    /// could not be found.
+    ///
+    /// # Arguments
+    ///
+    /// - `id`: A `usize` identifier representing the unique ID of the job to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// - Returns the `Job` instance if it exists.
+    /// - Returns an error if the job with the specified ID is not found.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an `Err` containing `EngineStatus::JobNotFound` if
+    /// the job does not exist in the internal job queue.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use fetiche_engine::Engine;
+    /// # use tokio;
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let engine = Engine::load("path/to/config.hcl").await?;
+    ///     match engine.get_job(42) {
+    ///         Ok(job) => println!("Found job: {:?}", job),
+    ///         Err(e) => eprintln!("Error: {}", e),
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// # Tracing
+    ///
+    /// Tracing logs are emitted to provide detailed runtime diagnostics, including:
+    /// - Lock acquisition on the job list.
+    /// - Retrieval success or error cases.
+    ///
+    /// Ensure tracing is set up in your application to observe these events.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn get_job(&self, id: usize) -> Result<Job> {
         let state = self.jobs.read().unwrap();

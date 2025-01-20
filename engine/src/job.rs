@@ -15,8 +15,50 @@ use tracing::{span, Level};
 
 use crate::{EngineStatus, Nothing, Runnable, Task, IO};
 
-/// The engine is processing jobs, made of runnable tasks
+/// A `Job` represents a pipeline of tasks to be executed sequentially.
 ///
+/// The `Job` is part of the Fetiche engine and is used to define
+/// and manage a sequence of operations (tasks) that are executed in order,
+/// where each task processes and passes data to the next one in a producer-consumer chain.
+///
+/// # Overview
+/// A `Job` consists of:
+/// - A unique identifier (`id`) for distinguishing jobs.
+/// - A `name` for recognizing the job's purpose or type.
+/// - A `list` of tasks to be executed in order, backed by a `VecDeque` for FIFO (First In, First Out) behavior.
+///
+/// Tasks in the job must implement the `Runnable` trait and adhere to its constraints.
+/// The pipeline allows chaining tasks that transform data from an initial producer to a final consumer.
+///
+/// # Attributes
+/// - `id`: A unique identifier for the `Job`.
+/// - `name`: A descriptive name for the `Job`.
+/// - `list`: A list (queue) of tasks to be executed in the pipeline.
+///
+/// # Usage
+/// Jobs are created using the `Job::new` or `Job::new_with_id` methods.
+/// Tasks can be added to the job using `Job::add` and run sequentially using `Job::run`.
+///
+/// # Example
+/// ```rust
+/// use std::io::Cursor;
+/// use fetiche_engine::{Job, Nothing, Task};
+///
+/// // Create a new Job
+/// let mut job = Job::new("Example Pipeline");
+///
+/// // Add a simple task
+/// let nop = Nothing::new();
+/// let task = Task::from(nop);
+/// job.add(task);
+///
+/// // Prepare output writer
+/// let mut output = Cursor::new(Vec::new());
+///
+/// // Execute job
+/// let result = job.run(&mut output);
+/// assert!(result.is_ok());
+/// ```
 #[derive(Clone, Debug)]
 pub struct Job {
     /// Job ID

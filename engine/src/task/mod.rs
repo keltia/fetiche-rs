@@ -47,6 +47,7 @@ mod tee;
 /// - `Store`: Organize and store datasets into a directory structure.
 /// - `Stream`: Fetch and process a continuous stream of data.
 /// - `Tee`: Copy data into a file and pass the data forward unchanged.
+///
 #[enum_dispatch]
 #[derive(Clone, Debug, strum::Display, strum::VariantNames)]
 #[strum(serialize_all = "PascalCase")]

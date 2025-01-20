@@ -14,6 +14,45 @@ use tracing::trace;
 
 use crate::TokenStatus;
 
+/// The `TokenStorage` struct provides functionality for managing tokens
+/// stored as serialized files in a specified directory. It allows operations
+/// such as registering the directory containing token files, storing tokens,
+/// and retrieving tokens by key, as well as listing all tokens present in the
+/// directory.
+///
+/// This struct is specifically designed to work with different types of tokens,
+/// which are represented by the `TokenType` enum. The specific token format is
+/// determined based on the file content.
+///
+/// # Fields
+/// - `path`: A string representing the relative path to the directory containing token files.
+/// - `list`: A `BTreeMap` storing the tokens. The keys are file names, and the values are the parsed `TokenType`s.
+///
+/// # Examples
+///
+/// ```rust
+///
+/// // Register a directory containing token files
+/// use fetiche_engine::TokenStorage;
+/// use fetiche_sources::{AsdToken, TokenType};
+///
+/// let mut storage = TokenStorage::register("path/to/tokens");
+///
+/// // Store a new token
+/// let token_data = TokenType::AsdToken(AsdToken { /* ... */ });
+/// storage.store("new_token_file", token_data);
+///
+/// // Retrieve a token by key
+/// if let Ok(token) = storage.load("existing_token_file") {
+///     println!("Loaded token: {:?}", token);
+/// }
+///
+/// // List all tokens
+/// if let Ok(token_list) = storage.list() {
+///     println!("{}", token_list);
+/// }
+/// ```
+///
 #[derive(Debug)]
 pub struct TokenStorage {
     /// `path` is relative to `root`.
@@ -42,17 +81,6 @@ impl TokenStorage {
                         );
                     } else {
                         unimplemented!()
-                        ///
-                        /// This example demonstrates basic usage of the `TokenStorage` struct
-                        /// to manage token storage and retrieval operations, as well as
-                        /// listing all stored tokens in a directory.
-                        ///
-                        /// The `TokenStorage` struct simplifies working with serialized token
-                        /// files by providing helper methods to store, load, and enumerate
-                        /// token metadata.
-                        ///
-                        /// Ensure the directory path specified during registration exists and
-                        /// contains appropriately formatted token files for proper functionality.
                     }
                 }
             });

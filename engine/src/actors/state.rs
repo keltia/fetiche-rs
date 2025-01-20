@@ -27,6 +27,26 @@ pub(crate) const STATE_FILE: &str = "state";
 ///
 pub struct StateActor;
 
+/// Messages handled by the `StateActor`.
+///
+/// The `StateMsg` enum defines various requests that can be sent to the `StateActor` for
+/// managing and interacting with the state.
+///
+/// Variants:
+/// - `Add(usize)`: Adds a job ID to the queue.
+/// - `Remove(usize)`: Removes a job ID from the queue after completion.
+/// - `Next(RpcReplyPort<usize>)`: Retrieves the next available job ID by incrementing the last job ID.
+/// - `GetPid(RpcReplyPort<u32>)`: Fetches the PID of the current running state actor.
+/// - `Sync`: Synchronizes the current state to the disk (stored in the state file).
+///
+/// Example usage:
+/// ```rust
+/// use ractor::RpcReplyPort;
+/// use fetiche_engine::StateMsg;
+///
+/// // Example Message
+/// let add_msg = StateMsg::Add(42);
+/// ```
 #[derive(Debug)]
 pub enum StateMsg {
     /// Add a job ID to the queue.
@@ -41,6 +61,25 @@ pub enum StateMsg {
     Sync,
 }
 
+/// Represents the current state of the `StateActor` actor.
+///
+/// This structure defines the persistent state data that is managed by the
+/// `StateActor`.
+///
+/// Fields:
+/// - `fname`: A [`PathBuf`] representing the file path where the state data
+///   is stored on disk. This field is excluded from serialization.
+/// - `tm`: A timestamp (`i64`) of the last time the state was synchronized with
+///   the disk. Stored in UTC.
+/// - `last`: The last processed job ID (`usize`).
+/// - `pid`: The process ID (`u32`) of the running instance. This field is
+///   excluded from serialization.
+/// - `queue`: A queue (`VecDeque<usize>`) storing the IDs of pending jobs to
+///   be processed.
+///
+/// Implements:
+/// - Derived traits: `Clone`, `Debug`, `Deserialize`, `Serialize`
+///
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct State {
     /// Our state file path.
