@@ -66,6 +66,5 @@ fn banner() -> Result<String> {
 {}
 "##,
         crate_description!()
-    );
-    Ok(())
+    ))
 }
