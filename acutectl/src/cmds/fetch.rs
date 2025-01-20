@@ -15,7 +15,31 @@ use fetiche_sources::{Filter, Flow};
 
 use crate::{FetchOpts, Status};
 
-/// Actual fetching of data from a given site
+/// Fetch data from a specific site, applying the provided filters and options.
+///
+/// # Parameters
+///
+/// - `engine`: Reference to the `Engine` instance used for managing tasks and jobs.
+/// - `fopts`: A reference to `FetchOpts` containing the options for fetching data.
+///
+/// # Returns
+///
+/// Result indicating success or any error encountered while processing the fetch request.
+///
+/// # Description
+///
+/// This function orchestrates the fetching of data from a network site by:
+/// - Validating the site as fetchable.
+/// - Applying the desired filters and transformations based on user options.
+/// - Creating a job with necessary tasks such as fetch, optional conversion, and output saving.
+/// - Managing the progress bar and job lifecycle.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The specified site is not fetchable.
+/// - There is an issue with applying file formatting options.
+/// - The fetching or saving process encounters an issue.
 ///
 #[tracing::instrument(skip(engine))]
 pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
@@ -116,7 +140,22 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
     engine.remove_job(job)
 }
 
-/// From the CLI options
+/// Generates a `Filter` from the provided `FetchOpts`.
+///
+/// # Parameters
+/// - `opts`: A reference to `FetchOpts` containing the options for creating the filter.
+///
+/// # Returns
+/// - `Result<Filter>`: A `Filter` object encapsulating the configured filtering options, or an error if the options are invalid.
+///
+/// # Description
+/// This function processes CLI options to create the appropriate `Filter` object
+/// based on user-provided flags and arguments such as date ranges, keywords, or duration.
+///
+/// # Errors
+/// This function may return an error if:
+/// - The `dates` argument cannot be parsed into a valid interval.
+/// - Keyword arguments are improperly formatted (e.g., missing `:` separator).
 ///
 #[tracing::instrument]
 fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {

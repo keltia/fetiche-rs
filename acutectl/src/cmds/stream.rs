@@ -9,7 +9,33 @@ use tracing::{debug, error, info, trace};
 
 use crate::{Status, StreamOpts};
 
-/// Actual fetching of data from a given site
+/// Stream data from a specified site, applying filters and handling job execution and output.
+///
+/// # Parameters
+/// - `engine`: A mutable reference to the `Engine` instance managing tasks and jobs.
+/// - `sopts`: Reference to `StreamOpts` containing the options for streaming (e.g., filters, output, format).
+///
+/// # Returns
+/// - `Result<()>`: Indicates whether the streaming was successful or if an error was encountered.
+///
+/// # Description
+/// This function handles the streaming of data from a given site. Key functionalities include:
+/// - Validation of streamable sites using `Flow`.
+/// - Creation of a `Job` containing one or more tasks such as:
+///   - Streaming data from the site.
+///   - Tee (copying data while processing).
+///   - Conversion between formats (optional, deprecated).
+///   - Storing split data, if requested.
+/// - Managing output (to a file or stdout) based on the provided options.
+///
+/// The function ensures that the generated job is properly cleaned up from the engine after execution.
+///
+/// # Errors
+/// This function will return an error if:
+/// - The site specified in `sopts` is not streamable.
+/// - Options provided in `sopts` are invalid or conflicting.
+/// - File handling (e.g., creating output files) fails during execution.
+/// - Any errors occur during task execution.
 ///
 #[tracing::instrument(skip(engine))]
 pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
@@ -118,7 +144,24 @@ fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
     Ok(filter)
 }
 
-/// Check the presence and validity of some of the arguments
+/// Check the validity and mutual exclusivity of some of the streaming arguments.
+///
+/// # Parameters
+/// - `opts`: A reference to `StreamOpts` containing the CLI options provided by the user.
+///
+/// # Returns
+/// - `Result<()>`: Returns `Ok(())` if all arguments are valid. Returns an error if there are conflicting or invalid arguments.
+///
+/// # Description
+/// This function ensures that the arguments provided via `StreamOpts` are valid and do not conflict.
+///
+/// - Ensures that the `today` option is not used simultaneously with `begin` or `end`.
+/// - Validates that `begin` and `end` are either both provided or neither is set.
+///
+/// # Errors
+/// This function will return an error if:
+/// - Both `today` and either `begin` or `end` options are specified.
+/// - Only one of `begin` or `end` is provided (requires both or none).
 ///
 #[tracing::instrument]
 fn check_args(opts: &StreamOpts) -> Result<()> {
