@@ -236,7 +236,6 @@ mod tests {
     use crate::{IntoConfig, Versioned};
     use fetiche_macros::into_configfile;
     use serde::{Deserialize, Serialize};
-    use std::collections::BTreeMap;
 
     /// Describe the possible ways to authenticate oneself
     ///
