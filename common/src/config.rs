@@ -24,8 +24,40 @@ const CONFIG: &str = "config.hcl";
 /// Main name for the directory base
 const TAG: &str = "drone-utils";
 
-/// Configuration for the CLI tool, supposed to include parameters and most importantly
-/// credentials for the various sources.
+/// `ConfigFile` is a struct that manages the configuration file loading process for the `fetiche` application.
+///
+/// This struct provides functionalities to locate the default configuration directory, read a configuration file,
+/// and load the contents into an inner struct `T`. The `ConfigFile` struct leverages the `directories` crate to
+/// determine platform-specific user directories and enables customizable configuration management for various use cases.
+///
+/// # Parameters
+///
+/// T - Must implement the `Debug`, `DeserializeOwned`, and `IntoConfig` traits to ensure the configuration file
+/// is compatible with the `ConfigFile` struct.
+///
+/// # Fields
+///
+/// * `tag` - A string representing the project name, typically used for directory naming.
+/// * `root` - A `PathBuf` that points to the base directory where configuration-related files will be stored.
+/// * `inner` - An optional field of type `T` that holds the deserialized configuration data.
+///
+/// # Example
+///
+/// ## Loading a Configuration File
+/// ```no_run
+/// use serde::Deserialize;
+/// use fetiche_common::{ConfigFile, IntoConfig};
+/// use fetiche_common::Versioned;
+/// use fetiche_macros::into_configfile;
+///
+/// #[into_configfile]
+/// #[derive(Debug, Default, Deserialize)]
+/// struct MyConfig {
+///     key: String,
+/// }
+///
+/// let config = ConfigFile::<MyConfig>::load(None).unwrap();
+/// ```
 ///
 #[derive(Debug)]
 pub struct ConfigFile<T: Debug + DeserializeOwned + IntoConfig> {
@@ -145,7 +177,6 @@ where
     /// let conf = cfg.inner();
     /// ```
     ///
-    /// NOTE: if `fname`
     #[tracing::instrument]
     pub fn load(fname: Option<&str>) -> Result<ConfigFile<T>> {
         // Create context

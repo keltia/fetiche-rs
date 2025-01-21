@@ -20,7 +20,22 @@ use fetiche_formats::Format;
 
 use crate::{Auth, Capability, Routes};
 
-/// Describe what a site is, its capabilities, access methods and authentication method.
+/// Represents a `Site` with its configuration details and behavior.
+///
+/// A `Site` contains metadata about its features, type of data it handles,
+/// name, authentication details, and routes. It provides functionalities
+/// to interact with the site, such as checking its streamable capability,
+/// listing available routes, fetching a specific route, and more.
+///
+/// ## Fields:
+/// - `features`: A list of capabilities that the site supports.
+/// - `dtype`: Type of data the site is handling (e.g., ADS-B, Drone).
+/// - `name`: The name of the site.
+/// - `token_base`: Filesystem path for token storage.
+/// - `format`: Data format of the source.
+/// - `base_url`: Base URL for accessing the site.
+/// - `auth`: Optional authentication details required for the site.
+/// - `routes`: Optional list of available routes for the site.
 ///
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Site {
@@ -46,6 +61,16 @@ pub struct Site {
 }
 
 /// Define the kind of data the source is managing
+///
+/// This enum represents the type of data handled by a site.
+/// It provides a clear differentiation between various types:
+///
+/// - `Adsb`: Represents plain ADS-B (Automatic Dependent Surveillance–Broadcast) traffic.
+/// - `Drone`: Represents drone-specific traffic.
+/// - `Invalid`: Serves as a fallback for unrecognized data types.
+///
+/// The enum supports string-based conversion from common lowercase string representations
+/// and implements the `Display` trait for user-friendly formatting.
 ///
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]

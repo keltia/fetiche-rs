@@ -2,7 +2,44 @@ use std::fmt::{Display, Formatter};
 
 use serde::{Deserialize, Serialize};
 
-/// Describe the possible ways to authenticate oneself
+/// Represents the different authentication mechanisms available for accessing resources.
+///
+/// The `Auth` enum provides multiple ways to authenticate, such as using API keys,
+/// token-based authentication, or plain login credentials. Each variant corresponds
+/// to a specific authentication method.
+///
+/// # Variants
+///
+/// * **Anon**
+///   No authentication required.
+///
+/// * **UserKey**
+///   Authentication using a combination of `api_key` and `user_key`.
+///
+/// * **Key**
+///   Authentication using a single `api_key`, supplied either in the URL or as a header.
+///
+/// * **Token**
+///   Authentication using a `login` and `password` to obtain a `token`.
+///
+/// * **Vhost**
+///   Authentication using `vhost` (virtual host), `username`, and `password`.
+///
+/// * **Login**
+///   Simple authentication using `username` and `password`.
+///
+/// # Example Usage:
+///
+/// ```rust
+/// use fetiche_sources::Auth;
+///
+/// let auth = Auth::UserKey {
+///     api_key: "my_api_key".to_string(),
+///     user_key: "my_user_key".to_string(),
+/// };
+///
+/// println!("Auth: {}", auth);
+/// ```
 ///
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
@@ -31,7 +68,30 @@ pub enum Auth {
 }
 
 impl Display for Auth {
-    /// Obfuscate the passwords & keys
+    /// Implements the `Display` trait for the `Auth` enum to provide a user-friendly string representation.
+    ///
+    /// Sensitive information such as passwords and API keys are obfuscated for security purposes.
+    ///
+    /// # Obfuscation Details:
+    ///
+    /// - **Passwords:** Replaced with `"HIDDEN"`.
+    /// - **API keys:** Replaced with `"HIDDEN"`.
+    ///
+    /// The representation depends on the variant of the `Auth` enum.
+    ///
+    /// # Examples:
+    ///
+    /// ```rust
+    /// use fetiche_sources::Auth;
+    ///
+    /// let auth = Auth::Token {
+    ///     login: "user".to_string(),
+    ///     password: "mypassword".to_string(),
+    ///     token: "12345".to_string(),
+    /// };
+    ///
+    /// assert!(auth.to_string().contains("HIDDEN"));
+    /// ```
     ///
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // Hide passwords & API keys

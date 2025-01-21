@@ -22,6 +22,7 @@ pub use access::*;
 pub use auth::*;
 pub use error::*;
 pub use filter::*;
+pub use flow::*;
 pub use init::*;
 pub use route::*;
 pub use site::*;
@@ -32,6 +33,7 @@ pub mod actors;
 mod auth;
 mod error;
 mod filter;
+mod flow;
 mod init;
 mod route;
 mod site;
@@ -40,6 +42,47 @@ mod sources;
 #[macro_use]
 mod macros;
 
+/// A trait representing an entity that holds a key and can expire.
+///
+/// The `Expirable` trait provides two essential methods:
+/// - [`key`]: Retrieves the unique identifier or "key" for the entity.
+/// - [`is_expired`]: Checks whether the entity is expired.
+///
+/// This trait can be used for managing credentials, tokens, or other
+/// expirable resources.
+///
+/// # Example
+///
+/// ```rust
+/// use fetiche_sources::Expirable;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Debug, Clone, Serialize, Deserialize)]
+/// struct MyToken {
+///     key: String,
+///     expiration: u64, // Epoch timestamp
+/// }
+///
+/// impl Expirable for MyToken {
+///     fn key(&self) -> String {
+///         self.key.clone()
+///     }
+///
+///     fn is_expired(&self) -> bool {
+///         let current_time = 1681234567; // Example current timestamp
+///         self.expiration < current_time
+///     }
+/// }
+///
+/// let token = MyToken {
+///     key: String::from("my_unique_token"),
+///     expiration: 1681234000,
+/// };
+///
+/// println!("Token Key: {}", token.key());
+/// println!("Is Expired: {}", token.is_expired());
+/// ```
+///
 #[enum_dispatch(TokenType)]
 pub trait Expirable: Debug + Clone {
     fn key(&self) -> String;
@@ -52,6 +95,35 @@ pub enum TokenType {
     AsdToken(AsdToken),
 }
 
+/// Represents the various levels of data access capability.
+///
+/// The `Capability` enum is used to specify the type of operations
+/// a component or entity is allowed to perform. This enables fine-grained
+/// control over source or actor behavior based on their permissions.
+///
+/// # Variants
+///
+/// - **None**: Indicates no specific capabilities; the entity can exist but cannot perform any operation.
+/// - **Fetch**: Allows fetching data from a source.
+/// - **Read**: Grants permission to read data but does not necessarily allow fetching.
+/// - **Stream**: Enables streaming data from a source.
+///
+/// # Example
+///
+/// ```rust
+/// use fetiche_sources::Capability;
+///
+/// let capability = Capability::Fetch;
+/// println!("Capability: {}", capability);
+///
+/// match capability {
+///     Capability::None => println!("No operations allowed."),
+///     Capability::Fetch => println!("Can fetch data."),
+///     Capability::Read => println!("Can read data."),
+///     Capability::Stream => println!("Can stream data."),
+/// }
+/// ```
+///
 #[derive(Clone, Copy, Debug, Default, Deserialize, Ord, PartialOrd, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 #[repr(u8)]
@@ -75,7 +147,45 @@ impl Display for Capability {
     }
 }
 
-/// Statistics gathering struct, should be generic enough for most sources
+/// `Stats` is a structure used to track various performance-related statistics
+/// for data sources in the system.
+///
+/// This struct consolidates a variety of metrics, such as traffic information,
+/// reconnection attempts, and error counts, which are useful for monitoring and
+/// debugging purposes.
+///
+/// # Fields
+///
+/// - `tm`: The total elapsed time in seconds since the monitoring began.
+/// - `pkts`: The number of packets processed.
+/// - `reconnect`: The total number of reconnection attempts.
+/// - `bytes`: The total number of bytes processed.
+/// - `hits`: The number of successful requests or accesses.
+/// - `miss`: The number of failed requests or cache misses.
+/// - `empty`: The number of empty or null responses.
+/// - `err`: The number of errors encountered during operation.
+///
+/// # Example
+///
+/// ```rust
+/// use fetiche_sources::Stats;
+///
+/// let stats = Stats {
+///     tm: 3600,
+///     pkts: 3456,
+///     reconnect: 3,
+///     bytes: 987654,
+///     hits: 1200,
+///     miss: 200,
+///     empty: 50,
+///     err: 15,
+/// };
+///
+/// println!("Stats summary: {}", stats);
+/// ```
+///
+/// This example demonstrates how to create an instance of `Stats` and display
+/// it using its `Display` implementation.
 ///
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct Stats {
@@ -103,39 +213,6 @@ impl Display for Stats {
             self.empty,
             self.err
         )
-    }
-}
-
-/// We have three different traits now
-///
-#[derive(Debug)]
-pub enum Flow {
-    Fetchable(Box<dyn Fetchable>),
-    Streamable(Box<dyn Streamable>),
-    AsyncStreamable(Box<dyn AsyncStreamable>),
-}
-
-impl Flow {
-    /// Return the name of the underlying object
-    ///
-    #[inline]
-    pub fn name(&self) -> String {
-        match self {
-            Flow::Fetchable(s) => s.name(),
-            Flow::Streamable(s) => s.name(),
-            Flow::AsyncStreamable(s) => s.name(),
-        }
-    }
-
-    /// Return the format of the underlying object
-    ///
-    #[inline]
-    pub fn format(&self) -> Format {
-        match self {
-            Flow::Fetchable(s) => s.format(),
-            Flow::Streamable(s) => s.format(),
-            Flow::AsyncStreamable(s) => s.format(),
-        }
     }
 }
 

@@ -13,7 +13,52 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::{Display, Formatter};
 
-/// If we specify -B/-E or --today, we need to pass these below
+/// Represents various filtering criteria that can be used to specify
+/// particular subsets of data or time intervals.
+///
+/// - `Interval`: Specifies a time interval using a `begin` and `end` datetime.
+/// - `Keyword`: Represents a key-value pair filter.
+/// - `Duration`: Specifies a length of time in seconds. Negative values indicate
+///               a period in the past.
+/// - `Altitude`: Defines altitude-based filters with a `duration`, `min`, and `max` altitude.
+/// - `Stream`: Represents streaming parameters such as start time (`from`),
+///             `duration`, and `delay` between calls.
+/// - `None`: Default variant for no filtering.
+///
+/// The `Filter` enum can be serialized and is compatible with JSON.
+///
+/// # Examples
+///
+/// ## Creating an Interval Filter
+/// ```rust
+/// use chrono::{Utc, TimeZone};
+/// use fetiche_sources::Filter;
+///
+/// let begin = Utc.with_ymd_and_hms(2023, 10, 1, 0, 0, 0);
+/// let end = Utc.with_ymd_and_hms(2023, 10, 10, 0, 0, 0);
+/// let filter = Filter::interval(begin, end);
+/// ```
+///
+/// ## Creating a Keyword Filter
+/// ```rust
+/// use fetiche_sources::Filter;
+///
+/// let filter = Filter::keyword("icao24", "foobar");
+/// ```
+///
+/// ## Creating a Duration Filter
+/// ```rust
+/// use fetiche_sources::Filter;
+///
+/// let filter = Filter::since(3600); // Filter for the past hour
+/// ```
+///
+/// ## Creating a Stream Filter
+/// ```rust
+/// use fetiche_sources::Filter;
+///
+/// let filter = Filter::stream(5, 3600, 10); // Stream starting at 5s, lasting 1 hour with a 10s delay
+/// ```
 ///
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]

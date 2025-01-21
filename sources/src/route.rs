@@ -7,6 +7,29 @@ use std::ops::{Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
 
+/// A struct that manages a collection of routes represented as key-value pairs.
+///
+/// Each route is stored as a pair of strings, where the key is the route name, 
+/// and the value is the associated route string.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::BTreeMap;
+/// use fetiche_sources::Routes;
+///
+/// let mut routes = Routes::from(BTreeMap::from([
+///     ("home".to_string(), "/home".to_string()),
+///     ("about".to_string(), "/about".to_string()),
+/// ]));
+///
+/// assert_eq!(routes.get("home"), Some(&"/home".to_string()));
+/// assert!(routes.contains_key("about"));
+/// ```
+///
+/// The `Routes` struct provides several utility methods for accessing, 
+/// modifying, and iterating over the routes.
+///
 #[derive(Clone, Debug, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Routes(BTreeMap<String, String>);
 
@@ -158,5 +181,119 @@ impl<'a> IntoIterator for &'a Routes {
 impl From<BTreeMap<String, String>> for Routes {
     fn from(value: BTreeMap<String, String>) -> Self {
         Self(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn test_get() {
+        let routes = Routes::from(BTreeMap::from([
+            ("home".to_string(), "/home".to_string()),
+            ("about".to_string(), "/about".to_string()),
+        ]));
+
+        assert_eq!(routes.get("home"), Some(&"/home".to_string()));
+        assert_eq!(routes.get("about"), Some(&"/about".to_string()));
+        assert_eq!(routes.get("contact"), None);
+    }
+
+    #[test]
+    fn test_is_empty_and_len() {
+        let empty_routes: Routes = Routes::from(BTreeMap::new());
+        assert!(empty_routes.is_empty());
+        assert_eq!(empty_routes.len(), 0);
+
+        let routes = Routes::from(BTreeMap::from([
+            ("home".to_string(), "/home".to_string()),
+        ]));
+        assert!(!routes.is_empty());
+        assert_eq!(routes.len(), 1);
+    }
+
+    #[test]
+    fn test_keys() {
+        let routes = Routes::from(BTreeMap::from([
+            ("home".to_string(), "/home".to_string()),
+            ("about".to_string(), "/about".to_string()),
+        ]));
+        let keys: Vec<&String> = routes.keys().collect();
+        assert_eq!(keys, vec![&"about".to_string(), &"home".to_string()]);
+    }
+
+    #[test]
+    fn test_values() {
+        let routes = Routes::from(BTreeMap::from([
+            ("home".to_string(), "/home".to_string()),
+            ("about".to_string(), "/about".to_string()),
+        ]));
+        let values: Vec<&String> = routes.values().collect();
+        assert_eq!(values, vec![&"/about".to_string(), &"/home".to_string()]);
+    }
+
+    #[test]
+    fn test_contains_key() {
+        let routes = Routes::from(BTreeMap::from([
+            ("home".to_string(), "/home".to_string()),
+            ("about".to_string(), "/about".to_string()),
+        ]));
+
+        assert!(routes.contains_key("home"));
+        assert!(routes.contains_key("about"));
+        assert!(!routes.contains_key("contact"));
+    }
+
+    #[test]
+    fn test_index() {
+        let routes = Routes::from(BTreeMap::from([
+            ("home".to_string(), "/home".to_string()),
+            ("about".to_string(), "/about".to_string()),
+        ]));
+
+        assert_eq!(routes["home"], "/home".to_string());
+        assert_eq!(routes["about"], "/about".to_string());
+    }
+
+    #[test]
+    #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+    fn test_index_panics_on_invalid_key() {
+        let routes = Routes::from(BTreeMap::new());
+        let _ = &routes["invalid"];
+    }
+
+    #[test]
+    fn test_index_mut() {
+        let mut routes = Routes::from(BTreeMap::new());
+        routes["home"] = "/new_home".to_string();
+        assert_eq!(routes["home"], "/new_home".to_string());
+    }
+
+    #[test]
+    fn test_iter() {
+        let routes = Routes::from(BTreeMap::from([
+            ("home".to_string(), "/home".to_string()),
+            ("about".to_string(), "/about".to_string()),
+        ]));
+        let iter: Vec<(&String, &String)> = routes.iter().collect();
+        assert_eq!(
+            iter,
+            vec![
+                (&"about".to_string(), &"/about".to_string()),
+                (&"home".to_string(), &"/home".to_string())
+            ]
+        );
+    }
+
+    #[test]
+    fn test_into_values() {
+        let routes = Routes::from(BTreeMap::from([
+            ("home".to_string(), "/home".to_string()),
+            ("about".to_string(), "/about".to_string()),
+        ]));
+        let values: Vec<String> = routes.into_values().collect();
+        assert_eq!(values, vec!["/about".to_string(), "/home".to_string()]);
     }
 }

@@ -51,8 +51,16 @@ impl Display for State {
     }
 }
 
-/// stats gathering actor.  You run one actor per task, each with a different `tag`, as passed in
-/// the arguments.
+/// StatsActor is responsible for managing and tracking statistics related to packet and byte counts,
+/// reconnect attempts, errors, and more. This actor processes messages to update the stats, execute
+/// commands such as resetting or printing stats, and handle termination requests.
+///
+/// StatsMsg is the message type used with this actor. Messages may include stat updates
+/// (`Pkts`, `Bytes`, `Reconnect`, `Error`) or commands (`Reset`, `Print`, `Exit`).
+///
+/// The actor maintains a `State` structure that contains the start timestamp and accumulated statistics.
+/// This actor is intended to be lightweight and focused on processing statistics for a given task
+/// or context.
 ///
 #[ractor::async_trait]
 impl Actor for StatsActor {
@@ -115,6 +123,23 @@ impl Actor for StatsActor {
 ///
 pub struct Supervisor;
 
+/// Supervisor is responsible for overseeing and managing the lifecycle
+/// of child actors. It monitors their starting, termination, failures,
+/// and process group changes, ensuring that any necessary logging or tracking
+/// occurs.
+///
+/// # Responsibilities
+///
+/// - Adds itself to the process group `PG_SOURCES` upon startup.
+/// - Handles events related to child actor lifecycle, such as:
+///   - `ActorTerminated`: Child actors' termination is logged.
+///   - `ActorFailed`: Logs child actors that terminated with an error.
+///   - `ProcessGroupChanged`: Logs changes to the associated process group.
+///   - `ActorStarted`: Logs when a child actor starts.
+///
+/// The `Supervisor` itself does not perform specific tasks or act on direct messages but
+/// focuses on its children and their behavior in a process group context.
+///
 #[ractor::async_trait]
 impl Actor for Supervisor {
     type Msg = ();

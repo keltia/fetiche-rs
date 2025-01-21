@@ -9,6 +9,26 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 use tracing_tree::HierarchicalLayer;
 
+/// Initializes logging for the application.
+///
+/// This function sets up logging based on the provided options. It can be configured to:
+/// - Use hierarchical logging output if `use_tree` is enabled.
+/// - Send logs to OpenTelemetry if `use_telemetry` is enabled.
+/// - Log output to a file specified by `use_file`.
+///
+/// The log levels and filters can also be customized using the environment variable `RUST_LOG`.
+///
+/// # Parameters
+///
+/// - `name`: The name of the application, used for telemetry and file naming.
+/// - `use_telemetry`: Enables OpenTelemetry tracing if set to `true`.
+/// - `use_tree`: Enables hierarchical logging tree output if set to `true`.
+/// - `use_file`: Specifies an optional file path for appending logs, supporting hourly rotation.
+///
+/// # Returns
+///
+/// Returns `Ok(())` if logging is successfully initialized or an error wrapped
+/// in `eyre::Result` if any issue occurs during initialization.
 #[tracing::instrument]
 pub fn init_logging(
     name: &'static str,

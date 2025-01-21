@@ -1,6 +1,19 @@
 use thiserror::Error;
 
-/// Custom error type for tokens, allow us to differentiate between errors.
+/// This enum defines various authentication-related errors that
+/// may occur when interacting with tokens or authentication systems.
+///
+/// # Variants
+///
+/// * `BadParam(String)` - Indicates that an invalid or unexpected parameter was provided.
+/// * `NoAPIKey` - Signifies that an API key is missing during a required operation.
+/// * `Decoding(String)` - Represents an error that occurred while decoding a token.
+/// * `HTTP(String)` - Represents an HTTP-related error while retrieving authentication information.
+/// * `Retrieval(String)` - Indicates a failure when attempting to retrieve a token.
+/// * `Storing(String)` - Error raised when a token cannot be stored properly.
+/// * `Expired` - Denotes that a token has expired and is no longer valid.
+/// * `Invalid(String)` - Represents an invalid or corrupted token in a specific context.
+/// * `Unknown` - A generic error signifying an unknown or unspecified issue.
 ///
 #[derive(Debug, Error)]
 pub enum AuthError {

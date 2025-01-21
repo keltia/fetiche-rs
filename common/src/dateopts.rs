@@ -8,7 +8,44 @@ use tracing::trace;
 
 use crate::normalise_day;
 
-/// Enum of supported options for the date formats.
+/// Enum `DateOpts` provides various options for specifying date ranges or formats.
+///
+/// This allows you to specify a date or time range through different methods such as
+/// specific days, weeks, months, or quick shortcuts like today or yesterday.
+///
+/// # Variants
+///
+/// * `From { begin: String, end: String }`
+///    - Specifies a date range with a start date (`begin`) and an end date (`end`).
+///
+/// * `Day { date: String }`
+///    - Specifies a single, specific day.
+///
+/// * `Week { num: i64 }`
+///    - Specifies a specific week of the year, where `num` is the week number (1-53).
+///
+/// * `Month { num: u32 }`
+///    - Specifies a specific month, where `num` is the month number (1-12).
+///
+/// * `Today`
+///    - A shortcut to represent the current day as a date range.
+///
+/// * `Yesterday`
+///    - A shortcut to represent the previous day as a date range.
+///
+/// ```rust
+///
+/// // Example: Using the Today option
+/// use fetiche_common::DateOpts;
+///
+/// let today = DateOpts::Today;
+///
+/// // Example: Using the From option
+/// let from_to = DateOpts::From {
+///     begin: "2022-01-01".to_string(),
+///     end: "2022-12-31".to_string(),
+/// };
+/// ```
 ///
 #[derive(Clone, Debug, PartialEq, Parser)]
 pub enum DateOpts {
@@ -39,7 +76,72 @@ impl From<Report> for ErrDateOpts {
 }
 
 impl DateOpts {
-    /// Parse options and return a time interval
+    /// Parse the provided `DateOpts` and return a corresponding time interval `(begin, end)`.
+    ///
+    /// The returned interval will be a tuple of `DateTime<Utc>` values representing
+    /// the start (`begin`) and end (`end`) of the specified range.
+    ///
+    /// # Arguments
+    ///
+    /// * `opts` - The `DateOpts` variant to be parsed.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing:
+    /// * `Ok((begin, end))` if the parsing succeeds, where `begin` and `end`
+    ///   are `DateTime<Utc>` values representing the range.
+    /// * `Err(ErrDateOpts)` if an error occurs during parsing, such as invalid date, week number,
+    ///   or month value.
+    ///
+    /// # Errors
+    ///
+    /// Parsing errors may occur if:
+    /// * The `DateOpts::Day` variant contains an invalid date string.
+    /// * The `DateOpts::Week` variant specifies a week number outside the range of 1-53.
+    /// * The `DateOpts::Month` variant specifies a month value outside the range of 1-12.
+    /// * The `DateOpts::From` variant contains invalid date strings for either `begin` or `end`.
+    ///
+    /// # Examples
+    ///
+    /// Parsing "Today":
+    /// ```rust
+    /// use chrono::{Utc, Datelike, TimeZone};
+    /// use fetiche_common::DateOpts;
+    ///
+    /// let result = DateOpts::parse(DateOpts::Today).unwrap();
+    /// let now = Utc::now();
+    /// let today_start = Utc.ymd(now.year(), now.month(), now.day()).and_hms_opt(0, 0, 0).unwrap();
+    /// let today_end = today_start + chrono::Duration::days(1);
+    ///
+    /// assert_eq!(result, (today_start, today_end));
+    /// ```
+    ///
+    /// Parsing "Yesterday":
+    /// ```rust
+    /// use chrono::{Utc, Datelike, Duration, TimeZone};
+    /// use fetiche_common::DateOpts;
+    ///
+    /// let result = DateOpts::parse(DateOpts::Yesterday).unwrap();
+    /// let now = Utc::now();
+    /// let yesterday_start = Utc.ymd(now.year(), now.month(), now.day()).and_hms_opt(0, 0, 0).unwrap() - Duration::days(1);
+    /// let yesterday_end = yesterday_start + Duration::days(1);
+    ///
+    /// assert_eq!(result, (yesterday_start, yesterday_end));
+    /// ```
+    ///
+    /// Parsing a specific date:
+    /// ```rust
+    /// use fetiche_common::DateOpts;
+    ///
+    /// let date = "2023-10-01";
+    /// let result = DateOpts::parse(DateOpts::Day { date: date.into() }).unwrap();
+    ///
+    /// // Verify the parsed date range.
+    /// let begin = dateparser::parse("2023-10-01 00:00:00 UTC").unwrap();
+    /// let expected_end = begin + chrono::Duration::days(1);
+    ///
+    /// assert_eq!(result, (begin, expected_end));
+    /// ```
     ///
     #[tracing::instrument]
     pub fn parse(opts: Self) -> Result<(DateTime<Utc>, DateTime<Utc>), ErrDateOpts> {
@@ -123,6 +225,141 @@ impl DateOpts {
 mod test {
     use super::*;
     use test_pretty_log::test;
+
+    #[test]
+    fn test_dateopts_parse_today() -> eyre::Result<()> {
+        let opt = DateOpts::Today;
+        let result = DateOpts::parse(opt);
+
+        assert!(result.is_ok());
+        let (begin, end) = result?;
+        let now = Utc::now();
+        let expected_begin = Utc
+            .ymd(now.year(), now.month(), now.day())
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+        let expected_end = expected_begin + chrono::Duration::days(1);
+
+        assert_eq!(begin, expected_begin);
+        assert_eq!(end, expected_end);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_dateopts_parse_yesterday() -> eyre::Result<()> {
+        let opt = DateOpts::Yesterday;
+        let result = DateOpts::parse(opt);
+
+        assert!(result.is_ok());
+        let (begin, end) = result?;
+        let now = Utc::now();
+        let expected_begin = Utc
+            .ymd(now.year(), now.month(), now.day())
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            - chrono::Duration::days(1);
+        let expected_end = expected_begin + chrono::Duration::days(1);
+
+        assert_eq!(begin, expected_begin);
+        assert_eq!(end, expected_end);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_dateopts_parse_specific_day() -> eyre::Result<()> {
+        let opt = DateOpts::Day {
+            date: "2023-10-15".into(),
+        };
+        let result = DateOpts::parse(opt);
+
+        assert!(result.is_ok());
+        let (begin, end) = result?;
+        let expected_begin = dateparser::parse("2023-10-15 00:00:00 UTC").unwrap();
+        let expected_end = expected_begin + chrono::Duration::days(1);
+
+        assert_eq!(begin, expected_begin);
+        assert_eq!(end, expected_end);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_dateopts_parse_invalid_day() {
+        let opt = DateOpts::Day {
+            date: "invalid-date".into(),
+        };
+        let result = DateOpts::parse(opt);
+
+        assert!(result.is_err());
+        if let Err(ErrDateOpts::BadDate(date)) = result {
+            assert_eq!(date, "invalid-date");
+        } else {
+            panic!("Expected ErrDateOpts::BadDate error");
+        }
+    }
+
+    #[test]
+    fn test_dateopts_parse_week() -> eyre::Result<()> {
+        let opt = DateOpts::Week { num: 5 };
+        let result = DateOpts::parse(opt);
+
+        assert!(result.is_ok());
+        let (begin, end) = result?;
+        let now = Utc::now();
+        let year_begin = Utc.ymd(now.year(), 1, 1).and_hms_opt(0, 0, 0).unwrap();
+        let expected_begin = year_begin + chrono::Duration::weeks(4); // Week 5 starts at the 5th week
+        let expected_end = expected_begin + chrono::Duration::days(7);
+
+        assert_eq!(begin, expected_begin);
+        assert_eq!(end, expected_end);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_dateopts_parse_invalid_week() {
+        let opt = DateOpts::Week { num: 54 };
+        let result = DateOpts::parse(opt);
+
+        assert!(result.is_err());
+        if let Err(ErrDateOpts::BadDate(week)) = result {
+            assert_eq!(week, "54");
+        } else {
+            panic!("Expected ErrDateOpts::BadDate error");
+        }
+    }
+
+    #[test]
+    fn test_dateopts_parse_month() -> eyre::Result<()> {
+        let opt = DateOpts::Month { num: 3 };
+        let result = DateOpts::parse(opt);
+
+        assert!(result.is_ok());
+        let (begin, end) = result?;
+        let now = Utc::now();
+        let expected_begin = Utc.ymd(now.year(), 3, 1).and_hms_opt(0, 0, 0).unwrap();
+        let expected_end = Utc.ymd(now.year(), 4, 1).and_hms_opt(0, 0, 0).unwrap(); // Start of the next month
+
+        assert_eq!(begin, expected_begin);
+        assert_eq!(end, expected_end);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_dateopts_parse_invalid_month() {
+        let opt = DateOpts::Month { num: 13 };
+        let result = DateOpts::parse(opt);
+
+        assert!(result.is_err());
+        if let Err(ErrDateOpts::BadDate(month)) = result {
+            assert_eq!(month, "13");
+        } else {
+            panic!("Expected ErrDateOpts::BadDate error");
+        }
+    }
 
     #[test]
     fn test_dateopts_parse() -> eyre::Result<()> {
