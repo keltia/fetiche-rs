@@ -165,9 +165,9 @@ impl Display for Site {
 mod tests {
     use std::path::PathBuf;
 
-    use rstest::rstest;
-
     use super::*;
+    use crate::Sources;
+    use rstest::rstest;
 
     fn set_default() -> Sources {
         let cn = PathBuf::from("src").join("sources.hcl");
