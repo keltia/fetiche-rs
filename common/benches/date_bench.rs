@@ -1,6 +1,6 @@
 use chrono::Utc;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use jiff::Timestamp;
+use jiff::civil::DateTime;
 
 fn test_humantime(c: &mut Criterion) {
     let base = "2024-03-08 12:34:56";
@@ -9,7 +9,7 @@ fn test_humantime(c: &mut Criterion) {
     c.bench_function("humantime", |b| {
         b.iter(|| {
             let this = black_box(humantime::parse_rfc3339_weak(base).unwrap());
-            curr = curr.into();
+            curr = this.into();
         })
     });
     let _ = curr;
@@ -17,7 +17,7 @@ fn test_humantime(c: &mut Criterion) {
 
 fn test_jiff(c: &mut Criterion) {
     let base = "2024-03-08 12:34:56";
-    let mut curr: Timestamp = base.parse().unwrap();
+    let mut curr: DateTime = DateTime::ZERO;
 
     c.bench_function("jiff", |b| {
         b.iter(|| {
