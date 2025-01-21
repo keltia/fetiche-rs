@@ -196,11 +196,12 @@ Duration {}s
                     let raw = String::from_utf8_lossy(&buf[..n]);
                     debug!("raw={}", raw);
 
+                    let filtered = filter_payload(&state.traffic, raw.as_ref())?;
+
                     let _ = stat.cast(StatsMsg::Pkts(buf.len() as u32));
                     let _ = stat.cast(StatsMsg::Bytes(n as u64));
 
-                    out.send(String::from_utf8(buf[..n].to_vec())?)
-                        .expect("send");
+                    out.send(filtered).expect("send");
                 }
             }
         }
