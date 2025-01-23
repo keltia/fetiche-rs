@@ -102,6 +102,45 @@ impl Actor for StateActor {
     type State = State;
     type Arguments = PathBuf;
 
+    /// Prepares the `StateActor` when it starts, initializing its state from a file or setting up new state data.
+    ///
+    /// This `pre_start` function is invoked before the `StateActor` starts processing messages.
+    ///
+    /// # Arguments
+    ///
+    /// - `myself`: A reference to the actor itself, used for messaging and lifecycle handling.
+    /// - `args`: A [`PathBuf`] representing the base directory where the state file resides.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing:
+    /// - The initialized [`State`] struct, which represents the actor's state.
+    /// - Or an [`ActorProcessingErr`] in case of an error during initialization, such as file read or JSON parse failure.
+    ///
+    /// # Behavior
+    /// - Reads the state from a file (`state`) in the given `args` directory.
+    /// - Updates the state with the current process ID (`pid`).
+    /// - Writes the process ID to a `pid` file in the same directory.
+    /// - Schedules a periodic synchronization (`Sync`) message to itself every 30 seconds.
+    /// - Joins the actor to a process group (`ENGINE_PG`) for cluster-related operations.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if it fails to write the `pid` file to disk.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use ractor::Actor;
+    /// use std::path::PathBuf;
+    /// use fetiche_engine::{StateActor, State};
+    ///
+    /// async fn start_actor() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let base_dir = PathBuf::from("/path/to/state/dir");
+    ///     let state_actor = Actor::spawn(None, StateActor, base_dir).await?;
+    ///     Ok(())
+    /// }
+    /// ```
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
@@ -129,6 +168,37 @@ impl Actor for StateActor {
         Ok(data)
     }
 
+    /// Handles incoming messages for the `StateActor`.
+    ///
+    /// This method processes various message types defined in the `StateMsg` enum.
+    /// It updates the actor's state, interacts with the job queue, and responds to requests.
+    ///
+    /// # Arguments
+    /// - `_myself`: A reference to the actor itself, which can be used to send or schedule messages.
+    /// - `message`: An instance of `StateMsg` representing the message or request to process.
+    /// - `state`: A mutable reference to the `State` managed by the `StateActor`.
+    ///
+    /// # Returns
+    /// On successful processing, this method returns `Ok(())`. Any errors encountered
+    /// during processing will be returned as an `ActorProcessingErr`.
+    ///
+    /// # Message Processing
+    /// - `StateMsg::Add(usize)`: Adds a job ID to the job queue.
+    /// - `StateMsg::Remove(usize)`: Removes a specific job ID from the job queue, if found.
+    /// - `StateMsg::Next(RpcReplyPort<usize>)`: Sends back the next available job ID.
+    /// - `StateMsg::GetPid(RpcReplyPort<u32>)`: Sends back the current actor's process ID.
+    /// - `StateMsg::Sync`: Synchronizes the current state to disk, updating the timestamp.
+    ///
+    /// # Example
+    /// ```rust
+    /// use ractor::ActorRef;
+    /// use fetiche_engine::{StateActor, StateMsg};
+    ///
+    /// async fn send_message(myself: ActorRef<StateMsg>) {
+    ///     let _ = myself.send(StateMsg::Add(42));
+    /// }
+    /// ```
+    ///
     async fn handle(
         &self,
         _myself: ActorRef<Self::Msg>,
