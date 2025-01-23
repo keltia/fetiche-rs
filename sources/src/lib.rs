@@ -6,13 +6,12 @@
 //! - fetching data (GET or POST, etc.).
 //!
 
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
-use serde::{Deserialize, Serialize};
 
 use fetiche_formats::Format;
 
