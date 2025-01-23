@@ -6,7 +6,7 @@
 //! - fetching data (GET or POST, etc.).
 //!
 
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display};
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
@@ -20,6 +20,7 @@ use fetiche_formats::Format;
 //
 pub use access::*;
 pub use auth::*;
+pub use capability::*;
 pub use error::*;
 pub use filter::*;
 pub use flow::*;
@@ -27,10 +28,12 @@ pub use init::*;
 pub use route::*;
 pub use site::*;
 pub use sources::*;
+pub use stats::*;
 
 mod access;
 pub mod actors;
 mod auth;
+mod capability;
 mod error;
 mod filter;
 mod flow;
@@ -38,10 +41,10 @@ mod init;
 mod route;
 mod site;
 mod sources;
+mod stats;
 
 #[macro_use]
 mod macros;
-mod capability;
 
 /// A trait representing an entity that holds a key and can expire.
 ///
@@ -94,75 +97,6 @@ pub trait Expirable: Debug + Clone {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TokenType {
     AsdToken(AsdToken),
-}
-
-/// `Stats` is a structure used to track various performance-related statistics
-/// for data sources in the system.
-///
-/// This struct consolidates a variety of metrics, such as traffic information,
-/// reconnection attempts, and error counts, which are useful for monitoring and
-/// debugging purposes.
-///
-/// # Fields
-///
-/// - `tm`: The total elapsed time in seconds since the monitoring began.
-/// - `pkts`: The number of packets processed.
-/// - `reconnect`: The total number of reconnection attempts.
-/// - `bytes`: The total number of bytes processed.
-/// - `hits`: The number of successful requests or accesses.
-/// - `miss`: The number of failed requests or cache misses.
-/// - `empty`: The number of empty or null responses.
-/// - `err`: The number of errors encountered during operation.
-///
-/// # Example
-///
-/// ```rust
-/// use fetiche_sources::Stats;
-///
-/// let stats = Stats {
-///     tm: 3600,
-///     pkts: 3456,
-///     reconnect: 3,
-///     bytes: 987654,
-///     hits: 1200,
-///     miss: 200,
-///     empty: 50,
-///     err: 15,
-/// };
-///
-/// println!("Stats summary: {}", stats);
-/// ```
-///
-/// This example demonstrates how to create an instance of `Stats` and display
-/// it using its `Display` implementation.
-///
-#[derive(Clone, Debug, Default, Serialize)]
-pub struct Stats {
-    pub tm: u64,
-    pub pkts: u32,
-    pub reconnect: usize,
-    pub bytes: u64,
-    pub hits: u32,
-    pub miss: u32,
-    pub empty: u32,
-    pub err: u32,
-}
-
-impl Display for Stats {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "time={}s pkts={} bytes={} reconnect={} hits={} miss={} empty={} errors={}",
-            self.tm,
-            self.pkts,
-            self.bytes,
-            self.reconnect,
-            self.hits,
-            self.miss,
-            self.empty,
-            self.err
-        )
-    }
 }
 
 /// This is the enum used to do static dispatch (as opposed to the dynamic one of `Flow`).
