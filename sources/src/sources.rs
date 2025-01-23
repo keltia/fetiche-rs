@@ -37,7 +37,39 @@ use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_formats::Format;
 use fetiche_macros::into_configfile;
 
-/// List of sources, this is the only exposed struct from here.
+/// Configuration for multiple sources.
+///
+/// This struct holds a configuration of sites, which are represented
+/// as a mapping between their string identifiers and their corresponding
+/// [`Site`] configurations.
+///
+/// It can be initialized from various data types, such as a [`BTreeMap`]
+/// or a `Vec` of tuples using the provided `From` implementations.
+///
+/// # Examples
+///
+/// Creating `SourcesConfig` from a `BTreeMap`:
+///
+/// ```rust
+/// use std::collections::BTreeMap;
+/// use fetiche_sources::{Site, Sources};
+///
+/// let mut sites = BTreeMap::new();
+/// sites.insert("example_site".to_string(), Site::default());
+///
+/// let sources = Sources::from(sites);
+/// assert!(sources.contains_key("example_site"));
+/// ```
+///
+/// Creating `SourcesConfig` from a vector of tuples:
+///
+/// ```rust
+/// use fetiche_sources::{Site, Sources};
+///
+/// let sites_vec = vec![("site_a".to_string(), Site::default())];
+/// let sources = Sources::from(sites_vec);
+/// assert!(sources.contains_key("site_a"));
+/// ```
 ///
 #[into_configfile(version = 4, filename = "sources.hcl")]
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -50,29 +82,37 @@ pub struct Sources {
     site: BTreeMap<String, Site>,
 }
 
-/// Initialise a `Source` from a `BTreeMap`
-///
-impl From<BTreeMap<String, Site>> for Sources {
-    fn from(value: BTreeMap<String, Site>) -> Self {
-        Sources {
-            site: value.clone(),
-        }
-    }
-}
-
-/// Initialise a `Source` from a `BTreeMap`
-///
-impl From<Vec<(String, Site)>> for Sources {
-    fn from(value: Vec<(String, Site)>) -> Self {
-        let mut sites = BTreeMap::<String, Site>::new();
-        value.iter().for_each(|(n, s)| {
-            sites.insert(n.clone(), s.clone());
-        });
-        Sources { site: sites }
-    }
-}
-
 impl Sources {
+    /// Creates a new instance of `Sources` by loading the configuration from
+    /// the predefined `sources.hcl` configuration file.
+    ///
+    /// This function attempts to parse the configuration file as a
+    /// `ConfigFile<SourcesConfig>` and initializes the `Sources` instance
+    /// from the parsed configuration. The resulting data is transformed
+    /// to attach additional metadata, such as the root directory as
+    /// `token_base`, to each site.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` variant if the `sources.hcl` configuration file
+    /// cannot be found, fails to parse, or if there are any issues when
+    /// constructing the `Sources` object from the configuration.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fetiche_sources::Sources;
+    ///
+    /// match Sources::new() {
+    ///     Ok(sources) => {
+    ///         println!("Sources loaded successfully!");
+    ///     }
+    ///     Err(e) => {
+    ///         eprintln!("Failed to load sources: {}", e);
+    ///     }
+    /// }
+    /// ```
+    ///
     #[tracing::instrument]
     pub fn new() -> Result<Self> {
         let src_file = ConfigFile::<SourcesConfig>::load(Some("sources.hcl"))?;
@@ -93,6 +133,43 @@ impl Sources {
         Ok(s)
     }
 
+    /// Loads a site configuration by name and returns a `Flow` enum
+    /// representing the appropriate data source or stream for the site.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - A string slice containing the name of the site to load.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Flow)` - If the site configuration is successfully loaded
+    ///   and matches one of the supported formats.
+    /// * `Err(AccessError)` - If the specified site is unknown or invalid.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fetiche_sources::{Sources, Flow};
+    ///
+    /// let sources = Sources::new().expect("Failed to initialize sources");
+    /// match sources.load("example_site") {
+    ///     Ok(flow) => {
+    ///         println!("Successfully loaded site!");
+    ///         // Handle flow (e.g., fetchable/streamable data source)
+    ///     },
+    ///     Err(err) => {
+    ///         eprintln!("Failed to load site: {}", err);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// 1. The site name is not found in the `Sources` collection.
+    /// 2. The format of the site is invalid or unsupported.
+    /// 3. Any other configuration issues occur during the process.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn load(&self, name: &str) -> Result<Flow> {
         trace!("Loading site {}", name);
@@ -214,7 +291,7 @@ impl Sources {
                     Auth::Key { .. } => "API key",
                     Auth::UserKey { .. } => "API+User keys",
                 }
-                .to_string()
+                    .to_string()
             } else {
                 "anon".to_owned()
             };
@@ -392,16 +469,152 @@ impl<'a> IntoIterator for &'a Sources {
     }
 }
 
+/// Initialise a `Source` from a `BTreeMap`
+///
+impl From<BTreeMap<String, Site>> for Sources {
+    fn from(value: BTreeMap<String, Site>) -> Self {
+        Sources {
+            site: value.clone(),
+        }
+    }
+}
+
+/// Initialise a `Source` from a `Vec` of (name, site)
+///
+impl From<Vec<(String, Site)>> for Sources {
+    fn from(value: Vec<(String, Site)>) -> Self {
+        let mut sites = BTreeMap::<String, Site>::new();
+        value.iter().for_each(|(n, s)| {
+            sites.insert(n.clone(), s.clone());
+        });
+        Sources { site: sites }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::env::temp_dir;
 
-    use crate::DataType;
+    use crate::{Capability, DataType};
     use eyre::bail;
     use fetiche_common::ConfigFile;
     use tracing::debug;
 
     use super::*;
+
+    #[test]
+    fn test_sources_basic_operations() {
+        let mut sources = Sources {
+            site: BTreeMap::new(),
+        };
+
+        // Test empty state
+        assert!(sources.is_empty());
+        assert_eq!(sources.len(), 0);
+
+        // Add a new site
+        let site_name = "test_site";
+        let site = Site::new();
+        sources.site.insert(site_name.to_string(), site);
+
+        // Test state after adding
+        assert!(!sources.is_empty());
+        assert_eq!(sources.len(), 1);
+
+        // Test contains_key
+        assert!(sources.contains_key(site_name));
+
+        // Test get
+        if let Some(retrieved_site) = sources.get(site_name) {
+            assert_eq!(retrieved_site.base_url, "");
+        } else {
+            panic!("Site should exist");
+        }
+
+        // Test get_mut and modify
+        if let Some(mut retrieved_site) = sources.get_mut(site_name) {
+            retrieved_site.base_url = "http://example.com".to_string();
+        }
+        assert_eq!(sources.get(site_name).unwrap().base_url, "http://example.com");
+
+        // Test keys, values, and iter
+        let keys: Vec<_> = sources.keys().map(|k| k.as_str()).collect();
+        assert_eq!(keys, vec![site_name]);
+
+        let values: Vec<_> = sources.values().collect();
+        assert_eq!(values.len(), 1);
+        assert_eq!(values[0].base_url, "http://example.com");
+
+        let iter: Vec<_> = sources.iter().collect();
+        assert_eq!(iter.len(), 1);
+        assert_eq!(iter[0].0.as_str(), site_name);
+        assert_eq!(iter[0].1.base_url, "http://example.com");
+    }
+
+    #[test]
+    fn test_sources_mut_operations() {
+        let mut sources = Sources {
+            site: BTreeMap::new(),
+        };
+
+        let site_name1 = "site1";
+        let site_name2 = "site2";
+
+        // Use index_mut to add sites
+        sources[site_name1].base_url = "http://site1.com".to_string();
+        sources[site_name2].base_url = "http://site2.com".to_string();
+
+        assert_eq!(sources.len(), 2);
+        assert_eq!(sources[site_name1].base_url, "http://site1.com");
+        assert_eq!(sources[site_name2].base_url, "http://site2.com");
+
+        // Modify site through index_mut
+        sources[site_name1].base_url = "http://updated-site1.com".to_string();
+        assert_eq!(sources[site_name1].base_url, "http://updated-site1.com");
+    }
+
+    #[test]
+    fn test_sources_into_iter() {
+        let mut sources = Sources {
+            site: BTreeMap::new(),
+        };
+
+        sources.site.insert(
+            "site1".to_string(),
+            Site {
+                features: vec![Capability::Fetch],
+                base_url: "http://site1.com".to_string(),
+                dtype: DataType::Drone,
+                name: "".to_string(),
+                token_base: Default::default(),
+                auth: None,
+                format: "".to_string(),
+                routes: None,
+            },
+        );
+        sources.site.insert(
+            "site2".to_string(),
+            Site {
+                features: vec![Capability::Fetch],
+                base_url: "http://site2.com".to_string(),
+                dtype: DataType::Adsb,
+                name: "".to_string(),
+                token_base: Default::default(),
+                auth: None,
+                format: "".to_string(),
+                routes: None,
+            },
+        );
+
+        let iter: Vec<(&String, &Site)> = (&sources).into_iter().collect();
+        assert_eq!(iter.len(), 2);
+        assert_eq!(iter[0].0, "site1");
+        assert_eq!(iter[0].1.base_url, "http://site1.com");
+        assert_eq!(iter[1].0, "site2");
+        assert_eq!(iter[1].1.base_url, "http://site2.com");
+    }
+
 
     #[test]
     fn test_sites_load_hcl() {
