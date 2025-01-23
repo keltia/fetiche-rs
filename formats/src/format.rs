@@ -15,7 +15,19 @@ pub fn version() -> String {
     format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }
 
-/// For each format, we define a set of key attributes that will get displayed.
+/// This struct represents the format descriptor for each of the supported data types.
+///
+/// It is primarily used to define and document the metadata for all the supported
+/// data formats in the application. Each format is tied to a specific type of data
+/// and provides details such as a description, source, and a referential URL.
+///
+/// Fields:
+/// - `dtype`: Indicates the type of data the format corresponds to. This is a required field.
+/// - `description`: A free-text overview about what the format represents or its purpose.
+/// - `source`: Information about the origin or provider of the format.
+/// - `url`: A referential URL where the format details or definition can be found.
+///
+/// The struct is deserializable to allow for reading metadata from an external configuration file.
 ///
 #[derive(Debug, Deserialize)]
 pub struct FormatDescr {
@@ -30,7 +42,13 @@ pub struct FormatDescr {
     pub url: String,
 }
 
-/// Struct to be read from an HCL file at compile-time
+
+/// This struct represents the format file structure to be loaded from an HCL file.
+///
+/// It provides the following fields:
+/// - `version`: Indicates the version of the file format.
+/// - `format`: An ordered map of format metadata, where the key is the format name and 
+///   the value is the corresponding `FormatDescr` containing detailed metadata about the format.
 ///
 #[derive(Debug, Deserialize)]
 pub struct FormatFile {
@@ -40,7 +58,42 @@ pub struct FormatFile {
     pub format: BTreeMap<String, FormatDescr>,
 }
 
-/// This struct holds the different data formats that we support.
+/// The `Format` enum represents the various data formats that the application supports.
+///
+/// It is designed with the following characteristics:
+/// - Implements `Copy`, `Clone`, `Debug`, `Default`, `Deserialize`, `PartialEq`, `Eq`, `Serialize`, 
+///   and derives formatting traits using `strum`.
+/// - Each variant corresponds to a specific data format used by the system.
+///
+/// # Variants:
+///
+/// - `None`: Default, represents the absence of a format.
+/// - `Adsb21`: Special cut-down version of ADS-B, limited to specific fields.
+/// - `Aeroscope`: DJI Aeroscope-specific data.
+/// - `Asd`: Consolidated drone data, from airspacedrone.com.
+/// - `CubeData`: Aero Network JSON format by Avionix for drones.
+/// - `AvionixCat21`: ADS-B data from the Avionix appliance.
+/// - `Cat21`: ECTL Asterix Cat21 flattened CSV.
+/// - `Cat129`: ECTL Drone-specific Asterix Cat129.
+/// - `Flightaware`: Flightaware API v4 Position data.
+/// - `Opensky`: ADS-B data from the Opensky API.
+/// - `PandaStateVector`: Opensky data from the Impala historical DB.
+/// - `Safesky`: ADS-B data from the Safesky API.
+/// - `Senhive`: Drone data from Thales Senhive API.
+/// - `DronePoint`: Generic format for drone data.
+///
+/// ## Example Usage
+///
+/// ```rust
+/// use fetiche_formats::Format;
+///
+/// let format = Format::CubeData;
+/// match format {
+///     Format::None => println!("No format selected."),
+///     Format::CubeData => println!("Selected CubeData format."),
+///     _ => println!("Other formats."),
+/// }
+/// ```
 ///
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, PartialEq, Eq, strum::Display, EnumString, Serialize,
