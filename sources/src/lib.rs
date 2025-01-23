@@ -41,6 +41,7 @@ mod sources;
 
 #[macro_use]
 mod macros;
+mod capability;
 
 /// A trait representing an entity that holds a key and can expire.
 ///
@@ -93,58 +94,6 @@ pub trait Expirable: Debug + Clone {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TokenType {
     AsdToken(AsdToken),
-}
-
-/// Represents the various levels of data access capability.
-///
-/// The `Capability` enum is used to specify the type of operations
-/// a component or entity is allowed to perform. This enables fine-grained
-/// control over source or actor behavior based on their permissions.
-///
-/// # Variants
-///
-/// - **None**: Indicates no specific capabilities; the entity can exist but cannot perform any operation.
-/// - **Fetch**: Allows fetching data from a source.
-/// - **Read**: Grants permission to read data but does not necessarily allow fetching.
-/// - **Stream**: Enables streaming data from a source.
-///
-/// # Example
-///
-/// ```rust
-/// use fetiche_sources::Capability;
-///
-/// let capability = Capability::Fetch;
-/// println!("Capability: {}", capability);
-///
-/// match capability {
-///     Capability::None => println!("No operations allowed."),
-///     Capability::Fetch => println!("Can fetch data."),
-///     Capability::Read => println!("Can read data."),
-///     Capability::Stream => println!("Can stream data."),
-/// }
-/// ```
-///
-#[derive(Clone, Copy, Debug, Default, Deserialize, Ord, PartialOrd, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
-#[repr(u8)]
-pub enum Capability {
-    #[default]
-    None = 0,
-    Fetch = 1,
-    Read = 2,
-    Stream = 3,
-}
-
-impl Display for Capability {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            Capability::None => "none",
-            Capability::Read => "read",
-            Capability::Fetch => "fetch",
-            Capability::Stream => "stream",
-        };
-        write!(f, "{s}")
-    }
 }
 
 /// `Stats` is a structure used to track various performance-related statistics
