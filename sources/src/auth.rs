@@ -1,6 +1,10 @@
-use std::fmt::{Display, Formatter};
+//! Everything related to authentication & tokens.
+//!
 
+use crate::AsdToken;
+use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
+use std::fmt::{Debug, Display, Formatter};
 
 /// Represents the different authentication mechanisms available for accessing resources.
 ///
@@ -125,3 +129,57 @@ impl Display for Auth {
         write!(f, "{:?}", auth)
     }
 }
+
+/// A trait representing an entity that holds a key and can expire.
+///
+/// The `Expirable` trait provides two essential methods:
+/// - [`key`]: Retrieves the unique identifier or "key" for the entity.
+/// - [`is_expired`]: Checks whether the entity is expired.
+///
+/// This trait can be used for managing credentials, tokens, or other
+/// expirable resources.
+///
+/// # Example
+///
+/// ```rust
+/// use fetiche_sources::Expirable;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Debug, Clone, Serialize, Deserialize)]
+/// struct MyToken {
+///     key: String,
+///     expiration: u64, // Epoch timestamp
+/// }
+///
+/// impl Expirable for MyToken {
+///     fn key(&self) -> String {
+///         self.key.clone()
+///     }
+///
+///     fn is_expired(&self) -> bool {
+///         let current_time = 1681234567; // Example current timestamp
+///         self.expiration < current_time
+///     }
+/// }
+///
+/// let token = MyToken {
+///     key: String::from("my_unique_token"),
+///     expiration: 1681234000,
+/// };
+///
+/// println!("Token Key: {}", token.key());
+/// println!("Is Expired: {}", token.is_expired());
+/// ```
+///
+#[enum_dispatch(TokenType)]
+pub trait Expirable: Debug + Clone {
+    fn key(&self) -> String;
+    fn is_expired(&self) -> bool;
+}
+
+#[enum_dispatch]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TokenType {
+    AsdToken(AsdToken),
+}
+
