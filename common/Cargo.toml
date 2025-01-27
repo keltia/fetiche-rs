@@ -31,11 +31,11 @@ harness = false
 chrono.workspace = true
 clap.workspace = true
 csv.workspace = true
-dateparser.workspace = true
 directories.workspace = true
 eyre.workspace = true
 fetiche-macros.workspace = true
 hcl-rs.workspace = true
+jiff.workspace = true
 opentelemetry.workspace = true
 opentelemetry-otlp.workspace = true
 opentelemetry_sdk.workspace = true
@@ -54,6 +54,5 @@ tracing-tree.workspace = true
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
 humantime = "2.1"
-jiff = "0.1"
 rstest.workspace = true
 test-pretty-log = "0.6"
