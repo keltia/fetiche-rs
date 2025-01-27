@@ -235,8 +235,7 @@ mod test {
         let (begin, end) = result?;
         let now = Utc::now();
         let expected_begin = Utc
-            .ymd(now.year(), now.month(), now.day())
-            .and_hms_opt(0, 0, 0)
+            .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
             .unwrap();
         let expected_end = expected_begin + chrono::Duration::days(1);
 
@@ -255,8 +254,7 @@ mod test {
         let (begin, end) = result?;
         let now = Utc::now();
         let expected_begin = Utc
-            .ymd(now.year(), now.month(), now.day())
-            .and_hms_opt(0, 0, 0)
+            .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
             .unwrap()
             - chrono::Duration::days(1);
         let expected_end = expected_begin + chrono::Duration::days(1);
@@ -308,7 +306,7 @@ mod test {
         assert!(result.is_ok());
         let (begin, end) = result?;
         let now = Utc::now();
-        let year_begin = Utc.ymd(now.year(), 1, 1).and_hms_opt(0, 0, 0).unwrap();
+        let year_begin = Utc.with_ymd_and_hms(now.year(), 1, 1, 0, 0, 0).unwrap();
         let expected_begin = year_begin + chrono::Duration::weeks(4); // Week 5 starts at the 5th week
         let expected_end = expected_begin + chrono::Duration::days(7);
 
@@ -339,8 +337,8 @@ mod test {
         assert!(result.is_ok());
         let (begin, end) = result?;
         let now = Utc::now();
-        let expected_begin = Utc.ymd(now.year(), 3, 1).and_hms_opt(0, 0, 0).unwrap();
-        let expected_end = Utc.ymd(now.year(), 4, 1).and_hms_opt(0, 0, 0).unwrap(); // Start of the next month
+        let expected_begin = Utc.with_ymd_and_hms(now.year(), 3, 1, 0, 0, 0).unwrap();
+        let expected_end = Utc.with_ymd_and_hms(now.year(), 4, 1, 0, 0, 0).unwrap();
 
         assert_eq!(begin, expected_begin);
         assert_eq!(end, expected_end);
