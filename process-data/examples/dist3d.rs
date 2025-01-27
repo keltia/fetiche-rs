@@ -105,13 +105,13 @@ mod gravis {
     use crate::Point;
 
     fn earth_radius(lat: f64) -> f64 {
-        const eqR: f64 = 6378137.0;
-        const polR: f64 = 6356752.3;
+        const EQR: f64 = 6378137.0;
+        const POLR: f64 = 6356752.3;
 
-        let t1 = eqR.powi(2) * lat.cos();
-        let t2 = polR.powi(2) * lat.sin();
-        let t3 = eqR * lat.cos();
-        let t4 = polR * lat.sin();
+        let t1 = EQR.powi(2) * lat.cos();
+        let t2 = POLR.powi(2) * lat.sin();
+        let t3 = EQR * lat.cos();
+        let t4 = POLR * lat.sin();
         let res = ((t1.powi(2) + t2.powi(2)) / (t3.powi(2) + t4.powi(2))).sqrt();
         res
     }
