@@ -21,7 +21,7 @@ fn test_jiff(c: &mut Criterion) {
 
     c.bench_function("jiff", |b| {
         b.iter(|| {
-            curr = base.parse().unwrap();
+            curr = black_box(base.parse().unwrap());
         })
     });
 }
