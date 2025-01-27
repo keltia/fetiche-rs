@@ -33,9 +33,9 @@ impl Actor for ConfigActor {
 
     async fn handle(
         &self,
-        myself: ActorRef<Self::Msg>,
-        message: Self::Msg,
-        state: &mut Self::State,
+        _myself: ActorRef<Self::Msg>,
+        _message: Self::Msg,
+        _state: &mut Self::State,
     ) -> std::result::Result<(), ActorProcessingErr> {
         todo!()
     }
@@ -43,12 +43,12 @@ impl Actor for ConfigActor {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let (w, h) = Actor::spawn(
+    let (_w, _h) = Actor::spawn(
         Some(String::from("configactor")),
         ConfigActor,
         "local.hcl".to_string(),
     )
-    .await?;
+        .await?;
 
     let list = registered();
     dbg!(&list);

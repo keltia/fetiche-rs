@@ -2,6 +2,7 @@ use fetiche_common::{IntoConfig, Versioned};
 use fetiche_macros::{add_version, into_configfile};
 use serde::Deserialize;
 
+#[allow(dead_code)]
 #[add_version(2)]
 #[derive(Debug, Default)]
 struct Foo {
@@ -10,6 +11,7 @@ struct Foo {
 
 // Specify version and filename.
 //
+#[allow(dead_code)]
 #[into_configfile(version = 3, filename = "bar.hcl")]
 #[derive(Debug, Default, Deserialize)]
 struct Bar {
@@ -18,6 +20,7 @@ struct Bar {
 
 // Use default defined in the macro.
 //
+#[allow(dead_code)]
 #[into_configfile]
 #[derive(Debug, Default, Deserialize)]
 struct Baz {

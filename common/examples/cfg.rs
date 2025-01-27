@@ -9,6 +9,7 @@ use fetiche_macros::into_configfile;
 
 const CVERSION: usize = 1;
 
+#[allow(dead_code)]
 #[into_configfile]
 #[derive(Clone, Default, Debug, Deserialize)]
 struct Foo {

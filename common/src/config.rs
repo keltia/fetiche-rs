@@ -313,6 +313,7 @@ mod tests {
         Ok(())
     }
 
+    #[allow(dead_code)]
     #[into_configfile]
     #[derive(Clone, Debug, Default, Deserialize)]
     struct Foo {
