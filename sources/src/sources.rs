@@ -627,7 +627,7 @@ mod tests {
         let cfile = cfile.unwrap();
         let cfg = cfile.inner();
         assert!(!cfg.site.is_empty());
-        assert_eq!(5, cfg.site.len());
+        assert_eq!(9, cfg.site.len());
 
         // Check one
         //
@@ -658,8 +658,8 @@ mod tests {
                     Auth::Login {
                         username, password, ..
                     } => {
-                        assert_eq!("dphu", username);
-                        assert_eq!("NOPE", password);
+                        assert_eq!("GUESS", username);
+                        assert_eq!("NEVER", password);
                     }
                     _ => panic!("bad auth"),
                 },

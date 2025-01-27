@@ -31,12 +31,11 @@ use std::fmt::{Display, Formatter};
 ///
 /// ## Creating an Interval Filter
 /// ```rust
-/// use chrono::{Utc, TimeZone};
 /// use fetiche_sources::Filter;
 ///
-/// let begin = Utc.with_ymd_and_hms(2023, 10, 1, 0, 0, 0);
-/// let end = Utc.with_ymd_and_hms(2023, 10, 10, 0, 0, 0);
-/// let filter = Filter::interval(begin, end);
+/// let begin = dateparser::parse("2023-10-01").unwrap();
+/// let end = dateparser::parse("2023-10-02").unwrap();
+/// let filter = Filter::Interval { begin, end };
 /// ```
 ///
 /// ## Creating a Keyword Filter

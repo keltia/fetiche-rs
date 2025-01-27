@@ -188,17 +188,12 @@ impl Display for Site {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use super::*;
     use crate::Sources;
 
     use rstest::rstest;
 
     fn set_default() -> Sources {
-        let cn = PathBuf::from("src").join("sources.hcl");
-        assert!(cn.try_exists().is_ok());
-
         let str = include_str!("sources.hcl");
         let cfg: Sources = hcl::from_str(str).unwrap();
         assert!(!cfg.is_empty());
@@ -226,7 +221,7 @@ mod tests {
         let s = set_default();
 
         assert!(!s.is_empty());
-        assert_eq!(5, s.len());
+        assert_eq!(9, s.len());
 
         for (name, s) in s.iter() {
             match name.as_str() {
@@ -255,7 +250,7 @@ mod tests {
         assert!(s.is_some());
         let s = s.unwrap();
         let list = s.list();
-        assert_eq!(vec!["get", "list"], list);
+        assert_eq!(vec!["get", "journey", "journeys"], list);
     }
 
     #[test]
@@ -270,7 +265,7 @@ mod tests {
         assert!(r.is_some());
 
         let r = r.unwrap();
-        assert_eq!("/journeys/$1", r);
+        assert_eq!("/api/journeys/filteredlocations", r);
     }
 
     #[test]
