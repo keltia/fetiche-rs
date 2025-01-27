@@ -40,7 +40,8 @@ use crate::normalise_day;
 ///
 /// let today = DateOpts::Today;
 ///
-/// // Example: Using the From option
+/// // Example: Using the `::From` option
+/// //
 /// let from_to = DateOpts::From {
 ///     begin: "2022-01-01".to_string(),
 ///     end: "2022-12-31".to_string(),
@@ -165,8 +166,8 @@ impl DateOpts {
             }
             DateOpts::Day { date } => {
                 trace!("Got day {}", date);
-                let begin = match dateparser::parse(&date) {
-                    Ok(date) => date,
+                let begin: DateTime<Utc> = match humantime::parse_rfc3339_weak(&date) {
+                    Ok(date) => date.into(),
                     Err(_) => return Err(ErrDateOpts::BadDate(date)),
                 };
                 let begin = normalise_day(begin)?;
@@ -191,12 +192,12 @@ impl DateOpts {
             }
             DateOpts::From { begin, end } => {
                 trace!("Got from {} to {}", begin, end);
-                let begin = match dateparser::parse(&begin) {
-                    Ok(date) => date,
+                let begin: DateTime<Utc> = match humantime::parse_rfc3339_weak(&begin) {
+                    Ok(date) => date.into(),
                     Err(_) => return Err(ErrDateOpts::BadDate(begin)),
                 };
-                let end = match dateparser::parse(&end) {
-                    Ok(date) => date,
+                let end = match humantime::parse_rfc3339_weak(&end) {
+                    Ok(date) => date.into(),
                     Err(_) => return Err(ErrDateOpts::BadDate(end)),
                 };
                 let begin = normalise_day(begin)?;
@@ -224,6 +225,7 @@ impl DateOpts {
 #[cfg(test)]
 mod test {
     use super::*;
+    use jiff::ToSpan;
     use test_pretty_log::test;
 
     #[test]
@@ -274,11 +276,25 @@ mod test {
 
         assert!(result.is_ok());
         let (begin, end) = result?;
-        let expected_begin = dateparser::parse("2023-10-15 00:00:00 UTC").unwrap();
+        let expected_begin: DateTime<Utc> = humantime::parse_rfc3339_weak("2023-10-15 00:00:00")
+            .unwrap()
+            .into();
         let expected_end = expected_begin + chrono::Duration::days(1);
 
         assert_eq!(begin, expected_begin);
         assert_eq!(end, expected_end);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_dateopts_parse_specific_day_jiff() -> eyre::Result<()> {
+        let input = "2023-10-15";
+        let result: jiff::civil::DateTime = input.parse()?;
+
+        let expected_begin: jiff::civil::DateTime = "2023-10-15 00:00:00".parse()?;
+        let expected_end = expected_begin.checked_add(1.days())?;
+        assert_eq!(result, expected_begin);
 
         Ok(())
     }
@@ -362,15 +378,21 @@ mod test {
     #[test]
     fn test_dateopts_parse() -> eyre::Result<()> {
         let opt = DateOpts::From {
-            begin: "2022-06-14 00:00:00 UTC".into(),
-            end: "2023-02-28 00:00:00 UTC".into(),
+            begin: "2022-06-14 00:00:00Z".into(),
+            end: "2023-02-28 00:00:00Z".into(),
         };
         let r = DateOpts::parse(opt);
 
         assert!(r.is_ok());
         let (b, e) = r.unwrap();
-        assert_eq!(dateparser::parse("2022-06-14 00:00:00 UTC").unwrap(), b);
-        assert_eq!(dateparser::parse("2023-02-28 00:00:00 UTC").unwrap(), e);
+        let base_b: DateTime<Utc> = humantime::parse_rfc3339_weak("2022-06-14 00:00:00")
+            .unwrap()
+            .into();
+        assert_eq!(base_b, b);
+        let base_e: DateTime<Utc> = humantime::parse_rfc3339_weak("2023-02-28 00:00:00")
+            .unwrap()
+            .into();
+        assert_eq!(base_e, e);
         Ok(())
     }
 }

@@ -17,11 +17,10 @@ fn test_humantime(c: &mut Criterion) {
 
 fn test_jiff(c: &mut Criterion) {
     let base = "2024-03-08 12:34:56";
-    let mut curr: DateTime = DateTime::ZERO;
 
     c.bench_function("jiff", |b| {
         b.iter(|| {
-            curr = black_box(base.parse().unwrap());
+            black_box(base.parse::<DateTime>().unwrap());
         })
     });
 }
@@ -32,10 +31,9 @@ fn test_dateparser(c: &mut Criterion) {
 
     c.bench_function("dateparser", |b| {
         b.iter(|| {
-            curr = black_box(dateparser::parse(base).unwrap());
+            black_box(dateparser::parse(base).unwrap());
         })
     });
-    let _ = curr;
 }
 
 criterion_group!(benches, test_dateparser, test_humantime, test_jiff);
