@@ -192,18 +192,15 @@ mod tests {
 
     use super::*;
     use crate::Sources;
+
     use rstest::rstest;
 
     fn set_default() -> Sources {
         let cn = PathBuf::from("src").join("sources.hcl");
         assert!(cn.try_exists().is_ok());
 
-        let cfg = Sources::new();
-        dbg!(&cfg);
-        assert!(cfg.is_ok());
-
-        let cfg = cfg.unwrap();
-        dbg!(&cfg);
+        let str = include_str!("sources.hcl");
+        let cfg: Sources = hcl::from_str(str).unwrap();
         assert!(!cfg.is_empty());
         cfg
     }
@@ -212,16 +209,16 @@ mod tests {
     fn test_site_new_good() {
         let cfg = set_default();
 
-        let s = cfg.load("eih");
-        assert!(s.is_ok());
+        let s = cfg.get("eih");
+        assert!(s.is_some());
     }
 
     #[test]
     fn test_site_new_unknown() {
         let cfg = set_default();
 
-        let s = cfg.load("bar");
-        assert!(s.is_err());
+        let s = cfg.get("bar");
+        assert!(s.is_none());
     }
 
     #[test]

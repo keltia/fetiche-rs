@@ -29,7 +29,10 @@ site "lux" {
   type     = "drone"
   format   = "asd"
   base_url = "https://eur.airspacedrone.com/api"
-  auth     = "token"
+  auth = {
+    login     = "NONE"
+    passwortd = "MAYBE"
+  }
   routes = {
     list = "/journeys"
     get  = "/journeys/$1"

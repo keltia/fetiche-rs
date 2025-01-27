@@ -196,19 +196,13 @@ impl Asd {
 
 impl Default for Asd {
     fn default() -> Self {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .unwrap();
-        let ctx = runtime.block_on(async move {
-            let ctx = match init_sources_runtime().await {
-                Ok(ctx) => ctx,
-                Err(e) => {
-                    error!("Can not initialize sources: {e}");
-                    std::process::exit(1);
-                }
-            };
-            ctx
-        });
+        let ctx = match init_sources_runtime() {
+            Ok(ctx) => ctx,
+            Err(e) => {
+                error!("Can not initialize sources: {e}");
+                std::process::exit(1);
+            }
+        };
         Asd {
             features: vec![Capability::Fetch],
             site: "NONE".to_string(),

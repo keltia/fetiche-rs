@@ -47,6 +47,7 @@ directories.workspace = true
 fetiche-common.workspace = true
 fetiche-formats.workspace = true
 fetiche-macros.workspace = true
+hcl-rs.workspace = true
 polars.workspace = true
 ractor.workspace = true
 reqwest.workspace = true

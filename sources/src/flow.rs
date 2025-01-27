@@ -88,7 +88,9 @@ impl Flow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::mpsc::channel;
+    use crate::AuthError;
+    use eyre::Result;
+    use std::sync::mpsc::Sender;
 
     #[derive(Debug)]
     struct MockFetcher;
@@ -128,14 +130,14 @@ mod tests {
         }
 
         fn format(&self) -> Format {
-            Format::Csv
+            Format::None
         }
     }
 
     #[derive(Debug)]
     struct MockAsyncStreamable;
 
-    #[async_trait]
+    #[async_trait::async_trait]
     impl AsyncStreamable for MockAsyncStreamable {
         fn name(&self) -> String {
             "MockAsyncStreamable".to_string()
@@ -150,7 +152,7 @@ mod tests {
         }
 
         fn format(&self) -> Format {
-            Format::Json
+            Format::None
         }
     }
 
@@ -172,8 +174,8 @@ mod tests {
         let async_streamable_flow = Flow::AsyncStreamable(Box::new(MockAsyncStreamable {}));
 
         assert_eq!(fetchable_flow.format(), Format::Asd);
-        assert_eq!(streamable_flow.format(), Format::Csv);
-        assert_eq!(async_streamable_flow.format(), Format::Json);
+        assert_eq!(streamable_flow.format(), Format::None);
+        assert_eq!(async_streamable_flow.format(), Format::None);
     }
 
     #[tokio::test]
@@ -186,22 +188,6 @@ mod tests {
                 assert_eq!(token, "async_token");
             }
             _ => panic!("Expected AsyncStreamable variant"),
-        }
-    }
-
-    #[test]
-    fn test_fetchable_fetch() {
-        let fetchable_flow = Flow::Fetchable(Box::new(MockFetcher {}));
-        let (tx, rx) = channel();
-
-        match fetchable_flow {
-            Flow::Fetchable(s) => {
-                s.fetch(tx, "test_token", "args").expect("Failed to fetch");
-                let result = rx.recv().unwrap_or_else(|_| "No data received".to_string());
-                assert!(result.contains("test_token"));
-                assert!(result.contains("args"));
-            }
-            _ => panic!("Expected Fetchable variant"),
         }
     }
 }

@@ -533,7 +533,7 @@ mod tests {
         }
 
         // Test get_mut and modify
-        if let Some(mut retrieved_site) = sources.get_mut(site_name) {
+        if let Some(retrieved_site) = sources.get_mut(site_name) {
             retrieved_site.base_url = "http://example.com".to_string();
         }
         assert_eq!(sources.get(site_name).unwrap().base_url, "http://example.com");
