@@ -2,40 +2,48 @@
 //
 version = 4
 
-site "aeroscope" {
+// Soon to disappear
+//
+site "eih" {
   features = ["fetch"]
   type     = "drone"
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
-  auth     = "token"
   routes = {
     get = "/drone/get"
   }
 }
 
-site "asd" {
+// CDG antenna is now in LUX, use my account
+//
+site "lux-me" {
   features = ["fetch"]
   type     = "drone"
   format   = "asd"
-  base_url = "https://eur.airspacedrone.com/api"
-  auth     = "token"
+  base_url = "https://eur.airspacedrone.com"
+  auth = {
+    login    = "MINE"
+    password = "NOP"
+    token    = "/api/security/login"
+  }
   routes = {
-    get = "/journeys/filteredlocations"
+    get      = "/api/journeys/filteredlocations"
+    journeys = "/api/journeys"
+    vector   = "/api/journeys/$1"
   }
 }
 
+// CDG antenna is now in LUX
+//
 site "lux" {
   features = ["fetch"]
   type     = "drone"
   format   = "asd"
-  base_url = "https://eur.airspacedrone.com/api"
-  auth = {
-    login     = "NONE"
-    passwortd = "MAYBE"
-  }
+  base_url = "https://eur.airspacedrone.com"
   routes = {
-    list = "/journeys"
-    get  = "/journeys/$1"
+    get      = "/api/journeys/filteredlocations"
+    journeys = "/api/journeys"
+    journey  = "/api/journeys/$1"
   }
 }
 
@@ -44,44 +52,41 @@ site "opensky" {
   type     = "adsb"
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
-  auth     = "login"
+  auth = {
+    username = "GUESS"
+    password = "NEVER"
+  }
   routes = {
-    get = "/states/own"
+    stream = "/states/own"
   }
 }
 
 site "fa-belfast" {
   features = ["fetch"]
-  type   = "adsb"
-  format = "flightaware"
-  auth = {
-    login    = "USERNAME"
-    password = "HIDDEN"
-  }
+  type     = "adsb"
+  format   = "flightaware"
   base_url = "firehose.flightaware.com:1501"
+  auth = {
+    username = ""
+    password = ""
+  }
   routes = {
     get    = "range"
     stream = "live"
   }
 }
 
-// Incomplete support.
-//
 site "safesky" {
   features = ["fetch"]
   type     = "adsb"
   format   = "safesky"
   base_url = "https://public-api.safesky.app"
-  auth = {
-    api_key = "api_key"
-  }
   routes = {
     get = "/v1/beacons"
   }
 }
 
 // Avionix Cube on the EIH roof - ADS-B flow
-// using the TCP Streaming server.
 //
 site "avionix-adsb" {
   features = ["stream"]
@@ -89,8 +94,8 @@ site "avionix-adsb" {
   format   = "cubedata"
   base_url = "tcp.aero-network.com:50007"
   auth = {
-    user_key = "USERKEY"
-    api_key  = "APIKEY"
+    user_key = "MAYBE"
+    api_key  = "PERHAPS"
   }
   routes = {
     get = "A"
@@ -98,7 +103,6 @@ site "avionix-adsb" {
 }
 
 // Avionix Cube on the EIH roof - -RemoteID flow
-// using the TCP Streaming server.
 //
 site "avionix-rid" {
   features = ["stream"]
@@ -106,8 +110,8 @@ site "avionix-rid" {
   format   = "cubedata"
   base_url = "tcp.aero-network.com:50007"
   auth = {
-    user_key = "USERKEY"
-    api_key  = "APIKEY"
+    user_key = "ORNOT"
+    api_key  = "NEVER"
   }
   routes = {
     get = "RID"
@@ -116,17 +120,14 @@ site "avionix-rid" {
 
 // Thales Senhive antenna on the EIH roof.
 //
-// It uses AMQP
-//
 site "eih-senhive" {
   features = ["stream"]
   type     = "drone"
   format   = "senhive"
   base_url = "senegress.senair.io:5672"
   auth = {
-    vhost    = "VHOST"
-    username = "USER"
-    password = "PASSWORD"
+    vhost    = "eurocontrol"
+    username = "NOONE"
+    password = "DONTTRY"
   }
 }
-
