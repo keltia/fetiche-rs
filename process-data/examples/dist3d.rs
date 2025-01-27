@@ -16,7 +16,7 @@ impl Point {
 }
 
 mod roberto {
-    use geo::{point, GeodesicDistance, HaversineDistance};
+    use geo::{point, Distance, Geodesic, Haversine};
     use rust_3d::{dist_2d, dist_3d, IsTransFormableTo2D, Point2D, Point3D};
 
     use crate::Point;
@@ -70,8 +70,8 @@ mod roberto {
         //
         let drone2 = point!(x: drone.lon, y: drone.lat);
         let home2 = point!(x: home.lon, y: home.lat);
-        let dcalc2g = drone2.geodesic_distance(&home2);
-        let dcalc2h = drone2.haversine_distance(&home2);
+        let dcalc2g = Geodesic::distance(drone2, home2);
+        let dcalc2h = Haversine::distance(drone2, home2);
         println!(
             "  Basic 2D = {:.2} m / Geo 2D dist = {:.2} m / haversine =  {:.2} m",
             dcalc, dcalc2g, dcalc2h

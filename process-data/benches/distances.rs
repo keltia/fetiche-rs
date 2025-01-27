@@ -1,3 +1,4 @@
+use criterion::async_executor::FuturesExecutor;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use geo::point;
 use geo::prelude::*;
@@ -80,7 +81,7 @@ fn geo_geodesic(c: &mut Criterion) {
 
     c.bench_function("geo::geodesic", |b| {
         b.iter(|| {
-            black_box(p1.geodesic_distance(&p2));
+            black_box(Geodesic::distance(p1, p2));
         })
     });
 }
@@ -93,7 +94,7 @@ fn geo_haversines(c: &mut Criterion) {
 
     c.bench_function("geo::haversines", |b| {
         b.iter(|| {
-            black_box(p1.haversine_distance(&p2));
+            black_box(Haversine::distance(p1, p2));
         })
     });
 }
@@ -148,16 +149,10 @@ async fn inner_ch_geodistance(c: &mut Criterion) {
         .await
         .unwrap();
 
-    c.bench_function("klickhouse", |b| {
-        b.to_async(
-            tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap(),
-        )
-            .iter(|| async {
-                let _ = ch_calc_distance(client.clone(), &point1, &point2).await;
-            });
+    c.bench_function("klickhouse", move |b| {
+        b.to_async(FuturesExecutor).iter(|| async {
+            black_box(ch_calc_distance(client.clone(), &point1, &point2).await);
+        });
     });
 }
 
