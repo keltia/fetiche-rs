@@ -55,7 +55,7 @@ derive_builder = "0.20"
 geo = "0.29"
 itertools = "0.14"
 klickhouse = { version = "0.13", features = ["derive", "geo-types", "serde", "bb8"] }
-kml = { version = "0.8", path = "../../kml" }
+kml = "0.8"
 ml-progress = "0.1"
 rand = "0"
 rust-3d = "0.34"
