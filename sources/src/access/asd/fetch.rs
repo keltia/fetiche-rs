@@ -9,7 +9,6 @@ use polars::io::SerWriter;
 use polars::prelude::{CsvParseOptions, CsvReadOptions, CsvWriter, SerReader};
 use ractor::cast;
 use reqwest::StatusCode;
-use tap::Tap;
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
@@ -154,7 +153,6 @@ impl Fetchable for Asd {
             .header("content-type", "application/json")
             .header("authorization", format!("Bearer {}", token))
             .body(data)
-            .tap(|r| debug!("req={:?}", r))
             .send()?;
 
         debug!("raw resp={:?}", &resp);
