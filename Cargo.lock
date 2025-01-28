@@ -3349,6 +3349,7 @@ dependencies = [
  "futures-util",
  "hcl-rs",
  "indicatif",
+ "jiff",
  "lapin",
  "mini-moka",
  "native-tls",

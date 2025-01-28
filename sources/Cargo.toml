@@ -34,6 +34,9 @@ maintenance = { status = "actively-developed" }
 name = "read"
 harness = false
 
+[[bench]]
+name = "dateparsing"
+harness = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -48,6 +51,7 @@ fetiche-common.workspace = true
 fetiche-formats.workspace = true
 fetiche-macros.workspace = true
 hcl-rs.workspace = true
+jiff.workspace = true
 polars.workspace = true
 ractor.workspace = true
 reqwest.workspace = true
