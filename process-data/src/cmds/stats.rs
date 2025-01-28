@@ -135,3 +135,115 @@ impl Add for PlanesStats {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    #[test]
+    fn test_planes_stats_default() {
+        let stats = PlanesStats::default();
+        assert_eq!(stats.planes, 0);
+        assert_eq!(stats.drones, 0);
+        assert_eq!(stats.potential, 0);
+        assert_eq!(stats.encounters, 0);
+        assert_eq!(stats.time, 0);
+        assert_eq!(stats.distance, 0.0);
+        assert_eq!(stats.proximity, 0.0);
+        assert!(stats.day.len() == 1);
+    }
+
+    #[test]
+    fn test_planes_stats_new() {
+        let now = Utc::now();
+        let distance = 50.0;
+        let proximity = 10.0;
+        let stats = PlanesStats::new(now, distance, proximity);
+
+        assert_eq!(stats.planes, 0);
+        assert_eq!(stats.drones, 0);
+        assert_eq!(stats.potential, 0);
+        assert_eq!(stats.encounters, 0);
+        assert_eq!(stats.time, 0);
+        assert_eq!(stats.distance, distance);
+        assert_eq!(stats.proximity, proximity);
+        assert!(stats.day.contains(&now));
+    }
+
+    #[test]
+    fn test_planes_stats_add() {
+        let day1 = Utc::now();
+        let stats1 = PlanesStats {
+            day: vec![day1],
+            distance: 50.0,
+            proximity: 10.0,
+            planes: 5,
+            drones: 7,
+            potential: 3,
+            encounters: 2,
+            time: 100,
+        };
+
+        let day2 = Utc::now();
+        let stats2 = PlanesStats {
+            day: vec![day2],
+            distance: 50.0,
+            proximity: 10.0,
+            planes: 10,
+            drones: 8,
+            potential: 4,
+            encounters: 3,
+            time: 150,
+        };
+
+        let result = stats1 + stats2;
+        assert_eq!(result.planes, 15);
+        assert_eq!(result.drones, 15);
+        assert_eq!(result.potential, 7);
+        assert_eq!(result.encounters, 5);
+        assert_eq!(result.time, 250);
+        assert_eq!(result.distance, 50.0);
+        assert_eq!(result.proximity, 10.0);
+        assert!(result.day.len() == 2);
+        assert!(result.day.contains(&day1));
+        assert!(result.day.contains(&day2));
+    }
+
+    #[test]
+    fn test_stats_summarise_empty() {
+        let summarised = Stats::summarise(vec![]);
+        if let Stats::Planes(planes_stats) = summarised {
+            assert_eq!(planes_stats.planes, 0);
+            assert_eq!(planes_stats.drones, 0);
+            assert_eq!(planes_stats.potential, 0);
+            assert_eq!(planes_stats.encounters, 0);
+            assert_eq!(planes_stats.time, 0);
+            assert_eq!(planes_stats.distance, 0.0);
+            assert_eq!(planes_stats.proximity, 0.0);
+            assert!(planes_stats.day.len() == 1);
+        }
+    }
+
+    #[test]
+    fn test_stats_summarise_non_empty() {
+        let now = Utc::now();
+        let stats1 = Stats::Planes(PlanesStats::new(now, 50.0, 10.0));
+        let stats2 = Stats::Planes(PlanesStats {
+            day: vec![now],
+            distance: 50.0,
+            proximity: 10.0,
+            planes: 10,
+            drones: 8,
+            potential: 4,
+            encounters: 3,
+            time: 150,
+        });
+
+        let summarised = Stats::summarise(vec![stats1.clone(), stats2.clone()]);
+        if let Stats::Planes(planes_stats) = summarised {
+            assert!(planes_stats.day.len() >= 2);
+        }
+    }
+}
+
