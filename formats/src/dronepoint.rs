@@ -74,7 +74,7 @@ use strum::EnumString;
 /// - [`UAVType`]: Enumeration for drone types (e.g., FixedWing, MultiRotor, etc.).
 /// - [`DataSource`]: Enum to represent different data sources like ADS-B, MLAT, etc.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct DronePoint {
     /// timestamp
     pub time: DateTime<Utc>,
@@ -284,7 +284,7 @@ pub enum UAVType {
 /// # Note:
 /// The fallback value for invalid mappings is `255`, which represents an undefined source.
 ///
-#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
+#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames, PartialEq)]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum DataSource {
     /// ADS-B
