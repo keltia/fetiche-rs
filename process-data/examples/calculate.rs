@@ -15,7 +15,7 @@ pub trait Calculate: Debug {
 
 #[derive(Debug)]
 pub enum Stat {
-    One(usize),
+    One(u32),
     Two(f64),
 }
 
@@ -52,19 +52,19 @@ pub enum Task {
 
 #[derive(Clone, Debug)]
 pub struct Foo {
-    pub m: usize,
+    pub m: u32,
 }
 
 impl Foo {
-    pub fn new(m: usize) -> Self {
+    pub fn new(m: u32) -> Self {
         Self { m }
     }
 }
 
 impl Calculate for Foo {
     fn execute(&self) -> Stat {
-        let mut rng = rand::thread_rng();
-        let res: usize = rng.gen();
+        let mut rng = rand::rng();
+        let res: u32 = rng.random();
         let res = res / self.m;
         Stat::One(res)
     }
@@ -83,8 +83,8 @@ impl Bar {
 
 impl Calculate for Bar {
     fn execute(&self) -> Stat {
-        let mut rng = rand::thread_rng();
-        let res: f64 = rng.gen();
+        let mut rng = rand::rng();
+        let res: f64 = rng.random();
         let res = res / self.f;
         Stat::Two(res)
     }
