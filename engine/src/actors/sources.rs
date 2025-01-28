@@ -19,14 +19,6 @@ use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 ///
 /// Each variant corresponds to a specific behavior implemented within the actor.
 ///
-/// Example usage:
-/// ```rust
-/// use ractor::RpcReplyPort;
-/// use fetiche_engine::SourcesMsg;
-///
-/// let count_msg = SourcesMsg::Count(RpcReplyPort::default());
-/// ```
-///
 #[derive(Debug)]
 pub enum SourcesMsg {
     Get(String),

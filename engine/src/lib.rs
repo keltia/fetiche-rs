@@ -5,7 +5,8 @@
 //!
 //! Example:
 //! ```no_run
-//! # async fn main() {
+//! # #[tokio::main]
+//! # async fn main() -> eyre::Result<()> {
 //! use tracing::trace;
 //! use fetiche_engine::Engine;
 //!
@@ -16,7 +17,8 @@
 //!
 //! // For the moment the whole of Engine is sync so we need to block.
 //! //
-//! let res = tokio::task::spawn_blocking(move || println!("{}", engine.list_tokens())).await?;
+//! let res = tokio::task::spawn_blocking(move || println!("{}", engine.list_tokens().unwrap())).await?;
+//! # Ok(())
 //! # }
 //! ```
 //!
@@ -443,7 +445,7 @@ impl Engine {
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let mut engine = Engine::load("path/to/config.hcl").await?;
     ///     let job = engine.create_job("example_job").await?;
-    ///     engine.remove_job(job)?;
+    ///     engine.remove_job(job.id)?;
     ///     println!("Job removed successfully");
     ///     Ok(())
     /// }
@@ -466,10 +468,10 @@ impl Engine {
     /// Ensure that tracing is set up in your application to observe these events.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn remove_job(&mut self, job: Job) -> Result<()> {
+    pub fn remove_job(&mut self, job: usize) -> Result<()> {
         trace!("grab lock");
 
-        let _ = cast!(self.state, StateMsg::Remove(job.id))?;
+        let _ = cast!(self.state, StateMsg::Remove(job))?;
 
         trace!("sync");
         self.sync()
@@ -556,20 +558,6 @@ pub enum IO {
 ///
 /// See the engine-macro crate for a proc-macro that implement the `run()`  wrapper for
 /// the `Runnable` trait.
-///
-/// ```no_run
-/// use fetiche_engine::{IO, Runnable};
-/// use fetiche_formats::Format;
-/// use fetiche_macros::RunnableDerive;
-///
-/// #[derive(Clone, Debug, RunnableDerive)]
-/// pub struct Convert {
-///     io: IO,
-///     pub from: Format,
-///     pub into: Format,
-/// }
-/// ```
-///
 ///
 #[enum_dispatch(Task)]
 pub trait Runnable: Debug {

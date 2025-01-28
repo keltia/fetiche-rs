@@ -30,7 +30,7 @@ impl Actor for EngineActor {
         _myself: ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> std::result::Result<Self::State, ActorProcessingErr> {
-        let e = Engine::new();
+        let e = Engine::new().await;
         Ok(EngineState { e })
     }
 
@@ -42,7 +42,7 @@ impl Actor for EngineActor {
     ) -> std::result::Result<(), ActorProcessingErr> {
         match message {
             EngineMsg::CreateJob(name, sender) => {
-                let job = state.e.create_job(&name);
+                let job = state.e.create_job(&name).await.unwrap();
                 let _ = sender.send(job.id);
             }
             EngineMsg::RemoveJob(id) => {
@@ -52,7 +52,7 @@ impl Actor for EngineActor {
                 let _ = sender.send(state.e.version());
             }
             EngineMsg::Sources(sender) => {
-                let srcs = state.e.sources();
+                let srcs = state.e.sources().await?;
                 let _ = sender.send(srcs.len());
             }
         }
