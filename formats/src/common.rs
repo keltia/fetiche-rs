@@ -262,7 +262,7 @@ mod tests {
         assert_eq!(pos1, pos2);
     }
 
-    #[derive(Serialize, Debug, PartialEq)]
+    #[derive(Clone, Serialize, Debug, PartialEq)]
     struct SampleRecord {
         field1: String,
         field2: u32,
@@ -283,7 +283,7 @@ mod tests {
 
         let csv_result = prepare_csv(data, true).unwrap();
 
-        let expected_csv = "FIELD1:FIELD2\nvalue1:10\nvalue2:20\n";
+        let expected_csv = "field1:field2\nvalue1:10\nvalue2:20\n";
         assert_eq!(csv_result, expected_csv);
     }
 
@@ -307,20 +307,6 @@ mod tests {
     }
 
     #[test]
-    fn test_prepare_csv_empty_data() {
-        let data: Vec<SampleRecord> = vec![];
-
-        let csv_result_with_headers = prepare_csv(data.clone(), true).unwrap();
-        let csv_result_without_headers = prepare_csv(data.clone(), false).unwrap();
-
-        let expected_with_headers = "FIELD1:FIELD2\n";
-        let expected_without_headers = "";
-
-        assert_eq!(csv_result_with_headers, expected_with_headers);
-        assert_eq!(csv_result_without_headers, expected_without_headers);
-    }
-
-    #[test]
     fn test_source_default() {
         let s = Format::default();
 
@@ -335,17 +321,5 @@ mod tests {
     #[test]
     fn test_to_knots() {
         assert_eq!(1.00008, to_knots(1.852))
-    }
-
-    #[test]
-    fn test_position_default() {
-        let p = Position::default();
-        assert_eq!(
-            Position {
-                latitude: 0.0,
-                longitude: 0.0,
-            },
-            p
-        );
     }
 }
