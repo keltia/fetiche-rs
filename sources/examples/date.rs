@@ -2,6 +2,8 @@
 //!
 
 use eyre::Result;
+use jiff::civil::DateTime;
+use jiff::tz::TimeZone;
 use polars::datatypes::Int64Chunked;
 use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, IntoColumn, SerReader};
 use std::io::Cursor;
@@ -24,8 +26,11 @@ fn main() -> Result<()> {
         .into_reader_with_file_handle(cur)
         .finish()?;
 
-    let r = df.apply("timestamp", into_timestamp)?;
-    dbg!(r.select_columns(["timestamp"])?);
+    //let r = df.apply("timestamp", into_timestamp)?;
+    //dbg!(r.select_columns(["timestamp"])?);
+
+    let r = df.apply("timestamp", into_timestamp_jiff)?;
+    dbg!(&r.select_columns(["timestamp"])?);
 
     Ok(())
 }
@@ -35,6 +40,17 @@ fn into_timestamp(col: &Column) -> Column {
         .unwrap()
         .into_iter()
         .map(|d: Option<&str>| d.map(|d: &str| dateparser::parse(d).unwrap().timestamp()))
+        .collect::<Int64Chunked>()
+        .into_column()
+}
+
+fn into_timestamp_jiff(col: &Column) -> Column {
+    col.str()
+        .unwrap()
+        .into_iter()
+        .map(|d: Option<&str>| d.map(|d: &str| {
+            d.parse::<DateTime>().unwrap().to_zoned(TimeZone::UTC).unwrap().timestamp().as_second()
+        }))
         .collect::<Int64Chunked>()
         .into_column()
 }
