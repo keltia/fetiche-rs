@@ -43,6 +43,11 @@ impl JobQueue {
         self.0.push_back(job);
         self
     }
+
+    #[tracing::instrument(skip(self))]
+    pub fn list(&self) -> Vec<usize> {
+        self.0.iter().map(|j| j.id).collect::<Vec<usize>>()
+    }
 }
 
 #[cfg(test)]
@@ -84,6 +89,3 @@ mod tests {
         assert!(retrieved_job.is_none());
     }
 }
-
-
-
