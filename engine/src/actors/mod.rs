@@ -4,5 +4,6 @@
 pub use sources::*;
 pub use state::*;
 
+mod queue;
 mod sources;
 mod state;
