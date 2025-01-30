@@ -112,7 +112,7 @@ impl Actor for SourcesActor {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            SourcesMsg::Get(key) => {
+            SourcesMsg::Get(_key) => {
                 todo!()
             }
             SourcesMsg::List(sender) => {
