@@ -45,7 +45,9 @@ pub enum StateMsg {
     Add(usize),
     /// Remove a job ID to the queue.
     Remove(usize),
-    /// Get next available id.
+    /// Last used id.
+    Last(RpcReplyPort<usize>),
+    /// Get next available id. (modify `.last`).
     Next(RpcReplyPort<usize>),
     /// Get current PID.
     GetPid(RpcReplyPort<u32>),
@@ -164,6 +166,7 @@ impl Actor for StateActor {
     /// # Message Processing
     /// - `StateMsg::Add(usize)`: Adds a job ID to the job queue.
     /// - `StateMsg::Remove(usize)`: Removes a specific job ID from the job queue, if found.
+    /// - `StateMsg::Last(RpcReplyPort<usize>)`: Returns the last used ID.
     /// - `StateMsg::Next(RpcReplyPort<usize>)`: Sends back the next available job ID.
     /// - `StateMsg::GetPid(RpcReplyPort<u32>)`: Sends back the current actor's process ID.
     /// - `StateMsg::Sync`: Synchronizes the current state to disk, updating the timestamp.
@@ -189,10 +192,16 @@ impl Actor for StateActor {
                     trace!("queue={:?}", state.queue);
                 }
             }
+            StateMsg::Last(sender) => {
+                trace!("stateactor::last({})", state.last);
+
+                sender.send(state.last)?;
+            }
             StateMsg::Next(sender) => {
                 trace!("stateactor::next({})", state.last);
 
-                sender.send(state.last + 1)?;
+                state.last += 1;
+                sender.send(state.last)?;
             }
             StateMsg::GetPid(sender) => {
                 trace!("stateactor::getpid()");
