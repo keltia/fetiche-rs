@@ -122,6 +122,7 @@ impl Actor for StateActor {
     ///
     /// This function panics if it fails to write the `pid` file to disk.
     ///
+    #[tracing::instrument(skip(self))]
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
@@ -171,6 +172,7 @@ impl Actor for StateActor {
     /// - `StateMsg::GetPid(RpcReplyPort<u32>)`: Sends back the current actor's process ID.
     /// - `StateMsg::Sync`: Synchronizes the current state to disk, updating the timestamp.
     ///
+    #[tracing::instrument(skip(self, _myself))]
     async fn handle(
         &self,
         _myself: ActorRef<Self::Msg>,

@@ -72,6 +72,7 @@ impl Actor for SourcesActor {
     /// This function may return an `ActorProcessingErr` if:
     /// - The `Sources::new()` function fails to initialize the state.
     ///
+    #[tracing::instrument(skip(self))]
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
@@ -103,6 +104,7 @@ impl Actor for SourcesActor {
     /// If there is an error when attempting to send the response through the `RpcReplyPort`,
     /// or if there is a failure in generating the table representation, an `ActorProcessingErr` may occur.
     ///
+    #[tracing::instrument(skip(self, _myself))]
     async fn handle(
         &self,
         _myself: ActorRef<Self::Msg>,
