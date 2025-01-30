@@ -31,7 +31,7 @@ use crate::Opensky;
 use crate::Safesky;
 #[cfg(feature = "senhive")]
 use crate::Senhive;
-use crate::{AccessError, Auth, Flow, Site, CONFIG};
+use crate::{AccessError, Auth, Context, Flow, Site, CONFIG};
 
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_formats::Format;
@@ -79,6 +79,7 @@ pub struct SourcesConfig {
 
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct Sources {
+    ctx: Context,
     site: BTreeMap<String, Site>,
 }
 
@@ -103,7 +104,7 @@ impl Sources {
     /// ```rust
     /// use fetiche_sources::Sources;
     ///
-    /// match Sources::new() {
+    /// match Sources::new(ctx) {
     ///     Ok(sources) => {
     ///         println!("Sources loaded successfully!");
     ///     }
@@ -114,7 +115,7 @@ impl Sources {
     /// ```
     ///
     #[tracing::instrument]
-    pub fn new() -> Result<Self> {
+    pub fn new(ctx: Context) -> Result<Self> {
         let src_file = ConfigFile::<SourcesConfig>::load(Some("sources.hcl"))?;
         let src = src_file.inner();
 

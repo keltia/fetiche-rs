@@ -121,9 +121,21 @@ pub struct Asd {
 
 impl Asd {
     #[tracing::instrument]
-    pub fn new() -> Self {
+    pub fn new(ctx: Context) -> Self {
         trace!("asd::new");
-        Asd::default()
+        Asd {
+            features: vec![Capability::Fetch],
+            site: "NONE".to_string(),
+            format: Format::Asd,
+            token_base: PathBuf::new(),
+            login: "".to_owned(),
+            password: "".to_owned(),
+            base_url: "".to_owned(),
+            token: "".to_owned(),
+            get: "".to_owned(),
+            client: Client::new(),
+            ctx,
+        }
     }
 
     /// Load some data from the configuration file
@@ -191,31 +203,6 @@ impl Asd {
         trace!("purge expired token in {fname:?}");
 
         Ok(fs::remove_file(fname)?)
-    }
-}
-
-impl Default for Asd {
-    fn default() -> Self {
-        let ctx = match init_sources_runtime() {
-            Ok(ctx) => ctx,
-            Err(e) => {
-                error!("Can not initialize sources: {e}");
-                std::process::exit(1);
-            }
-        };
-        Asd {
-            features: vec![Capability::Fetch],
-            site: "NONE".to_string(),
-            format: Format::Asd,
-            token_base: PathBuf::new(),
-            login: "".to_owned(),
-            password: "".to_owned(),
-            base_url: "".to_owned(),
-            token: "".to_owned(),
-            get: "".to_owned(),
-            client: Client::new(),
-            ctx,
-        }
     }
 }
 

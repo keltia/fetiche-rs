@@ -13,6 +13,9 @@ pub struct Context {
     pub stats: ActorRef<StatsMsg>,
 }
 
+impl Default for Context {
+    fn default() -> Self {}
+}
 /// Initializes the runtime environment for source actors.
 ///
 /// This function sets up the necessary actors for managing runtime behavior, such as a
@@ -38,30 +41,26 @@ pub struct Context {
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<()> {
-/// let context = init_sources_runtime()?;
+/// let context = init_sources_runtime().await?;
 ///     println!("Supervisor actor: {:?}", context.supervisor);
 ///     println!("Stats actor: {:?}", context.stats);
 ///     Ok(())
 /// }
 /// ```
 ///
-pub fn init_sources_runtime() -> Result<Context> {
-    let rt = tokio::runtime::Handle::current();
-    let (stat, sup) = rt.block_on(async {
-        // We have a generic supervisor actor.
-        //
-        trace!("starting supervisor actor.");
-        let tag = String::from("senhive:supervisor");
-        let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await.unwrap();
+pub async fn init_sources_runtime() -> Result<Context> {
+    // We have a generic supervisor actor.
+    //
+    trace!("starting supervisor actor.");
+    let tag = String::from("senhive:supervisor");
+    let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await.unwrap();
 
-        // Start the stats gathering actor.
-        //
-        trace!("starting stats actor.");
-        let tag = String::from("senhive::stats");
-        let (stat, _h) =
-            Actor::spawn_linked(Some(tag), StatsActor, "senhive".into(), sup.get_cell()).await.unwrap();
-        (stat, sup)
-    });
+    // Start the stats gathering actor.
+    //
+    trace!("starting stats actor.");
+    let tag = String::from("senhive::stats");
+    let (stat, _h) =
+        Actor::spawn_linked(Some(tag), StatsActor, "senhive".into(), sup.get_cell()).await.unwrap();
     Ok(Context {
         supervisor: sup,
         stats: stat,
