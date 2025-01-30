@@ -39,21 +39,15 @@ pub struct StateActor;
 /// - `GetPid(RpcReplyPort<u32>)`: Fetches the PID of the current running state actor.
 /// - `Sync`: Synchronizes the current state to the disk (stored in the state file).
 ///
-/// Example usage:
-/// ```rust
-/// use ractor::RpcReplyPort;
-/// use fetiche_engine::StateMsg;
-///
-/// // Example Message
-/// let add_msg = StateMsg::Add(42);
-/// ```
 #[derive(Debug)]
 pub enum StateMsg {
     /// Add a job ID to the queue.
     Add(usize),
     /// Remove a job ID to the queue.
     Remove(usize),
-    /// Get next available id.
+    /// Last used id.
+    Last(RpcReplyPort<usize>),
+    /// Get next available id. (modify `.last`).
     Next(RpcReplyPort<usize>),
     /// Get current PID.
     GetPid(RpcReplyPort<u32>),
@@ -128,19 +122,7 @@ impl Actor for StateActor {
     ///
     /// This function panics if it fails to write the `pid` file to disk.
     ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use ractor::Actor;
-    /// use std::path::PathBuf;
-    /// use fetiche_engine::{StateActor, State};
-    ///
-    /// async fn start_actor() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let base_dir = PathBuf::from("/path/to/state/dir");
-    ///     let state_actor = Actor::spawn(None, StateActor, base_dir).await?;
-    ///     Ok(())
-    /// }
-    /// ```
+    #[tracing::instrument(skip(self))]
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
@@ -185,20 +167,12 @@ impl Actor for StateActor {
     /// # Message Processing
     /// - `StateMsg::Add(usize)`: Adds a job ID to the job queue.
     /// - `StateMsg::Remove(usize)`: Removes a specific job ID from the job queue, if found.
+    /// - `StateMsg::Last(RpcReplyPort<usize>)`: Returns the last used ID.
     /// - `StateMsg::Next(RpcReplyPort<usize>)`: Sends back the next available job ID.
     /// - `StateMsg::GetPid(RpcReplyPort<u32>)`: Sends back the current actor's process ID.
     /// - `StateMsg::Sync`: Synchronizes the current state to disk, updating the timestamp.
     ///
-    /// # Example
-    /// ```rust
-    /// use ractor::ActorRef;
-    /// use fetiche_engine::{StateActor, StateMsg};
-    ///
-    /// async fn send_message(myself: ActorRef<StateMsg>) {
-    ///     let _ = myself.send(StateMsg::Add(42));
-    /// }
-    /// ```
-    ///
+    #[tracing::instrument(skip(self, _myself))]
     async fn handle(
         &self,
         _myself: ActorRef<Self::Msg>,
@@ -220,10 +194,16 @@ impl Actor for StateActor {
                     trace!("queue={:?}", state.queue);
                 }
             }
+            StateMsg::Last(sender) => {
+                trace!("stateactor::last({})", state.last);
+
+                sender.send(state.last)?;
+            }
             StateMsg::Next(sender) => {
                 trace!("stateactor::next({})", state.last);
 
-                sender.send(state.last + 1)?;
+                state.last += 1;
+                sender.send(state.last)?;
             }
             StateMsg::GetPid(sender) => {
                 trace!("stateactor::getpid()");

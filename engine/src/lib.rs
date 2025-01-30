@@ -5,7 +5,8 @@
 //!
 //! Example:
 //! ```no_run
-//! # async fn main() {
+//! # #[tokio::main]
+//! # async fn main() -> eyre::Result<()> {
 //! use tracing::trace;
 //! use fetiche_engine::Engine;
 //!
@@ -16,7 +17,8 @@
 //!
 //! // For the moment the whole of Engine is sync so we need to block.
 //! //
-//! let res = tokio::task::spawn_blocking(move || println!("{}", engine.list_tokens())).await?;
+//! let res = tokio::task::spawn_blocking(move || println!("{}", engine.list_tokens().unwrap())).await?;
+//! # Ok(())
 //! # }
 //! ```
 //!
@@ -37,7 +39,7 @@ use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -154,8 +156,8 @@ pub enum StorageConfig {
 /// - `pid`
 ///     The current process ID for the engine. Retrieved from the state service.
 ///
-/// - `next`
-///     The next job ID to be used. Tracked for managing job identifiers.
+/// - `last`
+///     The last used ID. Tracked for managing job identifiers.
 ///
 /// - `home`
 ///     The root directory where state is saved. This directory includes the configuration file,
@@ -203,10 +205,12 @@ pub enum StorageConfig {
 pub struct Engine {
     /// Current process DI
     pub pid: u32,
-    /// Next job ID
-    pub next: usize,
+    /// Last used job ID
+    pub last: usize,
     /// Main area where state is saved (PID, jobs, etc.)
     pub home: Arc<PathBuf>,
+    /// Job Queue actor
+    pub queue: ActorRef<QueueMsg>,
     /// Sources
     pub sources: ActorRef<SourcesMsg>,
     /// Storage area for long-running jobs
@@ -215,8 +219,6 @@ pub struct Engine {
     pub tokens: Arc<TokenStorage>,
     /// Current state
     pub state: ActorRef<StateMsg>,
-    /// Job Queue
-    pub jobs: Arc<RwLock<JobQueue>>,
 }
 
 impl Engine {
@@ -254,9 +256,10 @@ impl Engine {
     /// ```rust,no_run
     /// use fetiche_engine::Engine;
     /// # use tokio;
+    ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let engine = Engine::load("path/to/config.hcl").await?;
+    /// let engine = Engine::new().await;
     ///     println!("Engine PID: {}", engine.pid);
     ///     Ok(())
     /// }
@@ -320,28 +323,31 @@ impl Engine {
         let tokens = TokenStorage::register(&tokens_area);
         info!("{} tokens loaded", tokens.len());
 
+        // Get last used ID from previous state
+        //
+        let last = call!(state, |port| StateMsg::Last(port))?;
+
+        // Start jobqueue service
+        //
+        trace!("load jobqueue");
+        let (queue, _h) = Actor::spawn(Some("engine::queue".into()), QueueActor, last).await?;
+        trace!("queue={:?}", queue);
+
         // Get PID from the state service
         //
         let pid = call!(state, |port| StateMsg::GetPid(port))?;
-
-        // Sync is every 30s
-        //
-        let _ = state.send_interval(Duration::from_secs(30), || StateMsg::Sync);
-
-        let jobs = JobQueue::new();
-        let last = call!(state, |port| StateMsg::Next(port))?;
 
         // Instantiate everything
         //
         let engine = Engine {
             pid,
-            next: last,
+            last,
             home: Arc::new(home),
+            queue: queue.clone(),
             sources: src.clone(),
             storage: Arc::new(areas),
             tokens: Arc::new(tokens),
             state: state.clone(),
-            jobs: Arc::new(RwLock::new(jobs)),
         };
         info!("New Engine loaded pid={}", pid);
 
@@ -352,31 +358,32 @@ impl Engine {
         Ok(engine)
     }
 
+    ///
+    ///
     /// Create a new job
     ///
-    /// This method creates a new job with the specified string identifier (`s`)
-    /// and assigns it a unique ID fetched from the state service. The job
-    /// is then added to the internal job queue and synchronized with the engine state.
+    /// This method creates a new job within the engine by utilizing the internal job queue mechanism.
+    /// The created job is assigned a unique ID, initialized, and synchronized with the engine state.
     ///
     /// # Arguments
     ///
-    /// - `s`: A string slice representing the name or identifier of the new job.
+    /// - `s`: A string slice representing the job's description or identifier.
     ///
     /// # Returns
     ///
-    /// - On success, returns the newly created `Job` instance.
+    /// - On success, returns `Ok(Job)` with the created job.
     /// - On failure, returns an `Err` containing details about the error.
     ///
     /// # Examples
     ///
     /// ```rust,no_run
     /// use fetiche_engine::Engine;
-    /// # use tokio;
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut engine = Engine::load("path/to/config.hcl").await?;
+    ///     let mut engine = Engine::new().await?;
+    ///
     ///     let job = engine.create_job("example_job").await?;
-    ///     println!("Job ID: {}", job.id);
+    ///     println!("Job created with ID: {}", job.id);
     ///     Ok(())
     /// }
     /// ```
@@ -385,28 +392,33 @@ impl Engine {
     ///
     /// This method will return an error in the following cases:
     ///
-    /// - If the state service fails to generate a new job ID.
-    /// - If the job fails to synchronize with the engine state after creation.
+    /// - If the job cannot be added to the queue.
+    /// - If the state service fails to update for the new job.
+    /// - If synchronization fails with the engine state after job creation.
     ///
     /// # Tracing
-    /// This method uses tracing to log detailed events during execution, including
-    /// job creation, state updates, and synchronization. Ensure tracing is set up
-    /// correctly to observe these events.
+    ///
+    /// Tracing logs provide insights during the job creation process:
+    /// - Fetching the next job ID from the queue.
+    /// - Initialization of the job.
+    /// - Status of queue and state updates.
+    /// - Synchronization with the engine state after job creation.
+    ///
+    /// Ensure tracing is properly configured in your application to monitor these events.
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn create_job(&mut self, s: &str) -> Result<Job> {
         // Fetch next ID
         //
-        let nextid = call!(self.state, |port| StateMsg::Next(port))?;
+        let nextid = call!(self.queue, |port| QueueMsg::Next(port))?;
 
         // Initialise job
         //
         let job = Job::new_with_id(s, nextid);
 
-        // Insert into job queue
+        // Insert the job into the queue.
         //
-        let mut jobs = self.jobs.write().unwrap();
-        jobs.add(job.clone());
-        drop(jobs);
+        let _ = cast!(self.queue, QueueMsg::Add(job.clone()))?;
 
         // Update state
         //
@@ -441,9 +453,9 @@ impl Engine {
     /// # use fetiche_engine::Job;
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let mut engine = Engine::load("path/to/config.hcl").await?;
+    ///     let mut engine = Engine::new().await;
     ///     let job = engine.create_job("example_job").await?;
-    ///     engine.remove_job(job)?;
+    ///     engine.remove_job(job.id)?;
     ///     println!("Job removed successfully");
     ///     Ok(())
     /// }
@@ -466,10 +478,10 @@ impl Engine {
     /// Ensure that tracing is set up in your application to observe these events.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn remove_job(&mut self, job: Job) -> Result<()> {
+    pub fn remove_job(&mut self, job: usize) -> Result<()> {
         trace!("grab lock");
 
-        let _ = cast!(self.state, StateMsg::Remove(job.id))?;
+        let _ = cast!(self.state, StateMsg::Remove(job))?;
 
         trace!("sync");
         self.sync()
@@ -503,7 +515,7 @@ impl Engine {
     /// # use tokio;
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let engine = Engine::load("path/to/config.hcl").await?;
+    ///     let engine = Engine::new().await;
     ///     match engine.get_job(42) {
     ///         Ok(job) => println!("Found job: {:?}", job),
     ///         Err(e) => eprintln!("Error: {}", e),
@@ -521,14 +533,9 @@ impl Engine {
     /// Ensure tracing is set up in your application to observe these events.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn get_job(&self, id: usize) -> Result<Job> {
-        let state = self.jobs.read().unwrap();
-        let job = match state.get(id) {
-            Some(job) => job,
-            None => {
-                return Err(EngineStatus::JobNotFound(id).into());
-            }
-        };
+    pub async fn get_job(&self, id: usize) -> Result<Job> {
+        let job = call!(self.queue, |port| QueueMsg::GetById(id, port))?;
+
         Ok(job.clone())
     }
 }
@@ -556,20 +563,6 @@ pub enum IO {
 ///
 /// See the engine-macro crate for a proc-macro that implement the `run()`  wrapper for
 /// the `Runnable` trait.
-///
-/// ```no_run
-/// use fetiche_engine::{IO, Runnable};
-/// use fetiche_formats::Format;
-/// use fetiche_macros::RunnableDerive;
-///
-/// #[derive(Clone, Debug, RunnableDerive)]
-/// pub struct Convert {
-///     io: IO,
-///     pub from: Format,
-///     pub into: Format,
-/// }
-/// ```
-///
 ///
 #[enum_dispatch(Task)]
 pub trait Runnable: Debug {

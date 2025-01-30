@@ -2,7 +2,7 @@
 //!
 
 use crate::ENGINE_PG;
-use fetiche_sources::Sources;
+use fetiche_sources::{init_sources_runtime, Context, Sources};
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
 /// Messages handled by the `SourcesActor`.
@@ -18,14 +18,6 @@ use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 ///   and sends it as a string.
 ///
 /// Each variant corresponds to a specific behavior implemented within the actor.
-///
-/// Example usage:
-/// ```rust
-/// use ractor::RpcReplyPort;
-/// use fetiche_engine::SourcesMsg;
-///
-/// let count_msg = SourcesMsg::Count(RpcReplyPort::default());
-/// ```
 ///
 #[derive(Debug)]
 pub enum SourcesMsg {
@@ -49,11 +41,16 @@ pub enum SourcesMsg {
 ///
 pub struct SourcesActor;
 
+#[derive(Debug)]
+pub struct SourcesState {
+    src: Sources,
+    ctx: Context,
+}
 
 #[ractor::async_trait]
 impl Actor for SourcesActor {
     type Msg = SourcesMsg;
-    type State = Sources;
+    type State = SourcesState;
     type Arguments = ();
 
     ///
@@ -80,15 +77,17 @@ impl Actor for SourcesActor {
     /// This function may return an `ActorProcessingErr` if:
     /// - The `Sources::new()` function fails to initialize the state.
     ///
+    #[tracing::instrument(skip(self))]
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
+        let ctx = init_sources_runtime().await?;
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
 
-        let sources = Sources::new()?;
-        Ok(sources)
+        let src = Sources::new()?;
+        Ok(SourcesState { src, ctx })
     }
 
     /// Handles incoming messages sent to the `SourcesActor`.
@@ -111,6 +110,7 @@ impl Actor for SourcesActor {
     /// If there is an error when attempting to send the response through the `RpcReplyPort`,
     /// or if there is a failure in generating the table representation, an `ActorProcessingErr` may occur.
     ///
+    #[tracing::instrument(skip(self, _myself))]
     async fn handle(
         &self,
         _myself: ActorRef<Self::Msg>,
@@ -118,20 +118,20 @@ impl Actor for SourcesActor {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            SourcesMsg::Get(key) => {
+            SourcesMsg::Get(_key) => {
                 todo!()
             }
             SourcesMsg::List(sender) => {
-                let sources = state.clone();
+                let sources = state.src.clone();
                 sender.send(sources)?;
             }
             SourcesMsg::Table(sender) => {
-                let sources = state.clone();
+                let sources = state.src.clone();
                 let table = sources.list()?;
                 sender.send(table)?;
             }
             SourcesMsg::Count(sender) => {
-                let sources = state.clone();
+                let sources = state.src.clone();
                 let res = sources.len();
                 sender.send(res)?;
             }

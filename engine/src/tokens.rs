@@ -39,8 +39,8 @@ use crate::TokenStatus;
 /// let mut storage = TokenStorage::register("path/to/tokens");
 ///
 /// // Store a new token
-/// let token_data = TokenType::AsdToken(AsdToken { /* ... */ });
-/// storage.store("new_token_file", token_data);
+/// let token_data = TokenType::AsdToken(AsdToken::default());
+/// let _ = storage.store("new_token_file", token_data);
 ///
 /// // Retrieve a token by key
 /// if let Ok(token) = storage.load("existing_token_file") {

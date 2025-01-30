@@ -265,7 +265,7 @@ impl Storage {
     /// - The method utilizes the [`nom`](https://docs.rs/nom/) library for parsing.
     /// - The parsing is case-sensitive and expects valid formats as described above.
     ///
-    fn parse_rotation(input: &str) -> IResult<&str, u32> {
+    pub fn parse_rotation(input: &str) -> IResult<&str, u32> {
         let into_s = |(n, tag): (std::primitive::i8, char)| match tag {
             's' => n as u32,
             'm' => (n as u32) * 60,

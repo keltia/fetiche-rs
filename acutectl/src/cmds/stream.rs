@@ -114,7 +114,7 @@ pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result
 
     // Remove job from engine and state
     //
-    engine.remove_job(job)
+    engine.remove_job(job.id)
 }
 
 /// From the CLI options

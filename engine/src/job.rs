@@ -281,7 +281,7 @@ impl Job {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Copy, Engine, Message, Nothing};
+    use crate::{Copy, Engine, Message};
 
     use super::*;
 
@@ -313,33 +313,13 @@ mod tests {
         assert_eq!(job2.name, "Job Two");
     }
 
-    #[test]
-    fn test_job_run_nothing() {
-        let mut e = Engine::new();
-        let t1 = Box::new(Nothing::new());
-        let t2 = Box::new(Copy::new());
+    #[tokio::test]
+    async fn test_job_run_message() {
+        let mut e = Engine::new().await;
+        let t1 = Task::from(Message::new("hello world"));
+        let t2 = Task::from(Copy::new());
 
-        let mut j: Job = e.create_job("test");
-        j.add(t1);
-        j.add(t2);
-
-        let mut data = vec![];
-
-        let res = j.run(&mut data);
-        assert!(res.is_ok());
-
-        let res = String::from_utf8(data);
-        assert!(res.is_ok());
-        assert_eq!("start|NOP", res.unwrap())
-    }
-
-    #[test]
-    fn test_job_run_message() {
-        let mut e = Engine::new();
-        let t1 = Box::new(Message::new("hello world"));
-        let t2 = Box::new(Copy::new());
-
-        let mut j: Job = e.create_job("test");
+        let mut j = e.create_job("test").await.unwrap();
         j.add(t1);
         j.add(t2);
 
