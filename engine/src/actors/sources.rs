@@ -2,7 +2,7 @@
 //!
 
 use crate::ENGINE_PG;
-use fetiche_sources::Sources;
+use fetiche_sources::{init_sources_runtime, Context, Sources};
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
 /// Messages handled by the `SourcesActor`.
@@ -41,11 +41,16 @@ pub enum SourcesMsg {
 ///
 pub struct SourcesActor;
 
+#[derive(Debug)]
+pub struct SourcesState {
+    src: Sources,
+    ctx: Context,
+}
 
 #[ractor::async_trait]
 impl Actor for SourcesActor {
     type Msg = SourcesMsg;
-    type State = Sources;
+    type State = SourcesState;
     type Arguments = ();
 
     ///
@@ -78,10 +83,11 @@ impl Actor for SourcesActor {
         myself: ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
+        let ctx = init_sources_runtime().await?;
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
 
-        let sources = Sources::new()?;
-        Ok(sources)
+        let src = Sources::new()?;
+        Ok(SourcesState { src, ctx })
     }
 
     /// Handles incoming messages sent to the `SourcesActor`.
@@ -116,16 +122,16 @@ impl Actor for SourcesActor {
                 todo!()
             }
             SourcesMsg::List(sender) => {
-                let sources = state.clone();
+                let sources = state.src.clone();
                 sender.send(sources)?;
             }
             SourcesMsg::Table(sender) => {
-                let sources = state.clone();
+                let sources = state.src.clone();
                 let table = sources.list()?;
                 sender.send(table)?;
             }
             SourcesMsg::Count(sender) => {
-                let sources = state.clone();
+                let sources = state.src.clone();
                 let res = sources.len();
                 sender.send(res)?;
             }
