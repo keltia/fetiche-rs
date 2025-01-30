@@ -137,7 +137,7 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
     // Remove job from engine and state
     //
     trace!("Job({}) done, removing it.", job.id);
-    engine.remove_job(job)
+    engine.remove_job(job.id)
 }
 
 /// Generates a `Filter` from the provided `FetchOpts`.
