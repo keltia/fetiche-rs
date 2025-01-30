@@ -16,7 +16,7 @@ use crate::Job;
 ///
 /// let mut queue = JobQueue::new();
 ///
-/// let job = Job::new("Example Task"); // Assuming a `Job::new` constructor exists
+/// let job = Job::new("Example Task");
 /// queue.add(job);
 ///
 /// if let Some(retrieved_job) = queue.get(0) {
