@@ -258,7 +258,7 @@ impl Engine {
     /// # use tokio;
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let engine = Engine::load("path/to/config.hcl").await?;
+    /// let engine = Engine::new().await;
     ///     println!("Engine PID: {}", engine.pid);
     ///     Ok(())
     /// }
@@ -443,7 +443,7 @@ impl Engine {
     /// # use fetiche_engine::Job;
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let mut engine = Engine::load("path/to/config.hcl").await?;
+    ///     let mut engine = Engine::new().await;
     ///     let job = engine.create_job("example_job").await?;
     ///     engine.remove_job(job.id)?;
     ///     println!("Job removed successfully");
@@ -505,7 +505,7 @@ impl Engine {
     /// # use tokio;
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let engine = Engine::load("path/to/config.hcl").await?;
+    ///     let engine = Engine::new().await;
     ///     match engine.get_job(42) {
     ///         Ok(job) => println!("Found job: {:?}", job),
     ///         Err(e) => eprintln!("Error: {}", e),
