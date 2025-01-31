@@ -2,7 +2,7 @@
 //!
 
 use crate::ENGINE_PG;
-use fetiche_sources::{init_sources_runtime, Context, Sources};
+use fetiche_sources::{init_sources_runtime, Context, Site, Sources};
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
 /// Messages handled by the `SourcesActor`.
@@ -21,7 +21,7 @@ use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 ///
 #[derive(Debug)]
 pub enum SourcesMsg {
-    Get(String),
+    Get(String, RpcReplyPort<Site>),
     Count(RpcReplyPort<usize>),
     List(RpcReplyPort<Sources>),
     Table(RpcReplyPort<String>),
@@ -86,7 +86,7 @@ impl Actor for SourcesActor {
         let ctx = init_sources_runtime().await?;
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
 
-        let src = Sources::new()?;
+        let src = Sources::new(ctx.clone())?;
         Ok(SourcesState { src, ctx })
     }
 
@@ -118,8 +118,16 @@ impl Actor for SourcesActor {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            SourcesMsg::Get(_key) => {
-                todo!()
+            SourcesMsg::Get(key, sender) => {
+                let site = match state.src.get(&key) {
+                    Some(site) => site.clone(),
+                    None => {
+                        let err = format!("Unknown site: {}", key);
+                        tracing::error!("{}", err);
+                        return Err(ActorProcessingErr::new(err));
+                    }
+                };
+                sender.send(site)?;
             }
             SourcesMsg::List(sender) => {
                 let sources = state.src.clone();
