@@ -35,7 +35,7 @@ use tracing::debug;
 use fetiche_formats::Format;
 
 use crate::site::Site;
-use crate::{Auth, AuthError, Capability};
+use crate::{Auth, AuthError, Capability, Context};
 
 #[cfg(feature = "json")]
 use serde_json::json;
@@ -43,7 +43,6 @@ use serde_json::json;
 mod fetch;
 pub mod token;
 
-use crate::init::{init_sources_runtime, Context};
 pub use token::*;
 
 /// Default token

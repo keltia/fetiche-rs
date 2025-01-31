@@ -10,7 +10,7 @@ use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
 
 use eyre::Result;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tabled::builder::Builder;
 use tabled::settings::Style;
 use tracing::trace;
@@ -77,9 +77,8 @@ pub struct SourcesConfig {
     site: BTreeMap<String, Site>,
 }
 
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Sources {
-    ctx: Context,
     site: BTreeMap<String, Site>,
 }
 
@@ -98,21 +97,6 @@ impl Sources {
     /// Returns an `Err` variant if the `sources.hcl` configuration file
     /// cannot be found, fails to parse, or if there are any issues when
     /// constructing the `Sources` object from the configuration.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use fetiche_sources::Sources;
-    ///
-    /// match Sources::new(ctx) {
-    ///     Ok(sources) => {
-    ///         println!("Sources loaded successfully!");
-    ///     }
-    ///     Err(e) => {
-    ///         eprintln!("Failed to load sources: {}", e);
-    ///     }
-    /// }
-    /// ```
     ///
     #[tracing::instrument]
     pub fn new(ctx: Context) -> Result<Self> {
@@ -292,7 +276,7 @@ impl Sources {
                     Auth::Key { .. } => "API key",
                     Auth::UserKey { .. } => "API+User keys",
                 }
-                    .to_string()
+                .to_string()
             } else {
                 "anon".to_owned()
             };
@@ -537,7 +521,10 @@ mod tests {
         if let Some(retrieved_site) = sources.get_mut(site_name) {
             retrieved_site.base_url = "http://example.com".to_string();
         }
-        assert_eq!(sources.get(site_name).unwrap().base_url, "http://example.com");
+        assert_eq!(
+            sources.get(site_name).unwrap().base_url,
+            "http://example.com"
+        );
 
         // Test keys, values, and iter
         let keys: Vec<_> = sources.keys().map(|k| k.as_str()).collect();
@@ -615,7 +602,6 @@ mod tests {
         assert_eq!(iter[1].0, "site2");
         assert_eq!(iter[1].1.base_url, "http://site2.com");
     }
-
 
     #[test]
     fn test_sites_load_hcl() {

@@ -25,6 +25,10 @@ harness = false
 name = "expand"
 harness = false
 
+[[bench]]
+name = "div_expand"
+harness = false
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -51,6 +55,7 @@ tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
+divan = "0.1"
 humantime = "2.1"
 tracing-appender = "0.2"
 
