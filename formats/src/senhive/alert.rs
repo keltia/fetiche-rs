@@ -14,6 +14,13 @@ pub enum Severity {
     Critical,
 }
 
+/// Represents the data structure for a system alert.
+///
+/// This structure is used to encapsulate information about system alerts,  
+/// including metadata, title, severity, timestamp, and detailed information.  
+/// It serves as the data type for messages in the `system_alert` and
+/// `dl_system_alert` queues.
+///
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AlertData {
     pub version: Option<String>,

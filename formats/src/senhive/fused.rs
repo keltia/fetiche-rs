@@ -12,6 +12,13 @@ use crate::DronePoint;
 
 // ----- Original raw data format
 
+/// Represents a location with geographic coordinates, uncertainty, and an optional likelihood.
+///
+/// # Fields
+/// - `coordinates` (Coordinates): The geographic coordinates (latitude and longitude) of the location.
+/// - `uncertainty` (Option<f64>): The uncertainty in meters associated with the location. Optional.
+/// - `likelihood` (Option<String>): A WKT Polygon string representing the likelihood of the location. Optional.
+///
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Location {
     pub coordinates: Coordinates,
@@ -19,7 +26,15 @@ pub struct Location {
     /// This is a string with a 7-point WKT Polygon
     pub likelihood: Option<String>,
 }
-/// "Measurement type as Integer. Can be 'Take-off location' (0), 'UAV Home location' (1), 'Live measurement update' (2), or 'unknown' (15)"
+
+/// Enumeration representing the type of location associated with a measurement.
+///
+/// # Variants
+/// - `TakeOff` (0): Represents the take-off location.
+/// - `Home` (1): Represents the UAV home location.
+/// - `Live` (2): Represents a live measurement update.
+/// - `Unknown` (15): Represents an unknown location type. This is the default variant.
+///
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum LocationType {
@@ -30,6 +45,17 @@ pub enum LocationType {
     Unknown = 15,
 }
 
+/// Represents the state of the pilot in the `fused_data` / `dl_fused_data` queues.
+///
+/// # Fields
+///
+/// - `location` (Location): The current geographical location of the pilot, including coordinates, uncertainty, and likelihood.
+/// - `location_type` (u8): The type of location represented, such as take-off, home, live, or unknown.
+///   Serialized under the field name `locationType`.
+///
+/// This struct provides a way to represent the pilot’s state, such as their location and an
+/// associated location type. The `location` field includes additional related metadata for clarity.
+///
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PilotState {
     pub location: Location,
@@ -37,13 +63,47 @@ pub struct PilotState {
     pub location_type: u8,
 }
 
+/// Represents identification details of a pilot in the system.
+///
+/// This struct provides metadata about a pilot, including the unique identifier,
+/// name, and optional geographical location. It can be used to associate
+/// operational data with a specific pilot's information.
+///
+/// # Fields
+///
+/// - `id` (u64): Unique identifier for the pilot.
+/// - `name` (String): The full name of the pilot.
+/// - `location` (Option<Location>): Optional geographical location of the pilot,
+///    represented as latitude and longitude coordinates.
+///
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PilotIdentification {
-    #[serde(rename = "operatorID")]
-    pub operator_id: String,
-    pub other: Option<String>,
+    pub id: u64,
+    pub name: String,
+    pub location: Option<Location>,
 }
 
+/// Represents a numerical value with an associated uncertainty.
+///
+/// This struct is used to encapsulate a value and its potential uncertainty, allowing
+/// more precise representation of measurements or calculations that involve
+/// a margin of error or variability in recorded data.
+///
+/// # Fields
+/// - `value` (f64): The primary numerical value.
+/// - `uncertainty` (Option<f64>): An optional uncertainty that quantifies how far the actual value might deviate
+///   from the recorded `value`. Typically measured as a range (±) around the value.
+///
+/// # Traits
+/// - `Default`: When the default value is specified, `FusedValue` initializes with:
+///   - `value`: `0.0`
+///   - `uncertainty`: `None`
+/// - `From<FusedValue> for f64`: Provides an easy way to extract the `value` as a plain `f64`.
+///
+/// This struct is commonly used in scenarios where measurements or predictions
+/// include an inherent level of uncertainty, such as in sensor data or scientific computations.
+///
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct FusedValue {
     pub value: f64,
@@ -66,6 +126,21 @@ impl Default for FusedValue {
     }
 }
 
+/// Represents altitude measurements with associated uncertainties.
+///
+/// This struct is used to encapsulate altitude data from various reference points,
+/// enabling precise representation of altitude measurements in different contexts.
+///
+/// # Fields
+///
+/// - `ato` (Option<FusedValue>): Altitude above the take-off location in meters. Optional.
+/// - `agl` (Option<FusedValue>): Altitude above the ground level in meters. Optional.
+/// - `amsl` (Option<FusedValue>): Altitude above mean sea level in meters. Optional.
+/// - `geodetic` (Option<FusedValue>): The real geodetic altitude in meters. Optional.
+///
+/// Each field represents a specific altitude measurement, and the associated `FusedValue`
+/// includes an optional uncertainty to represent the measurement's accuracy.
+///
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Altitudes {
     /// Above take-off location [m]
@@ -78,6 +153,21 @@ pub struct Altitudes {
     pub geodetic: Option<FusedValue>,
 }
 
+/// Represents the state of the vehicle, including its location, altitude information,
+/// speed, orientation, and overall status.
+///
+/// This struct is used to provide detailed telemetry data about the vehicle in the system,
+/// including positional and movement-related metrics.
+///
+/// # Fields
+///
+/// - `location` (Location): The current geographical location of the vehicle, including coordinates and related metadata.
+/// - `altitudes` (Altitudes): Altitude measurements of the vehicle relative to different reference points (e.g., ground level, sea level).
+/// - `ground_speed` (Option<FusedValue>): The current horizontal speed of the vehicle over the ground, optionally including uncertainty.
+/// - `vertical_speed` (Option<FusedValue>): The current vertical speed of the vehicle (rate of ascent or descent), optionally including uncertainty.
+/// - `orientation` (Option<FusedValue>): The orientation of the vehicle, typically expressed as a heading or directional angle, optionally with uncertainty.
+/// - `state` (Option<u8>): An optional state indicator for the vehicle. This could represent specific states (e.g., active, inactive, error) if defined in the system.
+///
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VehicleState {
     pub location: Location,
@@ -90,6 +180,19 @@ pub struct VehicleState {
     pub state: Option<u8>,
 }
 
+/// Contains the attributes required for identifying a vehicle in the system.
+///
+/// This struct provides metadata about a vehicle, such as its serial number,
+/// MAC address, and hardware details, along with its type.
+///
+/// # Fields
+///
+/// - `serial` (Option<String>): The serial number identifying the vehicle. Optional.
+/// - `mac` (Option<String>): The MAC address associated with the vehicle. Optional.
+/// - `make` (Option<String>): The manufacturer or brand of the vehicle. Optional.
+/// - `model` (Option<String>): The specific model of the vehicle. Optional.
+/// - `uav_type` (u8): Represents the UAV type of the vehicle. Required.
+///
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VehicleIdentification {
@@ -101,7 +204,14 @@ pub struct VehicleIdentification {
     pub uav_type: u8,
 }
 
-#[serde_as]
+/// Represents the state of a fusion process, including the type of fusion
+/// and the serials of sources involved in the fusion process.
+///
+/// # Fields
+///
+/// - `fusion_type` (u8): Represents the type of fusion being conducted.
+/// - `source_serials` (Vec<String>): A list of source serial numbers participating in the fusion process.
+///
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FusionState {
     #[serde(rename = "fusionType")]
@@ -110,6 +220,22 @@ pub struct FusionState {
     pub source_serials: Vec<String>,
 }
 
+/// Represents the overall system state, including fusion data, vehicle details,
+/// and pilot-related information.
+///
+/// This struct is designed to contain data generated by a series of fused records.
+/// It provides comprehensive telemetry, state, and identification information for
+/// operational drones or vehicles along with the pilot’s location and status.
+///
+/// # Fields
+///
+/// - `version` (String): The version of the fused data format.
+/// - `system` (System): Details about the system including tracking ID, timestamps, and fusion state.
+/// - `vehicle_identification` (VehicleIdentification): Metadata regarding the vehicle (serial, MAC, make, etc.).
+/// - `vehicle_state` (VehicleState): Telemetry data describing the current state of the vehicle, such as location, altitudes, and speed.
+/// - `pilot_identification` (Option<PilotIdentification>): Optional information about the pilot.
+/// - `pilot_state` (PilotState): The pilot's current state, including location and other metadata.
+///
 #[derive(Debug, Serialize, Deserialize)]
 pub struct System {
     #[serde(rename = "trackID")]
@@ -121,6 +247,18 @@ pub struct System {
     pub fusion_state: FusionState,
 }
 
+/// Represents a log entry for the timestamped processes in the system.
+///
+/// This struct provides information about a specific process that occurred
+/// in the system, including the name of the process, the time it occurred,
+/// and an optional message providing additional details.
+///
+/// # Fields
+/// - `process_name` (String): The name of the process.
+/// - `timestamp` (DateTime<Utc>): The time at which the process occurred.
+/// - `msg` (Option<String>): An optional message providing additional context or details
+///   about the process.
+///
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TSLog {
     pub process_name: String,
@@ -128,6 +266,31 @@ pub struct TSLog {
     pub msg: Option<String>,
 }
 
+/// Represents a fused data structure containing comprehensive telemetry,
+/// state, and identification information for operational drones or vehicles,
+/// fused from multiple data inputs.
+///
+/// This structure is designed to encapsulate data related to the state of a
+/// vehicle (drones, UAVs, etc.), the pilot's information, and the system's
+/// overall state.
+///
+/// # Fields
+///
+/// - `version` (String): The version of the fused data format.
+/// - `system` (System): Details about the tracking system, including the ID,
+///   timestamps, and the fusion state.
+/// - `vehicle_identification` (VehicleIdentification): Contains metadata
+///   about the vehicle, such as its serial, MAC address, make, model, and UAV type.
+/// - `vehicle_state` (VehicleState): Telemetry data describing the vehicle’s
+///   current status, which includes location, altitudes, speed, orientation, and state.
+/// - `pilot_identification` (Option<PilotIdentification>): Optional metadata
+///   about the pilot, including their unique identifier.
+/// - `pilot_state` (PilotState): Current state and location information about
+///   the pilot.
+///
+/// This struct provides an aggregated view of multiple sources of information
+/// and serves as a unified format for telemetry and operation details.
+///
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FusedData {
     pub version: String,
