@@ -284,7 +284,15 @@ pub struct AvionixCat21 {
     pub nic: u32,
 }
 
-/// Special enum for airborne status
+/// Represents the ground/airborne status of an object, such as a UAV or aircraft.
+///
+/// The `Gda` enum defines the following statuses:
+///
+/// - `A`: Indicates the object is airborne.
+/// - `G`: Indicates the object is on the ground.
+///
+/// The enum variants are serialized and deserialized from uppercase strings (e.g., "A", "G")
+/// to remain consistent with input/output formats.
 ///
 #[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
 #[strum(serialize_all = "UPPERCASE")]
@@ -295,7 +303,11 @@ enum Gda {
     G,
 }
 
-/// Object type
+/// Represents the category of the aircraft or object.
+///
+/// The `Category` enum defines various possible categorizations for airborne or ground-based objects.
+/// These categories range from "Glider" to "UFO" and include other classifications like powered aircraft,
+/// parachutes, and ground vehicles.
 ///
 #[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
 enum Category {
@@ -329,4 +341,75 @@ enum Category {
     O13,
     /// Ground Vehicule
     O14,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_cubedata_to_dronepoint() {
+        let cube_data = CubeData {
+            time: 1_696_123_456, // Example timestamp
+            fli: String::from("TEST123"),
+            typ: Some(String::from("A320")),
+            src: String::from("A"),
+            lat: 51.5074,
+            lon: -0.1278,
+            alt: 10000,
+            altg: 500,
+            spd: 450,
+            trk: 90,
+            gda: String::from("A"),
+            mop: 0,
+            lla: 0,
+            tru: 213,
+            dbm: -91,
+            shd: Some(293),
+            org: Some(String::from("EDDK")),
+            dst: Some(String::from("EPKK")),
+            opr: Some(String::from("GWI")),
+            reg: Some(String::from("D-AKNM")),
+            cou: Some(String::from("Germany")),
+            dat: "2024-02-24T00:00Z".into(),
+            hex: "ABCDEF".into(),
+            tim: "FOO".into(),
+            hgt: Some(2),
+            cat: "2".into(),
+            squ: "5763".into(),
+            vrt: 128,
+        };
+
+        let drone_point: DronePoint = DronePoint::from(&cube_data);
+
+        assert_eq!(
+            drone_point.time,
+            DateTime::from_timestamp_nanos((cube_data.time as i64) * 1_000_000_000i64)
+        );
+        assert_eq!(drone_point.ident, Some(cube_data.fli.clone()));
+        assert_eq!(drone_point.journey, String::from(""));
+        assert_eq!(drone_point.model, cube_data.typ.clone());
+        assert_eq!(
+            drone_point.source,
+            DataSource::str_to_source(&cube_data.src)
+        );
+        assert_eq!(drone_point.latitude, cube_data.lat);
+        assert_eq!(drone_point.longitude, cube_data.lon);
+        assert_eq!(
+            drone_point.altitude,
+            Some(to_meters(cube_data.alt as f32) as f64)
+        );
+        assert_eq!(drone_point.elevation, Some(cube_data.altg as f64));
+        assert_eq!(drone_point.speed, (cube_data.spd as f64) * 1_852.);
+        assert_eq!(drone_point.heading, cube_data.trk as f64);
+        assert_eq!(drone_point.state, Some(gda_to_state(&cube_data.gda)));
+        assert!(drone_point.station_name.is_none()); // Not mapped from CubeData
+    }
+
+    #[test]
+    fn test_gda_to_state() {
+        assert_eq!(gda_to_state("G"), 1);
+        assert_eq!(gda_to_state("A"), 2);
+        assert_eq!(gda_to_state("UNKNOWN"), 15); // Default case
+    }
 }

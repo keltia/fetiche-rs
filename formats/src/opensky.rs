@@ -14,23 +14,52 @@
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use std::vec;
 use tracing::{debug, trace};
-
-use crate::{convert_to, to_feet, to_knots, Cat21, TodCalculated};
 
 /// Origin of state's position
 ///
-#[derive(Clone, Copy, Debug, Deserialize_repr, PartialEq, Serialize_repr)]
+#[derive(Clone, Copy, Debug, Deserialize_repr, Default, PartialEq, Serialize_repr)]
 #[serde(rename_all = "lowercase")]
 #[repr(u8)]
 pub enum Source {
+    #[default]
     AdsB = 0,
     Asterix,
     MLAT,
     FLARM,
 }
 
-/// Aircraft category
+/// Represents different aircraft categories.
+///
+/// This enum defines the various categories of aircraft or flying objects based on
+/// the data provided by the tracking source. Each category corresponds to a numerical
+/// value as defined by the source.
+///
+/// Variants:
+/// - `NoInfo`: No information about the category is available.
+/// - `NoAdsBEmitterCategoryInfo`: No ADS-B emitter category information.
+/// - `Light`: Light aircraft.
+/// - `Small`: Small aircraft.
+/// - `Large`: Large aircraft.
+/// - `HighVortexLarge`: High-vortex large aircraft.
+/// - `Heavy`: Heavy aircraft.
+/// - `HighPerformance`: High-performance aircraft.
+/// - `RotorCraft`: Rotorcraft (e.g., helicopters).
+/// - `Glider`: Glider aircraft.
+/// - `Lighter`: Lighter-than-air aircraft.
+/// - `Skydiver`: Aircraft designed for skydiving activities.
+/// - `UltraLight`: Ultralight aircraft.
+/// - `Reserved`: Reserved category.
+/// - `Space`: Spacecraft.
+/// - `SurfaceEmergencyVehicule`: Surface emergency vehicles.
+/// - `SurfaceServiceVehicule`: Surface service vehicles.
+/// - `PointObstacle`: Fixed point obstacles.
+/// - `ClusterObstacle`: Cluster obstacles.
+/// - `LineObstacle`: Line obstacles.
+///
+/// Notes:
+/// - The `NoInfo` variant is used as the default value.
 ///
 /// By default, Opensky actually returns 17 fields, excluding this one.
 ///
@@ -76,18 +105,6 @@ pub struct StateList {
 }
 
 impl StateList {
-    /// Transform a given record into an array of Cat21 records
-    ///
-    #[tracing::instrument]
-    pub fn to_cat21(&self) -> Vec<Cat21> {
-        trace!("statelist::to_cat21");
-
-        match &self.states {
-            Some(v) => v.iter().map(Cat21::from).collect(),
-            None => vec![],
-        }
-    }
-
     /// Deserialize from json
     ///
     #[tracing::instrument]
@@ -96,47 +113,77 @@ impl StateList {
 
         let data: Payload = serde_json::from_str(input)?;
 
-        let states: Vec<StateVector> = data
-            .states
-            .iter()
-            .map(|r| StateVector {
-                icao24: r.0.clone(),
-                callsign: Some(r.1.clone()),
-                origin_country: r.2.clone(),
-                time_position: Some(r.3),
-                last_contact: r.4,
-                longitude: Some(r.5),
-                latitude: Some(r.6),
-                baro_altitude: Some(r.7),
-                on_ground: r.8,
-                velocity: Some(r.9),
-                true_track: Some(r.10),
-                vertical_rate: Some(r.11),
-                sensors: Some(r.12.clone()),
-                geo_altitude: Some(r.13),
-                squawk: Some(r.14.clone()),
-                spi: r.15,
-                position_source: r.16,
-                //category: r.17,
-            })
-            .collect();
-
-        trace!("{} points", states.len());
+        let states = if !data.states.is_empty() {
+            trace!("{} points", &data.states.len());
+            Some(
+                data.states
+                    .iter()
+                    .map(|r| StateVector {
+                        icao24: r.0.clone(),
+                        callsign: Some(r.1.clone()),
+                        origin_country: r.2.clone(),
+                        time_position: Some(r.3),
+                        last_contact: r.4,
+                        longitude: Some(r.5),
+                        latitude: Some(r.6),
+                        baro_altitude: Some(r.7),
+                        on_ground: r.8,
+                        velocity: Some(r.9),
+                        true_track: Some(r.10),
+                        vertical_rate: Some(r.11),
+                        sensors: Some(r.12.clone()),
+                        geo_altitude: Some(r.13),
+                        squawk: Some(r.14.clone()),
+                        spi: r.15,
+                        position_source: r.16,
+                        //category: r.17,
+                    })
+                    .collect(),
+            )
+        } else {
+            None
+        };
 
         // Prepare final data
         //
         let data: StateList = StateList {
             time: data.time,
-            states: Some(states),
+            states: states,
         };
 
         Ok(data)
     }
 }
 
-/// Definition of a state vector as generated
+/// Represents the state vector of an aircraft or vehicle as generated by the system.
 ///
-#[derive(Debug, Deserialize, Serialize)]
+/// This struct contains detailed information about the location, velocity, altitude,
+/// and other parameters associated with a tracked entity at a specific point in time.
+///
+/// Fields:
+/// - `icao24`: ICAO 24-bit address of the aircraft or vehicle.
+/// - `callsign`: Optional call sign of the aircraft or vehicle.
+/// - `origin_country`: Country from which the aircraft originates.
+/// - `time_position`: Time (UNIX timestamp) of the last position update, if available.
+/// - `last_contact`: Time (UNIX timestamp) when the last contact occurred.
+/// - `longitude`: Longitude of the position, if available.
+/// - `latitude`: Latitude of the position, if available.
+/// - `baro_altitude`: Barometric altitude, if available.
+/// - `on_ground`: Boolean indicating if the vehicle is on the ground.
+/// - `velocity`: Velocity in meters per second, if available.
+/// - `true_track`: Aircraft's true track in degrees (north = 0°), if available.
+/// - `vertical_rate`: Vertical rate in meters per second, if available.
+/// - `sensors`: Optional list of sensor IDs used for tracking.
+/// - `geo_altitude`: Geometric altitude, if available.
+/// - `squawk`: Optional transponder squawk code.
+/// - `spi`: Boolean indicating if Special Position Identification is activated.
+/// - `position_source`: Source of the position information (e.g., ADS-B, MLAT, etc.).
+///
+/// Notes:
+/// - Some fields are optional as they may not always be available from the data source.
+/// - This struct is used to represent live data from tracking systems.
+///
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct StateVector {
     /// ICAO ID
     pub icao24: String,
@@ -164,11 +211,33 @@ pub struct StateVector {
     // pub category: Category,
 }
 
-convert_to!(from_opensky, StateVector, Cat21);
-
-/// Definition of a state vector as stored in [Impala]
+/// `PandaStateVector` is a struct used for representing the state vector of an
+/// aircraft or vehicle stored in the [Impala] database.
 ///
-/// XXX: Yet another definition, different in names and order
+/// Fields:
+/// - `id`: The unique identifier of the record in the database.
+/// - `time`: The timestamp of the state vector, measured as seconds since UNIX epoch.
+/// - `icao24`: The ICAO 24-bit address of the aircraft or vehicle.
+/// - `latitude`: The latitude of the position, if available; otherwise, `None`.
+/// - `longitude`: The longitude of the position, if available; otherwise, `None`.
+/// - `velocity`: The velocity measured in meters per second, if available; otherwise, `None`.
+/// - `heading`: The heading of the aircraft in degrees (north = 0°), if available; otherwise, `None`.
+/// - `vertical_rate`: The vertical rate measured in meters per second, if available; otherwise, `None`.
+/// - `callsign`: The optional call sign of the aircraft or vehicle, if available.
+/// - `on_ground`: Indicates whether the vehicle is on the ground. Stored as a string
+///                representation (`"True"` or `"False"`) to match the source system.
+/// - `alert`: String indicating the alert status.
+/// - `spi`: String indicating whether Special Position Identification is active.
+/// - `squawk`: The optional transponder squawk code, if available.
+/// - `baro_altitude`: The barometric altitude of the aircraft, if available; otherwise, `None`.
+/// - `geo_altitude`: The geometric altitude of the aircraft, if available; otherwise, `None`.
+/// - `last_position_update`: The time of the last position update in seconds, if available; otherwise, `None`.
+/// - `last_contact`: The time (UNIX timestamp) of the last contact in seconds.
+/// - `hour`: A shard-related field indicating the hour of the state vector (e.g., for partitioning).
+///
+/// Notes:
+/// - Some fields may not have values in all cases and are marked as `Option` to reflect this.
+/// - This struct is designed to work with data sourced from the Opensky Network or similar systems.
 ///
 #[derive(Debug, Deserialize)]
 pub struct PandaStateVector {
@@ -203,42 +272,24 @@ pub struct PandaStateVector {
     pub hour: i32,
 }
 
-impl From<&PandaStateVector> for Cat21 {
-    /// Generate a `Cat21` struct from `PandaStateVector`
-    ///
-    fn from(line: &PandaStateVector) -> Self {
-        let tod: i64 = line.time as i64;
-        let callsign = line.callsign.clone().unwrap_or("".to_string());
-
-        Cat21 {
-            alt_geo_ft: to_feet(line.geo_altitude.unwrap_or(0.0)),
-            pos_lat_deg: line.latitude.unwrap_or(0.0),
-            pos_long_deg: line.longitude.unwrap_or(0.0),
-            alt_baro_ft: to_feet(line.baro_altitude.unwrap_or(0.0)),
-            tod: 128 * (tod % 86400),
-            rec_time_posix: tod,
-            rec_time_ms: 0,
-            emitter_category: 13,
-            descriptor_atp: 1,
-            alt_reporting_capability_ft: 0,
-            target_addr: 623615,
-            cat: 21,
-            line_id: 1,
-            ds_id: 18,
-            report_type: 3,
-            tod_calculated: TodCalculated::N,
-            callsign,
-            groundspeed_kt: to_knots(line.velocity.unwrap_or(0.0)),
-            track_angle_deg: line.heading.unwrap_or(0.0),
-            rec_num: 1,
-            ..Cat21::default()
-        }
-    }
-}
-
 // Private structs
 
-/// Struct returned by the Opensky API
+/// The `Payload` struct represents data returned by the Opensky API.
+///
+/// Fields:
+/// - `time`: The UNIX timestamp at which the data was recorded.
+/// - `states`: A vector of `Rawdata` tuples containing state information for
+///   aircraft or vehicles.
+///
+/// Notes:
+/// - The `Payload` struct is designed for use with the Opensky REST API and
+///   reflects the structure of the API's response. See the [Opensky API documentation](https://openskynetwork.github.io/opensky-api/rest.html)
+///   for more details.
+/// - The `states` field holds a collection of raw data, which corresponds to
+///   state vectors (refer to the `Rawdata` struct).
+///
+/// This struct is intended to decode serialized Opensky API responses and
+/// serve as an intermediate representation for processing state vector data.
 ///
 #[derive(Debug, Deserialize)]
 struct Payload {
@@ -277,37 +328,132 @@ struct Rawdata(
     //Category,
 );
 
-convert_to!(from_vectors, StateVector, Cat21);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
 
-impl From<&StateVector> for Cat21 {
-    /// Generate a `Cat21` struct from `StateList`
-    ///
-    fn from(line: &StateVector) -> Self {
-        let tod: i64 = line.time_position.unwrap_or(0) as i64;
-        let callsign = line.callsign.clone().unwrap_or("".to_string());
+    #[test]
+    fn test_from_json_success() {
+        let input = json!({
+            "time": 1698512023,
+            "states": [
+                [
+                    "abcd01",
+                    "CALL123",
+                    "CountryX",
+                    1698512000,
+                    1698512010,
+                    9.87,
+                    20.56,
+                    1000.0,
+                    false,
+                    200.0,
+                    150.0,
+                    5.0,
+                    [1, 2],
+                    950.0,
+                    "7500",
+                    true,
+                    0
+                ],
+                [
+                    "abcd02",
+                    "CALL456",
+                    "CountryY",
+                    1698511998,
+                    1698512009,
+                    9.87,
+                    21.0,
+                    1000.0,
+                    false,
+                    200.0,
+                    150.0,
+                    5.0,
+                    [1, 2],
+                    950.0,
+                    "7500",
+                    false,
+                    1
+                ]
+            ]
+        })
+        .to_string();
 
-        Cat21 {
-            alt_geo_ft: to_feet(line.geo_altitude.unwrap_or(0.0)),
-            pos_lat_deg: line.latitude.unwrap_or(0.0),
-            pos_long_deg: line.longitude.unwrap_or(0.0),
-            alt_baro_ft: to_feet(line.baro_altitude.unwrap_or(0.0)),
-            tod: 128 * (tod % 86400),
-            rec_time_posix: tod,
-            rec_time_ms: 0,
-            emitter_category: 13,
-            descriptor_atp: 1,
-            alt_reporting_capability_ft: 0,
-            target_addr: 623615,
-            cat: 21,
-            line_id: 1,
-            ds_id: 18,
-            report_type: 3,
-            tod_calculated: TodCalculated::N,
-            callsign,
-            groundspeed_kt: to_knots(line.velocity.unwrap_or(0.0)),
-            track_angle_deg: line.true_track.unwrap_or(0.0),
-            rec_num: 1,
-            ..Cat21::default()
-        }
+        let result = StateList::from_json(&input);
+        assert!(result.is_ok());
+
+        let state_list = result.unwrap();
+        assert_eq!(state_list.time, 1698512023);
+        assert!(state_list.states.is_some());
+
+        let states = state_list.states.unwrap();
+        assert_eq!(states.len(), 2);
+
+        let first_state = &states[0];
+        assert_eq!(first_state.icao24, "abcd01");
+        assert_eq!(first_state.callsign, Some("CALL123".to_string()));
+        assert_eq!(first_state.origin_country, "CountryX");
+        assert_eq!(first_state.time_position, Some(1698512000));
+        assert_eq!(first_state.last_contact, 1698512010);
+        assert_eq!(first_state.latitude, Some(20.56));
+        assert_eq!(first_state.longitude, Some(9.87));
+        assert_eq!(first_state.baro_altitude, Some(1000.0));
+        assert!(!first_state.on_ground);
+        assert_eq!(first_state.velocity, Some(200.0));
+        assert_eq!(first_state.true_track, Some(150.0));
+        assert_eq!(first_state.vertical_rate, Some(5.0));
+        assert_eq!(first_state.sensors, Some(vec![1, 2]));
+        assert_eq!(first_state.geo_altitude, Some(950.0));
+        assert_eq!(first_state.squawk, Some("7500".to_string()));
+        assert!(first_state.spi);
+        assert_eq!(first_state.position_source, Source::AdsB);
+
+        let second_state = &states[1];
+        assert_eq!(second_state.icao24, "abcd02");
+        assert_eq!(second_state.callsign, Some("CALL456".to_string()));
+        assert_eq!(second_state.origin_country, "CountryY");
+        assert_eq!(second_state.time_position, Some(1698511998));
+        assert_eq!(second_state.last_contact, 1698512009);
+        assert_eq!(second_state.sensors, Some(vec![1, 2]));
+        assert!(!second_state.spi);
+        assert_eq!(second_state.position_source, Source::Asterix);
+    }
+
+    #[test]
+    fn test_from_json_empty_states() {
+        let input = json!({
+            "time": 1698512023,
+            "states": []
+        });
+
+        let input_str = input.to_string();
+
+        let result = StateList::from_json(&input_str);
+        assert!(result.is_ok());
+
+        let state_list = result.unwrap();
+        assert_eq!(state_list.time, 1698512023);
+        assert!(state_list.states.is_none());
+    }
+
+    #[test]
+    fn test_from_json_no_states() {
+        let input = json!({
+            "time": 1698512023,
+        });
+
+        let input_str = input.to_string();
+
+        let result = StateList::from_json(&input_str);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_from_json_invalid_format() {
+        let input = "invalid json";
+
+        let result = StateList::from_json(&input);
+        assert!(result.is_err());
     }
 }
