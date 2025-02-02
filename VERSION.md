@@ -14,7 +14,7 @@ It has many fundamental changes under the hood:
 
 Main dependencies:
 
-- polars 0.45 (it has replaced datafusion & arrow/parquet)
+- polars 0.46 (it has replaced datafusion & arrow/parquet)
 
 Current crates versions:
 
