@@ -95,6 +95,77 @@ impl Asd {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    #[test]
+    fn test_fix_tm_valid_timestamp() {
+        let asd = Asd {
+            time: Utc::now(),
+            journey: 42,
+            ident: "Drone123".to_string(),
+            model: Some("ModelX".to_string()),
+            source: "ASD Source".to_string(),
+            location: 1,
+            timestamp: "2023-10-22 15:30:45".to_string(),
+            latitude: 48.8566,
+            longitude: 2.3522,
+            altitude: Some(120),
+            elevation: Some(60),
+            gps: Some(1),
+            rssi: Some(-85),
+            home_lat: Some(48.8566),
+            home_lon: Some(2.3522),
+            home_height: Some(100.0),
+            speed: 15.0,
+            heading: 90.0,
+            station_name: Some("Station1".to_string()),
+            station_latitude: Some(48.8570),
+            station_longitude: Some(2.3530),
+        };
+
+        let result = asd.fix_tm();
+        assert!(result.is_ok());
+
+        let fixed_asd = result.unwrap();
+        assert_eq!(
+            fixed_asd.time,
+            Utc.with_ymd_and_hms(2023, 10, 22, 15, 30, 45).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_fix_tm_invalid_timestamp() {
+        let asd = Asd {
+            time: Utc::now(),
+            journey: 42,
+            ident: "Drone123".to_string(),
+            model: Some("ModelX".to_string()),
+            source: "ASD Source".to_string(),
+            location: 1,
+            timestamp: "invalid-timestamp".to_string(),
+            latitude: 48.8566,
+            longitude: 2.3522,
+            altitude: Some(120),
+            elevation: Some(60),
+            gps: Some(1),
+            rssi: Some(-85),
+            home_lat: Some(48.8566),
+            home_lon: Some(2.3522),
+            home_height: Some(100.0),
+            speed: 15.0,
+            heading: 90.0,
+            station_name: Some("Station1".to_string()),
+            station_latitude: Some(48.8570),
+            station_longitude: Some(2.3530),
+        };
+
+        let result = asd.fix_tm();
+        assert!(result.is_err());
+    }
+}
 
 #[cfg(feature = "asterix")]
 impl From<&Asd> for Cat21 {
