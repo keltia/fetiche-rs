@@ -1,7 +1,7 @@
 [workspace]
-members = ["common", "engine", "fetiched", "formats", "sources", "acutectl", "adsb-to-parquet", "process-data", "opensky-history"]
+members = ["common", "engine", "fetiched", "formats", "sources", "acutectl", "adsb-to-parquet", "process-data"]
 default-members = ["acutectl", "process-data"]
-exclude = []
+exclude = ["opensky-history"]
 resolver = "2"
 
 [workspace.dependencies]
