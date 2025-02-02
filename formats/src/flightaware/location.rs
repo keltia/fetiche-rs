@@ -49,9 +49,36 @@ mod tests {
     use super::*;
 
     #[rstest]
+    #[case("L 0.0 0.0", Location::Position{ lat: 0.0, lon: 0.0 })]
+    #[case("L -90.0 -180.0", Location::Position{ lat: -90.0, lon: -180.0 })]
+    #[case("L 90.0 180.0", Location::Position{ lat: 90.0, lon: 180.0 })]
+    #[case("L 51.509865 -0.118092", Location::Position{ lat: 51.509865, lon: -0.118092 })]
+    #[case("L 35.6895 139.6917", Location::Position{ lat: 35.6895, lon: 139.6917 })]
+    fn test_parse_position(#[case] input: &str, #[case] l: Location) {
+        let (_, loc) = parse_location(input).unwrap();
+        assert_eq!(l, loc);
+    }
+
+    #[rstest]
     #[case("KMCO", Location::Tag("KMCO".to_string()))]
     #[case("L 41.8 -6.7", Location::Position { lat: 41.8, lon: - 6.7})]
     fn test_parse_location(#[case] input: &str, #[case] l: Location) {
+        let (_, loc) = parse_location(input).unwrap();
+        assert_eq!(l, loc);
+    }
+
+    #[rstest]
+    #[case("JFK", Location::Tag("JFK".to_string()))]
+    #[case("SFO", Location::Tag("SFO".to_string()))]
+    #[case("ATL", Location::Tag("ATL".to_string()))]
+    #[case("L 12.34 -56.78", Location::Position{ lat: 12.34, lon: -56.78 })]
+    #[case("L -23.456 78.91011", Location::Position{ lat: -23.456, lon: 78.91011 })]
+    #[case("L 0.123 -0.456", Location::Position{ lat: 0.123, lon: -0.456 })]
+    #[case("EWR", Location::Tag("EWR".to_string()))]
+    #[case("ORD", Location::Tag("ORD".to_string()))]
+    #[case("L 33.9425 -118.408056", Location::Position{ lat: 33.9425, lon: -118.408056 })]
+    #[case("L 40.7128 -74.0060", Location::Position{ lat: 40.7128, lon: -74.0060 })]
+    fn test_parse_location_additional(#[case] input: &str, #[case] l: Location) {
         let (_, loc) = parse_location(input).unwrap();
         assert_eq!(l, loc);
     }

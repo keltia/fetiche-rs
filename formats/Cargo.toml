@@ -11,7 +11,7 @@ categories = ["aerospace::drones"]
 keywords = ["asterix", "drones", "aeronautical-data", "ads-b"]
 
 [features]
-default = ["privacy", "avionix", "asd", "senhive"]
+default = ["privacy", "avionix", "asd", "senhive", "flightaware"]
 privacy = []
 aeroscope = []
 asd = []
