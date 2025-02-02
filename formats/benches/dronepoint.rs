@@ -22,8 +22,10 @@
 //!   5 (5.00%) high mild
 //!   1 (1.00%) high severe
 //! ```
+//!
 //! AMD Ryzen 7 7700X @5.4 GHz
 //!
+//! ```text
 //! deserialize             time:   [2.8480 µs 2.8520 µs 2.8562 µs]
 //! Found 8 outliers among 100 measurements (8.00%)
 //!   6 (6.00%) high mild
@@ -38,7 +40,8 @@
 //! prepare                 time:   [916.47 ns 917.25 ns 917.98 ns]
 //! Found 1 outliers among 100 measurements (1.00%)
 //!   1 (1.00%) high mild
-//! 
+//! ```
+//!
 
 use csv::{QuoteStyle, WriterBuilder};
 use fetiche_formats::senhive::FusedData;
