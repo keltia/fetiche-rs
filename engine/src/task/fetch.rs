@@ -8,7 +8,7 @@ use eyre::Result;
 use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
-use fetiche_sources::{AuthError, Filter, Flow, Sources};
+use fetiche_sources::{AuthError, Filter, Flow, Site, Sources};
 
 use crate::{EngineStatus, Runnable, IO};
 
@@ -30,7 +30,7 @@ pub struct Fetch {
 
 impl Fetch {
     #[tracing::instrument(skip(srcs))]
-    pub fn new(s: &str, srcs: Arc<Sources>) -> Self {
+    pub fn new(s: &str) -> Self {
         Self {
             io: IO::Producer,
             name: s.to_string(),
@@ -39,6 +39,7 @@ impl Fetch {
             srcs: srcs.clone(),
         }
     }
+
     /// Copy the site's data
     ///
     pub fn site(&mut self, s: String) -> &mut Self {
