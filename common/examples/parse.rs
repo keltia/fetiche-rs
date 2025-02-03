@@ -96,4 +96,21 @@ mod tests {
         assert_eq!(parsed_job.source, "test_source");
         assert_eq!(parsed_job.output, "test_output.csv");
     }
+
+    #[test]
+    fn test_parse_job_stream_split() {
+        let input = r#"
+            name = "Stream Test Job"
+            type = "stream"
+            source = "test_source"
+            split = "/tmp/nowhere"
+            output = "test_output.csv"
+        "#;
+
+        let parsed_job = JobStruct::parse(input).expect("Failed to parse job");
+        assert_eq!(parsed_job.name, "Stream Test Job");
+        assert!(matches!(parsed_job.jtype, JobType::Stream));
+        assert_eq!(parsed_job.source, "test_source");
+        assert_eq!(parsed_job.output, "test_output.csv");
+    }
 }
