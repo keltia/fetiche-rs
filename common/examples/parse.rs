@@ -52,10 +52,10 @@ mod tests {
     #[test]
     fn test_parse_job_fetch() {
         let input = r#"
-                name = "Fetch Test JobStruct"
-                type = "fetch"
-                source = "test_source"
-                output = "test_output.csv"
+            name = "Fetch Test JobStruct"
+            type = "fetch"
+            source = "test_source"
+            output = "test_output.csv"
         "#;
 
         let parsed_job = JobStruct::parse(input).expect("Failed to parse JobStruct");
@@ -68,10 +68,10 @@ mod tests {
     #[test]
     fn test_parse_job_read() {
         let input = r#"
-                name = "Read Test JobStruct"
-                type = "read"
-                source = "test_source"
-                output = "test_output.csv"
+            name = "Read Test JobStruct"
+            type = "read"
+            source = "test_source"
+            output = "test_output.csv"
         "#;
 
         let parsed_job = JobStruct::parse(input).expect("Failed to parse JobStruct");
@@ -84,10 +84,10 @@ mod tests {
     #[test]
     fn test_parse_job_stream() {
         let input = r#"
-                name = "Stream Test JobStruct"
-                type = "stream"
-                source = "test_source"
-                output = "test_output.csv"
+            name = "Stream Test JobStruct"
+            type = "stream"
+            source = "test_source"
+            output = "test_output.csv"
         "#;
 
         let parsed_job = JobStruct::parse(input).expect("Failed to parse JobStruct");
