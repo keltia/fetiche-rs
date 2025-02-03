@@ -32,7 +32,49 @@ const CONFIG: &str = "process-data.hcl";
 /// Current version
 const CVERSION: usize = 2;
 
-/// Configuration for the CLI tool
+/// The `ProcessConfig` struct encapsulates the configuration parameters
+/// required by the CLI tool to operate. It provides essential settings such
+/// as database connection details, the directory for datalake files, and
+/// credentials for accessing the ClickHouse database.
+///
+/// # Fields
+///
+/// * `database` - Represents the name or path of the database in use.
+///   - Example: "database_name" or "/path/to/database.db".
+///
+/// * `datalake` - Represents the directory holding the parquet files for the datalake.
+///   - Example: "/path/to/datalake".
+///
+/// * `url` - The URL of the ClickHouse instance.
+///   - Example: "http://127.0.0.1:8123".
+///
+/// * `user` - An optional field representing the username required for database authentication.
+///   - Example: "admin".
+///
+/// * `password` - An optional field representing the password associated with the user.
+///   - Example: "password".
+///
+/// # Examples
+///
+/// ```rust
+/// let config = ProcessConfig {
+///     database: Some(String::from("my_database")),
+///     datalake: Some(String::from("/datalake/path")),
+///     url: String::from("http://127.0.0.1:8123"),
+///     user: Some(String::from("admin")),
+///     password: Some(String::from("secure_password")),
+/// };
+/// ```
+///
+/// # Versioning
+///
+/// * Compatibility is ensured for version 2 configurations.
+/// * Configuration parameters are defined in the "process-data.hcl" file.
+///
+/// # Notes
+///
+/// This struct is designed to be serialized and deserialized using Serde traits,
+/// enabling configuration to be read from and written to files.
 ///
 #[into_configfile(version = 2, filename = "proces-data.hcl")]
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -49,7 +91,36 @@ pub struct ProcessConfig {
     pub password: Option<String>,
 }
 
-/// This holds our context, meaning common stuff
+/// Context holds the shared state and resources for the application.
+///
+/// This struct contains global settings and resources that are
+/// shared across different parts of the application, such as the
+/// database connection pool, configuration parameters, and runtime
+/// options.
+///
+/// # Fields
+///
+/// * `config` - A reference-counted `HashMap` containing configuration parameters.
+/// * `dbh` - A connection pool to the ClickHouse database.
+/// * `pool_size` - Maximum number of connections allowed in the database pool.
+/// * `wait` - Delay between parallel tasks in milliseconds.
+/// * `dry_run` - A boolean flag indicating whether the application is running
+///               in dry-run mode (no side-effects).
+///
+/// # Examples
+///
+/// ```rust
+/// let context = Context {
+///     config: Arc::new(HashMap::new()),
+///     dbh: db_pool,
+///     pool_size: 10,
+///     wait: 100,
+///     dry_run: false,
+/// };
+///
+/// // Use context for database operations
+/// let client = context.db().await;
+/// ```
 ///
 #[derive(Clone)]
 pub struct Context {
@@ -66,6 +137,30 @@ pub struct Context {
 }
 
 impl Context {
+    /// Returns a `Client` from the database connection pool.
+    ///
+    /// This method retrieves an available ClickHouse client from the connection pool.
+    /// If the pool is exhausted or unavailable, an appropriate error is logged and returned.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - A reference to the `Context` struct providing access to the connection pool.
+    ///
+    /// # Returns
+    ///
+    /// Returns an active `Client` for interacting with the ClickHouse database.
+    ///
+    /// # Errors
+    ///
+    /// - Returns `Status::ConnectionUnavailable` if no connection is available from the pool.
+    /// - Panics if the result from the connection pool cannot be unwrapped (typically indicates a critical failure).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let client = context.db().await;
+    /// ```
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn db(&self) -> Client {
         let client = self
@@ -77,6 +172,28 @@ impl Context {
         client.clone()
     }
 
+    /// Finalize the runtime environment and ensure cleanup.
+    ///
+    /// This method is responsible for performing any necessary cleanup or
+    /// finalization operations before the application exits.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result<()>` indicating whether the finalization
+    /// completed successfully.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// // Finalize runtime components
+    /// context.finish()?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function currently does not return any errors explicitly,
+    /// but future updates might include additional error conditions.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn finish(&self) -> Result<()> {
         Ok(())
@@ -94,7 +211,48 @@ impl Debug for Context {
     }
 }
 
-/// Connect to database and load the extensions.
+/// Initializes the runtime environment for the application.
+///
+/// This function sets up the necessary components such as logging, configuration loading,
+/// and database connection pooling. It validates the presence of required parameters such
+/// as the database and datalake paths, either from the configuration file or environment
+/// variables. In case of missing mandatory parameters or a file version mismatch, it
+/// returns an appropriate error.
+///
+/// # Arguments
+///
+/// * `opts` - A reference to `Opts` struct with runtime options provided by the user.
+///
+/// # Returns
+///
+/// Returns a `Result` that resolves to a `Context` struct containing shared state,
+/// database pool, and configuration. An error is returned if critical initialization
+/// steps fail (e.g., invalid configuration, missing parameters, or issues with the
+/// database connection).
+///
+/// # Errors
+///
+/// - `Status::BadFileVersion` if the configuration file version does not match the current version.
+/// - `Status::NoDatabase` if the database is not defined in the options or the config file.
+/// - `Status::NoDatalake` if the datalake is not defined in the options or the config file.
+/// - `Status::NoUrl` if the database URL is missing from the environment or configuration.
+///
+/// # Examples
+///
+/// ```rust
+/// let opts = Opts {
+///     database: None,
+///     datalake: Some(String::from("/data/lake")),
+///     use_telemetry: false,
+///     use_tree: false,
+///     use_file: None,
+///     pool_size: 10,
+///     wait: 100,
+///     dry_run: false,
+/// };
+///
+/// let context = init_runtime(&opts).await?;
+/// ```
 ///
 #[tracing::instrument]
 pub async fn init_runtime(opts: &Opts) -> Result<Context> {
@@ -176,13 +334,14 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
             ..Default::default()
         },
     )
-        .await?;
+    .await?;
 
     let pool_size = opts.pool_size;
     let pool = bb8::Pool::builder()
         .retry_connection(true)
         .max_size(pool_size as u32)
-        .build(manager).await?;
+        .build(manager)
+        .await?;
 
     let ctx = Context {
         config: HashMap::from([
@@ -191,7 +350,7 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
             ("datalake".to_string(), datalake.clone()),
             ("username".to_string(), user.clone()),
         ])
-            .into(),
+        .into(),
         dbh: pool.clone(),
         pool_size,
         wait: opts.wait,

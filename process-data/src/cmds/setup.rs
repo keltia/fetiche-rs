@@ -13,6 +13,32 @@ use tracing::info;
 
 use crate::config::Context;
 
+/// Command-line options for setting up the database and environment.
+///
+/// This structure defines the options for executing the `setup` command,
+/// which is responsible for setting up various components of the ACUTE environment.
+///
+/// ### Options
+///
+/// - `macros`: If enabled (`-M` or `--macros`), add mathematical macros to the database.
+/// - `encounters`: If enabled (`-E` or `--encounters`), create the encounters table to store air-prox points.
+/// - `views`: If enabled (`-V` or `--views`), create persistent database views for querying drone and airplane data.
+/// - `all`: If enabled (`-a` or `--all`), perform all setup tasks (including macros, encounters, and views).
+///
+/// ### Example
+///
+/// Run the setup command to add database macros:
+/// ```sh
+/// cargo run -- setup --macros
+/// ```
+///
+/// Create all required tables, views, and macros:
+/// ```sh
+/// cargo run -- setup --all
+/// ```
+///
+/// See also: The `add_macros`, `add_encounters_table`, and `create_views` functions for implementation details.
+///
 #[derive(Debug, Default, Parser)]
 pub struct SetupOpts {
     /// Add only macros.
@@ -29,10 +55,40 @@ pub struct SetupOpts {
     pub all: bool,
 }
 
-/// Macros :
+/// Adds mathematical macros to the database for geodesic distance calculations.
 ///
-/// - dist_2d       geodesic distance between two points
-/// - dist_3d       3D distance based on geodesic
+/// This function creates two user-defined functions (`dist_2d` and `dist_3d`) in the
+/// ClickHouse database. These functions are used to calculate the horizontal (2D)
+/// and three-dimensional (3D) distances between points, based on their geodesic locations.
+///
+/// ### Details
+///
+/// - `dist_2d`: Calculates the horizontal geodesic distance between two points.
+/// - `dist_3d`: Calculates the three-dimensional distance using geodesic positioning
+///   (includes vertical elevation differences).
+///
+/// ### SQL Implementation
+///
+/// - `dist_2d`: Uses the `geoDistance` function to compute the geodesic distance between two points.
+/// - `dist_3d`: Combines the geodesic distance in 2D (`dist_2d`) and the vertical difference using
+///   the Pythagorean theorem (`sqrt(dx^2 + dz^2)`).
+///
+/// ### Example
+///
+/// ```rust
+/// add_macros(&dbh).await?;
+/// ```
+///
+/// This command will add the above-described macros (`dist_2d` and `dist_3d`) to the database.
+///
+/// ### Errors
+///
+/// Returns an error if the macros cannot be created, for example, due to database connection issues
+/// or insufficient privileges.
+///
+/// ### References
+///
+/// - ClickHouse documentation for user-defined functions
 ///
 #[tracing::instrument(skip(dbh))]
 async fn add_macros(dbh: &Client) -> Result<()> {
@@ -53,6 +109,34 @@ CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
     Ok(())
 }
 
+/// Remove the `dist_2d` and `dist_3d` user-defined functions from the database.
+///
+/// ### Details
+///
+/// This function will execute SQL commands to drop the user-defined functions
+/// that were previously created for calculating geodesic distances:
+///
+/// - `dist_2d`: The 2D geodesic distance function.
+/// - `dist_3d`: The 3D geodesic distance function.
+///
+/// ### Usage
+///
+/// This function should be called when the macros are no longer needed or as part of cleanup procedures:
+///
+/// ```rust
+/// remove_macros(&dbh).await?;
+/// ```
+///
+/// ### Errors
+///
+/// Returns an error if the user-defined functions cannot be dropped, for example, due to:
+/// - Database connection issues.
+/// - Insufficient privileges.
+///
+/// ### References
+///
+/// - ClickHouse documentation for managing user-defined functions.
+///
 #[tracing::instrument(skip(dbh))]
 async fn remove_macros(dbh: &Client) -> Result<()> {
     eprintln!("Removing macros.");
@@ -72,6 +156,51 @@ DROP FUNCTION IF EXISTS dist_3d;
 
 /// Create the `encounters` table to store short air-prox points
 ///
+/// ### Details
+///
+/// This function creates the `encounters` table (`acute.airplane_prox`) in the database.
+/// The table is structured to store proximity data related to drone and airplane encounters
+/// within a specified distance threshold.
+///
+/// - `site`: Represents the site ID where the encounter occurs.
+/// - `en_id`: Unique identifier for the encounter.
+/// - `time`: Timestamp indicating when the encounter occurred.
+/// - `journey`: Identifier for the journey or flight path of the drone.
+/// - `drone_id`: The unique identifier for the drone.
+/// - `model`: Drone model information.
+/// - `drone_lat`: Latitude of the drone.
+/// - `drone_lon`: Longitude of the drone.
+/// - `drone_alt_m`: Altitude of the drone in meters.
+/// - `drone_height_m`: Drone height in meters above ground level.
+/// - `prox_callsign`: Callsign of the nearby airplane.
+/// - `prox_id`: Unique identifier of the airplane.
+/// - `prox_lat`: Latitude of the airplane.
+/// - `prox_lon`: Longitude of the airplane.
+/// - `prox_alt_m`: Altitude of the airplane in meters.
+/// - `distance_slant_m`: Slant distance in meters between the drone and airplane.
+/// - `distance_hor_m`: Horizontal distance in meters between the drone and airplane.
+/// - `distance_vert_m`: Vertical distance in meters between the drone and airplane.
+/// - `distance_home_m`: Distance in meters between the drone and its home location.
+///
+/// ### Example
+///
+/// ```rust
+/// add_encounters_table(&dbh).await?;
+/// ```
+///
+/// This command creates the `acute.airplane_prox` table in the database to store the
+/// described data points for encounters.
+///
+/// ### Errors
+///
+/// Returns an error if the table cannot be created. Possible causes include:
+/// - Database connection issues.
+/// - Insufficient privileges to create tables in the database.
+/// - SQL syntax or schema errors.
+///
+/// ### References
+///
+/// - ClickHouse documentation for managing tables.
 #[tracing::instrument(skip(dbh))]
 async fn add_encounters_table(dbh: &Client) -> Result<()> {
     info!("Adding airplane_prox table.");
