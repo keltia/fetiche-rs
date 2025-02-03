@@ -1,89 +1,105 @@
 //! Compiler for the Fetiche job language
 //!
-//! Description of the job & task language
+//! Description of the job & task language -- leveraging HCL support
 //!
-//! >NOTE: Highly subject to changes
-//!
-//! ```text
-//! job "Fetch Opensky data" is
-//!     fetch "opensky"
-//!     into Cat21
-//!     output "aeroscope.csv"
-//! end
+//! ```hcl
+//! job {
+//!     name = "Opensky"
+//!     type = "fetch"
+//!     source = opensky
+//!     output = "foo.csv"
+//! }
 //! ```
 
-use nom::{
-    bytes::complete::{tag, take_until},
-    character::complete::{alphanumeric1, space1},
-    combinator::map,
-    sequence::{delimited, preceded, tuple},
-    IResult,
-};
+use crate::Job;
+use eyre::Result;
+use serde::Deserialize;
+use strum::EnumString;
 
-use crate::Task;
-
-/// Delimiter for strings, only " supported
-const DELIM: &str = "\"";
-
-/// Parse a string surrounded by "double quotes"
-///
-fn parse_string(input: &str) -> IResult<&str, &str> {
-    delimited(tag(DELIM), take_until(DELIM), tag(DELIM))(input)
+#[derive(Clone, Debug, Deserialize, EnumString)]
+#[strum(serialize_all = "lowercase")]
+pub enum JobType {
+    Fetch,
+    Read,
+    Stream,
 }
 
-/// Parse a keyword (i.e. "message")
-///
-fn parse_keyword(input: &str) -> IResult<&str, &str> {
-    alphanumeric1(input)
+#[derive(Debug, Deserialize)]
+pub struct JobStruct {
+    pub name: String,
+    pub jtype: JobType,
+    pub source: String,
+    pub tee: Option<String>,
+    pub split: Option<String>,
+    pub save: Option<String>,
+    pub output: String,
 }
 
-/// Parse a job definition, currently <command>\s+"<string>"
-///
-pub fn parse_job(input: &str) -> IResult<&str, (Task, String)> {
-    todo!();
+impl Job {
+    pub fn parse(job_str: &str) -> Result<JobStruct> {
+        let j: JobStruct = hcl::from_str(job_str)?;
+        dbg!(&j);
+        Ok(j)
+    }
 }
+
 
 #[cfg(test)]
 mod tests {
-    use crate::Cmds::Message;
-
     use super::*;
 
     #[test]
-    fn test_parse_string_ascii() {
-        env_logger::init();
+    fn test_parse_job_fetch() {
+        let input = r#"
+            job {
+                name = "Fetch Test Job"
+                type = "fetch"
+                source = "test_source"
+                output = "test_output.csv"
+            }
+        "#;
 
-        let s = r##""foo""##;
-        let r = parse_string(s);
-
-        assert!(r.is_ok());
-        let (i, r) = r.unwrap();
-        println!("r={r}");
-        assert!(i.is_empty());
-        assert_eq!("foo", r);
+        let parsed_job = Job::parse(input).expect("Failed to parse job");
+        assert_eq!(parsed_job.name, "Fetch Test Job");
+        assert!(matches!(parsed_job.jtype, JobType::Fetch));
+        assert_eq!(parsed_job.source, "test_source");
+        assert_eq!(parsed_job.output, "test_output.csv");
     }
 
     #[test]
-    fn test_parse_string_utf8() {
-        let s = r##""ねこ""##;
-        let r = parse_string(s);
+    fn test_parse_job_read() {
+        let input = r#"
+            job {
+                name = "Read Test Job"
+                type = "read"
+                source = "test_source"
+                output = "test_output.csv"
+            }
+        "#;
 
-        assert!(r.is_ok());
-        let (i, r) = r.unwrap();
-        println!("r={r}");
-        assert!(i.is_empty());
-        assert_eq!("ねこ", r);
+        let parsed_job = Job::parse(input).expect("Failed to parse job");
+        assert_eq!(parsed_job.name, "Read Test Job");
+        assert!(matches!(parsed_job.jtype, JobType::Read));
+        assert_eq!(parsed_job.source, "test_source");
+        assert_eq!(parsed_job.output, "test_output.csv");
     }
 
     #[test]
-    fn test_parse_job() {
-        let s = "message \"foobar\"";
+    fn test_parse_job_stream() {
+        let input = r#"
+            job {
+                name = "Stream Test Job"
+                type = "stream"
+                source = "test_source"
+                output = "test_output.csv"
+            }
+        "#;
 
-        let r = parse_job(s);
-        dbg!(&r);
-        assert!(r.is_ok());
-        let (i, r) = r.unwrap();
-        assert_eq!(Message, r.0);
-        assert_eq!("foobar", r.1);
+        let parsed_job = Job::parse(input).expect("Failed to parse job");
+        assert_eq!(parsed_job.name, "Stream Test Job");
+        assert!(matches!(parsed_job.jtype, JobType::Stream));
+        assert_eq!(parsed_job.source, "test_source");
+        assert_eq!(parsed_job.output, "test_output.csv");
     }
 }
+
