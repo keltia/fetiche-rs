@@ -156,7 +156,7 @@ impl Sources {
     /// 3. Any other configuration issues occur during the process.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn load(&self, name: &str) -> Result<Flow> {
+    pub fn load(&self, name: &str, ctx: Context) -> Result<Flow> {
         trace!("Loading site {}", name);
 
         match self.site.get(name) {
@@ -170,7 +170,7 @@ impl Sources {
                 match fmt {
                     #[cfg(feature = "asd")]
                     Format::Asd => {
-                        let s = Asd::new().load(site).clone();
+                        let s = Asd::new(ctx).load(site).clone();
                         Ok(Flow::Fetchable(Box::new(s)))
                     }
                     #[cfg(feature = "aeroscope")]
@@ -276,7 +276,7 @@ impl Sources {
                     Auth::Key { .. } => "API key",
                     Auth::UserKey { .. } => "API+User keys",
                 }
-                .to_string()
+                    .to_string()
             } else {
                 "anon".to_owned()
             };

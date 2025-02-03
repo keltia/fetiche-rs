@@ -2,6 +2,7 @@
 //!
 
 use crate::ENGINE_PG;
+use eyre::eyre;
 use fetiche_sources::{init_sources_runtime, Context, Site, Sources};
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
@@ -124,7 +125,7 @@ impl Actor for SourcesActor {
                     None => {
                         let err = format!("Unknown site: {}", key);
                         tracing::error!("{}", err);
-                        return Err(ActorProcessingErr::new(err));
+                        return Err(ActorProcessingErr::from(eyre!(err)));
                     }
                 };
                 sender.send(site)?;
