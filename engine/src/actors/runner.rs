@@ -4,6 +4,7 @@ use ractor::{call, pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
 use crate::actors::QueueMsg;
 use crate::ENGINE_PG;
+
 use fetiche_sources::Stats;
 
 #[derive(Debug)]
@@ -13,13 +14,16 @@ pub enum RunnerMsg {
     Stats(RpcReplyPort<Stats>),
 }
 
+#[derive(Debug)]
 pub struct RunnerActor;
 
+#[derive(Debug)]
 pub struct RunnerArgs {
     queue: ActorRef<QueueMsg>,
     stats: ActorRef<Stats>,
 }
 
+#[ractor::async_trait]
 impl Actor for RunnerActor {
     type Msg = RunnerMsg;
     type State = RunnerArgs;
@@ -48,7 +52,7 @@ impl Actor for RunnerActor {
                 let mut job = call!(queue, |port| QueueMsg::GetById(n, port)).unwrap();
 
                 let mut data = vec![];
-                Ok(job.run(&mut data).await)
+                Ok(job.run(&mut data)?)
             }
             RunnerMsg::Stop(n) => {
                 todo!()
