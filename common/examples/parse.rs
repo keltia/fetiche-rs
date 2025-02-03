@@ -1,16 +1,16 @@
 use eyre::Result;
-use serde::Deserialize;
-use strum::EnumString;
+use serde::{Deserialize, Serialize};
+use strum::{EnumString, VariantNames};
 
-#[derive(Clone, Debug, Deserialize, EnumString)]
-#[strum(serialize_all = "lowercase")]
+#[derive(Clone, Debug, Deserialize, EnumString, Serialize, VariantNames)]
+#[serde(rename_all = "lowercase")]
 pub enum JobType {
     Fetch,
     Read,
     Stream,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct JobStruct {
     #[serde(rename = "type")]
     pub jtype: JobType,
@@ -30,8 +30,20 @@ impl JobStruct {
     }
 }
 
-fn main() {}
-
+fn main() -> Result<()> {
+    let j1 = JobStruct {
+        jtype: JobType::Fetch,
+        name: "Fetch Test JobStruct".to_string(),
+        source: "test_source".to_string(),
+        tee: Some("test_tee".to_string()),
+        split: Some("test_split".to_string()),
+        save: Some("test_save".to_string()),
+        output: "test_output.csv".to_string(),
+    };
+    let str = hcl::to_string(&j1)?;
+    println!("{str}");
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {
@@ -40,12 +52,10 @@ mod tests {
     #[test]
     fn test_parse_job_fetch() {
         let input = r#"
-            jobstruct {
                 name = "Fetch Test JobStruct"
                 type = "fetch"
                 source = "test_source"
                 output = "test_output.csv"
-            }
         "#;
 
         let parsed_job = JobStruct::parse(input).expect("Failed to parse JobStruct");
@@ -58,12 +68,10 @@ mod tests {
     #[test]
     fn test_parse_job_read() {
         let input = r#"
-            jobstruct {
                 name = "Read Test JobStruct"
                 type = "read"
                 source = "test_source"
                 output = "test_output.csv"
-            }
         "#;
 
         let parsed_job = JobStruct::parse(input).expect("Failed to parse JobStruct");
@@ -76,12 +84,10 @@ mod tests {
     #[test]
     fn test_parse_job_stream() {
         let input = r#"
-            jobstruct {
                 name = "Stream Test JobStruct"
                 type = "stream"
                 source = "test_source"
                 output = "test_output.csv"
-            }
         "#;
 
         let parsed_job = JobStruct::parse(input).expect("Failed to parse JobStruct");
@@ -91,5 +97,3 @@ mod tests {
         assert_eq!(parsed_job.output, "test_output.csv");
     }
 }
-
-
