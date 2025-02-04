@@ -11,7 +11,7 @@ use eyre::Result;
 use klickhouse::Client;
 use tracing::info;
 
-use crate::config::Context;
+use crate::runtime::Context;
 
 /// Command-line options for setting up the database and environment.
 ///

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use tracing::debug;
 
-use crate::config::Context;
+use crate::runtime::Context;
 use crate::error::Status;
 
 /// Represents a site entity stored in the database within the `sites` table.
