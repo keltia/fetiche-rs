@@ -12,7 +12,7 @@
 [![Docs](https://img.shields.io/docsrs/dmarc-rs)](https://docs.rs/fetiche-rs)
 [![GitHub release](https://img.shields.io/github/release/keltia/dmarc-rs.svg)](https://github.com/keltia/fetiche-rs/releases/)
 [![GitHub issues](https://img.shields.io/github/issues/keltia/fetiche-rs.svg)](https://github.com/keltia/fetiche-rs/issues)
-[![fetiche-rs: 1.78+]][Rust 1.78]
+[![fetiche-rs: 1.85+]][Rust 1.85]
 [![SemVer](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/spec/v2.0.0.html)
 [![License](https://img.shields.io/crates/l/mit)](https://opensource.org/licenses/MIT)
 
@@ -129,8 +129,8 @@ This is intentionally *not* a run-time option but a compile-time one.
 
 ## MSRV
 
-The Minimum Supported Rust Version is *1.78* due to the `async traits` used throught `fetiche-sources`  and
-`fetiche-engine`.
+The Minimum Supported Rust Version is *1.85* due to the `async traits` used through `fetiche-sources`  and
+`fetiche-engine`. We are now using edition 2024.
 
 ## Supported platforms
 
@@ -205,7 +205,7 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [ASTERIX]: https://www.eurocontrol.int/asterix/
 
-[fetiche-rs: 1.78+]: https://img.shields.io/badge/Rust%20version-1.78%2B-lightgrey
+[fetiche-rs: 1.85+]: https://img.shields.io/badge/Rust%20version-1.85%2B-lightgrey
 
 [Mozilla]: https://mozilla.org/
 
