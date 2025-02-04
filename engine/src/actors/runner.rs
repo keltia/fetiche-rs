@@ -114,7 +114,7 @@ impl Worker for RunnerActor {
 
                 job.register(stat.clone());
 
-                info!("Job({})::run({}) with {} tasks", wid, job.name, job.filters.len() + 2);
+                info!("Job({})::run({}) with {} tasks", wid, job.name, job.middle.len() + 2);
 
                 let job_tag = format!("job#{}", job.id);
                 let _ = cast!(stat, StatsMsg::New(job_tag.clone()))?;
@@ -127,7 +127,7 @@ impl Worker for RunnerActor {
                 let c = job.consumer.clone();
                 let first = vec![Task::from(p)];
                 let filters = job
-                    .filters
+                    .middle
                     .iter()
                     .map(|t| Task::from(t.clone()))
                     .collect::<Vec<Task>>();
