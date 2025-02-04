@@ -504,6 +504,9 @@ async fn calculate_one_day_on_site(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::{Opts, SubCommand};
+    use crate::cmds::{DistOpts, DistSubcommand};
+    use crate::config::init_runtime;
     use chrono::{TimeZone, Utc};
 
     #[test]
@@ -528,5 +531,54 @@ mod tests {
         let result = parse_date_interval(invalid_date_opts).unwrap();
         assert_eq!(result.0.date_naive(), expected_day.date_naive());
         assert_eq!(result.1.date_naive(), expected_day.date_naive());
+    }
+
+    // This test *requires* an configured account (various Clickhouse related environment variables, etc.)
+    // and an active database, etc.
+    //
+    #[tokio::test]
+    async fn test_prepare_work_list() -> Result<()> {
+        let site = "*";
+
+        // This is present but really used.
+        //
+        let dopts = DistOpts {
+            output: None,
+            subcmd: DistSubcommand::Planes(PlanesOpts {
+                date: DateOpts::Week { num: 1 },
+                name: Some(site.to_string()),
+                distance: 70.0,
+                separation: 5500.0,
+            }),
+        };
+        let cmd = SubCommand::Distances(dopts);
+
+        // Minimal "configuration"
+        //
+        let opts = Opts {
+            config: None,
+            database: Some("acute".into()),
+            datalake: Some("/Users/acute".into()),
+            wait: 0,
+            pool_size: 1,
+            use_telemetry: false,
+            use_tree: true,
+            dry_run: true,
+            use_file: None,
+            subcmd: cmd,
+        };
+
+        // Just to establish the context and database connection.
+        //
+        let ctx = init_runtime(&opts).await?;
+
+        let b = dateparser::parse("2023-10-01T00:00:00Z").unwrap();
+        let e = dateparser::parse("2023-10-02T00:00:00Z").unwrap();
+        let dates = vec![b, e];
+
+        let work_list = prepare_work_list(&ctx, dates, site).await?;
+        dbg!(&work_list);
+        assert_eq!(work_list.len(), 6);
+        Ok(())
     }
 }
