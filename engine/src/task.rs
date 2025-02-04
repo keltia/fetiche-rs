@@ -1,16 +1,17 @@
 //! Regroup all available task/commands
 //!
 
-use std::collections::BTreeMap;
-
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::Deserialize;
+use std::collections::BTreeMap;
+use std::sync::mpsc::Receiver;
+use std::thread::JoinHandle;
 use strum::EnumString;
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
-use crate::{Consumer, Engine, Middle, Producer};
+use crate::{Consumer, Engine, EngineStatus, Middle, Pipeline, Producer, Runnable};
 
 /// Task I/O characteristics
 ///
@@ -48,6 +49,28 @@ pub enum Task {
     Consumer(Consumer),
 }
 
+// impl Task {
+//     pub fn run(&self, rec: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>) {
+//         let (tx, rx) = std::sync::mpsc::channel::<String>();
+//         match self {
+//             // Producer doesn't care about the input data, it generates it
+//             //
+//             Task::Producer(mut p) => {
+//                 let (rx, h) = p.run(rec);
+//                 (rx, h)
+//             }
+//             Task::Middle(mut m) => {
+//                 let (rx, h) = m.run(rec);
+//                 (rx, h)
+//             }
+//             Task::Consumer(mut c) => {
+//                 let (rx, h) = c.run(rec);
+//                 (rx, h)
+//             }
+//         }
+//     }
+// }
+
 /// For each format, we define a set of key attributes that will get displayed.
 ///
 #[derive(Debug, Deserialize)]
@@ -79,7 +102,7 @@ impl Engine {
     pub fn list_commands(&self) -> Result<String> {
         trace!("list all commands");
 
-        let allcmds_s = include_str!("cmds.hcl");
+        let allcmds_s = include_str!("../../cmds.hcl");
         let allcmds: CmdsFile = hcl::from_str(allcmds_s)?;
 
         // Safety checks
