@@ -53,3 +53,9 @@ pub enum EngineStatus {
     #[error("Job {0} is not created")]
     JobNotCreated(usize),
 }
+
+#[derive(Debug, Error)]
+pub enum Pipeline {
+    #[error("Can not receive data from previous stage: {0}.")]
+    CantReceivePrevious(String),
+}
