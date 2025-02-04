@@ -2,13 +2,26 @@
 ## Actors
 
 - supervisor        father of all, register events
-  - queue           manage queue
+  - scheduler
   - runner          get job from queue, and execute it
+  - scheduler       manage job executions, queues, etc.
   - sources         load sites
   - state           register state changes
   - stats           stats for jobs
   - storage (WIP)   manage storage (files, directories)
   - tokens (WIP)    manage tokens lifecycle
+
+
+Right now:
+
+  scheduler
+    every tick
+      check waiting queue
+      if something
+        launch factory runner
+      else
+        loop
+          
 
 ## State machine
 
@@ -20,12 +33,17 @@ parse_job
 submit_job
   Ready ->
     queue_job
-      Ready -> Queued
       -> Queued
      Dispatch -> worker
 
 every TICK
 runner -> get next job
+
+We have 3 queues:
+
+- waiting
+- running
+- finished
 
 ## Flow
 
