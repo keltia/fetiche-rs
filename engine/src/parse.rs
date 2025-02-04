@@ -222,6 +222,7 @@ impl Engine {
             state: JobState::Ready,
             filters: list,
             consumer,
+            stats: None,
         };
         Ok(job)
     }

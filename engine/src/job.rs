@@ -6,14 +6,15 @@
 //! the pipe for processing.
 //!
 use eyre::Result;
+use ractor::ActorRef;
 use std::collections::VecDeque;
 use std::io::Write;
 use std::sync::mpsc::channel;
-
 use std::vec;
 use tracing::{info, span, trace, Level};
 
-use crate::{Consumer, Middle, Producer, Runnable, Task, IO};
+use crate::actors::StatsMsg;
+use crate::{Consumer, Middle, Producer, Runnable, Task};
 
 /// A `Job` represents a pipeline of tasks to be executed sequentially.
 ///
@@ -41,27 +42,6 @@ use crate::{Consumer, Middle, Producer, Runnable, Task, IO};
 /// Jobs are created using the `Job::new` or `Job::new_with_id` methods.
 /// Tasks can be added to the job using `Job::add` and run sequentially using `Job::run`.
 ///
-/// # Example
-/// ```rust
-/// use std::io::Cursor;
-/// use fetiche_engine::{Job, Nothing, Task};
-///
-/// // Create a new Job
-/// let mut job = Job::new("Example Pipeline");
-///
-/// // Add a simple task
-/// let nop = Nothing::new();
-/// let task = Task::from(nop);
-/// job.add(task);
-///
-/// // Prepare output writer
-/// let mut output = Cursor::new(Vec::new());
-///
-/// // Execute job
-/// let result = job.run(&mut output);
-/// assert!(result.is_ok());
-/// ```
-///
 #[derive(Clone, Debug)]
 pub struct Job {
     /// Job ID
@@ -70,8 +50,14 @@ pub struct Job {
     pub name: String,
     /// Job State
     pub state: JobState,
-    /// FIFO list of tasks
-    pub list: VecDeque<Task>,
+    /// Producer.
+    pub producer: Producer,
+    /// FIFO list of filter tasks
+    pub filters: VecDeque<Middle>,
+    /// The end of the pipeline.
+    pub consumer: Consumer,
+    /// actor for statistics
+    pub stats: Option<ActorRef<StatsMsg>>,
 }
 
 /// Represents the different states that a Job can be in during its lifecycle.
@@ -113,7 +99,10 @@ impl Job {
             id,
             name: name.to_owned(),
             state: JobState::Created,
-            list: VecDeque::new(),
+            filters: VecDeque::new(),
+            producer: Producer::Invalid,
+            consumer: Consumer::Invalid,
+            stats: None,
         }
     }
 
@@ -121,8 +110,13 @@ impl Job {
     ///
     #[tracing::instrument(skip(self))]
     #[inline]
-    pub fn add(&mut self, t: Task) -> &mut Self {
-        let _ = &self.list.push_back(t);
+    pub fn add(&mut self, t: Middle) -> &mut Self {
+        let _ = &self.filters.push_back(t);
+        self
+    }
+
+    pub fn stats(&mut self, stat: ActorRef<StatsMsg>) -> &mut Self {
+        self.stats = Some(stat);
         self
     }
 
@@ -168,29 +162,6 @@ impl Job {
     /// 5. Sends a "start" signal to kick off the pipeline, and then gracefully closes the input channel.
     /// 6. Collects the final output messages from the pipeline and writes them to the provided `out` writer.
     ///
-    /// # Example Usage
-    /// ```rust
-    /// use std::io::Cursor;
-    /// use fetiche_engine::{Job, Nothing, Task};
-    ///
-    /// // Create a sample job with tasks (details of tasks omitted)
-    /// let mut job = Job::new("Example Job");
-    /// let nop = Nothing::new();
-    /// let task = Task::from(nop);
-    /// job.add(task);
-    ///
-    /// // Prepare an output writer
-    /// let mut output = Cursor::new(Vec::new());
-    ///
-    /// // Execute the job
-    /// let result = job.run(&mut output);
-    ///
-    /// // Check results
-    /// assert!(result.is_ok());
-    /// let output_str = String::from_utf8(output.into_inner()).unwrap();
-    /// println!("Job Output: {}", output_str);
-    /// ```
-    ///
     /// # Logging
     /// - The function uses `tracing::span` for detailed, structured tracing of execution flow.
     /// - High-level information is logged using `info!` (e.g., job ID, name, and task count).
@@ -202,37 +173,20 @@ impl Job {
 
         info!(
             "Job({})::run({}) with {} tasks",
+            self.id,
             self.name,
-            self.list.len()
+            self.filters.len() + 2
         );
 
-        // Basic checks on the pipeline
+        // insert tasks into the pipeline
         //
-        let first = &self.list.front();
-        let last = &self.list.back();
+        let first = vec![Task::from(self.producer.clone())];
+        let filters = self.filters.iter().map(|&t| Task::from(t)).collect::<Vec<Task>>();
+        let last = vec![Task::from(self.consumer.clone())];
 
-        match first {
-            Some(first) => {
-                if first.cap() != IO::Producer {
-                    return Err(EngineStatus::NoFirstProducer.into());
-                }
-            }
-            None => return Err(EngineStatus::EmptyTaskList.into()),
-        }
-
-        // At this point, `self.list` is not empty so in the worst case, `first == last`.
+        // Create our list of linked tasks
         //
-        let last = last.unwrap();
-
-        // If there is only one task, it should be fine.
-        //
-        if self.list.len() != 1 {
-            // Then we check the last one
-            //
-            if last.cap() != IO::Consumer && last.cap() != IO::Filter {
-                return Err(EngineStatus::NoLastConsumer.into());
-            }
-        }
+        let mut task_list = [first, filters, last].into_iter().flatten().collect::<Vec<Task>>();
 
         // Set the pipeline up
         //
@@ -242,8 +196,8 @@ impl Job {
 
         // Gather results for all tasks into a single pipeline using `Iterator::fold()`
         //
-        let output = self.list.iter_mut().fold(stdout, |acc, t| {
-            let (rx, _) = t.run(acc);
+        let output = task_list.iter_mut().fold(stdout, |acc, t| {
+            let (rx, _h) = t.run(acc);
             rx
         });
 
@@ -269,16 +223,16 @@ impl Job {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Copy, Engine, Message};
+    use crate::{Copy, Dummy, Engine, Message};
 
     use super::*;
 
     #[test]
     fn test_new() {
-        let job = Job::new("Test Job");
+        let job = Job::new("Test Job", 1);
 
         assert_eq!(job.name, "Test Job");
-        assert!(job.list.is_empty());
+        assert!(job.filters.is_empty());
     }
 
     #[test]
@@ -286,16 +240,18 @@ mod tests {
         let job = Job::new("");
 
         assert_eq!(job.name, "");
-        assert!(job.list.is_empty());
+        assert!(job.filters.is_empty());
     }
 
     #[tokio::test]
     async fn test_job_run_message() {
         let mut e = Engine::new().await;
-        let t1 = Task::from(Message::new("hello world"));
-        let t2 = Task::from(Copy::new());
+        let p = Producer::from(Dummy::new());
+        let t1 = Middle::from(Message::new("hello world"));
+        let t2 = Middle::from(Copy::new());
 
         let mut j = e.create_job("test").await.unwrap();
+        j.add(p);
         j.add(t1);
         j.add(t2);
 
