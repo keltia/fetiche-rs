@@ -83,7 +83,7 @@ Proxy-Connection: Keep-Alive
 "##,
                 site, 443, auth
             )
-            .as_bytes(),
+                .as_bytes(),
         )?;
         stream
     };
