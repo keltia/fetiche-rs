@@ -49,8 +49,6 @@ pub struct Storage(BTreeMap<String, StoreArea>);
 /// let hive = StoreArea::Hive { path: PathBuf::from("/sharded/storage") };
 /// ```
 ///
-/// FIXME: S3 support require async which we will not do yet
-///
 #[derive(Clone, Debug, EnumString, strum::Display)]
 #[strum(serialize_all = "PascalCase")]
 pub enum StoreArea {
