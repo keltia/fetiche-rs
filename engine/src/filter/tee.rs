@@ -15,11 +15,17 @@ use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{Runnable, IO};
+use crate::{Engine, IO, Middle, Runnable};
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Tee {
     io: IO,
     pub fname: String,
+}
+
+impl From<Tee> for Middle {
+    fn from(t: Tee) -> Self {
+        Middle::Tee(t.clone())
+    }
 }
 
 impl Tee {
@@ -38,7 +44,11 @@ impl Tee {
     #[tracing::instrument(skip(self))]
     pub async fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("tee::execute");
-        let mut fh = OpenOptions::new().create(true).write(true).append(true).open(&self.fname)?;
+        let mut fh = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .append(true)
+            .open(&self.fname)?;
         write!(fh, "{data}")?;
         fh.flush()?;
         Ok(stdout.send(data).await?)

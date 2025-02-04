@@ -9,25 +9,31 @@ use eyre::Result;
 use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
-use fetiche_formats::{prepare_csv, DronePoint, Format};
+use fetiche_formats::{DronePoint, Format, prepare_csv};
 use fetiche_macros::RunnableDerive;
 
-#[cfg(feature = "avionix")]
-use fetiche_formats::avionix::CubeData;
-#[cfg(feature = "senhive")]
-use fetiche_formats::senhive::FusedData;
 #[cfg(feature = "asterix")]
 use fetiche_formats::Cat21;
 #[cfg(feature = "opensky")]
 use fetiche_formats::StateList;
+#[cfg(feature = "avionix")]
+use fetiche_formats::avionix::CubeData;
+#[cfg(feature = "senhive")]
+use fetiche_formats::senhive::FusedData;
 
-use crate::{Runnable, IO};
+use crate::{IO, Middle, Runnable, Tee};
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Convert {
     io: IO,
     pub from: Format,
     pub into: Format,
+}
+
+impl From<Convert> for Middle {
+    fn from(t: Convert) -> Self {
+        Middle::Convert(t.clone())
+    }
 }
 
 impl Convert {

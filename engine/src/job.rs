@@ -245,14 +245,16 @@ mod tests {
     #[tokio::test]
     async fn test_job_run_message() {
         let mut e = Engine::new().await;
-        let p = Producer::from(Dummy::new());
-        let t1 = Middle::from(Message::new("hello world"));
-        let t2 = Middle::from(Copy::new());
+        let p: Producer = Dummy::new().into();
+        let t1: Middle = Message::new("hello world").into();
+        let t2: Middle = Copy::new().into();
+        let c: Consumer = Stdout::new().into();
 
         let mut j = e.create_job("test").await.unwrap();
-        j.add(p);
+        j.producer(p);
         j.add(t1);
         j.add(t2);
+        j.consumer(c);
 
         let mut data = vec![];
 

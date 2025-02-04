@@ -17,7 +17,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{Runnable, Stats, IO};
+use crate::{Archive, Consumer, IO, Runnable, Stats};
 
 /// The Save task
 ///
@@ -35,6 +35,12 @@ pub struct Save {
     pub out: Container,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
+}
+
+impl From<Save> for Consumer {
+    fn from(f: Save) -> Self {
+        Consumer::Save(f)
+    }
 }
 
 impl Save {

@@ -9,8 +9,8 @@ use tracing::error;
 
 mod archive;
 mod save;
-mod store;
 mod stdout;
+mod store;
 
 pub use archive::*;
 pub use save::*;
@@ -25,7 +25,10 @@ use crate::{Runnable, Stats, Task, IO};
 /// Each variant corresponds to a specific data consuming strategy:
 ///
 #[derive(Clone, Debug, Default, PartialEq, strum::EnumString, strum::VariantNames)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum Consumer {
+    /// Consumer that takes stored data and archives it
+    Archive(Archive),
     /// Consumer that saves data to temporary storage
     Save(Save),
     /// Consumer that display data on screen
@@ -35,12 +38,6 @@ pub enum Consumer {
     /// Invalid consumer
     #[default]
     Invalid,
-}
-
-impl From<Consumer> for Task {
-    fn from(value: Consumer) -> Self {
-        Task::Consumer(value)
-    }
 }
 
 impl Runnable for Consumer {

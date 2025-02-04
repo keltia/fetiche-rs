@@ -6,28 +6,28 @@
 //! FIXME: incomplete
 
 use eyre::Result;
-use std::sync::Arc;
-
 use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
-use crate::{Runnable, Sources, Stats, IO};
+use crate::{Consumer, Fetch, IO, Producer, Runnable, Sources, Stats};
 use fetiche_macros::RunnableDerive;
 
-#[derive(Clone, Debug, RunnableDerive)]
+#[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Archive {
     io: IO,
-    srcs: Arc<Sources>,
+}
+
+impl From<Archive> for Consumer {
+    fn from(f: Archive) -> Self {
+        Consumer::Archive(f)
+    }
 }
 
 impl Archive {
     #[tracing::instrument(skip(srcs))]
-    pub fn new(s: &str, srcs: Arc<Sources>) -> Self {
+    pub fn new(s: &str) -> Self {
         trace!("Creating archive {s}");
-        Archive {
-            io: IO::Consumer,
-            srcs: srcs.clone(),
-        }
+        Archive { io: IO::Consumer }
     }
 
     #[tracing::instrument(skip(self, _stdout))]

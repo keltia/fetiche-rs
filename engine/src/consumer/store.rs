@@ -19,7 +19,7 @@ use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{EngineStatus, Freq, Runnable, Stats, IO};
+use crate::{Archive, Consumer, EngineStatus, Freq, Runnable, Stats, IO};
 
 /// Struct describing the data for the `Store` task.
 ///
@@ -34,6 +34,12 @@ pub struct Store {
     path: PathBuf,
     /// Our rollover strategy
     freq: Freq,
+}
+
+impl From<Store> for Consumer {
+    fn from(f: Store) -> Self {
+        Consumer::Store(f)
+    }
 }
 
 impl Default for Store {

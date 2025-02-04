@@ -11,7 +11,7 @@ use tokio::sync::mpsc::Sender;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{Runnable, IO};
+use crate::{IO, Middle, Runnable, Tee};
 
 // -----
 
@@ -20,6 +20,12 @@ use crate::{Runnable, IO};
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Nothing {
     io: IO,
+}
+
+impl From<Nothing> for Middle {
+    fn from(t: Nothing) -> Self {
+        Middle::Nothing(t.clone())
+    }
 }
 
 impl Nothing {
@@ -42,13 +48,18 @@ impl Default for Nothing {
     }
 }
 
-
 /// Copy
 ///
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Copy {
     /// I/O capabilities
     io: IO,
+}
+
+impl From<Copy> for Middle {
+    fn from(t: Copy) -> Self {
+        Middle::Copy(t.clone())
+    }
 }
 
 impl Copy {
@@ -81,6 +92,12 @@ pub struct Message {
     io: IO,
     /// What to display
     msg: String,
+}
+
+impl From<Message> for Middle {
+    fn from(t: Message) -> Self {
+        Middle::Message(t.clone())
+    }
 }
 
 impl Message {

@@ -28,6 +28,12 @@ pub struct Stream {
     pub args: String,
 }
 
+impl From<Stream> for Producer {
+    fn from(f: Stream) -> Self {
+        Producer::Stream(f)
+    }
+}
+
 impl Debug for Stream {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Stream")

@@ -24,6 +24,12 @@ pub struct Fetch {
     pub args: String,
 }
 
+impl From<Fetch> for Producer {
+    fn from(f: Fetch) -> Self {
+        Producer::Fetch(f)
+    }
+}
+
 impl Fetch {
     #[tracing::instrument]
     pub fn new(s: &str) -> Self {

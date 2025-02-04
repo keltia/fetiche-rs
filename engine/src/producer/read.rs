@@ -13,7 +13,7 @@ use tracing::trace;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{AuthError, EngineStatus, Runnable, Stats, IO};
+use crate::{AuthError, EngineStatus, Fetch, IO, Producer, Runnable, Stats};
 
 /// The Read task
 ///
@@ -29,6 +29,12 @@ pub struct Read {
     pub path: Option<PathBuf>,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
+}
+
+impl From<Read> for Producer {
+    fn from(f: Read) -> Self {
+        Producer::Read(f)
+    }
 }
 
 impl Read {

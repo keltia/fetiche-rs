@@ -37,12 +37,6 @@ pub enum Producer {
     Invalid,
 }
 
-impl From<Producer> for Task {
-    fn from(value: Producer) -> Self {
-        Task::Producer(value)
-    }
-}
-
 impl Runnable for Producer {
     fn cap(&self) -> IO {
         IO::Producer

@@ -4,11 +4,17 @@ use tokio::sync::mpsc::Sender;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{Runnable, Stats, IO};
+use crate::{Archive, Consumer, IO, Runnable, Stats};
 
 #[derive(Clone, Debug, PartialEq, RunnableDerive)]
 pub struct Stdout {
     io: IO,
+}
+
+impl From<Stdout> for Consumer {
+    fn from(f: Stdout) -> Self {
+        Consumer::Stdout(f)
+    }
 }
 
 impl Stdout {
@@ -30,5 +36,3 @@ impl Default for Stdout {
         Self::new()
     }
 }
-
-
