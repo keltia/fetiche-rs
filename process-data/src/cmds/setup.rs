@@ -177,6 +177,7 @@ DROP FUNCTION IF EXISTS dist_3d;
 /// - `prox_lat`: Latitude of the airplane.
 /// - `prox_lon`: Longitude of the airplane.
 /// - `prox_alt_m`: Altitude of the airplane in meters.
+/// - `prox_mode_a`: Squawk code of the aircraft.
 /// - `distance_slant_m`: Slant distance in meters between the drone and airplane.
 /// - `distance_hor_m`: Horizontal distance in meters between the drone and airplane.
 /// - `distance_vert_m`: Vertical distance in meters between the drone and airplane.
@@ -223,6 +224,7 @@ OR REPLACE TABLE acute.airplane_prox (
   prox_lat         FLOAT,
   prox_lon         FLOAT,
   prox_alt_m       FLOAT,
+  prox_mode_a      VARCHAR,
   distance_slant_m INT,
   distance_hor_m   INT,
   distance_vert_m  INT,

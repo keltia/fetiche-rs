@@ -151,7 +151,8 @@ AS SELECT
   prox_callsign AS callsign,
   prox_lon AS plon,
   prox_lat AS plat,
-  prox_alt_m AS palt
+  prox_alt_m AS palt,
+  ModeA AS prox_mode_a
 FROM
   airplanes
 WHERE
@@ -379,6 +380,7 @@ AS SELECT
   t.plon AS plon,
   t.plat AS plat,
   t.palt AS palt,
+  t.prox_alt_a,
   dist_2d(dlon, dlat, plon, plat) AS dist2d,
   dist_3d(dlon, dlat, dalt, plon, plat, palt) AS dist_drone_plane,
   ceil(abs(palt - dalt)) AS diff_alt
@@ -604,6 +606,7 @@ CREATE OR REPLACE TABLE ids{tag} (
       any_value(plat) AS prox_lat,
       any_value(plon) AS prox_lon,
       any_value(palt) AS prox_alt_m,
+      any_value(prox_mode_a) AS prox_mode_a,
       CEIL(dist_drone_plane) AS distance_slant_m,
       any_value(CEIL(dist2d)) AS distance_hor_m,
       any_value(CEIL(ABS(palt - dalt))) AS distance_vert_m,

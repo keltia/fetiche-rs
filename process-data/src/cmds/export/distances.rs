@@ -15,8 +15,8 @@ use tempfile::Builder;
 use tracing::{debug, info, trace};
 
 use crate::cmds::Format;
-use crate::runtime::Context;
 use crate::error::Status;
+use crate::runtime::Context;
 
 #[derive(Debug, Parser)]
 pub struct ExpDistOpts {
@@ -53,6 +53,7 @@ pub struct ExpDistOpts {
 /// - `prox_lat` - Latitude coordinate of the proximal aircraft.
 /// - `prox_lon` - Longitude coordinate of the proximal aircraft.
 /// - `prox_alt_m` - Altitude of the proximal aircraft in meters.
+/// - `prox_mode_a` - Squawk code of the aircraft.
 /// - `distance_slant_m` - Slant distance between the drone and proximal aircraft in meters.
 /// - `distance_hor_m` - Horizontal distance between the drone and proximal aircraft in meters.
 /// - `distance_vert_m` - Vertical distance between the drone and proximal aircraft in meters.
@@ -75,6 +76,7 @@ struct Encounter {
     prox_lat: f32,
     prox_lon: f32,
     prox_alt_m: f32,
+    prox_mode_a: String,
     distance_slant_m: i32,
     distance_hor_m: i32,
     distance_vert_m: i32,
@@ -148,6 +150,7 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     prox_lat,
     prox_lon,
     prox_alt_m,
+    prox_mode_a,
     distance_slant_m,
     distance_hor_m,
     distance_vert_m,
