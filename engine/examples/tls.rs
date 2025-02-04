@@ -35,7 +35,7 @@ fn main() -> eyre::Result<()> {
     //
     let filter = EnvFilter::from_default_env();
 
-    // Combine filter & specific format
+    // Combine middle & specific format
     //
     tracing_subscriber::registry().with(filter).with(fmt).init();
 

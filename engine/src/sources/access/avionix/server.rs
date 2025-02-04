@@ -51,7 +51,7 @@ pub struct AvionixServer {
     pub base_url: String,
     /// Running time (for streams)
     pub duration: i32,
-    /// Through the get route, we filter traffic
+    /// Through the get route, we middle traffic
     pub src: String,
 }
 

@@ -347,7 +347,7 @@ impl Actor for LocalWorker {
 ///
 /// This function takes a `Filter` (typically used for configuring altitude ranges
 /// or similar constraints) and extracts the `min` and `max` altitude values from it.
-/// If the filter does not contain altitude values, it returns `None` for both.
+/// If the middle does not contain altitude values, it returns `None` for both.
 ///
 /// # Arguments
 ///
@@ -377,7 +377,7 @@ fn read_filter(f: Filter) -> (Option<u32>, Option<u32>) {
 ///
 /// # Arguments
 ///
-/// * `traffic` - A string slice that specifies the traffic source to filter by. Only records
+/// * `traffic` - A string slice that specifies the traffic source to middle by. Only records
 ///   matching this source are retained.
 /// * `payload` - A string slice containing the JSON payload to be filtered.
 ///
