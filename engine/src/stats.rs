@@ -247,16 +247,14 @@ mod tests {
             empty: 100,
             err: 10,
         };
-        let mut stats1_ref = &stats1;
-        stats1_ref.add_assign(stats2);
-        assert_eq!(stats1_ref.tm, 200);
-        assert_eq!(stats1_ref.pkts, 3000);
-        assert_eq!(stats1_ref.reconnect, 5);
-        assert_eq!(stats1_ref.bytes, 12000);
-        assert_eq!(stats1_ref.hits, 2300);
-        assert_eq!(stats1_ref.miss, 500);
-        assert_eq!(stats1_ref.empty, 150);
-        assert_eq!(stats1_ref.err, 15);
+        stats1 += stats2;
+        assert_eq!(stats1.tm, 200);
+        assert_eq!(stats1.pkts, 3000);
+        assert_eq!(stats1.reconnect, 5);
+        assert_eq!(stats1.bytes, 12000);
+        assert_eq!(stats1.hits, 2300);
+        assert_eq!(stats1.miss, 500);
+        assert_eq!(stats1.empty, 150);
+        assert_eq!(stats1.err, 15);
     }
 }
-
