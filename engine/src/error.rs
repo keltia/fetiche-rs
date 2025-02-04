@@ -34,10 +34,16 @@ pub enum EngineStatus {
     RemoveLink(String),
     #[error("Uninitialised Read")]
     UninitialisedRead,
+    #[error("Site {0} is not fetchable")]
+    NotFetchable(String),
+    #[error("Site {0} is not streamable")]
+    NotStreamable(String),
     #[error("Job {0} is running")]
     JobIsRunning(usize),
     #[error("Job {0} is not queued")]
     JobNotQueued(usize),
+    #[error("Job {0} is not ready")]
+    JobNotReady(usize),
     #[error("Job {0} is not completed")]
     JobNotCompleted(usize),
     #[error("Job {0} is not zombie")]
@@ -62,4 +68,10 @@ pub enum QueueStatus {
 pub enum Pipeline {
     #[error("Can not receive data from previous stage: {0}.")]
     CantReceivePrevious(String),
+}
+
+#[derive(Debug, Error)]
+pub enum StatsError {
+    #[error("Tag {0} not found.")]
+    TagNotFound(String),
 }
