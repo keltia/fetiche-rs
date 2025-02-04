@@ -53,3 +53,6 @@ In this equation:
 The code snippet in context indicates a tool for calculating **geoid heights** using the **EGM2008 geoid model**. The
 `geoid_height()` function likely computes the deviation of the geoid from the ellipsoid for a given latitude and
 longitude. This result can then aid in determining orthometric height.
+
+- For calculations involving drones, we will add a column calculating the geometric altitude and this will be used
+  for the distance calculations.

@@ -31,8 +31,10 @@
 //! - Longitude should be between -180 and 180 degrees.
 //! - Verbose mode (`--verbose` or `-v`) outputs program metadata (such as name, version, authors).
 //!
+
 use clap::Parser;
 use egm2008::geoid_height;
+use std::io::stdin;
 
 /// Program name.
 const NAME: &str = env!("CARGO_PKG_NAME");
@@ -50,16 +52,17 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub struct Opts {
     #[clap(short = 'v', long)]
     pub verbose: bool,
-    pub lat: f32,
-    pub lon: f32,
 }
 
 fn main() -> eyre::Result<()> {
     // Basic option parsing.
     //
     let opts = Opts::parse();
-    let lat = opts.lat;
-    let lon = opts.lon;
+
+    let text = stdin().lines().next().unwrap()?;
+    let coords: Vec<&str> = text.split_whitespace().collect();
+    let lat = coords[0].parse::<f32>()?;
+    let lon = coords[1].parse::<f32>()?;
 
     if opts.verbose {
         eprintln!("{}", banner());
