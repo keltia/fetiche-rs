@@ -2,10 +2,10 @@
 //!
 
 use std::fmt::{Debug, Formatter};
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use eyre::Result;
+use tokio::sync::mpsc::Sender;
 use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;

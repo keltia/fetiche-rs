@@ -1,6 +1,5 @@
 use std::io::Cursor;
 use std::ops::Add;
-use std::sync::mpsc::Sender;
 use std::time::UNIX_EPOCH;
 
 use async_trait::async_trait;
@@ -14,6 +13,7 @@ use ractor::cast;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;

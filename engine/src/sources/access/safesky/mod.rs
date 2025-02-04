@@ -8,11 +8,11 @@
 //!
 
 use std::str::FromStr;
-use std::sync::mpsc::Sender;
 
 use eyre::Result;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
 use fetiche_formats::{Format, Position};

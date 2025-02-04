@@ -1,6 +1,5 @@
-use std::sync::mpsc::Sender;
-
 use eyre::Result;
+use tokio::sync::mpsc::Sender;
 
 use crate::{Runnable, IO};
 

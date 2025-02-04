@@ -1,8 +1,8 @@
 use fetiche_macros::RunnableDerive;
 use std::fmt::Display;
-use std::sync::mpsc::Receiver;
-use std::thread::JoinHandle;
 use strum::EnumString;
+use tokio::sync::mpsc::Receiver;
+use tokio::task::JoinHandle;
 use tracing::error;
 
 pub use dummy::*;

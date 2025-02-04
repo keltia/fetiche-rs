@@ -1,9 +1,8 @@
 //! `Fetch` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
-use std::sync::mpsc::Sender;
-
 use eyre::Result;
+use tokio::sync::mpsc::Sender;
 use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;

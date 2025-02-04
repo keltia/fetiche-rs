@@ -23,7 +23,6 @@ mod stream;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use std::str::FromStr;
-use std::sync::mpsc::Sender;
 
 use base64_light::base64_encode;
 use eyre::{eyre, Result};
@@ -32,6 +31,7 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
 use strum::VariantNames;
+use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
 use fetiche_formats::Format;

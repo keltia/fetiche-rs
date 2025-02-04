@@ -5,10 +5,10 @@
 //!
 //! FIXME: incomplete
 
-use std::sync::mpsc::Sender;
+use eyre::Result;
 use std::sync::Arc;
 
-use eyre::Result;
+use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
 use crate::{Runnable, Sources, IO};

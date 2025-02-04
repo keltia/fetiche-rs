@@ -13,7 +13,6 @@
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -24,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
+use tokio::sync::mpsc::{channel, Sender};
 use tracing::{error, info, trace, warn};
 
 use crate::actors::{StatsActor, StatsMsg, Supervisor};
@@ -226,7 +226,7 @@ Duration {}s
         } else {
             // We somehow needs to wait for a ^C.
             //
-            let (_tx, rx) = channel::<()>();
+            let (_tx, rx) = std::sync::mpsc::channel::<()>();
             rx.recv().expect("Something failed here.");
         }
 

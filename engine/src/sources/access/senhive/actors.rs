@@ -4,11 +4,11 @@
 //!
 
 use std::fmt::Debug;
-use std::sync::mpsc::Sender;
 
 use futures_util::stream::StreamExt;
 use lapin::{options::BasicAckOptions, Connection, ConnectionProperties};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
+use tokio::sync::mpsc::Sender;
 use tracing::{error, trace, warn};
 
 use super::{from_json_to_csv, from_json_to_nl};

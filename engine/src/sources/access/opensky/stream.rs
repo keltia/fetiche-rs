@@ -1,5 +1,4 @@
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{thread, time};
@@ -10,6 +9,7 @@ use mini_moka::sync::Cache;
 use reqwest::StatusCode;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
+use tokio::sync::mpsc::{channel, Sender};
 use tracing::{debug, error, info, trace};
 
 use crate::{AuthError, Filter, Stats, Streamable};

@@ -4,9 +4,9 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use std::sync::mpsc::Sender;
 
 use eyre::Result;
+use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
 use fetiche_formats::Format;

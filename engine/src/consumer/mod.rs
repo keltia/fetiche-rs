@@ -2,9 +2,9 @@
 //!
 
 use std::fmt::{write, Display};
-use std::sync::mpsc::Receiver;
-use std::thread::JoinHandle;
 
+use tokio::sync::mpsc::Receiver;
+use tokio::task::JoinHandle;
 use tracing::error;
 
 mod archive;

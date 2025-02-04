@@ -1,7 +1,6 @@
 //! Module that implement the `AsyncStreamable` trait.
 //!
 
-use std::sync::mpsc::{channel, Sender};
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -12,6 +11,7 @@ use ractor::{pg, Actor};
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
 use tokio::signal::windows::ctrl_c;
+use tokio::sync::mpsc::{channel, Sender};
 use tracing::{info, trace};
 
 use fetiche_formats::Format;
@@ -156,7 +156,7 @@ impl AsyncStreamable for Senhive {
         } else {
             // We somehow needs to wait for a ^C.
             //
-            let (_tx, rx) = channel::<()>();
+            let (_tx, mut rx) = std::sync::mpsc::channel::<()>();
             rx.recv().expect("Something failed here.");
         }
 

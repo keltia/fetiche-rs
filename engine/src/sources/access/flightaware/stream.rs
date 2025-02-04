@@ -1,6 +1,6 @@
 use std::io::BufReader;
-use std::sync::mpsc::Sender;
 
+use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
 use crate::{AuthError, Streamable};

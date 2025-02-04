@@ -7,10 +7,10 @@ use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use eyre::Result;
+use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
@@ -59,8 +59,9 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Read;
-    use std::sync::mpsc;
+
     use tempfile::tempdir;
+    use tokio::sync::mpsc;
 
     #[test]
     fn test_tee_create_and_write() {
@@ -72,7 +73,7 @@ mod tests {
         let mut tee = Tee::into(file_path.to_str().unwrap());
 
         // Mock a channel to simulate stdout behavior
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = mpsc::channel(1);
 
         // Write some data using the Tee instance
         let data = "Hello, Tee!".to_string();
@@ -98,7 +99,7 @@ mod tests {
         let mut tee = Tee::into(file_path.to_str().unwrap());
 
         // Mock a channel to simulate stdout behavior
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = mpsc::channel(1);
 
         // Write multiple pieces of data using the Tee instance
         let data1 = "First line\n".to_string();

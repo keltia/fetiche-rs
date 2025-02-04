@@ -46,10 +46,10 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::mpsc::Receiver;
 use std::sync::Arc;
-use std::thread::JoinHandle;
 use std::time::Duration;
+use tokio::sync::mpsc::Receiver;
+use tokio::task::JoinHandle;
 use tracing::{error, info, trace};
 
 pub use consumer::*;

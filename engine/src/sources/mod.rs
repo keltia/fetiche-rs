@@ -7,12 +7,12 @@
 //!
 
 use std::fmt::Debug;
-use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::Sender;
 
 use fetiche_formats::Format;
 

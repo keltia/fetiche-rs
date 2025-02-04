@@ -1,14 +1,15 @@
 //! Regroup all available task/commands
 //!
 
+use std::collections::BTreeMap;
+
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::Deserialize;
-use std::collections::BTreeMap;
-use std::sync::mpsc::Receiver;
-use std::thread::JoinHandle;
 use strum::EnumString;
 use tabled::{builder::Builder, settings::Style};
+use tokio::sync::mpsc::Receiver;
+use tokio::task::JoinHandle;
 use tracing::trace;
 
 use crate::{Consumer, Engine, EngineStatus, Middle, Pipeline, Producer, Runnable};

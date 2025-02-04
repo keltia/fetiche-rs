@@ -5,9 +5,8 @@
 //! - Output: Cat21
 //!
 
-use std::sync::mpsc::Sender;
-
 use eyre::Result;
+use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
 use fetiche_formats::{prepare_csv, DronePoint, Format};

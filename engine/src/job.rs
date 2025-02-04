@@ -9,7 +9,6 @@ use eyre::Result;
 use ractor::ActorRef;
 use std::collections::VecDeque;
 use std::io::Write;
-use std::sync::mpsc::channel;
 use std::vec;
 use tracing::{info, span, trace, Level};
 

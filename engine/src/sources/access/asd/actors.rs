@@ -4,9 +4,9 @@
 //!
 
 use std::fmt::Debug;
-use std::sync::mpsc::Sender;
 
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
 use crate::actors::StatsMsg;

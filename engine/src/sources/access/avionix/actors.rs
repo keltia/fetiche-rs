@@ -1,13 +1,13 @@
 use std::fmt::Debug;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::net::{Shutdown, TcpStream};
-use std::sync::mpsc::Sender;
 use std::time::Duration;
 
 use eyre::Result;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use reqwest::Url;
 use serde_json::json;
+use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, info, trace};
 
 use super::{DEF_PORT, DEF_SITE};
