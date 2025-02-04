@@ -22,7 +22,6 @@ env_logger.workspace = true
 fetiche-common.workspace = true
 fetiche-formats.workspace = true
 fetiche-macros.workspace = true
-fetiche-sources.workspace = true
 hcl-rs.workspace = true
 directories.workspace = true
 nom.workspace = true
