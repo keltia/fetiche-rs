@@ -38,20 +38,24 @@
 //!
 //! FIXME: at some point, a `[u8]`  might be preferable to a `String`.
 //!
+use std::collections::BTreeMap;
+use std::fmt::Debug;
+use std::path::PathBuf;
+use std::sync::mpsc::Receiver;
+use std::sync::Arc;
+use std::time::Duration;
+
+use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use ractor::factory::{queues, routing, Factory, FactoryArguments, FactoryMessage};
 use ractor::registry::registered;
 use ractor::{call, Actor, ActorRef};
 use serde::Deserialize;
-use std::collections::BTreeMap;
-use std::fmt::Debug;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
 use tracing::{error, info, trace};
 
+pub use auth::*;
+pub use cmds::*;
 pub use consumer::*;
 pub use error::*;
 pub use filter::*;
@@ -69,6 +73,7 @@ use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
 
 mod actors;
+mod auth;
 mod cmds;
 mod consumer;
 mod error;
@@ -183,8 +188,6 @@ impl Engine {
     ///
     #[tracing::instrument]
     pub async fn new() -> Self {
-        trace!("new engine");
-
         // Load storage areas from `engine.hcl`
         //
         Self::load(ENGINE_CONFIG).await.unwrap_or_else(|e| {
@@ -236,8 +239,6 @@ impl Engine {
     ///
     #[tracing::instrument]
     pub async fn load(fname: &str) -> Result<Self> {
-        trace!("reading({:?}", fname);
-
         let root = ConfigFile::<EngineConfig>::load(Some(fname))?;
         let cfg = root.inner();
         let home = root.config_path();
@@ -276,8 +277,7 @@ impl Engine {
             Some("engine::sources".into()),
             SourcesActor,
             (),
-            sup.get_cell(),
-        )
+            sup.get_cell())
             .await?;
 
         let count = call!(src, |port| SourcesMsg::Count(port))?;
@@ -290,8 +290,7 @@ impl Engine {
             Some("engine::state".into()),
             StateActor,
             home.clone(),
-            sup.get_cell(),
-        )
+            sup.get_cell())
             .await?;
         trace!("state={:?}", state);
 
@@ -306,8 +305,7 @@ impl Engine {
             Some("engine::queue".into()),
             QueueActor,
             last,
-            sup.get_cell(),
-        )
+            sup.get_cell())
             .await?;
         trace!("queue={:?}", queue);
 
@@ -383,9 +381,9 @@ impl Engine {
     }
 }
 
-/// Anything that can be `run()` is runnable.
+/// Anything that can be `run()` is Runnable.
 ///
-/// See the engine-macro crate for a proc-macro that implement the `run()`  wrapper for
+/// See the `fetiche-macros` crate for a proc-macro that implement the `run()`  wrapper for
 /// the `Runnable` trait.
 ///
 pub trait Runnable: Debug {
