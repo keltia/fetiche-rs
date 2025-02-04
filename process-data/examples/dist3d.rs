@@ -96,8 +96,8 @@ mod roberto {
         //
         let drone2 = point!(x: drone.lon, y: drone.lat);
         let home2 = point!(x: home.lon, y: home.lat);
-        let dcalc2g = Geodesic::distance(drone2, home2);
-        let dcalc2h = Haversine::distance(drone2, home2);
+        let dcalc2g = Geodesic.distance(drone2, home2);
+        let dcalc2h = Haversine.distance(drone2, home2);
         println!(
             "  Basic 2D = {:.2} m / Geo 2D dist = {:.2} m / haversine =  {:.2} m",
             dcalc, dcalc2g, dcalc2h

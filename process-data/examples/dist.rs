@@ -205,8 +205,8 @@ async fn main() -> eyre::Result<()> {
 
     let p1 = point!(x: point1.longitude, y: point1.latitude);
     let p2 = point!(x: point2.longitude, y: point2.latitude);
-    let geo_g = Geodesic::distance(p1, p2);
-    let geo_h = Haversine::distance(p1, p2);
+    let geo_g = Geodesic.distance(p1, p2);
+    let geo_h = Haversine.distance(p1, p2);
     let geo_vin = p1.vincenty_distance(&p2)?;
 
     let ch_dist = ch_distance(point1, point2).await?;

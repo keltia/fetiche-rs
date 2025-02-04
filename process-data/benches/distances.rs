@@ -152,7 +152,7 @@ fn geo_geodesic(c: &mut Criterion) {
 
     c.bench_function("geo::geodesic", |b| {
         b.iter(|| {
-            black_box(Geodesic::distance(p1, p2));
+            black_box(Geodesic.distance(p1, p2));
         })
     });
 }
@@ -165,7 +165,7 @@ fn geo_haversines(c: &mut Criterion) {
 
     c.bench_function("geo::haversines", |b| {
         b.iter(|| {
-            black_box(Haversine::distance(p1, p2));
+            black_box(Haversine.distance(p1, p2));
         })
     });
 }
