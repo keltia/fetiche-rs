@@ -3,147 +3,84 @@
 
 use eyre::Result;
 use indicatif::ProgressBar;
-use std::path::Path;
-use std::str::FromStr;
 use std::time::Duration;
-use tracing::{error, info, trace};
+use tracing::{debug, info, trace};
 
-use fetiche_common::{Container, DateOpts};
-use fetiche_engine::{Convert, Engine, Fetch, Save, Task, Tee};
-use fetiche_formats::Format;
-use fetiche_sources::{Filter, Flow};
+use fetiche_common::DateOpts;
+use fetiche_engine::{Engine, Filter, JobState};
 
-use crate::{FetchOpts, Status};
+use crate::FetchOpts;
 
-/// Fetch data from a specific site, applying the provided filters and options.
-///
-/// # Parameters
-///
-/// - `engine`: Reference to the `Engine` instance used for managing tasks and jobs.
-/// - `fopts`: A reference to `FetchOpts` containing the options for fetching data.
-///
-/// # Returns
-///
-/// Result indicating success or any error encountered while processing the fetch request.
-///
-/// # Description
-///
-/// This function orchestrates the fetching of data from a network site by:
-/// - Validating the site as fetchable.
-/// - Applying the desired filters and transformations based on user options.
-/// - Creating a job with necessary tasks such as fetch, optional conversion, and output saving.
-/// - Managing the progress bar and job lifecycle.
-///
-/// # Errors
-///
-/// This function will return an error if:
-/// - The specified site is not fetchable.
-/// - There is an issue with applying file formatting options.
-/// - The fetching or saving process encounters an issue.
-///
 #[tracing::instrument(skip(engine))]
 pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
 
     let name = &fopts.site;
-    let srcs = engine.sources().await?;
-    let site = srcs.load(name)?;
-    match site {
-        Flow::Fetchable(ref s) => s,
-        _ => {
-            error!("Site {} is not Fetchable!", site.name());
-            return Err(Status::SiteNotFetchable(site.name()).into());
-        }
-    };
-
-    let filter = filter_from_opts(fopts)?;
 
     info!("Fetching from network site {}", name);
-
-    let mut task = Fetch::new(name, srcs.into());
-    task.site(site.name()).with(filter);
-
-    let task = Task::from(task);
-
-    let mut data = vec![];
-
-    let mut job = engine.create_job("fetch_from_site").await?;
-    job.add(task);
+    info!("args: {:?}", fopts.dates);
+    let filter = hcl::to_string(&filter_from_opts(fopts)?)?;
+    info!("filter: {:?}", filter);
 
     // Do we want a copy of the raw data (often before converting it)
     //
-    if let Some(tee) = &fopts.tee {
-        let copy = Task::from(Tee::into(tee));
-        job.add(copy);
-    }
-
-    // If a conversion is requested, insert it
-    //
-    // FIXME: DEPRECATED
-    //
-    let input = if let Some(_into) = &fopts.into {
-        let mut convert = Convert::new();
-        convert.from(site.format()).into(Format::Cat21);
-        let convert = Task::from(convert);
-        job.add(convert);
-
-        Format::Cat21
-    } else {
-        site.format()
-    };
+    let tee = fopts.tee.clone().unwrap_or(String::from(""));
 
     // Are we writing to stdout?
     //
-    let final_output = match &fopts.output {
-        Some(fname) => fname.as_str(),
-        None => "-",
-    };
-
-    // Deduce format from file name if specified, otherwise it is raw output to stdout.
-    //
-    let fmt = match &fopts.output {
-        Some(fname) => {
-            let fname = fname.to_lowercase();
-            let ext = Path::new(&fname)
-                .extension()
-                .unwrap()
-                .to_string_lossy()
-                .to_string();
-
-            Container::from_str(&ext)?
-        }
-        None => Container::default(),
-    };
+    let final_output = fopts.output.clone().unwrap_or(String::from("-"));
 
     info!("Writing to {final_output}");
+    eprintln!("Fetching into {final_output}");
 
-    // Last task is `Save`
-    //
-    let mut save = Save::new(final_output, input, fmt);
-    save.path(final_output);
-    let save = Task::from(save);
-    job.add(save);
-
-    eprintln!("Fetching {final_output}");
     let bar = ProgressBar::new_spinner();
     bar.enable_steady_tick(Duration::from_millis(100));
 
-    // Launch it now
-    //
-    job.run(&mut data)?;
+    let script = format!(r##"
+    name = "Fetch from {name}"
+    producer = {{
+      "Fetch" = [
+        "{name}",
+        {{
+          {filter}
+        }}
+      ]
+    }}
+    middle = [ {tee} ]
+    output = {{
+      "Save" = "{final_output}"
+    }}
+    "##);
 
+    debug!("script = {script}");
+
+    let job = engine.parse_job(&script).await?;
+    let id = job.id;
+    trace!("Job parsed: {:?}", job);
+
+    trace!("Job submitting id #{id}");
+    assert_eq!(job.state(), JobState::Ready);
+    let _ = engine.submit_job(job).await?;
+
+    tokio::time::sleep(Duration::from_secs(20)).await;
+
+    trace!("Job submitted, waiting for result");
+    let res = engine.wait_for(id).await?;
+
+    trace!("Job result: {:?}", res);
     bar.finish();
 
     // Remove job from engine and state
     //
-    trace!("Job({}) done, removing it.", job.id);
-    engine.remove_job(job.id)
+    trace!("Job({}) done.", id);
+
+    Ok(())
 }
 
 /// Generates a `Filter` from the provided `FetchOpts`.
 ///
 /// # Parameters
-/// - `opts`: A reference to `FetchOpts` containing the options for creating the filter.
+/// - `opts`: A reference to `FetchOpts` containing the options for creating the middle.
 ///
 /// # Returns
 /// - `Result<Filter>`: A `Filter` object encapsulating the configured filtering options, or an error if the options are invalid.
@@ -159,8 +96,6 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
 ///
 #[tracing::instrument]
 fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
-    trace!("filter_from_opts");
-
     match &opts.dates {
         Some(dates) => {
             let (begin, end) = DateOpts::parse(dates.clone())?;
@@ -171,18 +106,89 @@ fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
                 let keyword = opts.keyword.clone().unwrap();
 
                 let v: Vec<_> = keyword.split(':').collect();
-                let (k, v) = (v[0], v[1]);
                 Ok(Filter::Keyword {
-                    name: k.to_string(),
-                    value: v.to_string(),
+                    name: v[0].to_string(),
+                    value: v[1].to_string(),
                 })
-            } else if opts.since.is_some() {
-                let d = opts.since.unwrap();
-
+            } else if let Some(d) = opts.since {
                 Ok(Filter::Duration(d))
             } else {
                 Ok(Filter::default())
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_filter_from_opts_with_dates() {
+        let opts = FetchOpts {
+            dates: Some(DateOpts::Day { date: "2024-01-01..2024-01-02".to_string() }),
+            keyword: None,
+            since: None,
+            ..Default::default()
+        };
+
+        let filter = filter_from_opts(&opts).unwrap();
+        match filter {
+            Filter::Interval { begin, end } => {
+                assert_eq!(begin.to_string(), "2024-01-01T00:00:00Z");
+                assert_eq!(end.to_string(), "2024-01-02T00:00:00Z");
+            }
+            _ => panic!("Expected Interval middle"),
+        }
+    }
+
+    #[test]
+    fn test_filter_from_opts_with_keyword() {
+        let opts = FetchOpts {
+            dates: None,
+            keyword: Some("field:value".to_string()),
+            since: None,
+            ..Default::default()
+        };
+
+        let filter = filter_from_opts(&opts).unwrap();
+        match filter {
+            Filter::Keyword { name, value } => {
+                assert_eq!(name, "field");
+                assert_eq!(value, "value");
+            }
+            _ => panic!("Expected Keyword middle"),
+        }
+    }
+
+    #[test]
+    fn test_filter_from_opts_with_duration() {
+        let opts = FetchOpts {
+            dates: None,
+            keyword: None,
+            since: Some(3600),
+            ..Default::default()
+        };
+
+        let filter = filter_from_opts(&opts).unwrap();
+        match filter {
+            Filter::Duration(d) => {
+                assert_eq!(d, 3600);
+            }
+            _ => panic!("Expected Duration middle"),
+        }
+    }
+
+    #[test]
+    fn test_filter_from_opts_default() {
+        let opts = FetchOpts {
+            dates: None,
+            keyword: None,
+            since: None,
+            ..Default::default()
+        };
+
+        let filter = filter_from_opts(&opts).unwrap();
+        assert!(matches!(filter, Filter::default()));
     }
 }

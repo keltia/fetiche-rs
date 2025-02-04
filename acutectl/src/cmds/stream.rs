@@ -1,120 +1,72 @@
-use std::fs::File;
-use std::io::stdout;
+use std::time::Duration;
 
 use eyre::Result;
-use fetiche_engine::{Convert, Engine, Store, Stream, Task, Tee};
-use fetiche_formats::Format;
-use fetiche_sources::{Filter, Flow};
-use tracing::{debug, error, info, trace};
+use indicatif::ProgressBar;
+use tracing::{debug, info, trace};
+
+use fetiche_engine::{Engine, Filter};
 
 use crate::{Status, StreamOpts};
 
-/// Stream data from a specified site, applying filters and handling job execution and output.
-///
-/// # Parameters
-/// - `engine`: A mutable reference to the `Engine` instance managing tasks and jobs.
-/// - `sopts`: Reference to `StreamOpts` containing the options for streaming (e.g., filters, output, format).
-///
-/// # Returns
-/// - `Result<()>`: Indicates whether the streaming was successful or if an error was encountered.
-///
-/// # Description
-/// This function handles the streaming of data from a given site. Key functionalities include:
-/// - Validation of streamable sites using `Flow`.
-/// - Creation of a `Job` containing one or more tasks such as:
-///   - Streaming data from the site.
-///   - Tee (copying data while processing).
-///   - Conversion between formats (optional, deprecated).
-///   - Storing split data, if requested.
-/// - Managing output (to a file or stdout) based on the provided options.
-///
-/// The function ensures that the generated job is properly cleaned up from the engine after execution.
-///
-/// # Errors
-/// This function will return an error if:
-/// - The site specified in `sopts` is not streamable.
-/// - Options provided in `sopts` are invalid or conflicting.
-/// - File handling (e.g., creating output files) fails during execution.
-/// - Any errors occur during task execution.
-///
 #[tracing::instrument(skip(engine))]
 pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
-    trace!("stream_from_site({:?})", sopts.site);
-
     check_args(sopts)?;
 
     let name = &sopts.site;
-    let srcs = engine.sources().await?.clone();
-    let site = srcs.load(name)?;
-    debug!("{:?}", site);
-    match site {
-        Flow::Streamable(_) => (),
-        Flow::AsyncStreamable(_) => (),
-        _ => {
-            error!("Site {} is not Streamable!", site.name());
-            return Err(Status::SiteNotStreamable(site.name()).into());
-        }
-    };
 
-    let filter = filter_from_opts(sopts)?;
     info!("Streaming from network site {}", name);
-
-    // Full json array with all point
-    //
-    let mut task = Stream::new(name, srcs.into());
-    task.site(name.to_string()).with(filter);
-    let task = Task::from(task);
-
-    // Create job with first task
-    //
-    let mut job = engine.create_job("stream_from_site").await?;
-    let _ = job.add(task);
+    let filter = hcl::to_string(&filter_from_opts(sopts)?)?;
+    info!("filter: {:?}", filter);
 
     // Do we want a copy of the raw data (often before converting it)
     //
-    if let Some(tee) = &sopts.tee {
-        let copy = Task::from(Tee::into(tee));
-        let _ = job.add(copy);
-    }
+    let tee = sopts.tee.clone().unwrap_or(String::from(""));
 
-    // If a conversion is requested, insert it
+    // Are we writing to stdout?
     //
-    // FIXME: DEPRECATED
-    //
-    if let Some(_into) = &sopts.into {
-        let mut convert = Convert::new();
-        convert.from(site.format()).into(Format::Cat21);
-        let convert = Task::from(convert);
-        let _ = job.add(convert);
-    };
+    let final_output = sopts.output.clone().unwrap_or(String::from("-"));
 
-    // If split is required, add a consumer for it at the end.
-    //
-    info!("Running job #{} with {} tasks.", job.id, job.list.len());
-    if sopts.split.is_some() {
-        let basedir = sopts.split.as_ref().unwrap();
+    info!("Writing to {final_output}");
+    eprintln!("Streaming into {final_output}");
 
-        // Store must be the last one, it is a pure consumer
-        //
-        let store = Task::from(Store::new(basedir, job.id)?);
-        let _ = job.add(store);
+    let bar = ProgressBar::new_spinner();
+    bar.enable_steady_tick(Duration::from_millis(100));
 
-        job.run(&mut stdout())?;
-    } else {
-        // Handle output if no consumer is present at the end
-        //
-        if let Some(out) = &sopts.output {
-            let mut out = File::create(out)?;
+    let script = format!(r##"
+    name = "Stream from {name}"
+    type = "stream"
+    producer = {{
+      "Stream" = [
+        "{name}",
+        {{
+            {filter}
+        }}
+      ]
+    }}
+    middle = [ {tee} ]
+    output = {{
+      "Save" = "{final_output}"
+    }}
+    "##);
 
-            job.run(&mut out)?;
-        } else {
-            job.run(&mut stdout())?;
-        };
-    }
+    debug!("script = {script}");
+
+    let job = engine.parse_job(&script).await?;
+    let id = job.id;
+    trace!("Job running id #{id}");
+
+    let _ = engine.submit_job(job).await?;
+
+    tokio::time::sleep(Duration::from_secs(20)).await;
+
+    bar.finish();
 
     // Remove job from engine and state
     //
-    engine.remove_job(job.id)
+    trace!("Job({}) done, removing it.", id);
+    let _ = engine.remove_job(id).await?;
+
+    Ok(())
 }
 
 /// From the CLI options
@@ -167,7 +119,7 @@ fn filter_from_opts(opts: &StreamOpts) -> Result<Filter> {
 fn check_args(opts: &StreamOpts) -> Result<()> {
     trace!("check_args");
 
-    // Do we have options for filter
+    // Do we have options for middle
     //
     if opts.today && (opts.begin.is_some() || opts.end.is_some()) {
         return Err(Status::TodayOrBeginEnd.into());
