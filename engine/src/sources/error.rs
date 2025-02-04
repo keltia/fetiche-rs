@@ -33,6 +33,8 @@ pub enum AuthError {
     Expired,
     #[error("Invalid token in {0}")]
     Invalid(String),
+    #[error("Unknown token {0}")]
+    TokenError(String),
     #[error("Unknown error.")]
     Unknown,
 }

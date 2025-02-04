@@ -32,8 +32,6 @@ pub enum EngineStatus {
     OnlyAsdToParquet,
     #[error("Can not remove symlink {0}")]
     RemoveLink(String),
-    #[error("Unknown token {0}")]
-    TokenError(String),
     #[error("Uninitialised Read")]
     UninitialisedRead,
     #[error("Job {0} is running")]
