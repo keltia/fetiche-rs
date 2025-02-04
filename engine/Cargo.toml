@@ -75,10 +75,10 @@ futures = "0.3.31"
 
 [dev-dependencies]
 criterion.workspace = true
+jiff.workspace = true
 rstest.workspace = true
 
 ctrlc = "3.4"
 directories = "6.0"
 dateparser = "0.2"
-jiff = "0.2"
 test-pretty-log = "0.6"

@@ -36,6 +36,7 @@ eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-macros.workspace = true
 futures.workspace = true
+jiff.workspace = true
 polars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
