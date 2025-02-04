@@ -12,27 +12,21 @@
 //!
 
 use ractor::factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId};
-use ractor::{call, ActorProcessingErr, ActorRef, RpcReplyPort};
+use ractor::{ActorProcessingErr, ActorRef, RpcReplyPort, call, cast};
 use tracing::trace;
 
 use crate::actors::{QueueMsg, StatsMsg};
-use crate::Stats;
+use crate::{JobState, Stats};
 
 /// Messages that can be handled by the Runner actor.
 ///
 /// This enum defines the possible messages that control the Runner actor's behavior:
-/// - `Start`: Initiates execution of a job with the given ID
-/// - `Stop`: Terminates execution of a job with the given ID
-/// - `Stats`: Retrieves current execution statistics
+/// - `Run`: Initiates execution of next job in the queue
 ///
 #[derive(Debug)]
 pub enum RunnerMsg {
     /// Run next job
     Run(RpcReplyPort<Stats>),
-    /// Start executing the job with the specified ID
-    Start(usize),
-    /// Stop executing the job with the specified ID
-    Stop(usize),
 }
 
 /// The Runner actor implementation that processes jobs from the queue.
@@ -83,25 +77,27 @@ impl Worker for RunnerActor {
     ) -> Result<usize, ActorProcessingErr> {
         trace!("runner {} got message: {:?}", wid, msg);
         match msg {
+            // Takes the next job from the queue.
+            //
             RunnerMsg::Run(sender) => {
-                let queue = state.queue.clone();
-                let mut job = call!(queue, |port| QueueMsg::Run(port))?;
-
-                let mut data = vec![];
-                let _ = job.run(&mut data)?;
                 let stat = state.stats.clone();
-                let stats = call!(stat, |port| StatsMsg::Get(port))?;
-                let _ = sender.send(stats);
-            }
-            RunnerMsg::Start(n) => {
                 let queue = state.queue.clone();
-                let mut job = call!(queue, |port| QueueMsg::GetById(n, port)).unwrap();
+
+                let mut job = call!(queue, |port| QueueMsg::Run(port))?;
+                job.stats(stat.clone());
+                job.state = JobState::Running;
+
+                let job_tag = format!("job#{}", job.id);
+                let _ = cast!(stat, StatsMsg::New(job_tag.clone()))?;
 
                 let mut data = vec![];
                 let _ = job.run(&mut data)?;
-            }
-            RunnerMsg::Stop(n) => {
-                todo!()
+
+                let stats = call!(stat, |port| StatsMsg::Get(job_tag.clone(), port))?;
+                let _ = sender.send(stats);
+                let _ = cast!(stat, StatsMsg::Reset(job_tag))?;
+
+                job.state = JobState::Completed;
             }
         }
         Ok(key)
@@ -119,6 +115,12 @@ pub struct RunnerBuilder {
 impl WorkerBuilder<RunnerActor, RunnerArgs> for RunnerBuilder {
     #[tracing::instrument(skip(self))]
     fn build(&mut self, _wid: WorkerId) -> (RunnerActor, RunnerArgs) {
-        (RunnerActor, RunnerArgs { queue: self.queue.clone(), stats: self.stat.clone() })
+        (
+            RunnerActor,
+            RunnerArgs {
+                queue: self.queue.clone(),
+                stats: self.stat.clone(),
+            },
+        )
     }
 }
