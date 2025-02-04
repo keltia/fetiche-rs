@@ -1,4 +1,4 @@
-//! Module to deal with different kind of sources we can connect to to fetch data.
+//! Module to deal with different kind of sources we can connect to fetch data.
 //!
 //! The different submodules deal with the differences between sources:
 //!
@@ -186,7 +186,7 @@ pub trait AsyncStreamable: Debug {
 }
 
 /// Default configuration filename
-const CONFIG: &str = "sources.hcl";
+pub const SOURCES_CONFIG: &str = "sources.hcl";
 
 pub fn version() -> String {
     format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))

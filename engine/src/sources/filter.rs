@@ -31,7 +31,6 @@ use std::fmt::{Display, Formatter};
 ///
 /// ## Creating an Interval Filter
 /// ```rust
-/// use fetiche_sources::Filter;
 ///
 /// let begin = dateparser::parse("2023-10-01").unwrap();
 /// let end = dateparser::parse("2023-10-02").unwrap();
@@ -40,21 +39,18 @@ use std::fmt::{Display, Formatter};
 ///
 /// ## Creating a Keyword Filter
 /// ```rust
-/// use fetiche_sources::Filter;
 ///
 /// let filter = Filter::keyword("icao24", "foobar");
 /// ```
 ///
 /// ## Creating a Duration Filter
 /// ```rust
-/// use fetiche_sources::Filter;
 ///
 /// let filter = Filter::since(3600); // Filter for the past hour
 /// ```
 ///
 /// ## Creating a Stream Filter
 /// ```rust
-/// use fetiche_sources::Filter;
 ///
 /// let filter = Filter::stream(5, 3600, 10); // Stream starting at 5s, lasting 1 hour with a 10s delay
 /// ```

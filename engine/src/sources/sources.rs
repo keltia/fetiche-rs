@@ -31,7 +31,7 @@ use crate::Opensky;
 use crate::Safesky;
 #[cfg(feature = "senhive")]
 use crate::Senhive;
-use crate::{AccessError, Auth, FetchableSource, Flow, Site, StreamableSource, CONFIG};
+use crate::{AccessError, Auth, FetchableSource, Flow, Site, StreamableSource, SOURCES_CONFIG};
 
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_formats::Format;
@@ -52,7 +52,7 @@ use fetiche_macros::into_configfile;
 ///
 /// ```rust
 /// use std::collections::BTreeMap;
-/// use fetiche_sources::{Site, Sources};
+/// use fetiche_engine::{Site, Sources};
 ///
 /// let mut sites = BTreeMap::new();
 /// sites.insert("example_site".to_string(), Site::default());
@@ -64,7 +64,7 @@ use fetiche_macros::into_configfile;
 /// Creating `SourcesConfig` from a vector of tuples:
 ///
 /// ```rust
-/// use fetiche_sources::{Site, Sources};
+/// use fetiche_engine::{Site, Sources};
 ///
 /// let sites_vec = vec![("site_a".to_string(), Site::default())];
 /// let sources = Sources::from(sites_vec);
@@ -100,7 +100,7 @@ impl Sources {
     ///
     #[tracing::instrument]
     pub fn new() -> Result<Self> {
-        let src_file = ConfigFile::<SourcesConfig>::load(Some("sources.hcl"))?;
+        let src_file = ConfigFile::<SourcesConfig>::load(Some(SOURCES_CONFIG))?;
         let src = src_file.inner();
 
         let all = src
@@ -208,7 +208,7 @@ impl Sources {
 
         // Copy content of `sources.hcl`  into place.
         //
-        let fname: PathBuf = dir.join(CONFIG);
+        let fname: PathBuf = dir.join(SOURCES_CONFIG);
         let content = include_str!("sources.hcl");
         fs::write(fname, content)
     }
@@ -621,7 +621,7 @@ mod tests {
 
         match Sources::install_defaults(&tempdir) {
             Ok(()) => {
-                let f = tempdir.join(CONFIG);
+                let f = tempdir.join(SOURCES_CONFIG);
                 assert!(f.exists());
             }
             _ => bail!("all failed"),
