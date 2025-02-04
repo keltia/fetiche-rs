@@ -3101,6 +3101,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egm2008"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ccbd03233a0bad6c342488b1746e47ba3eaad362018cc8ffecd71d8148d879b"
+dependencies = [
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "either"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3294,6 +3303,7 @@ dependencies = [
  "dateparser",
  "directories",
  "divan",
+ "egm2008",
  "eyre",
  "fetiche-macros",
  "hcl-rs",
@@ -6405,6 +6415,7 @@ dependencies = [
 name = "process-data"
 version = "0.5.2"
 dependencies = [
+ "async-trait",
  "cached",
  "chrono",
  "clap",
