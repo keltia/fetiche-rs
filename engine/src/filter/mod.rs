@@ -1,10 +1,10 @@
 use std::fmt::Display;
+use std::sync::mpsc::Receiver;
 
-use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
 use tracing::error;
 
-use crate::{Consumer, Runnable, Task, IO};
+use crate::{Runnable, IO};
 
 pub use common::*;
 pub use convert::*;

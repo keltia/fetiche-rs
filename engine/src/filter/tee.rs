@@ -4,18 +4,16 @@
 //!
 
 use std::fmt::Debug;
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Sender;
 
 use eyre::Result;
-use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{Engine, IO, Middle, Runnable};
+use crate::{Middle, Runnable, IO};
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Tee {
     io: IO,
@@ -69,9 +67,9 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Read;
+    use std::sync::mpsc;
 
     use tempfile::tempdir;
-    use tokio::sync::mpsc;
 
     #[test]
     fn test_tee_create_and_write() {

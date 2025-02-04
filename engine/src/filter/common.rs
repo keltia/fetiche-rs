@@ -5,13 +5,13 @@
 //!
 
 use std::fmt::Debug;
+use std::sync::mpsc::Sender;
 
 use eyre::Result;
-use tokio::sync::mpsc::Sender;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{IO, Middle, Runnable, Tee};
+use crate::{Middle, Runnable, IO};
 
 // -----
 

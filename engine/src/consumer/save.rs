@@ -6,18 +6,17 @@
 use std::fs;
 use std::io::Cursor;
 use std::path::PathBuf;
+use std::sync::mpsc::Sender;
 
-use chrono::Utc;
 use eyre::Result;
 use polars::prelude::*;
-use tokio::sync::mpsc::Sender;
 use tracing::{info, trace};
 
 use fetiche_common::Container;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{Archive, Consumer, Runnable, Stats, IO};
+use crate::{Consumer, Runnable, IO};
 
 /// The Save task
 ///

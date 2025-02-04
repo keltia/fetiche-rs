@@ -1,7 +1,6 @@
-use fetiche_macros::RunnableDerive;
 use std::fmt::Display;
-use strum::EnumString;
-use tokio::sync::mpsc::Receiver;
+use std::sync::mpsc::Receiver;
+
 use tokio::task::JoinHandle;
 use tracing::error;
 
@@ -10,7 +9,7 @@ pub use fetch::*;
 pub use read::*;
 pub use stream::*;
 
-use crate::{Consumer, Runnable, Sources, Stats, Task, IO};
+use crate::{Runnable, IO};
 
 mod dummy;
 mod fetch;

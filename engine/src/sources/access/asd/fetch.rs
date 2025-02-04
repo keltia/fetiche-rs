@@ -8,18 +8,17 @@ use eyre::eyre;
 use polars::datatypes::Int64Chunked;
 use polars::io::SerWriter;
 use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, CsvWriter, IntoColumn, SerReader};
-use ractor::cast;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tokio::sync::mpsc::Sender;
+use std::sync::mpsc::Sender;
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
 
-use crate::actors::StatsMsg;
 use crate::sources::access::asd::{Credentials, Param, Source, DEF_SOURCES, DEF_TOKEN};
-use crate::{Asd, AsdToken, AuthError, Expirable, Fetchable, FetchableSource, Filter, Stats};
+use crate::token::AsdToken;
+use crate::{Asd, AuthError, Expirable, Fetchable, Filter, Stats};
 
 impl Fetchable for Asd {
     #[inline]

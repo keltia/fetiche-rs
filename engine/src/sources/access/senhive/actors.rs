@@ -4,16 +4,16 @@
 //!
 
 use std::fmt::Debug;
+use std::sync::mpsc::Sender;
 
 use futures_util::stream::StreamExt;
 use lapin::{options::BasicAckOptions, Connection, ConnectionProperties};
-use ractor::{Actor, ActorProcessingErr, ActorRef};
-use tokio::sync::mpsc::Sender;
+use ractor::{call, Actor, ActorProcessingErr, ActorRef};
 use tracing::{error, trace, warn};
 
 use super::{from_json_to_csv, from_json_to_nl};
 use crate::actors::StatsMsg;
-use crate::Feed;
+use crate::{Feed, Stats};
 
 /// This is the worker that will consume a given topic.
 ///

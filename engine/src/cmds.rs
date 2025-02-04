@@ -21,7 +21,7 @@ use ractor::{call, cast, factory};
 use serde::Deserialize;
 use tabled::builder::Builder;
 use tabled::settings::Style;
-use tracing::{debug, error, info, trace};
+use tracing::{error, info, trace};
 
 use crate::actors::{QueueMsg, RunnerMsg, StateMsg};
 use crate::{Engine, EngineStatus, Job, JobBuilder, JobState, Stats, IO};

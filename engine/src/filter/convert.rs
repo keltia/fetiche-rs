@@ -5,11 +5,12 @@
 //! - Output: Cat21
 //!
 
+use std::sync::mpsc::Sender;
+
 use eyre::Result;
-use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
-use fetiche_formats::{DronePoint, Format, prepare_csv};
+use fetiche_formats::{prepare_csv, DronePoint, Format};
 use fetiche_macros::RunnableDerive;
 
 #[cfg(feature = "asterix")]

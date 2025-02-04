@@ -1,10 +1,10 @@
-use chrono::Utc;
+use std::sync::mpsc::Sender;
+
 use eyre::Result;
-use tokio::sync::mpsc::Sender;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{Archive, Consumer, IO, Runnable, Stats};
+use crate::{Consumer, Runnable, IO};
 
 #[derive(Clone, Debug, PartialEq, RunnableDerive)]
 pub struct Stdout {

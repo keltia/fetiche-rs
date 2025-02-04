@@ -29,9 +29,9 @@ use eyre::{eyre, Result};
 use native_tls::{TlsConnector, TlsStream};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
+use std::sync::mpsc::Sender;
 use strum::EnumString;
 use strum::VariantNames;
-use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
 use fetiche_formats::Format;

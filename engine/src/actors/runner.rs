@@ -12,7 +12,7 @@
 //!
 
 use ractor::factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId};
-use ractor::{ActorProcessingErr, ActorRef, RpcReplyPort, call, cast};
+use ractor::{call, cast, ActorProcessingErr, ActorRef, RpcReplyPort};
 use tracing::trace;
 
 use crate::actors::{QueueMsg, StatsMsg};

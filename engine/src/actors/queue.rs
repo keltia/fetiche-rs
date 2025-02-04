@@ -2,9 +2,9 @@
 //!
 use std::collections::VecDeque;
 
-use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, pg};
+use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
-use crate::{ENGINE_PG, Job, JobState, QueueStatus};
+use crate::{Job, JobState, QueueStatus, ENGINE_PG};
 
 /// Messages handled by the QueueActor for managing the job queue.
 ///

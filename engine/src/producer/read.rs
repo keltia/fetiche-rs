@@ -1,19 +1,19 @@
 //! `Read` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
 use chrono::Utc;
 use eyre::Result;
-use tokio::sync::mpsc::Sender;
+use std::sync::mpsc::Sender;
+use tokio::fs::File;
+use tokio::io::AsyncReadExt;
 use tracing::trace;
 
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{AuthError, EngineStatus, Fetch, IO, Producer, Runnable, Stats};
+use crate::{EngineStatus, Producer, Runnable, Stats, IO};
 
 /// The Read task
 ///

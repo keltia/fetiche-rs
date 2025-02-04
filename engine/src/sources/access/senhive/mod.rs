@@ -32,10 +32,12 @@ use lapin::types::FieldTable;
 use lapin::{Connection, Consumer};
 use polars::io::{SerReader, SerWriter};
 use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
+use ractor::ActorRef;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, trace};
 
+use crate::actors::StatsMsg;
 use crate::{Auth, Capability, Site, StreamableSource};
 use fetiche_formats::senhive::FusedData;
 use fetiche_formats::{DronePoint, Format};

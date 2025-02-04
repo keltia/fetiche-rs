@@ -5,11 +5,12 @@
 //!
 //! FIXME: incomplete
 
+use std::sync::mpsc::Sender;
+
 use eyre::Result;
-use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
-use crate::{Consumer, Fetch, Producer, Runnable, Sources, Stats, IO};
+use crate::{Consumer, Runnable, IO};
 use fetiche_macros::RunnableDerive;
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]

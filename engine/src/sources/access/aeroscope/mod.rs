@@ -19,7 +19,7 @@ use clap::{crate_name, crate_version};
 use eyre::Result;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::Sender;
+use std::sync::mpsc::Sender;
 use tracing::{debug, trace};
 
 use fetiche_formats::Format;

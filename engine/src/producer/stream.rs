@@ -2,15 +2,17 @@
 //!
 
 use std::fmt::{Debug, Formatter};
-use std::sync::Arc;
 
 use eyre::Result;
-use tokio::sync::mpsc::Sender;
-use tracing::{error, trace};
+use std::sync::mpsc::Sender;
+use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{AuthError, Capability, EngineStatus, FetchableSource, Filter, Runnable, Site, Stats, StreamableSource, IO};
+use crate::{
+    EngineStatus, Filter, Producer, Runnable, Site,
+    Stats, Streamable, StreamableSource, IO,
+};
 
 /// The Stream task
 ///

@@ -11,15 +11,15 @@
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::mpsc::Sender;
 
 use chrono::{Datelike, Timelike, Utc};
 use eyre::Result;
-use tokio::sync::mpsc::Sender;
 use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{Archive, Consumer, EngineStatus, Freq, Runnable, Stats, IO};
+use crate::{Consumer, EngineStatus, Freq, Runnable, IO};
 
 /// Struct describing the data for the `Store` task.
 ///

@@ -1,9 +1,9 @@
 //!
 //!
 
-use std::fmt::{write, Display};
-use std::sync::Arc;
-use tokio::sync::mpsc::Receiver;
+use std::fmt::Display;
+use std::sync::mpsc::Receiver;
+
 use tokio::task::JoinHandle;
 use tracing::error;
 
@@ -17,7 +17,7 @@ pub use save::*;
 pub use stdout::*;
 pub use store::*;
 
-use crate::{Runnable, Stats, Task, IO};
+use crate::{Runnable, IO};
 
 /// Represents different types of consumers that can process and store data
 /// in the processing pipeline.

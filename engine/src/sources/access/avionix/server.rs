@@ -17,23 +17,21 @@
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_trait::async_trait;
 use ractor::pg::join;
-use ractor::{pg, Actor};
+use ractor::{call, pg, Actor, ActorRef};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
-use tokio::sync::mpsc::{channel, Sender};
 use tracing::{error, info, trace, warn};
 
 use super::actors::{Worker, WorkerArgs};
-use crate::actors::{StatsActor, StatsMsg, Supervisor};
-use crate::sources::TICK;
-use crate::{Auth, AuthError, Capability, Filter, Routes, Site, Streamable, StreamableSource, WorkerMsg, ENGINE_PG};
+use crate::actors::{StatsMsg, Supervisor};
+use crate::{Auth, AuthError, Capability, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, WorkerMsg, ENGINE_PG};
 use fetiche_formats::Format;
 
 /// TCP streaming URL

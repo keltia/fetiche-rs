@@ -30,9 +30,6 @@ use crate::{Auth, Capability, FetchableSource, Site};
 
 mod fetch;
 pub mod token;
-mod actors;
-
-pub use token::*;
 
 /// Default token
 const DEF_TOKEN: &str = "asd_default_token";
