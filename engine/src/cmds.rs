@@ -263,6 +263,22 @@ impl Engine {
         info!("job {} completed res={}.", job_id, res);
 
         Ok(res)
+    #[tracing::instrument(skip(self))]
+    pub fn shutdown(&mut self) {
+        pg::get_members(&ENGINE_PG.to_string()).iter().for_each(|cell| {
+            cell.stop(Some("ctrl-C pressed".into()));
+        });
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub fn ps(&mut self) {
+        let v = self.version();
+        eprintln!("Engin version {} is running", self.version());
+
+        let plist = registered().join("\n");
+        eprintln!("Actor list:\n{plist}");
+    }
+
     }
 }
 
