@@ -84,7 +84,7 @@ struct Param {
 
 /// Asd represent what is needed to connect & auth to and fetch data from the ASD main site.
 ///
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Asd {
     /// Describe the different features of the source
     pub feature: Capability,
@@ -104,9 +104,6 @@ pub struct Asd {
     pub token: String,
     /// Add this to `base_url` to fetch data
     pub get: String,
-    /// HTTP Client.
-    #[serde(skip_serializing, skip_deserializing)]
-    pub client: reqwest::Client,
 }
 
 impl Asd {
@@ -122,7 +119,6 @@ impl Asd {
             base_url: "".to_owned(),
             token: "".to_owned(),
             get: "".to_owned(),
-            client: reqwest::Client::new(),
         }
     }
 

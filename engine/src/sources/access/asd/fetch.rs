@@ -74,13 +74,13 @@ impl Fetchable for Asd {
         } else {
             trace!("no token");
 
+            let client = reqwest::Client::new();
             // fetch token from site
             //
             let url = format!("{}{}", self.base_url, self.token);
             trace!("Fetching token through {}…", url);
 
-            let resp = self
-                .client
+            let resp = client
                 .post(url)
                 .header("content-type", "application/json")
                 .header("user-agent", format!("{}/{}", crate_name!(), crate_version!()))
