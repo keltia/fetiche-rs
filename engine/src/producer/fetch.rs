@@ -4,15 +4,15 @@
 use std::sync::mpsc::Sender;
 
 use eyre::Result;
-use tracing::trace;
+use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{AuthError, Capability, EngineStatus, Filter, Runnable, Site, Sources, IO};
+use crate::{AuthError, Capability, EngineStatus, FetchableSource, Filter, Runnable, Site, Sources, StreamableSource, IO};
 
 /// The Fetch task
 ///
-#[derive(Clone, Debug, RunnableDerive)]
+#[derive(Clone, Debug, PartialEq, RunnableDerive)]
 pub struct Fetch {
     /// I/O capabilities
     io: IO,
@@ -25,7 +25,7 @@ pub struct Fetch {
 }
 
 impl Fetch {
-    #[tracing::instrument(skip(srcs))]
+    #[tracing::instrument]
     pub fn new(s: &str) -> Self {
         Self {
             io: IO::Producer,
@@ -37,6 +37,7 @@ impl Fetch {
 
     /// Copy the site's data
     ///
+    #[tracing::instrument]
     pub fn site(&mut self, s: Site) -> &mut Self {
         trace!("Add site {} as {}", self.name, s);
         self.site = Some(s);
@@ -45,6 +46,7 @@ impl Fetch {
 
     /// Add a date filter if specified
     ///
+    #[tracing::instrument]
     pub fn with(&mut self, f: Filter) -> &mut Self {
         trace!("Add filter {}", f);
         self.args = f.to_string();
@@ -53,31 +55,29 @@ impl Fetch {
 
     /// The heart of the matter: fetch data
     ///
-    #[tracing::instrument(skip(self))]
-    fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
-        trace!("received: {}", data);
+    #[tracing::instrument(skip(self, _data))]
+    fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
+        let site = self.site.clone();
+        match site {
+            Some(site) => {
+                trace!("Site: {}", site);
 
-        if &self.site.is_none() {
-            return Err(EngineStatus::NoSiteDefined.into());
+                // Stream data as bytes
+                //
+                let site = self.site.clone().unwrap();
+                match FetchableSource::from(&site) {
+                    Some(source) => {
+                        let token = source.authenticate()?;
+
+                        let args = self.args.clone();
+                        source.stream(stdout, &token, &args)?;
+                    }
+                    _ => EngineStatus::NotFetchable(site.name.clone()).into(),
+                }
+            }
+            _ => {
+                Err(EngineStatus::NoSiteDefined.into())
+            }
         }
-        let site = self.site.clone().expect("Site not defined");
-        if site.feature == Capability::Fetch {
-            let sources = Sources::new()?;
-            let site = sources.as_fetchable(&site.name)?;
-
-            let token = site.authenticate()?;
-
-            // If token has expired
-            //
-            let token = match token {
-                Ok(token) => token,
-                Err(e) => match e {
-                    AuthError::Expired => site.authenticate()?,
-                    _ => return Err(EngineStatus::TokenError(e.to_string()).into()),
-                },
-            };
-            site.fetch(stdout, &token, &self.args)?;
-        }
-        Ok(())
     }
 }

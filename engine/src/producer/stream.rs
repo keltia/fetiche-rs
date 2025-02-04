@@ -6,15 +6,15 @@ use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use eyre::Result;
-use tracing::trace;
+use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{AuthError, Capability, EngineStatus, Filter, Flow, Runnable, Site, IO};
+use crate::{AuthError, Capability, EngineStatus, FetchableSource, Filter, Flow, Runnable, Site, StreamableSource, IO};
 
 /// The Stream task
 ///
-#[derive(Clone, RunnableDerive)]
+#[derive(Clone, PartialEq, RunnableDerive)]
 pub struct Stream {
     /// I/O capabilities
     io: IO,
@@ -83,33 +83,27 @@ impl Stream {
     ///
     #[tracing::instrument(skip(self, _data, stdout))]
     pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
-        trace!("Stream::run()");
+        let site = self.site.clone();
+        match site {
+            Some(site) => {
+                trace!("Site: {}", site);
 
-        if self.site.is_none() {
-            return Err(EngineStatus::NoSiteDefined.into());
+                // Stream data as bytes
+                //
+                let site = self.site.clone().unwrap();
+                match StreamableSource::from(&site) {
+                    Some(source) => {
+                        let token = source.authenticate()?;
+
+                        let args = self.args.clone();
+                        source.stream(stdout, &token, &args)?;
+                    }
+                    _ => EngineStatus::NotStreamable(site.name.clone()).into(),
+                }
+            }
+            _ => {
+                Err(EngineStatus::NoSiteDefined.into())
+            }
         }
-        let site = self.site.clone().unwrap();
-
-        // Stream data as bytes
-        //
-        let site = self.site.clone().expect("Site not defined");
-        if site.feature == Capability::Stream {
-            let token = site.authenticate()?;
-
-            let args = self.args.clone();
-            site.stream(stdout, &token, &args)?;
-        } else if let Flow::AsyncStreamable(site) = site {
-            let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(async move {
-                let token = site.authenticate().await.unwrap();
-
-                let args = self.args.clone();
-                site.stream(stdout, &token, &args).await.unwrap();
-            })
-        }
-        Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests {}
