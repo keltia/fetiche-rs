@@ -55,6 +55,7 @@ tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
+async-trait = "0.1"
 divan = "0.1"
 egm2008 = "0.1"
 humantime = "2.1"
@@ -62,5 +63,7 @@ tracing-appender = "0.2"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
+enum_dispatch = "0.3"
+rand = "0.9"
 rstest.workspace = true
 test-pretty-log = "0.6"
