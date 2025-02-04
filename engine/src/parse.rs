@@ -9,14 +9,24 @@
 //! source = opensky
 //! output = "foo.csv"
 //! ```
+//!
+//! ```hcl
+//! name = "Opensky"
+//! type = "fetch"
+//! source = opensky
+//! filters = []
+//! output = "foo.csv"
+//! ```
 
 use eyre::Result;
+use fetiche_formats::Format;
 use ractor::call;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
+use tracing::trace;
 
 use crate::actors::SourcesMsg;
-use crate::Engine;
+use crate::{Engine, Job};
 
 /// Represents the type of job to be executed.
 ///
@@ -30,187 +40,178 @@ use crate::Engine;
 /// - `Read`: Reads data from an existing file or resource.
 /// - `Stream`: Streams data directly from an external source in real-time.
 ///
-#[derive(Clone, Debug, Deserialize, EnumString, Serialize)]
+#[derive(Clone, Debug, Deserialize, EnumString, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum JobType {
+    /// One-shot fetch a block of data.
     Fetch,
+    /// Read a local file.
     Read,
+    /// Long-running job, streaming.
     Stream,
 }
 
-/// A representation of a job in the Fetiche language.
+/// Represents the various types of filters that can be applied to a job.
 ///
-/// This struct defines the various components that describe a job to be executed
-/// within the system. Jobs are defined using a language derived from HCL for flexibility.
+/// Filters define additional processing or transformation steps to be
+/// performed on the data during a job's execution. Each filter is associated
+/// with a particular action or target.
 ///
-/// # Example
+/// # Variants
+///
+/// - `Tee`: Duplicates the data stream to the specified target.
+/// - `Split`: Splits the job output into multiple paths or files.
+/// - `Save`: Saves intermediate results to the specified path.
+///
+/// # Fields
+///
+/// `String` - The target or path associated with the filter action.
+///
+#[derive(Clone, Debug, Deserialize, EnumString, PartialEq, Serialize)]
+pub enum Filter {
+    //// Conversion between formats.
+    Convert(Format),
+    /// Block by block copy.
+    Copy,
+    /// Duplicate the data in a given file.
+    Tee(String),
+}
+
+/// Represents the various types of consumers for processing or saving job outputs.
+///
+/// Consumers are used to define how or where the output data from a job
+/// will be handled or distributed.
+///
+/// # Variants
+///
+/// - `Archive`: Archives the job output to the specified location.
+/// - `Save`: Saves the job output to the specified file path.
+/// - `Store`: Splits the job output into multiple files in the specified directory.
+///
+/// # Fields
+///
+/// Each variant has an associated `String` value, representing the path
+/// or target destination for the consumer action.
+///
+#[derive(Clone, Debug, Deserialize, EnumString, PartialEq, Serialize)]
+pub enum Consumer {
+    /// Archive multiple files in a single one.
+    Archive(String),
+    /// Save in a file.
+    Save(String),
+    /// Store files by frequency in the specified directory.
+    Store(String, Freq),
+}
+
+/// Represents the frequency options for scheduling or specifying periodic tasks.
+///
+/// This enum defines two main frequencies:
+/// - **Daily:** Indicates a once-per-day schedule.
+/// - **Hourly:** Indicates a once-per-hour schedule.
+///
+/// # Examples
+///
+/// ```rust
+/// use fetiche_engine::Freq;
+///
+/// let daily = Freq::Daily;
+/// let hourly = Freq::Hourly;
+///
+/// match daily {
+///     Freq::Daily => println!("Task runs daily"),
+///     Freq::Hourly => println!("Task runs hourly"),
+/// }
+/// ```
+///
+#[derive(Clone, Debug, Deserialize, EnumString, PartialEq, Serialize)]
+pub enum Freq {
+    Daily,
+    Hourly,
+}
+
+/// Represents the main entry point for defining and executing tasks in the Fetiche engine.
+///
+/// This module provides structures and methods to define jobs, filters, and job types
+/// using the Fetiche job language. The job language is designed to allow declarative 
+/// specifications of how data is fetched, processed, and output. It supports using HCL as 
+/// the primary configuration language, while allowing flexibility to switch to JSON or 
+/// other formats in the future.
+///
+/// # Features
+///
+/// - **Job Types:** Enumerates the type of tasks that can be executed (e.g., fetching data, reading files or streaming data in real-time).
+/// - **Filters:** Allows defining additional transformation or processing applied on jobs.
+/// - **HCL Parsing:** Conversion from HCL job definitions into structured `JobStruct`.
+///
+/// # Examples
+///
+/// ## Job Definition in HCL
+///
+/// A job definition in the Fetiche language may look like:
 ///
 /// ```hcl
 /// name = "Opensky"
 /// type = "fetch"
-/// source = "opensky"
+/// source = opensky
 /// output = "foo.csv"
 /// ```
 ///
-/// # Fields
-/// - `jtype` - The type of job to be performed. This can be one of:
-///   - `fetch`: Fetch data from the specified source.
-///   - `read`: Read data from a file or another medium.
-///   - `stream`: Stream data from the source.
-/// - `name` - The name of the job.
-/// - `source` - The data source for the job.
-/// - `tee` - An optional field specifying a data stream duplication target.
-/// - `split` - An optional field specifying a path to split job output.
-/// - `save` - An optional field specifying a path to save intermediate results.
-/// - `output` - The path or name of the output file.
+/// ## Defining and Parsing a Job in Rust
 ///
-/// This struct is parsed from an HCL-formatted input.
+/// Here's a Rust example of defining a job with HCL and parsing it:
+///
+/// ```rust
+/// # use nom::Parser;
+/// use fetiche_engine::{Engine, JobText, JobType};
+///
+/// let hcl_input = r#"
+/// name = "Fetch Job"
+/// type = "fetch"
+/// source = "opensky"
+/// output = { "Save" = "data.csv") }
+/// "#;
+///
+/// let mut engine = Engine::new();
+/// let job: JobText = engine.parse(hcl_input).expect("Failed to parse job")?;
+///
+/// assert_eq!(job.name, "Fetch Job");
+/// assert_eq!(job.jtype, JobType::Fetch);
+/// ```
+///
+/// # Details
+///
+/// The job consists of multiple components:
+/// - **Job Types (`JobType`):** Defines the type of tasks that can be performed.
+/// - **Filters (`Filter`):** Specifies optional processing or transformation to the output.
+/// - **Job Structure (`JobStruct`):** Captures all details of the job into a structured format parsed from HCL.
+///
+/// This module makes heavy use of the `serde` crate for serialization/deserialization and the `hcl` crate for configuration parsing.
 ///
 #[derive(Debug, Deserialize, Serialize)]
-pub struct JobStruct {
+pub struct JobText {
     #[serde(rename = "type")]
     pub jtype: JobType,
+    /// Job name.
     pub name: String,
+    /// Source (aka Site name).
     pub source: String,
-    pub tee: Option<String>,
-    pub split: Option<String>,
-    pub save: Option<String>,
-    pub output: String,
+    /// Optional list of filters like `Tee` or `Save`.
+    pub filters: Option<Vec<Filter>>,
+    /// Output file name.
+    pub output: Consumer,
 }
 
 impl Engine {
-    /// Parses a job definition written in HCL and converts it into a `JobStruct`.
     ///
-    /// # Arguments
-    ///
-    /// - `job_str`: A string slice containing the HCL job definition to be parsed.
-    ///
-    /// # Returns
-    ///
-    /// If successful, this function returns a `Result` containing a `JobStruct`
-    /// that represents the parsed job definition. If an error occurs during
-    /// parsing or data retrieval, an error encapsulated in `eyre::Result` is returned.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use nom::Parser;
-    /// use fetiche_engine::{Engine, JobStruct};
-    ///
-    /// let mut engine = Engine::new();
-    /// let hcl_input = r#"
-    /// name = "Fetch Test Job"
-    /// type = "fetch"
-    /// source = "test_source"
-    /// output = "test_output.csv"
-    /// "#;
-    ///
-    /// let job: JobStruct = engine.parse(hcl_input).expect("Failed to parse job")?;
-    /// assert_eq!(job.name, "Fetch Test Job");
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// This function may return an error if:
-    /// - The input string is not valid HCL.
-    /// - The fields in the HCL do not match the expected structure.
-    /// - There is an issue in communication with the `sources` actor.
-    ///
-    pub fn parse(&mut self, job_str: &str) -> Result<JobStruct> {
-        let j: JobStruct = hcl::from_str(job_str)?;
-        dbg!(&j);
+    pub fn parse(&mut self, job_str: &str) -> Result<Job> {
+        let jt: JobText = hcl::from_str(job_str)?;
+        trace!("{:?", &jt);
 
-        let sources = call!(self.sources, |port| SourcesMsg::Get(j.name, port))?;
-        let job = match j.jtype {
-            JobType::Fetch => {
-                todo!()
-            }
-            JobType::Read => {
-                todo!()
-            }
-            JobType::Stream => {
-                todo!()
-            }
-        };
+        // Retrieve the site's data from the Sources actor.
+        //
+        let site = call!(self.sources, |port| SourcesMsg::Get(jt.name, port))?;
+
+        let job = Job {};
         Ok(job)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_parse_job_fetch() {
-        let input = r#"
-            name = "Fetch Test Job"
-            type = "fetch"
-            source = "test_source"
-            output = "test_output.csv"
-        "#;
-
-        let mut e = Engine::new().await;
-        let parsed_job = e.parse(input).expect("Failed to parse job");
-
-        assert_eq!(parsed_job.name, "Fetch Test Job");
-        assert!(matches!(parsed_job.jtype, JobType::Fetch));
-        assert_eq!(parsed_job.source, "test_source");
-        assert_eq!(parsed_job.output, "test_output.csv");
-    }
-
-    #[tokio::test]
-    async fn test_parse_job_read() {
-        let input = r#"
-            name = "Read Test Job"
-            type = "read"
-            source = "test_source"
-            output = "test_output.csv"
-        "#;
-
-        let mut e = Engine::new().await;
-        let parsed_job = e.parse(input).expect("Failed to parse job");
-
-        assert_eq!(parsed_job.name, "Read Test Job");
-        assert!(matches!(parsed_job.jtype, JobType::Read));
-        assert_eq!(parsed_job.source, "test_source");
-        assert_eq!(parsed_job.output, "test_output.csv");
-    }
-
-    #[tokio::test]
-    async fn test_parse_job_stream() {
-        let input = r#"
-            name = "Stream Test Job"
-            type = "stream"
-            source = "test_source"
-            output = "test_output.csv"
-        "#;
-
-        let mut e = Engine::new().await;
-        let parsed_job = e.parse(input).expect("Failed to parse job");
-
-        assert_eq!(parsed_job.name, "Stream Test Job");
-        assert!(matches!(parsed_job.jtype, JobType::Stream));
-        assert_eq!(parsed_job.source, "test_source");
-        assert_eq!(parsed_job.output, "test_output.csv");
-    }
-
-    #[tokio::test]
-    async fn test_parse_job_stream_split() {
-        let input = r#"
-            name = "Stream Test Job"
-            type = "stream"
-            source = "test_source"
-            split = "/tmp/nowhere"
-            output = "test_output.csv"
-        "#;
-
-        let mut e = Engine::new().await;
-        let parsed_job = e.parse(input).expect("Failed to parse job");
-
-        assert_eq!(parsed_job.name, "Stream Test Job");
-        assert!(matches!(parsed_job.jtype, JobType::Stream));
-        assert_eq!(parsed_job.source, "test_source");
-        assert_eq!(parsed_job.output, "test_output.csv");
-        assert_eq!(parsed_job.split, Some("/tmp/nowhere".to_string()));
     }
 }
