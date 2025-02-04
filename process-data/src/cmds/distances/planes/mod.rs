@@ -57,7 +57,7 @@ pub struct PlanesOpts {
     #[clap(short = 't', long, default_value = "1852")]
     pub threshold: u32,
     /// Factor for proximity calculations.
-    #[clap(short = 'f', long, default_value = "3.")]
+    #[clap(short = 'f', long, default_value = "3")]
     pub factor: u32,
 }
 
