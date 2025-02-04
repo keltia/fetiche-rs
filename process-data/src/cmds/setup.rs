@@ -54,36 +54,21 @@ pub struct SetupOpts {
     pub all: bool,
 }
 
-/// Adds mathematical macros to the database for geodesic distance calculations.
-///
-/// This function creates two user-defined functions (`dist_2d` and `dist_3d`) in the
-/// ClickHouse database. These functions are used to calculate the horizontal (2D)
-/// and three-dimensional (3D) distances between points, based on their geodesic locations.
+/// Adds mathematical macros to the database for distance calculations.
 ///
 /// ### Details
 ///
-/// - `dist_2d`: Calculates the horizontal geodesic distance between two points.
-/// - `dist_3d`: Calculates the three-dimensional distance using geodesic positioning
-///   (includes vertical elevation differences).
-///
-/// ### SQL Implementation
-///
-/// - `dist_2d`: Uses the `geoDistance` function to compute the geodesic distance between two points.
-/// - `dist_3d`: Combines the geodesic distance in 2D (`dist_2d`) and the vertical difference using
-///   the Pythagorean theorem (`sqrt(dx^2 + dz^2)`).
-///
-/// ### Example
-///
-/// ```rust
-/// add_macros(&dbh).await?;
-/// ```
-///
-/// This command will add the above-described macros (`dist_2d` and `dist_3d`) to the database.
+/// This function creates two user-defined functions in the ClickHouse database:
+/// - `dist_2d`: Calculates horizontal geodesic distance between two points
+/// - `dist_3d`: Calculates three-dimensional distance between two points
 ///
 /// ### Errors
 ///
-/// Returns an error if the macros cannot be created, for example, due to database connection issues
-/// or insufficient privileges.
+/// Returns an error if the macros cannot be created, for example, due to:
+/// - Database connection issues
+/// - Insufficient privileges
+/// - Invalid SQL syntax
+/// - Existing functions with the same names
 ///
 /// ### References
 ///
@@ -108,33 +93,27 @@ CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
     Ok(())
 }
 
-/// Remove the `dist_2d` and `dist_3d` user-defined functions from the database.
+/// Removes mathematical macros from the database.
+///
+/// This function drops the user-defined functions (`dist_2d` and `dist_3d`)
+/// from the ClickHouse database. These functions are used for various distance calculations.
 ///
 /// ### Details
 ///
-/// This function will execute SQL commands to drop the user-defined functions
-/// that were previously created for calculating geodesic distances:
-///
-/// - `dist_2d`: The 2D geodesic distance function.
-/// - `dist_3d`: The 3D geodesic distance function.
-///
-/// ### Usage
-///
-/// This function should be called when the macros are no longer needed or as part of cleanup procedures:
-///
-/// ```rust
-/// remove_macros(&dbh).await?;
-/// ```
+/// Removes the following functions:
+/// - `dist_2d`: Function for calculating horizontal geodesic distance
+/// - `dist_3d`: Function for calculating three-dimensional distance
 ///
 /// ### Errors
 ///
-/// Returns an error if the user-defined functions cannot be dropped, for example, due to:
-/// - Database connection issues.
-/// - Insufficient privileges.
+/// Returns an error if the macros cannot be removed, for example, due to:
+/// - Database connection issues
+/// - Insufficient privileges
+/// - Non-existent functions
 ///
 /// ### References
 ///
-/// - ClickHouse documentation for managing user-defined functions.
+/// - ClickHouse documentation for user-defined functions
 ///
 #[tracing::instrument(skip(dbh))]
 async fn remove_macros(dbh: &Client) -> Result<()> {
