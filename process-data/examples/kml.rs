@@ -4,19 +4,17 @@
 //!
 //! Additionally, it showcases how to manipulate colors using the `colorsys` crate.
 //!
-use chrono::{DateTime, Utc};
 use colorsys::{ColorAlpha, Rgb};
-use dateparser::parse;
 use eyre::Result;
-use klickhouse::Row;
+use jiff::civil::DateTime;
 use kml::types::{AltitudeMode, Coord, Geometry, LineString, Placemark};
 use kml::Kml::Document;
 use kml::{Kml, KmlDocument, KmlVersion, KmlWriter};
 use serde::Serialize;
 
-#[derive(Clone, Debug, Row, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 struct DataPoint {
-    timestamp: DateTime<Utc>,
+    timestamp: DateTime,
     latitude: f32,
     longitude: f32,
     altitude: f32,
@@ -59,25 +57,25 @@ fn from_traj_to_placemark(name: &str, points: &Vec<DataPoint>) -> Result<Kml> {
 fn main() -> Result<()> {
     let dp = vec![
         DataPoint {
-            timestamp: parse("2023-05-23 05:01:59.190000000").unwrap(),
+            timestamp: "2023-05-23 05:01:59.190000000".parse()?,
             latitude: 49.6332976408,
             longitude: 6.2299531326,
             altitude: 0.0,
         },
         DataPoint {
-            timestamp: parse("2023-05-23 05:02:00.980000000").unwrap(),
+            timestamp: "2023-05-23 05:02:00.980000000".parse()?,
             latitude: 49.6329018474,
             longitude: 6.2288953364,
             altitude: 0.0,
         },
         DataPoint {
-            timestamp: parse("2023-05-23 05:02:03.540000000").unwrap(),
+            timestamp: "2023-05-23 05:02:03.540000000".parse()?,
             latitude: 49.6322936565,
             longitude: 6.2272241525,
             altitude: 1400.0,
         },
         DataPoint {
-            timestamp: parse("2023-05-23 05:02:05.570000000").unwrap(),
+            timestamp: "2023-05-23 05:02:05.570000000".parse()?,
             latitude: 49.6317443065,
             longitude: 6.2257786095,
             altitude: 1400.0,
