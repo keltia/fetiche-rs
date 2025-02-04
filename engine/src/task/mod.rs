@@ -10,56 +10,7 @@ use strum::EnumString;
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
-pub use crate::filter::convert::*;
-pub use crate::filter::tee::*;
-pub use archive::*;
-pub use common::*;
-pub use save::*;
-pub use store::*;
-
-use crate::Engine;
-
-mod archive;
-mod common;
-mod save;
-mod store;
-
-/// The `Task` enum represents all available tasks/commands that can be used.
-/// Each variant corresponds to a specific operation or process.
-///
-/// Variants:
-///
-/// - `Archive`: Extract streaming data and generate `CSV` or `Parquet`.
-/// - `Convert`: Convert between different `Format` representations.
-/// - `Copy`: Perform a basic raw copy operation.
-/// - `Fetch`: Fetch a single dataset from a specific source.
-/// - `Message`: Display a message.
-/// - `Nothing`: Represents a no-operation (NOP) task.
-/// - `Read`: Read data from a single file.
-/// - `Save`: Save a single dataset to a specific destination.
-/// - `Store`: Organize and store datasets into a directory structure.
-/// - `Stream`: Fetch and process a continuous stream of data.
-/// - `Tee`: Copy data into a file and pass the data forward unchanged.
-///
-#[enum_dispatch]
-#[derive(Clone, Debug, strum::Display, strum::VariantNames)]
-#[strum(serialize_all = "PascalCase")]
-pub enum Task {
-    /// Extract streaming data and generate csv/parquet.
-    Archive,
-    /// Convert between `Format`
-    Convert,
-    /// Basic raw copy
-    Copy,
-    /// Display a message
-    Message,
-    /// NOP
-    Nothing,
-    /// Save a single dataset
-    Save,
-    /// Store datasets into a organised directory
-    Store,
-}
+use crate::{Consumer, Engine, Middle, Producer};
 
 /// Task I/O characteristics
 ///
@@ -78,6 +29,23 @@ pub enum IO {
     Filter,
     /// Cache (filter)
     Cache,
+}
+
+/// Task represents different types of tasks that can be performed in the data processing pipeline.
+///
+/// Each variant corresponds to a different stage in the pipeline:
+/// - Producer: Tasks that generate or source data
+/// - Middle: Tasks that transform or process data
+/// - Consumer: Tasks that consume or store the final data
+///
+#[derive(Clone, Debug)]
+pub enum Task {
+    /// Producer task that generates or sources data
+    Producer(Producer),
+    /// Middle task that transforms or processes data
+    Middle(Middle),
+    /// Consumer task that consumes or stores the final data
+    Consumer(Consumer),
 }
 
 /// For each format, we define a set of key attributes that will get displayed.
