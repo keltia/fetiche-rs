@@ -2,9 +2,8 @@
 ## Actors
 
 - supervisor        father of all, register events
-  - scheduler
-  - runner          get job from queue, and execute it
   - scheduler       manage job executions, queues, etc.
+  - runner          get job from queue, and execute it
   - sources         load sites
   - state           register state changes
   - stats           stats for jobs
