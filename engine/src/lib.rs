@@ -130,35 +130,6 @@ pub struct EngineConfig {
     pub storage: BTreeMap<String, StorageConfig>,
 }
 
-/// The `StorageConfig` enum defines different storage types supported by the engine.
-/// It allows the engine to specify and configure storage modules based on the operational
-/// requirements (e.g., in-memory caching, local filesystem storage, or Hive-based sharding).
-///
-/// # Variants
-///
-/// - `Cache`
-///     Defines an in-memory key-value store configuration, typically connected to a service
-///     like DragonflyDB or REDIS. Requires a `url` to connect.
-///
-/// - `Directory`
-///     Represents storage based on the local filesystem. Includes a `path` to the directory
-///     and a `rotation` mechanism for maintaining storage consistency or archival.
-///
-/// - `Hive`
-///     Adds support for Hive-based sharding. Designed for scalable and distributed storage.
-///     Includes a `path` for file-based Hive shards.
-///
-#[derive(Clone, Debug, Deserialize)]
-#[serde(untagged)]
-pub enum StorageConfig {
-    /// in-memory K/V store like DragonflyDB or REDIS
-    Cache { url: String },
-    /// In the local filesystem
-    Directory { path: PathBuf, rotation: String },
-    /// HIVE-based sharding
-    Hive { path: PathBuf },
-}
-
 /// The Engine struct serves as the core runtime component responsible for managing and coordinating
 /// various services and actors within the system. It handles the initialization, coordination, and
 /// lifecycle management of multiple concurrent processes and data flows.
