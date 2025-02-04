@@ -1,9 +1,8 @@
 //! Actor maintaining the different sources we have loaded.
 //!
 
-use crate::ENGINE_PG;
+use crate::{Site, Sources, ENGINE_PG};
 use eyre::eyre;
-use fetiche_sources::{init_sources_runtime, Context, Site, Sources};
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
 /// Messages handled by the `SourcesActor`.
@@ -42,16 +41,10 @@ pub enum SourcesMsg {
 ///
 pub struct SourcesActor;
 
-#[derive(Debug)]
-pub struct SourcesState {
-    src: Sources,
-    ctx: Context,
-}
-
 #[ractor::async_trait]
 impl Actor for SourcesActor {
     type Msg = SourcesMsg;
-    type State = SourcesState;
+    type State = Sources;
     type Arguments = ();
 
     ///
@@ -67,7 +60,7 @@ impl Actor for SourcesActor {
     /// - `_args`: The arguments provided when starting the actor. These are not used in this implementation.
     ///
     /// # Returns
-    /// Returns a `Result` that contains the initial actor state (`Sources`) if successful,
+    /// A `Result` that contains the initial actor state (`Sources`) if successful,
     /// or an `ActorProcessingErr` if an error occurs during initialization.
     ///
     /// # Behavior
@@ -84,11 +77,10 @@ impl Actor for SourcesActor {
         myself: ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        let ctx = init_sources_runtime().await?;
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
 
-        let src = Sources::new(ctx.clone())?;
-        Ok(SourcesState { src, ctx })
+        let src = Sources::new()?;
+        Ok(src)
     }
 
     /// Handles incoming messages sent to the `SourcesActor`.
@@ -120,7 +112,7 @@ impl Actor for SourcesActor {
     ) -> Result<(), ActorProcessingErr> {
         match message {
             SourcesMsg::Get(key, sender) => {
-                let site = match state.src.get(&key) {
+                let site = match state.get(&key) {
                     Some(site) => site.clone(),
                     None => {
                         let err = format!("Unknown site: {}", key);
@@ -131,17 +123,15 @@ impl Actor for SourcesActor {
                 sender.send(site)?;
             }
             SourcesMsg::List(sender) => {
-                let sources = state.src.clone();
+                let sources = state.clone();
                 sender.send(sources)?;
             }
             SourcesMsg::Table(sender) => {
-                let sources = state.src.clone();
-                let table = sources.list()?;
+                let table = state.list()?;
                 sender.send(table)?;
             }
             SourcesMsg::Count(sender) => {
-                let sources = state.src.clone();
-                let res = sources.len();
+                let res = state.len();
                 sender.send(res)?;
             }
         }
