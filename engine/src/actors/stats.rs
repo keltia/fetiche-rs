@@ -116,9 +116,9 @@ impl Actor for StatsActor {
             // updates
             //
             StatsMsg::Update(tag, stat) => {
-                let mut s = state.stats.get(&tag).unwrap_or_else(|| return Err(StatsError::TagNotFound(tag.clone())).into());
-                s += stat;
-                let _ = state.stats.insert(tag.clone(), s.clone());
+                let s = state.stats.get(&tag).unwrap_or_else(|| return Err(StatsError::TagNotFound(tag.clone())).into());
+                let new = s + stat;
+                let _ = state.stats.insert(tag.clone(), new.clone());
             }
             // commands
             //
