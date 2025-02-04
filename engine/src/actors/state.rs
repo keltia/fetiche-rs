@@ -121,14 +121,12 @@ impl Actor for StateActor {
     ///
     /// This function panics if it fails to write the `pid` file to disk.
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, myself))]
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
         args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        trace!("stateactor::pre_start({:?}", args);
-
         let basedir = args.clone();
         let fname = basedir.join(STATE_FILE);
 

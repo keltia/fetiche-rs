@@ -70,7 +70,7 @@ impl Actor for QueueActor {
     /// # Errors
     /// May return an `ActorProcessingErr` if the initialization process fails.
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, myself))]
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
