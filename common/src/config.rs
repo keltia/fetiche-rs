@@ -85,8 +85,7 @@ where
                 let base = base.data_local_dir();
 
                 debug!("base = {base:?}");
-                let base = base.join(Path::new(tag));
-                base
+                base.join(Path::new(tag))
             }
             None => {
                 #[cfg(unix)]
