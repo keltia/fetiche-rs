@@ -21,12 +21,14 @@
 use eyre::Result;
 use fetiche_formats::Format;
 use ractor::call;
+use ractor::rpc::call;
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use strum::EnumString;
 use tracing::trace;
 
-use crate::actors::SourcesMsg;
-use crate::{Engine, Job};
+use crate::actors::{QueueMsg, SourcesMsg};
+use crate::{Engine, Fetch, Job, JobState, Read, Stream, Task};
 
 /// Represents the type of job to be executed.
 ///
@@ -202,16 +204,45 @@ pub struct JobText {
 }
 
 impl Engine {
+    /// Our job structure is
+    /// - one producer
+    /// - zero or more filters
+    /// - one consumer
     ///
     pub fn parse(&mut self, job_str: &str) -> Result<Job> {
         let jt: JobText = hcl::from_str(job_str)?;
-        trace!("{:?", &jt);
+        trace!("{:?}", &jt);
 
         // Retrieve the site's data from the Sources actor.
         //
         let site = call!(self.sources, |port| SourcesMsg::Get(jt.name, port))?;
+        let producer = match jt.jtype {
+            JobType::Fetch => {
+                Task::from(Fetch::new(&jt.name).site(site))
+            }
+            JobType::Stream => {
+                Task::from(Stream::new(&jt.name).site(site))
+            }
+            JobType::Read => {
+                Task::from(Read::new(&jt.name).path(&site.name))
+            }
+        };
+        let mut list = VecDeque::from([producer]);
+        if let Some(filters) = &jt.filters {
+            filters.iter().for_each(|t| list.push_back(Task::from(t)))
+        }
+        list.push_back(Task::from(jt.output));
 
-        let job = Job {};
+        let id = call!(self.queue, |port| QueueMsg::Allocate(port))?;
+
+        // Job is now Ready as it is complete with task list.
+        //
+        let job = Job {
+            id,
+            name: jt.name.clone(),
+            state: JobState::Ready,
+            list,
+        };
         Ok(job)
     }
 }
