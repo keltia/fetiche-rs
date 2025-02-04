@@ -125,12 +125,12 @@ impl Actor for QueueActor {
             }
             QueueMsg::Add(job) => {
                 let mut queued = job.clone();
-                if job.state != JobState::Ready {
+                if job.state() != JobState::Ready {
                     return Err(QueueStatus::JobNotReady(job.id).into());
                 }
 
-                queued.state = JobState::Queued;
-                state.q.push_back(job);
+                queued.set(JobState::Queued);
+                state.q.push_back(queued);
             }
             QueueMsg::GetById(id, sender) => {
                 let job = match state.q.get(id) {
@@ -148,11 +148,11 @@ impl Actor for QueueActor {
                     Some(job) => job,
                     None => return Err(QueueStatus::EmptyQueue.into()),
                 };
-                if job.state != JobState::Queued {
+                if job.state() != JobState::Queued {
                     return Err(QueueStatus::JobInWrongState(job.id).into());
                 }
 
-                job.state = JobState::Running;
+                job.set(JobState::Running);
                 sender.send(job)?;
             }
             QueueMsg::RemoveById(id) => {
