@@ -88,7 +88,7 @@ impl Message {
     #[tracing::instrument]
     pub fn new(s: &str) -> Self {
         Message {
-            io: IO::Producer,
+            io: IO::Filter,
             msg: s.to_owned(),
         }
     }
