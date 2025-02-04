@@ -16,7 +16,7 @@ pub fn runnable(input: TokenStream) -> TokenStream {
     let klass = klass.ident;
     let outer = quote!(
         impl Runnable for #klass {
-            #[::tracing::instrument(skip(self, input))]
+            #[::tracing::instrument(skip(self))]
             fn cap(&self) -> IO {
                 self.io.clone()
             }
