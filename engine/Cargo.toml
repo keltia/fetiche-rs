@@ -63,7 +63,7 @@ tracing-subscriber.workspace = true
 base64_light = "0.1"
 derive_builder = "0.20"
 enum_dispatch = "0.3"
-humantime = "2.1"
+humantime = "2.2"
 indicatif = "0.17"
 lapin = { version = "2.5", features = ["serde_json"] }
 mini-moka = "0.10"
