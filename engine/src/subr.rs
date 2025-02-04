@@ -14,7 +14,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 
 use crate::actors::{SourcesMsg, StateMsg};
-use crate::{version, Engine, Storage, ENGINE_CONFIG, STATE_FILE};
+use crate::{version, Engine, Sources, Storage, ENGINE_CONFIG, STATE_FILE};
 
 impl Engine {
     /// Returns the path of the default state file in basedir
@@ -36,7 +36,7 @@ impl Engine {
 
     /// Return a copy of the Engine sources
     ///
-    pub fn sources(&self) -> Result<Sources> {
+    pub async fn sources(&self) -> Result<Sources> {
         let src = call!(self.sources, |port| SourcesMsg::List(port))?;
         Ok(src)
     }
@@ -55,7 +55,7 @@ impl Engine {
 
     /// Return a description of all supported sources
     ///
-    pub fn list_sources(&self) -> Result<String> {
+    pub async fn list_sources(&self) -> Result<String> {
         let src = call!(self.sources, |port| SourcesMsg::Table(port))?;
         Ok(src)
     }
