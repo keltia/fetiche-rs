@@ -37,7 +37,7 @@ impl Engine {
 
     /// Return a copy of the Engine sources
     ///
-    pub async fn sources(&self) -> Result<Sources> {
+    pub fn sources(&self) -> Result<Sources> {
         let src = call!(self.sources, |port| SourcesMsg::List(port))?;
         Ok(src)
     }
@@ -56,7 +56,7 @@ impl Engine {
 
     /// Return a description of all supported sources
     ///
-    pub async fn list_sources(&self) -> Result<String> {
+    pub fn list_sources(&self) -> Result<String> {
         let src = call!(self.sources, |port| SourcesMsg::Table(port))?;
         Ok(src)
     }
