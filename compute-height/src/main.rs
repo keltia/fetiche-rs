@@ -1,36 +1,36 @@
-//! # Geoid Height Calculator
 //!
-//! This program computes the geoid height for a given latitude and longitude
-//! using the EGM2008 model. It leverages the `egm2008` crate to perform the
-//! calculations. The program can be used via the command-line interface (CLI).
+//! A command-line utility to compute geoid height for a given latitude and longitude using EGM2008.
 //!
-//! ## Features
+//! This program calculates the geoid height, which represents the deviation of the Earth's surface
+//! from an ellipsoidal reference due to variations in gravitational forces, based on the EGM2008 model.
 //!
-//! - Computes geoid height for a specified location.
-//! - Provides optional verbose mode, displaying detailed program information.
+//! # Overview
 //!
-//! ## Usage
+//! The program reads coordinates (latitude and longitude in degrees) from the standard input,
+//! computes the corresponding geoid height, and outputs the result. It supports an optional
+//! verbose mode that provides additional details about the computation, including program metadata.
 //!
-//! Ensure you have the required dependencies installed (`clap`, `egm2008`, etc.).
+//! # Examples
 //!
-//! ### Example Usage
+//! Compute the geoid height for a given latitude and longitude (e.g., `52.5163 13.3777`):
 //!
 //! ```bash
-//! # Basic usage
-//! compute-height 40.7128 -74.0060
-//!
-//! # Verbose output
-//! compute-height -v 40.7128 -74.0060
+//! $ echo "52.5163 13.3777" | compute-height
+//! 37.2
 //! ```
 //!
-//! The output will be the geoid height in meters for the specified coordinates.
+//! Enable verbose mode to get additional details:
 //!
-//! ## Notes
+//! ```bash
+//! $ echo "52.5163 13.3777" | compute-height -v
+//! compute-height v0.1.0 - <CARGO_PKG_AUTHORS>
+//! <CARGO_PKG_DESCRIPTION>
 //!
-//! - Latitude should be between -90 and 90 degrees.
-//! - Longitude should be between -180 and 180 degrees.
-//! - Verbose mode (`--verbose` or `-v`) outputs program metadata (such as name, version, authors).
+//! Variation aka geoid height at 52.5163,13.3777 = 37.2 m
+//! ```
 //!
+//! The program will exit with an error if invalid input is provided or the geoid height cannot
+//! be computed for the given coordinates.
 
 use clap::Parser;
 use egm2008::geoid_height;
