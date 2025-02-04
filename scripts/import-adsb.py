@@ -13,6 +13,7 @@ XXX You must have `bdt(1)` and `qsv(1)` somewhere in the `PATH`
 """
 
 import argparse
+import csv
 import logging
 import os
 import re
@@ -24,34 +25,6 @@ from pathlib import Path
 from subprocess import run
 from typing import Any
 
-# Does the mapping between the site basename and its ID.  Not worth using SQL for that.
-#
-sites = {
-    'Bretigny': 1,
-    'Luxembourg': 3,
-    'Brussels': 4,
-    'Belfast': 5,
-    'Bordeaux': 6,
-    'Gatwick': 7,
-    'London': 7,
-    'Larnaca': 8,
-    'Bucharest': 9,
-    'Bucharest1': 9,
-    'Vienna': 10,
-    'Vienna2': 10,
-    'Zurich': 11,
-    'Cyprus': 12,
-    'Sarajevo': 13,
-    'Sarajevo1': 13,
-    'Sarajevo2': 13,
-    'Podgorica': 14,
-    'Sofia': 15,
-    'Sofia1': 15,
-    'Sofia2': 15,
-    'Benidorm': 16,
-    'Vilnius': 17,
-}
-
 # CONFIG CHANGE HERE or use -D
 #
 datalake = "/acute"
@@ -62,6 +35,33 @@ delete = False
 clickhouse = 'clickhouse-client'
 if sys.platform.startswith('darwin'):
     clickhouse = 'clickhouse client'
+
+
+# Import sites.csv
+#
+def load_sites(path):
+    """
+    Load sites data from CSV file.
+
+    :param path: Base directory path containing sites.csv
+    :return: Dict of sites data
+    """
+    sites_path = Path(path) / "sites.csv"
+    if not sites_path.exists():
+        logging.error(f"Sites file {sites_path} not found")
+        return {}
+
+    try:
+        with open(sites_path) as f:
+            reader = csv.DictReader(f)
+            sites_data = {}
+            for row in reader:
+                sites_data[row['basename']] = int(row['id'])
+            return sites_data
+    except Exception as e:
+        logging.error(f"Error loading sites.csv: {e}")
+        return {}
+
 
 # Import DB data from env.
 #
@@ -221,17 +221,33 @@ def import_one_chunk(dir_path, fname):
 
 def find_site(fname):
     """
-    Return the site shortname deducted from the filename.
+    Return the site ID deducted from the filename.
 
     :param fname: full pathname.
     :return: short name.
     """
     name = Path(fname).name
-    fc = re.search(r'^(?P<site>.*?)_(?P<year>\d+)-(?P<month>\d+)-(\d+).', name)
+    fc = re.search(r'^(?P<site>.*?)([0-9]*)_(?P<year>\d+)-(?P<month>\d+)-(\d+).', name)
     if fc is None:
         return fc
     site: str | Any = fc.group('site')
     return sites[site]
+
+
+def test_find_site():
+    """Test find_site function"""
+    # Test valid site name
+    assert find_site("Bretigny_2023-12-01.parquet") == 1
+    assert find_site("Luxembourg_2023-12-01.csv") == 3
+
+    # Test invalid filename format
+    assert find_site("invalid_filename.txt") is None
+
+    # Test unknown site
+    assert find_site("Unknown_2023-12-01.parquet") is None
+
+    # Test with numbered site variant
+    assert find_site("Vienna2_2023-12-01.parquet") == 10
 
 
 parser = argparse.ArgumentParser(
@@ -254,6 +270,9 @@ importdir = f"{datalake}/import"
 datadir = f"{datalake}/data/adsb"
 bindir = f"{datalake}/bin"
 logdir = f"{datalake}/var/log"
+filesdir = f"{datalake}/files"
+
+sites = load_sites(filesdir)
 
 date = datetime.now().strftime('%Y%m%d')
 logfile = f"{logdir}/import-adsb-{date}.log"
