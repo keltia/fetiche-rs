@@ -8,6 +8,7 @@ pub use container::*;
 pub use dateopts::*;
 pub use daterange::*;
 use eyre::Result;
+use jiff::{RoundMode, Unit, ZonedRound};
 pub use location::*;
 pub use logging::*;
 
@@ -78,7 +79,35 @@ pub trait IntoConfig: Versioned {
 
 // -----
 
-/// This takes any given date and return the beginning of this day as a `DateTime<Utc>`
+/// Normalises a given `DateTime<Utc>` instance to the beginning of the same day (00:00:00 UTC).
+///
+/// # Arguments
+///
+/// * `date` - A `DateTime<Utc>` instance representing the input date and time.
+///
+/// # Returns
+///
+/// This function returns a `Result` containing a `DateTime<Utc>` instance set to the start of the day
+/// corresponding to the input date. If an error occurs during the normalisation process, an `Err` is returned.
+///
+/// # Examples
+///
+/// ```rust
+/// use chrono::{Utc, TimeZone};
+/// use fetiche_common::normalise_day;
+///
+/// let date = Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap();
+/// let result = normalise_day(date);
+///
+/// assert!(result.is_ok());
+/// let normalised_date = result.unwrap();
+/// assert_eq!(normalised_date, Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap());
+/// ```
+///
+/// # Errors
+///
+/// This function will return an `Err` if any error occurs while constructing the `DateTime<Utc>` object,
+/// such as invalid date or time values.
 ///
 #[inline]
 #[tracing::instrument]
