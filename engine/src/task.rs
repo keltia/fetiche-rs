@@ -23,10 +23,10 @@ pub enum IO {
     Consumer,
     /// Producer (discard input)
     Producer,
-    /// Both (filter)
+    /// Both (middle)
     #[default]
     Filter,
-    /// Cache (filter)
+    /// Cache (middle)
     Cache,
 }
 
@@ -53,6 +53,7 @@ pub enum Task {
 /// See the `fetiche-macros` crate for a proc-macro that implement the `run()`  wrapper for
 /// the `Runnable` trait.
 ///
+#[allow(async_fn_in_trait)]
 #[enum_dispatch(Task)]
 pub trait Runnable: Debug {
     fn cap(&self) -> IO;
