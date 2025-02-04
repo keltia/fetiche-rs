@@ -17,7 +17,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{EngineStatus, Runnable, IO};
+use crate::{Runnable, IO};
 
 /// The Save task
 ///

@@ -30,7 +30,7 @@ use strum::EnumString;
 use tracing::trace;
 
 use crate::actors::{QueueMsg, SourcesMsg};
-use crate::{Consumer, Engine, Fetch, Job, JobState, Producer, Read, Save, Store, Stream};
+use crate::{Consumer, Convert, Copy, Engine, Fetch, Job, JobState, Middle, Producer, Read, Save, Store, Stream, Tee};
 
 /// Represents the type of job to be executed.
 ///

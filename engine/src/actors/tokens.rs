@@ -4,7 +4,6 @@
 use std::path::Path;
 
 use crate::{TokenStorage, ENGINE_PG};
-use eyre::eyre;
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 use tracing::{info, trace};
 

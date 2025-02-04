@@ -11,9 +11,8 @@ use tracing::trace;
 
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
-use fetiche_sources::Filter;
 
-use crate::{EngineStatus, IO};
+use crate::{AuthError, EngineStatus, Runnable, IO};
 
 /// The Read task
 ///

@@ -1,17 +1,14 @@
 //! `Fetch` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
-use std::sync::Arc;
 use std::sync::mpsc::Sender;
 
 use eyre::Result;
-use nom::combinator::value;
 use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
-use fetiche_sources::{AuthError, Capability, Filter, Site, Sources};
 
-use crate::{EngineStatus, IO};
+use crate::{AuthError, Capability, EngineStatus, Filter, Runnable, Site, Sources, IO};
 
 /// The Fetch task
 ///

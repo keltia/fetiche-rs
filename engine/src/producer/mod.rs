@@ -1,8 +1,13 @@
-use strum::EnumString;
-
 pub use fetch::*;
+use fetiche_macros::RunnableDerive;
 pub use read::*;
+use std::sync::mpsc::Receiver;
+use std::thread::JoinHandle;
 pub use stream::*;
+use strum::EnumString;
+use tracing::error;
+
+use crate::{Runnable, Site, Task, IO};
 
 mod fetch;
 mod read;
@@ -13,7 +18,7 @@ mod stream;
 ///
 /// Each variant corresponds to a specific data sourcing strategy:
 ///
-#[derive(Debug, EnumString, PartialEq, strum::VariantNames)]
+#[derive(Clone, Debug, Default, EnumString, PartialEq, strum::VariantNames)]
 pub enum Producer {
     /// Producer that fetches data from remote sources
     Fetch,

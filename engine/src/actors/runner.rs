@@ -11,8 +11,8 @@
 //! - `RunnerArgs`: Configuration and dependencies required by the Runner actor
 //!
 
-use ractor::factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId, WorkerMessage, WorkerStartContext};
-use ractor::{call, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use ractor::factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId};
+use ractor::{call, ActorProcessingErr, ActorRef, RpcReplyPort};
 use tracing::trace;
 
 use crate::actors::{QueueMsg, StatsMsg};

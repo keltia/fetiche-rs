@@ -2,16 +2,15 @@
 //!
 
 use std::fmt::{Debug, Formatter};
-use std::sync::Arc;
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 
 use eyre::Result;
 use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
-use fetiche_sources::{Capability, Filter, Flow, Site, Sources};
 
-use crate::{EngineStatus, IO};
+use crate::{AuthError, Capability, EngineStatus, Filter, Flow, Runnable, Site, IO};
 
 /// The Stream task
 ///

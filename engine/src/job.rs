@@ -5,14 +5,15 @@
 //! supposed to be collecting data (like `fetch` or `stream`) and send it along
 //! the pipe for processing.
 //!
+use eyre::Result;
 use std::collections::VecDeque;
 use std::io::Write;
 use std::sync::mpsc::channel;
 
-use crate::{EngineStatus, Runnable, Task, IO};
-use eyre::Result;
-use fetiche_sources::Site;
+use std::vec;
 use tracing::{info, span, trace, Level};
+
+use crate::{Consumer, Middle, Producer, Runnable, Task, IO};
 
 /// A `Job` represents a pipeline of tasks to be executed sequentially.
 ///
