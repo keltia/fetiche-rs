@@ -7,9 +7,6 @@ use chrono::Utc;
 use clap::{crate_name, crate_version};
 use mini_moka::sync::Cache;
 use reqwest::StatusCode;
-use signal_hook::consts::TERM_SIGNALS;
-use signal_hook::flag;
-use tokio::sync::mpsc::{channel, Sender};
 use tracing::{debug, error, info, trace};
 
 use crate::{AuthError, Filter, Stats, Streamable};
@@ -110,16 +107,6 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         // self.duration is 0 -> infinite
         // self.duration is N -> run for N secs
         //
-        let term = Arc::new(AtomicBool::new(false));
-
-        // Setup signals
-        //
-        // NOTE: SIGINT must be issued twice to immediately stop, not sure is it needed.
-        //
-        for sig in TERM_SIGNALS {
-            flag::register_conditional_shutdown(*sig, 1, Arc::clone(&term))?;
-            flag::register(*sig, Arc::clone(&term))?;
-        }
 
         // out as a `dyn Write` is not `Send` so we can not use it within a thread.  Use channels
         // to work around this.

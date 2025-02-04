@@ -22,8 +22,6 @@ use ractor::{call, pg, Actor, ActorRef};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use signal_hook::consts::TERM_SIGNALS;
-use signal_hook::flag;
 use tracing::{error, info, trace, warn};
 
 use crate::actors::{StatsMsg, Supervisor};
@@ -146,17 +144,6 @@ Duration {}s
         // Infinite loop until we get cancelled or timeout expire
         // self.duration is 0 -> infinite
         // self.duration is N -> run for N secs
-        //
-        let term = Arc::new(AtomicBool::new(false));
-
-        // Setup signals
-        //
-        // NOTE: SIGINT must be issued twice to immediately stop, not sure is it needed.
-        //
-        for sig in TERM_SIGNALS {
-            flag::register_conditional_shutdown(*sig, 1, Arc::clone(&term))?;
-            flag::register(*sig, Arc::clone(&term))?;
-        }
 
         // We have a generic supervisor actor.
         //
