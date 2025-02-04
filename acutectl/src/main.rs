@@ -94,6 +94,7 @@ async fn main() -> Result<()> {
         trace!("Ctrl-C pressed");
         e.shutdown();
         close_logging();
+        std::process::exit(1);
     });
 
     let subcmd = opts.subcmd;
