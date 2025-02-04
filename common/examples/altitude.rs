@@ -25,8 +25,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let list: Locations = hcl::from_str(file_str)?;
     list.location.iter().for_each(|(n, l)| {
-        let real_h = geoid_height(l.lat as f32, l.lon as f32).unwrap();
-        println!("{}: stored altitude={:3} EGM2008={}", n, l.alt, real_h);
+        let diff_h = geoid_height(l.lat as f32, l.lon as f32).unwrap();
+        println!("{}: stored altitude={:3} EGM2008={:.5} goemetric altitude={:.5}", n, l.alt, diff_h, l.alt as f32 + diff_h);
     });
 
     Ok(())
