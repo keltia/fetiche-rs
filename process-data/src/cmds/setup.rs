@@ -183,12 +183,6 @@ async fn remove_macros(dbh: &Client) -> Result<()> {
 /// - `distance_vert_m`: Vertical distance in meters between the drone and airplane.
 /// - `distance_home_m`: Distance in meters between the drone and its home location.
 ///
-/// ### Example
-///
-/// ```rust
-/// add_encounters_table(&dbh).await?;
-/// ```
-///
 /// This command creates the `acute.airplane_prox` table in the database to store the
 /// described data points for encounters.
 ///
