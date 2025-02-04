@@ -16,7 +16,7 @@ use crate::{AuthError, EngineStatus, Runnable, IO};
 
 /// The Read task
 ///
-#[derive(Clone, Debug, RunnableDerive)]
+#[derive(Clone, Debug, PartialEq, RunnableDerive)]
 pub struct Read {
     /// I/O capabilities
     io: IO,
@@ -50,14 +50,6 @@ impl Read {
     pub fn path(&mut self, name: &str) -> &mut Self {
         trace!("Add path: {}", name);
         self.path = Some(PathBuf::from(name));
-        self
-    }
-
-    /// Add a date filter if specified
-    ///
-    pub fn with(&mut self, f: Filter) -> &mut Self {
-        trace!("Add filter {}", f);
-        self.args = f.to_string();
         self
     }
 
