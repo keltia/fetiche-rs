@@ -30,25 +30,29 @@ pub fn expand_interval_jiff(begin: DateTime, end: DateTime) -> eyre::Result<Vec<
 }
 
 fn test_jiff(c: &mut Criterion) {
+    let mut r = vec![];
     let begin = "2024-01-01".parse().unwrap();
     let end = "2024-12-31".parse().unwrap();
 
     c.bench_function("jiff", |b| {
         b.iter(|| {
-            let _ = black_box(expand_interval_jiff(begin, end).unwrap());
+            r = black_box(expand_interval_jiff(begin, end).unwrap());
         })
     });
+    eprintln!("vec(jiff) = {}", r.len())
 }
 
 fn test_chrono(c: &mut Criterion) {
+    let mut r = vec![];
     let begin = dateparser::parse("2024-01-01").unwrap();
     let end = dateparser::parse("2024-12-31").unwrap();
 
     c.bench_function("chrono+dateparser", |b| {
         b.iter(|| {
-            let _ = black_box(expand_interval(begin, end).unwrap());
+            r = black_box(expand_interval(begin, end).unwrap());
         })
     });
+    eprintln!("vec(chrono) = {}", r.len())
 }
 
 criterion_group!(benches, test_chrono, test_jiff);
