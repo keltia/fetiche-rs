@@ -9,7 +9,6 @@ use std::env;
 use clap::Parser;
 use eyre::Result;
 use klickhouse::Client;
-use tracing::info;
 
 use crate::runtime::Context;
 
@@ -154,6 +153,8 @@ DROP FUNCTION IF EXISTS dist_3d;
     Ok(())
 }
 
+// -----
+
 /// Create the `encounters` table to store short air-prox points
 ///
 /// ### Details
@@ -204,8 +205,6 @@ DROP FUNCTION IF EXISTS dist_3d;
 /// - ClickHouse documentation for managing tables.
 #[tracing::instrument(skip(dbh))]
 async fn add_encounters_table(dbh: &Client) -> Result<()> {
-    info!("Adding airplane_prox table.");
-
     let sq = r##"
 CREATE
 OR REPLACE TABLE acute.airplane_prox (
@@ -241,8 +240,6 @@ OR REPLACE TABLE acute.airplane_prox (
 ///
 #[tracing::instrument(skip(dbh))]
 async fn drop_encounters_table(dbh: &Client) -> Result<()> {
-    info!("Removing encounters table.");
-
     let sq = r##"
 DROP TABLE IF EXISTS acute.airplane_prox;
     "##;
@@ -250,12 +247,67 @@ DROP TABLE IF EXISTS acute.airplane_prox;
     Ok(dbh.execute(sq).await?)
 }
 
-/// Create the two main raw tables
+// -----
+
+#[tracing::instrument(skip(dbh))]
+async fn add_pbi_encounters_view(dbh: &Client) -> Result<()> {
+    let sq = r##"
+CREATE
+OR REPLACE VIEW acute.pbi_encounters
+AS (
+SELECT
+  site,
+  (SELECT name FROM acute.sites WHERE sites.id = site) AS sitename,
+  en_id,
+  installation_id,
+  time,
+  date,
+  time_utc,
+  time_local,
+  journey,
+  drone_id,
+  model,
+  drone_lat,
+  drone_lon,
+  drone_alt_m,
+  drone_height_m,
+  prox_callsign,
+  prox_id,
+  prox_lat,
+  prox_lon,
+  prox_alt_m,
+  prox_mode_a,
+  distance_slant_m,
+  distance_hor_m,
+  distance_vert_m,
+  distance_home_m
+)
+    ENGINE = ReplacingMergeTree PRIMARY KEY (time, journey)
+    COMMENT 'Store all plane-drone pbi_encounters with less then 1nm distance.';
+    "##;
+
+    Ok(dbh.execute(sq).await?)
+}
+
+/// Drop the `pbi_encounters` table to store short air-prox points
 ///
 #[tracing::instrument(skip(dbh))]
-async fn create_views(dbh: &Client) -> Result<()> {
-    info!("Creating the airplanes, drones and proximy views.");
+async fn drop_pbi_encounters_view(dbh: &Client) -> Result<()> {
+    let sq = r##"
+DROP VIEW IF EXISTS acute.pbi_encounters;
+    "##;
 
+    Ok(dbh.execute(sq).await?)
+}
+
+// -----
+
+/// Create airplanes view
+///
+#[tracing::instrument(skip(dbh))]
+async fn add_airplanes_view(dbh: &Client) -> Result<()> {
+    // Calculations view
+    //
     let r1 = r##"
 CREATE
 OR REPLACE VIEW acute.airplanes
@@ -288,6 +340,26 @@ AS
     COMMENT 'View for airplanes data.'
 "##;
 
+    Ok(dbh.execute(r1).await?)
+}
+
+/// Drop airplanes view
+///
+#[tracing::instrument(skip(dbh))]
+async fn drop_airplanes_view(dbh: &Client) -> Result<()> {
+    let rm1 = r##"
+DROP VIEW IF EXISTS acute.airplanes;
+    "##;
+
+    Ok(dbh.execute(rm1).await?)
+}
+
+// -----
+
+/// Create drones view
+///
+#[tracing::instrument(skip(dbh))]
+async fn add_drones_view(dbh: &Client) -> Result<()> {
     let r2 = r##"
 CREATE MATERIALIZED VIEW acute.drones
     ENGINE = ReplacingMergeTree
@@ -321,8 +393,23 @@ AS
     COMMENT 'View for drones data with distances.'
 "##;
 
-    // PBI-specific view
-    //
+    Ok(dbh.execute(r2).await?)
+}
+
+#[tracing::instrument(skip(dbh))]
+async fn drop_drones_view(dbh: &Client) -> Result<()> {
+    let rm2 = r##"
+DROP VIEW IF EXISTS acute.drones;
+    "##;
+
+    Ok(dbh.execute(rm2).await?)
+}
+// -----
+
+/// Create PBI-specific drones view
+///
+#[tracing::instrument(skip(dbh))]
+async fn add_pbi_drones_view(dbh: &Client) -> Result<()> {
     let r2b = r##"
 CREATE MATERIALIZED VIEW acute.pbi_drones
 ENGINE = ReplacingMergeTree
@@ -356,9 +443,24 @@ AS (SELECT
 FROM acute.drones_raw AS dr, acute.pbi_deployments AS d
 WHERE dr.station_name = d.antenna_name)
 COMMENT 'PBI View for drones data with distances.'
-    "##;
+"##;
 
-    // Calculations view
+    Ok(dbh.execute(r2b).await?)
+}
+
+#[tracing::instrument(skip(dbh))]
+async fn drop_pbi_drones_view(dbh: &Client) -> Result<()> {
+    let rm2b = r##"
+DROP VIEW IF EXISTS acute.pbi_drones;
+    "##;
+    Ok(dbh.execute(rm2b).await?)
+}
+
+// -----
+
+#[tracing::instrument(skip(dbh))]
+async fn add_deployments_view(dbh: &Client) -> Result<()> {
+    // Deployments tracking view
     //
     let r3 = r##"
  CREATE VIEW acute.deployments
@@ -375,6 +477,22 @@ COMMENT 'PBI View for drones data with distances.'
  COMMENT 'Find the site for each drone points.'
     "##;
 
+    Ok(dbh.execute(r3).await?)
+}
+
+#[tracing::instrument(skip(dbh))]
+async fn drop_deployments_view(dbh: &Client) -> Result<()> {
+    let rm3 = r##"
+DROP VIEW IF EXISTS acute.deployments;
+    "##;
+
+    Ok(dbh.execute(rm3).await?)
+}
+
+// -----
+
+#[tracing::instrument(skip(dbh))]
+async fn add_pbi_deployments_view(dbh: &Client) -> Result<()> {
     // PBI-specific view
     //
     let r3b = r##"
@@ -392,10 +510,25 @@ COMMENT 'PBI View for drones data with distances.'
  COMMENT 'Find the site for each drone points for PBI.'
     "##;
 
+    Ok(dbh.execute(r3b).await?)
+}
+
+#[tracing::instrument(skip(dbh))]
+async fn drop_pbi_deployments_view(dbh: &Client) -> Result<()> {
+    let rm4 = r##"
+DROP VIEW IF EXISTS acute.pbi_deployments
+    "##;
+
+    Ok(dbh.execute(rm4).await?)
+}
+
+// -----
+
+#[tracing::instrument(skip(dbh))]
+async fn add_airprox_summary_view(dbh: &Client) -> Result<()> {
     let r4 = r##"
 CREATE OR REPLACE VIEW airprox_summary AS
-(
-    SELECT
+(SELECT
         en_id,
         journey,
         drone_id,
@@ -403,51 +536,51 @@ CREATE OR REPLACE VIEW airprox_summary AS
     FROM
         airplane_prox
     GROUP BY
-        en_id,journey,drone_id
-    ORDER BY journey
-  )
+        en_id, journey, drone_id
+    ORDER BY journey)
     COMMENT 'List all encounters ID with the minimum distance.'
     "##;
 
-    dbh.execute(r1).await?;
-    dbh.execute(r3).await?;
-    dbh.execute(r3b).await?;
-    dbh.execute(r2).await?;
-    dbh.execute(r4).await?;
-    Ok(())
+    Ok(dbh.execute(r4).await?)
 }
 
-/// Remove both views
-///
 #[tracing::instrument(skip(dbh))]
-async fn drop_views(dbh: &Client) -> Result<()> {
-    info!("Dropping all views.");
-
-    let rm1 = r##"
-DROP VIEW IF EXISTS acute.airplanes;
-    "##;
-
-    let rm2 = r##"
-DROP VIEW IF EXISTS acute.drones;
-    "##;
-
-    let rm3 = r##"
-DROP VIEW IF EXISTS acute.deployments;
-    "##;
-
-    let rm3b = r##"
-DROP VIEW IF EXISTS acute.pbi_deployments;
-    "##;
-
+async fn drop_airprox_summary_view(dbh: &Client) -> Result<()> {
     let rm4 = r##"
 DROP VIEW IF EXISTS acute.airprox_summary
     "##;
 
-    dbh.execute(rm4).await?;
-    dbh.execute(rm2).await?;
-    dbh.execute(rm3b).await?;
-    dbh.execute(rm3).await?;
-    dbh.execute(rm1).await?;
+    Ok(dbh.execute(rm4).await?)
+}
+
+// -----
+
+/// Create various views
+///
+#[tracing::instrument(skip(dbh))]
+async fn create_views(dbh: &Client) -> Result<()> {
+    add_airplanes_view(dbh).await?;
+    add_deployments_view(dbh).await?;
+    add_pbi_deployments_view(dbh).await?;
+    add_drones_view(dbh).await?;
+    add_pbi_drones_view(dbh).await?;
+    add_airprox_summary_view(dbh).await?;
+    add_pbi_encounters_view(dbh).await?;
+
+    Ok(())
+}
+
+/// Drop all views
+///
+#[tracing::instrument(skip(dbh))]
+async fn drop_views(dbh: &Client) -> Result<()> {
+    drop_pbi_encounters_view(dbh).await?;
+    drop_airprox_summary_view(dbh).await?;
+    drop_pbi_drones_view(dbh).await?;
+    drop_pbi_deployments_view(dbh).await?;
+    drop_drones_view(dbh).await?;
+    drop_deployments_view(dbh).await?;
+    drop_airplanes_view(dbh).await?;
     Ok(())
 }
 
