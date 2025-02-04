@@ -15,37 +15,34 @@ use tokio::sync::mpsc::Sender;
 
 use fetiche_formats::Format;
 
+pub use crate::stats::*;
+
 // Re-export these modules for a shorted import path.
 //
 pub use access::*;
 pub use auth::*;
 pub use capability::*;
+pub use config::*;
 pub use error::*;
 pub use filter::*;
 pub use route::*;
 pub use site::*;
-pub use sources::*;
-pub use stats::*;
 
 mod access;
 mod auth;
 mod capability;
+mod config;
 mod error;
 mod filter;
 mod route;
 mod site;
-mod sources;
-mod stats;
 
 #[macro_use]
 mod macros;
 
-/// This is the enum used to do static dispatch (as opposed to the dynamic one of `Flow`).
-///
 #[enum_dispatch]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum FetchableSource {
-    #[cfg(feature = "asd")]
     Asd,
     #[cfg(feature = "aeroscope")]
     Aeroscope,
@@ -58,15 +55,18 @@ impl From<Site> for FetchableSource {
         match value.format.as_str() {
             #[cfg(feature = "asd")]
             "asd" => {
-                Asd::new().load(&value).clone().source()
+                let s = Asd::new().load(&value).clone();
+                FetchableSource::from(s)
             }
             #[cfg(feature = "aeroscope")]
             "aeroscope" => {
-                Aeroscope::new().load(&value).clone().source()
+                let s = Aeroscope::new().load(&value).clone();
+                FetchableSource::from(s)
             }
             #[cfg(feature = "safesky")]
             "safesky" => {
-                Safesky::new().load(&value).clone().source()
+                let s = Safesky::new().load(&value).clone();
+                FetchableSource::from(s)
             }
             _ => unimplemented!(),
         }
@@ -93,23 +93,28 @@ impl From<Site> for StreamableSource {
         match value.format.as_str() {
             #[cfg(feature = "avionix")]
             "avionixcube" => {
-                Cube::new().load(&value).clone().source()
+                let s = Cube::new().load(&value).clone();
+                StreamableSource::from(s)
             }
             #[cfg(feature = "avionix")]
             "avionixserver" => {
-                AvionixServer::new().load(&value).clone().source()
+                let s = AvionixServer::new().load(&value).clone();
+                StreamableSource::from(s)
             }
             #[cfg(feature = "flightaware")]
             "flightaware" => {
-                Flightaware::new().load(&value).clone().source()
+                let s = Flightaware::new().load(&value).clone();
+                StreamableSource::from(s)
             }
             #[cfg(feature = "senhive")]
             "senhive" => {
-                Senhive::new().load(&value).clone().source()
+                let s = Senhive::new().load(&value).clone();
+                StreamableSource::from(s)
             }
             #[cfg(feature = "opensky")]
             "opensky" => {
-                Opensky::new().load(&value).clone().source()
+                let s = Opensky::new().load(&value).clone();
+                StreamableSource::from(s)
             }
             _ => unimplemented!(),
         }
