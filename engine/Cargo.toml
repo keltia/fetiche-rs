@@ -19,7 +19,6 @@ flightaware = []
 opensky = []
 safesky = []
 senhive = []
-datafusion = ["dep:datafusion"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -53,7 +52,6 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
-datafusion = { version = "43", features = ["zstd", "async-compression", "serde"], optional = true }
 enum_dispatch = "0.3"
 
 [dev-dependencies]
