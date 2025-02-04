@@ -48,11 +48,13 @@ pub fn init_logging(
         Some(
             HierarchicalLayer::new(2)
                 .with_ansi(true)
-                .with_span_retrace(true)
+                //.with_span_retrace(true)
                 .with_span_modes(true)
+                .with_deferred_spans(true)
                 .with_targets(true)
-                .with_verbose_entry(true)
-                .with_verbose_exit(true)
+                .with_thread_names(true)
+                .with_verbose_entry(false)
+                .with_verbose_exit(false)
                 .with_bracketed_fields(true),
         )
     } else {
