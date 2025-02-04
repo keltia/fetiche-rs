@@ -14,8 +14,7 @@
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::vec;
-use tracing::{debug, trace};
+use tracing::trace;
 
 /// Origin of state's position
 ///
@@ -148,7 +147,7 @@ impl StateList {
         //
         let data: StateList = StateList {
             time: data.time,
-            states: states,
+            states,
         };
 
         Ok(data)
@@ -330,7 +329,6 @@ struct Rawdata(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::json;
 
     #[test]
@@ -378,7 +376,7 @@ mod tests {
                 ]
             ]
         })
-        .to_string();
+            .to_string();
 
         let result = StateList::from_json(&input);
         assert!(result.is_ok());

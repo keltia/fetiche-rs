@@ -327,6 +327,7 @@ pub enum AirGround {
 /// - `dest` (`Option<String>`):
 ///   The destination of the flight, which can also be ICAO, waypoint, or lat/lon.
 ///
+#[allow(dead_code)]
 #[serde_as]
 #[derive(Debug, Deserialize)]
 struct Position {
