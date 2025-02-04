@@ -25,6 +25,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
+dateparser = "0.2"
 clap = { version = "4", features = ["cargo", "derive"] }
 eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
 fetiche-common = { version = "0", path = "../common" }
@@ -44,7 +45,7 @@ seek_bufread = "1.2"
 seekable_reader = "0.1"
 
 [dev-dependencies]
-rstest.workspace = true
+rstest = "0.24"
 
 [dependencies.pyo3]
 version = "0.19"
