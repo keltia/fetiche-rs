@@ -40,14 +40,15 @@ pub enum IO {
 /// - Middle: Tasks that transform or process data
 /// - Consumer: Tasks that consume or store the final data
 ///
+#[enum_dispatch]
 #[derive(Clone, Debug)]
 pub enum Task {
     /// Producer task that generates or sources data
-    Producer(Producer),
+    Producer,
     /// Middle task that transforms or processes data
-    Middle(Middle),
+    Middle,
     /// Consumer task that consumes or stores the final data
-    Consumer(Consumer),
+    Consumer,
 }
 
 // impl Task {
