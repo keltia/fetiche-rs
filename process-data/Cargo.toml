@@ -1,7 +1,7 @@
 [package]
 name = "process-data"
 version = "0.7.0"
-edition = "2021"
+edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Implement different processing of data."
 readme = "README.md"

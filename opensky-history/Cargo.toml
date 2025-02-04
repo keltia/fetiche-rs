@@ -1,7 +1,7 @@
 [package]
 name = "opensky-history"
 version = "0.2.1"
-edition = "2021"
+edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Rust CLI app to fetch historical data through pyopensky."
 readme = "README.md"
