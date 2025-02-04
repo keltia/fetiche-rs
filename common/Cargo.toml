@@ -29,6 +29,10 @@ harness = false
 name = "div_expand"
 harness = false
 
+[[bench]]
+name = "date_parsing"
+harness = false
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -44,6 +48,7 @@ jiff.workspace = true
 opentelemetry.workspace = true
 opentelemetry-otlp.workspace = true
 opentelemetry_sdk.workspace = true
+polars = "0.46"
 ractor.workspace = true
 serde.workspace = true
 strum.workspace = true
