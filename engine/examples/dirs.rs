@@ -1,6 +1,6 @@
 use directories::ProjectDirs;
 use fetiche_common::ConfigFile;
-use fetiche_sources::SourcesConfig;
+use fetiche_engine::SourcesConfig;
 
 fn main() -> eyre::Result<()> {
     let p = ProjectDirs::from("", "", "drone-utils");

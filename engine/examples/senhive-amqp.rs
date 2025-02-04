@@ -17,10 +17,6 @@ use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
 use serde::Serialize;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
-#[cfg(unix)]
-use tokio::signal::unix::{signal, SignalKind};
-#[cfg(windows)]
-use tokio::signal::windows::ctrl_c;
 use tracing::trace;
 
 use fetiche_common::init_logging;
@@ -91,13 +87,10 @@ async fn main() -> Result<()> {
 
     println!("Waiting for messages...");
 
-    // setup ctrl-c handled
-    //
-    #[cfg(windows)]
-    let mut sig = ctrl_c().unwrap();
-
-    #[cfg(unix)]
-    let mut stream = signal(SignalKind::interrupt()).unwrap();
+    let _ = ctrlc::set_handler(move || {
+        trace!("Ctrl-C pressed");
+        std::process::exit(0);
+    });
 
     let mut fd = fs::File::create("fused_data.json").await?;
     let mut fc = fs::File::create("fused_data.csv").await?;
@@ -172,10 +165,6 @@ async fn main() -> Result<()> {
 
                 let _: StateMsg = serde_json::from_str(&data)?;
             },
-            Some(_) = stream.recv() => {
-                eprintln!("Got SIGINT");
-                break;
-            },
         }
 
         #[cfg(windows)]
@@ -249,10 +238,6 @@ async fn main() -> Result<()> {
                 ss.write(data.as_bytes()).await?;
 
                 let _: StateMsg = serde_json::from_str(&data)?;
-            },
-            _ = sig.recv() => {
-                eprintln!("^C pressed.");
-                break;
             },
         }
     }

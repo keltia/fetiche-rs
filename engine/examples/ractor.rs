@@ -7,11 +7,8 @@ use std::time::Duration;
 
 use eyre::Result;
 use ractor::{async_trait, pg, registry, Actor, ActorProcessingErr, ActorRef};
-#[cfg(unix)]
-use tokio::signal::unix::{signal, SignalKind};
-#[cfg(windows)]
-use tokio::signal::windows::ctrl_c;
 use tokio::time::sleep;
+use tracing::trace;
 
 const PG_NAME: &str = "workers";
 #[derive(Debug)]
@@ -87,46 +84,20 @@ async fn main() -> Result<()> {
         sleep(Duration::from_secs(7u64)).await;
         wt1.cast(WorkerMsg::Change("*".into()))
     })
-    .await?
-    .expect("TODO: panic message");
+        .await?
+        .expect("TODO: panic message");
 
     tokio::spawn(async move {
-        // setup ctrl-c handled
-        //
-        #[cfg(windows)]
-        let mut sig = ctrl_c().unwrap();
-
-        #[cfg(unix)]
-        let mut stream = signal(SignalKind::interrupt()).unwrap();
-
         let workers = String::from(PG_NAME);
-        #[cfg(windows)]
-        tokio::select! {
-            _ = sig.recv() => {
-                eprintln!("^C pressed.");
-                pg::get_members(&workers).iter().for_each(|cell| {
-                    cell.stop(Some("ctrl-C pressed".into()));
-                })
-            },
-            else => {
-                eprintln!("Ctrl-something pressed.");
-            }
-        }
 
-        #[cfg(unix)]
-        tokio::select! {
-            Some(_) = stream.recv() => {
-                eprintln!("Got SIGINT");
-                pg::get_members(&workers).iter().for_each(|cell| {
-                    cell.stop(Some("ctrl-C pressed".into()));
-                });
-            },
-            else => {
-                eprintln!("Ctrl-something pressed.");
-            }
-        }
+        let _ = ctrlc::set_handler(move || {
+            trace!("Ctrl-C pressed");
+            pg::get_members(&workers).iter().for_each(|cell| {
+                cell.stop(Some("ctrl-C pressed".into()));
+            });
+        });
     })
-    .await?;
+        .await?;
 
     h1.await?;
     h2.await?;

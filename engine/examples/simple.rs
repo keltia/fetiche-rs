@@ -130,7 +130,7 @@ fn main() -> Result<()> {
     //
     let filter = EnvFilter::from_default_env();
 
-    // Combine filter & specific format
+    // Combine middle & specific format
     //
     tracing_subscriber::registry().with(filter).with(fmt).init();
 
@@ -161,7 +161,9 @@ fn main() -> Result<()> {
     let _ = stdout.flush()?;
 
     info!("sleep");
-    sleep(Duration::from_secs(60));
+    sleep(Duration::from_secs(20));
 
-    Ok(fs::remove_file(&pid)?)
+    let _ = fs::remove_file(&pid);
+
+    Ok(())
 }
