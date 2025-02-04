@@ -8,24 +8,23 @@ use fetiche_macros::RunnableDerive;
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Dummy {
-    pub io: IO,
+    io: IO,
 }
 
 impl Dummy {
     pub fn new() -> Self {
-        Dummy {
-            io: IO::Producer
-        }
+        Self { io: IO::Producer }
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn execute(&self, _data: String, stdout: Sender<String>, _args: String) -> Result<()> {
+    pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
         stdout.send("DUMMY".to_string())?;
         Ok(())
     }
 }
 
 impl Default for Dummy {
+    #[tracing::instrument]
     fn default() -> Self {
         Self::new()
     }

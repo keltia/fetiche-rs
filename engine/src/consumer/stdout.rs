@@ -17,9 +17,10 @@ impl Stdout {
         Self { io: IO::Consumer }
     }
 
-    #[tracing::instrument(skip(self, data))]
+    #[tracing::instrument(skip(self, data, _out))]
     pub fn execute(&mut self, data: String, _out: Sender<String>) -> Result<()> {
         println!("{}", data);
+        Ok(())
     }
 }
 
