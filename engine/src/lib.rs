@@ -308,6 +308,18 @@ impl Engine {
             Actor::spawn(Some("engine::state".into()), StateActor, home.clone()).await?;
         trace!("state={:?}", state);
 
+        // Get last used ID from previous state
+        //
+        let last = call!(state, |port| StateMsg::Last(port))?;
+
+        // Start job queue service, upon startup the queue will always be empty.
+        //
+        trace!("load job queue");
+        let (queue, _h) = Actor::spawn(Some("engine::queue".into()), QueueActor, last).await?;
+        trace!("queue={:?}", queue);
+
+        // ----- Register non-actor sub-systems
+
         // Register storage areas
         //
         trace!("load storage areas");
@@ -320,16 +332,6 @@ impl Engine {
         let tokens_area = cfg.basedir.join("tokens").to_string_lossy().to_string();
         let tokens = TokenStorage::register(&tokens_area);
         info!("{} tokens loaded", tokens.len());
-
-        // Get last used ID from previous state
-        //
-        let last = call!(state, |port| StateMsg::Last(port))?;
-
-        // Start jobqueue service
-        //
-        trace!("load jobqueue");
-        let (queue, _h) = Actor::spawn(Some("engine::queue".into()), QueueActor, last).await?;
-        trace!("queue={:?}", queue);
 
         // Get PID from the state service
         //
