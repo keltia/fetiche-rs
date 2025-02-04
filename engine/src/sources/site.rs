@@ -14,10 +14,10 @@ use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use crate::{Auth, Capability, Routes};
 use fetiche_formats::Format;
 use serde::{Deserialize, Serialize};
-
-use crate::{Auth, Capability, Routes};
+use strum::EnumString;
 
 /// Define the kind of data the source is managing
 ///
@@ -31,7 +31,17 @@ use crate::{Auth, Capability, Routes};
 /// The enum supports string-based conversion from common lowercase string representations
 /// and implements the `Display` trait for user-friendly formatting.
 ///
-#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, strum::Display)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    strum::Display,
+    EnumString
+)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum DataType {
@@ -85,6 +95,22 @@ pub struct Site {
 }
 
 impl Site {
+    /// Invalid
+    ///
+    #[tracing::instrument]
+    pub fn invalid() -> Self {
+        Site {
+            feature: Capability::Invalid,
+            dtype: DataType::Invalid,
+            name: String::new(),
+            token_base: PathBuf::new(),
+            format: String::new(),
+            base_url: String::new(),
+            auth: None,
+            routes: None,
+        }
+    }
+
     /// Basic `new()`
     ///
     #[tracing::instrument]
@@ -281,6 +307,6 @@ mod tests {
     #[case("drones", DataType::Invalid)]
     #[case("foobar", DataType::Invalid)]
     fn test_datatype_from(#[case] s: &str, #[case] dt: DataType) {
-        assert_eq!(dt, s.into());
+        assert_eq!(dt, DataType::from_str(s).unwrap());
     }
 }
