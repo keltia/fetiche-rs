@@ -19,7 +19,7 @@ use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{EngineStatus, Runnable, IO};
+use crate::{EngineStatus, Freq, Runnable, IO};
 
 /// Struct describing the data for the `Store` task.
 ///
@@ -32,6 +32,8 @@ pub struct Store {
     io: IO,
     /// Our storage directory
     path: PathBuf,
+    /// Our rollover strategy
+    freq: Freq,
 }
 
 impl Default for Store {
@@ -39,6 +41,7 @@ impl Default for Store {
         Store {
             io: IO::Consumer,
             path: PathBuf::from(""),
+            freq: Freq::Hourly,
         }
     }
 }
@@ -48,7 +51,7 @@ impl Store {
     /// path as path/ID
     ///
     #[tracing::instrument]
-    pub fn new(path: &str, id: usize) -> Result<Self> {
+    pub fn new(path: &str, id: usize, freq: Freq) -> Result<Self> {
         trace!("store::new");
 
         // Ensure path is defined.
@@ -117,6 +120,7 @@ impl Store {
         Ok(Store {
             io: IO::Consumer,
             path,
+            freq,
         })
     }
 
@@ -131,15 +135,20 @@ impl Store {
 
         // Extract parts to create a filename
         //
-        // Filename format is YYYYMMDD-HH0000
+        // file name format is YYYYMMDD-HH0000 (or -000000 for daily rollover)
         //
-        let (year, month, day, hour) = (tm.year(), tm.month(), tm.day(), tm.hour());
-        let fname = format!("{}{:02}{:02}-{:02}0000", year, month, day, hour);
+        let fname = match self.freq {
+            Freq::Daily => {
+                format!("{}{:02}{:02}-000000", tm.year(), tm.month(), tm.day())
+            }
+            Freq::Hourly => {
+                format!("{}{:02}{:02}-{:02}0000", tm.year(), tm.month(), tm.day(), tm.hour())
+            }
+        };
 
         // Full path is BASE/ID/FNAME
         //
-        let base = self.path.clone();
-        let fname = base.join(fname);
+        let fname = self.path.clone().join(fname);
 
         trace!("final name={}", fname.to_string_lossy().to_string());
 
