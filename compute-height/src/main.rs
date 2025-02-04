@@ -6,9 +6,9 @@
 //!
 //! # Overview
 //!
-//! The program reads coordinates (latitude and longitude in degrees) from the standard input,
-//! computes the corresponding geoid height, and outputs the result. It supports an optional
-//! verbose mode that provides additional details about the computation, including program metadata.
+//! The program reads lines of coordinates (latitude and longitude in degrees) from the standard input,
+//! computes the corresponding geoid height, and outputs the result for each line. It supports an optional
+//! verbose mode that provides additional details about the computation.
 //!
 //! # Examples
 //!
@@ -23,9 +23,6 @@
 //!
 //! ```bash
 //! $ echo "52.5163 13.3777" | compute-height -v
-//! compute-height v0.1.0 - <CARGO_PKG_AUTHORS>
-//! <CARGO_PKG_DESCRIPTION>
-//!
 //! Variation aka geoid height at 52.5163,13.3777 = 37.2 m
 //! ```
 //!
@@ -59,6 +56,8 @@
 //! </functions>
 //! ```
 //!
+//! # Timing
+//!
 //! ```text
 //! 1383527 rows in set. Elapsed: 0.851 sec. Processed 1.38 million rows, 248.77 MB (1.63 million rows/s., 292.30 MB/s.)
 //! Peak memory usage: 49.37 MiB.
@@ -72,9 +71,7 @@ use std::io::stdin;
 /// Command-line options for computing geoid height.
 ///
 /// # Fields
-/// - `verbose`: Enables detailed output with program information.
-/// - `lat`: Latitude of the location (in degrees).
-/// - `lon`: Longitude of the location (in degrees).
+/// - `verbose` or `-v`: Enables detailed output.
 ///
 #[derive(Debug, Parser)]
 pub struct Opts {
