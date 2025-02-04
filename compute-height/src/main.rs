@@ -44,19 +44,24 @@
 //!         <function>
 //!                 <type>executable</type>
 //!                 <name>compute_height</name>
-//!                 <return_type>Float32</return_type>
+//!                 <return_type>Float64</return_type>
 //!                 <argument>
-//!                         <type>Float32</type>
+//!                         <type>Float64</type>
 //!                         <name>lat</name>
 //!                 </argument>
 //!                 <argument>
-//!                         <type>Float32</type>
+//!                         <type>Float64</type>
 //!                         <name>lon</name>
 //!                 </argument>
 //!                 <format>TabSeparated</format>
 //!                 <command>compute-height</command>
 //!         </function>
 //! </functions>
+//! ```
+//!
+//! ```text
+//! 1383527 rows in set. Elapsed: 0.851 sec. Processed 1.38 million rows, 248.77 MB (1.63 million rows/s., 292.30 MB/s.)
+//! Peak memory usage: 49.37 MiB.
 //! ```
 //!
 
