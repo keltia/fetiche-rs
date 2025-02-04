@@ -1,7 +1,9 @@
 //! Library implementing common part of the transformations
 //!
-//! This is a *synchronous* engine.  It needs to be called in a synchronous context even if the
-//! program calling it is async.
+//! # Config
+//!
+//! v2: Has basedir and storage components.
+//! v2: Has initial number of workers for the runner factory.
 //!
 //! Example:
 //! ```no_run
@@ -101,16 +103,21 @@ const ENGINE_PG: &str = "engine.pg";
 ///     The base directory where engine-related files, such as state, jobs, and tasks,
 ///     are stored. This path acts as the root directory for engine operations.
 ///
+/// - `workers`
+///     Initial number of runner spawned by the factory.
+///
 /// - `storage`
 ///     A `BTreeMap` defining various storage configurations. This can include
 ///     settings for in-memory caching, directory-based storage, or Hive-based
 ///     sharding. Each storage configuration must conform to the `StorageConfig` enum.
 ///
-#[into_configfile(version = 2, filename = "engine.hcl")]
+#[into_configfile(version = 3, filename = "engine.hcl")]
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct EngineConfig {
     /// Base directory
     pub basedir: PathBuf,
+    /// Number of workers for the runner factory.
+    pub workers: usize,
     /// List of storage types
     pub storage: BTreeMap<String, StorageConfig>,
 }
