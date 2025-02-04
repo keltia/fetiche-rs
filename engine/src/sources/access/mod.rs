@@ -1,5 +1,4 @@
 pub use error::*;
-use std::time::Duration;
 
 #[cfg(feature = "aeroscope")]
 pub use aeroscope::*;
@@ -32,6 +31,3 @@ mod opensky;
 mod safesky;
 #[cfg(feature = "senhive")]
 mod senhive;
-
-/// We display stats every TICK seconds.
-pub(crate) const TICK: Duration = Duration::from_secs(30);
