@@ -159,6 +159,7 @@ WHERE
   site = $1 AND
   toStartOfInterval(time, toIntervalDay(1)) = toDateTime($2) AND
   palt IS NOT NULL AND
+  NOT(palt = 0 AND flight_level != 0) AND
   pointInEllipses(plon, plat, $3, $4, $5, $6)
 ORDER BY time
 "##
