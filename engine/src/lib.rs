@@ -57,9 +57,10 @@ use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
 
 pub use error::*;
+pub use filter::*;
 pub use job::*;
 pub use parse::*;
-//pub use state::*;
+pub use producer::*;
 pub use storage::*;
 pub use task::*;
 pub use tokens::*;
@@ -68,9 +69,10 @@ use crate::actors::*;
 
 mod actors;
 mod error;
+mod filter;
 mod job;
 mod parse;
-//mod state;
+mod producer;
 mod storage;
 mod subr;
 mod task;

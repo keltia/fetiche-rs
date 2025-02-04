@@ -10,27 +10,19 @@ use strum::EnumString;
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
+pub use crate::filter::convert::*;
+pub use crate::filter::tee::*;
 pub use archive::*;
 pub use common::*;
-pub use convert::*;
-pub use fetch::*;
-pub use read::*;
 pub use save::*;
 pub use store::*;
-pub use stream::*;
-pub use tee::*;
 
 use crate::Engine;
 
 mod archive;
 mod common;
-mod convert;
-mod fetch;
-mod read;
 mod save;
 mod store;
-mod stream;
-mod tee;
 
 /// The `Task` enum represents all available tasks/commands that can be used.
 /// Each variant corresponds to a specific operation or process.
@@ -59,22 +51,14 @@ pub enum Task {
     Convert,
     /// Basic raw copy
     Copy,
-    /// Fetch a single dataset
-    Fetch,
     /// Display a message
     Message,
     /// NOP
     Nothing,
-    /// Read a single file
-    Read,
     /// Save a single dataset
     Save,
     /// Store datasets into a organised directory
     Store,
-    /// Fetch a stream of data
-    Stream,
-    /// Copy data and pass it along
-    Tee,
 }
 
 /// Task I/O characteristics
