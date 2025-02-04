@@ -1,6 +1,6 @@
 [package]
 name = "fetiche-sources"
-version = "0.18.0"
+version = "0.18.99"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Fetiche component for access methods to connect/fetch data."
