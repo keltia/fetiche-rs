@@ -25,7 +25,6 @@
 //!
 
 use std::io;
-use std::path::PathBuf;
 
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, CommandFactory, Parser, ValueEnum,
@@ -39,7 +38,7 @@ use fetiche_common::{list_locations, load_locations, Container, DateOpts};
 use fetiche_engine::Engine;
 use fetiche_formats::Format;
 
-use crate::{convert_from_to, fetch_from_site, stream_from_site};
+use crate::{fetch_from_site, stream_from_site};
 
 /// CLI options
 #[derive(Parser)]
@@ -146,7 +145,7 @@ pub struct FetchOpts {
     /// Duration in seconds (negative = back in time) -- optional
     #[clap(short = 'D', long)]
     pub since: Option<i32>,
-    /// Keyword filter: e.g. "--keyword icao24:foobar" -- optional
+    /// Keyword middle: e.g. "--keyword icao24:foobar" -- optional
     #[clap(short = 'K', long)]
     pub keyword: Option<String>,
 
@@ -237,7 +236,7 @@ pub struct StreamOpts {
     /// Duration in seconds (negative = back in time) -- default to 0 (do not stop)
     #[clap(short = 'D', long, default_value = "0")]
     pub duration: u32,
-    /// Keyword filter: e.g. "--keyword icao24:foobar" -- optional
+    /// Keyword middle: e.g. "--keyword icao24:foobar" -- optional
     #[clap(short = 'K', long)]
     pub keyword: Option<String>,
     /// Insert a slight delay between calls in ms, default is 1000
@@ -248,7 +247,7 @@ pub struct StreamOpts {
     //
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
-    pub output: Option<PathBuf>,
+    pub output: Option<String>,
     /// Create a copy of the raw file before any conversion
     #[clap(long)]
     pub tee: Option<String>,
@@ -308,7 +307,7 @@ pub async fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<(
         SubCommand::Convert(copts) => {
             trace!("convert");
 
-            convert_from_to(engine, copts).await?;
+            //convert_from_to(engine, copts).await?;
         }
 
         // Standalone completion generation
