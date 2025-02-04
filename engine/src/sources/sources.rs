@@ -125,7 +125,7 @@ impl Sources {
                 let fmt = site.format();
 
                 // We have to explicitly list all supported formats as we return
-                // an enum whether the site will be streamable or not
+                // an enum whether the site will be fetchable or not
                 //
                 match fmt {
                     #[cfg(feature = "asd")]
