@@ -890,6 +890,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
+ "polars",
  "ractor",
  "serde",
  "strum 0.27.0",
