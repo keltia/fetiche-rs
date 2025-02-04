@@ -263,7 +263,6 @@ impl Engine {
     ///
     /// This method gracefully terminates the engine by stopping all registered actors
     /// in the engine process group.
-    /// It sends a stop signal with "ctrl-C pressed" message to each actor.
     ///
     /// # Behavior
     ///
@@ -271,16 +270,12 @@ impl Engine {
     /// - Iterates through each actor and sends a stop signal
     /// - Actors will clean up resources before terminating
     ///
-    /// # Tracing
-    ///
-    /// This method is instrumented for tracing, excluding the `self` parameter.
-    ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument]
     pub fn shutdown(&mut self) {
         pg::get_members(&ENGINE_PG.to_string())
             .iter()
             .for_each(|cell| {
-                cell.stop(Some("ctrl-C pressed".into()));
+                cell.stop(Some("Shutdown requested.".into()));
             });
     }
 
@@ -339,3 +334,24 @@ impl Engine {
     }
 }
 
+impl Drop for Engine {
+    /// Shuts down the engine and all its associated actors.
+    ///
+    /// This method gracefully terminates the engine by stopping all registered actors
+    /// in the engine process group.
+    ///
+    /// # Behavior
+    ///
+    /// - Retrieves all members of the engine process group
+    /// - Iterates through each actor and sends a stop signal
+    /// - Actors will clean up resources before terminating
+    ///
+    #[tracing::instrument]
+    fn drop(&mut self) {
+        pg::get_members(&ENGINE_PG.to_string())
+            .iter()
+            .for_each(|cell| {
+                cell.stop(Some("Shutdown requested.".into()));
+            });
+    }
+}
