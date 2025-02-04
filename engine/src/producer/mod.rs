@@ -21,7 +21,7 @@ mod stream;
 ///
 /// Each variant corresponds to a specific data sourcing strategy:
 ///
-#[derive(Clone, Debug, Default, EnumString, PartialEq, strum::VariantNames)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum Producer {
     /// Dummy `Producer` for tests
     Dummy(Dummy),
@@ -37,6 +37,7 @@ pub enum Producer {
 }
 
 impl Runnable for Producer {
+    #[tracing::instrument(skip(self))]
     fn cap(&self) -> IO {
         IO::Producer
     }
