@@ -155,6 +155,8 @@ impl Sources {
     /// 2. The format of the site is invalid or unsupported.
     /// 3. Any other configuration issues occur during the process.
     ///
+    /// FIXME: this is ugly af, due to multiple traits now and trait objects.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn load(&self, name: &str, ctx: Context) -> Result<Flow> {
         trace!("Loading site {}", name);
