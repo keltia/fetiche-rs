@@ -77,5 +77,5 @@ async fn main() -> Result<()> {
 
     println!("with sleeper, nothing is displayed");
     close_logging();
-    std::process::exit(0);
+    Ok(())
 }
