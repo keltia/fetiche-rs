@@ -6,11 +6,12 @@
 //! ```text
 //! Timer precision: 100 ns
 //! div_expand                       fastest       │ slowest       │ median        │ mean          │ samples │ iters
-//! ├─ test_chrono                   2.167 µs      │ 3.599 µs      │ 2.482 µs      │ 2.617 µs      │ 100     │ 100000
-//! ├─ test_jiff_duration            17 µs         │ 23.18 µs      │ 17.8 µs       │ 18.04 µs      │ 100     │ 100000
-//! ├─ test_jiff_duration_date       11.2 µs       │ 13.52 µs      │ 11.74 µs      │ 11.78 µs      │ 100     │ 100000
-//! ├─ test_jiff_duration_timestamp  2.807 µs      │ 4.302 µs      │ 3.189 µs      │ 3.229 µs      │ 100     │ 100000
-//! ╰─ test_jiff_naive               39.28 µs      │ 58.69 µs      │ 40.73 µs      │ 42.36 µs      │ 100     │ 100000
+//! ├─ test_chrono                   2.161 µs      │ 3.641 µs      │ 2.405 µs      │ 2.492 µs      │ 100     │ 100000
+//! ├─ test_jiff_duration            16.65 µs      │ 20.05 µs      │ 17.34 µs      │ 17.42 µs      │ 100     │ 100000
+//! ├─ test_jiff_duration_date       10.85 µs      │ 12.09 µs      │ 11.29 µs      │ 11.3 µs       │ 100     │ 100000
+//! ├─ test_jiff_duration_timestamp  2.455 µs      │ 3.754 µs      │ 2.903 µs      │ 2.986 µs      │ 100     │ 100000
+//! ├─ test_jiff_naive               37.65 µs      │ 45.46 µs      │ 39.21 µs      │ 39.3 µs       │ 100     │ 100000
+//! ╰─ test_jiff_timestamp_series    132.7 ns      │ 315.5 ns      │ 139 ns        │ 149.7 ns      │ 100     │ 100000
 //! ```
 //! Thanks to Bsky: @burntsushi.net (Andrew Gallant)
 //!
@@ -20,6 +21,7 @@ fn main() {
 }
 
 use divan::{black_box, Bencher};
+use jiff::{Timestamp, ToSpan};
 
 #[divan::bench]
 fn test_jiff_naive(bencher: Bencher) {
@@ -87,6 +89,22 @@ fn test_jiff_duration_date(bencher: Bencher) {
 
     let begin: Date = "2024-01-01".parse().unwrap();
     let end: Date = "2024-12-31".parse().unwrap();
+    bencher.bench_local(move || black_box(expand_interval_jiff(begin, end)));
+}
+
+#[divan::bench]
+fn test_jiff_timestamp_series(bencher: Bencher) {
+    use jiff::civil::Date;
+    use jiff::SignedDuration;
+
+    #[inline]
+    fn expand_interval_jiff(begin: Timestamp, end: Timestamp) -> eyre::Result<Vec<Timestamp>> {
+        let intv = begin.series(1.days()).take_while(|&ts| ts <= end).collect::<Vec<_>>();
+        Ok(intv)
+    }
+
+    let begin: Timestamp = "2024-01-01 00:00:00-00".parse().unwrap();
+    let end: Timestamp = "2024-12-31 00:00:00-00".parse().unwrap();
     bencher.bench_local(move || black_box(expand_interval_jiff(begin, end)));
 }
 
