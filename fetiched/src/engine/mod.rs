@@ -331,10 +331,9 @@ impl Engine {
     ///
     pub fn version(&self) -> String {
         format!(
-            "{} ({} {})",
+            "{} ({})",
             version(),
             fetiche_formats::version(),
-            fetiche_sources::version()
         )
     }
 }
@@ -351,10 +350,10 @@ pub enum IO {
     Consumer,
     /// Producer (discard input)
     Producer,
-    /// Both (filter)
+    /// Both (middle)
     #[default]
     Filter,
-    /// Cache (filter)
+    /// Cache (middle)
     Cache,
 }
 

@@ -87,8 +87,8 @@ pub(crate) struct Encounter {
 /// # Arguments
 ///
 /// * `client` - A reference to the ClickHouse client used for database interaction.
-/// * `journey` - The journey identifier to filter drone data.
-/// * `drone_id` - The drone identifier to filter drone data.
+/// * `journey` - The journey identifier to middle drone data.
+/// * `drone_id` - The drone identifier to middle drone data.
 ///
 /// # Returns
 ///
@@ -141,9 +141,9 @@ ORDER BY timestamp
 /// # Arguments
 ///
 /// * `client` - A reference to the ClickHouse client used for database interaction.
-/// * `prox_id` - The proximate aircraft identifier to filter plane data.
-/// * `first` - The start of the time range used to filter data (inclusive).
-/// * `last` - The end of the time range used to filter data (inclusive).
+/// * `prox_id` - The proximate aircraft identifier to middle plane data.
+/// * `first` - The start of the time range used to middle data (inclusive).
+/// * `last` - The end of the time range used to middle data (inclusive).
 ///
 /// # Returns
 ///

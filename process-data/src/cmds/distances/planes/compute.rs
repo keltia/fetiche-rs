@@ -78,7 +78,7 @@ impl PlaneDistance {
     /// 1. Calculate the bounding ellipse using the site location and specified distance.
     /// 2. Create a temporary table (`today{tag}`) in the database for storing the filtered airplane data.
     /// 3. Populate the table with airplane data, such as location, altitude, and timestamp, extracted
-    ///    from the `airplanes` table after applying the bounding filter and other conditions like altitude presence.
+    ///    from the `airplanes` table after applying the bounding middle and other conditions like altitude presence.
     /// 4. Validate table creation and count the selected entries.
     ///
     /// If the table fails to be created (e.g., no matching airplane data was found), the function will safely
@@ -204,7 +204,7 @@ ORDER BY time
 
     /// Selects drone points for a specific day based on geospatial and temporal proximity criteria.
     ///
-    /// This function utilizes the geospatial function `pointInEllipses` to filter drones within a
+    /// This function utilizes the geospatial function `pointInEllipses` to middle drones within a
     /// defined elliptical area around the site. The distance from the site is calculated in degrees,
     /// based on the nautical mile parameter specified in the struct.
     ///

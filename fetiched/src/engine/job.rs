@@ -112,7 +112,7 @@ impl Job {
             // Then we check the last one
             //
             if last.cap() != IO::Consumer && last.cap() != IO::Filter {
-                return Err(eyre!("last must be consumer or filter"));
+                return Err(eyre!("last must be consumer or middle"));
             }
         }
 

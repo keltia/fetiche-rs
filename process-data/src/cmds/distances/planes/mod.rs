@@ -218,14 +218,14 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
 }
 
 /// Prepares the work list for distance calculations by generating combinations of
-/// dates and sites to be processed. Depending on the provided site filter, the function
+/// dates and sites to be processed. Depending on the provided site middle, the function
 /// either targets a specific site or includes all available sites across the given dates.
 ///
 /// # Arguments
 ///
 /// * `ctx` - The execution context containing configuration and runtime details.
 /// * `dates` - A vector of dates that define the period for distance calculation.
-/// * `site_filter` - A filter specifying a particular site or all sites (`ALL` or `*`).
+/// * `site_filter` - A middle specifying a particular site or all sites (`ALL` or `*`).
 ///
 /// # Returns
 ///

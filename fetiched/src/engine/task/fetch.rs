@@ -47,10 +47,10 @@ impl Fetch {
         self
     }
 
-    /// Add a date filter if specified
+    /// Add a date middle if specified
     ///
     pub fn with(&mut self, f: Filter) -> &mut Self {
-        trace!("Add filter {}", f);
+        trace!("Add middle {}", f);
         self.args = f.to_string();
         self
     }
