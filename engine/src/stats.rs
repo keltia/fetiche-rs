@@ -2,6 +2,7 @@
 
 use serde::Serialize;
 use std::fmt::{Display, Formatter};
+use std::ops::Add;
 
 /// `Stats` is a structure used to track various performance-related statistics
 /// for data sources in the system.
@@ -24,7 +25,7 @@ use std::fmt::{Display, Formatter};
 /// # Example
 ///
 /// ```rust
-/// use fetiche_sources::Stats;
+/// use fetiche_engine::Stats;
 ///
 /// let stats = Stats {
 ///     tm: 3600,
@@ -72,6 +73,22 @@ impl Display for Stats {
     }
 }
 
+impl Add for Stats {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Stats {
+            tm: rhs.tm,
+            pkts: self.pkts + rhs.pkts,
+            reconnect: self.reconnect + rhs.reconnect,
+            bytes: self.bytes + rhs.bytes,
+            hits: self.hits + rhs.hits,
+            miss: self.miss + rhs.miss,
+            empty: self.empty + rhs.empty,
+            err: self.err + rhs.err,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -129,6 +146,77 @@ mod tests {
         assert_eq!(stats.miss, 500);
         assert_eq!(stats.empty, 100);
         assert_eq!(stats.err, 10);
+    }
+
+    #[test]
+    fn test_stats_add() {
+        let stats1 = Stats {
+            tm: 100,
+            pkts: 1000,
+            reconnect: 2,
+            bytes: 5000,
+            hits: 800,
+            miss: 200,
+            empty: 50,
+            err: 5,
+        };
+        let stats2 = Stats {
+            tm: 200,
+            pkts: 2000,
+            reconnect: 3,
+            bytes: 7000,
+            hits: 1500,
+            miss: 300,
+            empty: 100,
+            err: 10,
+        };
+        let sum = stats1 + stats2;
+        assert_eq!(sum.tm, 200);
+        assert_eq!(sum.pkts, 3000);
+        assert_eq!(sum.reconnect, 5);
+        assert_eq!(sum.bytes, 12000);
+        assert_eq!(sum.hits, 2300);
+        assert_eq!(sum.miss, 500);
+        assert_eq!(sum.empty, 150);
+        assert_eq!(sum.err, 15);
+    }
+
+    #[test]
+    fn test_stats_add_zero() {
+        let stats1 = Stats {
+            tm: 100,
+            pkts: 1000,
+            reconnect: 2,
+            bytes: 5000,
+            hits: 800,
+            miss: 200,
+            empty: 50,
+            err: 5,
+        };
+        let stats2 = Stats::default();
+        let sum = stats1.clone() + stats2;
+        assert_eq!(sum.tm, 0);
+        assert_eq!(sum.pkts, stats1.pkts);
+        assert_eq!(sum.reconnect, stats1.reconnect);
+        assert_eq!(sum.bytes, stats1.bytes);
+        assert_eq!(sum.hits, stats1.hits);
+        assert_eq!(sum.miss, stats1.miss);
+        assert_eq!(sum.empty, stats1.empty);
+        assert_eq!(sum.err, stats1.err);
+    }
+
+    #[test]
+    fn test_stats_add_tm_from_rhs() {
+        let stats1 = Stats {
+            tm: 100,
+            ..Default::default()
+        };
+        let stats2 = Stats {
+            tm: 200,
+            ..Default::default()
+        };
+        let sum = stats1 + stats2;
+        assert_eq!(sum.tm, 200);
     }
 }
 
