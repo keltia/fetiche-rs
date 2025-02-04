@@ -11,16 +11,14 @@ use std::collections::VecDeque;
 pub enum QueueMsg {
     /// Adds a new job to the queue.
     Add(Job),
+    /// Gets the next available job ID. Returns the ID through the reply port.
+    Allocate(RpcReplyPort<usize>),
     /// Retrieves a job by its ID. Returns the job through the reply port if found.
     GetById(usize, RpcReplyPort<Job>),
     /// Lists all job IDs currently in the queue. Returns vector of IDs through the reply port.
     List(RpcReplyPort<Vec<usize>>),
-    /// Gets the next available job ID. Returns the ID through the reply port.
-    Next(RpcReplyPort<usize>),
-    /// Removes a specific job from the queue by matching its content.
-    Remove(Job),
     /// Removes a job from the queue using its ID.
-    RemoveId(usize),
+    RemoveById(usize),
     /// Gets and removes the next job from the queue for execution. Returns the job through the reply port.
     Run(RpcReplyPort<Job>),
 }
@@ -124,6 +122,10 @@ impl Actor for QueueActor {
                 state.last = job.id + 1;
                 state.q.push_back(job);
             }
+            QueueMsg::Allocate(sender) => {
+                sender.send(state.last)?;
+                state.last += 1;
+            }
             QueueMsg::GetById(id, sender) => {
                 let job = match state.q.get(id) {
                     Some(job) => job,
@@ -135,12 +137,12 @@ impl Actor for QueueActor {
                 let list = state.q.iter().map(|j| j.id).collect::<Vec<usize>>();
                 sender.send(list)?;
             }
-            QueueMsg::Next(sender) => {
-                sender.send(state.last)?;
-            }
             QueueMsg::Run(sender) => {
                 let job = state.q.pop_front().unwrap();
                 sender.send(job)?;
+            }
+            QueueMsg::RemoveById(id) => {
+                state.q.remove(id);
             }
             _ => panic!(),
         }
