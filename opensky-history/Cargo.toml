@@ -24,21 +24,20 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono.workspace = true
-clap.workspace = true
-dateparser.workspace = true
-eyre.workspace = true
-fetiche-common.workspace = true
-fetiche-formats.workspace = true
-hcl-rs.workspace = true
-polars.workspace = true
-serde.workspace = true
-serde_repr.workspace = true
-strum.workspace = true
-tabled.workspace = true
-tempfile.workspace = true
-tokio.workspace = true
-tracing.workspace = true
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["cargo", "derive"] }
+eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
+fetiche-common = { version = "0", path = "../common" }
+fetiche-formats = { version = "0", path = "../formats" }
+hcl-rs = "0.18"
+polars = { version = "0.46", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_repr = "0.1"
+strum = { version = "0.27", features = ["derive"] }
+tabled = "0.18"
+tempfile = "3"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
 
 inline-python = "0.12"
 seek_bufread = "1.2"
