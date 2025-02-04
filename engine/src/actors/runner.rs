@@ -14,14 +14,13 @@ use std::io::Write;
 
 use futures::stream::{self, StreamExt};
 use ractor::factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId};
-use ractor::{call, call_t, cast, ActorProcessingErr, ActorRef, RpcReplyPort};
-use tracing::{debug, error, info, trace};
+use ractor::{ActorProcessingErr, ActorRef, RpcReplyPort, call, cast};
+use tracing::{debug, info, trace};
 
 use crate::task::Runnable;
 
-use crate::actors::{QueueMsg, ResultsMsg, StatsMsg};
-use crate::QueueError::JobInWrongState;
-use crate::{Stats, Task};
+use crate::actors::{ResultsMsg, StatsMsg};
+use crate::{Stats, Task, Work};
 
 /// Messages that can be handled by the Runner actor.
 ///
@@ -31,7 +30,7 @@ use crate::{Stats, Task};
 #[derive(Debug)]
 pub enum RunnerMsg {
     /// Run next job
-    Run(RpcReplyPort<Stats>),
+    Run(Work, RpcReplyPort<Stats>),
 }
 
 /// The Runner actor implementation that processes jobs from the queue.
@@ -49,8 +48,6 @@ pub struct RunnerActor;
 ///
 #[derive(Clone, Debug)]
 pub struct RunnerArgs {
-    /// Reference to the Queue actor for queue management
-    pub queue: ActorRef<QueueMsg>,
     /// Reference to the Result actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -61,8 +58,6 @@ pub struct RunnerArgs {
 pub struct RunnerState {
     /// ID of the runner.
     pub id: WorkerId,
-    /// Reference to the Queue actor for queue management
-    pub queue: ActorRef<QueueMsg>,
     /// Reference to the Result actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -86,7 +81,6 @@ impl Worker for RunnerActor {
         trace!("runner {} starting", wid);
         let state = RunnerState {
             id: wid,
-            queue: startup_context.queue.clone(),
             results: startup_context.results.clone(),
             stats: startup_context.stats.clone(),
         };
@@ -105,16 +99,20 @@ impl Worker for RunnerActor {
         match msg {
             // Takes the next job from the queue.
             //
-            RunnerMsg::Run(sender) => {
+            RunnerMsg::Run(work, sender) => {
                 let stat = state.stats.clone();
-                let queue = state.queue.clone();
                 let results = state.results.clone();
 
-                let mut job = call!(queue, |port| QueueMsg::Run(port))?;
+                let mut job = work.job.clone();
 
                 job.register(stat.clone());
 
-                info!("Job({})::run({}) with {} tasks", wid, job.name, job.middle.len() + 2);
+                info!(
+                    "Job({})::run({}) with {} tasks",
+                    wid,
+                    job.name,
+                    job.middle.len() + 2
+                );
 
                 let job_tag = format!("job#{}", job.id);
                 let _ = cast!(stat, StatsMsg::New(job_tag.clone()))?;
@@ -149,10 +147,12 @@ impl Worker for RunnerActor {
 
                 // Gather results for all tasks into a single pipeline using `Iterator::fold()`
                 //
-                let output = stream::iter(task_list.iter_mut()).fold(stdout, async move |acc, t| {
-                    let (rx, _h) = t.run(acc).await;
-                    rx
-                }).await;
+                let output = stream::iter(task_list.iter_mut())
+                    .fold(stdout, async move |acc, t| {
+                        let (rx, _h) = t.run(acc).await;
+                        rx
+                    })
+                    .await;
 
                 trace!("starting pipe");
 
@@ -164,7 +164,7 @@ impl Worker for RunnerActor {
                 //
                 drop(key);
 
-                // Wait for final output to be received and send it out
+                // Wait for the final output to be received and send it out
                 //
                 for msg in output {
                     write!(&mut data, "{}", msg)?;
@@ -173,8 +173,8 @@ impl Worker for RunnerActor {
                 // Fetch stats for the specific job run
                 //
                 let stats = call!(stat, |port| StatsMsg::Get(job_tag.clone(), port))?;
-                let _ = cast!(results, ResultsMsg::Submit(job.id, stats.clone()))?;
-                let _ = sender.send(stats);
+                let _ = cast!(results, ResultsMsg::Submit(work.id(), stats.clone()))?;
+                let _ = sender.send(stats.clone());
 
                 // Clean stats
                 //
@@ -182,7 +182,7 @@ impl Worker for RunnerActor {
 
                 // Update status.
                 //
-                let _ = cast!(queue, QueueMsg::Finished(job))?;
+                let _ = work.tx.send(());
             }
         }
         Ok(key)
@@ -191,8 +191,6 @@ impl Worker for RunnerActor {
 
 #[derive(Clone, Debug)]
 pub struct RunnerBuilder {
-    /// Reference to the Queue actor for queue management
-    pub queue: ActorRef<QueueMsg>,
     /// Reference to the Results actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -205,7 +203,6 @@ impl WorkerBuilder<RunnerActor, RunnerArgs> for RunnerBuilder {
         (
             RunnerActor,
             RunnerArgs {
-                queue: self.queue.clone(),
                 results: self.results.clone(),
                 stats: self.stat.clone(),
             },

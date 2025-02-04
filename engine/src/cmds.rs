@@ -23,8 +23,8 @@ use tabled::builder::Builder;
 use tabled::settings::Style;
 use tracing::{error, info, trace};
 
-use crate::actors::{QueueMsg, RunnerMsg, StateMsg};
-use crate::{Engine, EngineStatus, Job, JobBuilder, JobState, Stats, IO};
+use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
+use crate::{ENGINE_PG, Engine, EngineStatus, IO, Job, JobBuilder, JobState, Stats, WaitGroup};
 
 impl Engine {
     ///
@@ -81,7 +81,7 @@ impl Engine {
     pub async fn create_job(&mut self, s: &str) -> eyre::Result<Job> {
         // Fetch next ID
         //
-        let nextid = call!(self.queue, |port| QueueMsg::Allocate(port))?;
+        let nextid = call!(self.scheduler, |port| SchedulerMsg::Allocate(port))?;
 
         // Initialise job, list of task is empty
         //
@@ -97,44 +97,128 @@ impl Engine {
         Ok(job)
     }
 
-    /// Queue a job for execution in the engine.
+    /// Parses a job script string and creates a new job in the Ready state.
     ///
-    /// This method takes a job that is in the "Ready" state and queues it for execution
-    /// by changing its state to "Queued" and adding it to the engine's job queue.
+    /// This method takes a job script as input, parses it into a Job structure,
+    /// and sets the job's state to Ready. The parsing process validates the script
+    /// format and extracts necessary job configuration information.
     ///
     /// # Arguments
     ///
-    /// * `job` - The `Job` instance to be queued. The job must be in the `Ready` state.
+    /// * `job_script` - A string slice containing the job script to be parsed
     ///
     /// # Returns
     ///
-    /// - On success, returns `Ok(usize)` containing the job's ID
-    /// - On failure, returns an `Err` containing details about what went wrong
+    /// - On success, returns `Ok(Job)` containing the parsed and initialized job
+    /// - On failure, returns an `Err` with details about what went wrong
     ///
     /// # Errors
     ///
-    /// This method will return an error in the following cases:
-    ///
-    /// - If the job is not in the `Ready` state (returns `EngineStatus::JobNotReady`)
-    /// - If adding the job to the queue fails
+    /// This method will return an error if:
+    /// - The job script contains invalid syntax
+    /// - Required job parameters are missing
+    /// - The parsing operation fails
     ///
     /// # Tracing
     ///
     /// This method is instrumented for tracing, excluding the `self` parameter.
     ///
     #[tracing::instrument(skip(self))]
-    pub async fn queue_job(&mut self, job: Job) -> eyre::Result<usize> {
+    pub async fn parse_job(&mut self, job_script: &str) -> Result<Job> {
+        let mut job = self.parse(job_script).await?;
+        job.set(JobState::Ready);
+        Ok(job)
+    }
+
+    /// Submits a new job to be executed by parsing the job string, setting it to Ready state,
+    /// and queuing it for execution.
+    ///
+    /// # Parameters
+    ///
+    /// - `job_str`: A string slice containing the job description to be parsed into a `Job`.
+    ///
+    /// # Returns
+    ///
+    /// - Returns `Ok(usize)` containing the ID of the newly created and queued job.
+    /// - Returns `Err` if job creation, parsing, queueing or state sync fails.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error if:
+    /// - Job string parsing fails
+    /// - Job queueing fails
+    /// - State synchronization fails
+    ///
+    /// # Notes
+    ///
+    /// The method performs the following steps:
+    /// 1. Parses the job string into a Job struct
+    /// 2. Sets the job state to Ready
+    /// 3. Queues the job for execution
+    /// 4. Synchronizes the engine state
+    ///
+    #[tracing::instrument(skip(self))]
+    pub async fn submit_job(&mut self, job: Job) -> Result<WaitGroup> {
         if job.state() != JobState::Ready {
-            error!("Job is not ready");
             return Err(EngineStatus::JobNotReady(job.id).into());
         }
 
-        // Change status and insert the job into the queue.
+        let (tx, rx) = channel::<Stats>();
+
+        trace!("submit job {}", job.id);
+        let wg = call!(self.scheduler, |port| { SchedulerMsg::Add(job, port) })?;
+
+        // note will be for retrieving results later
         //
-        let mut ready = job.clone();
-        ready.set(JobState::Queued);
-        let _ = cast!(self.queue, QueueMsg::Add(ready))?;
-        Ok(job.id)
+        Ok(wg)
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub async fn submit_job_and_wait(&mut self, job: Job) -> Result<Stats> {
+        if job.state() != JobState::Ready {
+            return Err(EngineStatus::JobNotReady(job.id).into());
+        }
+
+        trace!("submit job {}", job.id);
+        let wg = call!(self.scheduler, |port| {
+            SchedulerMsg::Add(job.clone(), port)
+        })?;
+        assert_eq!(wg.id, job.id);
+
+        // Next tick, the job will run
+        //
+        trace!("wait for job {}", job.id);
+        let stats = wg.rx.recv()?;
+        trace!("job {} finished", job.id);
+
+        let stats = call!(self.results, |port| ResultsMsg::Fetch(job.id, port))?;
+        Ok(stats)
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub async fn wait_for(&mut self, id: usize, tx: Sender<Stats>) -> Result<Stats> {
+        let res = call_t!(self.results, |port| ResultsMsg::Fetch(id, port), 10000)?;
+
+        tx.send(res.clone())?;
+        Ok(res)
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub fn shutdown(&mut self) {
+        pg::get_members(&ENGINE_PG.to_string())
+            .iter()
+            .for_each(|cell| {
+                cell.stop(Some("ctrl-C pressed".into()));
+            });
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub fn ps(&mut self) {
+        let v = self.version();
+        eprintln!("Engin version {} is running", self.version());
+
+        let plist = registered().join("\n");
+        eprintln!("Actor list:\n{plist}");
     }
 
     /// Removes a job from the engine by its ID.
@@ -164,121 +248,10 @@ impl Engine {
     /// This method is instrumented for tracing, excluding the `self` parameter.
     ///
     #[tracing::instrument(skip(self))]
-    pub async fn remove_job(&mut self, job_id: usize) -> eyre::Result<()> {
-        let job = call!(self.queue, |port| QueueMsg::GetById(job_id, port))?;
-        if job.state() == JobState::Running {
-            return Err(EngineStatus::JobIsRunning(job_id).into());
-        }
-
+    pub async fn remove_job(&mut self, job_id: usize) -> Result<()> {
         let _ = cast!(self.state, StateMsg::Remove(job_id))?;
-        let _ = cast!(self.queue, QueueMsg::RemoveById(job_id))?;
+        let _ = cast!(self.scheduler, SchedulerMsg::RemoveById(job_id))?;
         self.sync()
-    }
-
-    /// Retrieve a job by its unique ID
-    ///
-    /// This method takes a job ID (of type `usize`) and attempts to retrieve the
-    /// corresponding job from the internal job queue. If a job with the specified ID
-    /// exists, it is returned; otherwise, an error is generated indicating the job
-    /// could not be found.
-    ///
-    /// # Arguments
-    ///
-    /// - `id`: A `usize` identifier representing the unique ID of the job to retrieve.
-    ///
-    /// # Returns
-    ///
-    /// - Returns the `Job` instance if it exists.
-    /// - Returns an error if the job with the specified ID is not found.
-    ///
-    /// # Errors
-    ///
-    /// This method will return an `Err` containing `EngineStatus::JobNotFound` if
-    /// the job does not exist in the internal job queue.
-    ///
-    /// # Tracing
-    ///
-    /// Tracing logs are emitted to provide detailed runtime diagnostics, including:
-    /// - Lock acquisition on the job list.
-    /// - Retrieval success or error cases.
-    ///
-    /// Ensure tracing is set up in your application to observe these events.
-    ///
-    #[tracing::instrument(skip(self))]
-    pub async fn get_job(&self, id: usize) -> eyre::Result<Job> {
-        let job = call!(self.queue, |port| QueueMsg::GetById(id, port))?;
-
-        Ok(job.clone())
-    }
-
-    /// Submits a new job to be executed by parsing the job string, setting it to Ready state,
-    /// and queuing it for execution.
-    ///
-    /// # Parameters
-    ///
-    /// - `job_str`: A string slice containing the job description to be parsed into a `Job`.
-    ///
-    /// # Returns
-    ///
-    /// - Returns `Ok(usize)` containing the ID of the newly created and queued job.
-    /// - Returns `Err` if job creation, parsing, queueing or state sync fails.
-    ///
-    /// # Errors
-    ///
-    /// This method will return an error if:
-    /// - Job string parsing fails
-    /// - Job queueing fails
-    /// - State synchronization fails
-    ///
-    /// # Notes
-    ///
-    /// The method performs the following steps:
-    /// 1. Parses the job string into a Job struct
-    /// 2. Sets the job state to Ready
-    /// 3. Queues the job for execution
-    /// 4. Synchronizes the engine state
-    ///
-    #[tracing::instrument(skip(self))]
-    pub async fn submit_job(&mut self, job_str: &str) -> eyre::Result<Stats> {
-        let mut job = self.parse(job_str).await?;
-        job.set(JobState::Ready);
-
-        let job_id = self.queue_job(job.clone()).await?;
-        assert_eq!(job_id, job.id);
-        self.sync()?;
-
-        let res = self.factory.call(
-            |port| {
-                FactoryMessage::Dispatch(factory::Job {
-                    key: job_id,
-                    msg: RunnerMsg::Run(port),
-                    options: JobOptions::default(),
-                    accepted: None,
-                })
-            },
-            None)
-            .await?;
-        job.set(JobState::Completed);
-        let res = res.unwrap();
-        info!("job {} completed res={}.", job_id, res);
-
-        Ok(res)
-    #[tracing::instrument(skip(self))]
-    pub fn shutdown(&mut self) {
-        pg::get_members(&ENGINE_PG.to_string()).iter().for_each(|cell| {
-            cell.stop(Some("ctrl-C pressed".into()));
-        });
-    }
-
-    #[tracing::instrument(skip(self))]
-    pub fn ps(&mut self) {
-        let v = self.version();
-        eprintln!("Engin version {} is running", self.version());
-
-        let plist = registered().join("\n");
-        eprintln!("Actor list:\n{plist}");
-    }
-
     }
 }
 
