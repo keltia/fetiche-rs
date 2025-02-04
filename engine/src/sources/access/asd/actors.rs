@@ -9,6 +9,7 @@ use std::sync::mpsc::Sender;
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 use tracing::trace;
 
+use crate::actors::StatsMsg;
 use crate::{Asd, Capability, Site};
 
 /// This is the worker that will consume a given topic.

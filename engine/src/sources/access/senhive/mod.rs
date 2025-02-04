@@ -40,6 +40,9 @@ use crate::{Auth, Capability, Site, StreamableSource};
 use fetiche_formats::senhive::FusedData;
 use fetiche_formats::{DronePoint, Format};
 
+/// Senhive process/actor group
+pub(crate) const SENHIVE_PG: &str = "senhive-pg";
+
 /// Credentials to submit to the site to get the token
 ///
 #[derive(Debug, Deserialize, Serialize)]

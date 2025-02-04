@@ -31,8 +31,9 @@ use signal_hook::flag;
 use tracing::{error, info, trace, warn};
 
 use super::actors::{Worker, WorkerArgs};
-use crate::access::TICK;
-use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, Routes, Site, StreamableSource, WorkerMsg};
+use crate::actors::{StatsActor, StatsMsg, Supervisor};
+use crate::sources::TICK;
+use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, Routes, Site, StreamableSource, WorkerMsg, ENGINE_PG};
 use fetiche_formats::Format;
 
 /// TCP streaming URL
@@ -211,12 +212,12 @@ impl AsyncStreamable for AvionixServer {
         // Insert each actor in the PG_SOURCES group.
         //
         join(
-            SOURCES_PG.into(),
+            ENGINE_PG.into(),
             vec![sup.get_cell(), worker.get_cell(), stat.get_cell()],
         );
 
         info!("List of actors.");
-        let list = pg::get_members(&SOURCES_PG.to_string());
+        let list = pg::get_members(&ENGINE_PG.to_string());
         list.iter().for_each(|member| {
             info!("  {}", member.get_name().unwrap_or("<anon>".into()));
         });
@@ -246,7 +247,7 @@ impl AsyncStreamable for AvionixServer {
 
         // Stop everyone in the group.
         //
-        pg::get_members(&SOURCES_PG.to_string())
+        pg::get_members(&ENGINE_PG.to_string())
             .iter()
             .for_each(|member| {
                 member.stop(Some("Ending.".to_string()));

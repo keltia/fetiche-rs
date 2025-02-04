@@ -22,3 +22,5 @@ mod cube;
 /// This is the code used when accessing the Avionix API or TCP streaming server
 mod server;
 
+/// Avionix process/actor group
+pub(crate) const AVIONIX_PG: &str = "avionix-pg";

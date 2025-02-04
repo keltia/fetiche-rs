@@ -26,8 +26,7 @@ use tracing::{error, trace, warn};
 
 use fetiche_formats::Format;
 
-use crate::site::Site;
-use crate::{Auth, Capability, FetchableSource};
+use crate::{Auth, Capability, FetchableSource, Site};
 
 mod fetch;
 pub mod token;

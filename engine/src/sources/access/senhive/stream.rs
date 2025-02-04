@@ -17,7 +17,8 @@ use tracing::{info, trace};
 use fetiche_formats::Format;
 
 use super::actors::{Worker, WorkerArgs, WorkerMsg};
-use crate::actors::{StatsActor, StatsMsg, Supervisor, SOURCES_PG};
+use crate::actors::{StatsActor, StatsMsg, Supervisor};
+use crate::sources::SENHIVE_PG;
 use crate::{AsyncStreamable, AuthError, Filter, Senhive};
 
 const TICK: Duration = Duration::from_secs(30);
@@ -100,12 +101,12 @@ impl AsyncStreamable for Senhive {
         // Insert each actor in the PG_SOURCES group.
         //
         join(
-            SOURCES_PG.into(),
+            SENHIVE_PG.into(),
             vec![sup.get_cell(), worker.get_cell(), stat.get_cell()],
         );
 
         info!("List of actors.");
-        let list = pg::get_members(&SOURCES_PG.to_string());
+        let list = pg::get_members(&SENHIVE_PG.to_string());
         list.iter().for_each(|member| {
             info!("  {}", member.get_name().unwrap_or("<anon>".into()));
         });
@@ -132,7 +133,7 @@ impl AsyncStreamable for Senhive {
 
             // Stop everyone in the group.
             //
-            pg::get_members(&SOURCES_PG.to_string())
+            pg::get_members(&SENHIVE_PG.to_string())
                 .iter()
                 .for_each(|member| {
                     member.stop(Some("^C ^pressed, ending.".to_string()));
@@ -165,7 +166,7 @@ impl AsyncStreamable for Senhive {
 
         // Stop everyone in the group.
         //
-        pg::get_members(&SOURCES_PG.to_string())
+        pg::get_members(&SENHIVE_PG.to_string())
             .iter()
             .for_each(|member| {
                 member.stop(Some("Ending.".to_string()));
