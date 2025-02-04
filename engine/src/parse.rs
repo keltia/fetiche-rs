@@ -12,11 +12,10 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use ractor::call;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use strum::EnumString;
 use tracing::{debug, trace};
 
-use crate::actors::{QueueMsg, SourcesMsg};
+use crate::actors::{SchedulerMsg, SourcesMsg};
 use crate::{
     Consumer, Copy, Engine, Fetch, Filter, Job, JobState, Middle, Producer, Read, Save, Store,
     Stream, Tee,
@@ -158,10 +157,9 @@ impl Engine {
     ///
     /// ```rust
     /// # #[tokio::main]
-    /// # use crate::Engine;
     /// # async fn main() -> eyre::Result<()> {
     /// # use fetiche_engine::Engine;
-    /// # let engine = Engine::new().await?;
+    /// # let engine = Engine::single().await?;
     /// let job_str = r#"
     ///     name = "example_job"
     ///     producer = {
@@ -182,7 +180,7 @@ impl Engine {
 
         // Assign a new ID
         //
-        let id = call!(self.queue, |port| QueueMsg::Allocate(port))?;
+        let id = call!(self.scheduler, |port| SchedulerMsg::Allocate(port))?;
 
         // Retrieve the site's data from the Sources actor.
         //
@@ -229,7 +227,8 @@ impl Engine {
         let consumer = match jt.output {
             ConsumerText::Archive(_) => Consumer::Invalid,
             ConsumerText::Save(c) => {
-                let f = Save::new(&c, Format::None, Container::Raw);
+                let mut f = Save::new(&c, Format::None, Container::Raw);
+                f.path(&c);
                 Consumer::Save(f)
             }
             ConsumerText::Store(c, f) => {
