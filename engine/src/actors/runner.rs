@@ -27,12 +27,12 @@ use crate::Stats;
 ///
 #[derive(Debug)]
 pub enum RunnerMsg {
+    /// Run next job
+    Run(RpcReplyPort<Stats>),
     /// Start executing the job with the specified ID
     Start(usize),
     /// Stop executing the job with the specified ID
     Stop(usize),
-    /// Request current execution statistics
-    Stats(RpcReplyPort<Stats>),
 }
 
 /// The Runner actor implementation that processes jobs from the queue.
@@ -83,6 +83,16 @@ impl Worker for RunnerActor {
     ) -> Result<usize, ActorProcessingErr> {
         trace!("runner {} got message: {:?}", wid, msg);
         match msg {
+            RunnerMsg::Run(sender) => {
+                let queue = state.queue.clone();
+                let mut job = call!(queue, |port| QueueMsg::Run(port))?;
+
+                let mut data = vec![];
+                let _ = job.run(&mut data)?;
+                let stat = state.stats.clone();
+                let stats = call!(stat, |port| StatsMsg::Get(port))?;
+                let _ = sender.send(stats);
+            }
             RunnerMsg::Start(n) => {
                 let queue = state.queue.clone();
                 let mut job = call!(queue, |port| QueueMsg::GetById(n, port)).unwrap();
@@ -91,9 +101,6 @@ impl Worker for RunnerActor {
                 let _ = job.run(&mut data)?;
             }
             RunnerMsg::Stop(n) => {
-                todo!()
-            }
-            RunnerMsg::Stats(sender) => {
                 todo!()
             }
         }
