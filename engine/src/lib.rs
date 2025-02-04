@@ -47,6 +47,7 @@ use std::time::Duration;
 
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
+use ractor::factory::{queues, routing, Factory, FactoryArguments};
 use ractor::{call, cast, Actor, ActorRef};
 use serde::Deserialize;
 use strum::EnumString;
@@ -324,6 +325,25 @@ impl Engine {
         trace!("load job queue");
         let (queue, _h) = Actor::spawn(Some("engine::queue".into()), QueueActor, last).await?;
         trace!("queue={:?}", queue);
+
+        // ----- Start Runner Factory
+
+        let factory_def = Factory::<
+            (),
+            RunnerMsg,
+            (),
+            RunnerActor,
+            routing::QueuerRouting<(), RunnerMsg>,
+            queues::DefaultQueue<(), RunnerMsg>,
+        >::default();
+        let factory_args = FactoryArguments::builder()
+            .worker_builder(Box::new(RunnerBuilder))
+            .queue(Default::default())
+            .router(Default::default())
+            .num_initial_workers(cfg.workers)
+            .build();
+
+        let (_factory, _h) = Actor::spawn(None, factory_def, factory_args).await?;
 
         // ----- Register non-actor sub-systems
 
