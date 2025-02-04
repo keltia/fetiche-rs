@@ -11,10 +11,10 @@ use arrow2::{
     chunk::Chunk,
     datatypes::Schema,
     io::csv::read::{
-        deserialize_column, infer, infer_schema, read_rows, ByteRecord, ReaderBuilder,
+        ByteRecord, ReaderBuilder, deserialize_column, infer, infer_schema, read_rows,
     },
     io::parquet::write::{
-        transverse, CompressionOptions, FileWriter, RowGroupIterator, Version, WriteOptions,
+        CompressionOptions, FileWriter, RowGroupIterator, Version, WriteOptions, transverse,
     },
 };
 use eyre::Result;
