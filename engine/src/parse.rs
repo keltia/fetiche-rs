@@ -126,8 +126,9 @@ enum ConsumerText {
 /// }
 /// ```
 ///
-#[derive(Clone, Debug, Deserialize, EnumString, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, EnumString, PartialEq, Serialize)]
 pub enum Freq {
+    #[default]
     Daily,
     Hourly,
 }
