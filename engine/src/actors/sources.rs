@@ -2,7 +2,7 @@
 //!
 
 use crate::{Site, Sources, ENGINE_PG};
-use eyre::eyre;
+use eyre::{eyre, Result};
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
 /// Messages handled by the `SourcesActor`.
@@ -21,7 +21,7 @@ use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 ///
 #[derive(Debug)]
 pub enum SourcesMsg {
-    Get(String, RpcReplyPort<Site>),
+    Get(String, RpcReplyPort<Result<Site>>),
     Count(RpcReplyPort<usize>),
     List(RpcReplyPort<Sources>),
     Reload(RpcReplyPort<Sources>),
@@ -118,11 +118,12 @@ impl Actor for SourcesActor {
                     Some(site) => site.clone(),
                     None => {
                         let err = format!("Unknown site: {}", key);
-                        tracing::error!("{}", err);
-                        return Err(ActorProcessingErr::from(eyre!(err)));
+                        tracing::error!("{err}");
+                        sender.send(Err(eyre!(err)))?;
+                        return Ok(());
                     }
                 };
-                sender.send(site)?;
+                sender.send(Ok(site))?;
             }
             SourcesMsg::List(sender) => {
                 let sources = state.clone();
