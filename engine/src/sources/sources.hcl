@@ -5,7 +5,7 @@ version = 4
 // Soon to disappear
 //
 site "eih" {
-  features = ["fetch"]
+  feature  = "fetch"
   type     = "drone"
   format   = "aeroscope"
   base_url = "http://127.0.0.1:2400"
@@ -17,7 +17,7 @@ site "eih" {
 // CDG antenna is now in LUX, use my account
 //
 site "lux-me" {
-  features = ["fetch"]
+  feature  = "fetch"
   type     = "drone"
   format   = "asd"
   base_url = "https://eur.airspacedrone.com"
@@ -36,7 +36,7 @@ site "lux-me" {
 // CDG antenna is now in LUX
 //
 site "lux" {
-  features = ["fetch"]
+  feature  = "fetch"
   type     = "drone"
   format   = "asd"
   base_url = "https://eur.airspacedrone.com"
@@ -48,7 +48,7 @@ site "lux" {
 }
 
 site "opensky" {
-  features = ["fetch", "stream"]
+  feature  = "stream"
   type     = "adsb"
   format   = "opensky"
   base_url = "https://opensky-network.org/api"
@@ -62,7 +62,7 @@ site "opensky" {
 }
 
 site "fa-belfast" {
-  features = ["fetch"]
+  feature  = "fetch"
   type     = "adsb"
   format   = "flightaware"
   base_url = "firehose.flightaware.com:1501"
@@ -77,7 +77,7 @@ site "fa-belfast" {
 }
 
 site "safesky" {
-  features = ["fetch"]
+  feature  = "fetch"
   type     = "adsb"
   format   = "safesky"
   base_url = "https://public-api.safesky.app"
@@ -89,7 +89,7 @@ site "safesky" {
 // Avionix Cube on the EIH roof - ADS-B flow
 //
 site "avionix-adsb" {
-  features = ["stream"]
+  feature  = "stream"
   type     = "adsb"
   format   = "cubedata"
   base_url = "tcp.aero-network.com:50007"
@@ -105,7 +105,7 @@ site "avionix-adsb" {
 // Avionix Cube on the EIH roof - -RemoteID flow
 //
 site "avionix-rid" {
-  features = ["stream"]
+  feature  = "stream"
   type     = "drone"
   format   = "cubedata"
   base_url = "tcp.aero-network.com:50007"
@@ -121,7 +121,7 @@ site "avionix-rid" {
 // Thales Senhive antenna on the EIH roof.
 //
 site "eih-senhive" {
-  features = ["stream"]
+  feature  = "stream"
   type     = "drone"
   format   = "senhive"
   base_url = "senegress.senair.io:5672"
