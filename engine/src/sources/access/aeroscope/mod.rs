@@ -7,11 +7,10 @@
 //! Data fetched is json and not csv but our struct in `formats/aeroscope.rs`  is compatible with
 //! both, even flattening the different lat/long structs in a sensible way.
 //!
-//! This implement the `Fetchable` trait described in `site/lib`.
+//! This implement the `Fetchable` trait described in `mod.rs`.
 //!
 
 mod fetch;
-mod actors;
 
 use std::str::FromStr;
 use std::vec;
@@ -46,7 +45,7 @@ struct Token {
     access_token: String,
 }
 
-/// This describe the Aeroscope "site" which is the PC we have here at the EIH
+/// This describes the Aeroscope "site" which is the PC we have here at the EIH
 /// ///
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Aeroscope {
