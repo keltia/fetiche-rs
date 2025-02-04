@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use tracing::debug;
 
-use crate::runtime::Context;
 use crate::error::Status;
+use crate::runtime::Context;
 
 /// Represents a site entity stored in the database within the `sites` table.
 ///
@@ -41,6 +41,8 @@ pub struct Site {
     pub longitude: f32,
     /// Reference altitude
     pub ref_alt: f32,
+    /// timezone name
+    pub timezone: String,
 }
 
 impl Display for Site {
