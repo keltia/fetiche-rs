@@ -90,7 +90,7 @@ async fn main() -> Result<()> {
     // initialise signal handling
     //
     let mut e = engine.clone();
-    ctrlc::set_handler(move || {
+    let _ = ctrlc::set_handler(move || {
         trace!("Ctrl-C pressed");
         e.shutdown();
         close_logging();
