@@ -30,7 +30,6 @@ fetiche-common.workspace = true
 fetiche-engine.workspace = true
 fetiche-formats.workspace = true
 fetiche-macros.workspace = true
-fetiche-sources.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
