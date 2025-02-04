@@ -351,7 +351,7 @@ WHERE
         // Select planes points that are in temporal and geospatial proximity +- 3 nm ~ 0.05 deg and
         // altitude diff is less than 3 nm. (parameter is `separation`).
         //
-        // $1,$2 = distance we consider as significan, 3nm for now approx 5,500 m.
+        // $1,$2 = distance we consider as significant, 3nm for now approx 5,500 m.
         //
         let r = format!(
             r##"

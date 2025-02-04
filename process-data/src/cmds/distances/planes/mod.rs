@@ -16,7 +16,6 @@ use tracing::{debug, error, info, trace};
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
 use crate::cmds::{enumerate_sites, find_site, Calculate, PlanesStats, Site, Stats};
-use crate::config::Context;
 use crate::error::Status;
 use crate::runtime::Context;
 
@@ -55,8 +54,11 @@ pub struct PlanesOpts {
     #[clap(short = 'D', long, default_value = "70.")]
     pub distance: f64,
     /// Proximity in Meters.
-    #[clap(short = 'p', long, default_value = "5500.")]
-    pub separation: f64,
+    #[clap(short = 't', long, default_value = "1852")]
+    pub threshold: u32,
+    /// Factor for proximity calculations.
+    #[clap(short = 'f', long, default_value = "3.")]
+    pub factor: u32,
 }
 
 // -----
@@ -99,7 +101,7 @@ pub struct PlaneDistance {
     /// Max distance we want to consider
     #[builder(default = "70.")]
     pub distance: f64,
-    /// proximity
+    /// Separation.
     #[builder(default = "5500.")]
     pub separation: f64,
     /// Lat of antenna
@@ -187,9 +189,23 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     let site_filter = opts.name.as_deref().unwrap_or("");
     let work_list = prepare_work_list(ctx, dates, site_filter).await?;
 
+    let threshold = match ctx.config.get("threshold") {
+        Some(v) => v.parse::<u32>().unwrap_or(1852),
+        None => 1852,
+    };
+
+    let factor = match ctx.config.get("factor") {
+        Some(v) => v.parse::<u32>().unwrap_or(3),
+        None => 3,
+    };
+
+    // Define our separation
+    //
+    let separation = (threshold * factor) as f64;
+
     // Step 4: Process batches of computations in parallel
     //
-    let all_stats = process_batches(ctx, work_list, opts.distance, opts.separation).await;
+    let all_stats = process_batches(ctx, work_list, opts.distance, separation).await;
 
     // Step 5: Gather and summarize statistics
     //
@@ -505,10 +521,11 @@ async fn calculate_one_day_on_site(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::{TimeZone, Utc};
+
     use crate::cli::{Opts, SubCommand};
     use crate::cmds::{DistOpts, DistSubcommand};
-    use crate::config::init_runtime;
-    use chrono::{TimeZone, Utc};
+    use crate::runtime::init_runtime;
 
     #[test]
     fn test_parse_date_interval_valid_range() {
@@ -549,7 +566,8 @@ mod tests {
                 date: DateOpts::Week { num: 1 },
                 name: Some(site.to_string()),
                 distance: 70.0,
-                separation: 5500.0,
+                threshold: 1852,
+                factor: 3,
             }),
         };
         let cmd = SubCommand::Distances(dopts);
