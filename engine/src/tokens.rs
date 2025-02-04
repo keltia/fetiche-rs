@@ -11,7 +11,8 @@ use tabled::builder::Builder;
 use tabled::settings::Style;
 use tracing::trace;
 
-use crate::{AsdToken, TokenStatus, TokenType};
+use crate::token::AsdToken;
+use crate::{TokenStatus, TokenType};
 
 /// The `TokenStorage` struct provides functionality for managing tokens
 /// stored as serialized files in a specified directory. It allows operations
@@ -32,7 +33,8 @@ use crate::{AsdToken, TokenStatus, TokenType};
 /// ```rust
 ///
 /// // Register a directory containing token files
-/// use fetiche_engine::{AsdToken, TokenStorage, TokenType};
+/// use fetiche_engine::{TokenStorage, TokenType};
+/// use fetiche_engine::token::AsdToken;
 ///
 /// let mut storage = TokenStorage::register("path/to/tokens");
 ///
@@ -62,9 +64,11 @@ pub struct TokenStorage {
 impl TokenStorage {
     /// Read the directory and return all tokens (one per file)
     ///
+    #[tracing::instrument]
     pub fn register(path: &str) -> Self {
         let mut db = BTreeMap::<String, TokenType>::new();
         if let Ok(dir) = read_dir(path) {
+            trace!("reading directory {path}");
             dir.into_iter().for_each(|entry| {
                 if let Ok(p) = entry {
                     let f = p.file_name().to_str().unwrap().to_string();
@@ -89,12 +93,13 @@ impl TokenStorage {
         }
     }
 
-    #[inline]
+    #[tracing::instrument(skip(self))]
     pub fn store(&mut self, key: &str, data: TokenType) -> Result<()> {
         self.list.insert(key.into(), data);
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn load(&self, key: &str) -> Result<TokenType> {
         match self.list.get(key) {
             Some(t) => Ok(t.clone()),
@@ -102,21 +107,22 @@ impl TokenStorage {
         }
     }
 
-    #[inline]
+    #[tracing::instrument(skip(self))]
     pub fn path(&self) -> String {
         self.path.clone()
     }
 
-    #[inline]
+    #[tracing::instrument(skip(self))]
     pub fn len(&self) -> usize {
         self.list.len()
     }
 
-    #[inline]
+    #[tracing::instrument(skip(self))]
     pub fn is_empty(&self) -> bool {
         self.list.is_empty()
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn list(&self) -> Vec<TokenType> {
         self.list.values().cloned().collect()
     }
@@ -153,8 +159,8 @@ impl TokenStorage {
                         row.push("Unknown".into());
                     }
 
-                    let st = fname.metadata().unwrap();
-                    let modified = DateTime::<Utc>::from(st.modified().unwrap());
+                    let st = fname.metadata()?;
+                    let modified = DateTime::<Utc>::from(st.modified()?);
                     let modified = format!("{}", modified);
                     row.push(modified);
                 } else {
