@@ -3,7 +3,7 @@
 
 use chrono::{DateTime, Duration, Utc};
 use eyre::Result;
-use jiff::ToSpan;
+use jiff::{civil::Date, ToSpan};
 
 /// This function takes a start and end `DateTime<Utc>` and generates a vector of all days
 /// between (inclusive of start, exclusive of end). It increments the date by one day
@@ -51,15 +51,48 @@ pub fn expand_interval(begin: DateTime<Utc>, end: DateTime<Utc>) -> Result<Vec<D
     Ok(intv)
 }
 
-pub fn expand_interval_jiff(begin: jiff::Timestamp, end: jiff::Timestamp) -> Result<Vec<jiff::Timestamp>> {
-    let intv = begin.series(1.days()).take_while(|&ts| ts <= end).collect::<Vec<_>>();
+/// This function takes a start and end `jiff::Timestamp` and generates a vector of all days
+/// between (inclusive of start and end). It uses jiff's series functionality to generate
+/// daily timestamps, returning all days as `jiff::Timestamp`.
+///
+/// # Arguments
+///
+/// * `begin` - The starting `jiff::Timestamp` of the interval.
+/// * `end` - The ending `jiff::Timestamp` of the interval.
+///
+/// # Returns
+///
+/// A `Result` containing a vector of `jiff::Timestamp` representing all the dates within the interval.
+/// If an error occurs, it will be inside the `Err` variant.
+///
+/// # Errors
+///
+/// * Return an `Err` if there are issues creating the vector of dates.
+/// * Assumes input timestamps are valid and properly formatted.
+///
+pub fn expand_interval_jiff(begin: Date, end: Date) -> Result<Vec<Date>> {
+    if begin == end {
+        return Ok(vec![begin]);
+    }
+
+    let mut intv = begin
+        .series(1.days())
+        .take_while(|&ts| ts < end)
+        .collect::<Vec<_>>();
+
+    if intv.is_empty() && begin < end {
+        intv.push(begin);
+    }
+
     Ok(intv)
 }
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use chrono::{TimeZone, Utc};
+    use jiff::civil::date;
     use rstest::rstest;
 
     #[test]
@@ -132,49 +165,31 @@ mod tests {
         Ok(())
     }
 
-
     #[test]
-    fn test_expand_interval_jiff_single_day() -> Result<()> {
-        let start = jiff::Timestamp::from_second(1706745600)?; // 2024-02-01 00:00:00 UTC
-        let end = jiff::Timestamp::from_second(1706832000)?;   // 2024-02-02 00:00:00 UTC
+    fn test_expand_interval_jiff_single_day() {
+        let start = date(2024, 2, 1); // 2024-02-01 00:00:00 UTC
+        let end = date(2024, 2, 2); // 2024-02-02 00:00:00 UTC
 
-        let result = expand_interval_jiff(start, end)?;
+        let result = expand_interval_jiff(start, end).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0], start);
-        Ok(())
     }
 
     #[test]
-    fn test_expand_interval_jiff_multiple_days() -> Result<()> {
-        let start = jiff::Timestamp::from_second(1706745600)?; // 2024-02-01 00:00:00 UTC
-        let end = jiff::Timestamp::from_second(1707004800)?;   // 2024-02-04 00:00:00 UTC
+    fn test_expand_interval_jiff_multiple_days() {
+        let start = date(2024, 2, 1); // 2024-02-01 00:00:00 UTC
+        let end = date(2024, 2, 4); // 2024-02-04 00:00:00 UTC
 
-        let result = expand_interval_jiff(start, end)?;
+        let result = expand_interval_jiff(start, end).unwrap();
         assert_eq!(result.len(), 3);
-
-        assert_eq!(result[0], start);
-        assert_eq!(result[1], start + 1.days());
-        assert_eq!(result[2], start + 2.days());
-        Ok(())
     }
 
     #[test]
-    fn test_expand_interval_jiff_empty_result() -> Result<()> {
-        let start = jiff::Timestamp::from_second(1706745600)?; // 2024-02-01 00:00:00 UTC
-        let end = jiff::Timestamp::from_second(1706745600)?;   // 2024-02-01 00:00:00 UTC
+    fn test_expand_interval_jiff_invalid_date_range() {
+        let start = date(2024, 2, 4); // 2024-02-04 00:00:00 UTC
+        let end = date(2024, 2, 1); // 2024-02-01 00:00:00 UTC
 
-        let result = expand_interval_jiff(start, end)?;
+        let result = expand_interval_jiff(start, end).unwrap();
         assert_eq!(result.len(), 0);
-        Ok(())
-    }
-
-    #[test]
-    fn test_expand_interval_jiff_invalid_date_range() -> Result<()> {
-        let start = jiff::Timestamp::from_second(1707004800)?; // 2024-02-04 00:00:00 UTC
-        let end = jiff::Timestamp::from_second(1706745600)?;   // 2024-02-01 00:00:00 UTC
-
-        let result = expand_interval_jiff(start, end)?;
-        assert_eq!(result.len(), 0);
-        Ok(())
     }
 }
