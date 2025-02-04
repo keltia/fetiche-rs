@@ -16,10 +16,12 @@ pub fn runnable(input: TokenStream) -> TokenStream {
     let klass = klass.ident;
     let outer = quote!(
         impl Runnable for #klass {
+            #[::tracing::instrument(skip(self, input))]
             fn cap(&self) -> IO {
                 self.io.clone()
             }
 
+            #[::tracing::instrument(skip(self, input))]
             fn run(
                 &mut self,
                 input: ::std::sync::mpsc::Receiver<::std::string::String>,
