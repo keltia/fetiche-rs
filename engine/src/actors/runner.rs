@@ -10,13 +10,18 @@
 //! - `RunnerActor`: The actual actor implementation that processes jobs
 //! - `RunnerArgs`: Configuration and dependencies required by the Runner actor
 //!
+use std::io::Write;
 
+use futures::stream::{self, StreamExt};
 use ractor::factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId};
-use ractor::{call, cast, ActorProcessingErr, ActorRef, RpcReplyPort};
-use tracing::trace;
+use ractor::{call, call_t, cast, ActorProcessingErr, ActorRef, RpcReplyPort};
+use tracing::{debug, error, info, trace};
 
-use crate::actors::{QueueMsg, StatsMsg};
-use crate::{JobState, Stats};
+use crate::task::Runnable;
+
+use crate::actors::{QueueMsg, ResultsMsg, StatsMsg};
+use crate::QueueError::JobInWrongState;
+use crate::{Stats, Task};
 
 /// Messages that can be handled by the Runner actor.
 ///
@@ -46,6 +51,20 @@ pub struct RunnerActor;
 pub struct RunnerArgs {
     /// Reference to the Queue actor for queue management
     pub queue: ActorRef<QueueMsg>,
+    /// Reference to the Result actor
+    pub results: ActorRef<ResultsMsg>,
+    /// Reference to the Stats actor for metrics
+    pub stats: ActorRef<StatsMsg>,
+}
+
+#[derive(Clone, Debug)]
+pub struct RunnerState {
+    /// ID of the runner.
+    pub id: WorkerId,
+    /// Reference to the Queue actor for queue management
+    pub queue: ActorRef<QueueMsg>,
+    /// Reference to the Result actor
+    pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
     pub stats: ActorRef<StatsMsg>,
 }
@@ -55,16 +74,23 @@ impl Worker for RunnerActor {
     type Key = usize;
     type Message = RunnerMsg;
     type Arguments = RunnerArgs;
-    type State = RunnerArgs;
+    type State = RunnerState;
 
     #[tracing::instrument(skip(self, _factory))]
     async fn pre_start(
         &self,
-        _wid: WorkerId,
+        wid: WorkerId,
         _factory: &ActorRef<FactoryMessage<usize, RunnerMsg>>,
         startup_context: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(startup_context)
+        trace!("runner {} starting", wid);
+        let state = RunnerState {
+            id: wid,
+            queue: startup_context.queue.clone(),
+            results: startup_context.results.clone(),
+            stats: startup_context.stats.clone(),
+        };
+        Ok(state)
     }
 
     #[tracing::instrument(skip(self, _factory))]
@@ -82,22 +108,81 @@ impl Worker for RunnerActor {
             RunnerMsg::Run(sender) => {
                 let stat = state.stats.clone();
                 let queue = state.queue.clone();
+                let results = state.results.clone();
 
                 let mut job = call!(queue, |port| QueueMsg::Run(port))?;
-                job.stats(stat.clone());
-                job.state = JobState::Running;
+
+                job.register(stat.clone());
+
+                info!("Job({})::run({}) with {} tasks", wid, job.name, job.filters.len() + 2);
 
                 let job_tag = format!("job#{}", job.id);
                 let _ = cast!(stat, StatsMsg::New(job_tag.clone()))?;
 
                 let mut data = vec![];
-                let _ = job.run(&mut data)?;
 
+                // insert tasks into the pipeline
+                //
+                let p = job.producer.clone();
+                let c = job.consumer.clone();
+                let first = vec![Task::from(p)];
+                let filters = job
+                    .filters
+                    .iter()
+                    .map(|t| Task::from(t.clone()))
+                    .collect::<Vec<Task>>();
+                let last = vec![Task::from(c)];
+
+                // Create our list of linked tasks
+                //
+                let mut task_list = [first, filters, last]
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<Task>>();
+                debug!("task_list: {:?}", task_list);
+
+                // Set the pipeline up
+                //
+                let (key, stdout) = std::sync::mpsc::channel::<String>();
+
+                trace!("create pipeline");
+
+                // Gather results for all tasks into a single pipeline using `Iterator::fold()`
+                //
+                let output = stream::iter(task_list.iter_mut()).fold(stdout, async move |acc, t| {
+                    let (rx, _h) = t.run(acc).await;
+                    rx
+                }).await;
+
+                trace!("starting pipe");
+
+                // Start the pipeline
+                //
+                let _ = key.send("start".to_string())?;
+
+                // Close the pipeline which will stop all threads in sequence
+                //
+                drop(key);
+
+                // Wait for final output to be received and send it out
+                //
+                for msg in output {
+                    write!(&mut data, "{}", msg)?;
+                }
+
+                // Fetch stats for the specific job run
+                //
                 let stats = call!(stat, |port| StatsMsg::Get(job_tag.clone(), port))?;
+                let _ = cast!(results, ResultsMsg::Submit(job.id, stats.clone()))?;
                 let _ = sender.send(stats);
+
+                // Clean stats
+                //
                 let _ = cast!(stat, StatsMsg::Reset(job_tag))?;
 
-                job.state = JobState::Completed;
+                // Update status.
+                //
+                let _ = cast!(queue, QueueMsg::Finished(job))?;
             }
         }
         Ok(key)
@@ -108,17 +193,20 @@ impl Worker for RunnerActor {
 pub struct RunnerBuilder {
     /// Reference to the Queue actor for queue management
     pub queue: ActorRef<QueueMsg>,
+    /// Reference to the Results actor
+    pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
     pub stat: ActorRef<StatsMsg>,
 }
 
 impl WorkerBuilder<RunnerActor, RunnerArgs> for RunnerBuilder {
     #[tracing::instrument(skip(self))]
-    fn build(&mut self, _wid: WorkerId) -> (RunnerActor, RunnerArgs) {
+    fn build(&mut self, wid: WorkerId) -> (RunnerActor, RunnerArgs) {
         (
             RunnerActor,
             RunnerArgs {
                 queue: self.queue.clone(),
+                results: self.results.clone(),
                 stats: self.stat.clone(),
             },
         )

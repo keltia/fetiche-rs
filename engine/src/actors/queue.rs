@@ -3,19 +3,23 @@
 use std::collections::VecDeque;
 
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use strum::EnumString;
+use tracing::trace;
 
-use crate::{Job, JobState, QueueStatus, ENGINE_PG};
+use crate::{Job, JobState, QueueError, ENGINE_PG};
 
 /// Messages handled by the QueueActor for managing the job queue.
 ///
 #[derive(Debug)]
 pub enum QueueMsg {
-    /// Adds a new job to the queue.
-    Add(Job),
+    /// Adds a new job to the waiting queue.
+    Add(Job, RpcReplyPort<usize>),
     /// Gets the next available job ID. Returns the ID through the reply port.
     Allocate(RpcReplyPort<usize>),
-    /// Retrieves a job by its ID. Returns the job through the reply port if found.
-    GetById(usize, RpcReplyPort<Job>),
+    /// Check if there is anything to do in any of the queues.
+    Empty(RpcReplyPort<bool>),
+    /// Move from running into the finished queue.
+    Finished(Job),
     /// Lists all job IDs currently in the queue. Returns vector of IDs through the reply port.
     List(RpcReplyPort<Vec<usize>>),
     /// Removes a job from the queue using its ID.
@@ -30,8 +34,23 @@ pub struct QueueActor;
 pub struct QueueState {
     /// Last job ID.
     last: usize,
-    /// The queue itself.
-    q: VecDeque<Job>,
+    /// The queues:
+    waiting: VecDeque<Job>,
+    running: VecDeque<Job>,
+    finished: VecDeque<Job>,
+}
+
+/// We have three different queues.
+///
+#[derive(Debug, EnumString, strum::Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum Queue {
+    /// Initial queue when submitting a job.
+    Waiting,
+    /// Next job to run is put here.
+    Running,
+    /// Then it is moved after completion.
+    Finished,
 }
 
 /// The actor implementation for `QueueActor` which manages a job queue.
@@ -53,23 +72,6 @@ impl Actor for QueueActor {
     type State = QueueState;
     type Arguments = usize;
 
-    /// Prepares the `QueueActor` to start.
-    ///
-    /// This method is called before the actor starts processing messages,
-    /// allowing for setup or initialization operations. In this implementation,
-    /// the actor joins the `ENGINE_PG` process group and initializes its state
-    /// with a new `JobQueue`.
-    ///
-    /// # Parameters
-    /// - `myself`: A reference to the actor itself. This can be used to perform actions or interactions involving the actor.
-    /// - `_args`: Arguments provided at initialization. For this actor, an empty tuple `()` is expected.
-    ///
-    /// # Returns
-    /// a `JobQueue` that will represent the actor's initial state.
-    ///
-    /// # Errors
-    /// May return an `ActorProcessingErr` if the initialization process fails.
-    ///
     #[tracing::instrument(skip(self, myself))]
     async fn pre_start(
         &self,
@@ -80,37 +82,12 @@ impl Actor for QueueActor {
 
         Ok(QueueState {
             last: args,
-            q: VecDeque::new(),
+            waiting: VecDeque::new(),
+            running: VecDeque::new(),
+            finished: VecDeque::new(),
         })
     }
 
-    /// Handles the incoming messages sent to the `QueueActor`.
-    ///
-    /// This method processes the different variants of the `QueueMsg` enum.
-    /// Each variant corresponds to a specific operation on the actor's
-    /// internal state (`QueueState`).
-    ///
-    /// # Parameters
-    /// - `myself`: A reference to the actor itself.
-    /// - `message`: The `QueueMsg` received by the actor.
-    /// - `state`: A mutable reference to the current state of the actor.
-    ///
-    /// # Returns
-    /// A `Result` that indicates whether the message was processed successfully.
-    ///
-    /// # Possible Message Handling
-    ///
-    /// - `QueueMsg::Add`: Adds a new job to the queue.
-    /// - `QueueMsg::Allocate`: Responds with the next job ID (`state.last`).
-    /// - `QueueMsg::GetById`: Returns the corresponding job with its ID.
-    /// - `QueueMsg::RemoveId`: Removes a job by its ID.
-    /// - `QueueMsg::List`: Responds with the list of all job IDs stored in the queue.
-    /// - `QueueMsg::Run`: Remove from the queue and return the job for execution.
-    ///
-    /// # Panics
-    /// If the message variant is not implemented in the match statement, the
-    /// method will panic with a runtime error.
-    ///
     #[tracing::instrument(skip(self, _myself))]
     async fn handle(
         &self,
@@ -123,40 +100,40 @@ impl Actor for QueueActor {
                 sender.send(state.last)?;
                 state.last += 1;
             }
-            QueueMsg::Add(job) => {
+            QueueMsg::Add(job, port) => {
                 let mut queued = job.clone();
                 if job.state() != JobState::Ready {
-                    return Err(QueueStatus::JobNotReady(job.id).into());
+                    return Err(QueueError::JobNotReady(job.id).into());
                 }
-
-                queued.set(JobState::Queued);
-                state.q.push_back(queued);
-            }
-            QueueMsg::GetById(id, sender) => {
-                let job = match state.q.get(id) {
-                    Some(job) => job,
-                    None => return Err(QueueStatus::JobNotFound(id).into()),
-                };
-                sender.send(job.clone())?;
+                trace!("Adding job to waiting queue: {:?}", queued);
+                state.waiting.push_back(queued);
+                let _ = port.send(job.id)?;
             }
             QueueMsg::List(sender) => {
-                let list = state.q.iter().map(|j| j.id).collect::<Vec<usize>>();
+                let list = state.running.iter().map(|j| j.id).collect::<Vec<usize>>();
                 sender.send(list)?;
             }
             QueueMsg::Run(sender) => {
-                let mut job = match state.q.pop_front() {
+                let mut job = match state.waiting.pop_front() {
                     Some(job) => job,
-                    None => return Err(QueueStatus::EmptyQueue.into()),
+                    None => return Ok(()),
                 };
-                if job.state() != JobState::Queued {
-                    return Err(QueueStatus::JobInWrongState(job.id).into());
-                }
-
-                job.set(JobState::Running);
+                trace!("Running next job from queue: {:?}", job);
+                state.running.push_back(job.clone());
                 sender.send(job)?;
             }
+            QueueMsg::Finished(job) => {
+                let job = match state.running.pop_front() {
+                    Some(job) => job,
+                    None => return Ok(()),
+                };
+                state.finished.push_back(job);
+            }
             QueueMsg::RemoveById(id) => {
-                state.q.remove(id);
+                state.running.remove(id);
+            }
+            QueueMsg::Empty(sender) => {
+                sender.send(state.waiting.is_empty() && state.running.is_empty() && state.finished.is_empty())?;
             }
         }
         Ok(())
