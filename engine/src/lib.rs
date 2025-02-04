@@ -77,6 +77,7 @@ mod storage;
 mod subr;
 mod task;
 mod tokens;
+mod consumer;
 
 /// Engine signature
 ///
