@@ -36,9 +36,11 @@ mod compute;
 /// - `distance`: The maximum range, in Nautical Miles, to consider for distance
 ///   calculations. Planes outside this range will not be included in the computation.
 ///   Defaults to `70.0` Nautical Miles if unspecified.
-/// - `separation`: The proximity threshold, in meters, to consider during calculations.
+/// - `threshold`: The proximity threshold, in meters, to consider during calculations.
 ///   Planes closer than this threshold to the drone site are flagged for analysis.
-///   Defaults to `5500.0` meters.
+///   Defaults to `1852.0` meters or a Nautical Mile.
+/// - `factor`: We consider two circles around, one at threshold and one at factor * threshold.
+///   Defaults to `3.0` if unspecified.
 ///
 /// This structure is based on `clap::Parser` to provide seamless integration
 /// with command-line argument parsing.
