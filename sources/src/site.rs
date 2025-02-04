@@ -88,30 +88,39 @@ impl Site {
     /// Basic `new()`
     ///
     #[tracing::instrument]
+    #[inline]
     pub fn new() -> Self {
         Site::default()
     }
 
     /// Return whether a site is streamable
     ///
+    #[tracing::instrument]
+    #[inline]
     pub fn is_fetchable(&self) -> bool {
         self.feature == Capability::Fetch
     }
 
     /// Return whether a site is streamable
     ///
+    #[tracing::instrument]
+    #[inline]
     pub fn is_streamable(&self) -> bool {
         self.feature == Capability::Stream
     }
 
     /// Return the site name
     ///
+    #[tracing::instrument]
+    #[inline]
     pub fn name(&self) -> String {
         self.name.clone()
     }
 
     /// Return the site formats
     ///
+    #[tracing::instrument]
+    #[inline]
     pub fn format(&self) -> Format {
         Format::from_str(&self.format).unwrap()
     }
@@ -119,6 +128,7 @@ impl Site {
     /// Return the list of routes
     ///
     #[tracing::instrument]
+    #[inline]
     pub fn list(&self) -> Vec<&String> {
         match &self.routes {
             Some(routes) => routes.keys().collect::<Vec<_>>(),
@@ -129,6 +139,7 @@ impl Site {
     /// Check whether site has the mentioned route
     ///
     #[tracing::instrument]
+    #[inline]
     pub fn has(&self, meth: &str) -> bool {
         match &self.routes {
             Some(routes) => routes.contains_key(meth),
@@ -139,6 +150,7 @@ impl Site {
     /// Retrieve a route
     ///
     #[tracing::instrument]
+    #[inline]
     pub fn route(&self, key: &str) -> Option<&String> {
         match &self.routes {
             Some(routes) => routes.get(key),
@@ -148,6 +160,8 @@ impl Site {
 
     /// Getter for dtype
     ///
+    #[tracing::instrument]
+    #[inline]
     pub fn data(self) -> DataType {
         self.dtype
     }
