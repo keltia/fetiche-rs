@@ -144,7 +144,7 @@ pub async fn enumerate_sites(ctx: &Context, day: DateTime<Utc>) -> eyre::Result<
     let day_tag = format!("{:4}-{:02}-{:02}", day.year(), day.month(), day.day());
     let r = r##"
 SELECT
-    s.id,
+    DISTINCT(s.id),
     s.name,
     s.code,
     s.basename,
