@@ -60,12 +60,7 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
 
     trace!("Job submitting id #{id}");
     assert_eq!(job.state(), JobState::Ready);
-    let _ = engine.submit_job(job).await?;
-
-    tokio::time::sleep(Duration::from_secs(20)).await;
-
-    trace!("Job submitted, waiting for result");
-    let res = engine.wait_for(id).await?;
+    let res = engine.submit_job_and_wait(job).await?;
 
     trace!("Job result: {:?}", res);
     bar.finish();
