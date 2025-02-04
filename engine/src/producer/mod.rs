@@ -1,8 +1,12 @@
 use strum::EnumString;
 
-pub mod fetch;
-pub mod read;
-pub mod stream;
+pub use fetch::*;
+pub use read::*;
+pub use stream::*;
+
+mod fetch;
+mod read;
+mod stream;
 
 /// Represents different types of data producers that can source data
 /// into the processing pipeline.
