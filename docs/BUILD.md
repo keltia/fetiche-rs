@@ -7,7 +7,7 @@ specific tasks and various administrative files linked to the Rust components (`
 
 You will need to have a stable channel Rust compiler and ecosystem (`cargo`, etc.). See the
 [main site](https://www.rust-lang.org/tools/install) for instructions. Various Linux distributions have Rust in their
-packages but most of them have rather old ones (i.e. Debian) so I'd recommend installed [rustup] first and use it to
+packages, but most of them have rather old ones (i.e. Debian), so I'd recommend installed [rustup] first and use it to
 fetch and install the toolchains (see above).
 
 On macOS, `rustup` is available through [Homebrew] and this is the way I'd recommend to use:
@@ -29,7 +29,7 @@ rustup toolchain install stable
 ```
 
 to get the latest version in the "stable" channel. To compile at least one of the optional components of fetiche, you
-may need to install the "nightly" version which is update every few days. See [rustup] for more details.
+may need to install the "nightly" version, which is updated every few days. See [rustup] for more details.
 
 After installing the toolchain, just verify you can access the main utilities like `rustc`, `cargo`, etc.:
 
@@ -44,6 +44,20 @@ rustc 1.79.0 (129f3b996 2024-06-10)
 
 Fetiche is hosted primarily on [Github] with clones on the different machines I work on.
 
+> NOTE: I do use [jujustu] myself now.
+
+If you want to use [jujutsu] alongside git, it is very easy:
+
+```shell
+$ git clone https://github.com/keltia/fetiche-rs
+$ cd fetiche-rs
+$ jj git init --colocate
+$ jj b track main@origin develop@origin
+$ cargo install --path .
+```
+
+See [jujutsu] documentation on how to use it instead of git.
+
 If you are not connected already on your GitHub account or, you don't have one.
 
 ```text
@@ -57,7 +71,7 @@ git clone git@github.com:keltia/fetiche-rs
 ```
 
 You can also fork the repository on your own GitHub account and clone it, it is better if you intend to submit patches.
-You will also need to be able to fetching packages over the Internet through https so see with your system administrator
+You will also need to be able to fetch packages over the Internet through https so see with yo0ur system administrator
 for eventual proxy setup, etc.
 
 ## Building the Rust applications
@@ -122,6 +136,8 @@ See [README.md](../scripts/README.md) for more details.
 [Clickhouse]: https://clickhouse.com/
 
 [DuckDB]: https://duckdb.org/
+
+[jujutsu]: https://jj-vcs.github.io/jj/latest/
 
 [gitflow]: https://www.gitkraken.com/learn/git/git-flow
 
