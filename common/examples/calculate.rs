@@ -1,14 +1,12 @@
-use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use rand::Rng;
 use std::fmt::Debug;
 
-/// This trait define an object that can be calculated
+/// This trait defines an object that can be calculated
 ///
-#[async_trait]
 #[enum_dispatch(Task)]
-pub trait Calculate: Debug {
+trait Calculate: Debug {
     async fn execute(&self) -> Stat;
 }
 
@@ -42,7 +40,6 @@ impl Foo {
     }
 }
 
-#[async_trait]
 impl Calculate for Foo {
     async fn execute(&self) -> Stat {
         let mut rng = rand::rng();
@@ -65,7 +62,6 @@ impl Bar {
     }
 }
 
-#[async_trait]
 impl Calculate for Bar {
     async fn execute(&self) -> Stat {
         let mut rng = rand::rng();
@@ -88,7 +84,7 @@ async fn main() -> Result<()> {
     let r1 = c1.execute().await;
     let r2 = c2.execute().await;
 
-    dbg!(r1, r2);
+    println!("{:?}, {:?}", r1, r2);
 
     Ok(())
 }
