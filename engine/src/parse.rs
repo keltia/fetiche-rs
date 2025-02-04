@@ -225,3 +225,99 @@ impl Engine {
         Ok(job)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[tokio::test]
+    async fn test_parse_fetch_job() -> Result<()> {
+        let mut engine = Engine::new()?;
+        let job_str = r#"
+            name = "test_fetch"
+            producer = fetch "data"
+            output = save "output.csv"
+        "#;
+
+        let job = engine.parse(job_str).await?;
+
+        assert_eq!(job.name, "test_fetch");
+        assert!(matches!(job.producer, Producer::Fetch(_)));
+        assert!(matches!(job.consumer, Consumer::Save(_)));
+        Ok(())
+    }
+
+    #[rstest]
+    #[tokio::test]
+    async fn test_parse_stream_job() -> Result<()> {
+        let mut engine = Engine::new()?;
+        let job_str = r#"
+            name = "test_stream"
+            producer = stream "data"
+            output = save "output.csv"
+        "#;
+
+        let job = engine.parse(job_str).await?;
+
+        assert_eq!(job.name, "test_stream");
+        assert!(matches!(job.producer, Producer::Stream(_)));
+        assert!(matches!(job.consumer, Consumer::Save(_)));
+        Ok(())
+    }
+
+    #[rstest]
+    #[tokio::test]
+    async fn test_parse_read_job() -> Result<()> {
+        let mut engine = Engine::new()?;
+        let job_str = r#"
+            name = "test_read"
+            producer = read "input.csv"
+            output = save "output.csv"
+        "#;
+
+        let job = engine.parse(job_str).await?;
+
+        assert_eq!(job.name, "test_read");
+        assert!(matches!(job.producer, Producer::Read(_)));
+        assert!(matches!(job.consumer, Consumer::Save(_)));
+        Ok(())
+    }
+
+    #[rstest]
+    #[tokio::test]
+    async fn test_parse_job_with_filters() -> Result<()> {
+        let mut engine = Engine::new()?;
+        let job_str = r#"
+            name = "test_filters"
+            producer = fetch "data"
+            filters = [
+                copy,
+                tee "copy.csv"
+            ]
+            output = save "output.csv"
+        "#;
+
+        let job = engine.parse(job_str).await?;
+
+        assert_eq!(job.filters.len(), 2);
+        assert!(matches!(job.filters[0], Middle::Copy(_)));
+        assert!(matches!(job.filters[1], Middle::Tee(_)));
+        Ok(())
+    }
+
+    #[rstest]
+    #[tokio::test]
+    async fn test_parse_invalid_hcl() -> Result<()> {
+        let mut engine = Engine::new()?;
+        let job_str = r#"
+            invalid hcl syntax
+        "#;
+
+        let result = engine.parse(job_str).await;
+        assert!(result.is_err());
+        Ok(())
+    }
+}
+
