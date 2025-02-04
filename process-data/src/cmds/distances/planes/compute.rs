@@ -381,7 +381,7 @@ AS SELECT
   t.plon AS plon,
   t.plat AS plat,
   t.palt AS palt,
-  t.prox_alt_a,
+  t.prox_mode_a,
   dist_2d(dlon, dlat, plon, plat) AS dist2d,
   dist_3d(dlon, dlat, dalt, plon, plat, palt) AS dist_drone_plane,
   ceil(abs(palt - dalt)) AS diff_alt
