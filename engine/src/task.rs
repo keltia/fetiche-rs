@@ -102,7 +102,7 @@ impl Engine {
     pub fn list_commands(&self) -> Result<String> {
         trace!("list all commands");
 
-        let allcmds_s = include_str!("../../cmds.hcl");
+        let allcmds_s = include_str!("cmds.hcl");
         let allcmds: CmdsFile = hcl::from_str(allcmds_s)?;
 
         // Safety checks
