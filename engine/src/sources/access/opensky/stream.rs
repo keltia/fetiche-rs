@@ -7,6 +7,7 @@ use chrono::Utc;
 use clap::{crate_name, crate_version};
 use mini_moka::sync::Cache;
 use reqwest::StatusCode;
+use std::sync::mpsc::{channel, Sender};
 use tracing::{debug, error, info, trace};
 
 use crate::{AuthError, Filter, Stats, Streamable};

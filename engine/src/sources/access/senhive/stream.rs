@@ -1,12 +1,12 @@
 //! Module that implement the `Streamable` trait.
 //!
 
+use std::sync::mpsc::{channel, Sender};
 use std::time::Duration;
 
 use eyre::Result;
 use ractor::pg::join;
 use ractor::{pg, Actor};
-use tokio::sync::mpsc::{channel, Sender};
 use tracing::{info, trace};
 
 use fetiche_formats::Format;

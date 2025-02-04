@@ -12,7 +12,7 @@ use std::str::FromStr;
 use eyre::Result;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::Sender;
+use std::sync::mpsc::Sender;
 use tracing::trace;
 
 use fetiche_formats::{Format, Position};
