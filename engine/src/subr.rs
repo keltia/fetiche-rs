@@ -12,7 +12,6 @@ use tracing::trace;
 
 use fetiche_common::Container;
 use fetiche_formats::Format;
-use fetiche_sources::Sources;
 
 use crate::actors::{SourcesMsg, StateMsg};
 use crate::{version, Engine, Storage, ENGINE_CONFIG, STATE_FILE};
@@ -89,10 +88,9 @@ impl Engine {
     ///
     pub fn version(&self) -> String {
         format!(
-            "{} ({} {} {})",
+            "{} ({} {})",
             version(),
             fetiche_formats::version(),
-            fetiche_sources::version(),
             fetiche_common::version(),
         )
     }
