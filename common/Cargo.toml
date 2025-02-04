@@ -61,6 +61,7 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 async-trait = "0.1"
+ctrlc = { version = "3.4", features = ["termination"] }
 divan = "0.1"
 egm2008 = "0.1"
 humantime = "2.1"
