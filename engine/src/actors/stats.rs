@@ -27,7 +27,7 @@ pub enum StatsMsg {
     List(RpcReplyPort<String>),
     Reset(String),
     Print(String),
-    Exit(String),
+    Exit(String, RpcReplyPort<Stats>),
 }
 
 /// State is a structure representing the current state of the `StatsActor` actor.
@@ -116,33 +116,34 @@ impl Actor for StatsActor {
             // updates
             //
             StatsMsg::Update(tag, stat) => {
-                let s = state.stats.get(&tag).unwrap_or_else(|| return Err(StatsError::TagNotFound(tag.clone())).into());
+                let s = state.stats.get(&tag).unwrap_or(&Stats::default()).clone();
                 let new = s + stat;
                 let _ = state.stats.insert(tag.clone(), new.clone());
             }
             // commands
             //
             StatsMsg::Get(tag, sender) => {
-                let mut s = state.stats.get_mut(&tag).unwrap_or_else(|| return Err(StatsError::TagNotFound(tag.clone())).into());
+                let mut s = state.stats.get(&tag).unwrap_or(&Stats::default()).clone();
                 s.tm = (Utc::now().timestamp() - state.start) as u64;
-                sender.send(s.clone()).await?;
+                sender.send(s.clone())?;
             }
             StatsMsg::List(sender) => {
                 let list = state.stats.keys().fold(String::new(), |acc, k| acc + &format!("{},", k));
-                sender.send(list).await?;
+                sender.send(list)?;
             }
             StatsMsg::Print(tag) => {
-                state.stats[tag].tm = (Utc::now().timestamp() - state.start) as u64;
-                info!("Stats: {}", state);
+                let mut s = state.stats.get(&tag).unwrap_or(&Stats::default()).clone();
+                s.tm = (Utc::now().timestamp() - state.start) as u64;
+                info!("Stats: {}", s);
             }
             StatsMsg::Reset(tag) => {
-                let mut s = state.stats.get_mut(&tag).unwrap_or_else(|| return Err(StatsError::TagNotFound(tag.clone())).into());
-                *s = Stats::default();
-                let _ = state.stats.insert(tag.clone(), s.clone());
+                let _ = state.stats.insert(tag.clone(), Stats::default());
             }
             // The end
-            StatsMsg::Exit(tag) => {
-                state.stats[tag].tm = (Utc::now().timestamp() - state.start) as u64;
+            StatsMsg::Exit(tag, sender) => {
+                let mut s = state.stats.get(&tag).unwrap_or(&Stats::default()).clone();
+                s.tm = (Utc::now().timestamp() - state.start) as u64;
+                sender.send(s.clone())?;
                 myself.kill();
             }
         }
