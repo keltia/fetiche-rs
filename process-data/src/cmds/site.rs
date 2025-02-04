@@ -168,3 +168,54 @@ WHERE (s.id = installations.site_id) AND
     debug!("sites={:?}", sites);
     Ok(sites)
 }
+
+/// Matches an antenna to a site name for a specific date.
+///
+/// This function queries the database to find which site an antenna was deployed at
+/// during the specified date by checking the deployments table.
+///
+/// ### Arguments
+/// - `ctx` - A reference to the application's context containing the database connection.
+/// - `day` - The date for which to check the antenna's deployment location.
+/// - `antenna` - The name/identifier of the antenna to look up.
+///
+/// ### Returns
+/// - `Ok(String)`: The name of the site where the antenna was deployed on the specified date.
+/// - `Err(eyre::Report)`: Returns an error if the antenna deployment cannot be found or if an issue occurs during the query.
+///
+/// ### Notes
+/// - The function checks the deployments table for records matching the antenna name and date range.
+/// - Uses caching to improve performance for repeated lookups of the same antenna/date combination.
+///
+/// ### Caching
+/// - Results are cached using the antenna name and date as the cache key.
+/// - The cache helps avoid redundant database queries for frequently accessed combinations.
+///
+#[cached(
+    key = "String",
+    convert = r#"{ format!("{}{}", day,antenna.to_string()) }"#,
+    result = true
+)]
+#[tracing::instrument(skip(ctx))]
+pub async fn match_site(ctx: &Context, day: DateTime<Utc>, antenna: &str) -> eyre::Result<String> {
+    let dbh = ctx.db().await;
+
+    #[derive(Deserialize, Row, Serialize)]
+    struct Depl {
+        pub site_name: String,
+    }
+
+    let q = r##"
+SELECT site_name
+FROM deployments AS d
+WHERE d.antenna_name = $1 AND $2 BETWEEN d.start_at AND d.end_at
+    "##;
+
+    let qb = QueryBuilder::new(q)
+        .arg(antenna)
+        .arg(day);
+
+    let depl = dbh.query_one::<Depl>(qb).await?;
+    let site = depl.site_name;
+    Ok(site)
+}

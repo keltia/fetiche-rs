@@ -1,6 +1,8 @@
+use chrono::{DateTime, Utc};
 use eyre::Result;
 use fetiche_common::init_logging;
 use klickhouse::{Client, ClientOptions, Progress, QueryBuilder, RawRow, Row, Uuid};
+use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
 
 #[derive(Debug, Row)]
@@ -26,7 +28,7 @@ async fn main() -> Result<()> {
             ..Default::default()
         },
     )
-    .await?;
+        .await?;
 
     // Retrieve and display query progress events
     //
@@ -60,6 +62,30 @@ async fn main() -> Result<()> {
     let id_site: i32 = id_site.get(0);
     dbg!(&id_site);
     debug!("site_id for {site} is {:?}", id_site);
+
+    // Simulate match_site()
+    //
+    #[derive(Deserialize, Row, Serialize)]
+    struct Depl {
+        pub site_name: String,
+    }
+
+    let antenna = "0QRDJCAR0383TD";
+    let day = "2024-03-01 00:00:00 UTC".parse::<DateTime<Utc>>()?;
+
+    let q = r##"
+SELECT site_name
+FROM deployments AS d
+WHERE d.antenna_name = $1 AND $2 BETWEEN d.start_at AND d.end_at
+    "##;
+
+    let qb = QueryBuilder::new(q)
+        .arg(antenna)
+        .arg(day);
+
+    let depl = client.query_one::<Depl>(qb).await?;
+    let site = depl.site_name;
+    println!("2: site: {}", site);
 
     drop(client);
     progress_task.await?;
