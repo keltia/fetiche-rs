@@ -9,11 +9,11 @@ use std::collections::VecDeque;
 use std::io::Write;
 use std::sync::mpsc::channel;
 
+use crate::{EngineStatus, Runnable, Task, IO};
 use eyre::Result;
+use fetiche_sources::Site;
 use tracing::{info, trace};
 use tracing::{span, Level};
-
-use crate::{EngineStatus, Runnable, Task, IO};
 
 /// A `Job` represents a pipeline of tasks to be executed sequentially.
 ///
@@ -23,7 +23,7 @@ use crate::{EngineStatus, Runnable, Task, IO};
 ///
 /// # Overview
 /// A `Job` consists of:
-/// - A unique identifier (`id`) for distinguishing jobs.
+/// - A `id` allocated at creation-time.
 /// - A `name` for recognizing the job's purpose or type.
 /// - A `list` of tasks to be executed in order, backed by a `VecDeque` for FIFO (First In, First Out) behavior.
 ///
@@ -31,7 +31,7 @@ use crate::{EngineStatus, Runnable, Task, IO};
 /// The pipeline allows chaining tasks that transform data from an initial producer to a final consumer.
 ///
 /// # Attributes
-/// - `id`: A unique identifier for the `Job`.
+/// - `id`: Job ID
 /// - `name`: A descriptive name for the `Job`.
 /// - `list`: A list (queue) of tasks to be executed in the pipeline.
 ///
@@ -65,8 +65,26 @@ pub struct Job {
     pub id: usize,
     /// Name of the job
     pub name: String,
+    /// Job State
+    pub state: JobState,
     /// FIFO list of tasks
     pub list: VecDeque<Task>,
+}
+
+#[derive(Clone, Debug)]
+pub enum JobState {
+    /// Empty, just allocated
+    Created,
+    /// Has all its tasks
+    Ready,
+    /// In the queue for next run
+    Queued,
+    /// Executing
+    Running,
+    /// Finished
+    Completed,
+    /// Weird
+    Zombie,
 }
 
 impl Job {
@@ -76,63 +94,21 @@ impl Job {
     ///
     #[tracing::instrument]
     #[inline]
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &str, id: usize) -> Self {
         trace!("Job::new()");
-        Self {
-            id: 0,
-            name: name.to_owned(),
-            list: VecDeque::new(),
-        }
-    }
-
-    /// Creates a new `Job` instance with a specified name and ID.
-    ///
-    /// This function allows the creation of a new `Job` with a given name and ID.
-    /// It initializes an empty task queue (`list`) for the job, which can later be populated
-    /// as needed. The provided `id` is assigned directly, while the `name` is cloned
-    /// from the given string slice.
-    ///
-    /// # Parameters
-    /// - `name`: A string slice representing the name of the job. This will be cloned into
-    ///    the `Job` structure as an owned `String`.
-    /// - `id`: A unique identifier for the job, which is assigned directly to the `Job` instance.
-    ///
-    /// # Returns
-    /// A new instance of the `Job` struct with the specified `name`, provided `id`,
-    /// and an empty task list.
-    ///
-    /// # Panics
-    /// This function does not perform any validation on the provided `name` or `id`.
-    /// Invalid inputs, such as an empty string for the name, may lead to unintended behavior
-    /// in other parts of the program.
-    ///
-    /// # Example
-    /// ```rust
-    /// use std::collections::VecDeque;
-    /// use fetiche_engine::Job;
-    ///
-    /// let job = Job::new_with_id("Data Processing", 1);
-    ///
-    /// assert_eq!(job.name, "Data Processing".to_string());
-    /// assert_eq!(job.id, 1);
-    /// assert!(job.list.is_empty());
-    /// ```
-    #[tracing::instrument]
-    #[inline]
-    pub fn new_with_id(name: &str, id: usize) -> Self {
-        trace!("job({}) with id {}", name, id);
         Self {
             id,
             name: name.to_owned(),
+            state: JobState::Created,
             list: VecDeque::new(),
         }
     }
 
     /// Add a task to the queue
     ///
+    #[tracing::instrument(skip(self))]
     #[inline]
     pub fn add(&mut self, t: Task) -> &mut Self {
-        trace!("Job::add({t:?}");
         let _ = &self.list.push_back(t);
         self
     }
@@ -185,7 +161,7 @@ impl Job {
     /// use fetiche_engine::{Job, Nothing, Task};
     ///
     /// // Create a sample job with tasks (details of tasks omitted)
-    /// let mut job = Job::new_with_id("Example Job", 1);
+    /// let mut job = Job::new("Example Job");
     /// let nop = Nothing::new();
     /// let task = Task::from(nop);
     /// job.add(task);
@@ -213,7 +189,6 @@ impl Job {
 
         info!(
             "Job({})::run({}) with {} tasks",
-            self.id,
             self.name,
             self.list.len()
         );
@@ -286,31 +261,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new_with_id() {
-        let job = Job::new_with_id("Test Job", 42);
+    fn test_new() {
+        let job = Job::new("Test Job");
 
         assert_eq!(job.name, "Test Job");
-        assert_eq!(job.id, 42);
         assert!(job.list.is_empty());
     }
 
     #[test]
     fn test_new_with_id_empty_name() {
-        let job = Job::new_with_id("", 123);
+        let job = Job::new("");
 
         assert_eq!(job.name, "");
-        assert_eq!(job.id, 123);
         assert!(job.list.is_empty());
-    }
-
-    #[test]
-    fn test_new_with_id_unique_id() {
-        let job1 = Job::new_with_id("Job One", 1);
-        let job2 = Job::new_with_id("Job Two", 2);
-
-        assert_ne!(job1.id, job2.id);
-        assert_eq!(job1.name, "Job One");
-        assert_eq!(job2.name, "Job Two");
     }
 
     #[tokio::test]
