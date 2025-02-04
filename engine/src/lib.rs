@@ -48,8 +48,9 @@ use std::time::Duration;
 
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
-use ractor::factory::{queues, routing, Factory, FactoryArguments};
-use ractor::{call, cast, Actor, ActorRef};
+use ractor::factory::{queues, routing, Factory, FactoryArguments, FactoryMessage};
+use ractor::registry::registered;
+use ractor::{call, Actor, ActorRef};
 use serde::Deserialize;
 use strum::EnumString;
 use tracing::{error, info, trace, warn};
@@ -218,24 +219,25 @@ pub enum StorageConfig {
 pub struct Engine {
     /// Current process DI
     pub pid: u32,
-    /// Last used job ID
-    pub last: usize,
     /// Main area where state is saved (PID, jobs, etc.)
     pub home: Arc<PathBuf>,
-    /// Job Queue actor
-    pub queue: ActorRef<QueueMsg>,
-    /// Sources
-    pub sources: ActorRef<SourcesMsg>,
     /// Storage area for long-running jobs
     pub storage: Arc<Storage>,
     /// Storage are for auth tokens
     pub tokens: Arc<TokenStorage>,
+    // -- actors
+    /// Supervisor actor, top of the process group
+    pub supervisor: ActorRef<SuperMsg>,
+    /// Factory for running the actual jobs
+    pub factory: ActorRef<FactoryMessage<usize, RunnerMsg>>,
+    /// Job Queue actor
+    pub queue: ActorRef<QueueMsg>,
+    /// Sources
+    pub sources: ActorRef<SourcesMsg>,
     /// Current state
     pub state: ActorRef<StateMsg>,
     /// Stats gathering actors for sources
     pub stats: ActorRef<StatsMsg>,
-    /// Supervisor actor, top of the process group
-    pub supervisor: ActorRef<SuperMsg>,
 }
 
 impl Engine {
@@ -374,21 +376,27 @@ impl Engine {
         // ----- Start Runner Factory
 
         let factory_def = Factory::<
-            (),
+            usize,
             RunnerMsg,
-            (),
+            RunnerArgs,
             RunnerActor,
-            routing::QueuerRouting<(), RunnerMsg>,
-            queues::DefaultQueue<(), RunnerMsg>,
+            routing::QueuerRouting<usize, RunnerMsg>,
+            queues::DefaultQueue<usize, RunnerMsg>,
         >::default();
+        let runner_builder = RunnerBuilder {
+            queue: queue.clone(),
+            stat: stat.clone(),
+        };
         let factory_args = FactoryArguments::builder()
-            .worker_builder(Box::new(RunnerBuilder))
+            .worker_builder(Box::new(runner_builder))
             .queue(Default::default())
             .router(Default::default())
             .num_initial_workers(cfg.workers)
             .build();
 
-        let (_factory, _h) = Actor::spawn(None, factory_def, factory_args).await?;
+        // Spawn factory under supervision too.
+        //
+        let (factory, _h) = Actor::spawn_linked(None, factory_def, factory_args, sup.get_cell()).await?;
 
         // ----- Register non-actor sub-systems
 
@@ -413,15 +421,15 @@ impl Engine {
         //
         let engine = Engine {
             pid,
-            last,
             home: Arc::new(home),
-            queue: queue.clone(),
-            sources: src.clone(),
             storage: Arc::new(areas),
             tokens: Arc::new(tokens),
+            supervisor: sup.clone(),
+            factory: factory.clone(),
+            queue: queue.clone(),
+            sources: src.clone(),
             state: state.clone(),
             stats: stat.clone(),
-            supervisor: sup.clone(),
         };
         info!("New Engine loaded pid={}", pid);
 
