@@ -3,7 +3,7 @@
 //! This module is for the Avionix Cube antenna direct access which means reduced filters and no auth.
 //!
 //! There are one trait implementation:
-//! - `AsyncStreamable`
+//! - `Streamable`
 //!
 //! TCP Streaming on port 50005
 //!
@@ -28,7 +28,7 @@ use tracing::{error, info, trace, warn};
 
 use crate::actors::{StatsActor, StatsMsg, Supervisor};
 use crate::sources::TICK;
-use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, LocalWorker, Routes, Site, StreamableSource, WorkerArgs, WorkerMsg, AVIONIX_PG};
+use crate::{Auth, AuthError, Capability, Filter, LocalWorker, Routes, Site, Streamable, StreamableSource, WorkerArgs, WorkerMsg, AVIONIX_PG};
 use fetiche_formats::Format;
 
 /// TCP streaming port
@@ -108,7 +108,7 @@ impl Default for Cube {
 }
 
 #[ractor::async_trait]
-impl AsyncStreamable for Cube {
+impl Streamable for Cube {
     fn name(&self) -> String {
         String::from("AvionixCube")
     }

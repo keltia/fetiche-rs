@@ -15,7 +15,7 @@ use tracing::{debug, error, info, trace};
 use crate::{AuthError, Filter, Stats, Streamable};
 use fetiche_formats::Format;
 
-impl Streamable for crate::access::opensky::Opensky {
+impl Streamable for Opensky {
     fn name(&self) -> String {
         "opensky".to_string()
     }
@@ -41,7 +41,7 @@ impl Streamable for crate::access::opensky::Opensky {
     ///   cached entries
     ///
     #[tracing::instrument(skip(self, out))]
-    fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
+    async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
         trace!("opensky::stream");
 
         let mut stream_duration = 0;
@@ -150,7 +150,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
 
         // Launch stat gathering thread.
         //
-        let (st_tx, st_rx) = channel::<crate::access::opensky::StatMsg>();
+        let (st_tx, st_rx) = channel::<StatMsg>();
         thread::spawn(move || {
             trace!("stats::thread");
 
@@ -158,18 +158,18 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             let mut stats = Stats::default();
             while let Ok(msg) = st_rx.recv() {
                 match msg {
-                    crate::access::opensky::StatMsg::Pkts => stats.pkts += 1,
-                    crate::access::opensky::StatMsg::Hits => stats.hits += 1,
-                    crate::access::opensky::StatMsg::Miss => stats.miss += 1,
-                    crate::access::opensky::StatMsg::Empty => stats.empty += 1,
-                    crate::access::opensky::StatMsg::Error => stats.err += 1,
-                    crate::access::opensky::StatMsg::Bytes(n) => stats.bytes += n,
-                    crate::access::opensky::StatMsg::Print => {
+                    StatMsg::Pkts => stats.pkts += 1,
+                    StatMsg::Hits => stats.hits += 1,
+                    StatMsg::Miss => stats.miss += 1,
+                    StatMsg::Empty => stats.empty += 1,
+                    StatMsg::Error => stats.err += 1,
+                    StatMsg::Bytes(n) => stats.bytes += n,
+                    StatMsg::Print => {
                         stats.tm = start.elapsed().as_secs();
                         eprintln!("Stats: {}", stats)
                     }
                     // The end
-                    crate::access::opensky::StatMsg::Exit => {
+                    StatMsg::Exit => {
                         stats.tm = start.elapsed().as_secs();
                         break;
                     }
@@ -186,7 +186,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             trace!("stats::display");
             loop {
                 thread::sleep(Duration::from_secs(30_u64));
-                let _ = disp_tx.send(crate::access::opensky::StatMsg::Print);
+                let _ = disp_tx.send(StatMsg::Print);
             }
         });
 
@@ -199,9 +199,9 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             // Cache is local to the worker thread
             //
             let cache = Cache::builder()
-                .max_capacity(crate::access::opensky::CACHE_SIZE)
-                .time_to_idle(crate::access::opensky::CACHE_IDLE)
-                .time_to_live(crate::access::opensky::CACHE_MAX)
+                .max_capacity(CACHE_SIZE)
+                .time_to_idle(CACHE_IDLE)
+                .time_to_live(CACHE_MAX)
                 .build();
 
             loop {
@@ -222,7 +222,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     Err(e) => {
                         error!("worker-thread: {}", e.to_string());
                         stat_tx
-                            .send(crate::access::opensky::StatMsg::Error)
+                            .send(StatMsg::Error)
                             .expect("stat::error");
                         thread::sleep(Duration::from_secs(2));
                         continue;
@@ -242,7 +242,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         let h = &resp.headers();
                         eprintln!("Error({}): {:?},", code, h);
                         stat_tx
-                            .send(crate::access::opensky::StatMsg::Error)
+                            .send(StatMsg::Error)
                             .expect("stat::error");
                         thread::sleep(Duration::from_millis(stream_delay as u64));
                         continue;
@@ -274,10 +274,10 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         _ => {
                             eprint!("{},", sl.time);
 
-                            let _ = stat_tx.send(crate::access::opensky::StatMsg::Miss);
-                            let _ = stat_tx.send(crate::access::opensky::StatMsg::Pkts);
-                            let _ = stat_tx
-                                .send(crate::access::opensky::StatMsg::Bytes(buf.len() as u64));
+                            let _ = stat_tx.send(StatMsg::Miss);
+                            let _ = stat_tx.send(StatMsg::Pkts);
+                            let _ = st
+                                .send(StatMsg::Bytes(buf.len() as u64));
 
                             tx.send(buf).expect("send");
                             cache.insert(sl.time, true);
@@ -286,7 +286,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                 } else {
                     // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
                     //
-                    let _ = stat_tx.send(crate::access::opensky::StatMsg::Empty);
+                    let _ = stat_tx.send(StatMsg::Empty);
 
                     cache.sync();
                     if cache.entry_count() == 0 {
@@ -328,7 +328,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         }
         // End threads
         //
-        let _ = st_tx.send(crate::access::opensky::StatMsg::Exit);
+        let _ = st_tx.send(StatMsg::Exit);
 
         // sync; sync; sync
         //

@@ -18,7 +18,7 @@ use tracing::trace;
 use fetiche_formats::{Format, Position};
 
 use crate::site::Site;
-use crate::{AsyncFetchable, Auth, AuthError, Capability, FetchableSource};
+use crate::{Auth, AuthError, Capability, Fetchable, FetchableSource};
 
 /// Define the square inside which we want beacons information
 ///
@@ -106,7 +106,7 @@ impl Default for Safesky {
 }
 
 #[async_trait::async_trait]
-impl AsyncFetchable for Safesky {
+impl Fetchable for Safesky {
     fn name(&self) -> String {
         "safesky".to_string()
     }

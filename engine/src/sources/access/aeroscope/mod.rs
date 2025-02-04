@@ -26,7 +26,7 @@ use tracing::{debug, trace};
 use fetiche_formats::Format;
 
 use crate::site::Site;
-use crate::{http_get_auth, http_post, AsyncFetchable, Auth, AuthError, Capability, FetchableSource};
+use crate::{http_get_auth, http_post, Auth, AuthError, Capability, Fetchable, FetchableSource};
 
 /// Data to send to authenticate ourselves and get a token
 ///
@@ -125,8 +125,7 @@ impl Default for Aeroscope {
     }
 }
 
-#[async_trait::async_trait]
-impl AsyncFetchable for Aeroscope {
+impl Fetchable for Aeroscope {
     fn name(&self) -> String {
         "aeroscope".to_string()
     }

@@ -16,7 +16,7 @@
 //! So our principle is, in order to never lose a message, is to start by draining the `dl_fused_data` topic,
 //! then switch to the regular `fused_data` topic.
 //!
-//! This is using the new `AsyncStreamable` trait.
+//! This is using the new `Streamable` trait.
 
 mod actors;
 mod stream;

@@ -6,7 +6,7 @@ use tracing::trace;
 use crate::{AuthError, Streamable};
 use fetiche_formats::Format;
 
-impl Streamable for crate::access::flightaware::Flightaware {
+impl Streamable for Flightaware {
     fn name(&self) -> String {
         self.name.to_owned()
     }
@@ -23,13 +23,13 @@ impl Streamable for crate::access::flightaware::Flightaware {
     ///
     fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
         trace!("stream with TLS");
-        let args: crate::access::flightaware::Param = serde_json::from_str(args)?;
+        let args: Param = serde_json::from_str(args)?;
 
         // Check arguments
         //
         let cmd = match args.pitr {
-            Some(pitr) => crate::access::flightaware::Command::Pitr { pitr },
-            None => crate::access::flightaware::Command::Live,
+            Some(pitr) => Command::Pitr { pitr },
+            None => Command::Live,
         };
 
         let req = self.request(cmd)?;

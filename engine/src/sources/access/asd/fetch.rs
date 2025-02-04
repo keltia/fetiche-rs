@@ -2,7 +2,6 @@ use std::io::Cursor;
 use std::ops::Add;
 use std::time::UNIX_EPOCH;
 
-use async_trait::async_trait;
 use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use clap::{crate_name, crate_version};
 use eyre::eyre;
@@ -20,18 +19,18 @@ use fetiche_formats::Format;
 
 use crate::actors::StatsMsg;
 use crate::sources::access::asd::{Credentials, Param, Source, DEF_SOURCES, DEF_TOKEN};
-use crate::{Asd, AsdToken, AsyncFetchable, AuthError, Expirable, Fetchable, FetchableSource, Filter};
+use crate::{Asd, AsdToken, AuthError, Expirable, Fetchable, FetchableSource, Filter, Stats};
 
-impl Asd {
+impl Fetchable for Asd {
     #[inline]
-    pub(crate) fn name(&self) -> String {
+    fn name(&self) -> String {
         self.site.to_string()
     }
 
     /// Authenticate to the site using the supplied credentials and get a token
     ///
     #[tracing::instrument(skip(self))]
-    pub(crate) async fn authenticate(&self) -> eyre::Result<String, AuthError> {
+    async fn authenticate(&self) -> eyre::Result<String, AuthError> {
         trace!("authenticate as ({:?})", &self.login);
 
         // Prepare our submission data
@@ -117,7 +116,7 @@ impl Asd {
     /// Fetch actual data using the aforementioned token
     ///
     #[tracing::instrument(skip(self))]
-    pub(crate) async fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> eyre::Result<()> {
+    async fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> eyre::Result<()> {
         trace!("asd::fetch");
 
         const DEF_SOURCES: &[Source] = &[Source::As, Source::Wi];

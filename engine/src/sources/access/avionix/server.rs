@@ -3,7 +3,7 @@
 //! This module is for the Avionix Cube antenna API which supports only streams.
 //!
 //! There are one trait implementation:
-//! - `AsyncStreamable`
+//! - `Streamable`
 //!
 //! There are two options here:
 //! - HTTP call on usual TLS port, not more than 1 call/s with a 5s window
@@ -33,7 +33,7 @@ use tracing::{error, info, trace, warn};
 use super::actors::{Worker, WorkerArgs};
 use crate::actors::{StatsActor, StatsMsg, Supervisor};
 use crate::sources::TICK;
-use crate::{AsyncStreamable, Auth, AuthError, Capability, Filter, Routes, Site, StreamableSource, WorkerMsg, ENGINE_PG};
+use crate::{Auth, AuthError, Capability, Filter, Routes, Site, Streamable, StreamableSource, WorkerMsg, ENGINE_PG};
 use fetiche_formats::Format;
 
 /// TCP streaming URL
@@ -124,7 +124,7 @@ impl Default for AvionixServer {
 }
 
 #[async_trait]
-impl AsyncStreamable for AvionixServer {
+impl Streamable for AvionixServer {
     fn name(&self) -> String {
         String::from("AvionixServer")
     }

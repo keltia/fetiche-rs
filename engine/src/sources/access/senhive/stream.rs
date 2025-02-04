@@ -1,9 +1,8 @@
-//! Module that implement the `AsyncStreamable` trait.
+//! Module that implement the `Streamable` trait.
 //!
 
 use std::time::Duration;
 
-use async_trait::async_trait;
 use eyre::Result;
 use ractor::pg::join;
 use ractor::{pg, Actor};
@@ -19,12 +18,11 @@ use fetiche_formats::Format;
 use super::actors::{Worker, WorkerArgs, WorkerMsg};
 use crate::actors::{StatsActor, StatsMsg, Supervisor};
 use crate::sources::SENHIVE_PG;
-use crate::{AsyncStreamable, AuthError, Filter, Senhive};
+use crate::{AuthError, Filter, Senhive, Streamable};
 
 const TICK: Duration = Duration::from_secs(30);
 
-#[async_trait]
-impl AsyncStreamable for Senhive {
+impl Streamable for Senhive {
     fn name(&self) -> String {
         String::from("Senhive")
     }
@@ -113,7 +111,7 @@ impl AsyncStreamable for Senhive {
 
         // Every TICK, we display stats.
         //
-        stat.send_interval(TICK, || StatsMsg::Print);
+        stat.send_interval(TICK, StatsMsg::Print);
 
         // Setup signal handling.
         //
