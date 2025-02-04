@@ -25,6 +25,7 @@ pub enum Capability {
     Fetch = 1,
     Read = 2,
     Stream = 3,
+    Invalid = 255,
 }
 
 impl Display for Capability {
@@ -34,6 +35,7 @@ impl Display for Capability {
             Capability::Read => "read",
             Capability::Fetch => "fetch",
             Capability::Stream => "stream",
+            Capability::Invalid => "invalid",
         };
         write!(f, "{s}")
     }
