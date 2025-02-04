@@ -155,15 +155,14 @@ impl Engine {
             ProducerText::Fetch(p, args) => {
                 let site = call!(self.sources, |port| SourcesMsg::Get(p, port))?;
                 let mut f = Fetch::new(&jt.name);
-                f.site(site);
+                f.site(site?);
                 f.with(args);
                 Producer::Fetch(f.clone())
             }
             ProducerText::Stream(p, args) => {
-                let name = jt.name.clone();
-                let site = call!(self.sources, |port| SourcesMsg::Get(name, port))?;
-                let mut s = Stream::new(&p);
-                s.site(site);
+                let site = call!(self.sources, |port| SourcesMsg::Get(p, port))?;
+                let mut s = Stream::new(&jt.name);
+                s.site(site?);
                 s.with(args);
                 Producer::Stream(s.clone())
             }
@@ -224,14 +223,17 @@ impl Engine {
 mod tests {
     use super::*;
 
+    #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_fetch_job() -> Result<()> {
         let mut engine = Engine::new().await;
+        engine.ps();
+
         let job_str = r#"
             name = "test_fetch"
             producer = {
                 "Fetch" = [
-                    "data",
+                    "lux-me",
                     {
                         "from" = 1746898373376
                         "duration" = 3600
@@ -254,14 +256,17 @@ mod tests {
         Ok(())
     }
 
+    #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_stream_job() -> Result<()> {
         let mut engine = Engine::new().await;
+        engine.ps();
+
         let job_str = r#"
             name = "test_stream"
             producer = {
                 "Stream" = [
-                    "data",
+                    "lux-me",
                     {
                         "from" = 1746898373376
                         "duration" = 3600
@@ -283,9 +288,12 @@ mod tests {
         Ok(())
     }
 
+    #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_read_job() -> Result<()> {
         let mut engine = Engine::new().await;
+        engine.ps();
+
         let job_str = r#"
             name = "test_read"
             producer = {
@@ -305,14 +313,17 @@ mod tests {
         Ok(())
     }
 
+    #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_job_with_filters() -> Result<()> {
         let mut engine = Engine::new().await;
+        engine.ps();
+
         let job_str = r#"
             name = "test_filters"
             producer = {
                 "Fetch" = [
-                    "data",
+                    "lux-me",
                     {
                         "from" = 1746898373376
                         "duration" = 3600
@@ -321,8 +332,8 @@ mod tests {
                 ]
             }
             filters = [
-                { "Copy" },
-                { "Tee" = "copy.csv" },
+                "Copy",
+                { "Tee" = "copy.csv" }
             ]
             output = {
                 "Save" = "output.csv"
@@ -338,9 +349,12 @@ mod tests {
         Ok(())
     }
 
+    #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_invalid_hcl() -> Result<()> {
         let mut engine = Engine::new().await;
+        engine.ps();
+
         let job_str = r#"
             invalid hcl syntax
         "#;
