@@ -41,18 +41,16 @@
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::time::Duration;
 
-use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use ractor::factory::{queues, routing, Factory, FactoryArguments, FactoryMessage};
 use ractor::registry::registered;
-use ractor::{call, Actor, ActorRef};
+use ractor::{call, cast, Actor, ActorRef};
 use serde::Deserialize;
-use tokio::task::JoinHandle;
-use tracing::{error, info, trace};
+use strum::EnumString;
+use tracing::{debug, error, info, trace};
 
 pub use auth::*;
 pub use cmds::*;
@@ -60,14 +58,15 @@ pub use consumer::*;
 pub use error::*;
 pub use filter::*;
 pub use job::*;
+pub use middle::*;
 pub use parse::*;
 pub use producer::*;
 pub use sources::*;
 pub use storage::*;
 pub use task::*;
+pub use tokens::TokenStorage;
 
 use crate::actors::*;
-pub use crate::tokens::TokenStorage;
 
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
@@ -79,14 +78,15 @@ mod consumer;
 mod error;
 mod filter;
 mod job;
+mod middle;
 mod parse;
 mod producer;
-mod storage;
 mod sources;
+mod stats;
+mod storage;
 mod subr;
 mod task;
 mod tokens;
-mod stats;
 
 /// Engine signature
 ///
@@ -101,10 +101,16 @@ const ENGINE_CONFIG: &str = "engine.hcl";
 const ENGINE_PID: &str = "acutectl.pid";
 
 /// Configuration file version
-const ENGINE_VERSION: usize = 2;
+const ENGINE_VERSION: usize = 3;
 
 /// Engine process group for the actors
 const ENGINE_PG: &str = "engine.pg";
+
+/// Clock tick
+const TICK: Duration = Duration::from_secs(2);
+
+/// Sync state every 30s by default.
+const SYNC: Duration = Duration::from_secs(30);
 
 /// The `EngineConfig` struct provides the configuration options used to initialize
 /// and manage the `Engine`. It is loaded from the `engine.hcl` file or other sources
@@ -130,7 +136,11 @@ pub struct EngineConfig {
     /// Base directory
     pub basedir: PathBuf,
     /// Number of workers for the runner factory.
-    pub workers: usize,
+    pub workers: Option<usize>,
+    /// Sync the engine state every 30 seconds by default
+    pub sync: Option<Duration>,
+    /// This is our clock: we get a message every 2 seconds by default
+    pub tick: Option<Duration>,
     /// List of storage types
     pub storage: BTreeMap<String, StorageConfig>,
 }
@@ -160,21 +170,25 @@ pub struct EngineConfig {
 ///
 #[derive(Clone, Debug)]
 pub struct Engine {
+    /// Running mode
+    mode: EngineMode,
     /// Current process DI
     pub pid: u32,
     /// Main area where state is saved (PID, jobs, etc.)
     pub home: Arc<PathBuf>,
     /// Storage area for long-running jobs
     pub storage: Arc<Storage>,
-    /// Storage are for auth tokens
+    /// Storage areas for auth tokens
     pub tokens: Arc<TokenStorage>,
     // -- actors
     /// Supervisor actor, top of the process group
     pub supervisor: ActorRef<SuperMsg>,
+    /// This is the actual scheduler
+    pub scheduler: ActorRef<SchedulerMsg>,
     /// Factory for running the actual jobs
     pub factory: ActorRef<FactoryMessage<usize, RunnerMsg>>,
-    /// Job Queue actor
-    pub queue: ActorRef<QueueMsg>,
+    /// Job results actor
+    pub results: ActorRef<ResultsMsg>,
     /// Sources
     pub sources: ActorRef<SourcesMsg>,
     /// Current state
@@ -183,66 +197,95 @@ pub struct Engine {
     pub stats: ActorRef<StatsMsg>,
 }
 
+/// Engine can be instantiated into two modes:
+/// - `Single` means we will run one job and exit
+/// - `Daemon` means we will be part of a daemon (`fetiched`).
+///
+#[derive(Clone, Copy, Default, Debug, EnumString, strum::Display, PartialEq)]
+pub enum EngineMode {
+    #[default]
+    Single,
+    Daemon,
+}
+
 impl Engine {
-    /// Create an instance
+    /// Creates a new Engine instance in daemon mode with configuration loaded from engine.hcl
+    ///
+    /// This method initializes an Engine configured for long-running daemon operation.
+    /// It loads configuration from the engine.hcl file and sets up all necessary components
+    /// including storage, actors, and state management systems.
+    ///
+    /// The daemon mode enables features like:
+    /// - Multiple concurrent worker threads
+    /// - Periodic state synchronization
+    /// - Regular system health checks via tick intervals
+    ///
+    /// # Errors
+    ///
+    /// Will panic if the Engine cannot be created due to configuration or initialization errors.
     ///
     #[tracing::instrument]
     pub async fn new() -> Self {
         // Load storage areas from `engine.hcl`
         //
-        Self::load(ENGINE_CONFIG).await.unwrap_or_else(|e| {
-            error!("Can not create Engine: {}", e.to_string());
-            panic!("Error: {e}")
-        })
+        Self::load(ENGINE_CONFIG, EngineMode::Daemon)
+            .await
+            .unwrap_or_else(|e| {
+                error!("Cannot create daemon Engine: {}", e.to_string());
+                panic!("Error: {e}")
+            })
     }
 
-    /// Load an engine configuration file and initialize the `Engine`.
+    /// Creates a new Engine instance in single mode with configuration loaded from engine.hcl
     ///
-    /// This method reads the specified configuration file, validates its version, and initializes
-    /// the required engine components like actors, state, storage, and token management. It also
-    /// ensures that the `Engine` syncs its runtime state upon creation to maintain consistency.
-    ///
-    /// # Parameters
-    ///
-    /// - `fname`: A string slice representing the path to the configuration file.
-    ///
-    /// # Returns
-    ///
-    /// - On success, returns an instance of the `Engine` struct initialized with the provided configuration.
-    /// - On failure, returns an `Err` containing details about the error.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// use fetiche_engine::Engine;
-    /// # use tokio;
-    ///
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let engine = Engine::new().await;
-    ///     println!("Engine PID: {}", engine.pid);
-    ///     Ok(())
-    /// }
-    /// ```
+    /// This method initializes an Engine configured for single-job execution mode.
+    /// It loads configuration from the engine.hcl file and sets up the necessary components
+    /// with minimal resources since it will only process one job before exiting.
     ///
     /// # Errors
     ///
-    /// The function will return an error in the following cases:
-    /// - If the configuration file cannot be loaded or parsed.
-    /// - If the configuration version does not match the expected `ENGINE_VERSION`.
-    /// - If any of the actors fail to spawn or initialize correctly.
-    ///
-    /// # Tracing
-    /// This method uses tracing to log detailed events during execution, including loading sources,
-    /// initializing storage, syncing state, and handling errors. Ensure tracing is set up correctly
-    /// to observe these events.
+    /// Will panic if the Engine cannot be created due to configuration or initialization errors.
     ///
     #[tracing::instrument]
-    pub async fn load(fname: &str) -> Result<Self> {
+    pub async fn single() -> Self {
+        // Load storage areas from `engine.hcl`
+        //
+        Self::load(ENGINE_CONFIG, EngineMode::Single)
+            .await
+            .unwrap_or_else(|e| {
+                error!("Can not create single Engine: {}", e.to_string());
+                panic!("Error: {e}")
+            })
+    }
+
+    /// Creates a new Engine instance by loading configuration from the specified file
+    ///
+    /// # Arguments
+    ///
+    /// * `fname` - Path to the configuration file to load
+    /// * `mode` - Operating mode for the engine (Single or Daemon)
+    ///
+    /// # Returns
+    ///
+    /// Returns a Result containing the initialized Engine instance if successful
+    ///
+    /// # Errors
+    ///
+    /// Will return an error if:
+    /// - The configuration file cannot be loaded or parsed
+    /// - The configuration version doesn't match the expected version
+    /// - Any of the engine components (actors, storage, etc.) fail to initialize
+    /// - Required directories cannot be created or accessed
+    ///
+    #[tracing::instrument]
+    pub async fn load(fname: &str, mode: EngineMode) -> Result<Self> {
+        info!("Engine v{} starting", env!("CARGO_PKG_VERSION"));
+        info!("Starting in {} mode", mode);
+
         let root = ConfigFile::<EngineConfig>::load(Some(fname))?;
         let cfg = root.inner();
         let home = root.config_path();
-        trace!("Home is in {home:?}");
+        info!("Home is in {home:?}");
 
         // Bail out if different
         //
@@ -251,24 +294,40 @@ impl Engine {
             return Err(EngineStatus::BadConfigVersion(cfg.version(), ENGINE_VERSION).into());
         }
 
+        // Ensure we have sensible defaults.
+        //
+        let (workers, sync, tick) = if mode == EngineMode::Daemon {
+            let workers = cfg
+                .workers
+                .unwrap_or_else(|| match std::thread::available_parallelism() {
+                    Ok(n) => n.get(),
+                    Err(_) => 1,
+                });
+            let sync = cfg.sync.unwrap_or_else(|| SYNC);
+            let tick = cfg.tick.unwrap_or_else(|| TICK);
+            (workers, sync, tick)
+        } else {
+            // When running as a single instance, we have no need for multiple workers or a 2s tick
+            //
+            (1, SYNC, TICK)
+        };
+
+        debug!("Engine config: {:#?}", cfg);
+
         // ----- Start actors
 
         // We have a generic supervisor actor.
         //
-        trace!("starting supervisor actor.");
-        let tag = String::from("sources:supervisor");
-        let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await.unwrap();
+        trace!("starting supervisor actor aka init.");
+        let tag = String::from("init");
+        let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await?;
 
         // Start the stats gathering service.
         //
         trace!("starting stats actor.");
-        let tag = String::from("sources::stats");
-        let (stat, _h) = Actor::spawn_linked(
-            Some(tag),
-            StatsActor,
-            "sources".into(),
-            sup.get_cell())
-            .await?;
+        let tag = String::from("engine::stats");
+        let (stat, _h) =
+            Actor::spawn_linked(Some(tag), StatsActor, "sources".into(), sup.get_cell()).await?;
 
         // Start sources service
         //
@@ -277,7 +336,8 @@ impl Engine {
             Some("engine::sources".into()),
             SourcesActor,
             (),
-            sup.get_cell())
+            sup.get_cell(),
+        )
             .await?;
 
         let count = call!(src, |port| SourcesMsg::Count(port))?;
@@ -290,24 +350,23 @@ impl Engine {
             Some("engine::state".into()),
             StateActor,
             home.clone(),
-            sup.get_cell())
+            sup.get_cell(),
+        )
             .await?;
         trace!("state={:?}", state);
 
-        // Get last used ID from previous state
+        // Get last used ID from the previous state
         //
         let last = call!(state, |port| StateMsg::Last(port))?;
 
-        // Start job queue service, upon startup the queue will always be empty.
-        //
-        trace!("load job queue");
-        let (queue, _h) = Actor::spawn_linked(
-            Some("engine::queue".into()),
-            QueueActor,
-            last,
-            sup.get_cell())
+        trace!("load results");
+        let (results, _h) = Actor::spawn_linked(
+            Some("engine::results".into()),
+            ResultsActor,
+            (),
+            sup.get_cell(),
+        )
             .await?;
-        trace!("queue={:?}", queue);
 
         // ----- Start Runner Factory
 
@@ -320,21 +379,45 @@ impl Engine {
             queues::DefaultQueue<usize, RunnerMsg>,
         >::default();
         let runner_builder = RunnerBuilder {
-            queue: queue.clone(),
+            results: results.clone(),
             stat: stat.clone(),
         };
         let factory_args = FactoryArguments::builder()
             .worker_builder(Box::new(runner_builder))
             .queue(Default::default())
             .router(Default::default())
-            .num_initial_workers(cfg.workers)
+            .num_initial_workers(workers)
             .build();
 
         // Spawn factory under supervision too.
         //
-        let (factory, _h) = Actor::spawn_linked(None, factory_def, factory_args, sup.get_cell()).await?;
+        let (factory, _h) = Actor::spawn_linked(
+            Some("factory".into()),
+            factory_def,
+            factory_args,
+            sup.get_cell(),
+        )
+            .await?;
 
-        // ----- Register non-actor sub-systems
+        // Spawn the actual scheduler
+        //
+        let sargs = SchedulerArguments {
+            sync,
+            tick,
+            last,
+            state: state.clone(),
+            results: results.clone(),
+            factory: factory.clone(),
+        };
+        let (scheduler, _h) = Actor::spawn_linked(
+            Some("scheduler".into()),
+            SchedulerActor,
+            sargs,
+            sup.get_cell(),
+        )
+            .await?;
+
+        // ----- Register non-actor subsystems
 
         // Register storage areas
         //
@@ -344,40 +427,46 @@ impl Engine {
 
         // Register tokens
         //
-        trace!("load tokens");
         let tokens_area = cfg.basedir.join("tokens").to_string_lossy().to_string();
+        trace!("load tokens from {tokens_area}");
         let tokens = TokenStorage::register(&tokens_area);
         info!("{} tokens loaded", tokens.len());
 
         // Get PID from the state service
         //
         let pid = call!(state, |port| StateMsg::GetPid(port))?;
+        info!("Engine PID={}", pid);
 
         // Instantiate everything
         //
         let engine = Engine {
+            mode,
             pid,
             home: Arc::new(home),
             storage: Arc::new(areas),
             tokens: Arc::new(tokens),
             supervisor: sup.clone(),
+            scheduler: scheduler.clone(),
             factory: factory.clone(),
-            queue: queue.clone(),
+            results: results.clone(),
             sources: src.clone(),
             state: state.clone(),
             stats: stat.clone(),
         };
-        info!("New Engine loaded pid={}", pid);
 
-        // Sync immediately, ensuring state is clean
+        // Sync immediately, ensuring the state is clean
         //
         let _ = engine.sync()?;
 
         // If debug/trace, list all the actors running at this point.
         //
         let plist = registered().join("\n");
-        trace!("Actor list: {plist}");
+        trace!("Actor list:\n{plist}");
+
+        // Get the ball rolling.  Next tick, we will check the queue.
+        //
+        let _ = cast!(scheduler, SchedulerMsg::Start)?;
+
         Ok(engine)
     }
 }
-
