@@ -63,6 +63,7 @@ pub enum StateMsg {
 ///   is stored on disk. This field is excluded from serialization.
 /// - `tm`: A timestamp (`i64`) of the last time the state was synchronized with
 ///   the disk. Stored in UTC.
+/// - `dirty`: A boolean registering that data has been written, but not synced
 /// - `last`: The last processed job ID (`usize`).
 /// - `pid`: The process ID (`u32`) of the running instance. This field is
 ///   excluded from serialization.
@@ -79,6 +80,8 @@ pub struct State {
     pub fname: PathBuf,
     /// Timestamp of last sync
     pub tm: i64,
+    #[serde(skip_deserializing)]
+    pub dirty: bool,
     /// Last job ID
     pub last: usize,
     /// Current PID, not synced because it is in the PID file.
@@ -136,6 +139,7 @@ impl Actor for StateActor {
         data.fname = fname;
         data.pid = std::process::id();
         data.queue = VecDeque::new();
+        data.dirty = false;
 
         let pidfile = basedir.join(ENGINE_PID);
         fs::write(&pidfile, format!("{}", data.pid))
@@ -183,6 +187,7 @@ impl Actor for StateActor {
 
                 state.queue.push_back(id);
                 state.last = id;
+                state.dirty = true;
 
                 trace!("queue={:?}", state.queue);
                 trace!("last={:?}", state.last);
@@ -194,6 +199,7 @@ impl Actor for StateActor {
                     trace!("Found job {}", id);
                     state.queue.remove(index);
                     trace!("queue={:?}", state.queue);
+                    state.dirty = true;
                 }
             }
             StateMsg::Last(sender) => {
@@ -211,7 +217,9 @@ impl Actor for StateActor {
 
                 state.tm = Utc::now().timestamp();
                 let data = json!(state).to_string();
-                return Ok(fs::write(&state.fname, data)?);
+                let _ = fs::write(&state.fname, data)?;
+                state.dirty = false;
+                return Ok(());
             }
         }
         Ok(())
