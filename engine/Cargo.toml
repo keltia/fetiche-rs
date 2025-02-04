@@ -69,16 +69,15 @@ lapin = { version = "2.5", features = ["serde_json"] }
 mini-moka = "0.10"
 native-tls = "0.2"
 percent-encoding = "2.3"
-signal-hook = "0.3"
-futures-util = "0.3.31"
+futures-util = "0.3"
 futures = "0.3.31"
 
 [dev-dependencies]
 criterion.workspace = true
+dateparser.workspace = true
+directories.workspace = true
 jiff.workspace = true
 rstest.workspace = true
 
 ctrlc = "3.4"
-directories = "6.0"
-dateparser = "0.2"
 test-pretty-log = "0.6"
