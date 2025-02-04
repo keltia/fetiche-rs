@@ -114,15 +114,16 @@ convert_to!(from_asd, Asd, Cat21);
 /// - `station_name`: Cloned from ASD station_name
 ///
 /// Default values are used for optional fields that may be None in the ASD record.
-impl From<Asd> for DronePoint {
-    fn from(from: Asd) -> Self {
+impl From<&Asd> for DronePoint {
+    fn from(from: &Asd) -> Self {
+        let from = from.clone();
         DronePoint {
             time: from.time,
             journey: format!("{}", from.journey),
             source: DataSource::Rid.into(),
             ident: Some(from.ident.clone()),
             make: Some("DJI".into()),
-            model: Some(from.model.unwrap()),
+            model: Some(from.model.unwrap().clone()),
             // UAVType::MultiRotor
             uav_type: 2,
             latitude: from.latitude as f64,
