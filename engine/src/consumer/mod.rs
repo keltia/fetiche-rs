@@ -1,9 +1,11 @@
 mod archive;
 mod save;
 mod store;
+mod stdout;
 
 pub use archive::*;
 pub use save::*;
+pub use stdout::*;
 pub use store::*;
 
 use crate::{Runnable, Task, IO};
@@ -15,6 +17,8 @@ use crate::{Runnable, Task, IO};
 ///
 #[derive(Clone, Debug, PartialEq, strum::EnumString, strum::VariantNames)]
 pub enum Consumer {
+    /// Consumer that display data on screen
+    Stdout(Stdout),
     /// Consumer that saves data to temporary storage
     Save,
     /// Consumer that stores data in permanent storage
