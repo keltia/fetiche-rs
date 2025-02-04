@@ -38,6 +38,11 @@
 //!
 //! FIXME: at some point, a `[u8]`  might be preferable to a `String`.
 //!
+use eyre::Result;
+use ractor::factory::{queues, routing, Factory, FactoryArguments, FactoryMessage};
+use ractor::registry::registered;
+use ractor::{call, Actor, ActorRef};
+use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
@@ -45,31 +50,23 @@ use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
+use tracing::{error, info, trace};
 
-use enum_dispatch::enum_dispatch;
-use eyre::Result;
-use ractor::factory::{queues, routing, Factory, FactoryArguments, FactoryMessage};
-use ractor::registry::registered;
-use ractor::{call, Actor, ActorRef};
-use serde::Deserialize;
-use strum::EnumString;
-use tracing::{error, info, trace, warn};
-
-use fetiche_common::{ConfigFile, IntoConfig, Versioned};
-use fetiche_macros::into_configfile;
-
-pub use cmds::*;
 pub use consumer::*;
 pub use error::*;
 pub use filter::*;
 pub use job::*;
 pub use parse::*;
 pub use producer::*;
+pub use sources::*;
 pub use storage::*;
 pub use task::*;
-pub use tokens::*;
 
 use crate::actors::*;
+pub use crate::tokens::TokenStorage;
+
+use fetiche_common::{ConfigFile, IntoConfig, Versioned};
+use fetiche_macros::into_configfile;
 
 mod actors;
 mod cmds;
@@ -80,9 +77,11 @@ mod job;
 mod parse;
 mod producer;
 mod storage;
+mod sources;
 mod subr;
 mod task;
 mod tokens;
+mod stats;
 
 /// Engine signature
 ///
@@ -160,60 +159,28 @@ pub enum StorageConfig {
     Hive { path: PathBuf },
 }
 
-/// The `Engine` struct is the main structure for coordinating all tasks, jobs, storage,
-/// and actors within the application. It provides functionality for managing the runtime
-/// environment, including sources, storage, token management, state synchronization,
-/// and job queue management.
+/// The Engine struct serves as the core runtime component responsible for managing and coordinating
+/// various services and actors within the system. It handles the initialization, coordination, and
+/// lifecycle management of multiple concurrent processes and data flows.
 ///
-/// # Fields
+/// # Architecture
 ///
-/// - `pid`
-///     The current process ID for the engine. Retrieved from the state service.
+/// The Engine operates through a combination of actors and services:
+/// - A supervisor actor that oversees all other actors
+/// - A factory for managing job runners
+/// - A job queue for task scheduling
+/// - Source management for data ingestion
+/// - State management for persistence
+/// - Statistics gathering for monitoring
 ///
-/// - `last`
-///     The last used ID. Tracked for managing job identifiers.
+/// # Components
 ///
-/// - `home`
-///     The root directory where state is saved. This directory includes the configuration file,
-///     PID file, and other engine-related paths.
-///
-/// - `sources`
-///     An actor reference for the sources service. Handles loading and management of source objects.
-///
-/// - `storage`
-///     A reference to the `Storage` struct that handles storage areas for long-running jobs.
-///
-/// - `tokens`
-///     A reference to the `TokenStorage` struct that manages authentication tokens used by the engine.
-///
-/// - `state`
-///     An actor reference for the state service, which manages the engine's internal state,
-///     including synchronization and saving runtime information.
-///
-/// - `jobs`
-///     A thread-safe, read-write lock to the `JobQueue`, which maintains a pipeline of tasks and jobs.
-///
-/// # Usage
-///
-/// The `Engine` struct can be instantiated using either the `new` method or by loading
-/// a configuration file using the `load` method. It integrates with other components of the
-/// system through actors and performs various initialization routines.
-///
-/// Example:
-///
-/// ```no_run
-/// # use tokio;
-/// # use fetiche_engine::Engine;
-/// #[tokio::main]
-/// async fn main() {
-///     // Initialize a new engine asynchronously
-///     let engine = Engine::new().await;
-///     println!("Engine initialized with PID: {}", engine.pid);
-/// }
-/// ```
-///
-/// The engine ensures proper initialization of all necessary services, such as source loading,
-/// state synchronization, and storage registration, during its setup process.
+/// The Engine maintains several critical components:
+/// - Process identification and management
+/// - Storage systems for both temporary and persistent data
+/// - Token management for authentication
+/// - Actor-based concurrent processing system
+/// - State synchronization mechanisms
 ///
 #[derive(Clone, Debug)]
 pub struct Engine {
@@ -450,7 +417,6 @@ impl Engine {
 /// See the engine-macro crate for a proc-macro that implement the `run()`  wrapper for
 /// the `Runnable` trait.
 ///
-#[enum_dispatch(Task)]
 pub trait Runnable: Debug {
     fn cap(&self) -> IO;
     fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
