@@ -1,10 +1,13 @@
 //! Actor definition for `Stats`
 //!
 
+use std::fmt::{Display, Formatter};
+
 use chrono::Utc;
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef};
-use std::fmt::{Display, Formatter};
 use tracing::{info, trace};
+
+use crate::{Stats, ENGINE_PG};
 
 pub struct StatsActor;
 
@@ -105,7 +108,7 @@ impl Actor for StatsActor {
 
         // Register ourselves
         //
-        pg::join(SOURCES_PG.into(), vec![myself.get_cell()]);
+        pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
         Ok(State {
             start: Utc::now().timestamp(),
             stat: Stats::default(),

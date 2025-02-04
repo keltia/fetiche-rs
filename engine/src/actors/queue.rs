@@ -1,9 +1,10 @@
 //! Actor managing the job queue
 //!
+use std::collections::VecDeque;
+
+use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
 use crate::{EngineStatus, Job, JobState, ENGINE_PG};
-use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
-use std::collections::VecDeque;
 
 /// Messages handled by the QueueActor for managing the job queue.
 ///
@@ -155,7 +156,6 @@ impl Actor for QueueActor {
             QueueMsg::RemoveById(id) => {
                 state.q.remove(id);
             }
-            _ => panic!(),
         }
         Ok(())
     }

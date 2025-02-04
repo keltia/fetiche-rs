@@ -16,8 +16,7 @@ use ractor::{call, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 use tracing::trace;
 
 use crate::actors::QueueMsg;
-
-use fetiche_sources::Stats;
+use crate::Stats;
 
 /// Messages that can be handled by the Runner actor.
 ///
@@ -64,7 +63,7 @@ impl Worker for RunnerActor {
     type Arguments = RunnerArgs;
     type State = RunnerArgs;
 
-    #[tracing::instrument(skip(self, _myself))]
+    #[tracing::instrument(skip(self, _factory))]
     async fn pre_start(
         &self,
         _wid: WorkerId,
@@ -74,7 +73,7 @@ impl Worker for RunnerActor {
         Ok(startup_context)
     }
 
-    #[tracing::instrument(skip(self, _myself, _factory))]
+    #[tracing::instrument(skip(self, _factory))]
     async fn handle(
         &self,
         wid: WorkerId,

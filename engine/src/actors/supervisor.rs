@@ -1,9 +1,10 @@
 //! Actor definition for `Supervisor`
 //!
 
-use fetiche_sources::SOURCES_PG;
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, SupervisionEvent};
 use tracing::trace;
+
+use crate::ENGINE_PG;
 
 #[derive(Debug)]
 pub enum SuperMsg {
@@ -63,7 +64,7 @@ impl Actor for Supervisor {
         myself: ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        pg::join(SOURCES_PG.into(), vec![myself.get_cell()]);
+        pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
         Ok(())
     }
 
