@@ -6,7 +6,7 @@
 //! v2: Has initial number of workers for the runner factory.
 //!
 //! Example:
-//! ```no_run
+//! ```rust
 //! # #[tokio::main]
 //! # async fn main() -> eyre::Result<()> {
 //! use tracing::trace;
@@ -14,12 +14,13 @@
 //!
 //! // Instantiate Engine
 //! //
-//! let engine = Engine::new().await;
-//! trace!("Engine initialised and running.");
+//! let engine = Engine::new().await?;
+//!
+//! println!("Engine initialised and running.");
 //!
 //! // For the moment the whole of Engine is sync so we need to block.
 //! //
-//! let res = tokio::task::spawn_blocking(move || println!("{}", engine.list_tokens().unwrap())).await?;
+//! println!("{}", engine.list_tokens().await?);
 //! # Ok(())
 //! # }
 //! ```
