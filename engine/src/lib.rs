@@ -381,12 +381,3 @@ impl Engine {
     }
 }
 
-/// Anything that can be `run()` is Runnable.
-///
-/// See the `fetiche-macros` crate for a proc-macro that implement the `run()`  wrapper for
-/// the `Runnable` trait.
-///
-pub trait Runnable: Debug {
-    fn cap(&self) -> IO;
-    fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
-}
