@@ -45,7 +45,7 @@ impl Fetchable for Asd {
         let fname = format!("{}-{}", DEF_TOKEN, self.login);
         let fname = token_base.join(fname);
 
-        let res = if let Ok(token) = Asd::retrieve(&fname) {
+        let res = if let Ok(token) = AsdToken::retrieve(&fname) {
             // Load potential token data
             //
             trace!("load stored token");
@@ -60,7 +60,7 @@ impl Fetchable for Asd {
                 // Should we delete it?
                 //
                 warn!("Stored token in {:?} has expired, deleting!", fname);
-                match Asd::purge(&fname) {
+                match AsdToken::purge(&fname) {
                     Ok(()) => (),
                     Err(e) => error!("Can not remove token: {}", e.to_string()),
                 };
@@ -90,7 +90,7 @@ impl Fetchable for Asd {
             // Write fetched token in `tokens` (unless it is during tests)
             //
             #[cfg(not(test))]
-            Asd::store(&fname, &resp).map_err(|e| AuthError::Storing(e.to_string()))?;
+            AsdToken::store(&fname, &resp).map_err(|e| AuthError::Storing(e.to_string()))?;
 
             res.token
         };
