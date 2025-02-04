@@ -214,3 +214,60 @@ impl Fetchable for Asd {
         Format::Asd
     }
 }
+
+// -----
+
+/// Generate a UNIX timestamp from the non-standard date string used by Asd.
+///
+/// >NOTE: This function is used through polars.
+///
+fn into_timestamp(col: &Column) -> Column {
+    col.str()
+        .unwrap()
+        .into_iter()
+        .map(|d: Option<&str>| d.map(|d: &str| humantime::parse_rfc3339_weak(d).unwrap().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64))
+        .collect::<Int64Chunked>()
+        .into_column()
+}
+
+/// ASD is very sensitive to the date format, needs milli-secs.
+///
+fn prepare_asd_data(data: Param) -> String {
+    #[derive(Debug, Serialize)]
+    struct P {
+        start_time: DateTime<Utc>,
+        end_time: DateTime<Utc>,
+        sources: Vec<&'static str>,
+    }
+
+    let p = P { start_time: data.start_time, end_time: data.end_time, sources: DEF_SOURCES.into() };
+    json!(&p).to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    #[test]
+    fn test_prepare_asd_data() {
+        let start_time = Utc.with_ymd_and_hms(2023, 10, 1, 10, 0, 0).unwrap();
+        let end_time = Utc.with_ymd_and_hms(2023, 10, 2, 12, 30, 45).unwrap();
+        let data = Param {
+            start_time,
+            end_time,
+            sources: vec![],
+        };
+
+        let result = prepare_asd_data(data);
+
+        let expected = json!({
+            "start_time": start_time,
+            "end_time": end_time,
+            "sources": ["as", "wi"]
+        })
+            .to_string();
+
+        assert_eq!(result, expected);
+    }
+}

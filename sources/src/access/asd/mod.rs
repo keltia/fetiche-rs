@@ -216,28 +216,6 @@ struct Payload {
     content: String,
 }
 
-/// ASD is very sensitive to the date format, needs milli-secs.
-///
-fn prepare_asd_data(data: Param) -> String {
-    let d_start = data.start_time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
-    let d_end = data.end_time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
-    format!(
-        "{{\"startTime\":\"{}\",\"endTime\":\"{}\",\"sources\":[\"as\",\"wi\"]}}",
-        d_start, d_end
-    )
-}
-
-/// Generate a UNIX timestamp from the non-standard date string used by Asd.
-///
-fn into_timestamp(col: &Column) -> Column {
-    col.str()
-        .unwrap()
-        .into_iter()
-        .map(|d: Option<&str>| d.map(|d: &str| dateparser::parse(d).unwrap().timestamp()))
-        .collect::<Int64Chunked>()
-        .into_column()
-}
-
 /// ASD is sending us an anonymous JSON array
 ///
 /// This is less easy to use later on so we convert it into [NDJSON]
