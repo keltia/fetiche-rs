@@ -5,8 +5,12 @@ pub use queue::*;
 pub use runner::*;
 pub use sources::*;
 pub use state::*;
+pub use stats::*;
+pub use supervisor::*;
 
 mod queue;
 mod runner;
 mod sources;
 mod state;
+mod stats;
+mod supervisor;

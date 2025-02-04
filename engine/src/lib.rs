@@ -225,6 +225,10 @@ pub struct Engine {
     pub tokens: Arc<TokenStorage>,
     /// Current state
     pub state: ActorRef<StateMsg>,
+    /// Stats gathering actors for sources
+    pub stats: ActorRef<StatsMsg>,
+    /// Supervisor actor, top of the process group
+    pub supervisor: ActorRef<SuperMsg>,
 }
 
 impl Engine {
@@ -300,20 +304,48 @@ impl Engine {
         }
 
         // ----- Start actors
+
+        // We have a generic supervisor actor.
         //
+        trace!("starting supervisor actor.");
+        let tag = String::from("sources:supervisor");
+        let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await.unwrap();
+
+        // Start the stats gathering service.
+        //
+        trace!("starting stats actor.");
+        let tag = String::from("sources::stats");
+        let (stat, _h) = Actor::spawn_linked(
+            Some(tag),
+            StatsActor,
+            "sources".into(),
+            sup.get_cell())
+            .await?;
 
         // Start sources service
         //
         trace!("load sources");
-        let (src, _h) = Actor::spawn(Some("engine::sources".into()), SourcesActor, ()).await?;
+        let (src, _h) = Actor::spawn_linked(
+            Some("engine::sources".into()),
+            SourcesActor,
+            (),
+            sup.get_cell(),
+        )
+            .await?;
+
         let count = call!(src, |port| SourcesMsg::Count(port))?;
         info!("{} sources loaded", count);
 
         // Start state service
         //
         trace!("load state.");
-        let (state, _h) =
-            Actor::spawn(Some("engine::state".into()), StateActor, home.clone()).await?;
+        let (state, _h) = Actor::spawn_linked(
+            Some("engine::state".into()),
+            StateActor,
+            home.clone(),
+            sup.get_cell(),
+        )
+            .await?;
         trace!("state={:?}", state);
 
         // Get last used ID from previous state
@@ -323,7 +355,13 @@ impl Engine {
         // Start job queue service, upon startup the queue will always be empty.
         //
         trace!("load job queue");
-        let (queue, _h) = Actor::spawn(Some("engine::queue".into()), QueueActor, last).await?;
+        let (queue, _h) = Actor::spawn_linked(
+            Some("engine::queue".into()),
+            QueueActor,
+            last,
+            sup.get_cell(),
+        )
+            .await?;
         trace!("queue={:?}", queue);
 
         // ----- Start Runner Factory
@@ -375,6 +413,8 @@ impl Engine {
             storage: Arc::new(areas),
             tokens: Arc::new(tokens),
             state: state.clone(),
+            stats: stat.clone(),
+            supervisor: sup.clone(),
         };
         info!("New Engine loaded pid={}", pid);
 
@@ -382,6 +422,10 @@ impl Engine {
         //
         let _ = engine.sync()?;
 
+        // If debug/trace, list all the actors running at this point.
+        //
+        let plist = registered().join('\n');
+        trace!("Actor list: {plist}");
         Ok(engine)
     }
 

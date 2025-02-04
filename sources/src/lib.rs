@@ -18,7 +18,6 @@ use fetiche_formats::Format;
 // Re-export these modules for a shorted import path.
 //
 pub use access::*;
-pub use actors::*;
 pub use auth::*;
 pub use capability::*;
 pub use error::*;
@@ -30,7 +29,6 @@ pub use sources::*;
 pub use stats::*;
 
 mod access;
-mod actors;
 mod auth;
 mod capability;
 mod error;
