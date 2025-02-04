@@ -15,7 +15,7 @@ use ractor::ActorRef;
 use tracing::{info, span, trace, Level};
 
 use crate::actors::StatsMsg;
-use crate::{Consumer, Middle, Producer, Runnable, Task};
+use crate::{Consumer, Middle, Producer};
 
 /// A `Job` represents a pipeline of tasks to be executed sequentially.
 ///
@@ -56,9 +56,9 @@ pub struct Job {
     /// Producer.
     #[builder(default = "Producer::Invalid")]
     pub producer: Producer,
-    /// FIFO list of filter tasks
+    /// FIFO list of middle tasks
     #[builder(default = "VecDeque::new()")]
-    pub filters: VecDeque<Middle>,
+    pub middle: VecDeque<Middle>,
     /// The end of the pipeline.
     #[builder(default = "Consumer::Invalid")]
     pub consumer: Consumer,
@@ -95,10 +95,10 @@ pub enum JobState {
 }
 
 impl Job {
-    /// Adds a middleware filter task to the job's pipeline.
+    /// Adds a middleware middle task to the job's pipeline.
     ///
-    /// This method appends a new filter task to the end of the job's filter queue,
-    /// maintaining the FIFO (First In, First Out) order of execution. Each filter
+    /// This method appends a new middle task to the end of the job's middle queue,
+    /// maintaining the FIFO (First In, First Out) order of execution. Each middle
     /// added will be executed in the order they were added during the job's run.
     ///
     /// # Parameters
@@ -111,7 +111,7 @@ impl Job {
     #[tracing::instrument(skip(self))]
     #[inline]
     pub fn add(&mut self, t: Middle) -> &mut Self {
-        let _ = &self.filters.push_back(t);
+        let _ = &self.middle.push_back(t);
         self
     }
 
