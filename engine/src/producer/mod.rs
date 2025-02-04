@@ -9,6 +9,8 @@ use tracing::error;
 
 use crate::{Runnable, Site, Task, IO};
 
+pub use dummy::*;
+mod dummy;
 mod fetch;
 mod read;
 mod stream;
@@ -20,6 +22,8 @@ mod stream;
 ///
 #[derive(Clone, Debug, Default, EnumString, PartialEq, strum::VariantNames)]
 pub enum Producer {
+    /// Dummy `Producer` for tests
+    Dummy(Dummy),
     /// Producer that fetches data from remote sources
     Fetch,
     /// Producer that reads data from local files
