@@ -1,3 +1,9 @@
+//! This example demonstrates how to generate a KML file from a series of data points
+//! representing a trajectory. It showcases converting the trajectory into KML structures 
+//! such as LineString and Placemark, and serializing them to produce a KML document.
+//!
+//! Additionally, it showcases how to manipulate colors using the `colorsys` crate.
+//!
 use chrono::{DateTime, Utc};
 use colorsys::{ColorAlpha, Rgb};
 use dateparser::parse;

@@ -1,13 +1,28 @@
-//! ClickHouse unofficial client `klickhouse`.
+//! Example: Export data from ClickHouse to a CSV file.
 //!
-
-use std::fs;
+//! This example demonstrates how to connect to a ClickHouse database,
+//! query data, and export the results as a CSV file. The example uses
+//! the `klickhouse` library for database interaction and the `csv` library
+//! for generating the CSV output.
+//!
+//! Usage:
+//! - Set environment variables:
+//!   - `CLICKHOUSE_DB`: Name of the ClickHouse database.
+//!   - `CLICKHOUSE_USER`: Username for ClickHouse.
+//!   - `CLICKHOUSE_PASSWD`: Password for ClickHouse.
+//!   - `KLICKHOUSE_URL`: Base URL for the ClickHouse endpoint.
+//! - Use the `--fname` option to specify the output file name (default: `all_encounters.csv`).
+//!
+//! The exported data includes information about drone encounters, such as
+//! drone and proximate object details, locations, distances, and identifiers.
+//!
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use csv::WriterBuilder;
 use eyre::Result;
 use klickhouse::{Client, ClientOptions, DateTime, QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
+use tokio::fs;
 
 use fetiche_common::{close_logging, init_logging};
 
@@ -64,7 +79,7 @@ async fn main() -> Result<()> {
             ..Default::default()
         },
     )
-    .await?;
+        .await?;
 
     let fname = opts.fname.clone();
     eprintln!("Created fname: {}", fname);
@@ -109,7 +124,7 @@ async fn main() -> Result<()> {
     // Output final csv
     //
     let data = String::from_utf8(wtr.into_inner()?)?;
-    fs::write(fname, data)?;
+    fs::write(fname, data).await?;
 
     close_logging();
     Ok(())

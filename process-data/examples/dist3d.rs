@@ -1,3 +1,29 @@
+//! # Example: Distances in 3D Space
+//!
+//! This example demonstrates different methods to calculate distances
+//! between points in 3D space, using both simple trigonometry and geodesic calculations.
+//!
+//! ## Overview
+//! The file defines the `Point` structure for representing 3D coordinates,
+//! and implements distance calculations leveraging the `geo` and `rust_3d` crates.
+//!
+//! It includes two modules:
+//!
+//! - `roberto`: Contains basic trigonometric and geographic distance calculations.
+//! - `gravis`: Provides a more thorough approach to transforming coordinates 
+//!   using geocentric latitude and Earth radius calculations, with enhanced precision.
+//!
+//! ## Coordinate Conventions
+//! - Geographic coordinates are represented as latitude (`lat`), longitude (`lon`),
+//!   and altitude (`alt`).
+//! - Points may also be converted to 3D Cartesian coordinates for specific computations.
+//!
+//! ## Usage
+//! - To understand the differences between various distance calculation methods, 
+//!   compare values printed using `roberto::distances` and `gravis::distances`.
+//! - Change input points for testing various scenarios.
+//!
+
 // Point3D is ( x = lon, y = lat, z = alt )
 // Point is ( lat, lon alt )
 // point! is ( x = lon, y = lat )

@@ -1,3 +1,40 @@
+//! Example: Export installation data from ClickHouse to CSV
+//!
+//! This example demonstrates how to connect to a ClickHouse database
+//! using the `klickhouse` client library, retrieve data from a table,
+//! and export the data into a CSV file. The program uses asynchronous
+//! operations powered by `tokio` and handles errors gracefully with the `eyre` crate.
+//!
+//! Dependencies:
+//! - klickhouse: For interacting with ClickHouse database.
+//! - csv: For writing data to CSV format.
+//! - tokio: For asynchronous functionality.
+//! - eyre: For robust error handling.
+//! - serde: For serializing and deserializing Rust structs.
+//!
+//! Table Schema:
+//! The script assumes a table named `acute.installations` with the following schema:
+//!
+//! ```sql
+//! CREATE TABLE acute.installations
+//! (
+//!     `id` Int32,
+//!     `site_id` Int32,
+//!     `antenna_id` Int32,
+//!     `start_at` DateTime,
+//!     `end_at` DateTime,
+//!     `comment` String
+//! )
+//! ENGINE = MergeTree
+//! PRIMARY KEY id
+//! ORDER BY id
+//! SETTINGS index_granularity = 8192
+//! COMMENT 'Which antenna on each site in time.'
+//! ```
+//!
+//! Output:
+//! The retrieved data is exported to a CSV file named `installations.csv`.
+//!
 use std::env::var;
 use std::fs::File;
 
@@ -12,21 +49,6 @@ const USER: &str = "default";
 const PASS: &str = "";
 const FNAME: &str = "installations.csv";
 
-// CREATE TABLE acute.installations
-// (
-//     `id` Int32,
-//     `site_id` Int32,
-//     `antenna_id` Int32,
-//     `start_at` DateTime,
-//     `end_at` DateTime,
-//     `comment` String
-// )
-// ENGINE = MergeTree
-// PRIMARY KEY id
-// ORDER BY id
-// SETTINGS index_granularity = 8192
-// COMMENT 'Which antenna on each site in time.'
-//
 #[derive(Debug, Deserialize, Serialize, Row)]
 pub struct Install {
     pub id: u32,
@@ -53,7 +75,7 @@ async fn main() -> Result<()> {
             ..Default::default()
         },
     )
-    .await?;
+        .await?;
 
     let all = client
         .query_collect::<Install>("SELECT * FROM acute.installations")
