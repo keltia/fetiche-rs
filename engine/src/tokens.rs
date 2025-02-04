@@ -7,12 +7,11 @@ use std::time::UNIX_EPOCH;
 
 use chrono::{DateTime, Utc};
 use eyre::Result;
-use fetiche_sources::{AsdToken, TokenType};
 use tabled::builder::Builder;
 use tabled::settings::Style;
 use tracing::trace;
 
-use crate::TokenStatus;
+use crate::{AsdToken, TokenStatus, TokenType};
 
 /// The `TokenStorage` struct provides functionality for managing tokens
 /// stored as serialized files in a specified directory. It allows operations
@@ -33,8 +32,7 @@ use crate::TokenStatus;
 /// ```rust
 ///
 /// // Register a directory containing token files
-/// use fetiche_engine::TokenStorage;
-/// use fetiche_sources::{AsdToken, TokenType};
+/// use fetiche_engine::{AsdToken, TokenStorage, TokenType};
 ///
 /// let mut storage = TokenStorage::register("path/to/tokens");
 ///
@@ -48,7 +46,7 @@ use crate::TokenStatus;
 /// }
 ///
 /// // List all tokens
-/// if let Ok(token_list) = storage.list() {
+/// if let Ok(token_list) = storage.to_string() {
 ///     println!("{}", token_list);
 /// }
 /// ```
@@ -119,13 +117,17 @@ impl TokenStorage {
         self.list.is_empty()
     }
 
-    /// List tokens
+    pub fn list(&self) -> Vec<TokenType> {
+        self.list.values().cloned().collect()
+    }
+
+    /// List tokens as a string
     ///
     /// NOTE: we do not show data from each token (like expiration, etc.) because at this point
     ///       we do not know which kind of token each one is.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn list(&self) -> Result<String> {
+    pub fn to_string(&self) -> Result<String> {
         trace!("listing tokens");
 
         let header = vec!["Path", "Producer", "Created at"];

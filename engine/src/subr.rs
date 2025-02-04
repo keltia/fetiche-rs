@@ -75,7 +75,7 @@ impl Engine {
     /// Return a list of all currently available authentication tokens
     ///
     pub fn list_tokens(&self) -> Result<String> {
-        self.tokens.list()
+        self.tokens.to_string()
     }
 
     /// Return the path of the `engine.hcl` file.
