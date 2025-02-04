@@ -540,7 +540,7 @@ mod tests {
     async fn test_prepare_work_list() -> Result<()> {
         let site = "*";
 
-        // This is present but really used.
+        // This is present but not really used.
         //
         let dopts = DistOpts {
             output: None,
