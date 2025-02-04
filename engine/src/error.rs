@@ -18,8 +18,6 @@ pub enum EngineStatus {
     CreateDir(String),
     #[error("Can not create link to {0} as {1}")]
     CreateLink(String, String),
-    #[error("Empty task list.")]
-    EmptyTaskList,
     #[error("Site not found.")]
     NoSiteDefined,
     #[error("First task must be Producer.")]
@@ -53,7 +51,10 @@ pub enum EngineStatus {
 }
 
 #[derive(Debug, Error)]
-pub enum QueueStatus {
+pub enum RunnerError {}
+
+#[derive(Debug, Error)]
+pub enum QueueError {
     #[error("Empty queue.")]
     EmptyQueue,
     #[error("Job {0} is not runnable")]
@@ -65,8 +66,16 @@ pub enum QueueStatus {
 }
 
 #[derive(Debug, Error)]
+pub enum SchedulerError {
+    #[error("Scheduler in the wrong state.")]
+    WrongState,
+    #[error("Scheduler is not running.")]
+    NotRunning,
+}
+
+#[derive(Debug, Error)]
 pub enum Pipeline {
-    #[error("Can not receive data from previous stage: {0}.")]
+    #[error("Cannot receive data from previous stage: {0}.")]
     CantReceivePrevious(String),
 }
 
@@ -74,4 +83,6 @@ pub enum Pipeline {
 pub enum StatsError {
     #[error("Tag {0} not found.")]
     TagNotFound(String),
+    #[error("Stats are not initialised.")]
+    NotInitialized,
 }
