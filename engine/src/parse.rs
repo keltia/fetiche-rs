@@ -29,7 +29,9 @@ use strum::EnumString;
 use tracing::trace;
 
 use crate::actors::{QueueMsg, SourcesMsg};
-use crate::{Consumer, Copy, Engine, Fetch, Job, JobState, Middle, Producer, Read, Save, Store, Stream, Tee};
+use crate::{
+    Consumer, Copy, Engine, Fetch, Job, JobState, Middle, Producer, Read, Save, Store, Stream, Tee,
+};
 
 /// Represents the type of job to be executed.
 ///
@@ -182,26 +184,27 @@ impl Engine {
             }
         };
         let list = if let Some(filters) = &jt.filters {
-            filters.iter().map(|t| match t {
-                MiddleText::Convert(_) => {
-                    unimplemented!()
-                }
-                MiddleText::Copy => {
-                    let c = Copy::new();
-                    Middle::Copy(c)
-                }
-                MiddleText::Tee(fname) => {
-                    let tee = Tee::into(&fname);
-                    Middle::Tee(tee)
-                }
-            }).collect()
+            filters
+                .iter()
+                .map(|t| match t {
+                    MiddleText::Convert(_) => {
+                        unimplemented!()
+                    }
+                    MiddleText::Copy => {
+                        let c = Copy::new();
+                        Middle::Copy(c)
+                    }
+                    MiddleText::Tee(fname) => {
+                        let tee = Tee::into(&fname);
+                        Middle::Tee(tee)
+                    }
+                })
+                .collect()
         } else {
             VecDeque::new()
         };
         let consumer = match jt.output {
-            ConsumerText::Archive(_) => {
-                Consumer::Invalid
-            }
+            ConsumerText::Archive(_) => Consumer::Invalid,
             ConsumerText::Save(c) => {
                 let f = Save::new(&c, Format::None, Container::Raw);
                 Consumer::Save(f)
@@ -211,7 +214,6 @@ impl Engine {
                 Consumer::Store(s)
             }
         };
-
 
         // Job is now Ready as it is complete with task list.
         //
