@@ -19,8 +19,8 @@ struct ExampleWorker;
 impl Worker for ExampleWorker {
     type Key = ();
     type Message = ExampleMessage;
-    type Arguments = ();
-    type State = ();
+    type Arguments = String;
+    type State = String;
     async fn pre_start(
         &self,
         _wid: WorkerId,
@@ -34,10 +34,10 @@ impl Worker for ExampleWorker {
         wid: WorkerId,
         _factory: &ActorRef<FactoryMessage<(), ExampleMessage>>,
         Job { msg, key, .. }: Job<(), ExampleMessage>,
-        _state: &mut Self::State,
+        state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         // Actual business logic that we want to parallelize
-        tracing::trace!("Worker {} received {:?}", wid, msg);
+        tracing::trace!("Worker {} tag {} received {:?}", state, wid, msg);
         match msg {
             ExampleMessage::PrintValue(value) => {
                 tracing::info!("Worker {} printing value {value}", wid);
@@ -51,10 +51,13 @@ impl Worker for ExampleWorker {
     }
 }
 /// Used by the factory to build new [ExampleWorker]s.
-struct ExampleWorkerBuilder;
-impl WorkerBuilder<ExampleWorker, ()> for ExampleWorkerBuilder {
-    fn build(&mut self, _wid: usize) -> (ExampleWorker, ()) {
-        (ExampleWorker, ())
+struct ExampleWorkerBuilder {
+    tag: String,
+}
+
+impl WorkerBuilder<ExampleWorker, String> for ExampleWorkerBuilder {
+    fn build(&mut self, _wid: usize) -> (ExampleWorker, String) {
+        (ExampleWorker, self.tag.clone())
     }
 }
 #[tokio::main]
@@ -88,13 +91,14 @@ async fn main() {
     let factory_def = Factory::<
         (),
         ExampleMessage,
-        (),
+        String,
         ExampleWorker,
         routing::QueuerRouting<(), ExampleMessage>,
         queues::DefaultQueue<(), ExampleMessage>
     >::default();
+    let builder = ExampleWorkerBuilder { tag: "tag".to_string() };
     let factory_args = FactoryArguments::builder()
-        .worker_builder(Box::new(ExampleWorkerBuilder))
+        .worker_builder(Box::new(builder))
         .queue(Default::default())
         .router(Default::default())
         .num_initial_workers(5)
