@@ -377,13 +377,15 @@ impl Engine {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use fetiche_engine::Engine;
+    /// use fetiche_engine::{Engine, JobState};
+    ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let mut engine = Engine::new().await?;
+    /// let mut engine = Engine::new().await?;
     ///
-    ///     let job = engine.create_job("example_job").await?;
+    ///     let job = engine.create_job("example_job")?;
     ///     println!("Job created with ID: {}", job.id);
+    ///     assert_eq!(job.state, JobState::Created);
     ///     Ok(())
     /// }
     /// ```
@@ -407,7 +409,7 @@ impl Engine {
     /// Ensure tracing is properly configured in your application to monitor these events.
     ///
     #[tracing::instrument(skip(self))]
-    pub async fn create_job(&mut self, s: &str) -> Result<Job> {
+    pub fn create_job(&mut self, s: &str) -> Result<Job> {
         // Fetch next ID
         //
         let nextid = call!(self.queue, |port| QueueMsg::Allocate(port))?;
@@ -426,8 +428,33 @@ impl Engine {
         Ok(job)
     }
 
+    /// Queue a job for execution in the engine.
+    ///
+    /// This method takes a job that is in the "Ready" state and queues it for execution
+    /// by changing its state to "Queued" and adding it to the engine's job queue.
+    ///
+    /// # Arguments
+    ///
+    /// * `job` - The `Job` instance to be queued. The job must be in the `Ready` state.
+    ///
+    /// # Returns
+    ///
+    /// - On success, returns `Ok(usize)` containing the job's ID
+    /// - On failure, returns an `Err` containing details about what went wrong
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error in the following cases:
+    ///
+    /// - If the job is not in the `Ready` state (returns `EngineStatus::JobNotReady`)
+    /// - If adding the job to the queue fails
+    ///
+    /// # Tracing
+    ///
+    /// This method is instrumented for tracing, excluding the `self` parameter.
+    ///
     #[tracing::instrument(skip(self))]
-    pub async fn queue_job(&mut self, job: Job) -> Result<usize> {
+    pub fn queue_job(&mut self, job: Job) -> Result<usize> {
         if job.state != JobState::Ready {
             error!("Job is not ready");
             return Err(EngineStatus::JobNotReady(job.id).into());
@@ -441,55 +468,39 @@ impl Engine {
         Ok(job.id)
     }
 
-    /// Remove a job
+    /// Removes a job from the engine by its ID.
     ///
-    /// This method removes an existing job from the engine by its `Job` instance.
-    /// It will ensure that the job is deleted both from the internal job queue
-    /// and the state service.
+    /// This method attempts to remove a job with the specified ID from the engine's job queue.
+    /// The job cannot be removed if it is currently in the Running state.
     ///
     /// # Arguments
     ///
-    /// - `job`: A `Job` instance that represents the job to be removed.
+    /// - `job_id`: The unique identifier of the job to remove.
     ///
     /// # Returns
     ///
-    /// - On success, it returns `Ok(())` indicating the job has been removed successfully.
-    /// - On failure, returns an `Err` containing details about the error.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// use fetiche_engine::Engine;
-    /// # use tokio;
-    /// # use fetiche_engine::Job;
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let mut engine = Engine::new().await;
-    ///     let job = engine.create_job("example_job").await?;
-    ///     engine.remove_job(job.id)?;
-    ///     println!("Job removed successfully");
-    ///     Ok(())
-    /// }
-    /// ```
+    /// - On success, returns `Ok(())` after removing the job and syncing state.
+    /// - On failure, returns an `Err` containing details about what went wrong.
     ///
     /// # Errors
     ///
     /// This method will return an error in the following cases:
     ///
-    /// - If the job cannot be removed from the state service.
-    /// - If synchronization with the engine state fails after the job's removal.
+    /// - If the job is currently running (`EngineStatus::JobIsRunning`)
+    /// - If the job cannot be found in the queue
+    /// - If state synchronization fails after removal
     ///
     /// # Tracing
     ///
-    /// Tracing events provide logs about the removal process:
-    /// - Lock acquisition for the job queue.
-    /// - Job removal success or failure.
-    /// - Synchronization status after job removal.
-    ///
-    /// Ensure that tracing is set up in your application to observe these events.
+    /// This method is instrumented for tracing, excluding the `self` parameter.
     ///
     #[tracing::instrument(skip(self))]
     pub fn remove_job(&mut self, job_id: usize) -> Result<()> {
+        let job = call!(self.queue, |port| QueueMsg::GetById(job_id, port))?;
+        if job.state == JobState::Running {
+            return Err(EngineStatus::JobIsRunning(job_id).into());
+        }
+
         let _ = cast!(self.state, StateMsg::Remove(job_id))?;
         let _ = cast!(self.queue, QueueMsg::RemoveById(job_id))?;
         self.sync()
@@ -516,22 +527,6 @@ impl Engine {
     /// This method will return an `Err` containing `EngineStatus::JobNotFound` if
     /// the job does not exist in the internal job queue.
     ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// use fetiche_engine::Engine;
-    /// # use tokio;
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let engine = Engine::new().await;
-    ///     match engine.get_job(42) {
-    ///         Ok(job) => println!("Found job: {:?}", job),
-    ///         Err(e) => eprintln!("Error: {}", e),
-    ///     }
-    ///     Ok(())
-    /// }
-    /// ```
-    ///
     /// # Tracing
     ///
     /// Tracing logs are emitted to provide detailed runtime diagnostics, including:
@@ -541,7 +536,7 @@ impl Engine {
     /// Ensure tracing is set up in your application to observe these events.
     ///
     #[tracing::instrument(skip(self))]
-    pub async fn get_job(&self, id: usize) -> Result<Job> {
+    pub fn get_job(&self, id: usize) -> Result<Job> {
         let job = call!(self.queue, |port| QueueMsg::GetById(id, port))?;
 
         Ok(job.clone())

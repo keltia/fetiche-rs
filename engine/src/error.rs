@@ -42,4 +42,14 @@ pub enum EngineStatus {
     JobNotReady(usize),
     #[error("Job {0} is not runnable")]
     JobInWrongState(usize),
+    #[error("Job {0} is running")]
+    JobIsRunning(usize),
+    #[error("Job {0} is not queued")]
+    JobNotQueued(usize),
+    #[error("Job {0} is not completed")]
+    JobNotCompleted(usize),
+    #[error("Job {0} is not zombie")]
+    JobNotZombie(usize),
+    #[error("Job {0} is not created")]
+    JobNotCreated(usize),
 }
