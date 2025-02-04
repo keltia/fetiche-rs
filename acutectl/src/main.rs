@@ -87,6 +87,15 @@ async fn main() -> Result<()> {
 
     trace!("Engine initialised and running.");
 
+    // initialise signal handling
+    //
+    let mut e = engine.clone();
+    ctrlc::set_handler(move || {
+        trace!("Ctrl-C pressed");
+        e.shutdown();
+        close_logging();
+    });
+
     let subcmd = opts.subcmd;
 
     // We shortcut the `config`  sub-commands here to avoid exporting some variables to `handle_subcmd()`

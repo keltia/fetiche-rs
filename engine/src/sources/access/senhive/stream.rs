@@ -6,10 +6,6 @@ use std::time::Duration;
 use eyre::Result;
 use ractor::pg::join;
 use ractor::{pg, Actor};
-#[cfg(unix)]
-use tokio::signal::unix::{signal, SignalKind};
-#[cfg(windows)]
-use tokio::signal::windows::ctrl_c;
 use tokio::sync::mpsc::{channel, Sender};
 use tracing::{info, trace};
 
@@ -62,13 +58,6 @@ impl Streamable for Senhive {
             stream_duration.as_secs()
         );
 
-        // setup ctrl-c handled
-        //
-        #[cfg(windows)]
-        let mut sig = ctrl_c().unwrap();
-
-        #[cfg(unix)]
-        let mut stream = signal(SignalKind::interrupt()).unwrap();
 
         // We have a generic supervisor actor.
         //
@@ -113,31 +102,6 @@ impl Streamable for Senhive {
         //
         stat.send_interval(TICK, StatsMsg::Print);
 
-        // Setup signal handling.
-        //
-        tokio::spawn(async move {
-            trace!("SIGINT thread running.");
-
-            // Wait for completion or interrupt
-            //
-            #[cfg(unix)]
-            if (stream.recv().await).is_some() {
-                info!("Got SIGINT.");
-            }
-            #[cfg(windows)]
-            sig.recv().await;
-
-            info!("^C pressed.");
-
-            // Stop everyone in the group.
-            //
-            pg::get_members(&SENHIVE_PG.to_string())
-                .iter()
-                .for_each(|member| {
-                    member.stop(Some("^C ^pressed, ending.".to_string()));
-                });
-            std::process::exit(0);
-        });
 
         // Start the processing.
         //
