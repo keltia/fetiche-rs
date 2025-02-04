@@ -18,7 +18,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 
 use crate::actors::{SourcesMsg, StateMsg};
-use crate::{version, Engine, Sources, Storage, ENGINE_CONFIG, IO, STATE_FILE};
+use crate::{version, Engine, Sources, Storage, ENGINE_CONFIG, IO, SOURCES_CONFIG, STATE_FILE};
 
 impl Engine {
     /// Returns the path of the default state file in the engine's base directory
@@ -29,6 +29,11 @@ impl Engine {
     #[inline]
     pub fn state_file(&self) -> PathBuf {
         self.home.join(STATE_FILE)
+    }
+
+    #[inline]
+    pub fn sources_file(&self) -> PathBuf {
+        self.home.join(SOURCES_CONFIG)
     }
 
     /// Synchronizes all engine state by persisting it to disk

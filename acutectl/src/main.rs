@@ -118,11 +118,7 @@ async fn main() -> Result<()> {
                 println!("{p}");
             }
             ConfigCmd::Sources => {
-                let p = cfile
-                    .config_path()
-                    .join("sources.hcl")
-                    .to_string_lossy()
-                    .to_string();
+                let p = engine.sources_file().to_string_lossy().to_string();
                 println!("{p}");
             }
         },
