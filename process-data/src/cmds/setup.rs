@@ -54,6 +54,28 @@ pub struct SetupOpts {
     pub all: bool,
 }
 
+// -----
+
+#[tracing::instrument(skip(dbh))]
+async fn add_macro_dist2d(dbh: &Client) -> Result<()> {
+    let r1 = r##"
+CREATE FUNCTION dist_2d AS (dx, dy, px, py) ->
+  ceil(geoDistance(dx,dy,px,py));
+    "##;
+
+    Ok(dbh.execute(r1).await?)
+}
+
+#[tracing::instrument(skip(dbh))]
+async fn add_macro_dist3d(dbh: &Client) -> Result<()> {
+    let r2 = r##"
+CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
+  ceil(sqrt(pow(dist_2d(dx,dy,px,py), 2) + pow((dz-pz), 2)));
+    "##;
+
+    Ok(dbh.execute(r2).await?)
+}
+
 /// Adds mathematical macros to the database for distance calculations.
 ///
 /// ### Details
@@ -76,21 +98,29 @@ pub struct SetupOpts {
 ///
 #[tracing::instrument(skip(dbh))]
 async fn add_macros(dbh: &Client) -> Result<()> {
-    eprintln!("Adding functions.");
-
-    let r1 = r##"
-CREATE FUNCTION dist_2d AS (dx, dy, px, py) ->
-  ceil(geoDistance(dx,dy,px,py));
-    "##;
-    let r2 = r##"
-CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
-  ceil(sqrt(pow(dist_2d(dx,dy,px,py), 2) + pow((dz-pz), 2)));
-    "##;
-
-    dbh.execute(r1).await?;
-    dbh.execute(r2).await?;
-
+    add_macro_dist2d(dbh).await?;
+    add_macro_dist3d(dbh).await?;
     Ok(())
+}
+
+// -----
+
+#[tracing::instrument(skip(dbh))]
+async fn remove_macro_dist2d(dbh: &Client) -> Result<()> {
+    let r1 = r##"
+DROP FUNCTION IF EXISTS dist_2d;
+    "##;
+
+    Ok(dbh.execute(r1).await?)
+}
+
+#[tracing::instrument(skip(dbh))]
+async fn remove_macro_dist3d(dbh: &Client) -> Result<()> {
+    let r2 = r##"
+DROP FUNCTION IF EXISTS dist_3d;
+    "##;
+
+    Ok(dbh.execute(r2).await?)
 }
 
 /// Removes mathematical macros from the database.
@@ -117,18 +147,8 @@ CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
 ///
 #[tracing::instrument(skip(dbh))]
 async fn remove_macros(dbh: &Client) -> Result<()> {
-    eprintln!("Removing macros.");
-
-    let r1 = r##"
-DROP FUNCTION IF EXISTS dist_2d;
-    "##;
-
-    let r2 = r##"
-DROP FUNCTION IF EXISTS dist_3d;
-    "##;
-
-    dbh.execute(r1).await?;
-    dbh.execute(r2).await?;
+    remove_macro_dist3d(dbh).await?;
+    remove_macro_dist2d(dbh).await?;
     Ok(())
 }
 
