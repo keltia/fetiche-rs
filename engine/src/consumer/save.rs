@@ -17,7 +17,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{Archive, Consumer, IO, Runnable, Stats};
+use crate::{Archive, Consumer, Runnable, Stats, IO};
 
 /// The Save task
 ///
@@ -119,6 +119,7 @@ impl Default for Save {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::sync::mpsc::channel;
 
     #[test]
     fn test_write_new() {
@@ -160,7 +161,7 @@ mod tests {
         let mut t = Save::new("test_parquet_save", Format::Asd, Container::Parquet);
         t.path("/invalid/path/output.parquet");
 
-        let result = t.execute("dummy_data".to_string(), std::sync::mpsc::channel().0);
+        let result = t.execute("dummy_data".to_string(), channel(1).0);
 
         assert!(result.is_err());
     }
@@ -170,7 +171,7 @@ mod tests {
         let mut t = Save::new("test_raw_write", Format::None, Container::Raw);
         t.path("test_output.txt");
 
-        let result = t.execute("test_raw_data".to_string(), std::sync::mpsc::channel().0);
+        let result = t.execute("test_raw_data".to_string(), channel(1).0);
 
         assert!(result.is_ok());
         assert_eq!(
@@ -187,7 +188,7 @@ mod tests {
         let mut t = Save::new("test_stdout", Format::None, Container::Raw);
         t.path("-");
 
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = channel(1);
         let result = t.execute("output_to_stdout".to_string(), tx);
 
         assert!(result.is_ok());
