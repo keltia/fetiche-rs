@@ -12,7 +12,7 @@ use serde_with::{DisplayFromStr, PickFirst, serde_as};
 
 #[cfg(feature = "asterix")]
 use crate::{Cat21, TodCalculated, convert_to, get_drone_id, to_feet, to_knots};
-use crate::{DataSource, DronePoint, UAVType};
+use crate::{DataSource, DronePoint};
 
 /// Represents a record obtained from the ASD site.
 ///
