@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 use std::fmt::{Display, Formatter};
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 
 /// `Stats` is a structure used to track various performance-related statistics
 /// for data sources in the system.
@@ -87,6 +87,12 @@ impl Add for Stats {
             empty: self.empty + rhs.empty,
             err: self.err + rhs.err,
         }
+    }
+}
+
+impl AddAssign for Stats {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = self.clone() + rhs;
     }
 }
 
@@ -217,6 +223,40 @@ mod tests {
         };
         let sum = stats1 + stats2;
         assert_eq!(sum.tm, 200);
+    }
+
+    #[test]
+    fn test_stats_add_assign() {
+        let mut stats1 = Stats {
+            tm: 100,
+            pkts: 1000,
+            reconnect: 2,
+            bytes: 5000,
+            hits: 800,
+            miss: 200,
+            empty: 50,
+            err: 5,
+        };
+        let stats2 = Stats {
+            tm: 200,
+            pkts: 2000,
+            reconnect: 3,
+            bytes: 7000,
+            hits: 1500,
+            miss: 300,
+            empty: 100,
+            err: 10,
+        };
+        let mut stats1_ref = &stats1;
+        stats1_ref.add_assign(stats2);
+        assert_eq!(stats1_ref.tm, 200);
+        assert_eq!(stats1_ref.pkts, 3000);
+        assert_eq!(stats1_ref.reconnect, 5);
+        assert_eq!(stats1_ref.bytes, 12000);
+        assert_eq!(stats1_ref.hits, 2300);
+        assert_eq!(stats1_ref.miss, 500);
+        assert_eq!(stats1_ref.empty, 150);
+        assert_eq!(stats1_ref.err, 15);
     }
 }
 
