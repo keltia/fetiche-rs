@@ -124,7 +124,7 @@ impl Engine {
     ///
     #[tracing::instrument(skip(self))]
     pub async fn queue_job(&mut self, job: Job) -> eyre::Result<usize> {
-        if job.state != JobState::Ready {
+        if job.state() != JobState::Ready {
             error!("Job is not ready");
             return Err(EngineStatus::JobNotReady(job.id).into());
         }
@@ -132,7 +132,7 @@ impl Engine {
         // Change status and insert the job into the queue.
         //
         let mut ready = job.clone();
-        ready.state = JobState::Queued;
+        ready.set(JobState::Queued);
         let _ = cast!(self.queue, QueueMsg::Add(ready))?;
         Ok(job.id)
     }
@@ -166,7 +166,7 @@ impl Engine {
     #[tracing::instrument(skip(self))]
     pub async fn remove_job(&mut self, job_id: usize) -> eyre::Result<()> {
         let job = call!(self.queue, |port| QueueMsg::GetById(job_id, port))?;
-        if job.state == JobState::Running {
+        if job.state() == JobState::Running {
             return Err(EngineStatus::JobIsRunning(job_id).into());
         }
 
@@ -241,7 +241,7 @@ impl Engine {
     #[tracing::instrument(skip(self))]
     pub async fn submit_job(&mut self, job_str: &str) -> eyre::Result<Stats> {
         let mut job = self.parse(job_str).await?;
-        job.state = JobState::Ready;
+        job.set(JobState::Ready);
 
         let job_id = self.queue_job(job.clone()).await?;
         assert_eq!(job_id, job.id);
@@ -258,7 +258,7 @@ impl Engine {
             },
             None)
             .await?;
-        job.state = JobState::Completed;
+        job.set(JobState::Completed);
         let res = res.unwrap();
         info!("job {} completed res={}.", job_id, res);
 
