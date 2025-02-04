@@ -321,6 +321,45 @@ AS
     COMMENT 'View for drones data with distances.'
 "##;
 
+    // PBI-specific view
+    //
+    let r2b = r##"
+CREATE MATERIALIZED VIEW acute.pbi_drones
+ENGINE = ReplacingMergeTree
+PRIMARY KEY (time, journey) POPULATE
+AS (SELECT
+    journey,
+    ident,
+    model,
+    d.installation_id,
+    d.sitename,
+    date_trunc('day', timestamp) AS date,
+    formatDateTime(timestamp, '%T', 'UTC') AS utc_time,
+    formatDateTime(timestamp + (d.timezone * 3600), '%T', 'UTC') AS local_time,
+    dr.latitude AS drone_lat,
+    dr.longitude AS drone_lon,
+    CEIL(CAST(dr.altitude, 'Float64') + compute_height(drone_lat, drone_lon)) AS drone_alt_m,
+    elevation AS elevation_m,
+    home_lat,
+    home_lon,
+    home_height AS home_elevation_m,
+    speed / 3.6 AS speed_m_s,
+    heading,
+    station_name,
+    station_latitude,
+    station_longitude,
+    toUnixTimestamp(timestamp) AS time,
+    dist_2d(dr.longitude, dr.latitude, home_lon, home_lat) AS home_distance_2d,
+    dist_3d(dr.longitude, dr.latitude, dr.elevation, home_lon, home_lat, home_height) AS home_distance_3d,
+    dist_2d(dr.longitude, dr.latitude, station_longitude, station_latitude) AS antenna_distance_2d,
+    dist_3d(dr.longitude, dr.latitude, dr.elevation, station_longitude, station_latitude, d.ref_altitude) AS antenna_distance_3d
+FROM acute.drones_raw AS dr, acute.pbi_deployments AS d
+WHERE dr.station_name = d.antenna_name)
+COMMENT 'PBI View for drones data with distances.'
+    "##;
+
+    // Calculations view
+    //
     let r3 = r##"
  CREATE VIEW acute.deployments
  AS SELECT
@@ -371,9 +410,9 @@ CREATE OR REPLACE VIEW airprox_summary AS
     "##;
 
     dbh.execute(r1).await?;
-    dbh.execute(r2).await?;
     dbh.execute(r3).await?;
     dbh.execute(r3b).await?;
+    dbh.execute(r2).await?;
     dbh.execute(r4).await?;
     Ok(())
 }
@@ -405,9 +444,9 @@ DROP VIEW IF EXISTS acute.airprox_summary
     "##;
 
     dbh.execute(rm4).await?;
+    dbh.execute(rm2).await?;
     dbh.execute(rm3b).await?;
     dbh.execute(rm3).await?;
-    dbh.execute(rm2).await?;
     dbh.execute(rm1).await?;
     Ok(())
 }
