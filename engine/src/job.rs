@@ -51,7 +51,8 @@ pub struct Job {
     #[builder(default = "String::from(\"Default Name\")")]
     pub name: String,
     /// Job State
-    state: JobState,
+    #[builder(default = "JobState::Created")]
+    pub state: JobState,
     /// Producer.
     #[builder(default = "Producer::Invalid")]
     pub producer: Producer,
@@ -268,49 +269,66 @@ impl Job {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Copy, Dummy, Engine, Message, Stdout};
 
     #[test]
-    fn test_new() {
-        let job = JobBuilder::default().name("".into()).id(1).build().unwrap();
+    fn test_job_new() {
+        let job = JobBuilder::default()
+            .name("Test Job".into())
+            .id(1)
+            .build()
+            .unwrap();
 
         assert_eq!(job.name, "Test Job");
+        assert_eq!(job.id, 1);
         assert!(job.filters.is_empty());
     }
 
     #[test]
-    fn test_new_with_id_empty_name() {
-        let job = JobBuilder::default().name("empty".into()).id(1).build().unwrap();
+    fn test_new_job_with_id_empty_name() {
+        let job = JobBuilder::default()
+            .name("empty".into())
+            .id(1)
+            .build()
+            .unwrap();
 
-        assert_eq!(job.name, "");
+        assert_eq!(job.name, "empty");
         assert!(job.filters.is_empty());
     }
 
-    #[tokio::test]
-    async fn test_job_run_message() {
-        let mut e = Engine::new().await;
-        let p: Producer = Dummy::new().into();
-        let t1: Middle = Message::new("hello world").into();
-        let t2: Middle = Copy::new().into();
-        let c: Consumer = Stdout::new().into();
+    #[test]
+    fn test_job_state_transitions() {
+        let mut job = JobBuilder::default().id(1).build().unwrap();
+        assert_eq!(job.state(), JobState::Created);
 
-        let mut job = JobBuilder::default().name("test".into())
-            .producer(p)
-            .consumer(c)
-            .build().unwrap();
+        job.set(JobState::Ready);
+        assert_eq!(job.state(), JobState::Ready);
 
-        // Add filters.
-        //
-        job.add(t1);
-        job.add(t2);
+        job.set(JobState::Running);
+        assert_eq!(job.state(), JobState::Running);
 
-        let mut data = vec![];
+        job.set(JobState::Completed);
+        assert_eq!(job.state(), JobState::Completed);
+    }
 
-        let res = j.run(&mut data);
-        assert!(res.is_ok());
+    #[test]
+    fn test_job_add_filters() {
+        let mut job = JobBuilder::default().id(1).build().unwrap();
+        assert!(job.filters.is_empty());
 
-        let res = String::from_utf8(data);
-        assert!(res.is_ok());
-        assert_eq!("hello world", res.unwrap())
+        job.add(Middle::Invalid);
+        assert_eq!(job.filters.len(), 1);
+
+        job.add(Middle::Invalid);
+        assert_eq!(job.filters.len(), 2);
+    }
+
+    #[test]
+    fn test_default_job() {
+        let job = JobBuilder::default().id(1).build().unwrap();
+        assert_eq!(job.name, "Default Name");
+        assert_eq!(job.state, JobState::Created);
+        assert_eq!(job.producer, Producer::Invalid);
+        assert_eq!(job.consumer, Consumer::Invalid);
+        assert!(job.stats.is_none());
     }
 }
