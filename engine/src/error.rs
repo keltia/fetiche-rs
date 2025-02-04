@@ -36,12 +36,6 @@ pub enum EngineStatus {
     TokenError(String),
     #[error("Uninitialised Read")]
     UninitialisedRead,
-    #[error("Unknown job {0}")]
-    JobNotFound(usize),
-    #[error("Unknown job {0} is not ready to be queued")]
-    JobNotReady(usize),
-    #[error("Job {0} is not runnable")]
-    JobInWrongState(usize),
     #[error("Job {0} is running")]
     JobIsRunning(usize),
     #[error("Job {0} is not queued")]
@@ -52,6 +46,18 @@ pub enum EngineStatus {
     JobNotZombie(usize),
     #[error("Job {0} is not created")]
     JobNotCreated(usize),
+}
+
+#[derive(Debug, Error)]
+pub enum QueueStatus {
+    #[error("Empty queue.")]
+    EmptyQueue,
+    #[error("Job {0} is not runnable")]
+    JobInWrongState(usize),
+    #[error("Unknown job {0}")]
+    JobNotFound(usize),
+    #[error("Unknown job {0} is not ready to be queued")]
+    JobNotReady(usize),
 }
 
 #[derive(Debug, Error)]

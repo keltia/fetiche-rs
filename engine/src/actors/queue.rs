@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
-use crate::{EngineStatus, Job, JobState, ENGINE_PG};
+use crate::{Job, JobState, QueueStatus, ENGINE_PG};
 
 /// Messages handled by the QueueActor for managing the job queue.
 ///
@@ -126,7 +126,7 @@ impl Actor for QueueActor {
             QueueMsg::Add(job) => {
                 let mut queued = job.clone();
                 if job.state != JobState::Ready {
-                    return Err(EngineStatus::JobNotReady(job.id).into());
+                    return Err(QueueStatus::JobNotReady(job.id).into());
                 }
 
                 queued.state = JobState::Queued;
@@ -135,7 +135,7 @@ impl Actor for QueueActor {
             QueueMsg::GetById(id, sender) => {
                 let job = match state.q.get(id) {
                     Some(job) => job,
-                    None => return Err(ActorProcessingErr::from("Job not found {id}")),
+                    None => return Err(QueueStatus::JobNotFound(id).into()),
                 };
                 sender.send(job.clone())?;
             }
@@ -144,9 +144,12 @@ impl Actor for QueueActor {
                 sender.send(list)?;
             }
             QueueMsg::Run(sender) => {
-                let mut job = state.q.pop_front().unwrap();
+                let mut job = match state.q.pop_front() {
+                    Some(job) => job,
+                    None => return Err(QueueStatus::EmptyQueue.into()),
+                };
                 if job.state != JobState::Queued {
-                    return Err(EngineStatus::JobInWrongState(job.id).into());
+                    return Err(QueueStatus::JobInWrongState(job.id).into());
                 }
 
                 job.state = JobState::Running;
