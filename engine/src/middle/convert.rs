@@ -13,16 +13,16 @@ use tracing::trace;
 use fetiche_formats::{prepare_csv, DronePoint, Format};
 use fetiche_macros::RunnableDerive;
 
-#[cfg(feature = "asterix")]
-use fetiche_formats::Cat21;
-#[cfg(feature = "opensky")]
-use fetiche_formats::StateList;
 #[cfg(feature = "avionix")]
 use fetiche_formats::avionix::CubeData;
 #[cfg(feature = "senhive")]
 use fetiche_formats::senhive::FusedData;
+#[cfg(feature = "asterix")]
+use fetiche_formats::Cat21;
+#[cfg(feature = "opensky")]
+use fetiche_formats::StateList;
 
-use crate::{IO, Middle, Runnable, Tee};
+use crate::{Middle, Runnable, IO};
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Convert {
@@ -126,7 +126,7 @@ impl Convert {
             _ => unimplemented!(),
         };
 
-        Ok(stdout.send(res).await?)
+        Ok(stdout.send(res)?)
     }
 }
 
