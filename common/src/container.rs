@@ -4,7 +4,7 @@
 //!
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use strum::{EnumString, VariantNames};
+use strum::VariantNames;
 use tabled::{builder::Builder, settings::Style};
 
 /// Current `containers.hcl` version (forked from `formats.hcl`).
@@ -103,7 +103,6 @@ pub struct ContainerFile {
     Deserialize,
     PartialEq,
     strum::Display,
-    EnumString,
     Serialize,
     VariantNames,
 )]
@@ -117,6 +116,35 @@ pub enum Container {
     #[default]
     Raw,
 }
+
+impl From<&str> for Container {
+    fn from(path: &str) -> Self {
+        let extension = path.rsplit('.').next().unwrap_or_default().to_lowercase();
+        match extension.as_str() {
+            "csv" => Container::CSV,
+            "parquet" => Container::Parquet,
+            _ => Container::Raw,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_container_from_str() {
+        assert_eq!(Container::from("data.csv"), Container::CSV);
+        assert_eq!(Container::from("data.CSV"), Container::CSV);
+        assert_eq!(Container::from("data.parquet"), Container::Parquet);
+        assert_eq!(Container::from("data.PARQUET"), Container::Parquet);
+        assert_eq!(Container::from("data.txt"), Container::Raw);
+        assert_eq!(Container::from("data"), Container::Raw);
+        assert_eq!(Container::from("data."), Container::Raw);
+        assert_eq!(Container::from(""), Container::Raw);
+    }
+}
+
 
 impl Container {
     ///
