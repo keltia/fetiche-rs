@@ -17,7 +17,7 @@ use std::fmt::{Display, Formatter};
 /// particular subsets of data or time intervals.
 ///
 /// - `Interval`: Specifies a time interval using a `begin` and `end` datetime.
-/// - `Keyword`: Represents a key-value pair filter.
+/// - `Keyword`: Represents a key-value pair middle.
 /// - `Duration`: Specifies a length of time in seconds. Negative values indicate
 ///               a period in the past.
 /// - `Altitude`: Defines altitude-based filters with a `duration`, `min`, and `max` altitude.
@@ -31,28 +31,32 @@ use std::fmt::{Display, Formatter};
 ///
 /// ## Creating an Interval Filter
 /// ```rust
+/// use fetiche_engine::Filter;
 ///
 /// let begin = dateparser::parse("2023-10-01").unwrap();
 /// let end = dateparser::parse("2023-10-02").unwrap();
-/// let filter = Filter::Interval { begin, end };
+/// let middle = Filter::Interval { begin, end };
 /// ```
 ///
 /// ## Creating a Keyword Filter
 /// ```rust
+/// use fetiche_engine::Filter;
 ///
-/// let filter = Filter::keyword("icao24", "foobar");
+/// let middle = Filter::keyword("icao24", "foobar");
 /// ```
 ///
 /// ## Creating a Duration Filter
 /// ```rust
+/// use fetiche_engine::Filter;
 ///
-/// let filter = Filter::since(3600); // Filter for the past hour
+/// let middle = Filter::since(3600); // Filter for the past hour
 /// ```
 ///
 /// ## Creating a Stream Filter
 /// ```rust
+/// use fetiche_engine::Filter;
 ///
-/// let filter = Filter::stream(5, 3600, 10); // Stream starting at 5s, lasting 1 hour with a 10s delay
+/// let middle = Filter::stream(5, 3600, 10); // Stream starting at 5s, lasting 1 hour with a 10s delay
 /// ```
 ///
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -191,7 +195,7 @@ impl Display for Filter {
 }
 
 impl From<&str> for Filter {
-    /// Interpret argument as a json encoded filter
+    /// Interpret argument as a json encoded middle
     ///
     fn from(value: &str) -> Self {
         let filter: Result<Filter, serde_json::Error> = serde_json::from_str(value);
@@ -216,6 +220,7 @@ impl From<String> for Filter {
 
 #[cfg(test)]
 mod tests {
+    use chrono::TimeZone;
     use eyre::Result;
     use rstest::rstest;
 
@@ -270,34 +275,30 @@ mod tests {
         let begin = "2022-11-11 12:34:56";
         let end = "2022-11-30 12:34:56";
 
-        let begin = dateparser::parse(&begin);
+        let begin = humantime::parse_rfc3339_weak(&begin);
         assert!(begin.is_ok());
-        let end = dateparser::parse(&end);
+        let end = humantime::parse_rfc3339_weak(&end);
         assert!(end.is_ok());
 
-        let f = Filter::interval(begin.unwrap(), end.unwrap());
+        let f = Filter::interval(begin.unwrap().into(), end.unwrap().into());
         assert_ne!(Filter::None, f);
         println!("{}", json!(f));
         Ok(())
     }
 
     #[test]
-    fn test_filter_interval_to_string() {
-        let begin = "2022-11-11 12:34:56 UTC";
-        let end = "2022-11-30 12:34:56 UTC";
-
-        let begin = dateparser::parse(&begin);
-        assert!(begin.is_ok());
-        let end = dateparser::parse(&end);
-        assert!(end.is_ok());
+    fn test_filter_interval_to_string() -> Result<()> {
+        let begin: DateTime<Utc> = Utc.with_ymd_and_hms(2022, 11, 11, 12, 34, 56).unwrap();
+        let end: DateTime<Utc> = Utc.with_ymd_and_hms(2022, 11, 30, 12, 34, 56).unwrap();
 
         let r = r##"{"begin":"2022-11-11T12:34:56Z","end":"2022-11-30T12:34:56Z"}"##;
 
-        let f = Filter::interval(begin.unwrap(), end.unwrap());
+        let f = Filter::interval(begin, end);
         let s = f.to_string();
         assert_eq!(r, &s);
 
         let t: Filter = s.into();
         assert_eq!(f, t);
+        Ok(())
     }
 }
