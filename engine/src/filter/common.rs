@@ -17,7 +17,7 @@ use crate::{Runnable, IO};
 
 /// NOP
 ///
-#[derive(Clone, Debug, RunnableDerive)]
+#[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Nothing {
     io: IO,
 }
@@ -45,7 +45,7 @@ impl Default for Nothing {
 
 /// Copy
 ///
-#[derive(Clone, Debug, RunnableDerive)]
+#[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Copy {
     /// I/O capabilities
     io: IO,
@@ -75,7 +75,7 @@ impl Default for Copy {
 ///
 /// FIXME: went from a `Filter` to a `Producer` to satisfy `Job` requirements.
 ///
-#[derive(Clone, Debug, RunnableDerive)]
+#[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Message {
     /// I/O capabilities
     io: IO,

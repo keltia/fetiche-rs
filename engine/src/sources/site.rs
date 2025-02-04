@@ -61,7 +61,7 @@ pub enum DataType {
 /// - `auth`: Optional authentication details required for the site.
 /// - `routes`: Optional list of available routes for the site.
 ///
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct Site {
     /// Features of the site
     pub feature: Capability,

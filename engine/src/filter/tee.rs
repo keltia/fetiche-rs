@@ -15,7 +15,7 @@ use tracing::trace;
 use fetiche_macros::RunnableDerive;
 
 use crate::{Runnable, IO};
-#[derive(Clone, Debug, RunnableDerive)]
+#[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Tee {
     io: IO,
     pub fh: Arc<Mutex<File>>,

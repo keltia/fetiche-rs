@@ -24,7 +24,7 @@ use fetiche_formats::StateList;
 
 use crate::{Runnable, IO};
 
-#[derive(Clone, Debug, RunnableDerive)]
+#[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Convert {
     io: IO,
     pub from: Format,

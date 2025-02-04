@@ -26,7 +26,7 @@ use crate::{EngineStatus, Runnable, IO};
 /// We currently do not cache the open file for the current output, we might
 /// do that in the future but the cost is 2 more syscalls but simplified code.
 ///
-#[derive(Clone, Debug, RunnableDerive)]
+#[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Store {
     /// IO Capability
     io: IO,

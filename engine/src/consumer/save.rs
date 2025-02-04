@@ -21,7 +21,7 @@ use crate::{EngineStatus, Runnable, IO};
 
 /// The Save task
 ///
-#[derive(Clone, Debug, RunnableDerive)]
+#[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Save {
     /// I/O capabilities
     io: IO,
