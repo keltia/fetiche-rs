@@ -3,6 +3,7 @@
 
 use chrono::{DateTime, Duration, Utc};
 use eyre::Result;
+use jiff::ToSpan;
 
 /// This function takes a start and end `DateTime<Utc>` and generates a vector of all days
 /// between (inclusive of start, exclusive of end). It increments the date by one day
@@ -47,6 +48,11 @@ pub fn expand_interval(begin: DateTime<Utc>, end: DateTime<Utc>) -> Result<Vec<D
         intv.push(d);
         d += Duration::try_days(1).unwrap();
     }
+    Ok(intv)
+}
+
+pub fn expand_interval_jiff(begin: jiff::Timestamp, end: jiff::Timestamp) -> Result<Vec<jiff::Timestamp>> {
+    let intv = begin.series(1.days()).take_while(|&ts| ts <= end).collect::<Vec<_>>();
     Ok(intv)
 }
 
@@ -123,6 +129,52 @@ mod tests {
             .map(|e| e.date_naive())
             .collect::<Vec<_>>();
         assert_eq!(aa, res);
+        Ok(())
+    }
+
+
+    #[test]
+    fn test_expand_interval_jiff_single_day() -> Result<()> {
+        let start = jiff::Timestamp::from_second(1706745600)?; // 2024-02-01 00:00:00 UTC
+        let end = jiff::Timestamp::from_second(1706832000)?;   // 2024-02-02 00:00:00 UTC
+
+        let result = expand_interval_jiff(start, end)?;
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], start);
+        Ok(())
+    }
+
+    #[test]
+    fn test_expand_interval_jiff_multiple_days() -> Result<()> {
+        let start = jiff::Timestamp::from_second(1706745600)?; // 2024-02-01 00:00:00 UTC
+        let end = jiff::Timestamp::from_second(1707004800)?;   // 2024-02-04 00:00:00 UTC
+
+        let result = expand_interval_jiff(start, end)?;
+        assert_eq!(result.len(), 3);
+
+        assert_eq!(result[0], start);
+        assert_eq!(result[1], start + 1.days());
+        assert_eq!(result[2], start + 2.days());
+        Ok(())
+    }
+
+    #[test]
+    fn test_expand_interval_jiff_empty_result() -> Result<()> {
+        let start = jiff::Timestamp::from_second(1706745600)?; // 2024-02-01 00:00:00 UTC
+        let end = jiff::Timestamp::from_second(1706745600)?;   // 2024-02-01 00:00:00 UTC
+
+        let result = expand_interval_jiff(start, end)?;
+        assert_eq!(result.len(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_expand_interval_jiff_invalid_date_range() -> Result<()> {
+        let start = jiff::Timestamp::from_second(1707004800)?; // 2024-02-04 00:00:00 UTC
+        let end = jiff::Timestamp::from_second(1706745600)?;   // 2024-02-01 00:00:00 UTC
+
+        let result = expand_interval_jiff(start, end)?;
+        assert_eq!(result.len(), 0);
         Ok(())
     }
 }

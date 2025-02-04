@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use eyre::Result;
 use humantime::parse_duration;
+use jiff::Timestamp;
 
 async fn test_humantime() -> Result<()> {
     let base = "2024-03-08 00:00:00";
@@ -23,6 +24,11 @@ async fn main() -> Result<()> {
         Ok(()) => (),
         Err(e) => eprintln!("error={}", e.to_string()),
     }
+
+    let d: Timestamp = "2024-03-08 01:23:45-00".parse()?;
+    let r = d.in_tz("Utc")?.round(jiff::Unit::Day)?;
+
+    eprintln!("d={d} - r={r}");
 
     Ok(())
 }

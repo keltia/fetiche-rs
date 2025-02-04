@@ -89,9 +89,17 @@ pub fn normalise_day(date: DateTime<Utc>) -> Result<DateTime<Utc>> {
     Ok(date)
 }
 
+#[tracing::instrument]
+pub fn normalise_day_jiff(date: jiff::Zoned) -> Result<jiff::Zoned> {
+    let date = date.round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Trunc))?;
+    Ok(date)
+}
+
+
 #[cfg(test)]
 mod tests {
     use chrono::prelude::*;
+    use jiff::Timestamp;
     use rstest::rstest;
 
     use super::*;
@@ -108,5 +116,19 @@ mod tests {
         assert!(r.is_ok());
         let r = r.unwrap();
         assert_eq!(res, r.to_rfc3339_opts(SecondsFormat::Secs, true));
+    }
+
+    #[rstest]
+    #[case("2024-01-01 00:00:00-00", "2024-01-01T00:00:00+00:00[UTC]")]
+    #[case("2024-01-01 12:00:00-00", "2024-01-01T00:00:00+00:00[UTC]")]
+    #[case("2024-12-31 23:59:59-00", "2024-12-31T00:00:00+00:00[UTC]")]
+    #[case("2024-04-01 08:34:56-00", "2024-04-01T00:00:00+00:00[UTC]")]
+    fn test_normalise_day_jiff(#[case] date: &str, #[case] res: &str) {
+        let d: Timestamp = date.parse().unwrap();
+        dbg!(&d);
+        let r = normalise_day_jiff(d.in_tz("UTC").unwrap());
+        assert!(r.is_ok());
+        let r = r.unwrap();
+        assert_eq!(res, r.to_string());
     }
 }
