@@ -236,7 +236,7 @@ mod tests {
     #[rstest]
     #[tokio::test]
     async fn test_parse_fetch_job() -> Result<()> {
-        let mut engine = Engine::new()?;
+        let mut engine = Engine::new().await;
         let job_str = r#"
             name = "test_fetch"
             producer = fetch "data"
@@ -254,7 +254,7 @@ mod tests {
     #[rstest]
     #[tokio::test]
     async fn test_parse_stream_job() -> Result<()> {
-        let mut engine = Engine::new()?;
+        let mut engine = Engine::new().await;
         let job_str = r#"
             name = "test_stream"
             producer = stream "data"
@@ -272,7 +272,7 @@ mod tests {
     #[rstest]
     #[tokio::test]
     async fn test_parse_read_job() -> Result<()> {
-        let mut engine = Engine::new()?;
+        let mut engine = Engine::new().await;
         let job_str = r#"
             name = "test_read"
             producer = read "input.csv"
@@ -290,7 +290,7 @@ mod tests {
     #[rstest]
     #[tokio::test]
     async fn test_parse_job_with_filters() -> Result<()> {
-        let mut engine = Engine::new()?;
+        let mut engine = Engine::new().await;
         let job_str = r#"
             name = "test_filters"
             producer = fetch "data"
@@ -312,7 +312,7 @@ mod tests {
     #[rstest]
     #[tokio::test]
     async fn test_parse_invalid_hcl() -> Result<()> {
-        let mut engine = Engine::new()?;
+        let mut engine = Engine::new().await;
         let job_str = r#"
             invalid hcl syntax
         "#;
@@ -322,4 +322,3 @@ mod tests {
         Ok(())
     }
 }
-
