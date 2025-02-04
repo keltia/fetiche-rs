@@ -47,8 +47,6 @@ pub enum StateMsg {
     Remove(usize),
     /// Last used id.
     Last(RpcReplyPort<usize>),
-    /// Get next available id. (modify `.last`).
-    Next(RpcReplyPort<usize>),
     /// Get current PID.
     GetPid(RpcReplyPort<u32>),
     /// Sync unto state file on disk.
@@ -83,10 +81,11 @@ pub struct State {
     pub tm: i64,
     /// Last job ID
     pub last: usize,
-    /// Current PID.
+    /// Current PID, not synced because it is in the PID file.
     #[serde(skip_deserializing, skip_serializing)]
     pub pid: u32,
-    /// Job Queue
+    /// Job Queue -- at startup, queue is empty, nothing is running.
+    #[serde(skip_deserializing)]
     pub queue: VecDeque<usize>,
 }
 
@@ -138,6 +137,7 @@ impl Actor for StateActor {
 
         data.fname = fname;
         data.pid = std::process::id();
+        data.queue = VecDeque::new();
 
         let pidfile = basedir.join(ENGINE_PID);
         fs::write(&pidfile, format!("{}", data.pid))
@@ -184,6 +184,10 @@ impl Actor for StateActor {
                 trace!("stateactor::add({id})");
 
                 state.queue.push_back(id);
+                state.last = id;
+
+                trace!("queue={:?}", state.queue);
+                trace!("last={:?}", state.last);
             }
             StateMsg::Remove(id) => {
                 trace!("stateactor::remove({id})");
@@ -197,12 +201,6 @@ impl Actor for StateActor {
             StateMsg::Last(sender) => {
                 trace!("stateactor::last({})", state.last);
 
-                sender.send(state.last)?;
-            }
-            StateMsg::Next(sender) => {
-                trace!("stateactor::next({})", state.last);
-
-                state.last += 1;
                 sender.send(state.last)?;
             }
             StateMsg::GetPid(sender) => {
