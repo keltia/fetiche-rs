@@ -1,5 +1,5 @@
 [workspace]
-members = ["common", "engine", "fetiched", "formats", "sources", "acutectl", "adsb-to-parquet", "process-data", "compute-height"]
+members = ["common", "engine", "fetiched", "formats", "acutectl", "adsb-to-parquet", "process-data", "compute-height"]
 default-members = ["acutectl", "process-data", "compute-height"]
 exclude = ["opensky-history"]
 resolver = "2"

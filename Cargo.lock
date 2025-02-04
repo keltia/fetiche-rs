@@ -2901,21 +2901,31 @@ dependencies = [
 name = "fetiche-engine"
 version = "0.24.99"
 dependencies = [
+ "async-trait",
+ "base64_light",
  "chrono",
+ "criterion",
  "enum_dispatch",
  "env_logger",
  "eyre",
  "fetiche-common",
  "fetiche-formats",
  "fetiche-macros",
- "fetiche-sources",
+ "futures-util",
  "hcl-rs",
+ "humantime",
+ "indicatif",
+ "lapin",
+ "mini-moka",
+ "native-tls",
  "nom",
+ "percent-encoding",
  "polars",
  "ractor",
  "rstest",
  "serde",
  "serde_json",
+ "signal-hook",
  "strum 0.27.1",
  "tabled",
  "tempfile",
@@ -2957,47 +2967,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fetiche-sources"
-version = "0.18.99"
-dependencies = [
- "async-trait",
- "base64_light",
- "chrono",
- "clap",
- "criterion",
- "csv",
- "dateparser",
- "directories",
- "enum_dispatch",
- "eyre",
- "fetiche-common",
- "fetiche-formats",
- "fetiche-macros",
- "futures-util",
- "hcl-rs",
- "humantime",
- "indicatif",
- "jiff",
- "lapin",
- "mini-moka",
- "native-tls",
- "percent-encoding",
- "polars",
- "ractor",
- "reqwest",
- "rstest",
- "serde",
- "serde_json",
- "signal-hook",
- "strum 0.27.1",
- "tabled",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "fetiched"
 version = "0.4.0"
 dependencies = [
@@ -3014,7 +2983,6 @@ dependencies = [
  "fetiche-common",
  "fetiche-formats",
  "fetiche-macros",
- "fetiche-sources",
  "hcl-rs",
  "nom",
  "parquet",
@@ -3646,22 +3614,6 @@ dependencies = [
  "hyper-util",
  "pin-project-lite",
  "tokio",
- "tower-service",
-]
-
-[[package]]
-name = "hyper-tls"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70206fc6890eaca9fde8a0bf71caa2ddfc9fe045ac9e5c70df101a7dbde866e0"
-dependencies = [
- "bytes",
- "http-body-util",
- "hyper",
- "hyper-util",
- "native-tls",
- "tokio",
- "tokio-native-tls",
  "tower-service",
 ]
 
@@ -6403,11 +6355,8 @@ version = "0.12.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43e734407157c3c2034e0258f5e4473ddb361b1e85f95a66690d67264d7cd1da"
 dependencies = [
- "async-compression",
  "base64",
  "bytes",
- "encoding_rs",
- "futures-channel",
  "futures-core",
  "futures-util",
  "h2",
@@ -6416,13 +6365,11 @@ dependencies = [
  "http-body-util",
  "hyper",
  "hyper-rustls",
- "hyper-tls",
  "hyper-util",
  "ipnet",
  "js-sys",
  "log",
  "mime",
- "native-tls",
  "once_cell",
  "percent-encoding",
  "pin-project-lite",
@@ -6435,11 +6382,8 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "sync_wrapper",
- "system-configuration",
  "tokio",
- "tokio-native-tls",
  "tokio-rustls",
- "tokio-socks",
  "tokio-util",
  "tower 0.5.2",
  "tower-service",
@@ -7287,27 +7231,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "system-configuration"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c879d448e9d986b661742763247d3693ed13609438cf3d006f51f5368a5ba6b"
-dependencies = [
- "bitflags 2.9.0",
- "core-foundation 0.9.4",
- "system-configuration-sys",
-]
-
-[[package]]
-name = "system-configuration-sys"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e1d1b10ced5ca923a1fcb8d03e96b8d3268065d724548c0211415ff6ac6bac4"
-dependencies = [
- "core-foundation-sys",
- "libc",
-]
-
-[[package]]
 name = "tabled"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7579,34 +7502,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-native-tls"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbae76ab933c85776efabc971569dd6119c580d8f5d448769dec1764bf796ef2"
-dependencies = [
- "native-tls",
- "tokio",
-]
-
-[[package]]
 name = "tokio-rustls"
 version = "0.26.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e727b36a1a0e8b74c376ac2211e40c2c8af09fb4013c60d910495810f008e9b"
 dependencies = [
  "rustls",
- "tokio",
-]
-
-[[package]]
-name = "tokio-socks"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d4770b8024672c1101b3f6733eab95b18007dbe0847a8afe341fcf79e06043f"
-dependencies = [
- "either",
- "futures-util",
- "thiserror 1.0.69",
  "tokio",
 ]
 
