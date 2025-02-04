@@ -17,7 +17,7 @@ pub use save::*;
 pub use stdout::*;
 pub use store::*;
 
-use crate::{Runnable, Task, IO};
+use crate::{Runnable, Stats, Task, IO};
 
 /// Represents different types of consumers that can process and store data
 /// in the processing pipeline.
@@ -48,11 +48,11 @@ impl Runnable for Consumer {
         IO::Consumer
     }
 
-    fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
+    async fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
         match self {
-            Consumer::Save(c) => { c.run(out) }
-            Consumer::Store(c) => { c.run(out) }
-            Consumer::Stdout(s) => { s.run(out) }
+            Consumer::Save(c) => { c.run(out).await }
+            Consumer::Store(c) => { c.run(out).await }
+            Consumer::Stdout(s) => { s.run(out).await }
             Consumer::Invalid => {
                 error!("Invalid consumer: {}", self);
                 panic!("Invalid consumer: {}", self);

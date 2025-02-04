@@ -1,24 +1,25 @@
 use eyre::Result;
 use tokio::sync::mpsc::Sender;
 
-use crate::{Runnable, IO};
+use crate::{Runnable, Stats, IO};
 
 use fetiche_macros::RunnableDerive;
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Dummy {
     io: IO,
+    stats: Stats,
 }
 
 impl Dummy {
     pub fn new() -> Self {
-        Self { io: IO::Producer }
+        Self { io: IO::Producer, stats: Stats::default() }
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
-        stdout.send("DUMMY".to_string())?;
-        Ok(())
+    pub async fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<Stats> {
+        stdout.send("DUMMY".to_string()).await?;
+        Ok(Stats::default())
     }
 }
 

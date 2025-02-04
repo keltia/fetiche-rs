@@ -57,7 +57,7 @@ impl Convert {
     /// of the pipeline and send it down to the next stage.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
+    pub async fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("convert::execute");
 
         // Bow out early
@@ -119,7 +119,7 @@ impl Convert {
             _ => unimplemented!(),
         };
 
-        Ok(stdout.send(res)?)
+        Ok(stdout.send(res).await?)
     }
 }
 

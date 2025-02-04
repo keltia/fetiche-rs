@@ -31,8 +31,8 @@ impl Nothing {
 
     #[inline]
     #[tracing::instrument]
-    fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
-        Ok(stdout.send(format!("{}|NOP", data))?)
+    pub async fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
+        Ok(stdout.send(format!("{}|NOP", data)).await?)
     }
 }
 
@@ -60,8 +60,8 @@ impl Copy {
 
     #[inline]
     #[tracing::instrument]
-    fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
-        Ok(stdout.send(data)?)
+    pub async fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
+        Ok(stdout.send(data).await?)
     }
 }
 
@@ -95,8 +95,8 @@ impl Message {
 
     #[inline]
     #[tracing::instrument]
-    fn execute(&self, _data: String, stdout: Sender<String>) -> Result<()> {
-        Ok(stdout.send(self.msg.to_string())?)
+    pub async fn execute(&self, _data: String, stdout: Sender<String>) -> Result<()> {
+        Ok(stdout.send(self.msg.to_string()).await?)
     }
 }
 
@@ -112,7 +112,7 @@ impl Default for Message {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::mpsc;
+    use tokio::sync::mpsc;
 
     #[test]
     fn test_nothing_new() {
@@ -126,15 +126,15 @@ mod tests {
         assert_eq!(matches!(nothing.io, IO::Producer), true);
     }
 
-    #[test]
-    fn test_nothing_execute() {
+    #[tokio::test]
+    async fn test_nothing_execute() {
         let nothing = Nothing::new();
-        let (tx, rx) = mpsc::channel();
+        let (tx, mut rx) = mpsc::channel(1);
 
         let input_data = "TestData".to_string();
         nothing.execute(input_data.clone(), tx).unwrap();
 
-        let result = rx.recv().unwrap();
+        let result = rx.recv().await.unwrap();
         assert_eq!(result, format!("{}|NOP", input_data));
     }
 
@@ -150,15 +150,15 @@ mod tests {
         assert_eq!(matches!(copy.io, IO::Filter), true);
     }
 
-    #[test]
-    fn test_copy_execute() {
+    #[tokio::test]
+    async fn test_copy_execute() {
         let copy = Copy::new();
-        let (tx, rx) = mpsc::channel();
+        let (tx, mut rx) = mpsc::channel(1);
 
         let input_data = "TestCopyData".to_string();
         copy.execute(input_data.clone(), tx).unwrap();
 
-        let result = rx.recv().unwrap();
+        let result = rx.recv().await.unwrap();
         assert_eq!(result, input_data);
     }
 
@@ -171,16 +171,16 @@ mod tests {
         assert_eq!(matches!(message.io, IO::Producer), true);
     }
 
-    #[test]
-    fn test_message_execute() {
+    #[tokio::test]
+    async fn test_message_execute() {
         let msg = "TestMessageContent".to_string();
         let message = Message::new(&msg);
-        let (tx, rx) = mpsc::channel();
+        let (tx, mut rx) = mpsc::channel(1);
 
         let input_data = "UnusedData".to_string();
         message.execute(input_data, tx).unwrap();
 
-        let result = rx.recv().unwrap();
+        let result = rx.recv().await.unwrap();
         assert_eq!(result, msg);
     }
 }

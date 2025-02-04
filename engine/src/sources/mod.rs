@@ -8,7 +8,6 @@
 
 use std::fmt::Debug;
 
-use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
@@ -23,7 +22,6 @@ pub use auth::*;
 pub use capability::*;
 pub use error::*;
 pub use filter::*;
-pub use flow::*;
 pub use route::*;
 pub use site::*;
 pub use sources::*;
@@ -34,7 +32,6 @@ mod auth;
 mod capability;
 mod error;
 mod filter;
-mod flow;
 mod route;
 mod site;
 mod sources;
@@ -122,46 +119,16 @@ impl From<Site> for StreamableSource {
 /// This trait enables us to manage different ways of connecting and fetching data under
 /// a single interface.
 ///
-pub trait Fetchable: Debug {
-    /// Return site's name
-    fn name(&self) -> String;
-    /// If credentials are needed, get a token for subsequent operations
-    fn authenticate(&self) -> Result<String, AuthError>;
-    /// Fetch actual data
-    fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()>;
-    /// Returns the input formats
-    fn format(&self) -> Format;
-}
-
-/// This trait enables us to manage different ways of connecting and streaming data under
-/// a single interface.  The object can connect to a TCP stream or create one by repeatedly calling
-/// some API (cf. Opensky).
-///
-pub trait Streamable: Debug {
-    /// Return site's name
-    fn name(&self) -> String;
-    /// If credentials are needed, get a token for subsequent operations
-    fn authenticate(&self) -> Result<String, AuthError>;
-    /// Stream actual data
-    fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()>;
-    /// Returns the input formats
-    fn format(&self) -> Format;
-}
-
-/// This trait enables us to manage different ways of connecting and fetching data under
-/// a single interface.
-///
 /// This is the async version of `Fetchable`, making it easier to use async clients and/or actors.
 ///
-#[async_trait]
 #[enum_dispatch(FetchableSource)]
-pub trait AsyncFetchable {
+pub trait Fetchable {
     /// Return site's name
     fn name(&self) -> String;
     /// If credentials are needed, get a token for subsequent operations
     async fn authenticate(&self) -> Result<String, AuthError>;
     /// Stream actual data
-    async fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()>;
+    async fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<Stats>;
     /// Returns the input formats
     fn format(&self) -> Format;
 }
@@ -172,15 +139,14 @@ pub trait AsyncFetchable {
 ///
 /// This is the async version of `Streamable`, making it easier to use async clients and/or actors.
 ///
-#[async_trait]
 #[enum_dispatch(StreamableSource)]
-pub trait AsyncStreamable: Debug {
+pub trait Streamable: Debug {
     /// Return site's name
     fn name(&self) -> String;
     /// If credentials are needed, get a token for subsequent operations
     async fn authenticate(&self) -> Result<String, AuthError>;
     /// Stream actual data
-    async fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()>;
+    async fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<Stats>;
     /// Returns the input formats
     fn format(&self) -> Format;
 }

@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
+use chrono::Utc;
 use eyre::Result;
 use tokio::sync::mpsc::Sender;
 use tracing::trace;
@@ -12,7 +13,7 @@ use tracing::trace;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{AuthError, EngineStatus, Runnable, IO};
+use crate::{AuthError, EngineStatus, Runnable, Stats, IO};
 
 /// The Read task
 ///
@@ -54,20 +55,29 @@ impl Read {
 
     /// The heart of the matter: fetch data
     ///
-    pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
     #[tracing::instrument(skip(self))]
+    pub async fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<Stats> {
         trace!("Read::transform()");
         if self.path.is_none() {
             Err(EngineStatus::UninitialisedRead.into())
         } else {
             let p = self.path.clone().unwrap();
-            let bfh = BufReader::new(File::open(p)?);
+            let bfh = BufReader::new(File::open(&p)?);
 
-            // Now send each line down the pipe
+            let size = p.metadata()?.len();
+
+            // Now send each line down the pipe (while counting)
             //
-            bfh.lines().for_each(|l| stdout.send(l.unwrap()).unwrap());
-
-            Ok(())
+            let len = bfh.lines().fold(0u32, |acc, l| {
+                let _ = stdout.send(l.unwrap()).unwrap();
+                acc + 1
+            });
+            Ok(Stats {
+                tm: Utc::now().timestamp() as u64,
+                bytes: size,
+                pkts: len,
+                ..Default::default()
+            })
         }
     }
 }

@@ -36,12 +36,12 @@ impl Tee {
     /// file then passed down.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
+    pub async fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("tee::execute");
         let mut fh = OpenOptions::new().create(true).write(true).append(true).open(&self.fname)?;
         write!(fh, "{data}")?;
         fh.flush()?;
-        Ok(stdout.send(data)?)
+        Ok(stdout.send(data).await?)
     }
 }
 

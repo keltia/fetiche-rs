@@ -19,7 +19,7 @@ use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{EngineStatus, Freq, Runnable, IO};
+use crate::{EngineStatus, Freq, Runnable, Stats, IO};
 
 /// Struct describing the data for the `Store` task.
 ///
@@ -128,7 +128,7 @@ impl Store {
     /// trying to open first.  More syscalls but these are cheap.
     ///
     #[tracing::instrument(skip(self, _stdout))]
-    pub fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
+    pub async fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
         trace!("store::execute");
 
         let tm = Utc::now();

@@ -10,7 +10,7 @@ pub use fetch::*;
 pub use read::*;
 pub use stream::*;
 
-use crate::{Consumer, Runnable, Task, IO};
+use crate::{Consumer, Runnable, Sources, Stats, Task, IO};
 
 mod dummy;
 mod fetch;
@@ -48,13 +48,13 @@ impl Runnable for Producer {
         IO::Producer
     }
 
-    fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
     #[tracing::instrument(skip(self))]
+    async fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
         match self {
-            Producer::Dummy(dummy) => dummy.run(out),
-            Producer::Fetch(p) => p.run(out),
-            Producer::Read(p) => p.run(out),
-            Producer::Stream(p) => p.run(out),
+            Producer::Dummy(dummy) => dummy.run(out).await,
+            Producer::Fetch(p) => p.run(out).await,
+            Producer::Read(p) => p.run(out).await,
+            Producer::Stream(p) => p.run(out).await,
             Producer::Invalid => {
                 error!("Invalid producer: {}", self);
                 panic!(

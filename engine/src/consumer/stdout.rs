@@ -4,7 +4,7 @@ use tokio::sync::mpsc::Sender;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{Runnable, IO};
+use crate::{Runnable, Stats, IO};
 
 #[derive(Clone, Debug, PartialEq, RunnableDerive)]
 pub struct Stdout {
@@ -18,7 +18,7 @@ impl Stdout {
     }
 
     #[tracing::instrument(skip(self, data, _out))]
-    pub fn execute(&mut self, data: String, _out: Sender<String>) -> Result<()> {
+    pub async fn execute(&mut self, data: String, _out: Sender<String>) -> Result<()> {
         println!("{}", data);
         Ok(())
     }

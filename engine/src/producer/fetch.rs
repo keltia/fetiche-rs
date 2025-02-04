@@ -7,7 +7,8 @@ use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{AuthError, Capability, EngineStatus, FetchableSource, Filter, Runnable, Site, Sources, StreamableSource, IO};
+use crate::sources::Fetchable;
+use crate::{Asd, AuthError, Capability, EngineStatus, FetchableSource, Filter, Runnable, Site, Sources, Stats, IO};
 
 /// The Fetch task
 ///
@@ -53,7 +54,7 @@ impl Fetch {
     /// The heart of the matter: fetch data
     ///
     #[tracing::instrument(skip(self, _data))]
-    fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
+    async fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<Stats> {
         let site = self.site.clone();
         match site {
             Some(site) => {
@@ -75,6 +76,7 @@ impl Fetch {
             _ => {
                 Err(EngineStatus::NoSiteDefined.into())
             }
-        }
+        };
+        Ok(stats)
     }
 }

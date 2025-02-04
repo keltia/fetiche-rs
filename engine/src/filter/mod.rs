@@ -2,7 +2,10 @@ use std::fmt::Display;
 
 use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
+use tracing::error;
+
 use crate::{Consumer, Runnable, Task, IO};
+
 pub use common::*;
 pub use convert::*;
 pub use tee::*;
@@ -18,7 +21,7 @@ mod tee;
 /// or transforms the data as it flows through the pipeline. Filters can modify,
 /// duplicate, or pass through data without modification depending on their type.
 ///
-#[derive(Clone, Debug, Default, EnumString, PartialEq, strum::VariantNames)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum Middle {
     /// Filter that transforms data from one format to another
     Convert(Convert),
@@ -35,24 +38,18 @@ pub enum Middle {
     Invalid,
 }
 
-impl From<Middle> for Task {
-    fn from(value: Middle) -> Self {
-        Task::Middle(value)
-    }
-}
-
 impl Runnable for Middle {
     fn cap(&self) -> IO {
         IO::Consumer
     }
 
-    fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
+    async fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
         match self {
-            Middle::Convert(c) => c.run(out),
-            Middle::Copy(c) => c.run(out),
-            Middle::Message(m) => m.run(out),
-            Middle::Nothing(n) => n.run(out),
-            Middle::Tee(t) => t.run(out),
+            Middle::Convert(c) => c.run(out).await,
+            Middle::Copy(c) => c.run(out).await,
+            Middle::Message(m) => m.run(out).await,
+            Middle::Nothing(n) => n.run(out).await,
+            Middle::Tee(t) => t.run(out).await,
             Middle::Invalid => {
                 error!("Invalid middleware: {}", self);
                 panic!("Invalid middleware: {}", self);

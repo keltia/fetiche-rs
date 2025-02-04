@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
-use crate::{Runnable, Sources, IO};
+use crate::{Runnable, Sources, Stats, IO};
 use fetiche_macros::RunnableDerive;
 
 #[derive(Clone, Debug, RunnableDerive)]
@@ -30,8 +30,8 @@ impl Archive {
         }
     }
 
-    fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
     #[tracing::instrument(skip(self, _stdout))]
+    pub async fn execute(&mut self, _data: String, _stdout: Sender<String>) -> Result<()> {
         todo!()
     }
 }

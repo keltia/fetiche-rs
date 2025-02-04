@@ -17,7 +17,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{Runnable, IO};
+use crate::{Runnable, Stats, IO};
 
 /// The Save task
 ///
@@ -66,8 +66,7 @@ impl Save {
     /// The heart of the matter: save data
     ///
     #[tracing::instrument(skip(self, data))]
-    pub fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
-
+    pub async fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
         if self.path.is_none() {
             trace!("...into stdout");
 
