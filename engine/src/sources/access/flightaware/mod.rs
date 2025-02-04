@@ -17,7 +17,6 @@
 //! get a stream and `range` gets you a "fixed" stream.
 //!
 
-mod actors;
 mod stream;
 
 use std::io::{BufRead, BufReader, Write};

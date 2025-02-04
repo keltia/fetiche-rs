@@ -1,3 +1,7 @@
+//! This is the streaming implementation for Opensky
+//!
+//! FIXME: this is not using an actor
+
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -40,8 +44,6 @@ impl Streamable for Opensky {
     ///
     #[tracing::instrument(skip(self, out))]
     async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
-        trace!("opensky::stream");
-
         let mut stream_duration = 0;
         let mut stream_delay = 1000;
 
@@ -104,12 +106,12 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             CACHE_IDLE.as_secs(),
         );
 
-        // Infinite loop until we get cancelled or timeout expire
+        // Infinite loop until we get cancelled or a timeout expires
         // self.duration is 0 -> infinite
         // self.duration is N -> run for N secs
         //
 
-        // out as a `dyn Write` is not `Send` so we can not use it within a thread.  Use channels
+        // out as a `dyn Write` is not `Send` so we cannot use it within a thread.  Use channels
         // to work around this.
         //
         let (tx, rx) = channel::<String>();
@@ -239,7 +241,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
 
                 let buf = resp.text().unwrap();
 
-                // Retrieve answer and look into it, if answer was empty this should be rather fast
+                // Retrieve the answer and look into it, if answer was empty this should be rather fast
                 //
                 let sl: StateList = serde_json::from_str(buf.as_str()).expect("broken data");
 

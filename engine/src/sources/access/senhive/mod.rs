@@ -71,6 +71,9 @@ pub struct Senhive {
     pub vhost: String,
     /// Running time (for streams)
     pub duration: i32,
+    /// Stats gathering actor
+    #[serde(skip)]
+    pub stat: Option<ActorRef<StatsMsg>>,
 }
 
 impl Senhive {
@@ -85,6 +88,7 @@ impl Senhive {
             base_url: "".to_owned(),
             vhost: "".to_owned(),
             duration: 0,
+            stat: None,
         }
     }
 
@@ -116,6 +120,13 @@ impl Senhive {
         self
     }
 
+    #[tracing::instrument(skip(self, stat))]
+    pub fn stats(&mut self, stat: ActorRef<StatsMsg>) -> &mut Self {
+        self.stat = Some(stat);
+        self
+    }
+
+    #[tracing::instrument(skip(self))]
     pub fn source(&self) -> StreamableSource {
         StreamableSource::Senhive(self.clone())
     }

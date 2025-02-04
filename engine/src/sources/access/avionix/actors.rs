@@ -141,6 +141,7 @@ Duration {}s
                 );
 
                 let stat = state.stat.clone();
+                stat.cast(StatsMsg::Reset("avionixcube".into())).expect("stat::error");
 
                 // Start stream
                 //
@@ -158,7 +159,7 @@ Duration {}s
                         }
                         Err(e) => {
                             error!("worker-thread: {}", e.to_string());
-                            stat.cast(StatsMsg::Error).expect("stat::error");
+                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { err: 1, ..Default::default() })).expect("stat::error");
 
                             conn.shutdown(Shutdown::Both).expect("shutdown socket");
 
@@ -167,7 +168,7 @@ Duration {}s
                             drop(conn_in);
                             drop(conn_out);
 
-                            stat.cast(StatsMsg::Reconnect).expect("stat::reconnect");
+                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { reconnect: 1, ..Default::default() })).expect("stat::error");
 
                             conn = TcpStream::connect(format!("{site}:{port}"))
                                 .expect("connect failed");
@@ -198,8 +199,12 @@ Duration {}s
 
                     let filtered = filter_payload(&state.traffic, raw.as_ref())?;
 
-                    let _ = stat.cast(StatsMsg::Pkts(buf.len() as u32));
-                    let _ = stat.cast(StatsMsg::Bytes(n as u64));
+                    stat.cast(StatsMsg::Update("avionixcube".into(), Stats {
+                        pkts: buf.len() as u32,
+                        bytes: n as u64,
+                        ..Default::default()
+                    },
+                    )).expect("stat::error");
 
                     out.send(filtered).expect("send");
                 }
@@ -288,6 +293,7 @@ impl Actor for LocalWorker {
                 );
 
                 let stat = state.stat.clone();
+                stat.cast(StatsMsg::Reset("avionixcube".into())).expect("stat::error");
 
                 // Start stream
                 //
@@ -305,7 +311,7 @@ impl Actor for LocalWorker {
                         }
                         Err(e) => {
                             error!("worker-thread: {}", e.to_string());
-                            stat.cast(StatsMsg::Error).expect("stat::error");
+                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { err: 1, ..Default::default() })).expect("stat::error");
 
                             conn.shutdown(Shutdown::Both).expect("shutdown socket");
 
@@ -314,7 +320,7 @@ impl Actor for LocalWorker {
                             drop(conn_in);
                             drop(conn_out);
 
-                            stat.cast(StatsMsg::Reconnect).expect("stat::reconnect");
+                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { reconnect: 1, ..Default::default() })).expect("stat::error");
 
                             conn = TcpStream::connect(format!("{site}:{port}"))
                                 .expect("connect failed");
@@ -330,8 +336,12 @@ impl Actor for LocalWorker {
                     let raw = String::from_utf8_lossy(&buf[..n]);
                     debug!("raw={}", raw);
 
-                    let _ = stat.cast(StatsMsg::Pkts(buf.len() as u32));
-                    let _ = stat.cast(StatsMsg::Bytes(n as u64));
+                    stat.cast(StatsMsg::Update("avionixcube".into(), Stats {
+                        pkts: buf.len() as u32,
+                        bytes: n as u64,
+                        ..Default::default()
+                    },
+                    )).expect("stat::error");
 
                     out.send(String::from_utf8(buf[..n].to_vec())?)
                         .expect("send");

@@ -12,9 +12,7 @@
 
 use std::collections::BTreeMap;
 use std::str::FromStr;
-use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::Sender;
-use std::sync::Arc;
 use std::time::Duration;
 
 use ractor::pg::join;
@@ -43,26 +41,32 @@ pub struct Cube {
     pub duration: i32,
     /// Filter the source
     pub src: String,
+    /// Stats actor
+    #[serde(skip)]
+    pub stat: Option<ActorRef<StatsMsg>>,
 }
 
 impl Cube {
     #[tracing::instrument]
     pub fn new() -> Self {
-        trace!("avionixcube::new");
-
-        Self { ..Self::default() }
+        Self {
+            feature: Capability::Stream,
+            format: Format::CubeData,
+            base_url: String::from("CHANGEME"),
+            duration: 0,
+            src: String::from("RID"),
+            stat: None,
+        }
     }
 
     /// Load some data from in-memory loaded config
     ///
     #[tracing::instrument(skip(self))]
     pub fn load(&mut self, site: &Site) -> &mut Self {
-        trace!("avionixcube::load");
-
-        self.format = Format::from_str(&site.format).unwrap();
+        self.format = site.format();
         self.base_url = site.base_url.to_owned();
 
-        // the "get" route is used to filter RID vs A sources
+        // the "get" route is used to middle RID vs A sources
         //
         let routes = site.routes.clone().unwrap_or_else(|| {
             // If no routes have been defined, assume we want only RID
@@ -87,6 +91,13 @@ impl Cube {
         self
     }
 
+    #[tracing::instrument(skip(self, stat))]
+    pub fn stats(&mut self, stat: ActorRef<StatsMsg>) -> &mut Self {
+        self.stat = Some(stat);
+        self
+    }
+
+    #[tracing::instrument(skip(self))]
     pub fn source(&self) -> StreamableSource {
         StreamableSource::Cube(self.clone())
     }
@@ -94,24 +105,17 @@ impl Cube {
 
 impl Default for Cube {
     fn default() -> Self {
-        Self {
-            feature: Capability::Stream,
-            format: Format::CubeData,
-            base_url: String::from("CHANGEME"),
-            duration: 0,
-            src: String::from("RID"),
-        }
+        Self::new()
     }
 }
 
-#[ractor::async_trait]
 impl Streamable for Cube {
     fn name(&self) -> String {
         String::from("AvionixCube")
     }
 
+    #[tracing::instrument(skip(self))]
     async fn authenticate(&self) -> eyre::Result<String, AuthError> {
-        trace!("fake token retrieval");
         Ok(String::from(""))
     }
 
@@ -120,10 +124,12 @@ impl Streamable for Cube {
     /// No cache is needed because it is plain TCP streaming.
     ///
     #[tracing::instrument(skip(self, out))]
-    async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<()> {
-        trace!("avionixcube::stream");
-
+    async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<Stats> {
         let filter = Filter::from(args);
+        let stat = match self.stat.clone() {
+            Some(stat) => stat,
+            None => return Err(StatsError::NotInitialized.into())
+        };
 
         let stream_duration = match filter {
             Filter::Altitude { duration, .. } => Duration::from_secs(duration as u64),
@@ -151,14 +157,6 @@ Duration {}s
         let tag = String::from("avionixcube::supervisor");
         let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await?;
 
-        // Start the stats gathering actor.
-        //
-        trace!("starting stats actor.");
-        let tag = String::from("avionix::stats");
-        let (stat, _h) =
-            Actor::spawn_linked(Some(tag), StatsActor, "avionixcube".into(), sup.get_cell())
-                .await?;
-
         // Launch the worker actor
         //
         let url = format!("tcp://{}", self.base_url.clone());
@@ -178,11 +176,7 @@ Duration {}s
         };
         let tag = String::from("avionixcube::worker");
         let (worker, _handle) =
-            Actor::spawn_linked(Some(tag), LocalWorker, args, sup.get_cell()).await?;
-
-        // Every TICK, we display stats.
-        //
-        stat.send_interval(TICK, || StatsMsg::Print);
+            Actor::spawn_linked(Some(tag.clone()), LocalWorker, args, sup.get_cell()).await?;
 
         // Insert each actor in the PG_SOURCES group.
         //
@@ -220,6 +214,8 @@ Duration {}s
         //
         trace!("avionixcube::stream stopping.");
 
+        let stats = call!(stat, |port| StatsMsg::Exit(tag, port))?;
+
         // Stop everyone in the group.
         //
         pg::get_members(&AVIONIX_PG.to_string())
@@ -228,7 +224,7 @@ Duration {}s
                 member.stop(Some("Ending.".to_string()));
             });
 
-        Ok(())
+        Ok(stats)
     }
 
     fn format(&self) -> Format {

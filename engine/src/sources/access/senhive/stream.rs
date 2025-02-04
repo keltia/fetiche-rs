@@ -6,17 +6,15 @@ use std::time::Duration;
 
 use eyre::Result;
 use ractor::pg::join;
-use ractor::{pg, Actor};
+use ractor::{call, pg, Actor};
 use tracing::{info, trace};
 
 use fetiche_formats::Format;
 
 use super::actors::{Worker, WorkerArgs, WorkerMsg};
-use crate::actors::{StatsActor, StatsMsg, Supervisor};
+use crate::actors::StatsMsg;
 use crate::sources::SENHIVE_PG;
-use crate::{AuthError, Filter, Senhive, Streamable};
-
-const TICK: Duration = Duration::from_secs(30);
+use crate::{AuthError, Filter, Senhive, Stats, StatsError, Streamable};
 
 impl Streamable for Senhive {
     fn name(&self) -> String {
@@ -41,10 +39,14 @@ impl Streamable for Senhive {
     ///   get both stored and current data.
     ///
     ///
-    async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
+    async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<Stats> {
         trace!("Senhive::stream");
 
         let args = Filter::from(args);
+        let stat = match self.stat.clone() {
+            Some(stat) => stat,
+            None => return Err(StatsError::NotInitialized.into())
+        };
 
         // 0 means forever.
         //
@@ -58,20 +60,6 @@ impl Streamable for Senhive {
             stream_duration.as_secs()
         );
 
-
-        // We have a generic supervisor actor.
-        //
-        trace!("starting supervisor actor.");
-        let tag = String::from("senhive:supervisor");
-        let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await?;
-
-        // Start the stats gathering actor.
-        //
-        trace!("starting stats actor.");
-        let tag = String::from("senhive::stats");
-        let (stat, _h) =
-            Actor::spawn_linked(Some(tag), StatsActor, "senhive".into(), sup.get_cell()).await?;
-
         // Launch the worker actor
         //
         let url = self.base_url.clone();
@@ -83,13 +71,13 @@ impl Streamable for Senhive {
         };
         let tag = String::from("senhive::worker");
         let (worker, _handle) =
-            Actor::spawn_linked(Some(tag), Worker, args, sup.get_cell()).await?;
+            Actor::spawn(Some(tag.clone()), Worker, args).await?;
 
         // Insert each actor in the PG_SOURCES group.
         //
         join(
             SENHIVE_PG.into(),
-            vec![sup.get_cell(), worker.get_cell(), stat.get_cell()],
+            vec![worker.get_cell(), stat.get_cell()],
         );
 
         info!("List of actors.");
@@ -97,11 +85,6 @@ impl Streamable for Senhive {
         list.iter().for_each(|member| {
             info!("  {}", member.get_name().unwrap_or("<anon>".into()));
         });
-
-        // Every TICK, we display stats.
-        //
-        stat.send_interval(TICK, StatsMsg::Print);
-
 
         // Start the processing.
         //
@@ -118,7 +101,7 @@ impl Streamable for Senhive {
         } else {
             // We somehow needs to wait for a ^C.
             //
-            let (_tx, mut rx) = std::sync::mpsc::channel::<()>();
+            let (_tx, rx) = channel::<()>();
             rx.recv().expect("Something failed here.");
         }
 
@@ -126,6 +109,7 @@ impl Streamable for Senhive {
         //
         trace!("Senhive::stream stopping.");
 
+        let stats = call!(stat, |port| StatsMsg::Exit(tag, port))?;
         // Stop everyone in the group.
         //
         pg::get_members(&SENHIVE_PG.to_string())
@@ -134,7 +118,7 @@ impl Streamable for Senhive {
                 member.stop(Some("Ending.".to_string()));
             });
 
-        Ok(())
+        Ok(stats)
     }
 
     fn format(&self) -> Format {

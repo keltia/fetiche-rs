@@ -121,6 +121,9 @@ impl Actor for Worker {
             //
             WorkerMsg::Consume(topic, tag) => {
                 state.topic = Some(topic.clone());
+                let tag = tag.clone();
+
+                let _ = stat.cast(StatsMsg::New(tag.clone()));
 
                 // Subscribe to both dl_<topic> and <topic>
                 //
@@ -152,8 +155,8 @@ impl Actor for Worker {
                             let len = data.len() as u64;
                             trace!("data: size={len}");
 
-                            stat.cast(StatsMsg::Bytes(len))?;
-                            stat.cast(StatsMsg::Pkts(1))?;
+                            let s = Stats { bytes: len, pkts: 1, ..Default::default() };
+                            stat.cast(StatsMsg::Update(tag.clone(), s))?;
 
                             out.send(data)?;
                         },
@@ -172,8 +175,8 @@ impl Actor for Worker {
                             let len = data.len() as u64;
                             trace!("drain: size={len}");
 
-                            stat.cast(StatsMsg::Bytes(len))?;
-                            stat.cast(StatsMsg::Pkts(1))?;
+                            let s = Stats { bytes: len, pkts: 1, ..Default::default() };
+                            stat.cast(StatsMsg::Update(tag.clone(), s))?;
 
                             out.send(data.clone())?;
                         },
@@ -189,16 +192,20 @@ impl Actor for Worker {
                                 .await?;
 
                             let data = from_json_to_nl(&delivery.data)?;
-                            stat.cast(StatsMsg::Error)?;
+                            let s = Stats { err: 1, pkts: 1, ..Default::default() };
+                            stat.cast(StatsMsg::Update(tag.clone(), s))?;
 
                             warn!("alert={}", data);
                         },
                         else => {
                                 error!("Unknown event, stopping.");
-                                myself.kill();
+                                let stats = call!(stat, |port| StatsMsg::Exit(tag, port))?;
+                                break;
                             },
                     }
                 }
+                myself.kill();
+                Ok(())
             }
         }
     }

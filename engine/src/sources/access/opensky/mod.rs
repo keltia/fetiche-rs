@@ -13,7 +13,6 @@
 //!
 //! FIXME: use a similar pattern as Senhive with actors.
 
-mod actors;
 mod stream;
 
 use std::str::FromStr;
@@ -22,7 +21,7 @@ use std::time::Duration;
 use mini_moka::sync::ConcurrentCacheExt;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{channel, Sender};
 use tracing::{info, trace};
 
 use fetiche_formats::{Format, StateList};
