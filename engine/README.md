@@ -7,6 +7,23 @@ in a way that closely resemble a UNIX pipe. You typically have a producer, one o
 consumer at the end. Producers will generate or fetch data from a specific source and consumers are often
 used for storing the data in different ways.
 
+## Design
+
+The Engine is all about actors now.
+
+Upon startup and after loading the configuration, `Engine::new()` launches several common actors:
+
+- *engine::sources* will load `$BASEDIR/sources.hcl` and returns a `Site` when asked
+- *engine::state* will load `$BASEDIR/state` which will retrieve the last Job ID used, then will set up its own 30s sync
+  timer.
+- *engine::queue* will create the new in-memory empty job queue but will use the last Job ID as "next" so we don't step
+  on another job's data, even if it were interrupted.
+
+## Runners
+
+The *engine::runner* actor will be used for the *RunnerFactory* as a template. Right now, we have only one running
+job because we run in the scope of `acutectl`. When we switch back to a daemon-based `fetiched`, this will be different.
+
 ## Jobs
 
 A job has an ID and a list of tasks which will be each executed by a different thread and all thread in
