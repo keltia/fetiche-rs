@@ -3164,6 +3164,7 @@ dependencies = [
  "clap",
  "criterion",
  "csv",
+ "derive_builder",
  "enum_dispatch",
  "eyre",
  "fetiche-common",

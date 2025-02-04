@@ -251,18 +251,19 @@ DROP TABLE IF EXISTS acute.airplane_prox;
 #[tracing::instrument(skip(dbh))]
 async fn add_pbi_encounters_view(dbh: &Client) -> Result<()> {
     let sq = r##"
-CREATE
-OR REPLACE VIEW acute.pbi_encounters
+CREATE MATERIALIZED VIEW acute.pbi_encounters
+ENGINE = ReplacingMergeTree
+PRIMARY KEY (time, journey) POPULATE
 AS (
 SELECT
-  site,
-  (SELECT name FROM acute.sites WHERE sites.id = site) AS sitename,
   en_id,
   installation_id,
-  time,
-  date,
-  time_utc,
-  time_local,
+  site,
+  d.sitename,
+  `time`,
+  date_trunc('day', ap.time) AS `date`,
+  formatDateTime(ap.time, '%T', 'UTC') AS `utc_time`,
+  formatDateTime((ap.time + d.timezone * 3600), '%T', 'UTC') AS `local_time`,
   journey,
   drone_id,
   model,
@@ -280,9 +281,12 @@ SELECT
   distance_hor_m,
   distance_vert_m,
   distance_home_m
+FROM acute.airplane_prox AS ap, acute.pbi_deployments AS d
+LEFT OUTER JOIN acute.sites AS s
+ON ap.site = s.id
+WHERE s.name = d.sitename
 )
-    ENGINE = ReplacingMergeTree PRIMARY KEY (time, journey)
-    COMMENT 'Store all plane-drone pbi_encounters with less then 1nm distance.';
+    COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI.';
     "##;
 
     Ok(dbh.execute(sq).await?)
