@@ -21,37 +21,42 @@ options:
   --dry-run, -n        Do not actually move the file.
 """
 import argparse
+import csv
+import logging
 import os
 import re
+from datetime import datetime
 from pathlib import Path
 
 # CONFIG CHANGE HERE or use -D
 #
-datalake = "/Users/Acute"
+datalake = "/acute"
 
-# Our current sites
+
+# Import sites.csv
 #
-sites = {'Brussels': 'BRU',
-         'Luxembourg': 'LUX',
-         'Bordeaux': 'BDX',
-         'Bretigny': 'BRE',
-         'Belfast': 'BEL',
-         'London': 'LON',
-         'Gatwick': 'LON',
-         'Vienna': 'AUS',
-         'Vienna2': 'AUS',
-         'Bucharest': 'BUC',
-         'Bucharest1': 'BUC',
-         'Zurich': 'ZUR',
-         'Larnaca': 'CYP',
-         'Cyprus': 'PAP',
-         'Sarajevo': 'SAR',
-         'Sarajevo1': 'SAR',
-         'Podgorica': 'TGD',
-         'Sofia1': 'SOF',
-         'Benidorm': 'BEN',
-         'Vilnius': 'VIL',
-         }
+def load_sites(path):
+    """
+    Load sites data from CSV file.
+
+    :param path: Base directory path containing sites.csv
+    :return: Dict of sites data
+    """
+    sites_path = Path(path) / "sites.csv"
+    if not sites_path.exists():
+        logging.error(f"Sites file {sites_path} not found")
+        return {}
+
+    try:
+        with open(sites_path) as f:
+            reader = csv.DictReader(f)
+            sites_data = {}
+            for row in reader:
+                sites_data[row['basename']] = row['name']
+            return sites_data
+    except Exception as e:
+        logging.error(f"Error loading sites.csv: {e}")
+        return {}
 
 
 def move_one(fn, ftype, action):
@@ -82,7 +87,7 @@ def move_one_adsb(fn, action):
 
     # Look for specific ADS-B filename format
     #
-    fc = re.search(r'^(?P<site>.*?)_(?P<year>\d+)-(?P<month>\d+)-(\d+).parquet$', fname)
+    fc = re.search(r'^(?P<site>.*?)([0-9]*)_(?P<year>\d+)-(?P<month>\d+)-(\d+).parquet$', fname)
 
     # ADS-B pattern
     #
@@ -97,6 +102,8 @@ def move_one_adsb(fn, action):
             print(f'Unknown site {site}')
             return
 
+        logging.info(f"site={site}")
+
         year = fc.group('year')
         month = fc.group('month')
 
@@ -109,6 +116,7 @@ def move_one_adsb(fn, action):
     else:
         print(f"Ignoring {fn}")
 
+    logging.info(f"Moving {fn} into {final}")
     if action:
         print(f"Moving {fn} into {final}")
         Path(fn).rename(final)
@@ -138,6 +146,7 @@ def move_one_drone(fn, action):
         final = Path(ourdir) / fname
         if action:
             print(f"Moving {fn} into {final}")
+        logging.info(f"Moving {fn} into {final}")
         Path(fn).rename(final)
     else:
         print(f"Ignoring {fn}")
@@ -156,9 +165,7 @@ parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
 if args.datalake:
-    datadir = f"{args.datalake}/data"
-else:
-    datadir = f"{datalake}/data"
+    datalake = args.datalake
 
 if args.drones:
     ftype = "drones"
@@ -169,6 +176,20 @@ if args.dry_run:
     action = False
 else:
     action = True
+
+importdir = f"{datalake}/import"
+datadir = f"{datalake}/data"
+bindir = f"{datalake}/bin"
+filesdir = f"{datalake}/files"
+logdir = f"{datalake}/var/log"
+
+date = datetime.now().strftime('%Y%m%d')
+logfile = f"{logdir}/dispatch-drops-{date}.log"
+logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                    format='%(asctime)s - %(levelname)s: %(message)s')
+logging.info("Starting")
+
+sites = load_sites(filesdir)
 
 files = args.files
 for file in files:
