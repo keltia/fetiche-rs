@@ -20,20 +20,16 @@ pub use crate::stats::*;
 // Re-export these modules for a shorted import path.
 //
 pub use access::*;
-pub use auth::*;
 pub use capability::*;
 pub use config::*;
 pub use error::*;
-pub use filter::*;
 pub use route::*;
 pub use site::*;
 
 mod access;
-mod auth;
 mod capability;
 mod config;
 mod error;
-mod filter;
 mod route;
 mod site;
 
@@ -158,7 +154,3 @@ pub trait Streamable: Debug {
 
 /// Default configuration filename
 pub const SOURCES_CONFIG: &str = "sources.hcl";
-
-pub fn version() -> String {
-    format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
-}
