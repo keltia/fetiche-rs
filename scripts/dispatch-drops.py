@@ -47,7 +47,10 @@ sites = {'Brussels': 'BRU',
          'Cyprus': 'PAP',
          'Sarajevo': 'SAR',
          'Sarajevo1': 'SAR',
-         'Podgorica': 'TGD'
+         'Podgorica': 'TGD',
+         'Sofia1': 'SOF',
+         'Benidorm': 'BEN',
+         'Vilnius': 'VIL',
          }
 
 

@@ -43,12 +43,18 @@ sites = {
     'Cyprus': 12,
     'Sarajevo': 13,
     'Sarajevo1': 13,
+    'Sarajevo2': 13,
     'Podgorica': 14,
+    'Sofia': 15,
+    'Sofia1': 15,
+    'Sofia2': 15,
+    'Benidorm': 16,
+    'Vilnius': 17,
 }
 
 # CONFIG CHANGE HERE or use -D
 #
-datalake = "/Users/acute"
+datalake = "/acute"
 db = 'acute'
 chunk = 500_000
 convert_cmd = 'bdt'
