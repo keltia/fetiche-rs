@@ -12,8 +12,7 @@ use std::sync::mpsc::channel;
 use crate::{EngineStatus, Runnable, Task, IO};
 use eyre::Result;
 use fetiche_sources::Site;
-use tracing::{info, trace};
-use tracing::{span, Level};
+use tracing::{info, span, trace, Level};
 
 /// A `Job` represents a pipeline of tasks to be executed sequentially.
 ///
@@ -74,7 +73,17 @@ pub struct Job {
     pub list: VecDeque<Task>,
 }
 
-#[derive(Clone, Debug)]
+/// Represents the different states that a Job can be in during its lifecycle.
+///
+/// # States
+/// - `Created`: Initial state when the job is first allocated but has no tasks.
+/// - `Ready`: Job has been populated with all required tasks and is ready to be queued.
+/// - `Queued`: Job has been placed in the execution queue and is waiting to be run.
+/// - `Running`: Job is currently being executed, with its tasks being processed.
+/// - `Completed`: Job has finished executing all its tasks successfully.
+/// - `Zombie`: Job is in an invalid or unexpected state, typically after an error.
+///
+#[derive(Clone, Debug, PartialEq)]
 pub enum JobState {
     /// Empty, just allocated
     Created,
