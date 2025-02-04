@@ -101,7 +101,7 @@ impl Actor for QueueActor {
                 state.last += 1;
             }
             QueueMsg::Add(job, port) => {
-                let mut queued = job.clone();
+                let queued = job.clone();
                 if job.state() != JobState::Ready {
                     return Err(QueueError::JobNotReady(job.id).into());
                 }
@@ -114,7 +114,7 @@ impl Actor for QueueActor {
                 sender.send(list)?;
             }
             QueueMsg::Run(sender) => {
-                let mut job = match state.waiting.pop_front() {
+                let job = match state.waiting.pop_front() {
                     Some(job) => job,
                     None => return Ok(()),
                 };
