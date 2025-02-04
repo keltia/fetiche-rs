@@ -1,0 +1,27 @@
+[package]
+name = "compute-height"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "Compute real altitude according to EGM2008 model."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/fetiche-rs"
+categories = ["aerospace::drones"]
+keywords = ["geodesic", "drones", "aeronautical-data"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap.workspace = true
+eyre.workspace = true
+tracing.workspace = true
+
+egm2008 = "0.1.0"
