@@ -15,17 +15,21 @@
 //!
 
 use std::collections::BTreeMap;
+use std::sync::mpsc::{channel, Sender};
 
-use ractor::factory::{FactoryMessage, JobOptions};
-use ractor::{call, cast, factory};
+use eyre::Result;
+use ractor::registry::registered;
+use ractor::{call, call_t, cast, pg};
 use serde::Deserialize;
 use tabled::builder::Builder;
 use tabled::settings::Style;
-use tracing::{error, info, trace};
+use tracing::trace;
 
 use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
-use crate::{ENGINE_PG, Engine, EngineStatus, IO, Job, JobBuilder, JobState, Stats, WaitGroup};
+use crate::{Engine, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup, ENGINE_PG, IO};
 
+/// Basically, this is the exposed API to the Engine.
+///
 impl Engine {
     ///
     ///
@@ -78,12 +82,12 @@ impl Engine {
     /// Ensure tracing is properly configured in your application to monitor these events.
     ///
     #[tracing::instrument(skip(self))]
-    pub async fn create_job(&mut self, s: &str) -> eyre::Result<Job> {
+    pub async fn create_job(&mut self, s: &str) -> Result<Job> {
         // Fetch next ID
         //
         let nextid = call!(self.scheduler, |port| SchedulerMsg::Allocate(port))?;
 
-        // Initialise job, list of task is empty
+        // Initialise the job, list of tasks is empty
         //
         let job = JobBuilder::default().name(s.into()).id(nextid).build()?;
 
@@ -173,6 +177,34 @@ impl Engine {
         Ok(wg)
     }
 
+    /// Submits a job for execution and waits for it to complete, returning the final statistics.
+    ///
+    /// This method combines job submission with waiting for completion in a single call. It submits
+    /// the job to the scheduler and blocks until execution is finished, then retrieves and returns
+    /// the final job statistics.
+    ///
+    /// # Arguments
+    ///
+    /// * `job` - The job to be submitted and executed. Must be in Ready state.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Result<Stats>` containing:
+    /// - `Ok(Stats)` - The final statistics from the completed job execution
+    /// - `Err` - If job submission fails or execution encounters an error
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if:
+    /// - The job is not in Ready state
+    /// - Job submission to the scheduler fails
+    /// - Communication with the results actor fails
+    /// - The job execution fails
+    ///
+    /// # Tracing
+    ///
+    /// This method is instrumented for tracing, excluding the `self` parameter.
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn submit_job_and_wait(&mut self, job: Job) -> Result<Stats> {
         if job.state() != JobState::Ready {
@@ -195,6 +227,30 @@ impl Engine {
         Ok(stats)
     }
 
+    /// Waits for a specific job to complete and retrieves its final statistics.
+    ///
+    /// This method blocks until the job with the specified ID completes execution
+    /// and then fetches its final statistics. It also forwards the statistics through
+    /// the provided sender channel.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The unique identifier of the job to wait for
+    /// * `tx` - A sender channel to forward the job statistics when available
+    ///
+    /// # Returns
+    ///
+    /// Returns `Result<Stats>` containing:
+    /// - `Ok(Stats)` - The final statistics from the completed job execution
+    /// - `Err` - If fetching results fails or sending stats fails
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error if:
+    /// - Communication with the results actor fails
+    /// - The job results cannot be retrieved
+    /// - Sending statistics through the provided channel fails
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn wait_for(&mut self, id: usize, tx: Sender<Stats>) -> Result<Stats> {
         let res = call_t!(self.results, |port| ResultsMsg::Fetch(id, port), 10000)?;
@@ -203,6 +259,22 @@ impl Engine {
         Ok(res)
     }
 
+    /// Shuts down the engine and all its associated actors.
+    ///
+    /// This method gracefully terminates the engine by stopping all registered actors
+    /// in the engine process group.
+    /// It sends a stop signal with "ctrl-C pressed" message to each actor.
+    ///
+    /// # Behavior
+    ///
+    /// - Retrieves all members of the engine process group
+    /// - Iterates through each actor and sends a stop signal
+    /// - Actors will clean up resources before terminating
+    ///
+    /// # Tracing
+    ///
+    /// This method is instrumented for tracing, excluding the `self` parameter.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn shutdown(&mut self) {
         pg::get_members(&ENGINE_PG.to_string())
@@ -212,6 +284,18 @@ impl Engine {
             });
     }
 
+    /// Prints the current engine version and lists all registered actors.
+    ///
+    /// This method outputs diagnostic information about the running engine instance:
+    /// - The current engine version number
+    /// - A list of all registered actors in the system
+    ///
+    /// The output is written to stderr using eprintln!.
+    ///
+    /// # Tracing
+    ///
+    /// This method is instrumented for tracing, excluding the `self` parameter.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn ps(&mut self) {
         let v = self.version();
