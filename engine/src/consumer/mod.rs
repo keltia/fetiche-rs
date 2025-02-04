@@ -2,7 +2,7 @@
 //!
 
 use std::fmt::{write, Display};
-
+use std::sync::Arc;
 use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
 use tracing::error;
@@ -24,7 +24,6 @@ use crate::{Runnable, Stats, Task, IO};
 ///
 /// Each variant corresponds to a specific data consuming strategy:
 ///
-#[derive(Clone, Debug, Default, PartialEq, strum::EnumString, strum::VariantNames)]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum Consumer {
     /// Consumer that takes stored data and archives it
@@ -45,11 +44,15 @@ impl Runnable for Consumer {
         IO::Consumer
     }
 
-    async fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
+    async fn run(
+        &mut self,
+        out: Receiver<String>,
+    ) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
         match self {
-            Consumer::Save(c) => { c.run(out).await }
-            Consumer::Store(c) => { c.run(out).await }
-            Consumer::Stdout(s) => { s.run(out).await }
+            Consumer::Archive(c) => c.run(out).await,
+            Consumer::Save(c) => c.run(out).await,
+            Consumer::Store(c) => c.run(out).await,
+            Consumer::Stdout(s) => s.run(out).await,
             Consumer::Invalid => {
                 error!("Invalid consumer: {}", self);
                 panic!("Invalid consumer: {}", self);
@@ -61,6 +64,7 @@ impl Runnable for Consumer {
 impl Display for Consumer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Consumer::Archive(_) => write!(f, "Archive"),
             Consumer::Save(_) => write!(f, "Save"),
             Consumer::Store(_) => write!(f, "Store"),
             Consumer::Stdout(_) => write!(f, "Stdout"),
