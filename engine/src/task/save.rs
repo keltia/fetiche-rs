@@ -168,7 +168,7 @@ mod tests {
 
     #[test]
     fn test_save_output_raw_data() {
-        let mut t = Save::new("test_raw_write", Format::None, Container::Txt);
+        let mut t = Save::new("test_raw_write", Format::None, Container::Raw);
         t.path("test_output.txt");
 
         let result = t.execute("test_raw_data".to_string(), std::sync::mpsc::channel().0);
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn test_save_stdout() {
-        let mut t = Save::new("test_stdout", Format::None, Container::Txt);
+        let mut t = Save::new("test_stdout", Format::None, Container::Raw);
         t.path("-");
 
         let (tx, rx) = std::sync::mpsc::channel();
