@@ -11,6 +11,24 @@ use fetiche_engine::{Engine, Filter, JobState};
 
 use crate::FetchOpts;
 
+/// Fetches data from a specified network site using the provided engine and options.
+///
+/// # Parameters
+/// - `engine`: A mutable reference to the `Engine` instance that will execute the fetch operation
+/// - `fopts`: A reference to `FetchOpts` containing the fetch configuration options
+///
+/// # Returns
+/// Returns `Result<()>` which is:
+/// - `Ok(())` if the fetch operation completed successfully
+/// - `Err(_)` if any error occurred during the operation
+///
+/// # Errors
+/// This function may return an error if:
+/// - The filter creation from options fails
+/// - The HCL conversion of the filter fails
+/// - The job parsing fails
+/// - The job execution fails
+///
 #[tracing::instrument(skip(engine))]
 pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
