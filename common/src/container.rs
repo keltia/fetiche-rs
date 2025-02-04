@@ -7,56 +7,6 @@ use std::collections::BTreeMap;
 use strum::VariantNames;
 use tabled::{builder::Builder, settings::Style};
 
-/// Current `containers.hcl` version (forked from `formats.hcl`).
-///
-const CVERSION: usize = 2;
-
-/// `ContainerDescr` struct provides key attributes for each format, which helps in
-/// describing its nature, metadata, and the source from which it originated.
-///
-/// # Fields
-///
-/// * `dtype` - Represents the type of data the format refers to. This field is renamed
-///   to `type` during (de)serialization for compatibility.
-/// * `description` - Provides a free text description of the data format.
-/// * `source` - Indicates the origin or specific tool associated with this data format.
-/// * `url` - URL pointing to the definition site or further information about the data format.
-///
-/// This is primarily used to map detailed metadata about different container formats.
-#[derive(Debug, Deserialize)]
-pub struct ContainerDescr {
-    /// Type of data each format refers to
-    #[serde(rename = "type")]
-    pub dtype: String,
-    /// Free text description
-    pub description: String,
-    /// Source
-    pub source: String,
-    /// URL to the site where this is defined
-    pub url: String,
-}
-
-///
-/// `ContainerFile` is a structure designed to be deserialized from an HCL (HashiCorp Configuration Language) file.
-///
-/// This struct encapsulates metadata for various container formats, organizing the details of how they are structured and defined.
-/// It provides compatibility and structure for dealing with metadata in the application, ensuring format consistency.
-///
-/// # Fields
-///
-/// * `version` - Specifies the version of the container format file. This ensures proper versioning and compatibility.
-/// * `format` - A `BTreeMap` holding the metadata for each container type, keyed by the container's name.
-///
-/// Each entry in the `format` field references a `ContainerDescr` structure, which provides descriptive details about that specific format.
-
-#[derive(Debug, Deserialize)]
-pub struct ContainerFile {
-    /// Version
-    pub version: usize,
-    /// Ordered list of format metadata
-    pub format: BTreeMap<String, ContainerDescr>,
-}
-
 /// Represents different supported container formats.
 ///
 /// # Variants
@@ -145,6 +95,57 @@ mod tests {
     }
 }
 
+// -----
+
+/// Current `containers.hcl` version (forked from `formats.hcl`).
+///
+const CVERSION: usize = 2;
+
+/// `ContainerDescr` struct provides key attributes for each format, which helps in
+/// describing its nature, metadata, and the source from which it originated.
+///
+/// # Fields
+///
+/// * `dtype` - Represents the type of data the format refers to. This field is renamed
+///   to `type` during (de)serialization for compatibility.
+/// * `description` - Provides a free text description of the data format.
+/// * `source` - Indicates the origin or specific tool associated with this data format.
+/// * `url` - URL pointing to the definition site or further information about the data format.
+///
+/// This is primarily used to map detailed metadata about different container formats.
+#[derive(Debug, Deserialize)]
+pub struct ContainerDescr {
+    /// Type of data each format refers to
+    #[serde(rename = "type")]
+    pub dtype: String,
+    /// Free text description
+    pub description: String,
+    /// Source
+    pub source: String,
+    /// URL to the site where this is defined
+    pub url: String,
+}
+
+///
+/// `ContainerFile` is a structure designed to be deserialized from an HCL (HashiCorp Configuration Language) file.
+///
+/// This struct encapsulates metadata for various container formats, organizing the details of how they are structured and defined.
+/// It provides compatibility and structure for dealing with metadata in the application, ensuring format consistency.
+///
+/// # Fields
+///
+/// * `version` - Specifies the version of the container format file. This ensures proper versioning and compatibility.
+/// * `format` - A `BTreeMap` holding the metadata for each container type, keyed by the container's name.
+///
+/// Each entry in the `format` field references a `ContainerDescr` structure, which provides descriptive details about that specific format.
+
+#[derive(Debug, Deserialize)]
+pub struct ContainerFile {
+    /// Version
+    pub version: usize,
+    /// Ordered list of format metadata
+    pub format: BTreeMap<String, ContainerDescr>,
+}
 
 impl Container {
     ///
