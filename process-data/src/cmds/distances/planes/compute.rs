@@ -280,6 +280,9 @@ AS SELECT
 FROM drones
 WHERE
   toStartOfInterval(timestamp, toIntervalDay(1)) = toDateTime($1) AND
+  altitude_geo IS NOT NULL AND
+  latitude IS NOT NULL AND
+  longitude IS NOT NULL AND
   pointInEllipses(longitude,latitude, $2, $3, $4, $5)
     "##
         );
