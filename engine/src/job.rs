@@ -25,6 +25,7 @@ use tracing::{span, Level};
 /// A `Job` consists of:
 /// - A `id` allocated at creation-time.
 /// - A `name` for recognizing the job's purpose or type.
+/// - A `state` to see the lifetime of the job
 /// - A `list` of tasks to be executed in order, backed by a `VecDeque` for FIFO (First In, First Out) behavior.
 ///
 /// Tasks in the job must implement the `Runnable` trait and adhere to its constraints.
@@ -33,6 +34,7 @@ use tracing::{span, Level};
 /// # Attributes
 /// - `id`: Job ID
 /// - `name`: A descriptive name for the `Job`.
+/// - `state`: The status of the given job.
 /// - `list`: A list (queue) of tasks to be executed in the pipeline.
 ///
 /// # Usage
@@ -59,6 +61,7 @@ use tracing::{span, Level};
 /// let result = job.run(&mut output);
 /// assert!(result.is_ok());
 /// ```
+///
 #[derive(Clone, Debug)]
 pub struct Job {
     /// Job ID
