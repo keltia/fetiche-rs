@@ -60,7 +60,6 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
-async-trait = "0.1"
 base64_light = "0.1"
 derive_builder = "0.20"
 enum_dispatch = "0.3"
@@ -72,7 +71,13 @@ native-tls = "0.2"
 percent-encoding = "2.3"
 signal-hook = "0.3"
 futures-util = "0.3.31"
+futures = "0.3.31"
 
 [dev-dependencies]
 criterion.workspace = true
 rstest.workspace = true
+
+ctrlc = "3.4"
+directories = "6.0"
+dateparser = "0.2"
+jiff = "0.2"
