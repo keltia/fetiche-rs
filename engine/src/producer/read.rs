@@ -59,6 +59,12 @@ impl Read {
         self
     }
 
+    #[tracing::instrument(skip(self))]
+    pub fn fmt(&mut self, f: Format) -> &mut Self {
+        self.format = f;
+        self
+    }
+
     /// The heart of the matter: fetch data
     ///
     #[tracing::instrument(skip(self))]
@@ -68,20 +74,16 @@ impl Read {
             Err(EngineStatus::UninitialisedRead.into())
         } else {
             let p = self.path.clone().unwrap();
-            let bfh = BufReader::new(File::open(&p)?);
-
-            let size = p.metadata()?.len();
+            let mut lines = String::new();
+            let size = File::open(&p).await?.read_to_string(&mut lines).await?;
 
             // Now send each line down the pipe (while counting)
             //
-            let len = bfh.lines().fold(0u32, |acc, l| {
-                let _ = stdout.send(l.unwrap()).unwrap();
-                acc + 1
-            });
+            let _ = stdout.send(lines)?;
             Ok(Stats {
                 tm: Utc::now().timestamp() as u64,
-                bytes: size,
-                pkts: len,
+                bytes: size as u64,
+                pkts: 1u32,
                 ..Default::default()
             })
         }
@@ -97,6 +99,7 @@ impl Default for Read {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::mpsc::channel;
 
     #[test]
     fn test_read_new() {
@@ -119,19 +122,19 @@ mod tests {
     fn test_read_file() {
         let mut t = Read::new("foo");
         t.path("../Cargo.toml");
-        t.format(Format::Asd);
+        t.fmt(Format::Asd);
 
         assert_eq!("foo", t.name);
         assert_eq!(PathBuf::from("../Cargo.toml"), t.path.unwrap());
     }
 
-    #[test]
-    fn test_read_execute_uninitialized() {
+    #[tokio::test]
+    async fn test_read_execute_uninitialized() {
         let mut t = Read::new("foo");
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = channel();
 
         // Execute should fail as path and format are not set
-        let result = t.execute(String::new(), tx);
+        let result = t.execute(String::new(), tx).await;
         assert!(result.is_err());
         match result {
             Err(e) => assert_eq!(
@@ -142,19 +145,19 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_read_execute_with_nonexistent_file() {
+    #[tokio::test]
+    async fn test_read_execute_with_nonexistent_file() {
         let mut t = Read::new("foo");
         t.path("/nonexistent");
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = channel();
 
         // Execute should fail as file does not exist
-        let result = t.execute(String::new(), tx);
+        let result = t.execute(String::new(), tx).await;
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_read_execute_with_valid_file() {
+    #[tokio::test]
+    async fn test_read_execute_with_valid_file() {
         use std::io::Write;
         use tempfile::NamedTempFile;
 
@@ -166,10 +169,10 @@ mod tests {
 
         let mut t = Read::new("foo");
         t.path(temp_file.path().to_str().unwrap());
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, mut rx) = channel();
 
         // Execute should succeed and send lines to channel
-        let result = t.execute(String::new(), tx);
+        let result = t.execute(String::new(), tx).await;
         assert!(result.is_ok());
 
         let mut lines: Vec<String> = vec![];

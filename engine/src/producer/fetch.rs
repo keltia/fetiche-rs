@@ -53,10 +53,10 @@ impl Fetch {
         self
     }
 
-    /// Add a date filter if specified
+    /// Add a date middle if specified
     ///
-    pub fn with(&mut self, f: Filter) -> &mut Self {
     #[tracing::instrument(skip(self))]
+    pub fn with(&mut self, f: Filter) -> &mut Self {
         self.args = f.to_string();
         self
     }
@@ -66,26 +66,22 @@ impl Fetch {
     #[tracing::instrument(skip(self, _data))]
     async fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<Stats> {
         let site = self.site.clone();
-        match site {
+        let stats = match site {
             Some(site) => {
-                trace!("Site: {}", site);
+                trace!("Site: {}", site.name);
+
+                let src = FetchableSource::from(site);
 
                 // Stream data as bytes
                 //
-                let site = self.site.clone().unwrap();
-                match FetchableSource::from(&site) {
-                    Some(source) => {
-                        let token = source.authenticate()?;
+                let token = src.authenticate().await?;
 
-                        let args = self.args.clone();
-                        source.stream(stdout, &token, &args)?;
-                    }
-                    _ => EngineStatus::NotFetchable(site.name.clone()).into(),
-                }
+                trace!("execute:args={}", self.args);
+                let args = self.args.clone();
+                let res = src.fetch(stdout, &token, &args).await?;
+                res
             }
-            _ => {
-                Err(EngineStatus::NoSiteDefined.into())
-            }
+            _ => return Err(EngineStatus::NoSiteDefined.into()),
         };
         Ok(stats)
     }

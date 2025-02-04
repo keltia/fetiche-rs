@@ -71,7 +71,7 @@ impl Stream {
         self
     }
 
-    /// Add a date filter if specified
+    /// Add a date middle if specified
     ///
     #[tracing::instrument(skip(self))]
     pub fn with(&mut self, f: Filter) -> &mut Self {
@@ -92,26 +92,20 @@ impl Stream {
     #[tracing::instrument(skip(self, _data, stdout))]
     pub async fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<Stats> {
         let site = self.site.clone();
-        match site {
+        let stats = match site {
             Some(site) => {
                 trace!("Site: {}", site);
 
+                let src = StreamableSource::from(site);
+
                 // Stream data as bytes
                 //
-                let site = self.site.clone().unwrap();
-                match StreamableSource::from(&site) {
-                    Some(source) => {
-                        let token = source.authenticate()?;
+                let token = src.authenticate().await?;
 
-                        let args = self.args.clone();
-                        source.stream(stdout, &token, &args)?;
-                    }
-                    _ => EngineStatus::NotStreamable(site.name.clone()).into(),
-                }
+                let args = self.args.clone();
+                src.stream(stdout, &token, &args).await?
             }
-            _ => {
-                Err(EngineStatus::NoSiteDefined.into())
-            }
+            _ => return Err(EngineStatus::NoSiteDefined.into()),
         };
         Ok(stats)
     }

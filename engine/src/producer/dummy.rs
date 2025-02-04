@@ -1,5 +1,6 @@
+use std::sync::mpsc::Sender;
+
 use eyre::Result;
-use tokio::sync::mpsc::Sender;
 
 use crate::{Runnable, Stats, IO};
 
@@ -18,7 +19,7 @@ impl Dummy {
 
     #[tracing::instrument(skip(self))]
     pub async fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<Stats> {
-        stdout.send("DUMMY".to_string()).await?;
+        stdout.send("DUMMY".to_string())?;
         Ok(Stats::default())
     }
 }
