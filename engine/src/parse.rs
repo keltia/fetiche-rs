@@ -3,21 +3,8 @@
 //! Description of the job & task language -- leveraging HCL support.  The advantage is that we
 //! could switch to JSON or anything else.
 //!
-//! ```hcl
-//! name = "Opensky"
-//! type = "fetch"
-//! source = opensky
-//! output = "foo.csv"
-//! ```
+//! See [this example](../../examples/parse.rs) for a simple usage example.
 //!
-//! ```hcl
-//! name = "Opensky"
-//! type = "fetch"
-//! source = opensky
-//! filters = []
-//! output = "foo.csv"
-//! ```
-
 use std::collections::VecDeque;
 
 use eyre::Result;
@@ -25,12 +12,14 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use ractor::call;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use strum::EnumString;
-use tracing::trace;
+use tracing::{debug, trace};
 
 use crate::actors::{QueueMsg, SourcesMsg};
 use crate::{
-    Consumer, Copy, Engine, Fetch, Job, JobState, Middle, Producer, Read, Save, Store, Stream, Tee,
+    Consumer, Copy, Engine, Fetch, Filter, Job, JobState, Middle, Producer, Read, Save, Store,
+    Stream, Tee,
 };
 
 /// Represents the type of job to be executed.
@@ -46,20 +35,19 @@ use crate::{
 /// - `Stream`: Streams data directly from an external source in real-time.
 ///
 #[derive(Clone, Debug, Deserialize, EnumString, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
 enum ProducerText {
     /// One-shot fetch a block of data.
-    Fetch(String),
+    Fetch(String, Filter),
     /// Read a local file.
     Read(String),
     /// Long-running job, streaming.
-    Stream(String),
+    Stream(String, Filter),
 }
 
 /// Represents the various types of filters/middleware that can be applied to a job.
 ///
 /// Filters define additional processing or transformation steps to be
-/// performed on the data during a job's execution. Each filter is associated
+/// performed on the data during a job's execution. Each middle is associated
 /// with a particular action or target.
 ///
 /// # Variants
@@ -70,7 +58,7 @@ enum ProducerText {
 ///
 /// # Fields
 ///
-/// `String` - The target or path associated with the filter action.
+/// `String` - The target or path associated with the middle action.
 ///
 #[derive(Clone, Debug, Deserialize, EnumString, PartialEq, Serialize)]
 enum MiddleText {
@@ -164,18 +152,19 @@ impl Engine {
         // Retrieve the site's data from the Sources actor.
         //
         let producer = match jt.producer {
-            ProducerText::Fetch(p) => {
-                let name = jt.name.clone();
-                let site = call!(self.sources, |port| SourcesMsg::Get(name, port))?;
-                let mut f = Fetch::new(&p);
+            ProducerText::Fetch(p, args) => {
+                let site = call!(self.sources, |port| SourcesMsg::Get(p, port))?;
+                let mut f = Fetch::new(&jt.name);
                 f.site(site);
+                f.with(args);
                 Producer::Fetch(f.clone())
             }
-            ProducerText::Stream(p) => {
+            ProducerText::Stream(p, args) => {
                 let name = jt.name.clone();
                 let site = call!(self.sources, |port| SourcesMsg::Get(name, port))?;
                 let mut s = Stream::new(&p);
                 s.site(site);
+                s.with(args);
                 Producer::Stream(s.clone())
             }
             ProducerText::Read(p) => {
@@ -222,10 +211,11 @@ impl Engine {
             producer,
             name: jt.name.clone(),
             state: JobState::Ready,
-            filters: list,
+            middle: list,
             consumer,
             stats: None,
         };
+        debug!("Job: {:?}", job);
         Ok(job)
     }
 }
@@ -233,16 +223,25 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rstest::rstest;
 
-    #[rstest]
     #[tokio::test]
     async fn test_parse_fetch_job() -> Result<()> {
         let mut engine = Engine::new().await;
         let job_str = r#"
             name = "test_fetch"
-            producer = fetch "data"
-            output = save "output.csv"
+            producer = {
+                "Fetch" = [
+                    "data",
+                    {
+                        "from" = 1746898373376
+                        "duration" = 3600
+                        "delay" = 10
+                    }
+                ]
+            }
+            output = {
+                "Save" = "output.csv"
+            }
         "#;
 
         let job = engine.parse(job_str).await?;
@@ -250,17 +249,29 @@ mod tests {
         assert_eq!(job.name, "test_fetch");
         assert!(matches!(job.producer, Producer::Fetch(_)));
         assert!(matches!(job.consumer, Consumer::Save(_)));
+
+        engine.shutdown();
         Ok(())
     }
 
-    #[rstest]
     #[tokio::test]
     async fn test_parse_stream_job() -> Result<()> {
         let mut engine = Engine::new().await;
         let job_str = r#"
             name = "test_stream"
-            producer = stream "data"
-            output = save "output.csv"
+            producer = {
+                "Stream" = [
+                    "data",
+                    {
+                        "from" = 1746898373376
+                        "duration" = 3600
+                        "delay" = 10
+                    }
+                ]
+            }
+            output = {
+                "Save" = "output.csv"
+            }
         "#;
 
         let job = engine.parse(job_str).await?;
@@ -268,17 +279,21 @@ mod tests {
         assert_eq!(job.name, "test_stream");
         assert!(matches!(job.producer, Producer::Stream(_)));
         assert!(matches!(job.consumer, Consumer::Save(_)));
+        engine.shutdown();
         Ok(())
     }
 
-    #[rstest]
     #[tokio::test]
     async fn test_parse_read_job() -> Result<()> {
         let mut engine = Engine::new().await;
         let job_str = r#"
             name = "test_read"
-            producer = read "input.csv"
-            output = save "output.csv"
+            producer = {
+                "Read" = "input.csv"
+            }
+            output = {
+                "Save" = "output.csv"
+            }
         "#;
 
         let job = engine.parse(job_str).await?;
@@ -286,32 +301,43 @@ mod tests {
         assert_eq!(job.name, "test_read");
         assert!(matches!(job.producer, Producer::Read(_)));
         assert!(matches!(job.consumer, Consumer::Save(_)));
+        engine.shutdown();
         Ok(())
     }
 
-    #[rstest]
     #[tokio::test]
     async fn test_parse_job_with_filters() -> Result<()> {
         let mut engine = Engine::new().await;
         let job_str = r#"
             name = "test_filters"
-            producer = fetch "data"
+            producer = {
+                "Fetch" = [
+                    "data",
+                    {
+                        "from" = 1746898373376
+                        "duration" = 3600
+                        "delay" = 10
+                    }
+                ]
+            }
             filters = [
-                copy,
-                tee "copy.csv"
+                { "Copy" },
+                { "Tee" = "copy.csv" },
             ]
-            output = save "output.csv"
+            output = {
+                "Save" = "output.csv"
+            }
         "#;
 
         let job = engine.parse(job_str).await?;
 
-        assert_eq!(job.filters.len(), 2);
-        assert!(matches!(job.filters[0], Middle::Copy(_)));
-        assert!(matches!(job.filters[1], Middle::Tee(_)));
+        assert_eq!(job.middle.len(), 2);
+        assert!(matches!(job.middle[0], Middle::Copy(_)));
+        assert!(matches!(job.middle[1], Middle::Tee(_)));
+        engine.shutdown();
         Ok(())
     }
 
-    #[rstest]
     #[tokio::test]
     async fn test_parse_invalid_hcl() -> Result<()> {
         let mut engine = Engine::new().await;
@@ -321,6 +347,7 @@ mod tests {
 
         let result = engine.parse(job_str).await;
         assert!(result.is_err());
+        engine.shutdown();
         Ok(())
     }
 }
