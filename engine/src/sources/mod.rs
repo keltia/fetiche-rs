@@ -7,11 +7,11 @@
 //!
 
 use std::fmt::Debug;
+use std::sync::mpsc::Sender;
 
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::Sender;
 
 use fetiche_formats::Format;
 
@@ -122,6 +122,7 @@ impl From<Site> for StreamableSource {
 ///
 /// This is the async version of `Fetchable`, making it easier to use async clients and/or actors.
 ///
+#[allow(async_fn_in_trait)]
 #[enum_dispatch(FetchableSource)]
 pub trait Fetchable {
     /// Return site's name
@@ -140,6 +141,7 @@ pub trait Fetchable {
 ///
 /// This is the async version of `Streamable`, making it easier to use async clients and/or actors.
 ///
+#[allow(async_fn_in_trait)]
 #[enum_dispatch(StreamableSource)]
 pub trait Streamable: Debug {
     /// Return site's name
