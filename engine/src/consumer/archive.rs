@@ -9,7 +9,7 @@ use eyre::Result;
 use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
-use crate::{Consumer, Fetch, IO, Producer, Runnable, Sources, Stats};
+use crate::{Consumer, Fetch, Producer, Runnable, Sources, Stats, IO};
 use fetiche_macros::RunnableDerive;
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
@@ -24,7 +24,7 @@ impl From<Archive> for Consumer {
 }
 
 impl Archive {
-    #[tracing::instrument(skip(srcs))]
+    #[tracing::instrument]
     pub fn new(s: &str) -> Self {
         trace!("Creating archive {s}");
         Archive { io: IO::Consumer }
