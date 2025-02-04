@@ -136,10 +136,45 @@ struct JobText {
 }
 
 impl Engine {
-    /// Our job structure is
-    /// - one producer
-    /// - zero or more filters
-    /// - one consumer
+    /// Parses a job definition string in HCL format and creates a new `Job` instance.
+    ///
+    /// This method takes a job definition in HashiCorp Configuration Language (HCL) format
+    /// and transforms it into a fully configured `Job` structure. The job definition includes:
+    /// - Producer configuration (Fetch, Read, or Stream)
+    /// - Optional middleware filters
+    /// - Consumer configuration (Save or Store)
+    ///
+    /// # Arguments
+    ///
+    /// * `job_str` - A string slice containing the HCL-formatted job definition
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result<Job>` which is:
+    /// - `Ok(Job)` - A fully configured Job instance ready for execution
+    /// - `Err(e)` - An error if parsing fails or the job configuration is invalid
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # #[tokio::main]
+    /// # use crate::Engine;
+    /// # async fn main() -> eyre::Result<()> {
+    /// # use fetiche_engine::Engine;
+    /// # let engine = Engine::new().await?;
+    /// let job_str = r#"
+    ///     name = "example_job"
+    ///     producer = {
+    ///         "Fetch" = ["source", { "duration" = 3600 }]
+    ///     }
+    ///     output = {
+    ///         "Save" = "output.csv"
+    ///     }
+    /// "#;
+    /// let job = engine.parse(job_str).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     ///
     pub async fn parse(&mut self, job_str: &str) -> Result<Job> {
         let jt: JobText = hcl::from_str(job_str)?;
