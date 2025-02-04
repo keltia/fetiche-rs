@@ -1,7 +1,8 @@
-use crate::actors::{QueueMsg, StateMsg};
-use crate::{Engine, EngineStatus, Job, JobState};
-use ractor::{call, cast};
-use tracing::{error, trace};
+use crate::actors::{QueueMsg, RunnerMsg, StateMsg};
+use crate::{Engine, EngineStatus, Job, JobState, Stats};
+use ractor::factory::{FactoryMessage, JobOptions};
+use ractor::{call, cast, factory};
+use tracing::{debug, error, info, trace};
 
 impl Engine {
     ///
@@ -216,13 +217,29 @@ impl Engine {
     /// 4. Synchronizes the engine state
     ///
     #[tracing::instrument(skip(self))]
-    pub async fn submit_job(&mut self, job_str: &str) -> eyre::Result<usize> {
+    pub async fn submit_job(&mut self, job_str: &str) -> eyre::Result<Stats> {
         let mut job = self.parse(job_str).await?;
         job.state = JobState::Ready;
 
         let job_id = self.queue_job(job.clone()).await?;
         assert_eq!(job_id, job.id);
         self.sync()?;
-        Ok(job_id)
+
+        let res = self.factory.call(
+            |port| {
+                FactoryMessage::Dispatch(factory::Job {
+                    key: job_id,
+                    msg: RunnerMsg::Run(port),
+                    options: JobOptions::default(),
+                    accepted: None,
+                })
+            },
+            None)
+            .await?;
+        job.state = JobState::Completed;
+        let res = res.unwrap();
+        info!("job {} completed res={}.", job_id, res);
+
+        Ok(res)
     }
 }
