@@ -3,7 +3,8 @@
 //! unchanged
 //!
 
-use std::fs::File;
+use std::fmt::Debug;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
@@ -18,17 +19,16 @@ use crate::{Runnable, IO};
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Tee {
     io: IO,
-    pub fh: Arc<Mutex<File>>,
+    pub fname: String,
 }
 
 impl Tee {
     #[inline]
     #[tracing::instrument]
     pub fn into(p: &str) -> Self {
-        let path = PathBuf::from(p);
         Tee {
             io: IO::Filter,
-            fh: Arc::new(Mutex::new(File::create(path).unwrap())),
+            fname: p.to_string(),
         }
     }
 
@@ -38,13 +38,21 @@ impl Tee {
     #[tracing::instrument(skip(self))]
     pub fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("tee::execute");
-        let mut fh = self.fh.lock().unwrap();
+        let mut fh = OpenOptions::new().create(true).write(true).append(true).open(&self.fname)?;
         write!(fh, "{data}")?;
         fh.flush()?;
         Ok(stdout.send(data)?)
     }
 }
 
+impl Default for Tee {
+    fn default() -> Self {
+        Self {
+            io: IO::Filter,
+            fname: "".to_string(),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

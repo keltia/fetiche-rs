@@ -100,6 +100,15 @@ impl Message {
     }
 }
 
+impl Default for Message {
+    fn default() -> Self {
+        Self {
+            io: IO::Filter,
+            msg: "".to_owned(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
