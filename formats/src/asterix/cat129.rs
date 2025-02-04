@@ -2,12 +2,36 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Position, DEF_SAC, DEF_SIC};
 
-/// Cat129 is a special UAS-specific category defined in 2019.
+/// The `Cat129` struct represents a UAS-specific data category introduced in 2019.
+/// It is designed to handle data related to drones (civil/military) and is represented
+/// as a special category with unique identifiers, aeronautical data, and other drone-related
+/// information.
 ///
-/// As the number implies (> 127), it is created to describe a special Civil/Military category,
-/// specialised for drones.
+/// # Fields
 ///
-/// See: <https://www.eurocontrol.int/sites/default/files/2019-06/cat129p29ed12_0.pdf>
+/// - `sac`: Source identification, typically set to a default SAC value.
+/// - `sic`: Source identification code, typically set to a default SIC value.
+/// - `dac`: Destination identification, commonly representing the operator.
+/// - `dic`: Destination identification code.
+/// - `uas_manufacturer_id`: Manufacturer's identification string.
+/// - `uas_model_id`: Drone model's identification string.
+/// - `uas_serial`: Unique serial number of the drone.
+/// - `uas_reg_country`: Country of drone registration.
+/// - `tod`: Time of Day timestamp (in POSIX format).
+/// - `position`: A struct representing the geographical position of the drone.
+/// - `alt_sea_lvl`: Altitude relative to sea level (in meters or feet).
+/// - `alt_gnd_lvl`: Altitude relative to ground level.
+/// - `gnss_acc`: GNSS accuracy, a measure of positioning precision.
+///
+/// - `ground_speed`: Drone speed relative to ground (e.g., in m/s or kt).
+/// - `vert_speed`: Vertical speed (e.g., ascent/descent rate in m/s or ft/min).
+///
+/// The struct provides a default implementation, initializing all fields with
+/// predefined default values such as `DEF_SAC` and `DEF_SIC` for identification codes
+/// and empty string values for textual fields.
+///
+/// For more details, refer to the Eurocontrol documentation:
+/// <https://www.eurocontrol.int/sites/default/files/2019-06/cat129p29ed12_0.pdf>
 ///
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]

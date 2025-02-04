@@ -131,7 +131,47 @@ pub enum Format {
 }
 
 impl Format {
-    /// List all supported formats into a string using `tabled`.
+    ///
+    /// This function utilizes the `tabled` crate to build and format a table
+    /// of all supported formats. The metadata for the formats is loaded from
+    /// an embedded HCL file, `formats.hcl`.
+    ///
+    /// # Returns
+    ///
+    /// * `eyre::Result<String>` - The formatted string containing a table view
+    ///   of all supported formats with their details.
+    ///
+    /// # Table Columns
+    ///
+    /// 1. `Name`: The name of the format.
+    /// 2. `Type`: The data type associated with the format.
+    /// 3. `Description`: A detailed description of the format, including its
+    ///    source and a reference URL.
+    ///
+    /// # Behavior
+    ///
+    /// - The function asserts the version of the file as a safety check to
+    ///   ensure compatibility.
+    /// - The details for each format are extracted and transformed into a
+    ///   table row.
+    /// - The table is styled using the `modern` style from the `tabled` crate.
+    ///
+    /// # Errors
+    ///
+    /// If parsing the HCL file fails or the file version mismatches, this function
+    /// will return an error wrapped in `eyre::Result`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fetiche_formats::Format;
+    ///
+    /// if let Ok(formatted_list) = Format::list() {
+    ///     println!("{formatted_list}");
+    /// } else {
+    ///     eprintln!("Failed to list formats.");
+    /// }
+    /// ```
     ///
     pub fn list() -> eyre::Result<String> {
         let descr = include_str!("formats.hcl");
@@ -167,7 +207,51 @@ impl Format {
         Ok(str)
     }
 
-    /// List all supported formats into a string
+    /// This function is a simplified version of `Format::list` that provides
+    /// a plain, text-only representation of all supported formats.
+    ///
+    /// # Returns
+    ///
+    /// * `eyre::Result<String>` - A string containing a plain list of all
+    ///   supported formats with their details formatted in a human-readable way.
+    ///
+    /// # Output Format
+    ///
+    /// Each entry in the output includes:
+    ///
+    /// 1. `Name`: The format name.
+    /// 2. `Type`: The data type associated with the format.
+    /// 3. `Description`: A concise explanation of the format's purpose.
+    /// 4. An additional line containing:
+    ///    - `Source`: Information about where the data originates from.
+    ///    - `URL`: A reference URL for further details.
+    ///
+    /// This function outputs the formats in a plain text format with minimal
+    /// styling, suitable for logging or console output.
+    ///
+    /// # Behavior
+    ///
+    /// - The function asserts the file version for compatibility.
+    /// - The metadata for each format is extracted and concatenated into a
+    ///   formatted string.
+    ///
+    /// # Errors
+    ///
+    /// If parsing of the HCL file fails or the file version does not match
+    /// the expected version, this function returns an error wrapped
+    /// in `eyre::Result`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fetiche_formats::Format;
+    ///
+    /// if let Ok(formatted_list) = Format::list_plain() {
+    ///     println!("{formatted_list}");
+    /// } else {
+    ///     eprintln!("Failed to list formats.");
+    /// }
+    /// ```
     ///
     pub fn list_plain() -> eyre::Result<String> {
         let descr = include_str!("formats.hcl");

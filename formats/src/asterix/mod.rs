@@ -2,6 +2,10 @@
 //!
 //! Regroup the various pseudo-categories we can use.
 //!
+//! FIXME: the whole crate is obsolete, and will disappear at some point.
+//!
+//! `cat129` might stay if there is enough interest.
+//!
 
 mod adsb;
 mod cat129;

@@ -208,7 +208,125 @@ pub enum AirGround {
     G,
 }
 
-/// A single position
+/// Represents a single position report in the FlightAware system.
+///
+/// A position report provides detailed information about a specific location,
+/// including geographical latitude and longitude, the air or ground status,
+/// and other related data.
+///
+/// # Fields
+///
+/// - `air_ground` (`AirGround`):
+///   Specifies whether the position report is for an aircraft in the air or on the ground.
+///
+/// - `clock` (`i32`):
+///   The report time represented as a UNIX Epoch timestamp.
+///
+/// - `facility_hash` (`String`):
+///   The unique hash of the reporting facility.
+///
+/// - `facility_name` (`String`):
+///   The name of the reporting facility.
+///
+/// - `id` (`String`):
+///   A unique identifier for the report.
+///
+/// - `ident` (`String`):
+///   The flight identifier or callsign associated with the report.
+///
+/// - `lat` (`f32`):
+///   The geographical latitude of the position.
+///
+/// - `lon` (`f32`):
+///   The geographical longitude of the position.
+///
+/// - `pitr` (`i32`):
+///   Value used for Point In Time Recovery.
+///
+/// - `ptype` (`String`):
+///   The type of message associated with the position.
+///
+/// - `update_type` (`Update`):
+///   The type of update this position represents (e.g., ADS-B, Radar).
+///
+/// - `adsb_version` (`Option<String>`):
+///   The ADS-B version used for the report, if available.
+///
+/// - `aircraft_type` (`Option<String>`):
+///   The ICAO aircraft type code, if available.
+///
+/// - `alt` (`Option<i32>`):
+///   The altitude in feet, if available.
+///
+/// - `alt_gnss` (`Option<i32>`):
+///   The GNSS altitude in feet over WGS84, if available.
+///
+/// - `alt_change` (`Option<String>`):
+///   Specifies the change in altitude (e.g., "C" for climbing or "D" for descending).
+///
+/// - `atc_ident` (`Option<String>`):
+///   The ATC identifier, if available.
+///
+/// - `dest` (`Option<String>`):
+///   The destination, which can be expressed as an ICAO code, waypoint, or geographical coordinates.
+///
+/// - `edt` (`Option<i32>`):
+///   The estimated departure time as a UNIX Epoch timestamp.
+///
+/// - `eta` (`Option<i32>`):
+///   The estimated time of arrival as a UNIX Epoch timestamp.
+///
+/// - `ete` (`Option<i32>`):
+///   The estimated en route time in seconds.
+///
+/// - `gs` (`Option<u32>`):
+///   The ground speed in knots, if available.
+///
+/// - `heading` (`Option<f32>`):
+///   The heading (in degrees) relative to either magnetic or true North, depending on other fields.
+///
+/// - `heading_magnetic` (`Option<f32>`):
+///   The heading relative to magnetic North in degrees.
+///
+/// - `heading_true` (`Option<f32>`):
+///   The heading relative to true North in degrees.
+///
+/// - `hexid` (`Option<String>`):
+///   The Mode S transponder code, if available.
+///
+/// - `mach` (`Option<String>`):
+///   The Mach number of the aircraft, if available.
+///
+/// - `nac_p` (`Option<u32>`):
+///   The Navigational Accuracy Category for Position (NACp) in ADS-B.
+///
+/// - `nac_v` (`Option<u32>`):
+///   The Navigational Accuracy Category for Velocity (NACv) in ADS-B.
+///
+/// - `nav_altitude` (`Option<f32>`):
+///   The altitude used in the navigation system in feet.
+///
+/// - `nav_heading` (`Option<f32>`):
+///   The navigation heading (degrees).
+///
+/// - `nav_modes` (`Option<String>`):
+///   A comma-separated list of active navigation modes (e.g., autopilot, VNAV).
+///
+/// - `nav_qnh` (`Option<f32>`):
+///   The altimeter setting used for navigation purposes in hPa (hectopascals).
+///
+/// - `nic` (`Option<u32>`):
+///   The Navigation Integrity Category (NIC) used in ADS-B systems.
+///
+/// - `nic_baro` (`Option<u32>`):
+///   The Navigation Integrity Category for barometric data in ADS-B.
+///
+/// - `orig` (`Option<String>`):
+///   The origin of the flight, which can be expressed as an ICAO code, waypoint, or geographical coordinates.
+///
+/// - `dest` (`Option<String>`):
+///   The destination of the flight, which can also be ICAO, waypoint, or lat/lon.
+///
 #[serde_as]
 #[derive(Debug, Deserialize)]
 struct Position {

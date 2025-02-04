@@ -14,6 +14,43 @@ use nom::{
 };
 use serde::Deserialize;
 
+/// Represents a location in the Flightaware system, which can be either a tagged name
+/// (such as an ICAO code, airport code, or waypoint) or a geographical position
+/// with latitude and longitude coordinates.
+///
+/// # Variants
+///
+/// - `Tag(String)`:
+///   A string representing a tagged location, typically an identifier like an ICAO code
+///   or a waypoint name.
+///
+///   Example: `KMCO`
+///
+/// - `Position { lat: f32, lon: f32 }`:
+///   Represents a geographical position with latitude (`lat`) and longitude (`lon`) values.
+///
+///   Example: `L 41.04194 -95.34611`
+///
+/// # Example Usage
+///
+/// Parsing a tagged name:
+/// ```
+/// use fetiche_formats::{parse_location, Location};
+///
+/// let input = "KMCO";
+/// let (_, location) = parse_location(input).unwrap();
+/// assert_eq!(location, Location::Tag("KMCO".to_string()));
+/// ```
+///
+/// Parsing a position:
+/// ```
+/// use fetiche_formats::{parse_location, Location};
+///
+/// let input = "L 41.04194 -95.34611";
+/// let (_, location) = parse_location(input).unwrap();
+/// assert_eq!(location, Location::Position { lat: 41.04194, lon: -95.34611 });
+/// ```
+///
 #[derive(Clone, Debug, Deserialize, strum::Display, PartialEq)]
 pub enum Location {
     /// Can be ICAOString or a Waypoint
@@ -22,6 +59,38 @@ pub enum Location {
     Position { lat: f32, lon: f32 },
 }
 
+/// Parses an input string into a `Location` enum, determining whether it represents
+/// a tagged name (e.g., an ICAO code or waypoint) or a geographical position
+/// (latitude and longitude).
+///
+/// # Arguments
+///
+/// * `input` - A string slice that holds the input to be parsed.
+///
+/// # Returns
+///
+/// An `IResult` containing any remaining input and a `Location` object if the parsing is successful.
+///
+/// # Examples
+///
+/// Parsing a tagged name:
+/// ```
+/// use fetiche_formats::{parse_location, Location};
+///
+/// let input = "JFK";
+/// let (_, location) = parse_location(input).unwrap();
+/// assert_eq!(location, Location::Tag("JFK".to_string()));
+/// ```
+///
+/// Parsing a position:
+/// ```
+/// use fetiche_formats::{parse_location, Location};
+///
+/// let input = "L 40.7128 -74.0060";
+/// let (_, location) = parse_location(input).unwrap();
+/// assert_eq!(location, Location::Position { lat: 40.7128, lon: -74.0060 });
+/// ```
+///
 pub fn parse_location(input: &str) -> IResult<&str, Location> {
     alt((position, tagged_name))(input)
 }
@@ -61,7 +130,7 @@ mod tests {
 
     #[rstest]
     #[case("KMCO", Location::Tag("KMCO".to_string()))]
-    #[case("L 41.8 -6.7", Location::Position { lat: 41.8, lon: - 6.7})]
+    #[case("L 41.8 -6.7", Location::Position{ lat: 41.8, lon: - 6.7})]
     fn test_parse_location(#[case] input: &str, #[case] l: Location) {
         let (_, loc) = parse_location(input).unwrap();
         assert_eq!(l, loc);
