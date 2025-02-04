@@ -12,6 +12,7 @@ use serde_with::{serde_as, DisplayFromStr, PickFirst};
 
 #[cfg(feature = "asterix")]
 use crate::{convert_to, get_drone_id, to_feet, to_knots, Cat21, TodCalculated};
+use crate::{DataSource, DronePoint, UAVType};
 
 /// Represents a record obtained from the ASD site.
 ///
@@ -89,6 +90,56 @@ pub struct Asd {
 
 #[cfg(feature = "asterix")]
 convert_to!(from_asd, Asd, Cat21);
+
+/// Implementation of the conversion from `Asd` to `DronePoint`.
+///
+/// This implementation maps fields from an ASD record to the corresponding DronePoint fields,
+/// performing necessary type conversions and providing default values where needed.
+///
+/// # Field Mappings
+///
+/// - `time`: Direct mapping from ASD timestamp
+/// - `journey`: Converted to string from ASD journey number
+/// - `source`: Set to `DataSource::Rid`
+/// - `ident`: Wrapped in Some() from ASD ident
+/// - `make`: Hardcoded to "DJI"
+/// - `model`: Unwrapped from ASD model Option
+/// - `uav_type`: Set to 2 (UAVType::MultiRotor)
+/// - `latitude/longitude`: Cast to f64 from ASD f32
+/// - `altitude`: Converted to Option<f64>, defaults to 0 if None
+/// - `elevation`: Converted to Option<f64>, defaults to 0 if None
+/// - `home_*`: All home coordinates converted to Option<f64>, default to 0
+/// - `speed/heading`: Converted using Into trait
+/// - `state`: Set to Some(2) (VehicleStateType::Airborn)
+/// - `station_name`: Cloned from ASD station_name
+///
+/// Default values are used for optional fields that may be None in the ASD record.
+impl From<Asd> for DronePoint {
+    fn from(from: Asd) -> Self {
+        DronePoint {
+            time: from.time,
+            journey: format!("{}", from.journey),
+            source: DataSource::Rid.into(),
+            ident: Some(from.ident.clone()),
+            make: Some("DJI".into()),
+            model: Some(from.model.unwrap()),
+            // UAVType::MultiRotor
+            uav_type: 2,
+            latitude: from.latitude as f64,
+            longitude: from.longitude as f64,
+            altitude: Some(from.altitude.unwrap_or(0) as f64),
+            elevation: Some(from.elevation.unwrap_or(0) as f64),
+            home_lat: Some(from.home_lat.unwrap_or(0.) as f64),
+            home_lon: Some(from.home_lat.unwrap_or(0.) as f64),
+            home_height: Some(from.home_height.unwrap_or(0.) as f64),
+            speed: from.speed.into(),
+            heading: from.heading.into(),
+            // VehicleStateType::Airborn
+            state: Some(2u8),
+            station_name: from.station_name.clone(),
+        }
+    }
+}
 
 impl Asd {
     /// Generate a proper timestamp from the non-standard string they emit.
