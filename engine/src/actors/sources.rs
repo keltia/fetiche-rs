@@ -24,6 +24,7 @@ pub enum SourcesMsg {
     Get(String, RpcReplyPort<Site>),
     Count(RpcReplyPort<usize>),
     List(RpcReplyPort<Sources>),
+    Reload(RpcReplyPort<Sources>),
     Table(RpcReplyPort<String>),
 }
 
@@ -83,27 +84,28 @@ impl Actor for SourcesActor {
         Ok(src)
     }
 
-    /// Handles incoming messages sent to the `SourcesActor`.
+    /// Main message handling method for the `SourcesActor`.
     ///
-    /// The `handle` function processes various types of messages defined in the `SourcesMsg`
-    /// enum and updates or queries the actor's state (`Sources`) accordingly.
+    /// This method processes incoming messages and updates the actor's state accordingly.
+    /// It handles various types of messages defined in the `SourcesMsg` enum.
     ///
     /// # Parameters
-    /// - `_myself`: Reference to the current actor's `ActorRef`, though it is not used in this implementation.
-    /// - `message`: The message of type `SourcesMsg` received by the actor.
-    /// - `state`: Mutable reference to the actor's internal state (`Sources`).
+    /// - `_myself`: A reference to the current actor instance
+    /// - `message`: The message to be processed
+    /// - `state`: Mutable reference to the current actor state
     ///
-    /// # Supported Messages
-    /// - `SourcesMsg::Get(key)`: Retrieves a specific source by its identifier. (Not yet implemented.)
-    /// - `SourcesMsg::List(sender)`: Returns a full copy of the `Sources` structure by sending it through the supplied `RpcReplyPort`.
-    /// - `SourcesMsg::Table(sender)`: Generates a table representation of the sources in the state and sends it as a string via the supplied `RpcReplyPort`.
-    /// - `SourcesMsg::Count(sender)`: Calculates the total number of sources in the actor's current state and sends the count via the supplied `RpcReplyPort`.
+    /// # Returns
+    /// Returns `Ok(())` if the message was processed successfully, or an `ActorProcessingErr`
+    /// if an error occurred during processing.
     ///
-    /// # Errors
-    /// If there is an error when attempting to send the response through the `RpcReplyPort`,
-    /// or if there is a failure in generating the table representation, an `ActorProcessingErr` may occur.
+    /// # Message Handling
+    /// - `Get`: Retrieves a specific source by key
+    /// - `List`: Returns a clone of all sources
+    /// - `Table`: Generates a table representation of sources
+    /// - `Count`: Returns the total number of sources
+    /// - `Reload`: Reloads all sources and updates the state
     ///
-    #[tracing::instrument(skip(self, _myself))]
+    #[tracing::instrument(skip(self, _myself, state))]
     async fn handle(
         &self,
         _myself: ActorRef<Self::Msg>,
@@ -133,6 +135,11 @@ impl Actor for SourcesActor {
             SourcesMsg::Count(sender) => {
                 let res = state.len();
                 sender.send(res)?;
+            }
+            SourcesMsg::Reload(sender) => {
+                let sources = Sources::new()?;
+                sender.send(sources.clone())?;
+                *state = sources;
             }
         }
         Ok(())
