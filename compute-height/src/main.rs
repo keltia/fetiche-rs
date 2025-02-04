@@ -31,6 +31,34 @@
 //!
 //! The program will exit with an error if invalid input is provided or the geoid height cannot
 //! be computed for the given coordinates.
+//!
+//! # Installation
+//!
+//! This needs to be installed on the Clickhouse server in
+//! `/db/clickhouse/user_scripts` for our installation.
+//!
+//! It needs to be referenced inside an XML file, here in `/etc/clickhouse-server/udf`.
+//!
+//! ```xml
+//!<functions>
+//!         <function>
+//!                 <type>executable</type>
+//!                 <name>compute_height</name>
+//!                 <return_type>Float32</return_type>
+//!                 <argument>
+//!                         <type>Float32</type>
+//!                         <name>lat</name>
+//!                 </argument>
+//!                 <argument>
+//!                         <type>Float32</type>
+//!                         <name>lon</name>
+//!                 </argument>
+//!                 <format>TabSeparated</format>
+//!                 <command>compute-height</command>
+//!         </function>
+//! </functions>
+//! ```
+//!
 
 use clap::Parser;
 use egm2008::geoid_height;
