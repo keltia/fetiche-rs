@@ -65,6 +65,7 @@ egm2008 = "0.1"
 enum_dispatch = "0.3"
 humantime = "2.1"
 tracing-appender = "0.2"
+serde_json = "1.0.140"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
