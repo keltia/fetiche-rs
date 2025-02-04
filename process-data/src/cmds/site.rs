@@ -36,11 +36,11 @@ pub struct Site {
     /// basename of files (e.g. "Bucharest")
     pub basename: String,
     /// Site coordinates latitude
-    pub latitude: f32,
+    pub latitude: f64,
     /// Site coordinates longitude
-    pub longitude: f32,
+    pub longitude: f64,
     /// Reference altitude
-    pub ref_alt: f32,
+    pub ref_alt: i32,
     /// timezone name
     pub timezone: String,
 }
