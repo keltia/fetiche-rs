@@ -429,6 +429,7 @@ mod tests {
         assert!(result.day.contains(&day2));
     }
 
+    #[allow(irrefutable_let_patterns)]
     #[test]
     fn test_stats_summarise_empty() {
         let summarised = Stats::summarise(vec![]);
@@ -444,6 +445,7 @@ mod tests {
         }
     }
 
+    #[allow(irrefutable_let_patterns)]
     #[test]
     fn test_stats_summarise_non_empty() {
         let now = Utc::now();
