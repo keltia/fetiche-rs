@@ -118,7 +118,7 @@ impl Default for Save {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::sync::mpsc::channel;
+    use std::sync::mpsc::channel;
 
     #[test]
     fn test_write_new() {
@@ -155,40 +155,42 @@ mod tests {
         assert_eq!("{\"key\":\"value\"}", t.args);
     }
 
-    #[test]
-    fn test_save_to_parquet_with_nonexistent_path() {
+    #[tokio::test]
+    async fn test_save_to_parquet_with_nonexistent_path() {
         let mut t = Save::new("test_parquet_save", Format::Asd, Container::Parquet);
         t.path("/invalid/path/output.parquet");
 
-        let result = t.execute("dummy_data".to_string(), channel(1).0);
+        let (tx, _rx) = channel::<String>();
+        let result = t.execute("dummy_data".to_string(), tx).await;
 
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_save_output_raw_data() {
+    #[tokio::test]
+    async fn test_save_output_raw_data() {
         let mut t = Save::new("test_raw_write", Format::None, Container::Raw);
         t.path("test_output.txt");
 
-        let result = t.execute("test_raw_data".to_string(), channel(1).0);
+        let (tx, _rx) = channel::<String>();
+        let result = t.execute("test_raw_data".to_string(), tx).await;
 
         assert!(result.is_ok());
         assert_eq!(
-            std::fs::read_to_string("test_output.txt").unwrap(),
+            fs::read_to_string("test_output.txt").unwrap(),
             "test_raw_data"
         );
 
         // Clean up
-        std::fs::remove_file("test_output.txt").unwrap();
+        fs::remove_file("test_output.txt").unwrap();
     }
 
-    #[test]
-    fn test_save_stdout() {
+    #[tokio::test]
+    async fn test_save_stdout() {
         let mut t = Save::new("test_stdout", Format::None, Container::Raw);
         t.path("-");
 
-        let (tx, rx) = channel(1);
-        let result = t.execute("output_to_stdout".to_string(), tx);
+        let (tx, _rx) = channel();
+        let result = t.execute("output_to_stdout".to_string(), tx).await;
 
         assert!(result.is_ok());
         // Verifying stdout is out of scope, but it should print to console
