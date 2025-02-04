@@ -44,7 +44,7 @@ use std::ops::{Add, AddAssign};
 /// This example demonstrates how to create an instance of `Stats` and display
 /// it using its `Display` implementation.
 ///
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, PartialEq)]
 pub struct Stats {
     pub tm: u64,
     pub pkts: u32,
