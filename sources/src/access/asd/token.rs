@@ -1,18 +1,13 @@
-//! Module for managing ASD tokens including storage, retrieval, and purge operations.
 //!
-//! This module defines the `AsdToken` structure which encapsulates token data, 
-//! expiration information, and user profile details such as email, roles, and homepage.
-//! It includes methods to export token details into JSON format and provides default values.
+//! This module defines the `AsdToken` structure and its associated functionality
+//! for managing access tokens derived from username/password authentication.
 //!
-//! Additionally, this module includes functionality within the `Asd` implementation for:
+//! It includes serialization and deserialization capabilities, expiry checks, 
+//! as well as methods to read, store, export, and purge tokens.
 //!
-//! - Retrieving token data from a file.
-//! - Storing token data into a file, creating necessary directories if required.
-//! - Purging expired tokens by removing their associated files.
-//!
-//! The `Expirable` trait is implemented for `AsdToken` to facilitate checking token expiration.
-//! Utilities of this module are designed to handle errors gracefully using `eyre::Result` and
-//! tracing instrumentation for debugging.
+//! The module leverages various dependencies and Rust's standard library to 
+//! provide a robust and flexible token management system, with emphasis on 
+//! handling token expiration, file operations, and error reporting.
 //!
 use std::fs;
 use std::path::PathBuf;
@@ -23,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::trace;
 
-use crate::{Asd, AuthError, Expirable};
+use crate::{AuthError, Expirable};
 
 /// Access token derived from username/password
 ///
@@ -120,6 +115,29 @@ impl AsdToken {
 
     /// Store (overwrite) named token
     ///
+    /// This method saves the provided token data into a file at the specified
+    /// path. If the directory structure leading to the file does not exist, it will
+    /// be created automatically. The token data will overwrite any existing data
+    /// in the file.
+    ///
+    /// # Parameters
+    ///
+    /// - `fname`: A reference to a `PathBuf` representing the path where the token
+    ///   data should be stored.
+    /// - `data`: A string slice containing the token data to be saved.
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(())`: Returns an empty `Ok` result upon successfully storing the token.
+    /// - `Err(eyre::Report)`: An error if the directory cannot be created or the
+    ///   token cannot be written to the file.
+    ///
+    /// # Errors
+    ///
+    /// - Returns an error if the parent directory cannot be created or encountered
+    ///   permission issues.
+    /// - Returns an error if the token cannot be written to the file.
+    ///
     #[tracing::instrument]
     pub fn store(fname: &PathBuf, data: &str) -> Result<()> {
         let dir = fname.parent().unwrap();
@@ -137,7 +155,25 @@ impl AsdToken {
         Ok(fs::write(fname, data)?)
     }
 
-    /// Purge expired token
+    /// Removes the specified token file from the file system.
+    ///
+    /// This method deletes the token file at the given path. It is primarily used
+    /// to remove expired tokens to ensure they are no longer accessible.
+    ///
+    /// # Parameters
+    ///
+    /// - `fname`: A reference to a `PathBuf` representing the path of the token
+    ///   file to be removed.
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(())`: Returns an empty `Ok` result upon successfully deleting the token file.
+    /// - `Err(eyre::Report)`: An error if the file cannot be deleted.
+    ///
+    /// # Errors
+    ///
+    /// - Returns an error if the file does not exist or cannot be removed due to
+    ///   insufficient permissions or other I/O issues.
     ///
     #[tracing::instrument]
     pub fn purge(fname: &PathBuf) -> Result<()> {
