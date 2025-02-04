@@ -1,51 +1,33 @@
 //! Actor definition for `Stats`
 //!
-
-use std::fmt::{Display, Formatter};
+//! We have different statistics in parallel now, just use New with a tag.
+//!
 
 use chrono::Utc;
-use ractor::{pg, Actor, ActorProcessingErr, ActorRef};
+use nom::Parser;
+use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use std::collections::BTreeMap;
+use std::fmt::{Display, Formatter};
+use std::ops::AddAssign;
 use tracing::{info, trace};
 
-use crate::{Stats, ENGINE_PG};
+use crate::{Stats, StatsError, ENGINE_PG};
 
 pub struct StatsActor;
 
-/// Represents different types of messages handled by the `StatsActor`.
-///
-/// These messages allow the actor to update statistics, perform commands, or handle exit sequences.
-///
-/// # Variants
-///
-/// * `Pkts(u32)`
-///     - Updates the count of packets received. The argument specifies the number of packets to increment.
-/// * `Bytes(u64)`
-///     - Updates the count of bytes received. The argument specifies the number of bytes to increment.
-/// * `Reconnect`
-///     - Increments the count of reconnect attempts.
-/// * `Error`
-///     - Increments the count of errors encountered.
-/// * `Reset`
-///     - Resets all accumulated statistics back to their default state.
-/// * `Print`
-///     - Logs the current statistics in a human-readable format. Includes the total runtime and detailed stats.
-/// * `Exit`
-///     - Signals the actor to terminate. Final statistics are logged before termination.
-///
-/// >NOTE: as the main users of this are inside `sources`, we need to have these defined here, not
-/// the above module that is the `Engine`.
 ///
 #[derive(Debug)]
 pub enum StatsMsg {
+    /// New session
+    New(String),
     /// stat updates
-    Pkts(u32),
-    Bytes(u64),
-    Reconnect,
-    Error,
+    Update(String, Stats),
     /// commands
-    Reset,
-    Print,
-    Exit,
+    Get(String, RpcReplyPort<Stats>),
+    List(RpcReplyPort<String>),
+    Reset(String),
+    Print(String),
+    Exit(String),
 }
 
 /// State is a structure representing the current state of the `StatsActor` actor.
@@ -65,18 +47,22 @@ pub enum StatsMsg {
 ///
 /// Example output:
 /// ```text
-/// start=1696538415 pkts=120 bytes=10240 errors=3 reconnects=2
+/// start=1696538415 stats=[job#1=pkts=120 bytes=10240 errors=3 reconnects=2
+/// job#3=pkts=42 bytes=49152 errors=1 reconnects=0
+/// ]
 /// ```
 ///
 #[derive(Debug)]
 pub struct State {
     pub start: i64,
-    pub stat: Stats,
+    pub stats: BTreeMap<String, Stats>,
 }
 
 impl Display for State {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "start={} {}", self.start, self.stat)
+        write!(f, "start={} stats=[{}]",
+               self.start,
+               self.stats.keys().fold(String::new(), |acc, k| acc + &format!("{}={}\n", k, self.stats.get(k).unwrap())))
     }
 }
 
@@ -111,7 +97,7 @@ impl Actor for StatsActor {
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
         Ok(State {
             start: Utc::now().timestamp(),
-            stat: Stats::default(),
+            stats: BTreeMap::new(),
         })
     }
 
@@ -123,22 +109,40 @@ impl Actor for StatsActor {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
+            // New session
+            StatsMsg::New(name) => {
+                state.stats.insert(name, Stats::default());
+            }
             // updates
-            StatsMsg::Pkts(n) => state.stat.pkts += n,
-            StatsMsg::Error => state.stat.err += 1,
-            StatsMsg::Reconnect => state.stat.reconnect += 1,
-            StatsMsg::Bytes(n) => state.stat.bytes += n,
+            //
+            StatsMsg::Update(tag, stat) => {
+                let mut s = state.stats.get(&tag).unwrap_or_else(|| return Err(StatsError::TagNotFound(tag.clone())).into());
+                s += stat;
+                let _ = state.stats.insert(tag.clone(), s.clone());
+            }
             // commands
-            StatsMsg::Print => {
-                state.stat.tm = (Utc::now().timestamp() - state.start) as u64;
+            //
+            StatsMsg::Get(tag, sender) => {
+                let mut s = state.stats.get_mut(&tag).unwrap_or_else(|| return Err(StatsError::TagNotFound(tag.clone())).into());
+                s.tm = (Utc::now().timestamp() - state.start) as u64;
+                sender.send(s.clone()).await?;
+            }
+            StatsMsg::List(sender) => {
+                let list = state.stats.keys().fold(String::new(), |acc, k| acc + &format!("{},", k));
+                sender.send(list).await?;
+            }
+            StatsMsg::Print(tag) => {
+                state.stats[tag].tm = (Utc::now().timestamp() - state.start) as u64;
                 info!("Stats: {}", state);
             }
-            StatsMsg::Reset => {
-                state.stat = Stats::default();
+            StatsMsg::Reset(tag) => {
+                let mut s = state.stats.get_mut(&tag).unwrap_or_else(|| return Err(StatsError::TagNotFound(tag.clone())).into());
+                *s = Stats::default();
+                let _ = state.stats.insert(tag.clone(), s.clone());
             }
             // The end
-            StatsMsg::Exit => {
-                state.stat.tm = (Utc::now().timestamp() - state.start) as u64;
+            StatsMsg::Exit(tag) => {
+                state.stats[tag].tm = (Utc::now().timestamp() - state.start) as u64;
                 myself.kill();
             }
         }
