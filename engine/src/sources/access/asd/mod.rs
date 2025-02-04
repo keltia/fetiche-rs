@@ -179,7 +179,7 @@ impl Asd {
     /// - A `FetchableSource` that represents the current `Asd` instance.
     ///
     pub fn source(&self) -> FetchableSource {
-        FetchableSource::from(self.clone())
+        FetchableSource::Asd(self.clone())
     }
 }
 

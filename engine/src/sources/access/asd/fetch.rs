@@ -1,5 +1,6 @@
 use std::io::Cursor;
 use std::ops::Add;
+use std::sync::mpsc::Sender;
 use std::time::UNIX_EPOCH;
 
 use chrono::{DateTime, Duration, NaiveDateTime, Utc};
@@ -11,7 +12,6 @@ use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, CsvWriter, IntoCo
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::sync::mpsc::Sender;
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
@@ -47,31 +47,21 @@ impl Fetchable for Asd {
         let fname = format!("{}-{}", DEF_TOKEN, self.login);
         let fname = token_base.join(fname);
 
-        let res = if let Ok(token) = AsdToken::retrieve(&fname) {
-            // Load potential token data
-            //
-            trace!("load stored token");
-            let token: AsdToken = match serde_json::from_str(&token) {
-                Ok(token) => token,
-                Err(_) => return Err(AuthError::Invalid(fname.to_string_lossy().to_string())),
-            };
+        // See if there is a stored token.
+        // Use it if not expired, otherwise fetch a new one.
+        //
+        let tentative = AsdToken::retrieve(&fname).map_err(|e| AuthError::Retrieval(e.to_string()))?;
 
-            // Check stored token expiration date
+        // Now check it.
+        //
+        let token = if tentative.is_expired() {
+            // Either what we retrieved is absent (so we got an invalid token) or is invalid
             //
-            if token.is_expired() {
-                // Should we delete it?
-                //
-                warn!("Stored token in {:?} has expired, deleting!", fname);
-                match AsdToken::purge(&fname) {
-                    Ok(()) => (),
-                    Err(e) => error!("Can not remove token: {}", e.to_string()),
-                };
-                return Err(AuthError::Expired);
-            }
-            trace!("token is valid");
-            token.token
-        } else {
-            trace!("no token");
+            warn!("Stored token in {:?} has expired/is invalid, deleting!", fname);
+            match AsdToken::purge(&fname) {
+                Ok(()) => (),
+                Err(e) => error!("Cannot remove token: {}", e.to_string()),
+            };
 
             let client = reqwest::Client::new();
             // fetch token from site
@@ -103,27 +93,25 @@ impl Fetchable for Asd {
             //
             #[cfg(not(test))]
             AsdToken::store(&fname, &resp).map_err(|e| AuthError::Storing(e.to_string()))?;
-
             res.token
+        } else {
+            // Valid, not expired, etc.
+            //
+            tentative.token
         };
-
-        // Return final token
-        //
-        Ok(res)
+        Ok(token)
     }
 
     /// Fetch actual data using the aforementioned token
     ///
     #[tracing::instrument(skip(self))]
-    async fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> eyre::Result<()> {
-        trace!("asd::fetch");
-
+    async fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> eyre::Result<Stats> {
         const DEF_SOURCES: &[Source] = &[Source::As, Source::Wi];
 
+        trace!("args={}", args);
         let f: Filter = serde_json::from_str(args)?;
-        let stats = self.ctx.clone().unwrap().stats;
 
-        // If we have a filter defined, extract times
+        // If we have a middle defined, extract times
         //
         let data = match f {
             Filter::Duration(d) => Param {
@@ -216,17 +204,22 @@ impl Fetchable for Asd {
 
         // Send statistics
         //
-        let _ = cast!(stats, StatsMsg::Pkts(data.len() as u32));
-        let _ = cast!(stats, StatsMsg::Bytes(resp.len() as u64));
+        let stats = Stats {
+            tm: Utc::now().timestamp() as u64,
+            pkts: data.len() as u32,
+            bytes: resp.len() as u64,
+            ..Default::default()
+        };
 
         let data = String::from_utf8(data)?;
-        Ok(out.send(data)?)
+        let _ = out.send(data)?;
+        Ok(stats)
     }
 
     /// Return the site's input formats
     ///
     #[inline]
-    pub(crate) fn format(&self) -> Format {
+    fn format(&self) -> Format {
         Format::Asd
     }
 }
@@ -261,6 +254,7 @@ fn into_timestamp(col: &Column) -> Column {
 ///
 fn prepare_asd_data(data: Param) -> String {
     #[derive(Debug, Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct P {
         start_time: DateTime<Utc>,
         end_time: DateTime<Utc>,

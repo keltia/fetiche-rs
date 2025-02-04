@@ -12,13 +12,12 @@
 use std::fs;
 use std::path::PathBuf;
 
-use chrono::Utc;
+use chrono::{Days, Utc};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tracing::trace;
 
-use crate::{AuthError, Expirable};
+use crate::Expirable;
 
 /// Access token derived from username/password
 ///
@@ -31,58 +30,46 @@ pub struct AsdToken {
     gjrt: String,
     /// Expiration date
     pub expired_at: i64,
+    /// Not documented
     roles: Vec<String>,
     /// Fullname
     name: String,
+    /// Not documented
     supervision: Option<String>,
     lang: String,
     status: String,
     email: String,
+    /// Not documented
     airspace_admin: Option<String>,
+    /// Not documented
     homepage: String,
 }
 
-impl Expirable for AsdToken {
-    #[inline]
-    fn is_expired(&self) -> bool {
-        Utc::now().timestamp() > self.expired_at
-    }
-
-    #[inline]
-    fn key(&self) -> String {
-        self.email.clone()
-    }
-}
-
 impl AsdToken {
-    /// Exports the token details into a JSON string format.
+    #[tracing::instrument]
+    /// Return an invalid (and expired) token by default.
     ///
-    /// The `export` method serializes the `AsdToken` instance into a JSON string
-    /// representation using the `serde_json` crate.
-    ///
-    /// # Returns
-    ///
-    /// - `Ok(String)`: A JSON string representing the `AsdToken` instance.
-    /// - `Err(eyre::Report)`: An error if the serialization fails unexpectedly.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fetiche_sources::AsdToken;
-    ///
-    /// let token = AsdToken::default();
-    /// let result = token.export();
-    ///
-    /// assert!(result.is_ok());
-    /// assert!(result.unwrap().contains("\"name\":\"John Doe\""));
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// - Can return an `eyre::Report` if an internal error occurs during serialization.
-    ///
-    pub fn export(&self) -> Result<String> {
-        Ok(json!(&self).to_string())
+    pub fn new() -> Self {
+        let d = Utc::now().checked_sub_days(Days::new(1)).unwrap();
+        AsdToken {
+            token: "INVALID".into(),
+            gjrt: "INVALID".into(),
+            expired_at: d.timestamp(),
+            roles: vec![],
+            name: "INVALID".into(),
+            supervision: None,
+            lang: "en".into(),
+            status: "INVALID".into(),
+            email: "INVALID".into(),
+            airspace_admin: None,
+            homepage: "INVALID".into(),
+        }
+    }
+
+    #[tracing::instrument]
+    pub fn from_json(json: &str) -> Result<Self> {
+        let temp: AsdToken = serde_json::from_str(json).unwrap_or(AsdToken::new());
+        Ok(temp)
     }
 
     /// This function attempts to read the content of the specified token file.
@@ -105,12 +92,13 @@ impl AsdToken {
     /// - Returns an error if the file cannot be read due to insufficient permissions or other I/O issues.
     ///
     #[tracing::instrument]
-    pub fn retrieve(fname: &PathBuf) -> Result<String> {
-        if fname.exists() {
-            Ok(fs::read_to_string(fname)?)
+    pub fn retrieve(fname: &PathBuf) -> Result<AsdToken> {
+        let str = if fname.exists() {
+            fs::read_to_string(fname)?
         } else {
-            Err(AuthError::Retrieval(fname.to_string_lossy().to_string()).into())
-        }
+            "INVALID".into()
+        };
+        Ok(AsdToken::from_json(&str)?)
     }
 
     /// Store (overwrite) named token
@@ -184,19 +172,21 @@ impl AsdToken {
 }
 
 impl Default for AsdToken {
+    #[tracing::instrument]
     fn default() -> Self {
-        AsdToken {
-            token: "".to_owned(),
-            gjrt: "".to_owned(),
-            expired_at: 0i64,
-            roles: vec![],
-            name: "John Doe".to_owned(),
-            supervision: None,
-            lang: "en".to_owned(),
-            status: "".to_owned(),
-            email: "john.doe@example.net".to_owned(),
-            airspace_admin: None,
-            homepage: "https://example.net".to_owned(),
-        }
+        Self::new()
     }
 }
+
+impl Expirable for AsdToken {
+    #[inline]
+    fn is_expired(&self) -> bool {
+        Utc::now().timestamp() > self.expired_at
+    }
+
+    #[inline]
+    fn key(&self) -> String {
+        self.email.clone()
+    }
+}
+
