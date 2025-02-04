@@ -287,10 +287,30 @@ AS
 "##;
 
     let r2 = r##"
-CREATE OR REPLACE VIEW acute.drones AS
+CREATE MATERIALIZED VIEW acute.drones
+    ENGINE = ReplacingMergeTree
+    PRIMARY KEY (time, journey)
+AS
 (
     SELECT
-        *,
+        `journey`,
+        `ident`,
+        `model`,
+        `source`,
+        `timestamp`,
+        `latitude`,
+        `longitude`,
+        `altitude`,
+        (CAST(altitude AS Float64)  + compute_height(latitude,longitude)) AS altitude_geo,
+        `elevation`,
+        `home_lat`,
+        `home_lon`,
+        `home_height`,
+        `speed`,
+        `heading`,
+        `station_name`,
+        `station_latitude`,
+        `station_longitude`,
         toUnixTimestamp(timestamp) as time,
         dist_2d(longitude,latitude,home_lon,home_lat) AS home_distance_2d,
         dist_3d(longitude,latitude,elevation,home_lon,home_lat,home_height) AS home_distance_3d
