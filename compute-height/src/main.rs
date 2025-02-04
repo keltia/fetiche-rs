@@ -64,11 +64,6 @@ use clap::Parser;
 use egm2008::geoid_height;
 use std::io::stdin;
 
-/// Program name.
-const NAME: &str = env!("CARGO_PKG_NAME");
-/// Program version.
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-
 /// Command-line options for computing geoid height.
 ///
 /// # Fields
@@ -99,16 +94,4 @@ fn main() -> eyre::Result<()> {
         println!("{}", height);
     });
     Ok(())
-}
-
-// -----
-
-fn banner() -> String {
-    format!(
-        "{} v{} - {}\n{}\n",
-        NAME,
-        VERSION,
-        env!("CARGO_PKG_AUTHORS"),
-        env!("CARGO_PKG_DESCRIPTION")
-    )
 }
