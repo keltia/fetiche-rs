@@ -24,13 +24,12 @@ use eyre::Result;
 use fetiche_common::Container;
 use fetiche_formats::Format;
 use ractor::call;
-use ractor::rpc::call;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
 use tracing::trace;
 
 use crate::actors::{QueueMsg, SourcesMsg};
-use crate::{Consumer, Convert, Copy, Engine, Fetch, Job, JobState, Middle, Producer, Read, Save, Store, Stream, Tee};
+use crate::{Consumer, Copy, Engine, Fetch, Job, JobState, Middle, Producer, Read, Save, Store, Stream, Tee};
 
 /// Represents the type of job to be executed.
 ///
@@ -163,13 +162,17 @@ impl Engine {
         //
         let producer = match jt.producer {
             ProducerText::Fetch(p) => {
-                let site = call!(self.sources, |port| SourcesMsg::Get(jt.name, port))?;
-                let f = Fetch::new(&p).site(site);
+                let name = jt.name.clone();
+                let site = call!(self.sources, |port| SourcesMsg::Get(name, port))?;
+                let mut f = Fetch::new(&p);
+                f.site(site);
                 Producer::Fetch(f.clone())
             }
             ProducerText::Stream(p) => {
-                let site = call!(self.sources, |port| SourcesMsg::Get(jt.name, port))?;
-                let s = Stream::new(&p).site(site);
+                let name = jt.name.clone();
+                let site = call!(self.sources, |port| SourcesMsg::Get(name, port))?;
+                let mut s = Stream::new(&p);
+                s.site(site);
                 Producer::Stream(s.clone())
             }
             ProducerText::Read(p) => {
@@ -177,13 +180,25 @@ impl Engine {
                 Producer::Read(r)
             }
         };
-        let mut list = if let Some(filters) = &jt.filters {
-            filters.iter().map(|t| t.clone()).collect()
+        let list = if let Some(filters) = &jt.filters {
+            filters.iter().map(|t| match t {
+                MiddleText::Convert(_) => {
+                    unimplemented!()
+                }
+                MiddleText::Copy => {
+                    let c = Copy::new();
+                    Middle::Copy(c)
+                }
+                MiddleText::Tee(fname) => {
+                    let tee = Tee::into(&fname);
+                    Middle::Tee(tee)
+                }
+            }).collect()
         } else {
             VecDeque::new()
         };
         let consumer = match jt.output {
-            ConsumerText::Archive(c) => {
+            ConsumerText::Archive(_) => {
                 Consumer::Invalid
             }
             ConsumerText::Save(c) => {
