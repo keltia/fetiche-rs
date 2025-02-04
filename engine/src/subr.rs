@@ -21,14 +21,20 @@ use crate::actors::{SourcesMsg, StateMsg};
 use crate::{version, Engine, Sources, Storage, ENGINE_CONFIG, IO, STATE_FILE};
 
 impl Engine {
-    /// Returns the path of the default state file in basedir
+    /// Returns the path of the default state file in the engine's base directory
+    ///
+    /// This method combines the engine's home directory with the STATE_FILE constant
+    /// to provide the full path where state information should be persisted.
     ///
     #[inline]
     pub fn state_file(&self) -> PathBuf {
         self.home.join(STATE_FILE)
     }
 
-    /// Sync all state into a file
+    /// Synchronizes all engine state by persisting it to disk
+    ///
+    /// This method sends a sync message to the state actor which handles
+    /// writing the current state to the configured state file location.
     ///
     #[tracing::instrument(skip(self))]
     #[inline]
@@ -38,57 +44,84 @@ impl Engine {
         Ok(cast!(self.state, StateMsg::Sync)?)
     }
 
-    /// Return a copy of the Engine sources
+    /// Returns a copy of all configured Engine sources
+    ///
+    /// This asynchronous method requests the current list of sources from the sources actor,
+    /// which maintains the authoritative list of all configured data sources.
     ///
     pub async fn sources(&self) -> Result<Sources> {
         let src = call!(self.sources, |port| SourcesMsg::List(port))?;
         Ok(src)
     }
 
-    /// Return an `Arc::clone` of the Engine storage areas
+    /// Returns a thread-safe reference-counted clone of the Engine storage configuration
+    ///
+    /// This provides access to the storage areas configuration while maintaining
+    /// proper reference counting through Arc.
     ///
     pub fn storage(&self) -> Arc<Storage> {
         Arc::clone(&self.storage)
     }
 
-    /// Returns a list of all defined storage areas
+    /// Returns a formatted string containing all defined storage areas
+    ///
+    /// The returned string contains a human-readable list of all configured
+    /// storage locations and their properties.
     ///
     pub fn list_storage(&self) -> Result<String> {
         self.storage.list()
     }
 
-    /// Return a description of all supported sources
+    /// Returns a formatted table describing all supported data sources
+    ///
+    /// This asynchronous method generates a human-readable table containing
+    /// details about each configured data source and its capabilities.
     ///
     pub async fn list_sources(&self) -> Result<String> {
         let src = call!(self.sources, |port| SourcesMsg::Table(port))?;
         Ok(src)
     }
 
-    /// Return a descriptions of all supported data formats
+    /// Returns a formatted list of all supported data formats
+    ///
+    /// Provides information about which data formats the engine can process,
+    /// including their names and characteristics.
     ///
     pub fn list_formats(&self) -> Result<String> {
         Format::list()
     }
 
-    /// Return a descriptions of all supported container formats
+    /// Returns a formatted list of all supported container formats
+    ///
+    /// Lists all container formats that can be used to package and
+    /// transport data within the engine.
     ///
     pub fn list_containers(&self) -> Result<String> {
         Container::list()
     }
 
-    /// Return a list of all currently available authentication tokens
+    /// Returns a formatted list of all currently available authentication tokens
+    ///
+    /// Provides information about active authentication tokens used for
+    /// accessing various data sources.
     ///
     pub fn list_tokens(&self) -> Result<String> {
         self.tokens.to_string()
     }
 
-    /// Return the path of the `engine.hcl` file.
+    /// Returns the full path to the engine's configuration file
+    ///
+    /// Combines the engine's home directory with the ENGINE_CONFIG constant
+    /// to locate the HCL configuration file.
     ///
     pub fn config_file(&self) -> PathBuf {
         self.home.join(ENGINE_CONFIG)
     }
 
-    /// Return Engine version (and internal modules)
+    /// Returns a string containing version information for the engine and its modules
+    ///
+    /// Formats a string that includes the engine's version number along with
+    /// version information for the formats and common modules.
     ///
     pub fn version(&self) -> String {
         format!(
@@ -128,7 +161,11 @@ pub struct CmdsFile {
 
 
 impl Engine {
-    /// Returns the content of the `cmds.hcl` file as a table.
+    /// Returns a formatted table of all available commands from the cmds.hcl file
+    ///
+    /// Parses the embedded cmds.hcl file and creates a formatted table showing
+    /// each command's name, type, and description. Validates the file version
+    /// before processing.
     ///
     #[tracing::instrument]
     pub fn list_commands(&self) -> eyre::Result<String> {
