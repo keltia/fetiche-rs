@@ -1,4 +1,3 @@
-//!
 //! A command-line utility to compute geoid height for a given latitude and longitude using EGM2008.
 //!
 //! This program calculates the geoid height, which represents the deviation of the Earth's surface
@@ -89,11 +88,13 @@ fn main() -> eyre::Result<()> {
         let coords: Vec<&str> = text.split_whitespace().collect();
         let lat = coords[0].parse::<f32>().unwrap_or(0.);
         let lon = coords[1].parse::<f32>().unwrap_or(0.);
+
         let height = geoid_height(lat, lon).unwrap_or(0.);
         if opts.verbose {
             eprintln!("Variation aka geoid height at {},{} = {} m", lat, lon, height);
+        } else {
+            println!("{}", height);
         }
-        println!("{}", height);
     });
     Ok(())
 }
