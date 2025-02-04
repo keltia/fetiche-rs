@@ -301,7 +301,7 @@ AS
         `latitude`,
         `longitude`,
         `altitude`,
-        (CAST(altitude AS Float64)  + compute_height(latitude,longitude)) AS altitude_geo,
+        CEIL((CAST(altitude AS Float64)  + compute_height(latitude,longitude))) AS altitude_geo,
         `elevation`,
         `home_lat`,
         `home_lon`,
