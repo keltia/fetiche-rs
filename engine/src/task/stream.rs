@@ -9,7 +9,7 @@ use eyre::Result;
 use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
-use fetiche_sources::{Filter, Flow, Sources};
+use fetiche_sources::{Capability, Filter, Flow, Site, Sources};
 
 use crate::{EngineStatus, Runnable, IO};
 
@@ -21,10 +21,8 @@ pub struct Stream {
     io: IO,
     /// name for the task
     pub name: String,
-    /// Shared ref to configuration
-    pub srcs: Arc<Sources>,
     /// Site
-    pub site: Option<String>,
+    pub site: Option<Site>,
     /// Interval in secs
     pub every: usize,
     /// Optional arguments (usually json-encoded string)
@@ -37,7 +35,6 @@ impl Debug for Stream {
             .field("io", &self.io)
             .field("name", &self.name)
             .field("site", &self.site)
-            .field("srcs", &self.srcs)
             .field("every", &self.every)
             .field("args", &self.args)
             .finish()
@@ -48,13 +45,12 @@ impl Stream {
     /// Initialize our environment
     ///
     #[tracing::instrument]
-    pub fn new(name: &str, srcs: Arc<Sources>) -> Self {
+    pub fn new(name: &str) -> Self {
         trace!("New Stream {}", name);
         Stream {
             io: IO::Producer,
             name: name.to_owned(),
             site: None,
-            srcs: Arc::clone(&srcs),
             args: "".to_string(),
             every: 0,
         }
@@ -62,7 +58,7 @@ impl Stream {
 
     /// Copy the site's data
     ///
-    pub fn site(&mut self, s: String) -> &mut Self {
+    pub fn site(&mut self, s: Site) -> &mut Self {
         trace!("Add site {} as {}", self.name, s);
         self.site = Some(s);
         self
@@ -97,8 +93,8 @@ impl Stream {
 
         // Stream data as bytes
         //
-        let site = self.srcs.load(&site)?;
-        if let Flow::Streamable(site) = site {
+        let site = self.site.clone().expect("Site not defined");
+        if site.features == Capability::Stream {
             let token = site.authenticate()?;
 
             let args = self.args.clone();
