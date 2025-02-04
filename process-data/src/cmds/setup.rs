@@ -322,19 +322,35 @@ AS
 "##;
 
     let r3 = r##"
-CREATE OR REPLACE VIEW acute.what_where_when AS
-(
-    SELECT
-        i.id AS install_id,
-        i.start_at,
-        i.end_at,
-        a.type,
-        a.name AS name,
-        s.name AS site
-    FROM installations AS i, antennas AS a, sites AS s
-    WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
-)
-    COMMENT 'Find the site for each drone points.'
+ CREATE VIEW acute.deployments
+ AS SELECT
+    i.id AS install_id,
+    i.start_at,
+    i.end_at,
+    a.type,
+    a.name AS antenna_name,
+    s.name AS site_name,
+    s.timezone AS timezone
+ FROM acute.installations AS i, acute.antennas AS a, acute.sites AS s
+ WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
+ COMMENT 'Find the site for each drone points.'
+    "##;
+
+    // PBI-specific view
+    //
+    let r3b = r##"
+ CREATE VIEW acute.pbi_deployments
+ AS SELECT
+    i.id AS installation_id,
+    i.start_at,
+    i.end_at,
+    a.type,
+    a.name AS antenna_name,
+    s.name AS sitename,
+    s.offset AS timezone
+ FROM acute.installations AS i, acute.antennas AS a, acute.sites AS s
+ WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
+ COMMENT 'Find the site for each drone points for PBI.'
     "##;
 
     let r4 = r##"
@@ -357,6 +373,7 @@ CREATE OR REPLACE VIEW airprox_summary AS
     dbh.execute(r1).await?;
     dbh.execute(r2).await?;
     dbh.execute(r3).await?;
+    dbh.execute(r3b).await?;
     dbh.execute(r4).await?;
     Ok(())
 }
@@ -376,7 +393,11 @@ DROP VIEW IF EXISTS acute.drones;
     "##;
 
     let rm3 = r##"
-DROP VIEW IF EXISTS acute.what_where_when;
+DROP VIEW IF EXISTS acute.deployments;
+    "##;
+
+    let rm3b = r##"
+DROP VIEW IF EXISTS acute.pbi_deployments;
     "##;
 
     let rm4 = r##"
@@ -384,6 +405,7 @@ DROP VIEW IF EXISTS acute.airprox_summary
     "##;
 
     dbh.execute(rm4).await?;
+    dbh.execute(rm3b).await?;
     dbh.execute(rm3).await?;
     dbh.execute(rm2).await?;
     dbh.execute(rm1).await?;
