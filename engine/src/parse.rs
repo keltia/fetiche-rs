@@ -10,12 +10,13 @@
 //! output = "foo.csv"
 //! ```
 
-use crate::actors::SourcesMsg;
-use crate::Engine;
 use eyre::Result;
 use ractor::call;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
+
+use crate::actors::SourcesMsg;
+use crate::Engine;
 
 /// Represents the type of job to be executed.
 ///
