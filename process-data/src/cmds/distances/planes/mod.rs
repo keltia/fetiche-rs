@@ -11,7 +11,7 @@ use derive_builder::Builder;
 use eyre::Result;
 use futures::future::join_all;
 use itertools::Itertools;
-use tracing::{error, info, trace};
+use tracing::{debug, error, info, trace};
 
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
@@ -137,65 +137,101 @@ pub enum TempTables {
 
 // -----
 
-/// This function processes the `distances planes` command. It handles the setup and execution of
-/// distance calculations between a drone and various planes around specific sites on given days.
-/// The calculations can span multiple dates and sites, and the results depend on user-specified
-/// options such as distance, proximity, and the selected site(s). The function operates in parallel
-/// for efficiency and uses temporary tables to facilitate intermediate data storage.
+const ALL_SITES: &str = "ALL"; // Introduced constant for clarity
+
+/// Performs the calculation of distances between drones and planes for a specified set of
+/// sites and dates. The function handles directory management, date parsing, work list
+/// preparation, and concurrent computation of distance statistics.
 ///
-/// The results of the calculations are gathered into a `Stats` structure.
+/// # Arguments
 ///
-/// # Parameters
-///
-/// - `ctx`: The execution context containing configurations and utilities for processing.
-/// - `opts`: User-specified options for the command, including site name, dates, distances, and separation.
+/// * `ctx` - The execution context containing configuration and runtime details.
+/// * `opts` - Options specifying the parameters for distance calculations, such as the site
+///   name, date interval, maximum distance, and proximity threshold.
 ///
 /// # Returns
 ///
-/// - `Result<Stats>`: Returns the statistics of the computation wrapped in a result.
+/// This function returns a `Result` containing `Stats`, which encapsulates summarized
+/// statistics from the distance calculations for all processed sites and dates. In the case
+/// of an error, it provides relevant diagnostic details.
 ///
-/// # Behavior
+/// # Steps
 ///
-/// 1. The function begins by setting the working directory to the datalake specified in the context.
-/// 2. It parses the dates provided in the options or defaults to the current day.
-/// 3. A worklist is generated containing all combinations of sites and dates.
-/// 4. The calculations run in parallel batches, with each batch processing a subset of the worklist.
-/// 5. Finally, the results are collected and returned as `Stats`.
+/// 1. Set the working directory to the configured datalake.
+/// 2. Parse the date interval specified in `opts`.
+/// 3. Generate a flattened work list combining all relevant sites and dates.
+/// 4. Process the work list in parallel by computing batches of distance statistics.
+/// 5. Aggregate and summarize the results into final statistics.
 ///
-/// # Notes
-///
-/// - Ensure appropriate handling of options like "ALL" or no site name to process multiple sites.
-/// - Parallel execution requires careful batching to avoid overwhelming the thread pool.
-/// - Errors in individual site/day calculations are logged, and default statistics are returned for those failures.
+/// This method uses asynchronous operations to handle potentially long-running tasks such
+/// as reading site data and performing calculations in parallel. Tracing annotations provide
+/// insight into the flow of execution for debugging and monitoring.
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
-    // Move ourselves to the datalake.
+    // Step 1: Change working directory to the datalake
     //
     let datalake = ctx.config.get("datalake").unwrap();
-
     info!("Datalake: {}", datalake);
     env::set_current_dir(datalake)?;
 
-    // Load parameters
+    // Step 2: Parse dates
     //
-    let (begin, end) = match DateOpts::parse(opts.date.clone()) {
-        Ok((start, stop)) => {
-            info!("We have an interval: from {} to {}", start, stop);
-            (start, stop)
-        }
-        Err(_) => {
-            let tm = Utc::now();
-            let day = Utc
-                .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
-                .unwrap();
-            info!("Running calculations for {}:", day);
-            (tm, tm)
-        }
-    };
-
+    let (begin, end) = parse_date_interval(opts.date.clone())?;
     let dates = expand_interval(begin, end)?;
-    eprintln!("{} days to process, from {begin} to {end}", dates.len());
+    eprintln!("{} days to process: from {begin} to {end}", dates.len());
+
+    // Step 3: Create work list (combination of dates and sites)
+    //
+    let site_filter = opts.name.as_deref().unwrap_or("");
+    let work_list = prepare_work_list(ctx, dates, site_filter).await?;
+
+    // Step 4: Process batches of computations in parallel
+    //
+    let all_stats = process_batches(ctx, work_list, opts.distance, opts.separation).await;
+
+    // Step 5: Gather and summarize statistics
+    //
+    let stats = Stats::summarise(all_stats);
+    trace!("summary={stats:?}");
+    Ok(stats)
+}
+
+/// Prepares the work list for distance calculations by generating combinations of
+/// dates and sites to be processed. Depending on the provided site filter, the function
+/// either targets a specific site or includes all available sites across the given dates.
+///
+/// # Arguments
+///
+/// * `ctx` - The execution context containing configuration and runtime details.
+/// * `dates` - A vector of dates that define the period for distance calculation.
+/// * `site_filter` - A filter specifying a particular site or all sites (`ALL` or `*`).
+///
+/// # Returns
+///
+/// Returns a `Result` containing a vector of tuples `(DateTime<Utc>, Site)` where each
+/// tuple represents a specific date and site to process during the computation.
+///
+/// # Behavior
+///
+/// - If `site_filter` is set to a specific site name, the result contains combinations
+///   of the specified site and all input dates.
+/// - If `site_filter` is empty or set to `ALL_SITES`, the result includes combinations
+///   of all available sites and the input dates (computed dynamically).
+///
+/// # Error Handling
+///
+/// Returns an error if the site resolution or site enumeration fails during the preparation process.
+///
+/// This function uses asynchronous operations to interact with the execution context for
+/// resolving sites and enumerating available sites.
+///
+#[tracing::instrument(skip(ctx))]
+async fn prepare_work_list(
+    ctx: &Context,
+    dates: Vec<DateTime<Utc>>,
+    site_filter: &str,
+) -> Result<Vec<(DateTime<Utc>, Site)>> {
 
     // Let us generate the list we want:
     //
@@ -208,15 +244,9 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     //
     // Goal is to have a flattened list of all combinations to run these in parallel
     //
-    let name = match &opts.name {
-        Some(name) => {
-            if name == "ALL" || name == "*" {
-                ""
-            } else {
-                name.as_str()
-            }
-        }
-        None => "",
+    let name = match site_filter {
+        ALL_SITES | "*" => "",
+        _ => site_filter,
     };
     trace!("Site = {name} (all if empty)");
 
@@ -244,23 +274,66 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     //
     let work_list: Vec<_> = work_list.into_iter().flatten().collect::<Vec<_>>();
     trace!("Work list len = {}", work_list.len());
+    Ok(work_list)
+}
 
-    let distance = opts.distance;
-    let separation = opts.separation;
+/// Processes batches of distance and separation computations in parallel.
+///
+/// This function takes a list of `(DateTime<Utc>, Site)` tuples and processes
+/// them in parallel using asynchronous tasks. Each batch size is limited by
+/// the pool size defined in the context to optimize execution performance.
+///
+/// # Arguments
+///
+/// * `ctx` - The execution context containing runtime configurations such as pool size.
+/// * `work_list` - A vector of tuples `(DateTime<Utc>, Site)` representing the work to process.
+/// * `distance` - The maximum permissible distance used in the calculations.
+/// * `separation` - The minimum required separation for valid calculations.
+///
+/// # Returns
+///
+/// Returns a vector of `Stats`, where each entry represents the computation results
+/// for a specific day and site combination.
+///
+/// # Behavior
+///
+/// - The function processes the work list in batches according to the pool size.
+/// - For each `(DateTime<Utc>, Site)` tuple, it spawns an asynchronous task to perform the computation.
+/// - Errors during individual computations are logged, and default statistics are returned
+///   for the corresponding entry.
+///
+/// # Error Handling
+///
+/// Errors in individual calculations are captured and logged, but they do not halt the
+/// processing of other batches. Instead, default statistics are generated for the failed tasks.
+///
+/// # Execution
+///
+/// The asynchronous tasks are executed concurrently within each batch, and batches
+/// are processed sequentially to avoid overloading the task scheduler or environment.
+///
+#[tracing::instrument(skip(ctx))]
+async fn process_batches(
+    ctx: &Context,
+    work_list: Vec<(DateTime<Utc>, Site)>,
+    distance: f64,
+    separation: f64,
+) -> Vec<Stats> {
 
     // We have a potentially large set of day+site to compute.  Try to not batch more than out current
     // pool size
+    //
     let mut all = vec![];
     for batch in &work_list.into_iter().chunks(ctx.pool_size) {
         let stats: Vec<_> = batch
             .into_iter()
             .map(|(day, site)| async move {
                 trace!("Calculate for site {site} on day {day}");
-                let lsite = site.clone();
+                let current = site.clone();
                 let ctx = ctx.clone();
 
                 match tokio::spawn(async move {
-                    calculate_one_day_on_site(&ctx, &lsite, &day, distance, separation)
+                    calculate_one_day_on_site(&ctx, &current, &day, distance, separation)
                         .await
                         .unwrap()
                 })
@@ -277,14 +350,76 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
         all.push(stats);
     }
     let all = all.into_iter().flatten().collect::<Vec<_>>();
+    debug!("all={all:?}");
 
-    // Gather all statistics
-    //
-    let stats = Stats::summarise(all);
-    trace!("summary={stats:?}");
-
-    Ok(stats)
+    all
 }
+
+/// Parses the provided `DateOpts` into a start and end date range.
+///
+/// This function utilizes the `DateOpts::parse` method to interpret and convert
+/// the given date options into a corresponding date interval `(start, stop)`
+/// represented as `DateTime<Utc>`. If the parsing fails, it defaults to the
+/// current day.
+///
+/// # Arguments
+///
+/// * `date_opts` - A `DateOpts` variant that specifies the desired date range or format.
+///
+/// # Returns
+///
+/// A `Result` containing:
+/// - `Ok((start, stop))` if the date options are successfully parsed.
+/// - `Err` if any error occurs while parsing or normalizing the dates.
+///
+/// # Behavior
+///
+/// - If `date_opts` is valid, the function logs the interval and returns
+///   the calculated start and stop dates.
+/// - If an error occurs, it defaults to the current day, logs the fallback, 
+///   and returns both `start` and `stop` as the start of the current day.
+///
+/// # Examples
+///
+/// Valid date range:
+/// ```rust
+/// let date_opts = DateOpts::From { 
+///     begin: "2023-10-01T00:00:00Z".to_string(),
+///     end: "2023-10-10T00:00:00Z".to_string() 
+/// };
+/// let result = parse_date_interval(date_opts).unwrap();
+/// assert_eq!(result.0, Utc.with_ymd_and_hms(2023, 10, 1, 0, 0, 0).unwrap());
+/// assert_eq!(result.1, Utc.with_ymd_and_hms(2023, 10, 10, 0, 0, 0).unwrap());
+/// ```
+///
+/// Invalid date fallback:
+/// ```rust
+/// let date_opts = DateOpts::Week { num: 66 };
+/// let result = parse_date_interval(date_opts).unwrap();
+/// let now = Utc::now();
+/// let expected_day = Utc
+///     .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
+///     .unwrap();
+/// assert_eq!(result.0.date_naive(), expected_day.date_naive());
+/// assert_eq!(result.1.date_naive(), expected_day.date_naive());
+/// ```
+///
+#[tracing::instrument]
+fn parse_date_interval(date_opts: DateOpts) -> Result<(DateTime<Utc>, DateTime<Utc>)> {
+    match DateOpts::parse(date_opts) {
+        Ok((start, stop)) => {
+            info!("Interval: from {} to {}", start, stop);
+            Ok((start, stop))
+        }
+        Err(_) => {
+            let tm = Utc::now();
+            let day = Utc.with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0).unwrap();
+            info!("Defaulting to current day: {}", day);
+            Ok((tm, tm))
+        }
+    }
+}
+
 
 /// Perform the calculation for a specific day and a specific site.
 ///
@@ -364,4 +499,34 @@ async fn calculate_one_day_on_site(
         Stats::Planes(PlanesStats::default())
     };
     Ok(stats)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{TimeZone, Utc};
+
+    #[test]
+    fn test_parse_date_interval_valid_range() {
+        let start_date = "2023-10-01T00:00:00Z";
+        let end_date = "2023-10-10T00:00:00Z";
+        let date_opts = DateOpts::From { begin: start_date.to_string(), end: end_date.to_string() };
+
+        let result = parse_date_interval(date_opts).unwrap();
+        assert_eq!(result.0, Utc.with_ymd_and_hms(2023, 10, 1, 0, 0, 0).unwrap());
+        assert_eq!(result.1, Utc.with_ymd_and_hms(2023, 10, 10, 0, 0, 0).unwrap());
+    }
+
+    #[test]
+    fn test_parse_date_interval_invalid_range_defaults_to_now() {
+        let invalid_date_opts = DateOpts::Week { num: 66 };
+        let now = Utc::now();
+        let expected_day = Utc
+            .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
+            .unwrap();
+
+        let result = parse_date_interval(invalid_date_opts).unwrap();
+        assert_eq!(result.0.date_naive(), expected_day.date_naive());
+        assert_eq!(result.1.date_naive(), expected_day.date_naive());
+    }
 }
