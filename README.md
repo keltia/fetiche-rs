@@ -41,7 +41,7 @@ and metrics about our drone and flight data.
 `acutectl` is the main data fetching utility, which uses the `fetiche-engine` and `fetiche-formats` crates to provide
 a single interface to multiple sources (`fetiche-sources` is now integral part of the engine).
 
-`process-data`  works on the drones and flights data through [Clickhouse] and does various SQL-backed procedures to
+`process-data`  works on the drone and flight data through [Clickhouse] and does various SQL-backed procedures to
 gather and calculates metrics including distances (2D and 3D).
 
 `opensky-history` is for retrieving historical data from [Opensky]. This access is managed through an SSH-based shell to
@@ -65,7 +65,7 @@ $ cargo install --path .
 
 to compile and install `acutectl` and `process-data`.
 
-If you want to use [jujutsu] alongside with git, it is also very easy:
+If you want to use [jujutsu] alongside git, it is also very easy:
 
 ```shell
 $ git clone https://github.com/keltia/fetiche-rs
@@ -81,17 +81,18 @@ See [jujutsu] documentation on how to use it instead of git.
 
 ## Usage
 
-For the moment, there are 3 binaries called `acutectl` (with `.exe` on Windows), `opensky-history` and `process-data`.
+For the moment, there are three binaries called `acutectl` (with `.exe` on Windows), `opensky-history` and
+`process-data`.
 The former is used to fetch data into their native format (csv, json). It uses `fetiche-engine` for all the code related
 to accessing, authenticating and fetching data in various ways.
 
-All the commands are described in more details in the [acutectl README.md](acutectl/README.md),
+All the commands are described in more detail in the [acutectl README.md](acutectl/README.md),
 [opensky-history README.md](opensky-history/README.md) and [process-data](process-data/README.md) files.
 
 ## `fetiched` (managed in the `fetiched` crate)
 
 On UNIX systems, there is a new command called `fetiched`. It is a daemon running the latest engine, detaching itself
-from the terminal and accepting requests through an [GRPC] interface. The Windows version will have to be run from a
+from the terminal and accepting requests through a [GRPC] interface. The Windows version will have to be run from a
 specific terminal with the `serve` command.
 
 In the near future, `fetiched` is evolving into an Actor-based subsystem (using [ractor]) to manage
@@ -99,7 +100,7 @@ orchestration between the internal modules. We do have an engine actor, a config
 
 More details in the specific [Fetiched README.md](fetiched/README.md) and [Engine README](engine/README.md).
 
-> NOTE: This is still WIP and most of it is already in `fetiche-sources`.  [ractor] is used right now.
+> NOTE: This is still WIP and most of it is already in `fetiche-engine`.  [ractor] is used right now.
 
 ### Data Model
 
@@ -111,7 +112,7 @@ See the `fetiche-formats` crate for more details.
 ### Cargo Features
 
 Some of the crates like `fetiche-formats` have specific features for different manufacturers.  
-It helps reduces compilation time. See the specific `Cargo.toml` in each.
+It helps reduce compilation time. See the specific `Cargo.toml` in each.
 
 There is one feature enabled by default in the engine, called `privacy`. This is for truncating the drone ID to a
 less-easily identifiable value. See `Cargo.toml` for this.
@@ -121,7 +122,7 @@ This is intentionally *not* a run-time option but a compile-time one.
 ## MSRV
 
 The Minimum Supported Rust Version is *1.85* due to the `async traits` used through `fetiche-engine` and for
-Clickhouse connections in `process-data`. We are now using edition 2024.
+Clickhouse connections in `process-data`. We are now using Edition 2024.
 
 ## Supported platforms
 
@@ -135,16 +136,14 @@ Clickhouse connections in `process-data`. We are now using edition 2024.
 
 Here are some of the things I've been working on. Some of these are registered as issues on [GitHub issues].
 
-- Add more tests & benchmarks.
-- convert the opensky code to use actors.
-- add a feeder that dispatch different events in the avionix flow into separate AMQP queues.
+- Add more tests and benchmarks.
+- convert the opensky code to use [actors](https://en.wikipedia.org/wiki/Actor_model).
+- add a feeder that dispatches different events in the Avionix flow into separate AMQP queues.
 
 Upcoming refactors:
 
+- Rewrite Engine to be Actor-based. (ONGOING)
 - Remove `Cat21` and all its derivatives (`Adsb21`, etc.). We do not use this anymore.
-- Merge back `fetiched/src/engine`  into the main `engine`, which imply using actors for the
-  main engine too.  (ONGOING)
-- Merge `fetiche-formats`  and `fetiche-sources` as they are completely linked and dependent.
 
 Uncertain:
 
