@@ -146,4 +146,52 @@ mod tests {
         assert_eq!("foo", t.name);
         assert_eq!("../Cargo.toml", t.path.unwrap());
     }
+
+    #[test]
+    fn test_write_with_args() {
+        let mut t = Save::new("test_with_args", Format::None, Container::default());
+        t.args = "{\"key\":\"value\"}".to_string();
+
+        assert_eq!("test_with_args", t.name);
+        assert_eq!("{\"key\":\"value\"}", t.args);
+    }
+
+    #[test]
+    fn test_save_to_parquet_with_nonexistent_path() {
+        let mut t = Save::new("test_parquet_save", Format::Asd, Container::Parquet);
+        t.path("/invalid/path/output.parquet");
+
+        let result = t.execute("dummy_data".to_string(), std::sync::mpsc::channel().0);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_save_output_raw_data() {
+        let mut t = Save::new("test_raw_write", Format::None, Container::Txt);
+        t.path("test_output.txt");
+
+        let result = t.execute("test_raw_data".to_string(), std::sync::mpsc::channel().0);
+
+        assert!(result.is_ok());
+        assert_eq!(
+            std::fs::read_to_string("test_output.txt").unwrap(),
+            "test_raw_data"
+        );
+
+        // Clean up
+        std::fs::remove_file("test_output.txt").unwrap();
+    }
+
+    #[test]
+    fn test_save_stdout() {
+        let mut t = Save::new("test_stdout", Format::None, Container::Txt);
+        t.path("-");
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let result = t.execute("output_to_stdout".to_string(), tx);
+
+        assert!(result.is_ok());
+        // Verifying stdout is out of scope, but it should print to console
+    }
 }

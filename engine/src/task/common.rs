@@ -42,6 +42,7 @@ impl Default for Nothing {
     }
 }
 
+
 /// Copy
 ///
 #[derive(Clone, Debug, RunnableDerive)]
@@ -96,5 +97,81 @@ impl Message {
     #[tracing::instrument]
     fn execute(&self, _data: String, stdout: Sender<String>) -> Result<()> {
         Ok(stdout.send(self.msg.to_string())?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc;
+
+    #[test]
+    fn test_nothing_new() {
+        let nothing = Nothing::new();
+        assert_eq!(matches!(nothing.io, IO::Producer), true);
+    }
+
+    #[test]
+    fn test_nothing_default() {
+        let nothing = Nothing::default();
+        assert_eq!(matches!(nothing.io, IO::Producer), true);
+    }
+
+    #[test]
+    fn test_nothing_execute() {
+        let nothing = Nothing::new();
+        let (tx, rx) = mpsc::channel();
+
+        let input_data = "TestData".to_string();
+        nothing.execute(input_data.clone(), tx).unwrap();
+
+        let result = rx.recv().unwrap();
+        assert_eq!(result, format!("{}|NOP", input_data));
+    }
+
+    #[test]
+    fn test_copy_new() {
+        let copy = Copy::new();
+        assert_eq!(matches!(copy.io, IO::Filter), true);
+    }
+
+    #[test]
+    fn test_copy_default() {
+        let copy = Copy::default();
+        assert_eq!(matches!(copy.io, IO::Filter), true);
+    }
+
+    #[test]
+    fn test_copy_execute() {
+        let copy = Copy::new();
+        let (tx, rx) = mpsc::channel();
+
+        let input_data = "TestCopyData".to_string();
+        copy.execute(input_data.clone(), tx).unwrap();
+
+        let result = rx.recv().unwrap();
+        assert_eq!(result, input_data);
+    }
+
+    #[test]
+    fn test_message_new() {
+        let msg = "Hello, world!";
+        let message = Message::new(msg);
+
+        assert_eq!(message.msg, msg);
+        assert_eq!(matches!(message.io, IO::Producer), true);
+    }
+
+    #[test]
+    fn test_message_execute() {
+        let msg = "TestMessageContent".to_string();
+        let message = Message::new(&msg);
+        let (tx, rx) = mpsc::channel();
+
+        let input_data = "UnusedData".to_string();
+        message.execute(input_data, tx).unwrap();
+
+        let result = rx.recv().unwrap();
+        assert_eq!(result, msg);
     }
 }

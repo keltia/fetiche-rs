@@ -20,10 +20,8 @@ pub struct Fetch {
     io: IO,
     /// name for the task
     pub name: String,
-    /// Shared ref to the sources parameters
-    pub srcs: Arc<Sources>,
     /// Site
-    pub site: Option<String>,
+    pub site: Option<Site>,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
 }
@@ -36,13 +34,12 @@ impl Fetch {
             name: s.to_string(),
             args: String::new(),
             site: None,
-            srcs: srcs.clone(),
         }
     }
 
     /// Copy the site's data
     ///
-    pub fn site(&mut self, s: String) -> &mut Self {
+    pub fn site(&mut self, s: Site) -> &mut Self {
         trace!("Add site {} as {}", self.name, s);
         self.site = Some(s);
         self
@@ -63,12 +60,11 @@ impl Fetch {
         trace!("Fetch::execute()");
         trace!("received: {}", data);
 
-        if self.site.is_none() {
+        if &self.site.is_none() {
             return Err(EngineStatus::NoSiteDefined.into());
         }
-        let site = self.site.clone().unwrap();
+        let site = self.site.clone().expect("Site not defined");
 
-        let site = self.srcs.load(&site)?;
         if let Flow::Fetchable(site) = site {
             let token = site.authenticate();
 
