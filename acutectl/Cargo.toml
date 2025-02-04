@@ -1,6 +1,6 @@
 [package]
 name = "acutectl"
-version = "0.24.99"
+version = "0.25.0"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "CLI utility to fetch data."
