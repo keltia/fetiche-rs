@@ -2,7 +2,7 @@
 
 (order of launch)
 
-- `init`
+- `supervisor`, also known as `init`
 
   This is the father of all actors spawned by the `Engine` itself. It gets all notifications upon creation,
   destruction, etc. of every actor in the process group.
@@ -18,19 +18,26 @@
 
 - `state`
 
-  This more important for the daemon version of the engine, it stores all internal state and sync it to disk (default is
-  every 30s). It is read at startup time to get the last used PID in order to protect possibly still running jobs .
+  This is more important for the daemon version of the engine, it stores all internal state and sync it to disk (default
+  is every 30s). It is read at startup time to get the last used PID to protect possibly still running jobs .
 
 _ `results`
 
 As we can have long-running jobs within the same process (daemon mode), we need to asynchronously store the results
-of each jobs and supply them on-demand.
+of each job and supply them on-demand.
 
 - `factory`
 
   In terms of actors, this enables us to have a set of `Runner` actors available to execute jobs.
 
+- `runner` is the core actor for executing jobs, launched through the factory.
+
 - `scheduler`
 
   This is the last started actors. It is there to manage the job queues and execute pending new jobs. After being
   formerly started, it will be called every TICK (2s by default).
+
+- `tokens`
+
+Work-in-progress to implement an actor-based token management for the different sources.
+
