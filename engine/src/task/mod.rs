@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::Deserialize;
+use strum::EnumString;
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
@@ -19,7 +20,7 @@ pub use store::*;
 pub use stream::*;
 pub use tee::*;
 
-use crate::{Engine, IO};
+use crate::Engine;
 
 mod archive;
 mod common;
@@ -74,6 +75,25 @@ pub enum Task {
     Stream,
     /// Copy data and pass it along
     Tee,
+}
+
+/// Task I/O characteristics
+///
+/// The main principle being that a consumer should not be first in a job queue
+/// just like a producer one should not be last.
+///
+#[derive(Clone, Debug, Default, Eq, PartialEq, EnumString, strum::Display, Deserialize)]
+#[strum(serialize_all = "PascalCase")]
+pub enum IO {
+    /// Consumer (no output or different like file)
+    Consumer,
+    /// Producer (discard input)
+    Producer,
+    /// Both (filter)
+    #[default]
+    Filter,
+    /// Cache (filter)
+    Cache,
 }
 
 /// For each format, we define a set of key attributes that will get displayed.
