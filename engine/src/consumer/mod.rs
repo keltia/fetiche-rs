@@ -1,3 +1,12 @@
+//!
+//!
+
+use std::fmt::{write, Display};
+use std::sync::mpsc::Receiver;
+use std::thread::JoinHandle;
+
+use tracing::error;
+
 mod archive;
 mod save;
 mod store;
@@ -15,12 +24,50 @@ use crate::{Runnable, Task, IO};
 ///
 /// Each variant corresponds to a specific data consuming strategy:
 ///
-#[derive(Clone, Debug, PartialEq, strum::EnumString, strum::VariantNames)]
+#[derive(Clone, Debug, Default, PartialEq, strum::EnumString, strum::VariantNames)]
 pub enum Consumer {
+    /// Consumer that saves data to temporary storage
+    Save(Save),
     /// Consumer that display data on screen
     Stdout(Stdout),
-    /// Consumer that saves data to temporary storage
-    Save,
     /// Consumer that stores data in permanent storage
-    Store,
+    Store(Store),
+    /// Invalid consumer
+    #[default]
+    Invalid,
+}
+
+impl From<Consumer> for Task {
+    fn from(value: Consumer) -> Self {
+        Task::Consumer(value)
+    }
+}
+
+impl Runnable for Consumer {
+    fn cap(&self) -> IO {
+        IO::Consumer
+    }
+
+    fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
+        match self {
+            Consumer::Save(c) => { c.run(out) }
+            Consumer::Store(c) => { c.run(out) }
+            Consumer::Stdout(s) => { s.run(out) }
+            Consumer::Invalid => {
+                error!("Invalid consumer: {}", self);
+                panic!("Invalid consumer: {}", self);
+            }
+        }
+    }
+}
+
+impl Display for Consumer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Consumer::Save(_) => write!(f, "Save"),
+            Consumer::Store(_) => write!(f, "Store"),
+            Consumer::Stdout(_) => write!(f, "Stdout"),
+            Consumer::Invalid => write!(f, "Invalid"),
+        }
+    }
 }
