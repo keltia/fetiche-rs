@@ -57,7 +57,7 @@ impl Save {
         }
     }
 
-    /// Set the input path (for files)
+    /// Set the input path (for files) and infer the output container from the file extension.
     ///
     #[tracing::instrument(skip(self))]
     pub fn path(&mut self, name: &str) -> &mut Self {
@@ -65,6 +65,8 @@ impl Save {
             "-" => None,
             _ => Some(name.to_string()),
         };
+        let c = Container::from(name);
+        self.out = c;
         self
     }
 
