@@ -1,8 +1,30 @@
-use crate::actors::{QueueMsg, RunnerMsg, StateMsg};
-use crate::{Engine, EngineStatus, Job, JobState, Stats};
+//! Engine command implementation module
+//!
+//! This module implements the core command functionality for the engine, including:
+//! - Job creation and management
+//! - Job queue operations
+//! - Job state transitions
+//! - Job submission and execution
+//!
+//! The commands are implemented as methods on the `Engine` struct and provide the primary
+//! interface for interacting with the engine's job processing capabilities.
+//!
+//! Each command ensures proper state management and provides appropriate error handling
+//! when operations cannot be completed successfully. All operations are instrumented
+//! with tracing for debugging and monitoring purposes.
+//!
+
+use std::collections::BTreeMap;
+
 use ractor::factory::{FactoryMessage, JobOptions};
 use ractor::{call, cast, factory};
+use serde::Deserialize;
+use tabled::builder::Builder;
+use tabled::settings::Style;
 use tracing::{debug, error, info, trace};
+
+use crate::actors::{QueueMsg, RunnerMsg, StateMsg};
+use crate::{Engine, EngineStatus, Job, JobBuilder, JobState, Stats, IO};
 
 impl Engine {
     ///
@@ -241,5 +263,70 @@ impl Engine {
         info!("job {} completed res={}.", job_id, res);
 
         Ok(res)
+    }
+}
+
+/// For each format, we define a set of key attributes that will get displayed.
+///
+#[derive(Debug, Deserialize)]
+pub struct CmdsDescr {
+    /// Type of data each command refers to
+    #[serde(rename = "type")]
+    pub ctype: IO,
+    /// Free text description
+    pub description: String,
+}
+
+/// Current version of the cmds.hcl file.
+const CVERSION: usize = 1;
+
+/// Struct to be read from an HCL file at compile-time
+///
+#[derive(Debug, Deserialize)]
+pub struct CmdsFile {
+    /// Version
+    pub version: usize,
+    /// Ordered list of format metadata
+    pub cmds: BTreeMap<String, CmdsDescr>,
+}
+
+impl Engine {
+    /// Returns the content of the `cmds.hcl` file as a table.
+    ///
+    #[tracing::instrument]
+    pub fn list_commands(&self) -> eyre::Result<String> {
+        trace!("list all commands");
+
+        let allcmds_s = include_str!("cmds.hcl");
+        let allcmds: CmdsFile = hcl::from_str(allcmds_s)?;
+
+        // Safety checks
+        //
+        assert_eq!(allcmds.version, CVERSION);
+
+        let header = vec!["Name", "Type", "Description"];
+
+        let mut builder = Builder::default();
+        builder.push_record(header);
+
+        allcmds
+            .cmds
+            .iter()
+            .for_each(|(cmd, cmd_desc): (&String, &CmdsDescr)| {
+                let mut row = vec![];
+
+                let name = cmd.clone();
+                let ctype = cmd_desc.ctype.clone().to_string();
+                let descr = cmd_desc.description.clone();
+                row.push(name);
+                row.push(ctype);
+                row.push(descr);
+                builder.push_record(row);
+            });
+
+        let allc = builder.build().with(Style::modern()).to_string();
+        let str = format!("List all commands:\n{allc}");
+
+        Ok(str)
     }
 }
