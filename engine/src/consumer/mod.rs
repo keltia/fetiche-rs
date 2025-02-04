@@ -1,8 +1,11 @@
+mod archive;
+mod save;
+mod store;
+
+pub use archive::*;
 pub use save::*;
 pub use store::*;
 
-mod save;
-mod store;
 
 /// Represents different types of consumers that can process and store data
 /// in the processing pipeline.
