@@ -38,4 +38,8 @@ pub enum EngineStatus {
     UninitialisedRead,
     #[error("Unknown job {0}")]
     JobNotFound(usize),
+    #[error("Unknown job {0} is not ready to be queued")]
+    JobNotReady(usize),
+    #[error("Job {0} is not runnable")]
+    JobInWrongState(usize),
 }

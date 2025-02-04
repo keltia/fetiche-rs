@@ -1,7 +1,7 @@
 //! Actor managing the job queue
 //!
 
-use crate::{Job, ENGINE_PG};
+use crate::{EngineStatus, Job, JobState, ENGINE_PG};
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 use std::collections::VecDeque;
 
@@ -99,12 +99,12 @@ impl Actor for QueueActor {
     ///
     /// # Possible Message Handling
     ///
-    /// - `QueueMsg::Next`: Responds with the next job ID (`state.next`).
-    /// - `QueueMsg::GetById`: Returns the corresponding job with its ID.
-    /// - `QueueMsg::List`: Responds with the list of all job IDs stored in the queue.
     /// - `QueueMsg::Add`: Adds a new job to the queue.
-    /// - `QueueMsg::Remove`: Removes a job from the queue by matching its details.
+    /// - `QueueMsg::Allocate`: Responds with the next job ID (`state.last`).
+    /// - `QueueMsg::GetById`: Returns the corresponding job with its ID.
     /// - `QueueMsg::RemoveId`: Removes a job by its ID.
+    /// - `QueueMsg::List`: Responds with the list of all job IDs stored in the queue.
+    /// - `QueueMsg::Run`: Remove from the queue and return the job for execution.
     ///
     /// # Panics
     /// If the message variant is not implemented in the match statement, the
@@ -118,13 +118,18 @@ impl Actor for QueueActor {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            QueueMsg::Add(job) => {
-                state.last = job.id + 1;
-                state.q.push_back(job);
-            }
             QueueMsg::Allocate(sender) => {
                 sender.send(state.last)?;
                 state.last += 1;
+            }
+            QueueMsg::Add(job) => {
+                let mut queued = job.clone();
+                if job.state != JobState::Ready {
+                    return Err(EngineStatus::JobNotReady(job.id).into());
+                }
+
+                queued.state = JobState::Queued;
+                state.q.push_back(job);
             }
             QueueMsg::GetById(id, sender) => {
                 let job = match state.q.get(id) {
@@ -138,8 +143,14 @@ impl Actor for QueueActor {
                 sender.send(list)?;
             }
             QueueMsg::Run(sender) => {
-                let job = state.q.pop_front().unwrap();
+                let mut job = state.q.pop_front().unwrap();
+                if job.state != JobState::Queued {
+                    return Err(EngineStatus::JobInWrongState(job.id).into());
+                }
+
+                job.state = JobState::Running;
                 sender.send(job)?;
+                job.state = JobState::Completed;
             }
             QueueMsg::RemoveById(id) => {
                 state.q.remove(id);
