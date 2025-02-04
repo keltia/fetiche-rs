@@ -5,13 +5,80 @@
 //! supposed to be collecting data (like `fetch` or `stream`) and send it along
 //! the pipe for processing.
 //!
+//! A `Work` is a submitted job, created when submitting.
+//! A `WaitGroup` is the struct you get after submission to be notified when the job has finished.
+//!
 use std::collections::VecDeque;
+use std::sync::mpsc::{Receiver, Sender};
 
 use derive_builder::Builder;
 use ractor::ActorRef;
 
 use crate::actors::StatsMsg;
 use crate::{Consumer, Middle, Producer};
+
+/// This gets sent back to the caller when submitting the job.
+///
+#[derive(Debug)]
+pub struct WaitGroup {
+    /// ID of the job
+    pub id: usize,
+    /// Synchronisation point
+    pub rx: Receiver<()>,
+}
+
+impl WaitGroup {
+    #[tracing::instrument(skip(rx))]
+    pub fn new(id: usize, rx: Receiver<()>) -> Self {
+        Self { id, rx }
+    }
+}
+
+/// This is the other part which is queued for execution.
+///
+/// Represents a unit of work that can be queued for execution.
+///
+/// This struct encapsulates a job and its associated synchronization channel.
+/// It is used internally by the engine to manage job execution and state updates.
+///
+/// # Fields
+///
+/// * `job` - The job to be executed
+/// * `tx` - A sender channel used for synchronization when the job completes
+///
+#[derive(Clone, Debug)]
+pub struct Work {
+    pub job: Job,
+    pub tx: Sender<()>,
+}
+
+impl Work {
+    /// Creates a new Work instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `job` - The job to be executed
+    /// * `tx` - A sender channel for job completion notification
+    ///
+    #[tracing::instrument(skip(tx))]
+    pub fn new(job: Job, tx: Sender<()>) -> Self {
+        Self { job, tx }
+    }
+
+    /// Returns the current state of the contained job.
+    ///
+    #[tracing::instrument(skip(self))]
+    pub fn state(&self) -> JobState {
+        self.job.state()
+    }
+
+    /// Returns the ID of the contained job.
+    ///
+    #[tracing::instrument(skip(self))]
+    pub fn id(&self) -> usize {
+        self.job.id
+    }
+}
 
 /// A `Job` represents a pipeline of tasks to be executed sequentially.
 ///
