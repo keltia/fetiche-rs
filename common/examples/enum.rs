@@ -28,7 +28,8 @@ fn main() -> eyre::Result<()> {
 
     match opts.cmd {
         Cmd::Fetch(opts) => {
-            let _ = DateOpts::parse(opts.opts)?;
+            let r = DateOpts::parse(opts.opts)?;
+            eprintln!("{:?}", r);
         }
     }
     Ok(())
