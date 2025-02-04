@@ -36,18 +36,16 @@ impl Fetch {
 
     /// Copy the site's data
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn site(&mut self, s: Site) -> &mut Self {
-        trace!("Add site {} as {}", self.name, s);
         self.site = Some(s);
         self
     }
 
     /// Add a date filter if specified
     ///
-    #[tracing::instrument]
     pub fn with(&mut self, f: Filter) -> &mut Self {
-        trace!("Add filter {}", f);
+    #[tracing::instrument(skip(self))]
         self.args = f.to_string();
         self
     }

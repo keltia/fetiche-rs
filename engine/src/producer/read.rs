@@ -35,7 +35,6 @@ impl Read {
     ///
     #[tracing::instrument]
     pub fn new(name: &str) -> Self {
-        trace!("New Read {}", name);
         Read {
             io: IO::Producer,
             name: name.to_owned(),
@@ -47,16 +46,16 @@ impl Read {
 
     /// Set the input path (for files)
     ///
+    #[tracing::instrument(skip(self))]
     pub fn path(&mut self, name: &str) -> &mut Self {
-        trace!("Add path: {}", name);
         self.path = Some(PathBuf::from(name));
         self
     }
 
     /// The heart of the matter: fetch data
     ///
-    #[tracing::instrument]
     pub fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<()> {
+    #[tracing::instrument(skip(self))]
         trace!("Read::transform()");
         if self.path.is_none() {
             Err(EngineStatus::UninitialisedRead.into())

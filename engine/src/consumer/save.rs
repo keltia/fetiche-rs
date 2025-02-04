@@ -42,7 +42,6 @@ impl Save {
     ///
     #[tracing::instrument]
     pub fn new(name: &str, inp: Format, out: Container) -> Self {
-        trace!("New Save {}", name);
         Save {
             io: IO::Consumer,
             name: name.to_owned(),
@@ -57,7 +56,6 @@ impl Save {
     ///
     #[tracing::instrument(skip(self))]
     pub fn path(&mut self, name: &str) -> &mut Self {
-        trace!("Add path: {}", name);
         self.path = match name {
             "-" => None,
             _ => Some(name.to_string()),
@@ -69,7 +67,6 @@ impl Save {
     ///
     #[tracing::instrument(skip(self, data))]
     pub fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
-        trace!("Save::execute()");
 
         if self.path.is_none() {
             trace!("...into stdout");

@@ -30,8 +30,8 @@ impl Archive {
         }
     }
 
-    #[tracing::instrument(skip(self))]
     fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
+    #[tracing::instrument(skip(self, _stdout))]
         todo!()
     }
 }

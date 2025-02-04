@@ -57,24 +57,24 @@ impl Stream {
 
     /// Copy the site's data
     ///
+    #[tracing::instrument(skip(self))]
     pub fn site(&mut self, s: Site) -> &mut Self {
-        trace!("Add site {} as {}", self.name, s);
         self.site = Some(s);
         self
     }
 
     /// Add a date filter if specified
     ///
+    #[tracing::instrument(skip(self))]
     pub fn with(&mut self, f: Filter) -> &mut Self {
-        trace!("Add filter {}", f);
         self.args = f.to_string();
         self
     }
 
     /// Set the loop interval
     ///
+    #[tracing::instrument(skip(self))]
     pub fn every(&mut self, i: usize) -> &mut Self {
-        trace!("Set interval to {} secs", i);
         self.every = i;
         self
     }

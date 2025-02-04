@@ -49,6 +49,7 @@ impl Runnable for Producer {
     }
 
     fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
+    #[tracing::instrument(skip(self))]
         match self {
             Producer::Dummy(dummy) => dummy.run(out),
             Producer::Fetch(p) => p.run(out),
