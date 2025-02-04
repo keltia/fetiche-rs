@@ -61,13 +61,13 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 
 ctrlc = { version = "3.4", features = ["termination"] }
-divan = "0.1"
 egm2008 = "0.1"
 humantime = "2.1"
 tracing-appender = "0.2"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
+divan = "0.1"
 enum_dispatch = "0.3"
 rand = "0.9"
 rstest.workspace = true
