@@ -1,3 +1,4 @@
+use crate::actors::{QueueMsg, StateMsg};
 use crate::{Engine, EngineStatus, Job, JobState};
 use ractor::{call, cast};
 use tracing::{error, trace};
@@ -54,7 +55,7 @@ impl Engine {
     /// Ensure tracing is properly configured in your application to monitor these events.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn create_job(&mut self, s: &str) -> eyre::Result<Job> {
+    pub async fn create_job(&mut self, s: &str) -> eyre::Result<Job> {
         // Fetch next ID
         //
         let nextid = call!(self.queue, |port| QueueMsg::Allocate(port))?;
@@ -99,7 +100,7 @@ impl Engine {
     /// This method is instrumented for tracing, excluding the `self` parameter.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn queue_job(&mut self, job: Job) -> eyre::Result<usize> {
+    pub async fn queue_job(&mut self, job: Job) -> eyre::Result<usize> {
         if job.state != JobState::Ready {
             error!("Job is not ready");
             return Err(EngineStatus::JobNotReady(job.id).into());
@@ -140,7 +141,7 @@ impl Engine {
     /// This method is instrumented for tracing, excluding the `self` parameter.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn remove_job(&mut self, job_id: usize) -> eyre::Result<()> {
+    pub async fn remove_job(&mut self, job_id: usize) -> eyre::Result<()> {
         let job = call!(self.queue, |port| QueueMsg::GetById(job_id, port))?;
         if job.state == JobState::Running {
             return Err(EngineStatus::JobIsRunning(job_id).into());
@@ -181,7 +182,7 @@ impl Engine {
     /// Ensure tracing is set up in your application to observe these events.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn get_job(&self, id: usize) -> eyre::Result<Job> {
+    pub async fn get_job(&self, id: usize) -> eyre::Result<Job> {
         let job = call!(self.queue, |port| QueueMsg::GetById(id, port))?;
 
         Ok(job.clone())
@@ -215,11 +216,11 @@ impl Engine {
     /// 4. Synchronizes the engine state
     ///
     #[tracing::instrument(skip(self))]
-    pub fn submit_job(&mut self, job_str: &str) -> eyre::Result<usize> {
-        let mut job = self.parse(job_str)?;
+    pub async fn submit_job(&mut self, job_str: &str) -> eyre::Result<usize> {
+        let mut job = self.parse(job_str).await?;
         job.state = JobState::Ready;
 
-        let job_id = self.queue_job(job)?;
+        let job_id = self.queue_job(job.clone()).await?;
         assert_eq!(job_id, job.id);
         self.sync()?;
         Ok(job_id)
