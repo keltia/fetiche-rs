@@ -153,6 +153,7 @@ SELECT
     s.latitude,
     s.longitude,
     s.ref_altitude,
+    s.timezone,
 FROM
     sites AS s, installations
 WHERE (s.id = installations.site_id) AND
