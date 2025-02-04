@@ -51,7 +51,7 @@ pub struct Job {
     #[builder(default = "String::from(\"Default Name\")")]
     pub name: String,
     /// Job State
-    pub state: JobState,
+    state: JobState,
     /// Producer.
     #[builder(default = "Producer::Invalid")]
     pub producer: Producer,
@@ -94,13 +94,74 @@ pub enum JobState {
 }
 
 impl Job {
-    /// Add a task to the queue
+    /// Adds a middleware filter task to the job's pipeline.
+    ///
+    /// This method appends a new filter task to the end of the job's filter queue,
+    /// maintaining the FIFO (First In, First Out) order of execution. Each filter
+    /// added will be executed in the order they were added during the job's run.
+    ///
+    /// # Parameters
+    /// - `t`: A `Middle` task to be added to the pipeline. This represents a data
+    ///   transformation or processing step that will be executed as part of the job.
+    ///
+    /// # Returns
+    /// - `&mut Self`: Returns a mutable reference to the Job instance, enabling method chaining.
     ///
     #[tracing::instrument(skip(self))]
     #[inline]
     pub fn add(&mut self, t: Middle) -> &mut Self {
         let _ = &self.filters.push_back(t);
         self
+    }
+
+    /// Registers a statistics actor with this job for collecting metrics during execution.
+    ///
+    /// This method sets up the connection between the job and a statistics collection actor
+    /// that will receive updates about the job's execution progress and performance metrics.
+    ///
+    /// # Parameters
+    /// - `t`: An `ActorRef<StatsMsg>` reference to the statistics actor that will collect metrics
+    ///
+    /// # Returns
+    /// - `&mut Self`: Returns a mutable reference to the Job instance, enabling method chaining
+    ///
+    #[tracing::instrument(skip(self, t))]
+    #[inline]
+    pub fn register(&mut self, t: ActorRef<StatsMsg>) -> &mut Self {
+        self.stats = Some(t);
+        self
+    }
+
+    /// Updates the current state of the job.
+    ///
+    /// This method allows changing the job's state during its lifecycle,
+    /// tracking its progression through different stages of execution.
+    ///
+    /// # Parameters
+    /// - `s`: The new `JobState` to set for this job
+    ///
+    /// # Returns
+    /// - `&mut Self`: Returns a mutable reference to the Job instance, enabling method chaining
+    ///
+    #[tracing::instrument(skip(self))]
+    #[inline]
+    pub fn set(&mut self, s: JobState) -> &mut Self {
+        self.state = s;
+        self
+    }
+
+    #[tracing::instrument(skip(self))]
+    #[inline]
+    /// Returns the current state of the job.
+    ///
+    /// This method provides access to the job's current state, allowing external code
+    /// to check the job's progress through its lifecycle stages.
+    ///
+    /// # Returns
+    /// - `JobState`: A clone of the job's current state enum value
+    ///
+    pub fn state(&self) -> JobState {
+        self.state.clone()
     }
 
     /// Executes the tasks in the order they are stored in the pipeline and ensures that
