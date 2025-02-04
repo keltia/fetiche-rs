@@ -1,8 +1,15 @@
-version = 2
+version = 3
 
-datalake = "/Users/Acute"
+datalake = "/acute"
 
-url = "http://100.92.250.113:8123"
-database = "acute"
-user = "roberto"
-password = "r0berto"
+db {
+  url      = "http://db:8123"
+  database = "acute"
+  user     = "roberto"
+  password = "PASSWORD"
+}
+
+distances {
+  threshold = 1852
+  factor    = 3
+}
