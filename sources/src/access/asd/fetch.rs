@@ -1,25 +1,30 @@
 use std::io::Cursor;
 use std::ops::Add;
 use std::sync::mpsc::Sender;
+use std::time::UNIX_EPOCH;
 
+use async_trait::async_trait;
 use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use clap::{crate_name, crate_version};
 use eyre::eyre;
+use polars::datatypes::Int64Chunked;
 use polars::io::SerWriter;
-use polars::prelude::{CsvParseOptions, CsvReadOptions, CsvWriter, SerReader};
+use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, CsvWriter, IntoColumn, SerReader};
 use ractor::cast;
 use reqwest::StatusCode;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
 
-use crate::access::asd::{
-    into_timestamp, prepare_asd_data, Credentials, Param, Payload, Source, DEF_TOKEN,
-};
+use crate::access::asd::{Credentials, Param, Source, DEF_SOURCES, DEF_TOKEN};
 use crate::actors::StatsMsg;
-use crate::{http_post, Asd, AsdToken, AuthError, Expirable, Fetchable, Filter};
+use crate::{Asd, AsdToken, AsyncFetchable, AuthError, Expirable, Fetchable, FetchableSource, Filter};
 
-impl Fetchable for Asd {
+#[async_trait]
+impl AsyncFetchable for Asd {
+    #[inline]
     fn name(&self) -> String {
         self.site.to_string()
     }
@@ -27,7 +32,7 @@ impl Fetchable for Asd {
     /// Authenticate to the site using the supplied credentials and get a token
     ///
     #[tracing::instrument(skip(self))]
-    fn authenticate(&self) -> eyre::Result<String, AuthError> {
+    async fn authenticate(&self) -> eyre::Result<String, AuthError> {
         trace!("authenticate as ({:?})", &self.login);
 
         // Prepare our submission data
@@ -75,11 +80,21 @@ impl Fetchable for Asd {
             //
             let url = format!("{}{}", self.base_url, self.token);
             trace!("Fetching token through {}…", url);
-            let resp = http_post!(self, url, &cred).map_err(|e| AuthError::HTTP(e.to_string()))?;
+
+            let resp = self
+                .client
+                .post(url)
+                .header("content-type", "application/json")
+                .header("user-agent", format!("{}/{}", crate_name!(), crate_version!()))
+                .body(json!(&cred).to_string())
+                .send()
+                .await
+                .map_err(|e| AuthError::HTTP(e.to_string()))?;
 
             trace!("resp={:?}", resp);
             let resp = resp
                 .text()
+                .await
                 .map_err(|_| AuthError::Retrieval(cred.email.clone()))?;
 
             let res: AsdToken =
@@ -103,12 +118,13 @@ impl Fetchable for Asd {
     /// Fetch actual data using the aforementioned token
     ///
     #[tracing::instrument(skip(self))]
-    fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> eyre::Result<()> {
+    async fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> eyre::Result<()> {
         trace!("asd::fetch");
 
         const DEF_SOURCES: &[Source] = &[Source::As, Source::Wi];
 
         let f: Filter = serde_json::from_str(args)?;
+        let stats = self.ctx.clone().unwrap().stats;
 
         // If we have a filter defined, extract times
         //
@@ -140,10 +156,11 @@ impl Fetchable for Asd {
         let url = format!("{}{}", self.base_url, self.get);
         trace!("Fetching data through {}…", url);
 
+        let client = reqwest::Client::new();
+
         // http_post_auth!() macro seems to be disturbing it.
         //
-        let resp = self
-            .client
+        let resp = client
             .clone()
             .post(url)
             .header(
@@ -153,7 +170,8 @@ impl Fetchable for Asd {
             .header("content-type", "application/json")
             .header("authorization", format!("Bearer {}", token))
             .body(data)
-            .send()?;
+            .send()
+            .await?;
 
         debug!("raw resp={:?}", &resp);
 
@@ -176,7 +194,7 @@ impl Fetchable for Asd {
 
         // What we receive is an anonymous JSON object containing the filename and CSV content.
         //
-        let resp = resp.text()?;
+        let resp = resp.text().await?;
         trace!("resp={}", resp);
         let data: Payload = serde_json::from_str(&resp)?;
 
@@ -201,8 +219,8 @@ impl Fetchable for Asd {
 
         // Send statistics
         //
-        let _ = cast!(self.ctx.stats, StatsMsg::Pkts(data.len() as u32));
-        let _ = cast!(self.ctx.stats, StatsMsg::Bytes(resp.len() as u64));
+        let _ = cast!(stats, StatsMsg::Pkts(data.len() as u32));
+        let _ = cast!(stats, StatsMsg::Bytes(resp.len() as u64));
 
         let data = String::from_utf8(data)?;
         Ok(out.send(data)?)
@@ -210,12 +228,24 @@ impl Fetchable for Asd {
 
     /// Return the site's input formats
     ///
+    #[inline]
     fn format(&self) -> Format {
         Format::Asd
     }
 }
 
 // -----
+
+/// CSV payload from `.../filteredlocation`
+///
+#[derive(Debug, Deserialize)]
+struct Payload {
+    /// Filename if one need to fetch as a file.
+    #[serde(rename = "fileName")]
+    filename: String,
+    /// CSV content is here already.
+    content: String,
+}
 
 /// Generate a UNIX timestamp from the non-standard date string used by Asd.
 ///

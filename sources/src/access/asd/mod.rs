@@ -16,37 +16,30 @@
 //!
 //! [NDJSON]: https://en.wikipedia.org/wiki/NDJSON
 
-use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
-use eyre::Result;
-use polars::datatypes::Int64Chunked;
-use polars::prelude::{Column, IntoColumn};
-use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, VariantNames};
 use tracing::{error, trace, warn};
 
-#[cfg(feature = "json")]
-use tracing::debug;
-
 use fetiche_formats::Format;
 
 use crate::site::Site;
-use crate::{Auth, AuthError, Capability, Context};
-
-#[cfg(feature = "json")]
-use serde_json::json;
+use crate::{Auth, Capability, FetchableSource};
 
 mod fetch;
 pub mod token;
+mod actors;
 
 pub use token::*;
 
 /// Default token
 const DEF_TOKEN: &str = "asd_default_token";
+
+/// If no sources are defined, use these.
+const DEF_SOURCES: &[&str] = &["as", "wi"];
 
 /// Different types of source
 ///
@@ -92,10 +85,10 @@ struct Param {
 
 /// Asd represent what is needed to connect & auth to and fetch data from the ASD main site.
 ///
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Asd {
     /// Describe the different features of the source
-    pub features: Vec<Capability>,
+    pub feature: Capability,
     /// Name of the site (site "foo" may use the same interface)
     pub site: String,
     /// Input formats
@@ -112,18 +105,16 @@ pub struct Asd {
     pub token: String,
     /// Add this to `base_url` to fetch data
     pub get: String,
-    /// reqwest blocking client
-    pub client: Client,
-    /// supervisor and stats actors references
-    pub ctx: Context,
+    /// HTTP Client.
+    #[serde(skip_serializing, skip_deserializing)]
+    pub client: reqwest::Client,
 }
 
 impl Asd {
     #[tracing::instrument]
-    pub fn new(ctx: Context) -> Self {
-        trace!("asd::new");
+    pub fn new() -> Self {
         Asd {
-            features: vec![Capability::Fetch],
+            feature: Capability::Fetch,
             site: "NONE".to_string(),
             format: Format::Asd,
             token_base: PathBuf::new(),
@@ -132,12 +123,23 @@ impl Asd {
             base_url: "".to_owned(),
             token: "".to_owned(),
             get: "".to_owned(),
-            client: Client::new(),
-            ctx,
+            client: reqwest::Client::new(),
         }
     }
 
-    /// Load some data from the configuration file
+    /// Load some data from the provided `Site` configuration into the `Asd` instance.
+    ///
+    /// This method initializes the `Asd` object with site-specific details, such as
+    /// site name, format, base URL, credentials (if provided), and the route to fetch data.
+    ///
+    /// # Parameters
+    /// - `site`: A `Site` reference containing the configuration details for the `Asd` instance.
+    ///
+    /// # Returns
+    /// - A mutable reference to the current `Asd` instance, allowing method chaining.
+    ///
+    /// # Panics
+    /// - Panics if the `auth` field in the `Site` does not contain a valid authentication configuration.
     ///
     #[tracing::instrument]
     pub fn load(&mut self, site: &Site) -> &mut Self {
@@ -158,62 +160,62 @@ impl Asd {
                     self.login = login.to_owned();
                     self.password = password.to_owned();
                 }
-                _ => panic!("nope"),
+                _ => {
+                    error!("Invalid authentication parameters for {}.", site.name);
+                    panic!("Invalid authentication parameters for {}.", site.name);
+                }
             }
         }
         self.get = site.route("get").unwrap().to_owned();
         self
     }
-    /// Return the content of named token
+
+    /// Finish the builder chain.
     ///
-    #[tracing::instrument]
-    pub fn retrieve(fname: &PathBuf) -> Result<String> {
-        trace!("get_token from {fname:?}");
-        if fname.exists() {
-            Ok(fs::read_to_string(fname)?)
-        } else {
-            Err(AuthError::Retrieval(fname.to_string_lossy().to_string()).into())
-        }
+    pub fn build(&mut self) -> Self {
+        self.clone()
     }
 
-    /// Store (overwrite) named token
+    /// Returns the `FetchableSource` representation of the current `Asd` instance.
     ///
-    #[tracing::instrument]
-    pub fn store(fname: &PathBuf, data: &str) -> Result<()> {
-        let dir = fname.parent().unwrap();
-
-        // Check token cache
-        //
-        if !dir.exists() {
-            // Create it
-            //
-            trace!("create token store: {dir:?}");
-
-            fs::create_dir_all(dir)?
-        }
-        trace!("store_token: {fname:?}");
-        Ok(fs::write(fname, data)?)
-    }
-
-    /// Purge expired token
+    /// This method converts the `Asd` instance into a `FetchableSource`.
+    /// A `FetchableSource` is used to represent data sources that can be
+    /// fetched in a uniform and standardized way through `enum_dispatch`.
     ///
-    #[tracing::instrument]
-    pub fn purge(fname: &PathBuf) -> Result<()> {
-        trace!("purge expired token in {fname:?}");
-
-        Ok(fs::remove_file(fname)?)
+    /// # Returns
+    ///
+    /// - A `FetchableSource` that represents the current `Asd` instance.
+    ///
+    pub fn source(&self) -> FetchableSource {
+        FetchableSource::from(self.clone())
     }
 }
 
-/// CSV payload from `.../filteredlocation`
-///
-#[derive(Debug, Deserialize)]
-struct Payload {
-    /// Filename if one need to fetch as a file.
-    #[serde(rename = "fileName")]
-    filename: String,
-    /// CSV content is here already.
-    content: String,
+impl From<&Site> for Asd {
+    fn from(s: &Site) -> Self {
+        let mut asd = Asd::new().load(s).build();
+
+        asd.site = s.name.clone();
+        asd.format = Format::from_str(&s.format).unwrap();
+        asd.base_url = s.base_url.to_owned();
+        asd.token_base = s.token_base.clone();
+        if let Some(auth) = &s.auth {
+            match auth {
+                Auth::Token {
+                    token,
+                    login,
+                    password,
+                } => {
+                    asd.token = token.to_owned();
+                    asd.login = login.to_owned();
+                    asd.password = password.to_owned();
+                }
+                _ => panic!("nope"),
+            }
+        }
+        asd.get = s.route("get").unwrap().to_owned();
+        asd.clone()
+    }
 }
 
 /// ASD is sending us an anonymous JSON array
@@ -226,7 +228,10 @@ struct Payload {
 /// ```
 ///
 #[cfg(feature = "json")]
-fn into_ndjson(resp: &str) -> Result<String> {
+fn into_ndjson(resp: &str) -> eyre::Result<String> {
+    use serde_json::json;
+    use tracing::debug;
+
     let data: Vec<fetiche_formats::Asd> = serde_json::from_str(resp)?;
     let res = data
         .iter()
