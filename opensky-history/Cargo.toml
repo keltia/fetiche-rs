@@ -29,20 +29,12 @@ dateparser = "0.2"
 clap = { version = "4", features = ["cargo", "derive"] }
 eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
 fetiche-common = { version = "0", path = "../common" }
-fetiche-formats = { version = "0", path = "../formats" }
-hcl-rs = "0.18"
-polars = { version = "0.46", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_repr = "0.1"
+polars = { version = "0.46", features = ["async", "serde", "lazy", "strings", "parquet", "json"] }
 strum = { version = "0.27", features = ["derive"] }
-tabled = "0.18"
-tempfile = "3"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 
 inline-python = "0.13"
-seek_bufread = "1.2"
-seekable_reader = "0.1"
 
 [dev-dependencies]
 rstest = "0.24"
