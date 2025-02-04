@@ -1,7 +1,51 @@
-//! This is where all the main calculations are done.
+//! # Plane-Drone Distance Calculations Module
+//!
+//! This module is responsible for performing calculations related to determining distances between 
+//! airplanes and drones based on geospatial proximity and temporal criteria. It interacts with a 
+//! ClickHouse database to query and manipulate data, ensuring efficient and precise computations 
+//! of distances and encounters.
+//!
+//! The primary objectives include:
+//! - **Airplane Data Selection**: Filter airplanes positions for a specific site and time range 
+//!   that fall within a defined proximity area.
+//! - **Drone Data Selection**: Extract drone positions over a specific day, filtered using geospatial 
+//!   proximity rules.
+//! - **Distance Calculations**: Compute distances between airplanes and drones based on their 
+//!   geospatial and temporal data.
+//! - **Encounters Identification**: Identify close encounters based on predetermined thresholds 
+//!   such as proximity and altitude differences.
+//!
+//! ## Database Interaction
+//!
+//! This module relies heavily on ClickHouse, leveraging features like temporary tables and geospatial 
+//! functions such as `pointInEllipses`. Temporary tables are created to handle filtered airplane and 
+//! drone data, which are then used in subsequent calculations.
+//!
+//! ## Key Features
+//!
+//! - **Robust Error Handling**: Ensures graceful handling of database or query failures and provides 
+//!   informative logging for debugging.
+//! - **High Performance**: Optimized SQL queries and efficient use of ClickHouse features to handle 
+//!   large volumes of data with minimal latency.
+//! - **Configurability**: Parameters such as distance (in nautical miles) and temporal ranges can be 
+//!   customized.
+//!
+//! ## Components
+//!
+//! - **Timings Struct**: Tracks execution times for key operations such as selecting airplane and 
+//!   drone data or computing close encounters.
+//! - **PlaneDistance Methods**: The main driver for filtering and calculations, equipped with 
+//!   functions for data extraction, proximity-based filtering, and interaction with ClickHouse queries.
+//!
+//! ## Usage
+//!
+//! The module is part of a larger command suite that utilizes structs like `Calculate` and `PlanesStats` 
+//! to manage airplane and drone data. Each function is designed to be asynchronous to ensure 
+//! non-blocking operations and scalability.
 //!
 //! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
 //!
+
 use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
 use eyre::Result;
 use futures::future::try_join_all;
@@ -24,8 +68,38 @@ impl PlaneDistance {
 
     /// Select a list of airplanes positions we will consider for distance calculations
     ///
-    /// - 1st criteria date and time (unit is a given day)
-    /// - define a bounding box around a specific site (default is 70nm) and use it as a filter
+    /// This function gathers the list of airplanes within a given proximity area around a specified site.
+    /// The filtering criteria include:
+    ///
+    /// - Specific date or time (bounded to a single day).
+    /// - A defined proximity area (bounding ellipse), based on a configurable distance (default 70 nm).
+    ///
+    /// Steps performed:
+    /// 1. Calculate the bounding ellipse using the site location and specified distance.
+    /// 2. Create a temporary table (`today{tag}`) in the database for storing the filtered airplane data.
+    /// 3. Populate the table with airplane data, such as location, altitude, and timestamp, extracted
+    ///    from the `airplanes` table after applying the bounding filter and other conditions like altitude presence.
+    /// 4. Validate table creation and count the selected entries.
+    ///
+    /// If the table fails to be created (e.g., no matching airplane data was found), the function will safely
+    /// handle this and return a count of 0 entries.
+    ///
+    /// # Parameters
+    ///
+    /// - `dbh`: A reference to the database client used for executing queries.
+    ///
+    /// # Returns
+    ///
+    /// `Result<usize>`: The number of airplanes selected, or an error if the operation fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any of the following occurs:
+    /// - Creating or populating the temporary table fails.
+    /// - Querying the count of entries in the temporary table fails.
+    ///
+    /// The function is designed with proper error handling to ensure robustness in cases where
+    /// the expected table or data is not present due to query constraints.
     ///
     #[tracing::instrument(skip(dbh))]
     async fn select_planes(&mut self, dbh: &Client) -> Result<usize> {
@@ -126,6 +200,37 @@ ORDER BY time
         Ok(count as usize)
     }
 
+    /// Selects drone points for a specific day based on geospatial and temporal proximity criteria.
+    ///
+    /// This function utilizes the geospatial function `pointInEllipses` to filter drones within a
+    /// defined elliptical area around the site. The distance from the site is calculated in degrees,
+    /// based on the nautical mile parameter specified in the struct.
+    ///
+    /// A temporary table `candidates{tag}` is created to store drone points matching the criteria,
+    /// and its count is tracked for further calculations.
+    ///
+    /// Temporary table fields:
+    /// - `time`: Timestamp of the drone point.
+    /// - `journey`: Identifier for the drone's journey.
+    /// - `ident`: Unique identifier for the drone.
+    /// - `model`: Drone model.
+    /// - `timestamp`: Timestamp of the drone point (duplicate of `time`).
+    /// - `latitude`: Latitude of the drone point.
+    /// - `longitude`: Longitude of the drone point.
+    /// - `altitude_geo`: Geographical altitude of the drone.
+    /// - `elevation`: Elevation of the drone.
+    /// - `home_lat`: Latitude of the drone's home point.
+    /// - `home_lon`: Longitude of the drone's home point.
+    /// - `home_distance_2d`: 2D distance from the home point.
+    /// - `home_distance_3d`: 3D distance from the home point.
+    ///
+    /// The function also keeps track of the created temporary table for cleanup in case of
+    /// process interruption.
+    ///
+    /// # Returns
+    /// `Ok(usize)` with the count of drones matching the criteria.
+    /// `Err` in case of any errors during table creation or querying the table.
+    ///
     #[tracing::instrument(skip(dbh))]
     async fn select_drones(&mut self, dbh: &Client) -> Result<usize> {
         // All drone points for the same day
@@ -166,7 +271,7 @@ AS SELECT
     timestamp,
     latitude,
     longitude,
-    altitude,
+    altitude_geo,
     elevation,
     home_lat,
     home_lon,
@@ -205,6 +310,33 @@ WHERE
         Ok(count as usize)
     }
 
+    /// Identifies and creates a table for potential close encounters between planes
+    /// and drones within specified proximity and altitude difference.
+    ///
+    /// # Description
+    /// This method analyzes drone and plane data to detect geospatial and temporal
+    /// proximity between them. The function creates a temporary table (`today_close`)
+    /// to store these encounters for further processing or reporting.
+    ///
+    /// Proximity is defined as:
+    /// - 2D geospatial distance between plane and drone locations (`dist2d`).
+    /// - The absolute altitude difference between the plane and drone (`diff_alt`).
+    ///
+    /// Parameters passed to the query:
+    /// - `$1`: Proximity distance in meters (e.g., 5500 meters).
+    ///
+    /// The temporary table `today_close` will include:
+    /// - Drone journey information such as ID, model, and geolocation (lat, lon, alt).
+    /// - Plane information such as site, callsign, and geolocation (lat, lon, alt).
+    /// - Calculated fields like 2D and 3D distances, and altitude differences.
+    ///
+    /// The function also keeps track of the temporary tables created in the `state`
+    /// attribute to ensure proper cleanup processes.
+    ///
+    /// # Returns
+    /// `Ok(usize)` with the count of encounters found.
+    /// `Err` in case of any errors during table creation or querying.
+    ///
     #[tracing::instrument(skip(dbh))]
     async fn find_close(&mut self, dbh: &Client) -> Result<usize> {
         trace!("Find close encounters.");
@@ -233,7 +365,7 @@ AS SELECT
   c.timestamp AS time,
   c.longitude AS dlon,
   c.latitude AS dlat,
-  c.altitude AS dalt,
+  c.altitude_geo AS dalt,
   c.elevation AS dh,
   c.home_distance_2d AS hdist2d,
   c.home_distance_3d AS hdist3d,
@@ -283,6 +415,24 @@ WHERE
         Ok(count as usize)
     }
 
+    /// Creates a temporary table `ids` to store unique drone and plane encounter IDs for a given site and day.
+    ///
+    /// This function initializes the `ids` table structure with relevant fields such as `drone_id`, `callsign`, and
+    /// `journey`. It also adds an optional `en_id` field (encounter ID) which is populated later after identifying
+    /// close encounters. The table is created in memory for quick access and temporary usage.
+    ///
+    /// The table name is dynamically generated based on the site's name and the day's date to ensure uniqueness
+    /// and avoid conflicts with other calculations.
+    ///
+    /// # Parameters
+    /// - `dbh`: Database client used to execute the table creation query.
+    /// - `day_name`: String representation of the day (format: YYYYMMDD) to include in the table name.
+    /// - `site`: Name of the site to include in the table name.
+    ///
+    /// # Returns
+    /// - `Ok(())` if the table is successfully created.
+    /// - `Err` if there is any error during the table creation process.
+    ///
     #[tracing::instrument(skip(dbh))]
     async fn create_table_ids(&mut self, dbh: &Client, day_name: &str, site: &str) -> Result<()> {
         let tag = format!("_{site}_{day_name}");
@@ -303,6 +453,21 @@ CREATE OR REPLACE TABLE ids{tag} (
         Ok(dbh.execute(&r).await?)
     }
 
+    /// Inserts drones and planes' encounter IDs into the temporary `ids` table.
+    ///
+    /// This function retrieves close drone-plane encounters from the `today_close` table and assigns
+    /// them unique encounter IDs based on the day, site, and a per-journey increment. The newly created
+    /// IDs are structured for each encounter and inserted into the `ids` table.
+    ///
+    /// # Parameters
+    /// - `dbh`: Database client used for query execution.
+    /// - `day_name`: String representation of the day (format: YYYYMMDD) used in table tagging and identification.
+    /// - `site`: The associated site name for table tagging and identification.
+    ///
+    /// # Returns
+    /// - `Ok(usize)` representing the number of records successfully inserted into the `ids` table.
+    /// - `Err` if any error occurs during query execution or insertion.
+    ///
     #[tracing::instrument(skip(dbh))]
     async fn insert_ids(&mut self, dbh: &Client, day_name: &str, site: &str) -> Result<usize> {
         let tag = format!("_{site}_{day_name}");
@@ -381,6 +546,17 @@ CREATE OR REPLACE TABLE ids{tag} (
         Ok(count as usize)
     }
 
+    /// Selects and records close encounters between drones and planes.
+    ///
+    /// This function identifies points of minimal distance between a drone and any surrounding plane
+    /// and records relevant encounter information. The process involves grouping and filtering data to
+    /// extract unique encounters, and subsequently storing this data in the `airplane_prox` table for
+    /// further analysis.
+    ///
+    /// # Returns
+    /// - `Ok(usize)` indicating the number of new encounters inserted.
+    /// - `Err` if an error occurs during table creation, data selection, or insertions.
+    ///
     #[tracing::instrument(skip(dbh))]
     async fn select_encounters(&mut self, dbh: &Client) -> Result<usize> {
         trace!("select and record close points. ");
@@ -457,7 +633,19 @@ CREATE OR REPLACE TABLE ids{tag} (
         Ok(count as usize)
     }
 
-    /// Remove temporary tables.
+    /// This function removes all temporary tables created during the calculation process.
+    ///
+    /// Temporary tables are dropped based on their type (`Today`, `Candidates`, `TodayClose`, `Ids`)
+    /// and the associated tag, which is a combination of the site name and date.
+    ///
+    /// This cleanup step ensures that no leftover resources remain in the database after processing.
+    ///
+    /// # Parameters
+    /// - `dbh`: A reference to the database client used to execute the table removal queries.
+    ///
+    /// # Returns
+    /// - `Ok(())` if all temporary tables are successfully dropped.
+    /// - `Err` if an error occurs while dropping any of the tables.
     ///
     #[tracing::instrument(skip(dbh))]
     async fn cleanup_temp_tables(&self, dbh: &Client) -> Result<()> {
@@ -501,8 +689,27 @@ CREATE OR REPLACE TABLE ids{tag} (
 impl Calculate for PlaneDistance {
     /// Run the process for the given day.
     ///
-    /// XXX Should we keep the interactive display or not.  When running parallel runs it messes
-    /// up the output.
+    /// This function orchestrates the calculations for planes and drones within
+    /// a predefined distance and separation on a particular day. It performs a
+    /// step-by-step process:
+    ///
+    /// 1. Select planes within the specified range.
+    /// 2. Select drones within the specified range.
+    /// 3. Identify potential close encounters between planes and drones.
+    /// 4. Calculate final close encounters based on proximity thresholds.
+    ///
+    /// Each step is accompanied by progress updates via `ml_progress` for better
+    /// visibility during execution. Temporary tables are created during the process
+    /// and are cleaned up afterwards.
+    ///
+    /// FIXME: parallel processing and progress bar is messed up
+    ///
+    /// # Parameters
+    /// - `dbh`: A reference to the database client used for query execution.
+    ///
+    /// # Returns
+    /// - `Ok(Stats)` containing the statistics of planes, drones, and encounters.
+    /// - `Err` if any step in the process encounters an error.
     ///
     #[tracing::instrument(skip(self, dbh))]
     async fn run(&mut self, dbh: &Client) -> Result<Stats> {

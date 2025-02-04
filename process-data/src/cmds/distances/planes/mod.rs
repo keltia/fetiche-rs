@@ -21,7 +21,27 @@ use crate::error::Status;
 
 mod compute;
 
-/// These are the options we pass to this command
+/// Command-line options for the `distances planes` functionality.
+///
+/// This structure captures the user-provided options for executing distance
+/// calculations between a drone and planes in specific geographical areas and
+/// time intervals.
+///
+/// # Fields
+///
+/// - `date`: The day or interval of days for which to compute distances. This is
+///   passed as a subcommand and typically provides a range of dates for processing.
+/// - `name`: The name of the site or station around which to perform calculations.
+///   If not provided, all stations will be processed by default.
+/// - `distance`: The maximum range, in Nautical Miles, to consider for distance
+///   calculations. Planes outside this range will not be included in the computation.
+///   Defaults to `70.0` Nautical Miles if unspecified.
+/// - `separation`: The proximity threshold, in meters, to consider during calculations.
+///   Planes closer than this threshold to the drone site are flagged for analysis.
+///   Defaults to `5500.0` meters.
+///
+/// This structure is based on `clap::Parser` to provide seamless integration
+/// with command-line argument parsing.
 ///
 #[derive(Clone, Debug, Parser)]
 pub struct PlanesOpts {
@@ -40,7 +60,32 @@ pub struct PlanesOpts {
 
 // -----
 
-/// This is the struct in which we store the context of a given day work.
+/// Represents the context for calculating the distance between a drone and planes.
+///
+/// This structure is designed to encapsulate the necessary information required to perform
+/// distance calculations for a specific site on a given day. It includes parameters such as
+/// geographical coordinates, maximum distances, proximity thresholds, and other auxiliary
+/// data. Temporary tables created during computation are also managed within this structure.
+///
+/// # Fields
+///
+/// - `site`: Specifies the location (site) for which calculations are performed.
+/// - `date`: The day for which distance calculations are to be executed.
+/// - `wait`: An optional delay (in seconds) between tasks during processing.
+/// - `distance`: Defines the maximum range of distance (in Nautical Miles) to be considered
+///   during calculations. Defaults to `70.0`.
+/// - `separation`: Specifies the proximity threshold (in meters). Defaults to `5500.0`.
+/// - `lat`: Latitude of the antenna at the site.
+/// - `lon`: Longitude of the antenna at the site.
+/// - `state`: A record of temporary tables created during the calculation process for cleanup purposes.
+///
+/// # Notes
+///
+/// This structure uses the `derive_builder` crate to enable the construction of instances
+/// through a builder pattern. Default values for certain fields (such as `distance`,
+/// `separation`, and `state`) ensure that users can create instances without explicitly
+/// specifying these values. The `state` field is particularly useful for tracking intermediate
+/// computation data, which needs to be properly cleaned up to maintain system integrity.
 ///
 #[derive(Builder, Debug)]
 pub struct PlaneDistance {
@@ -67,9 +112,20 @@ pub struct PlaneDistance {
     state: Vec<TempTables>,
 }
 
-/// This is the list of temporary tables created during the calculations process.  As we can
-/// bail out a certain points, the cleanup process may include one or more of these tables.
-/// This is registered in the `state` attribute in `PlaneDistance`.
+/// Temporary tables created during the processing of distance calculations.
+///
+/// These tables are used as intermediate storage at various stages of the computation.
+/// Depending on the circumstances, one or more of these tables may be created, and they
+/// must be cleaned up at the end of the process. Each variant represents a specific stage
+/// in the calculation workflow:
+///
+/// - `Today`: Contains data relevant to the given day of the calculation.
+/// - `Candidates`: Stores potential candidates that match certain criteria.
+/// - `TodayClose`: Tracks close proximity calculations for a specific day.
+/// - `Ids`: Keeps identifiers for entities involved in the computation.
+///
+/// The `state` attribute in the `PlaneDistance` structure maintains a record of these
+/// tables to ensure proper cleanup during the process.
 ///
 #[derive(Clone, Debug)]
 pub enum TempTables {
@@ -81,7 +137,36 @@ pub enum TempTables {
 
 // -----
 
-/// Handle the `distances planes` command.
+/// This function processes the `distances planes` command. It handles the setup and execution of
+/// distance calculations between a drone and various planes around specific sites on given days.
+/// The calculations can span multiple dates and sites, and the results depend on user-specified
+/// options such as distance, proximity, and the selected site(s). The function operates in parallel
+/// for efficiency and uses temporary tables to facilitate intermediate data storage.
+///
+/// The results of the calculations are gathered into a `Stats` structure.
+///
+/// # Parameters
+///
+/// - `ctx`: The execution context containing configurations and utilities for processing.
+/// - `opts`: User-specified options for the command, including site name, dates, distances, and separation.
+///
+/// # Returns
+///
+/// - `Result<Stats>`: Returns the statistics of the computation wrapped in a result.
+///
+/// # Behavior
+///
+/// 1. The function begins by setting the working directory to the datalake specified in the context.
+/// 2. It parses the dates provided in the options or defaults to the current day.
+/// 3. A worklist is generated containing all combinations of sites and dates.
+/// 4. The calculations run in parallel batches, with each batch processing a subset of the worklist.
+/// 5. Finally, the results are collected and returned as `Stats`.
+///
+/// # Notes
+///
+/// - Ensure appropriate handling of options like "ALL" or no site name to process multiple sites.
+/// - Parallel execution requires careful batching to avoid overwhelming the thread pool.
+/// - Errors in individual site/day calculations are logged, and default statistics are returned for those failures.
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stats> {
@@ -201,8 +286,45 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     Ok(stats)
 }
 
-/// Does the calculation for one specific day on one specific site.
-/// Could be merged with previous, but I think it might be too much overhead for just a few lines.
+/// Perform the calculation for a specific day and a specific site.
+///
+/// This function is responsible for calculating the plane distances for
+/// a given site on a specific day. It takes into account the provided
+/// parameters such as distance and separation, and uses the database
+/// connection to process and store the results. It builds the necessary
+/// input using the `PlaneDistanceBuilder` and executes the calculation.
+///
+/// # Arguments
+///
+/// * `ctx` - The application context containing configurations and resources.
+/// * `site` - A reference to the `Site` for which the calculation is being performed.
+/// * `day` - The date for which the calculation is intended.
+/// * `distance` - Maximum distance to be considered for calculations.
+/// * `separation` - Minimum proximity for the calculations.
+///
+/// # Returns
+///
+/// Returns a `Result` containing `Stats` on success, or an error type if the calculation fails.
+///
+/// # Errors
+///
+/// This function will return an error in the following cases:
+/// * Failure to acquire a database connection.
+/// * Issues during the normalization of the provided day.
+/// * Errors occurring during the building of the `PlaneDistance` object.
+/// * Errors occurring while running the actual calculation process.
+///
+/// # Examples
+///
+/// ```rust
+/// let stats = calculate_one_day_on_site(&ctx, &site, &day, 70.0, 5500.0).await?;
+/// println!("Calculated stats: {:?}", stats);
+/// ```
+///
+/// # Note
+///
+/// If the `dry_run` setting is enabled in the context, this function will not run real calculations.
+/// Instead, it will return a default `PlanesStats` result without modifying any data.
 ///
 #[tracing::instrument(skip(ctx))]
 async fn calculate_one_day_on_site(

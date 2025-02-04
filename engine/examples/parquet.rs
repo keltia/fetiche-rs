@@ -8,6 +8,22 @@ use std::path::Path;
 use eyre::Result;
 use polars::prelude::{JsonFormat, JsonReader, ParquetWriter, SerReader};
 
+/// Reads JSON data from a file, processes it into a DataFrame,
+/// and writes it out as a Parquet file.
+///
+/// # Arguments
+///
+/// * `base` - The base filename (without extension) to use for input and output.
+///            The function expects a file with `.json` extension for input
+///            and will write a file with `.parquet` extension for output.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The input JSON file cannot be found or opened.
+/// - There is an issue with parsing the JSON or creating the DataFrame.
+/// - Writing the Parquet file to disk fails.
+///
 async fn read_write_output(base: &str) -> Result<()> {
     let fname = Path::new(base).with_extension("json");
     eprintln!("Reading data from {:?}", fname);

@@ -1,4 +1,18 @@
-//! Module for exporting encounters into KML files.
+//! This module provides functionality to export geographical "encounter" data into
+//! KML (Keyhole Markup Language) files, suitable for visualization in tools like
+//! Google Earth. Encounters represent events or interactions involving objects like
+//! drones and planes, annotated with timestamps and related metadata.
+//!
+//! # Features
+//!
+//! - Supports exporting single encounters, all encounters, or those filtered by a specific date.
+//! - Generates KML files with organized geographical data, including trajectories and points.
+//! - Validates input options and ensures proper formatting of encounter IDs and output paths.
+//!
+//! # Usage
+//!
+//! The main entry point for exporting encounters is the `export_encounters` function,
+//! which handles command-line options and routes to appropriate logic for export.
 //!
 
 mod create;
@@ -42,7 +56,29 @@ pub struct ExpEncounterOpts {
     date: Option<DateOpts>,
 }
 
-/// Export one or all existing encounters as KML files into a single file/directory
+/// Export encounters based on provided options into KML files. The function allows exporting a single
+/// encounter, all encounters, or encounters from a specific date, depending on the options passed.
+///
+/// # Arguments
+///
+/// * `ctx` - A shared application context containing configuration and database connection details.
+/// * `opts` - Command-line options specifying the export behavior, including whether to export all encounters,
+///   specific encounter IDs, or encounters on a given date.
+///
+/// # Returns
+///
+/// * `Ok(())` on successful export.
+/// * `Err` with appropriate status if validation or processing fails.
+///
+/// # Errors
+///
+/// This function will return an error in the following scenarios:
+/// - When the `--all` option is used together with an encounter ID or date.
+/// - When no encounter ID or date is provided when not using the `--all` option.
+/// - When the output path is not a directory or is unspecified.
+/// - If fetching encounter IDs or data points fails.
+///
+/// Best used for efficient and structured data export for analysis or visualization purposes.
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result<()> {
@@ -106,7 +142,31 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
     Ok(())
 }
 
-/// Export one single encounter
+/// Export a single encounter as a KML string based on its ID. This function fetches
+/// data points associated with the specified encounter ID (such as drones and planes)
+/// and generates a structured KML document.
+///
+/// # Arguments
+///
+/// * `ctx` - A shared application context containing configuration and database connection details.
+/// * `id` - A string slice that holds the unique identifier of the encounter to be exported.
+///
+/// # Returns
+///
+/// * `Ok(String)` - A string representation of the KML document if the export is successful.
+/// * `Err(Status)` - An error if the encounter ID is invalid, if the data points are insufficient, or if
+///   any other validation or processing errors occur.
+///
+/// # Errors
+///
+/// This function will return an error in the following scenarios:
+/// - If the encounter ID format is invalid.
+/// - If the associated data points (either drones or planes) are insufficient for generating
+///   the KML document.
+/// - If the encounter data cannot be fetched due to a database or processing error.
+///
+/// The resulting KML document is suitable for geographical data visualization using tools
+/// that support the KML format (e.g., Google Earth).
 ///
 #[tracing::instrument(skip(ctx))]
 async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
@@ -184,7 +244,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
             ("name".into(), format!("{id}.kml")),
             ("time".into(), encounter_timestamp.to_string()),
         ]
-        .into(),
+            .into(),
         elements,
     };
 
@@ -199,7 +259,33 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     Ok(kml.to_string())
 }
 
-/// Export a list of encounters.
+/// Export a list of encounters to the specified output directory.
+///
+/// This function takes a list of encounter IDs, processes them in batches,
+/// and generates their corresponding KML files into the provided output directory.
+/// Each encounter is exported as a separate KML file with its ID as the filename.
+///
+/// # Arguments
+///
+/// * `ctx` - A shared application context that contains configurations and database connection details.
+/// * `list` - A vector of encounter IDs (as strings) to be exported.
+/// * `output` - A path to the directory where the exported KML files should be saved.
+///
+/// # Returns
+///
+/// * `Ok(usize)` - The total number of encounters exported successfully.
+/// * `Err(Status)` - An error if the output path is invalid (not a directory),
+///   or if any other processing or IO errors occur.
+///
+/// # Errors
+///
+/// This function will return an error in the following scenarios:
+/// - If the `output` path is not a directory.
+/// - If any encounter ID in the list fails to be processed.
+/// - If there is a failure while writing the KML file to the output directory.
+///
+/// The KML files will be individually named based on the encounter IDs and will
+/// be valid geographical data suitable for visualization in tools like Google Earth.
 ///
 #[tracing::instrument(skip(ctx))]
 async fn export_encounter_list(
@@ -244,8 +330,8 @@ async fn export_encounter_list(
                         }
                     };
                 })
-                .await
-                .unwrap();
+                    .await
+                    .unwrap();
             })
             .collect();
         let _ = join_all(kmls).await;

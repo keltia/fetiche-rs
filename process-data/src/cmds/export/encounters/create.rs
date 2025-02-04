@@ -8,7 +8,24 @@ use kml::{
 use std::collections::HashMap;
 
 
-/// Generate a `LineString` given a list of (x,y,z) points.
+/// Converts a vector of `DataPoint` objects into a `LineString`.
+///
+/// This function iterates over the provided points, generating coordinates
+/// (`Coord`) for each along with their longitude, latitude, and optional
+/// altitude values. It then creates a `LineString` with specific properties
+/// such as tessellation, extrusion, and altitude mode set.
+///
+/// # Arguments
+///
+/// * `points` - A reference to a vector of `DataPoint`s containing position data.
+///
+/// # Returns
+///
+/// An `eyre::Result` containing the generated `LineString` if successful, or an error.
+///
+/// # Errors
+///
+/// Will return an error if any issues occur during the processing of points.
 ///
 #[tracing::instrument]
 fn from_points_to_ls(points: &Vec<DataPoint>) -> eyre::Result<LineString> {
@@ -26,7 +43,34 @@ fn from_points_to_ls(points: &Vec<DataPoint>) -> eyre::Result<LineString> {
     })
 }
 
-/// Create a `Style`  entry for a `Placemark`
+/// Creates a `Style` KML object with the specified name, color, and line width.
+///
+/// This function is useful when defining custom styles for placemarks or geometries
+/// in the generated KML document. The style specifies visual properties like line
+/// color and width.
+///
+/// # Arguments
+///
+/// * `name` - A string slice that represents the name or ID for the style.
+/// * `colour` - A string slice specifying the color (in KML hex AABBGGRR format).
+/// * `size` - A floating-point value specifying the width of the line.
+///
+/// # Returns
+///
+/// A `Kml` object containing a `Style`.
+///
+/// # Examples
+///
+/// ```
+/// use kml::Kml;
+///
+/// let style = make_style("highlight", "ff0000ff", 2.0);
+/// assert!(matches!(style, Kml::Style(..)));
+/// ```
+///
+/// # Errors
+///
+/// This function does not return an error in its current implementation.
 ///
 #[tracing::instrument]
 pub(crate) fn make_style(name: &str, colour: &str, size: f64) -> Kml {
@@ -42,7 +86,19 @@ pub(crate) fn make_style(name: &str, colour: &str, size: f64) -> Kml {
     })
 }
 
-/// Generate a default style list.
+/// Generates a list of default KML styles.
+///
+/// This function parses a hardcoded XML string containing a set of predefined
+/// KML styles and style maps to be used in the generated KML documents.
+///
+/// # Returns
+///
+/// A vector of `Kml<f64>` elements representing the default styles and style maps.
+///
+/// # Errors
+///
+/// This function will panic if the hardcoded XML string cannot be successfully
+/// parsed into a valid `Kml` object.
 ///
 #[tracing::instrument]
 pub(crate) fn default_styles() -> Vec<Kml<f64>> {
@@ -141,8 +197,36 @@ pub(crate) fn default_styles() -> Vec<Kml<f64>> {
     vec![s]
 }
 
-/// Create a `Placemark` given a name (like drone or plane ID) and its trajectory using the
-/// requested style.
+/// Converts a trajectory, represented as a collection of `DataPoint` values, into a KML `Placemark`.
+///
+/// This function creates a `Placemark` that represents the specified trajectory using the given
+/// style. The trajectory is visualized as a `LineString` in the KML output.
+///
+/// # Arguments
+///
+/// * `name` - A string slice that holds the name or identifier for the placemark (e.g., drone ID, plane ID).
+/// * `points` - A reference to a vector of `DataPoint` representing the trajectory.
+/// * `style` - A string slice specifying the style (e.g., a KML style URL) to be applied to the geometry.
+///
+/// # Returns
+///
+/// A `Result` containing the generated `Kml::Placemark` on success, or an error of type `eyre::Error` if the conversion fails.
+///
+/// # Errors
+///
+/// This function will return an error in the following scenarios:
+/// - If the conversion of `points` to a `LineString` using the `from_points_to_ls` function fails.
+///
+/// # Examples
+///
+/// ```rust
+/// let points = vec![
+///     DataPoint { latitude: 12.34, longitude: 56.78, altitude: 100.0, timestamp: 123456 },
+///     DataPoint { latitude: 13.34, longitude: 57.78, altitude: 150.0, timestamp: 123457 },
+/// ];
+/// let result = from_traj_to_placemark("My Drone", &points, "#style-id");
+/// assert!(result.is_ok());
+/// ```
 ///
 #[tracing::instrument(skip(points, style))]
 pub(crate) fn from_traj_to_placemark(
@@ -160,7 +244,44 @@ pub(crate) fn from_traj_to_placemark(
     }))
 }
 
-/// Create a `Placemark` for a specific point, like the closest point between the two, aka encounter.
+/// Converts a specific `Encounter` point into a KML `Placemark`.
+///
+/// This function creates a KML `Placemark` object to represent the closest point of the encounter 
+/// between two entities, taking their respective coordinates and altitudes into consideration. 
+/// The created placemark uses a `LineString` geometry to visually connect the two points, 
+/// and applies the specified style to it.
+///
+/// # Arguments
+///
+/// * `name` - A string slice that holds the name or identifier for the encounter point.
+/// * `res` - A reference to an `Encounter` object describing the encounter details.
+/// * `style_url` - A string slice specifying the style URL to be applied to the placemark.
+///
+/// # Returns
+///
+/// A `Result` containing the generated `Kml::Placemark` on success, or an error of type `eyre::Error` if the conversion fails.
+///
+/// # Errors
+///
+/// This function will return an error in the following scenarios:
+/// - If there are issues constructing the `LineString` geometry or its attributes.
+/// - If an internal KML-related operation fails during the placemark creation.
+///
+/// # Examples
+///
+/// ```rust
+/// let encounter = Encounter {
+///     drone_lat: 12.34,
+///     drone_lon: 56.78,
+///     drone_alt_m: 100.0,
+///     prox_lat: 13.34,
+///     prox_lon: 57.78,
+///     prox_alt_m: 150.0,
+///     timestamp: 123456,
+/// };
+/// let result = from_point_to_placemark("Encounter Point", &encounter, "#style-url");
+/// assert!(result.is_ok());
+/// ```
 ///
 #[tracing::instrument]
 pub(crate) fn from_point_to_placemark(

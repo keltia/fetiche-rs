@@ -31,7 +31,32 @@ pub struct ExpDistOpts {
     pub output: Option<String>,
 }
 
-/// Private struct for extracting data
+/// Represents an individual encounter record with detailed information.
+///
+/// This struct is used to deserialize data retrieved from the `airplane_prox` table
+/// into a structured format.
+///
+/// # Fields
+///
+/// - `site` - Identifier of the site where the encounter occurred.
+/// - `en_id` - Unique ID of the encounter.
+/// - `time` - Timestamp of when the encounter happened.
+/// - `journey` - Journey identifier associated with the encounter.
+/// - `drone_id` - Unique identifier of the drone involved in the encounter.
+/// - `model` - Model name of the drone.
+/// - `drone_lat` - Latitude coordinate of the drone during the encounter.
+/// - `drone_lon` - Longitude coordinate of the drone during the encounter.
+/// - `drone_alt_m` - Altitude of the drone in meters.
+/// - `drone_height_m` - Height of the drone above ground level in meters.
+/// - `prox_callsign` - Callsign of the proximal aircraft involved in the encounter.
+/// - `prox_id` - Identifier of the proximal aircraft.
+/// - `prox_lat` - Latitude coordinate of the proximal aircraft.
+/// - `prox_lon` - Longitude coordinate of the proximal aircraft.
+/// - `prox_alt_m` - Altitude of the proximal aircraft in meters.
+/// - `distance_slant_m` - Slant distance between the drone and proximal aircraft in meters.
+/// - `distance_hor_m` - Horizontal distance between the drone and proximal aircraft in meters.
+/// - `distance_vert_m` - Vertical distance between the drone and proximal aircraft in meters.
+/// - `distance_home_m` - Distance between the drone and its home location in meters.
 ///
 #[derive(Debug, Deserialize, Row, Serialize)]
 struct Encounter {
@@ -56,7 +81,51 @@ struct Encounter {
     distance_home_m: i32,
 }
 
-/// Retrieve all the records in `airplane_prox` table.
+/// Retrieves all the encounter records from the `airplane_prox` table in the database.
+///
+/// The function executes a database query to select all records and orders them
+/// by time for structured representation. The retrieved data is deserialized into
+/// a vector of `Encounter` structs.
+///
+/// # Arguments
+///
+/// * `client` - A reference to the database client used to execute the query.
+///
+/// # Returns
+///
+/// * `Result<Vec<Encounter>>` - Returns a vector of `Encounter` structs with the
+///   data fetched from the table upon successful execution. If an error occurs
+///   (e.g., query execution or deserialization failure), it returns an error type.
+///
+/// # Process
+///
+/// 1. Executes a SQL query to retrieve all encounter records in the `airplane_prox` table.
+/// 2. Orders the records by time.
+/// 3. Collects and deserializes the records into the `Encounter` struct format.
+///
+/// # Errors
+///
+/// This function may return errors in the following scenarios:
+///
+/// * Database connection or query errors while fetching the records.
+/// * Data deserialization issues while converting query rows into the `Encounter` struct format.
+///
+/// # Examples
+///
+/// ```rust
+/// use klickhouse::Client;
+/// use eyre::Result;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<()> {
+///     let client = Client::default();
+///
+///     let encounters = retrieve_all_encounters(&client).await?;
+///     println!("Retrieved {} encounters", encounters.len());
+///
+///     Ok(())
+/// }
+/// ```
 ///
 #[tracing::instrument(skip(client))]
 async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
@@ -93,7 +162,26 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     Ok(res)
 }
 
-/// Retrieve the subset summary of all encounters from `airplane_prox`
+/// This function retrieves a summarized subset of encounter records from the `airplane_prox` table.
+/// The summary data is derived by joining the `airplane_prox` table with the `airprox_summary` table
+/// on specific matching criteria. The resulting records are ordered by the encounter time before being returned.
+///
+/// # Arguments
+/// * `client` - A reference to the database client used to execute the query.
+///
+/// # Returns
+/// * `Result<Vec<Encounter>>` - Returns a vector of `Encounter` structs containing the summary data
+///   upon successful execution, or an error if the query fails or data deserialization is unsuccessful.
+///
+/// # Process
+/// 1. Executes a query joining the `airplane_prox` and `airprox_summary` tables to fetch the summarized data.
+/// 2. Filters the data based on matching criteria such as encounter ID, journey, drone ID, and distance.
+/// 3. Orders the resulting records by time and collects them into `Encounter` structs.
+///
+/// # Errors
+/// This function may return errors in the following cases:
+/// * Database query errors while fetching records.
+/// * Deserialization errors during mapping query results into the `Encounter` struct.
 ///
 #[tracing::instrument(skip(client))]
 async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> {
@@ -118,8 +206,36 @@ async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> 
     Ok(summ)
 }
 
-/// Write the output of `retrieve_all_encounters()` as a CSV file
+/// Exports all encounter records from the `airplane_prox` table into a CSV file.
 ///
+/// This function retrieves all records in the `airplane_prox` table using the `retrieve_all_encounters`
+/// function and serializes them into a CSV file specified by the `fname` argument.
+///
+/// # Arguments
+/// * `client` - A reference to the database client used to query the data.
+/// * `fname` - The output file path where the CSV data will be written.
+///
+/// # Returns
+/// * `Result<()>` - Returns an `Ok` result on successful execution, or an error if anything goes wrong.
+///
+/// # Process
+/// 1. Retrieves all encounters from the `airplane_prox` table.
+/// 2. Serializes the records into CSV format using the `csv` crate.
+/// 3. Writes the serialized CSV data into the specified file.
+///
+/// # Errors
+/// This function may return errors in the following cases:
+/// * Database query errors while retrieving encounter records.
+/// * File I/O errors during CSV writing.
+/// * Data serialization errors while converting records into CSV format.
+///
+/// # Examples
+/// ```rust
+/// // Assuming you have an active `Client` instance
+/// let client = get_database_client().await?;
+/// let csv_path = "encounters.csv";
+/// export_all_encounters_csv(&client, csv_path).await?;
+/// ```
 #[tracing::instrument(skip(client))]
 async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()> {
     trace!("Exporting all encounters from airplane_prox");
@@ -147,9 +263,38 @@ async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()> {
     Ok(())
 }
 
-/// For each considered drone point, export the list of encounters i.e. planes around 1 nm radius
-/// Same as previous but export as a Parquet file.  Due to the way DataFrames are handled in
-/// Datafusion, it is easier to generate the CSV and use it to generate a parquet file.
+/// Exports all encounters as a Parquet file.
+///
+/// This function first generates a temporary CSV file from all encounters by invoking
+/// the `export_all_encounters_csv` function. It then reads the CSV file into a DataFrame and
+/// writes the DataFrame to a Parquet file in the specified location.
+///
+/// # Arguments
+/// * `client` - A reference to the database client used to query data.
+/// * `fname` - The output filename where the Parquet file will be saved.
+///
+/// # Returns
+/// * `Result<()>` - Returns an `Ok` result on success, or an error if anything goes wrong.
+///
+/// # Process
+/// 1. Creates a temporary CSV file using `tempfile`.
+/// 2. Calls `export_all_encounters_csv` to populate the temporary CSV file with encounter data.
+/// 3. Reads the CSV data into a DataFrame using Polars utilities.
+/// 4. Writes the DataFrame data into a Parquet file format.
+///
+/// # Errors
+/// This function may return errors in the following cases:
+/// * Failure to create the temporary file.
+/// * Issues with reading or writing CSV and Parquet files.
+/// * Database query errors while retrieving the encounters data.
+///
+/// # Examples
+/// ```rust
+/// // Assuming you have a valid `Client` instance
+/// let client = get_client().await?;
+/// let fname = "output.parquet";
+/// export_all_encounters_parquet(&client, fname).await?;
+/// ```
 ///
 #[tracing::instrument(skip(client))]
 async fn export_all_encounters_parquet(client: &Client, fname: &str) -> Result<()> {
@@ -182,7 +327,22 @@ async fn export_all_encounters_parquet(client: &Client, fname: &str) -> Result<(
     Ok(())
 }
 
-/// This is for extracting a summary of encounters for a single day for any given site.
+/// Exports a summary of all encounters for a specific day as a CSV file.
+///
+/// This function retrieves summary data about encounters from the database,
+/// formats it as a CSV file, and writes it to a specified output filename.
+///
+/// # Arguments
+/// * `dbh` - A reference to the database client used to query data.
+/// * `fname` - The output filename where the CSV file will be saved.
+///
+/// # Returns
+/// * `eyre::Result<()>` - Returns an `Ok` result on success, or an error if something fails.
+///
+/// # Errors
+/// This function may return errors in the following cases:
+/// * Failure to retrieve summary data from the database.
+/// * Issues with writing the data to the specified CSV file.
 ///
 #[tracing::instrument(skip(dbh))]
 async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::Result<()> {
@@ -211,6 +371,34 @@ async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::R
 }
 
 /// Main entry point for the various `export distances` subcommand.
+///
+/// This function handles exporting of distance-related data based on the provided options.
+/// It interacts with the database through the application context and performs various
+/// export operations, such as generating summary reports or exporting detailed data
+/// in different formats (e.g., CSV, Parquet).
+///
+/// # Arguments
+/// * `ctx` - Application context providing access to the database and other resources.
+/// * `opts` - Options specifying the export details, such as output format and summary.
+///
+/// # Returns
+/// * `eyre::Result<()>` - Returns an `Ok` result on success or an error in case of failure.
+///
+/// # Process
+/// * Connects to the database using the provided context.
+/// * Determines whether to export a summary or detailed data based on the `opts`.
+/// * Supports multiple output formats including CSV and Parquet.
+/// * Writes the results to the specified file if the `output` option is provided.
+///
+/// # Errors
+/// This function may return errors in the following cases:
+/// * Missing output destination.
+/// * Unsupported export format.
+/// * Errors during database queries, file writing, or data serialization.
+///
+/// # Notes
+/// * Ensure the database connection is available before invoking this function.
+/// * The output file name and format should be specified in the options.
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
