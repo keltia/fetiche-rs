@@ -4,7 +4,6 @@
 use crate::config::Context;
 use clap::Parser;
 use klickhouse::Row;
-use datafusion::prelude::{CsvReadOptions, SessionConfig, SessionContext};
 use serde::Deserialize;
 use tracing::debug;
 
@@ -54,21 +53,6 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> eyre::Result<()> {
 
     let table = &opts.table;
     let fname = &opts.fname;
-
-    // Setup datafusion for csv file in batches
-    //
-    let cfg_opts = SessionConfig::new()
-        .with_batch_size(opts.threshold as usize);
-    let ctx = SessionContext::new_with_config(cfg_opts);
-    let csv_opts = CsvReadOptions::new().has_header(true);
-
-    // Do the reading
-    //
-    ctx.register_csv("import-adsb", fname, csv_opts).await?;
-    let df = ctx.sql("SELECT * FROM import-adsb").await?;
-
-    let mut rows = df.execute_stream_partitioned().await?;
-    rows.iter().for_each(|row| {});
 
     Ok(())
 }
