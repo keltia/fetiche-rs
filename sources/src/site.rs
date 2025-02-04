@@ -14,11 +14,35 @@ use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use fetiche_formats::Format;
 use serde::{Deserialize, Serialize};
 
-use fetiche_formats::Format;
-
 use crate::{Auth, Capability, Routes};
+
+/// Define the kind of data the source is managing
+///
+/// This enum represents the type of data handled by a site.
+/// It provides a clear differentiation between various types:
+///
+/// - `Adsb`: Represents plain ADS-B (Automatic Dependent Surveillance–Broadcast) traffic.
+/// - `Drone`: Represents drone-specific traffic.
+/// - `Invalid`: Serves as a fallback for unrecognized data types.
+///
+/// The enum supports string-based conversion from common lowercase string representations
+/// and implements the `Display` trait for user-friendly formatting.
+///
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, strum::Display)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum DataType {
+    /// Plain ADS-B traffic
+    Adsb,
+    /// Drone specific traffic
+    Drone,
+    /// Invalid datatype
+    #[default]
+    Invalid,
+}
 
 /// Represents a `Site` with its configuration details and behavior.
 ///
@@ -37,10 +61,10 @@ use crate::{Auth, Capability, Routes};
 /// - `auth`: Optional authentication details required for the site.
 /// - `routes`: Optional list of available routes for the site.
 ///
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Site {
     /// Features of the site
-    pub features: Vec<Capability>,
+    pub feature: Capability,
     /// Which data are we getting (drone or plain ads-b)
     #[serde(rename = "type")]
     pub dtype: DataType,
@@ -54,59 +78,10 @@ pub struct Site {
     pub format: String,
     /// Base URL (to avoid repeating)
     pub base_url: String,
-    /// Credentials (will be empty by default and will get filled in by clients)
+    /// Credentials
     pub auth: Option<Auth>,
     /// Different URLs available
     pub routes: Option<Routes>,
-}
-
-/// Define the kind of data the source is managing
-///
-/// This enum represents the type of data handled by a site.
-/// It provides a clear differentiation between various types:
-///
-/// - `Adsb`: Represents plain ADS-B (Automatic Dependent Surveillance–Broadcast) traffic.
-/// - `Drone`: Represents drone-specific traffic.
-/// - `Invalid`: Serves as a fallback for unrecognized data types.
-///
-/// The enum supports string-based conversion from common lowercase string representations
-/// and implements the `Display` trait for user-friendly formatting.
-///
-#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum DataType {
-    /// Plain ADS-B traffic
-    Adsb,
-    /// Drone specific traffic
-    Drone,
-    /// Invalid datatype
-    #[default]
-    Invalid,
-}
-
-impl From<&str> for DataType {
-    fn from(value: &str) -> Self {
-        let value = value.to_lowercase();
-        match value.as_str() {
-            "adsb" => DataType::Adsb,
-            "drone" => DataType::Drone,
-            _ => DataType::Invalid,
-        }
-    }
-}
-
-impl Display for DataType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                DataType::Adsb => "adsb",
-                DataType::Drone => "drone",
-                DataType::Invalid => "none",
-            }
-        )
-    }
 }
 
 impl Site {
@@ -119,8 +94,14 @@ impl Site {
 
     /// Return whether a site is streamable
     ///
+    pub fn is_fetchable(&self) -> bool {
+        self.feature == Capability::Fetch
+    }
+
+    /// Return whether a site is streamable
+    ///
     pub fn is_streamable(&self) -> bool {
-        self.features.contains(&Capability::Stream)
+        self.feature == Capability::Stream
     }
 
     /// Return the site name
