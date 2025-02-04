@@ -395,8 +395,8 @@ WHERE
     "##
         );
 
-        let proximity = self.separation;
-        let q = QueryBuilder::new(&r).arg(proximity);
+        let separation = self.threshold * self.factor;
+        let q = QueryBuilder::new(&r).arg(separation);
         dbh.execute(q).await?;
 
         // Check how many
@@ -498,6 +498,8 @@ CREATE OR REPLACE TABLE ids{tag} (
             callsign: String,
         }
 
+        let separation = self.threshold * self.factor;
+
         let r = format!(
             r##"
     SELECT
@@ -506,7 +508,7 @@ CREATE OR REPLACE TABLE ids{tag} (
       callsign,
     FROM today_close{tag}
     WHERE
-      dist_drone_plane < 1852
+      dist_drone_plane < {separation}
     GROUP BY ALL
             "##
         );
@@ -588,6 +590,8 @@ CREATE OR REPLACE TABLE ids{tag} (
         self.create_table_ids(dbh, &day_name, &name).await?;
         self.insert_ids(dbh, &day_name, &name).await?;
 
+        let threshold = self.threshold;
+
         let r = format!(
             r##"INSERT INTO airplane_prox
      SELECT
@@ -614,7 +618,7 @@ CREATE OR REPLACE TABLE ids{tag} (
     FROM today_close{tag} AS tc JOIN ids{tag} AS id
       ON id.journey = tc.journey AND id.callsign = tc.callsign
     WHERE
-      dist_drone_plane < 1852
+      dist_drone_plane < {threshold}
     GROUP BY ALL
 "##
         );
@@ -727,7 +731,8 @@ impl Calculate for PlaneDistance {
 
         // Create our stat struct
         //
-        let stats = &mut PlanesStats::new(self.date, self.distance, self.separation);
+        let separation = self.threshold * self.factor;
+        let stats = &mut PlanesStats::new(self.date, self.distance, separation);
         let mut timings = Timings::default();
 
         // Create table `today` with all identified plane points with the specified range

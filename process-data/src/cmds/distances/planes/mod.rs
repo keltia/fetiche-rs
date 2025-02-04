@@ -101,9 +101,12 @@ pub struct PlaneDistance {
     /// Max distance we want to consider
     #[builder(default = "70.")]
     pub distance: f64,
-    /// Separation.
-    #[builder(default = "5500.")]
-    pub separation: f64,
+    /// Separation step.
+    #[builder(default = "1852.")]
+    pub threshold: f64,
+    /// Separation factor
+    #[builder(default = "3.")]
+    pub factor: f64,
     /// Lat of antenna
     #[builder]
     pub lat: f64,
@@ -189,23 +192,21 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     let site_filter = opts.name.as_deref().unwrap_or("");
     let work_list = prepare_work_list(ctx, dates, site_filter).await?;
 
+    // Pass down the parameters for calculations.
+    //
     let threshold = match ctx.config.get("threshold") {
-        Some(v) => v.parse::<u32>().unwrap_or(1852),
-        None => 1852,
+        Some(v) => v.parse::<f64>().unwrap_or(1852.),
+        None => 1852.,
     };
 
     let factor = match ctx.config.get("factor") {
-        Some(v) => v.parse::<u32>().unwrap_or(3),
-        None => 3,
+        Some(v) => v.parse::<f64>().unwrap_or(3.),
+        None => 3.,
     };
-
-    // Define our separation
-    //
-    let separation = (threshold * factor) as f64;
 
     // Step 4: Process batches of computations in parallel
     //
-    let all_stats = process_batches(ctx, work_list, opts.distance, separation).await;
+    let all_stats = process_batches(ctx, work_list, opts.distance, threshold, factor).await;
 
     // Step 5: Gather and summarize statistics
     //
@@ -334,7 +335,8 @@ async fn process_batches(
     ctx: &Context,
     work_list: Vec<(DateTime<Utc>, Site)>,
     distance: f64,
-    separation: f64,
+    threshold: f64,
+    factor: f64,
 ) -> Vec<Stats> {
 
     // We have a potentially large set of day+site to compute.  Try to not batch more than out current
@@ -350,7 +352,7 @@ async fn process_batches(
                 let ctx = ctx.clone();
 
                 match tokio::spawn(async move {
-                    calculate_one_day_on_site(&ctx, &current, &day, distance, separation)
+                    calculate_one_day_on_site(&ctx, &current, &day, distance, threshold, factor)
                         .await
                         .unwrap()
                 })
@@ -484,7 +486,8 @@ async fn calculate_one_day_on_site(
     site: &Site,
     day: &DateTime<Utc>,
     distance: f64,
-    separation: f64,
+    threshold: f64,
+    factor: f64,
 ) -> Result<Stats> {
     let dbh = ctx
         .dbh
@@ -500,7 +503,8 @@ async fn calculate_one_day_on_site(
         .lon(site.longitude as f64)
         .distance(distance)
         .date(day)
-        .separation(separation)
+        .threshold(threshold)
+        .factor(factor)
         .wait(ctx.wait)
         .build()?;
 
