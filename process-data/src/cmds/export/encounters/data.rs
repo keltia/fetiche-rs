@@ -25,7 +25,6 @@ use klickhouse::{Client, QueryBuilder, RawRow, Row};
 use serde::Serialize;
 use tracing::{debug, trace};
 
-
 /// This struct represents a single data point with positional and temporal information.
 ///
 /// # Fields
@@ -37,12 +36,16 @@ use tracing::{debug, trace};
 ///
 /// This struct is typically used to represent the location and altitude of either a drone or
 /// a proximate aircraft (plane) at a specific moment in time.
-/// 
+///
 #[derive(Clone, Debug, Row, Serialize)]
 pub(crate) struct DataPoint {
+    /// The timestamp of the data point in UTC.
     pub timestamp: DateTime<Utc>,
+    /// Latitude position (in degrees) of the data point.
     pub latitude: f64,
+    /// Longitude position (in degrees) of the data point.
     pub longitude: f64,
+    /// Altitude of the data point (in meters).
     pub altitude: f64,
 }
 
