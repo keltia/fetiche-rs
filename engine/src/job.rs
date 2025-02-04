@@ -5,11 +5,13 @@
 //! supposed to be collecting data (like `fetch` or `stream`) and send it along
 //! the pipe for processing.
 //!
-use eyre::Result;
-use ractor::ActorRef;
 use std::collections::VecDeque;
 use std::io::Write;
 use std::vec;
+
+use derive_builder::Builder;
+use eyre::Result;
+use ractor::ActorRef;
 use tracing::{info, span, trace, Level};
 
 use crate::actors::StatsMsg;
@@ -41,21 +43,26 @@ use crate::{Consumer, Middle, Producer, Runnable, Task};
 /// Jobs are created using the `Job::new` or `Job::new_with_id` methods.
 /// Tasks can be added to the job using `Job::add` and run sequentially using `Job::run`.
 ///
-#[derive(Clone, Debug)]
+#[derive(Builder, Clone, Debug)]
 pub struct Job {
     /// Job ID
     pub id: usize,
     /// Name of the job
+    #[builder(default = "String::from(\"Default Name\")")]
     pub name: String,
     /// Job State
     pub state: JobState,
     /// Producer.
+    #[builder(default = "Producer::Invalid")]
     pub producer: Producer,
     /// FIFO list of filter tasks
+    #[builder(default = "VecDeque::new()")]
     pub filters: VecDeque<Middle>,
     /// The end of the pipeline.
+    #[builder(default = "Consumer::Invalid")]
     pub consumer: Consumer,
     /// actor for statistics
+    #[builder(default)]
     pub stats: Option<ActorRef<StatsMsg>>,
 }
 
@@ -69,8 +76,9 @@ pub struct Job {
 /// - `Completed`: Job has finished executing all its tasks successfully.
 /// - `Zombie`: Job is in an invalid or unexpected state, typically after an error.
 ///
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum JobState {
+    #[default]
     /// Empty, just allocated
     Created,
     /// Has all its tasks
@@ -86,36 +94,12 @@ pub enum JobState {
 }
 
 impl Job {
-    /// New job
-    ///
-    /// NOTE: No //EOJ
-    ///
-    #[tracing::instrument]
-    #[inline]
-    pub fn new(name: &str, id: usize) -> Self {
-        trace!("Job::new()");
-        Self {
-            id,
-            name: name.to_owned(),
-            state: JobState::Created,
-            filters: VecDeque::new(),
-            producer: Producer::Invalid,
-            consumer: Consumer::Invalid,
-            stats: None,
-        }
-    }
-
     /// Add a task to the queue
     ///
     #[tracing::instrument(skip(self))]
     #[inline]
     pub fn add(&mut self, t: Middle) -> &mut Self {
         let _ = &self.filters.push_back(t);
-        self
-    }
-
-    pub fn stats(&mut self, stat: ActorRef<StatsMsg>) -> &mut Self {
-        self.stats = Some(stat);
         self
     }
 
@@ -222,13 +206,12 @@ impl Job {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Copy, Dummy, Engine, Message};
-
     use super::*;
+    use crate::{Copy, Dummy, Engine, Message, Stdout};
 
     #[test]
     fn test_new() {
-        let job = Job::new("Test Job", 1);
+        let job = JobBuilder::default().name("".into()).id(1).build().unwrap();
 
         assert_eq!(job.name, "Test Job");
         assert!(job.filters.is_empty());
@@ -236,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_new_with_id_empty_name() {
-        let job = Job::new("");
+        let job = JobBuilder::default().name("empty".into()).id(1).build().unwrap();
 
         assert_eq!(job.name, "");
         assert!(job.filters.is_empty());
@@ -250,11 +233,15 @@ mod tests {
         let t2: Middle = Copy::new().into();
         let c: Consumer = Stdout::new().into();
 
-        let mut j = e.create_job("test").await.unwrap();
-        j.producer(p);
-        j.add(t1);
-        j.add(t2);
-        j.consumer(c);
+        let mut job = JobBuilder::default().name("test".into())
+            .producer(p)
+            .consumer(c)
+            .build().unwrap();
+
+        // Add filters.
+        //
+        job.add(t1);
+        job.add(t2);
 
         let mut data = vec![];
 

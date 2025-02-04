@@ -63,7 +63,7 @@ impl Engine {
 
         // Initialise job, list of task is empty
         //
-        let job = Job::new(s, nextid);
+        let job = JobBuilder::default().name(s.into()).id(nextid).build()?;
 
         // Update state
         //

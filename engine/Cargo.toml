@@ -62,6 +62,7 @@ tracing-subscriber.workspace = true
 
 async-trait = "0.1"
 base64_light = "0.1"
+derive_builder = "0.20"
 enum_dispatch = "0.3"
 humantime = "2.1"
 indicatif = "0.17"
