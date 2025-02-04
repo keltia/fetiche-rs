@@ -1,32 +1,28 @@
 //! Actor managing the job queue
 //!
 
-use crate::{Job, JobQueue, ENGINE_PG};
+use crate::{Job, ENGINE_PG};
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use std::collections::VecDeque;
 
-/// `QueueMsg` represents various messages that the `QueueActor` can process.
-///
-/// Each message type corresponds to a specific operation related to the
-/// job queue. Messages are used to interact with the `QueueActor`
-/// and perform operations like adding jobs, retrieving jobs, or
-/// listing all job IDs.
-///
-/// Variants:
-/// - `Add(Job)`: Add a new job to the queue.
-/// - `GetById(usize, RpcReplyPort<Job>)`: Retrieve a job by its ID and send it back using the provided reply port.
-/// - `List(RpcReplyPort<Vec<usize>>)`: List all job IDs currently in the queue and reply with them.
-/// - `Next(RpcReplyPort<usize>)`: Get the next available job ID from the queue.
-/// - `Remove(Job)`: Remove a job from the queue.
-/// - `RemoveId(usize)`: Remove a job from the queue by its ID.
+/// Messages handled by the QueueActor for managing the job queue.
 ///
 #[derive(Debug)]
 pub enum QueueMsg {
+    /// Adds a new job to the queue.
     Add(Job),
+    /// Retrieves a job by its ID. Returns the job through the reply port if found.
     GetById(usize, RpcReplyPort<Job>),
+    /// Lists all job IDs currently in the queue. Returns vector of IDs through the reply port.
     List(RpcReplyPort<Vec<usize>>),
+    /// Gets the next available job ID. Returns the ID through the reply port.
     Next(RpcReplyPort<usize>),
+    /// Removes a specific job from the queue by matching its content.
     Remove(Job),
+    /// Removes a job from the queue using its ID.
     RemoveId(usize),
+    /// Gets and removes the next job from the queue for execution. Returns the job through the reply port.
+    Run(RpcReplyPort<Job>),
 }
 
 pub struct QueueActor;
@@ -36,7 +32,7 @@ pub struct QueueState {
     /// Last job ID.
     last: usize,
     /// The queue itself.
-    q: JobQueue,
+    q: VecDeque<Job>,
 }
 
 /// The actor implementation for `QueueActor` which manages a job queue.
@@ -85,7 +81,7 @@ impl Actor for QueueActor {
 
         Ok(QueueState {
             last: args,
-            q: JobQueue::new(),
+            q: VecDeque::new(),
         })
     }
 
@@ -124,6 +120,10 @@ impl Actor for QueueActor {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
+            QueueMsg::Add(job) => {
+                state.last = job.id + 1;
+                state.q.push_back(job);
+            }
             QueueMsg::GetById(id, sender) => {
                 let job = match state.q.get(id) {
                     Some(job) => job,
@@ -132,10 +132,15 @@ impl Actor for QueueActor {
                 sender.send(job.clone())?;
             }
             QueueMsg::List(sender) => {
-                sender.send(state.q.list())?;
+                let list = state.q.iter().map(|j| j.id).collect::<Vec<usize>>();
+                sender.send(list)?;
             }
             QueueMsg::Next(sender) => {
                 sender.send(state.last)?;
+            }
+            QueueMsg::Run(sender) => {
+                let job = state.q.pop_front().unwrap();
+                sender.send(job)?;
             }
             _ => panic!(),
         }
