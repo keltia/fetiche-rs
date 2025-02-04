@@ -233,7 +233,7 @@ dependencies = [
 
 [[package]]
 name = "acutectl"
-version = "0.24.0"
+version = "0.24.99"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -6401,7 +6401,6 @@ dependencies = [
  "futures",
  "geo",
  "itertools 0.14.0",
- "jiff",
  "klickhouse",
  "kml",
  "ml-progress",
