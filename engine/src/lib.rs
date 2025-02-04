@@ -428,7 +428,7 @@ impl Engine {
 
         // If debug/trace, list all the actors running at this point.
         //
-        let plist = registered().join('\n');
+        let plist = registered().join("\n");
         trace!("Actor list: {plist}");
         Ok(engine)
     }
