@@ -410,15 +410,11 @@ impl Engine {
     pub async fn create_job(&mut self, s: &str) -> Result<Job> {
         // Fetch next ID
         //
-        let nextid = call!(self.queue, |port| QueueMsg::Next(port))?;
+        let nextid = call!(self.queue, |port| QueueMsg::Allocate(port))?;
 
-        // Initialise job
+        // Initialise job, list of task is empty
         //
-        let job = Job::new_with_id(s, nextid);
-
-        // Insert the job into the queue.
-        //
-        let _ = cast!(self.queue, QueueMsg::Add(job.clone()))?;
+        let job = Job::new(s, nextid);
 
         // Update state
         //
@@ -428,6 +424,21 @@ impl Engine {
         self.sync()?;
 
         Ok(job)
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub async fn queue_job(&mut self, job: Job) -> Result<usize> {
+        if job.state != JobState::Ready {
+            error!("Job is not ready");
+            return Err(EngineStatus::JobNotReady(job.id).into());
+        }
+
+        // Change status and insert the job into the queue.
+        //
+        let mut ready = job.clone();
+        ready.state = JobState::Queued;
+        let _ = cast!(self.queue, QueueMsg::Add(ready))?;
+        Ok(job.id)
     }
 
     /// Remove a job
@@ -478,12 +489,9 @@ impl Engine {
     /// Ensure that tracing is set up in your application to observe these events.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn remove_job(&mut self, job: usize) -> Result<()> {
-        trace!("grab lock");
-
-        let _ = cast!(self.state, StateMsg::Remove(job))?;
-
-        trace!("sync");
+    pub fn remove_job(&mut self, job_id: usize) -> Result<()> {
+        let _ = cast!(self.state, StateMsg::Remove(job_id))?;
+        let _ = cast!(self.queue, QueueMsg::RemoveById(job_id))?;
         self.sync()
     }
 
