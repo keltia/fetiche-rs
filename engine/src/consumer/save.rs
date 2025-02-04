@@ -82,25 +82,22 @@ impl Save {
             match self.out {
                 // There we handle the combination of input & output formats
                 //
-                Container::Parquet => match self.inp {
-                    Format::Asd => {
-                        trace!("from asd(csv) to parquet");
+                Container::Parquet => {
+                    trace!("from csv to parquet");
 
-                        let cur = Cursor::new(&data);
-                        let opts = CsvParseOptions::default().with_try_parse_dates(false);
-                        let mut df = CsvReadOptions::default()
-                            .with_has_header(true)
-                            .with_parse_options(opts)
-                            .into_reader_with_file_handle(cur)
-                            .finish()?;
+                    let cur = Cursor::new(&data);
+                    let opts = CsvParseOptions::default().with_try_parse_dates(false);
+                    let mut df = CsvReadOptions::default()
+                        .with_has_header(true)
+                        .with_parse_options(opts)
+                        .into_reader_with_file_handle(cur)
+                        .finish()?;
 
-                        info!("writing {}", p);
-                        let mut file = fs::File::create(p)?;
+                    info!("writing {}", p);
+                    let mut file = fs::File::create(p)?;
 
-                        ParquetWriter::new(&mut file).finish(&mut df)?;
-                    }
-                    _ => return Err(EngineStatus::OnlyAsdToParquet.into()),
-                },
+                    ParquetWriter::new(&mut file).finish(&mut df)?;
+                }
                 _ => {
                     trace!("raw data");
                     fs::write(PathBuf::from(p), &data)?
