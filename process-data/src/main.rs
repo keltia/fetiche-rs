@@ -1,4 +1,21 @@
-//! Utility implement different processing tasks over our locally stored data.
+//! # process-data
+//!
+//! `process-data` is a command-line utility for performing various data processing tasks 
+//! on locally stored data. It provides a flexible and extensible framework to handle diverse 
+//! operations using modern Rust features and libraries.
+//!
+//! ## Features
+//!
+//! - Modular command structure with subcommands for different tasks
+//! - Auto-completion support for various shells
+//! - Integration with Clickhouse for data handling
+//! - Asynchronous processing powered by Tokio
+//! - Comprehensive logging and error handling
+//! - Configurable runtime settings
+//!
+//! ## Usage
+//!
+//! Run `process-data --help` to display usage information and available commands.
 //!
 
 use std::io;
