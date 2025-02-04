@@ -329,6 +329,7 @@ struct Rawdata(
 
 #[cfg(test)]
 mod tests {
+    use crate::{Source, StateList};
     use serde_json::json;
 
     #[test]
@@ -376,7 +377,7 @@ mod tests {
                 ]
             ]
         })
-            .to_string();
+        .to_string();
 
         let result = StateList::from_json(&input);
         assert!(result.is_ok());

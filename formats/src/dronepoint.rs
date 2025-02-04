@@ -265,8 +265,8 @@ pub enum UAVType {
 /// let source_as_u8: u8 = source.into();
 /// assert_eq!(source_as_u8, 6);
 ///
-/// let source_from_str = DataSource::from_str("Rid").expect("Invalid source");
-/// assert_eq!(source_from_str, DataSource::Rid);
+/// let source_from_str = DataSource::from_str("A").expect("Invalid source");
+/// assert_eq!(source_from_str, DataSource::A);
 /// ```
 ///
 /// Additionally, this enum provides a utility to map strings directly to their corresponding
@@ -284,7 +284,9 @@ pub enum UAVType {
 /// # Note:
 /// The fallback value for invalid mappings is `255`, which represents an undefined source.
 ///
-#[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames, PartialEq)]
+#[derive(
+    Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames, PartialEq,
+)]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum DataSource {
     /// ADS-B

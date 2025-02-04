@@ -7,8 +7,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use crate::senhive::Coordinates;
 use crate::DronePoint;
+use crate::senhive::Coordinates;
 
 // ----- Original raw data format
 
@@ -307,6 +307,10 @@ pub struct FusedData {
 
 /// Now define the mapping between our type `FusedData` and `DronePoint`:
 ///
+/// ```rust,no_run
+/// use chrono::{DateTime, Utc};
+///
+/// struct DroneData {
 ///     /// timestamp -- system.timestamp
 ///     pub time: DateTime<Utc>,
 ///     /// Each record is part of a drone journey with a specific ID -- system.track_id
@@ -343,6 +347,8 @@ pub struct FusedData {
 ///     pub state: Option<u8>,
 ///     /// Name of detecting point -- system.fusion_state.source_serials
 ///     pub station_name: Option<String>,
+/// }
+/// ```
 ///
 impl From<&FusedData> for DronePoint {
     fn from(value: &FusedData) -> Self {

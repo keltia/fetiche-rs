@@ -60,13 +60,9 @@ pub mod senhive;
 /// Uses `$to::from()` for each format.
 ///
 /// You will need to `use` these in every file you use the macro
-/// ```no_run
-/// use log::debug;
-/// ```
-/// or
-/// ```no_run
-/// use tracing::debug;
-/// ```
+///
+/// log::debug
+/// tracing::debug
 ///
 /// Takes 3 arguments:
 ///
@@ -105,14 +101,17 @@ macro_rules! convert_to {
 ///
 /// Example:
 /// ```no_run
-/// # use fetiche_formats::avionix::CubeData;
+/// # fn main() -> eyre::Result<()> {
+/// # use fetiche_formats::Asd;
 /// use fetiche_formats::from_json_to_csv;
 ///
-/// # let data: CubeData = CubeData::default();
+/// # let data: Asd = Asd::default();
 /// # let input = String::from("");
 ///
 /// let res = from_json_to_csv(&input.into_bytes(), &data)?;
 /// eprintln!("res = {res}");
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// NOTE: `_fake`  is only there to make it a generic.

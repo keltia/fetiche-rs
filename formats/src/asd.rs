@@ -8,10 +8,10 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr, PickFirst};
+use serde_with::{DisplayFromStr, PickFirst, serde_as};
 
 #[cfg(feature = "asterix")]
-use crate::{convert_to, get_drone_id, to_feet, to_knots, Cat21, TodCalculated};
+use crate::{Cat21, TodCalculated, convert_to, get_drone_id, to_feet, to_knots};
 use crate::{DataSource, DronePoint, UAVType};
 
 /// Represents a record obtained from the ASD site.
@@ -34,7 +34,7 @@ use crate::{DataSource, DronePoint, UAVType};
 /// is represented using `DateTime<Utc>` from the `chrono` crate.
 ///
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
@@ -378,5 +378,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-
-

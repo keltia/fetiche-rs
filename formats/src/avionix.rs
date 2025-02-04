@@ -3,7 +3,7 @@
 //! URL: http://www.avionix.pl
 //!
 
-use crate::{to_meters, DataSource, DronePoint, UAVType};
+use crate::{DataSource, DronePoint, UAVType, to_meters};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, serde_conv};
@@ -138,43 +138,6 @@ pub struct CubeData {
 }
 
 /// Now define the mapping between our type `CubeData` and `DronePoint`:
-///
-///     /// timestamp -- uti
-///     pub time: DateTime<Utc>,
-///     /// Each record is part of a drone journey with a specific ID
-///     pub journey: String,
-///     /// Identifier for the drone
-///     pub ident: Option<String>,
-///     /// Maker of the drone
-///     pub make: Option<String>,
-///     /// Model of the drone
-///     pub model: Option<String>,
-///     /// UAV Type
-///     pub uav_type: u8,
-///     /// Source (see [lib.rs](lib.rs)
-///     pub source: u8,
-///     /// Latitude
-///     pub latitude: f64,
-///     /// Longitude
-///     pub longitude: f64,
-///     /// Altitude
-///     pub altitude: Option<f64>,
-///     /// Distance to ground
-///     pub elevation: Option<f64>,
-///     /// Operator lat
-///     pub home_lat: Option<f64>,
-///     /// Operator lon
-///     pub home_lon: Option<f64>,
-///     /// Altitude from takeoff point
-///     pub home_height: Option<f64>,
-///     /// Current speed
-///     pub speed: f64,
-///     /// True heading
-///     pub heading: f64,
-///     /// Vehicle state
-///     pub state: Option<u8>,
-///     /// Name of detecting point
-///     pub station_name: Option<String>,
 ///
 /// FIXME: there are several fields that do not apply because Avionix mixes planes and drones.
 ///        there is no journey, we might need to generate our own.
