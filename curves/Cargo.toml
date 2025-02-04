@@ -9,6 +9,7 @@ license = "MIT"
 repository = "https://github.com/keltia/fetiche-rs"
 categories = ["command-line-utilities", "aerospace::drones"]
 keywords = ["cat21", "asterix", "drones", "aeronautical-data"]
+publish = false
 
 [package.metadata.docs.rs]
 all-features = true

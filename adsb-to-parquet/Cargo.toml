@@ -9,6 +9,7 @@ license = "MIT"
 repository = "https://github.com/keltia/fetiche-rs"
 categories = ["aerospace::drones"]
 keywords = ["parquet", "drones", "aeronautical-data", "ads-b"]
+publish = false
 
 [package.metadata.docs.rs]
 all-features = true
