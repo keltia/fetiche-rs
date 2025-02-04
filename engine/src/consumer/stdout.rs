@@ -1,7 +1,10 @@
-use fetiche_macros::RunnableDerive;
 use std::sync::mpsc::Sender;
 
-use crate::IO;
+use eyre::Result;
+
+use fetiche_macros::RunnableDerive;
+
+use crate::{Runnable, IO};
 
 #[derive(Clone, Debug, PartialEq, RunnableDerive)]
 pub struct Stdout {
@@ -14,15 +17,15 @@ impl Stdout {
         Self { io: IO::Consumer }
     }
 
-    #[tracing::instrument]
-    pub fn execute(&self, data: String, _out: Sender<String>, _args: String) {
+    #[tracing::instrument(skip(self, data))]
+    pub fn execute(&mut self, data: String, _out: Sender<String>) -> Result<()> {
         println!("{}", data);
     }
 }
 
-impl Stdout {
+impl Default for Stdout {
     #[tracing::instrument]
-    pub fn new() -> Self {
+    fn default() -> Self {
         Self::new()
     }
 }
