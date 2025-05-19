@@ -502,6 +502,9 @@ async fn add_pbi_deployments_view(dbh: &Client) -> Result<()> {
     a.name AS antenna_name,
     s.name AS sitename,
     s.offset AS timezone
+    s.latitude AS latitude,
+    s.longitude AS longitude,
+    s.ref_altitude AS ref_altitude,
  FROM acute.installations AS i, acute.antennas AS a, acute.sites AS s
  WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
  COMMENT 'Find the site for each drone points for PBI.'
