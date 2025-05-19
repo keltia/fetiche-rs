@@ -3170,7 +3170,7 @@ dependencies = [
 
 [[package]]
 name = "fetiche-engine"
-version = "0.24.99"
+version = "0.25.0"
 dependencies = [
  "base64_light",
  "chrono",
