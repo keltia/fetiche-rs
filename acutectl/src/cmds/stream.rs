@@ -4,7 +4,7 @@ use eyre::Result;
 use indicatif::ProgressBar;
 use tracing::{debug, info, trace};
 
-use fetiche_engine::{Engine, Filter};
+use fetiche_engine::{Engine, Filter, JobState};
 
 use crate::{Status, StreamOpts};
 
@@ -55,16 +55,13 @@ pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result
     let id = job.id;
     trace!("Job running id #{id}");
 
-    let _ = engine.submit_job(job).await?;
-
-    tokio::time::sleep(Duration::from_secs(20)).await;
+    trace!("Job submitting id #{id}");
+    assert_eq!(job.state(), JobState::Ready);
+    let _ = engine.submit_job_and_wait(job).await?;
 
     bar.finish();
 
-    // Remove job from engine and state
-    //
     trace!("Job({}) done, removing it.", id);
-    let _ = engine.remove_job(id).await?;
 
     Ok(())
 }
