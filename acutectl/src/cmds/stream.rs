@@ -27,7 +27,7 @@ pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result
     let output = if let Some(split) = &sopts.split {
         format!(r##"
         output = {{
-        "Split" = "{}"
+            "Store" = "{}"
         }}
         "##, split)
     } else if let Some(fname) = &sopts.output {
