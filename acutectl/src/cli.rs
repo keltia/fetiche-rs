@@ -35,7 +35,7 @@ use eyre::Result;
 use tracing::{info, trace};
 
 use fetiche_common::{list_locations, load_locations, Container, DateOpts};
-use fetiche_engine::Engine;
+use fetiche_engine::{Engine, Freq};
 use fetiche_formats::Format;
 
 use crate::{fetch_from_site, stream_from_site};
@@ -254,9 +254,12 @@ pub struct StreamOpts {
     /// Do we convert on streaming?
     #[clap(long)]
     pub into: Option<String>,
-    /// Do we want split output?
+    /// Do we want to store output, like daily?
     #[clap(long)]
-    pub split: Option<String>,
+    pub store: Option<String>,
+    #[clap(long, default_value = "daily")]
+    pub frequency: Option<Freq>,
+
     /// Source name -- (see "list sources")
     pub site: String,
 }

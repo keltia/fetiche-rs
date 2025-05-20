@@ -24,12 +24,14 @@ pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result
 
     // Analyse our output strategy
     //
-    let output = if let Some(split) = &sopts.split {
+    let freq = sopts.frequency.clone().unwrap();
+    let output = if let Some(split) = &sopts.store {
         format!(r##"
         output = {{
+            "Freq" = {}
             "Store" = "{}"
         }}
-        "##, split)
+        "##, freq, split)
     } else if let Some(fname) = &sopts.output {
         format!(r##"
         output = {{
@@ -44,12 +46,8 @@ pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result
         "##)
     };
 
-    // Are we writing to stdout?
-    //
-    let final_output = sopts.output.clone().unwrap_or(String::from("-"));
-
-    info!("Writing to {final_output}");
-    eprintln!("Streaming into {final_output}");
+    info!("Writing to {output}");
+    eprintln!("Streaming into {output}");
 
     let bar = ProgressBar::new_spinner();
     bar.enable_steady_tick(Duration::from_millis(100));
