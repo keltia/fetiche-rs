@@ -22,6 +22,28 @@ pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result
     //
     let tee = sopts.tee.clone().unwrap_or(String::from(""));
 
+    // Analyse our output strategy
+    //
+    let output = if let Some(split) = &sopts.split {
+        format!(r##"
+        output = {{
+        "Split" = "{}"
+        }}
+        "##, split)
+    } else if let Some(fname) = &sopts.output {
+        format!(r##"
+        output = {{
+            "Save" = "{}"
+        }}
+        "##, fname)
+    } else {
+        format!(r##"
+        output = {{
+            "Save" = "-"
+        }}
+        "##)
+    };
+
     // Are we writing to stdout?
     //
     let final_output = sopts.output.clone().unwrap_or(String::from("-"));
@@ -44,9 +66,7 @@ pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result
       ]
     }}
     middle = [ {tee} ]
-    output = {{
-      "Save" = "{final_output}"
-    }}
+    {output}
     "##);
 
     debug!("script = {script}");
