@@ -12,7 +12,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use ractor::call;
 use serde::{Deserialize, Serialize};
-use strum::EnumString;
+use strum::{EnumString, EnumVariantNames, VariantNames};
 use tracing::{debug, trace};
 
 use crate::actors::{SchedulerMsg, SourcesMsg};
@@ -115,7 +115,17 @@ enum ConsumerText {
 /// }
 /// ```
 ///
-#[derive(Clone, Debug, Default, Deserialize, EnumString, PartialEq, Serialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    EnumString,
+    PartialEq,
+    Serialize,
+    strum::Display,
+    VariantNames,
+)]
 pub enum Freq {
     #[default]
     Daily,
