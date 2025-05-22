@@ -4,7 +4,7 @@ use eyre::Result;
 use indicatif::ProgressBar;
 use tracing::{debug, info, trace};
 
-use fetiche_engine::{Engine, Filter, JobState};
+use fetiche_engine::{Engine, Filter, Freq, JobState};
 
 use crate::{Status, StreamOpts};
 
@@ -22,12 +22,32 @@ pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result
     //
     let tee = sopts.tee.clone().unwrap_or(String::from(""));
 
-    // Are we writing to stdout?
+    // Analyse our output strategy
     //
-    let final_output = sopts.output.clone().unwrap_or(String::from("-"));
+    let freq = sopts.frequency.clone().unwrap_or(Freq::Daily);
+    let output = if let Some(split) = &sopts.store {
+        format!(r##"
+        output = {{
+            "Freq" = {}
+            "Store" = "{}"
+        }}
+        "##, freq, split)
+    } else if let Some(fname) = &sopts.output {
+        format!(r##"
+        output = {{
+            "Save" = "{}"
+        }}
+        "##, fname)
+    } else {
+        format!(r##"
+        output = {{
+            "Save" = "-"
+        }}
+        "##)
+    };
 
-    info!("Writing to {final_output}");
-    eprintln!("Streaming into {final_output}");
+    info!("Writing to {output}");
+    eprintln!("Streaming into {output}");
 
     let bar = ProgressBar::new_spinner();
     bar.enable_steady_tick(Duration::from_millis(100));
@@ -44,9 +64,7 @@ pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result
       ]
     }}
     middle = [ {tee} ]
-    output = {{
-      "Save" = "{final_output}"
-    }}
+    {output}
     "##);
 
     debug!("script = {script}");
