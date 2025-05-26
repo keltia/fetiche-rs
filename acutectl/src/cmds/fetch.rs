@@ -139,7 +139,7 @@ mod tests {
     #[test]
     fn test_filter_from_opts_with_dates() {
         let opts = FetchOpts {
-            dates: Some(DateOpts::Day { date: "2024-01-01..2024-01-02".to_string() }),
+            dates: Some(DateOpts::From { begin: "2024-01-01".into(), end: "2024-01-02".into() }),
             keyword: None,
             since: None,
             ..Default::default()
@@ -148,8 +148,8 @@ mod tests {
         let filter = filter_from_opts(&opts).unwrap();
         match filter {
             Filter::Interval { begin, end } => {
-                assert_eq!(begin.to_string(), "2024-01-01T00:00:00Z");
-                assert_eq!(end.to_string(), "2024-01-02T00:00:00Z");
+                assert_eq!(begin.to_rfc3339(), "2024-01-01T00:00:00+00:00");
+                assert_eq!(end.to_rfc3339(), "2024-01-02T00:00:00+00:00");
             }
             _ => panic!("Expected Interval middle"),
         }
@@ -202,6 +202,7 @@ mod tests {
         };
 
         let filter = filter_from_opts(&opts).unwrap();
-        assert!(matches!(filter, Filter::default()));
+        let def = Filter::default();
+        assert_eq!(filter, def);
     }
 }

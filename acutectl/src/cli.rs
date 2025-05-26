@@ -137,7 +137,7 @@ pub enum ConfigCmd {
 
 /// Options for fetching data with basic filtering and an optional output file.
 ///
-#[derive(Debug, PartialEq, Parser)]
+#[derive(Debug, Default, PartialEq, Parser)]
 pub struct FetchOpts {
     /// Our different date options
     #[clap(subcommand)]
