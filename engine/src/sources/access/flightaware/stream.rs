@@ -1,9 +1,11 @@
-use std::io::BufReader;
-
 use std::sync::mpsc::Sender;
+
+use ractor::{call, cast};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::trace;
 
-use crate::{AuthError, Streamable};
+use crate::actors::{StateMsg, StatsMsg};
+use crate::{AuthError, Command, Flightaware, Param, Result, Stats, StatsError, Streamable};
 use fetiche_formats::Format;
 
 impl Streamable for Flightaware {
@@ -14,17 +16,25 @@ impl Streamable for Flightaware {
     /// All credentials are passed every time we call the API so return a fake token
     ///
     #[tracing::instrument(skip(self))]
-    fn authenticate(&self) -> Result<String, AuthError> {
+    async fn authenticate(&self) -> Result<String, AuthError> {
         trace!("fake auth");
         Ok(format!("{}:{}", self.login, self.password))
     }
 
     /// FIXME: not tested or working
     ///
-    fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
+    #[tracing::instrument(skip(self, out, _token))]
+    async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<Stats> {
         trace!("stream with TLS");
         let args: Param = serde_json::from_str(args)?;
 
+        let stat = match self.stat.clone() {
+            Some(stat) => stat,
+            None => return Err(StatsError::NotInitialized.into())
+        };
+
+        let tag = String::from("avionixserver::supervisor");
+        let _ = cast!(stat, StatsMsg::New(tag.clone()));
         // Check arguments
         //
         let cmd = match args.pitr {
@@ -47,7 +57,7 @@ impl Streamable for Flightaware {
         // Send request
         //
         trace!("req={req}");
-        stream.write_all(req.as_bytes())?;
+        let _ = stream.write(req.as_bytes()).await?;
 
         trace!("read answer");
 
@@ -58,7 +68,8 @@ impl Streamable for Flightaware {
             let _ = out.send(line);
         }
 
-        Ok(())
+        let stats = call!(stat, |port| StatsMsg::Get(tag.clone(), port))?;
+        Ok(stats)
     }
 
     fn format(&self) -> Format {

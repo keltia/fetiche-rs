@@ -3206,6 +3206,7 @@ dependencies = [
  "dateparser",
  "derive_builder",
  "directories",
+ "divan",
  "enum_dispatch",
  "eyre",
  "fetiche-common",

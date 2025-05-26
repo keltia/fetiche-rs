@@ -20,22 +20,24 @@
 mod stream;
 
 use std::io::{BufRead, BufReader, Write};
-use std::net::TcpStream;
 use std::str::FromStr;
+use std::sync::mpsc::Sender;
 
 use base64_light::base64_encode;
 use eyre::{eyre, Result};
 use native_tls::{TlsConnector, TlsStream};
+use ractor::ActorRef;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use std::sync::mpsc::Sender;
 use strum::EnumString;
 use strum::VariantNames;
+use tokio::net::TcpStream;
 use tracing::trace;
 
 use fetiche_formats::Format;
 
-use crate::{version, Auth, AuthError, Capability, Fetchable, Site, Streamable, StreamableSource};
+use crate::actors::StatsMsg;
+use crate::{version, Auth, AuthError, Capability, Fetchable, Site, Stats, Streamable, StreamableSource};
 
 /// Firehose is out target
 const SITE: &str = "firehose.flightaware.com";
@@ -49,7 +51,7 @@ pub struct Flightaware {
     /// Name of the source
     pub name: String,
     /// Describe the different features of the source
-    pub features: Vec<Capability>,
+    pub feature: Capability,
     /// Input formats
     pub format: Format,
     /// Username
@@ -64,12 +66,14 @@ pub struct Flightaware {
     pub stream: String,
     /// Running time (for streams)
     pub duration: i32,
+    #[serde(skip)]
+    pub stat: Option<ActorRef<StatsMsg>>,
 }
 
 /// This is the struct holding potential parameters to the API
 ///
 #[derive(Debug, Deserialize, Serialize)]
-struct Param {
+pub struct Param {
     /// timestamp of the state vectors to be retrieved
     pub pitr: Option<i64>,
     /// Time to start from
@@ -143,7 +147,7 @@ impl Flightaware {
 
         Flightaware {
             name: "".to_owned(),
-            features: vec![Capability::Fetch, Capability::Stream],
+            feature: Capability::Stream,
             format: Format::Flightaware,
             login: "".to_owned(),
             password: "".to_owned(),
@@ -151,6 +155,7 @@ impl Flightaware {
             get: "".to_owned(),
             stream: "".to_owned(),
             duration: 0,
+            stat: None,
         }
     }
 
@@ -206,7 +211,7 @@ impl Flightaware {
     /// Establish the TCP/TLS connection, optionally goes through an HTTP proxy
     ///
     #[tracing::instrument(skip(self))]
-    fn connect(&self, proxy: Option<String>) -> Result<TlsStream<TcpStream>> {
+    async fn connect(&self, proxy: Option<String>) -> Result<TlsStream<TcpStream>> {
         let connector = TlsConnector::new()?;
 
         // FIXME: this only support HTTP proxy, not HTTPS nor SOCKS
@@ -249,7 +254,7 @@ Proxy-Connection: Keep-Alive
         } else {
             trace!("no proxy");
 
-            TcpStream::connect(format!("{}:{}", SITE, PORT))?
+            TcpStream::connect(format!("{}:{}", SITE, PORT)).await?
         };
         // Handover to the TLS engine hopefully
         //
@@ -259,6 +264,13 @@ Proxy-Connection: Keep-Alive
         Ok(stream)
     }
 
+
+    #[tracing::instrument(skip(self, stat))]
+    pub fn stats(&mut self, stat: ActorRef<StatsMsg>) -> &mut Self {
+        self.stat = Some(stat);
+        self
+    }
+
     pub fn source(&self) -> StreamableSource {
         StreamableSource::Flightaware(self.clone())
     }
@@ -266,7 +278,7 @@ Proxy-Connection: Keep-Alive
 
 /// Small helper function
 ///
-#[tracing::instrument]
+#[inline]
 fn get_timestamp(date: Option<String>) -> Result<i64> {
     let date = date.unwrap();
     trace!("date={date}");
@@ -282,14 +294,14 @@ impl Fetchable for Flightaware {
     /// Credentials are passed in the call the API    
     ///
     #[tracing::instrument(skip(self))]
-    fn authenticate(&self) -> Result<String, AuthError> {
+    async fn authenticate(&self) -> Result<String, AuthError> {
         trace!("fake auth");
 
         Ok(format!("{}:{}", self.login, self.password))
     }
 
     #[tracing::instrument(skip(self, _token))]
-    fn fetch(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
+    async fn fetch(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
         trace!("fetch with TLS");
         let args: Param = serde_json::from_str(args)?;
 
@@ -318,7 +330,7 @@ impl Fetchable for Flightaware {
         };
 
         trace!("tls connect");
-        let mut stream = self.connect(proxy)?;
+        let mut stream = self.connect(proxy).await?;
 
         // Send request
         //
