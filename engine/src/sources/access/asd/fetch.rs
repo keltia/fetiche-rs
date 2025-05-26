@@ -1,3 +1,14 @@
+//! ASD (Advanced Sensor Data) source data fetching implementation.
+//!
+//! This module provides functionality to authenticate with and fetch data from ASD data sources.
+//! It includes:
+//!
+//! - Authentication flow using tokens
+//! - Data fetching with support for different time intervals
+//! - CSV data parsing and timestamp normalization
+//! - Error handling for HTTP and data processing operations
+//!
+
 use std::io::Cursor;
 use std::ops::Add;
 use std::sync::mpsc::Sender;
