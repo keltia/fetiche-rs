@@ -40,7 +40,7 @@ const DEF_SOURCES: &[&str] = &["as", "wi"];
 /// Different types of source
 ///
 #[derive(Clone, Debug, Deserialize, Serialize, EnumString, strum::Display, VariantNames)]
-#[strum(serialize_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 enum Source {
     /// ADS-B
     Ab,
