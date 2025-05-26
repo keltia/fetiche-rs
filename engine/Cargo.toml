@@ -35,6 +35,10 @@ maintenance = { status = "actively-developed" }
 name = "read"
 harness = false
 
+[[bench]]
+name = "timestamp"
+harness = false
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -80,4 +84,5 @@ jiff.workspace = true
 rstest.workspace = true
 
 ctrlc = "3.4"
+divan = "0.1"
 test-pretty-log = "0.6"
