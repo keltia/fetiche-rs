@@ -165,11 +165,11 @@ mod tests {
         let mut temp_file = NamedTempFile::new().unwrap();
         writeln!(temp_file, "line1").unwrap();
         writeln!(temp_file, "line2").unwrap();
-        writeln!(temp_file, "line3").unwrap();
+        write!(temp_file, "line3").unwrap();
 
         let mut t = Read::new("foo");
         t.path(temp_file.path().to_str().unwrap());
-        let (tx, mut rx) = channel();
+        let (tx, rx) = channel();
 
         // Execute should succeed and send lines to channel
         let result = t.execute(String::new(), tx).await;
@@ -179,7 +179,7 @@ mod tests {
         for received in rx {
             lines.push(received);
         }
-
-        assert_eq!(lines, vec!["line1", "line2", "line3"]);
+        let res = vec![["line1", "line2", "line3"].join("\n")];
+        assert_eq!(lines, res);
     }
 }
