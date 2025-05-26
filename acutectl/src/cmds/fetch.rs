@@ -49,11 +49,12 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
     let final_output = fopts.output.clone().unwrap_or(String::from("-"));
 
     info!("Writing to {final_output}");
-    eprintln!("Fetching into {final_output}");
 
     let bar = ProgressBar::new_spinner();
     bar.enable_steady_tick(Duration::from_millis(100));
 
+    // FIXME: only supports `Save`  as output consumer.
+    //
     let script = format!(r##"
     name = "Fetch from {name}"
     producer = {{
