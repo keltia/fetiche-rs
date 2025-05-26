@@ -1,3 +1,10 @@
+//! timestamp generation benchmark.
+//!
+//! Timer precision: 41 ns
+//! timestamp            fastest       │ slowest       │ median        │ mean          │ samples │ iters
+//! ├─ bench_dateparser  82.67 ns      │ 107.3 µs      │ 83.67 ns      │ 1.177 µs      │ 100     │ 100
+//! ╰─ bench_jiff        2.29 µs       │ 7.249 µs      │ 2.374 µs      │ 2.455 µs      │ 100     │ 100
+//!
 use divan::{black_box, Bencher};
 use jiff::civil::DateTime;
 use jiff::Timestamp;
