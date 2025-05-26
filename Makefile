@@ -30,6 +30,15 @@ install: $(BINARIES) $(SCRIPTS)
 	install -c -m 755 -s -o acute target/release/process-data $(DESTDIR)/bin
 	install -c -m 755 -o acute $(SCRIPTS)  $(DESTDIR)/bin
 
+# Sync-push
 push:
 	jj git push -b develop --remote origin
 	jj git push -b develop --remote gitlab
+
+# Fetch from remote
+pull:
+	jj git fetch --remote origin
+
+# Adjust develop bookmark
+move:
+	jj b move --to @- develop
