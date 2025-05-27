@@ -20,7 +20,7 @@ use ractor::{factory, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 use tracing::{error, info, trace, warn};
 
 use crate::actors::{ResultsMsg, RunnerMsg, StateMsg};
-use crate::{Job, JobState, QueueError, SchedulerError, WaitGroup, Work};
+use crate::{Job, JobState, SchedulerError, WaitGroup, Work};
 
 /// Messages that can be sent to control the scheduler's operation
 #[derive(Debug)]
@@ -209,14 +209,6 @@ impl Actor for SchedulerActor {
                 warn!("Scheduler exiting.");
                 myself.kill();
             }
-            // Allocate a PID for a new job
-            //
-            SchedulerMsg::Allocate(sender) => {
-                info!("New job allocated {}", state.last);
-                sender.send(state.last)?;
-                state.last += 1;
-            }
-
             // This is ps(1)
             //
             SchedulerMsg::List(sender) => {
@@ -226,12 +218,20 @@ impl Actor for SchedulerActor {
 
             // ----- Job operations
 
+            // Allocate a PID for a new job
+            //
+            SchedulerMsg::Allocate(sender) => {
+                info!("New job allocated {}", state.last);
+                sender.send(state.last)?;
+                state.last += 1;
+            }
+
             // Add a job to the waiting queue
             //
             SchedulerMsg::Add(job, port) => {
                 let queued = job.clone();
                 if job.state() != JobState::Ready {
-                    return Err(QueueError::JobNotReady(job.id).into());
+                    return Err(SchedulerError::JobNotReady(job.id).into());
                 }
                 trace!("Adding job to waiting queue: {:?}", queued);
 
@@ -246,6 +246,8 @@ impl Actor for SchedulerActor {
                 let _ = port.send(wg)?;
             }
 
+            // Move a job from the running queue into the finished one.
+            //
             SchedulerMsg::Finished(_batch) => {
                 let work = match state.running.pop_front() {
                     Some(batch) => batch,
@@ -254,9 +256,13 @@ impl Actor for SchedulerActor {
                 state.finished.push_back(work.job.clone());
                 work.tx.send(())?;
             }
+
             SchedulerMsg::RemoveById(id) => {
                 state.running.remove(id);
             }
+
+            // Returns status of all queues.
+            //
             SchedulerMsg::Empty(sender) => {
                 sender.send(
                     state.waiting.is_empty()

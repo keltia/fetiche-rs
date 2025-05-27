@@ -54,7 +54,7 @@ pub enum EngineStatus {
 pub enum RunnerError {}
 
 #[derive(Debug, Error)]
-pub enum QueueError {
+pub enum SchedulerError {
     #[error("Empty queue.")]
     EmptyQueue,
     #[error("Job {0} is not runnable")]
@@ -63,10 +63,6 @@ pub enum QueueError {
     JobNotFound(usize),
     #[error("Unknown job {0} is not ready to be queued")]
     JobNotReady(usize),
-}
-
-#[derive(Debug, Error)]
-pub enum SchedulerError {
     #[error("Scheduler in the wrong state.")]
     WrongState,
     #[error("Scheduler is not running.")]
