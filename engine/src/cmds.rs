@@ -89,7 +89,7 @@ impl Engine {
 
         // Update state
         //
-        let _ = cast!(self.state, StateMsg::Add(nextid))?;
+        let _ = cast!(self.state, StateMsg::Submit(nextid))?;
 
         trace!("job {} created.", nextid);
         self.sync()?;

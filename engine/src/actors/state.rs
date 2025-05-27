@@ -8,7 +8,6 @@
 //! - Sync file on-disk
 //!
 use std::collections::VecDeque;
-use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -16,6 +15,7 @@ use chrono::Utc;
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::fs;
 use tracing::{info, trace};
 
 use crate::{ENGINE_PG, ENGINE_PID};
@@ -41,9 +41,13 @@ pub struct StateActor;
 ///
 #[derive(Debug)]
 pub enum StateMsg {
-    /// Add a job ID to the queue.
-    Add(usize),
-    /// Remove a job ID to the queue.
+    /// Add a job ID to the waiting queue.
+    Submit(usize),
+    /// From waiting to running queue.
+    Run(usize),
+    /// From running to finished queue
+    Finished(usize),
+    /// Wrapping up
     Remove(usize),
     /// Last used id.
     Last(RpcReplyPort<usize>),
@@ -87,9 +91,10 @@ pub struct State {
     /// Current PID, not synced because it is in the PID file.
     #[serde(skip_deserializing, skip_serializing)]
     pub pid: u32,
-    /// Job Queue -- at startup, queue is empty, nothing is running.
-    #[serde(skip_deserializing)]
-    pub queue: VecDeque<usize>,
+    /// Job Queues -- at startup, queue is empty, nothing is running.
+    pub waiting: VecDeque<usize>,
+    pub running: VecDeque<usize>,
+    pub finished: VecDeque<usize>,
 }
 
 #[ractor::async_trait]
@@ -136,13 +141,18 @@ impl Actor for StateActor {
         let data = fs::read_to_string(&fname)?;
         let mut data: State = serde_json::from_str(&data)?;
 
+        // Reset everything except the last pid we just loaded
+        //
         data.fname = fname;
         data.pid = std::process::id();
-        data.queue = VecDeque::new();
+        data.waiting = VecDeque::new();
+        data.running = VecDeque::new();
+        data.finished = VecDeque::new();
         data.dirty = false;
 
         let pidfile = basedir.join(ENGINE_PID);
         fs::write(&pidfile, format!("{}", data.pid))
+            .await
             .unwrap_or_else(|_| panic!("can not write {}", pidfile.to_string_lossy()));
         info!("PID {} written in {:?}", data.pid, pidfile);
         myself.send_interval(Duration::from_secs(30), || StateMsg::Sync);
@@ -182,23 +192,49 @@ impl Actor for StateActor {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            StateMsg::Add(id) => {
+            StateMsg::Submit(id) => {
                 trace!("stateactor::add({id})");
 
-                state.queue.push_back(id);
+                state.waiting.push_back(id);
                 state.last = id;
                 state.dirty = true;
 
-                trace!("queue={:?}", state.queue);
+                trace!("waiting={:?}", state.waiting);
                 trace!("last={:?}", state.last);
+            }
+            StateMsg::Run(id) => {
+                trace!("stateactor::run({id})");
+
+                if let Ok(index) = state.waiting.binary_search(&id) {
+                    trace!("Found job {}", id);
+                    state.waiting.remove(index);
+                    trace!("queue={:?}", state.waiting);
+                    state.running.push_back(id);
+                    state.dirty = true;
+                }
+
+                trace!("waiting={:?}", state.waiting);
+                trace!("running={:?}", state.running);
+                trace!("last={:?}", state.last);
+            }
+            StateMsg::Finished(id) => {
+                trace!("stateactor::finish({id})");
+
+                if let Ok(index) = state.running.binary_search(&id) {
+                    trace!("Found job {}", id);
+                    state.running.remove(index);
+                    trace!("queue={:?}", state.finished);
+                    state.finished.push_back(id);
+                    state.dirty = true;
+                }
             }
             StateMsg::Remove(id) => {
                 trace!("stateactor::remove({id})");
 
-                if let Ok(index) = state.queue.binary_search(&id) {
+                if let Ok(index) = state.finished.binary_search(&id) {
                     trace!("Found job {}", id);
-                    state.queue.remove(index);
-                    trace!("queue={:?}", state.queue);
+                    state.finished.remove(index);
+                    trace!("queue={:?}", state.finished);
                     state.dirty = true;
                 }
             }
@@ -217,9 +253,8 @@ impl Actor for StateActor {
 
                 state.tm = Utc::now().timestamp();
                 let data = json!(state).to_string();
-                let _ = fs::write(&state.fname, data)?;
+                let _ = fs::write(&state.fname, data).await?;
                 state.dirty = false;
-                return Ok(());
             }
         }
         Ok(())
