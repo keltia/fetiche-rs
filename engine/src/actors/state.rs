@@ -138,7 +138,7 @@ impl Actor for StateActor {
         let basedir = args.clone();
         let fname = basedir.join(STATE_FILE);
 
-        let data = fs::read_to_string(&fname)?;
+        let data = fs::read_to_string(&fname).await?;
         let mut data: State = serde_json::from_str(&data)?;
 
         // Reset everything except the last pid we just loaded
