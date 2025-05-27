@@ -20,7 +20,8 @@ Right now:
         launch factory runner
       else
         loop
-          
+    every sync
+      call sync on the state actor for on-disk sync
 
 ## State machine
 
