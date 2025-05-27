@@ -29,6 +29,7 @@ pub enum SchedulerMsg {
     Start,
     Suspend,
     Stop,
+    Sync,
     Tick,
     // Queue operations
     /// Adds a new job to the waiting queue.
@@ -181,7 +182,15 @@ impl Actor for SchedulerActor {
                 // Starting -> Idle
                 //
                 if state.mode == Mode::Starting {
+                    // Begin with a sync.
+                    //
+                    let _ = state.state.cast(StateMsg::Sync);
+
+                    // Set our clocks up
+                    //
                     myself.send_interval(state.tick, || SchedulerMsg::Tick);
+                    myself.send_interval(state.sync, || SchedulerMsg::Sync);
+
                     state.mode = Mode::Idle;
                     return Ok(());
                 }
@@ -269,6 +278,12 @@ impl Actor for SchedulerActor {
                         && state.running.is_empty()
                         && state.finished.is_empty(),
                 )?;
+            }
+
+            // sync is handled here now.
+            //
+            SchedulerMsg::Sync => {
+                let _ = state.state.cast(StateMsg::Sync);
             }
         }
         Ok(())

@@ -155,7 +155,6 @@ impl Actor for StateActor {
             .await
             .unwrap_or_else(|_| panic!("can not write {}", pidfile.to_string_lossy()));
         info!("PID {} written in {:?}", data.pid, pidfile);
-        myself.send_interval(Duration::from_secs(30), || StateMsg::Sync);
 
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
 
@@ -227,6 +226,10 @@ impl Actor for StateActor {
                     state.finished.push_back(id);
                     state.dirty = true;
                 }
+
+                trace!("running={:?}", state.running);
+                trace!("finished={:?}", state.finished);
+                trace!("last={:?}", state.last);
             }
             StateMsg::Remove(id) => {
                 trace!("stateactor::remove({id})");
