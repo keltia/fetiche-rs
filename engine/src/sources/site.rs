@@ -82,8 +82,7 @@ pub struct Site {
     #[serde(skip_deserializing)]
     pub name: String,
     /// Storage path for tokens
-    #[serde(skip_deserializing)]
-    pub token_base: PathBuf,
+    pub token_base: Option<PathBuf>,
     /// Type of input
     pub format: String,
     /// Base URL (to avoid repeating)
@@ -103,7 +102,7 @@ impl Site {
             feature: Capability::Invalid,
             dtype: DataType::Invalid,
             name: String::new(),
-            token_base: PathBuf::new(),
+            token_base: None,
             format: String::new(),
             base_url: String::new(),
             auth: None,

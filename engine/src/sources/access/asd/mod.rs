@@ -137,7 +137,7 @@ impl Asd {
         self.site = site.name.clone();
         self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
-        self.token_base = site.token_base.clone();
+        self.token_base = site.token_base.clone().unwrap_or("".into());
         if let Some(auth) = &site.auth {
             match auth {
                 Auth::Token {
@@ -187,7 +187,7 @@ impl From<&Site> for Asd {
         asd.site = s.name.clone();
         asd.format = Format::from_str(&s.format).unwrap();
         asd.base_url = s.base_url.to_owned();
-        asd.token_base = s.token_base.clone();
+        asd.token_base = s.token_base.clone().unwrap_or("".into());
         if let Some(auth) = &s.auth {
             match auth {
                 Auth::Token {

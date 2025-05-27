@@ -110,7 +110,7 @@ impl Sources {
                 let mut site = s.clone();
 
                 site.name = n.to_string();
-                site.token_base = src_file.root();
+                site.token_base = Some(src_file.root().join(site.token_base.unwrap_or("".into())));
                 (n.to_string(), site)
             })
             .collect::<Vec<_>>();
