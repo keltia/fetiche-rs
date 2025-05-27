@@ -14,19 +14,15 @@
 //! with tracing for debugging and monitoring purposes.
 //!
 
-use std::collections::BTreeMap;
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::Sender;
 
 use eyre::Result;
 use ractor::registry::registered;
 use ractor::{call, call_t, cast, pg};
-use serde::Deserialize;
-use tabled::builder::Builder;
-use tabled::settings::Style;
 use tracing::trace;
 
 use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
-use crate::{Engine, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup, ENGINE_PG, IO};
+use crate::{Engine, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup, ENGINE_PG};
 
 /// Basically, this is the exposed API to the Engine.
 ///
@@ -167,8 +163,6 @@ impl Engine {
             return Err(EngineStatus::JobNotReady(job.id).into());
         }
 
-        let (tx, rx) = channel::<Stats>();
-
         trace!("submit job {}", job.id);
         let wg = call!(self.scheduler, |port| { SchedulerMsg::Add(job, port) })?;
 
@@ -220,7 +214,7 @@ impl Engine {
         // Next tick, the job will run
         //
         trace!("wait for job {}", job.id);
-        let stats = wg.rx.recv()?;
+        let _ = wg.rx.recv()?;
         trace!("job {} finished", job.id);
 
         let stats = call!(self.results, |port| ResultsMsg::Fetch(job.id, port))?;

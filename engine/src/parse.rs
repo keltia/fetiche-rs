@@ -12,7 +12,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use ractor::call;
 use serde::{Deserialize, Serialize};
-use strum::{EnumString, EnumVariantNames, VariantNames};
+use strum::{EnumString, VariantNames};
 use tracing::{debug, trace};
 
 use crate::actors::{SchedulerMsg, SourcesMsg};

@@ -21,13 +21,13 @@ use polars::datatypes::Int64Chunked;
 use polars::io::SerWriter;
 use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, CsvWriter, IntoColumn, SerReader};
 use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
 
-use crate::sources::access::asd::{Credentials, Param, Source, DEF_SOURCES, DEF_TOKEN};
+use crate::sources::access::asd::{Credentials, Param, Source, DEF_TOKEN};
 use crate::token::AsdToken;
 use crate::{Asd, AuthError, Expirable, Fetchable, Filter, Stats};
 

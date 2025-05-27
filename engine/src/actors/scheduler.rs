@@ -16,11 +16,11 @@ use std::sync::mpsc::channel;
 use std::time::Duration;
 
 use ractor::factory::{FactoryMessage, JobOptions};
-use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, factory};
+use ractor::{factory, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 use tracing::{error, info, trace, warn};
 
 use crate::actors::{ResultsMsg, RunnerMsg, StateMsg};
-use crate::{Job, JobState, QueueError, SchedulerError, Stats, WaitGroup, Work};
+use crate::{Job, JobState, QueueError, SchedulerError, WaitGroup, Work};
 
 /// Messages that can be sent to control the scheduler's operation
 #[derive(Debug)]
@@ -235,7 +235,7 @@ impl Actor for SchedulerActor {
                 }
                 trace!("Adding job to waiting queue: {:?}", queued);
 
-                let (tx, mut rx) = channel();
+                let (tx, rx) = channel();
 
                 let work = Work::new(job.clone(), tx);
                 let wg = WaitGroup::new(job.id, rx);
@@ -246,7 +246,7 @@ impl Actor for SchedulerActor {
                 let _ = port.send(wg)?;
             }
 
-            SchedulerMsg::Finished(batch) => {
+            SchedulerMsg::Finished(_batch) => {
                 let work = match state.running.pop_front() {
                     Some(batch) => batch,
                     None => return Ok(()),
