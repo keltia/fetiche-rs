@@ -83,7 +83,7 @@ async fn main() -> Result<()> {
     trace!("Engine starting.");
     // Instantiate Engine
     //
-    let mut engine = Engine::new().await;
+    let mut engine = Engine::single().await;
 
     trace!("Engine initialised and running.");
 
