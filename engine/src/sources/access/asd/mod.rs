@@ -34,9 +34,6 @@ pub mod token;
 /// Default token
 const DEF_TOKEN: &str = "asd_default_token";
 
-/// If no sources are defined, use these.
-const DEF_SOURCES: &[&str] = &["as", "wi"];
-
 /// Different types of source
 ///
 #[derive(Clone, Debug, Deserialize, Serialize, EnumString, strum::Display, VariantNames)]
