@@ -54,6 +54,12 @@ pub enum EngineStatus {
 pub enum RunnerError {}
 
 #[derive(Debug, Error)]
+pub enum StateError {
+    #[error("Unrecognized state file format in {0}")]   
+    UnrecognizedFile(String),
+}
+
+#[derive(Debug, Error)]
 pub enum SchedulerError {
     #[error("Empty queue.")]
     EmptyQueue,

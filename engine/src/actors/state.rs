@@ -16,9 +16,9 @@ use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::fs;
-use tracing::{info, trace};
-
-use crate::{ENGINE_PG, ENGINE_PID};
+use tracing::{error, info, trace, warn};
+use fetiche_formats::Update::D;
+use crate::{StateError, ENGINE_PG, ENGINE_PID};
 
 /// Main state data file, will be created in `basedir`.
 pub(crate) const STATE_FILE: &str = "state";
@@ -77,7 +77,7 @@ pub enum StateMsg {
 /// Implements:
 /// - Derived traits: `Clone`, `Debug`, `Deserialize`, `Serialize`
 ///
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct State {
     /// Our state file path.
     #[serde(skip_deserializing, skip_serializing)]
@@ -95,6 +95,26 @@ pub struct State {
     pub waiting: VecDeque<usize>,
     pub running: VecDeque<usize>,
     pub finished: VecDeque<usize>,
+}
+
+/// This is version 1 of the state file
+///
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct State1 {
+    /// Our state file path.
+    #[serde(skip_deserializing, skip_serializing)]
+    pub fname: PathBuf,
+    /// Timestamp of last sync
+    pub tm: i64,
+    #[serde(skip_deserializing)]
+    pub dirty: bool,
+    /// Last job ID
+    pub last: usize,
+    /// Current PID, not synced because it is in the PID file.
+    #[serde(skip_deserializing, skip_serializing)]
+    pub pid: u32,
+    /// Job Queues -- at startup, queue is empty, nothing is running.
+    pub queue: VecDeque<usize>,
 }
 
 #[ractor::async_trait]
@@ -139,7 +159,31 @@ impl Actor for StateActor {
         let fname = basedir.join(STATE_FILE);
 
         let data = fs::read_to_string(&fname).await?;
-        let mut data: State = serde_json::from_str(&data)?;
+
+        // Read the `state` file.  If we can't read it as `State`, try with the previous
+        // version.  If it succeeds, regenerate a new one.
+        //
+        let mut data: State = match serde_json::from_str(&data) {
+            Ok(state) => state,
+            Err(_) => {
+                let st: State1 = match serde_json::from_str(&data) {
+                    Ok(st) => {
+                        warn!("Previous version of the state file detected, resetting.");
+                        st
+                    },
+                    Err(e) => {
+                        error!("Impossible to load state file in {:?}: {}", fname, e.to_string());
+                        return Err(StateError::UnrecognizedFile(fname.to_string_lossy().to_string()).into());
+                    }
+                };
+                // returns a new one using previous data
+                //
+                State {
+                    last: st.last,
+                    ..Default::default()
+                }
+            }
+        };
 
         // Reset everything except the last pid we just loaded
         //
