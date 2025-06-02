@@ -1,0 +1,24 @@
+[package]
+name = "generate-localtime"
+version = "0.1.0"
+edition = "2024"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "Compute localtime from UTC for each drone point."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/fetiche-rs"
+categories = ["aerospace::drones"]
+keywords = ["timezone", "drones", "aeronautical-data"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap.workspace = true
+eyre.workspace = true
