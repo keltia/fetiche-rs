@@ -176,6 +176,11 @@ impl Actor for SchedulerActor {
                 }
                 // Ignore tick if not idle.
             }
+            // sync is handled here now.
+            //
+            SchedulerMsg::Sync => {
+                let _ = state.state.cast(StateMsg::Sync);
+            }
             // The real start of the scheduler, we will generate clock ticks now.
             //
             SchedulerMsg::Start => {
@@ -278,12 +283,6 @@ impl Actor for SchedulerActor {
                         && state.running.is_empty()
                         && state.finished.is_empty(),
                 )?;
-            }
-
-            // sync is handled here now.
-            //
-            SchedulerMsg::Sync => {
-                let _ = state.state.cast(StateMsg::Sync);
             }
         }
         Ok(())
