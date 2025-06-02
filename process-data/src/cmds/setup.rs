@@ -584,6 +584,37 @@ DROP VIEW IF EXISTS acute.airprox_summary
 
 // -----
 
+#[tracing::instrument(skip(dbh))]
+async fn add_pbi_encounters_summary_view(dbh: &Client) -> Result<()> {
+    let r4 = r##"
+CREATE MATERIALIZED VIEW pbi_encounters_summary ENGINE = ReplacingMergeTree
+PRIMARY KEY (en_id) POPULATE AS (  SELECT *
+  FROM
+    airplane_prox AS a JOIN airprox_summary AS s
+    ON
+        s.en_id = a.en_id AND
+        s.journey = a.journey AND
+        s.drone_id = a.drone_id
+  WHERE
+    a.distance_slant_m = s.distance_slant_m
+  ORDER BY time
+)
+"##;
+
+    Ok(dbh.execute(r4).await?)
+}
+
+#[tracing::instrument(skip(dbh))]
+async fn drop_pbi_encounters_summary_view(dbh: &Client) -> Result<()> {
+    let rm5 = r##"
+DROP VIEW IF EXISTS acute.pbi_encounters_summary
+    "##;
+
+    Ok(dbh.execute(rm5).await?)
+}
+    
+// -----
+
 /// Create various views
 ///
 #[tracing::instrument(skip(dbh))]
@@ -595,6 +626,7 @@ async fn create_views(dbh: &Client) -> Result<()> {
     add_pbi_drones_view(dbh).await?;
     add_airprox_summary_view(dbh).await?;
     add_pbi_encounters_view(dbh).await?;
+    add_pbi_encounters_summary_view(dbh).await?;
 
     Ok(())
 }
@@ -603,6 +635,7 @@ async fn create_views(dbh: &Client) -> Result<()> {
 ///
 #[tracing::instrument(skip(dbh))]
 async fn drop_views(dbh: &Client) -> Result<()> {
+    drop_pbi_encounters_summary_view(dbh).await?;
     drop_pbi_encounters_view(dbh).await?;
     drop_airprox_summary_view(dbh).await?;
     drop_pbi_drones_view(dbh).await?;
