@@ -355,6 +355,8 @@ DROP VIEW IF EXISTS acute.airplanes;
 
 /// Create drones view
 ///
+/// XXX We use 0 for the drone height because we have no way to have the home altitude.
+///
 #[tracing::instrument(skip(dbh))]
 async fn add_drones_view(dbh: &Client) -> Result<()> {
     let r2 = r##"
@@ -384,7 +386,7 @@ AS
         `station_longitude`,
         toUnixTimestamp(timestamp) as time,
         dist_2d(longitude,latitude,home_lon,home_lat) AS home_distance_2d,
-        dist_3d(longitude,latitude,elevation,home_lon,home_lat,home_height) AS home_distance_3d
+        dist_3d(longitude,latitude,0,home_lon,home_lat,home_height) AS home_distance_3d
     FROM acute.drones_raw
 )
     COMMENT 'View for drones data with distances.'
@@ -404,6 +406,8 @@ DROP VIEW IF EXISTS acute.drones;
 // -----
 
 /// Create PBI-specific drones view
+///
+/// XXX We use 0 for the drone height because we have no way to have the home altitude.
 ///
 #[tracing::instrument(skip(dbh))]
 async fn add_pbi_drones_view(dbh: &Client) -> Result<()> {
@@ -432,7 +436,7 @@ AS (SELECT `journey`,
       `station_longitude`,
       toUnixTimestamp(timestamp) as time,
       dist_2d(dr.longitude,dr.latitude,home_lon,home_lat) AS home_distance_2d,
-      dist_3d(dr.longitude,dr.latitude,dr.elevation,home_lon,home_lat,home_height) AS home_distance_3d,
+      dist_3d(dr.longitude,dr.latitude,0,home_lon,home_lat,home_height) AS home_distance_3d,
       dist_2d(dr.longitude,dr.latitude,station_longitude,station_latitude) AS antenna_distance_2d,
       dist_3d(dr.longitude,dr.latitude,dr.altitude,station_longitude,station_latitude, d.ref_altitude) AS antenna_distance_3d
     FROM acute.drones_raw AS dr LEFT OUTER JOIN acute.pbi_deployments AS d
