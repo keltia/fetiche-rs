@@ -76,6 +76,17 @@ CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
     Ok(dbh.execute(r2).await?)
 }
 
+#[tracing::instrument(skip(dbh))]
+async fn add_which_timezone(dbh: &Client) -> Result<()> {
+    let r = r##"
+ CREATE FUNCTION which_timezone AS id -> (
+    SELECT timezone
+    FROM deployments
+    WHERE install_id = id
+)"##;
+    Ok(dbh.execute(r).await?)
+}
+
 /// Adds mathematical macros to the database for distance calculations.
 ///
 /// ### Details
@@ -100,6 +111,7 @@ CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
 async fn add_macros(dbh: &Client) -> Result<()> {
     add_macro_dist2d(dbh).await?;
     add_macro_dist3d(dbh).await?;
+    add_which_timezone(dbh).await?;
     Ok(())
 }
 
@@ -121,6 +133,15 @@ DROP FUNCTION IF EXISTS dist_3d;
     "##;
 
     Ok(dbh.execute(r2).await?)
+}
+
+#[tracing::instrument(skip(dbh))]
+async fn remove_which_timezone(dbh: &Client) -> Result<()> {
+    let r = r##"
+DROP FUNCTION IF EXISTS which_timezone;
+    "##;
+
+    Ok(dbh.execute(r).await?)
 }
 
 /// Removes mathematical macros from the database.
@@ -147,6 +168,7 @@ DROP FUNCTION IF EXISTS dist_3d;
 ///
 #[tracing::instrument(skip(dbh))]
 async fn remove_macros(dbh: &Client) -> Result<()> {
+    remove_which_timezone(dbh).await?;
     remove_macro_dist3d(dbh).await?;
     remove_macro_dist2d(dbh).await?;
     Ok(())
