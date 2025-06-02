@@ -2,7 +2,7 @@
 //!
 //! Currently supported:
 //! - Input: Asd, Opensky
-//! - Output: Cat21
+//! - Output: DronePoint
 //!
 
 use std::sync::mpsc::Sender;
@@ -10,19 +10,17 @@ use std::sync::mpsc::Sender;
 use eyre::Result;
 use tracing::trace;
 
-use fetiche_formats::{prepare_csv, DronePoint, Format};
+use fetiche_formats::{DronePoint, Format, prepare_csv};
 use fetiche_macros::RunnableDerive;
 
+#[cfg(feature = "opensky")]
+use fetiche_formats::StateList;
 #[cfg(feature = "avionix")]
 use fetiche_formats::avionix::CubeData;
 #[cfg(feature = "senhive")]
 use fetiche_formats::senhive::FusedData;
-#[cfg(feature = "asterix")]
-use fetiche_formats::Cat21;
-#[cfg(feature = "opensky")]
-use fetiche_formats::StateList;
 
-use crate::{Middle, Runnable, IO};
+use crate::{IO, Middle, Runnable};
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Convert {
@@ -70,35 +68,6 @@ impl Convert {
         // Bow out early
         //
         let res = match self.into {
-            #[cfg(feature = "asterix")]
-            Format::Cat21 => {
-                let res: Vec<_> = match self.from {
-                    #[cfg(feature = "opensky")]
-                    Format::Opensky => {
-                        trace!("opensky:json to cat21: {}", data);
-
-                        let data: StateList = serde_json::from_str(&data)?;
-                        trace!("data={:?}", data);
-                        let data = json!(&data.states).to_string();
-                        trace!("data={}", data);
-                        Cat21::from_opensky(&data)?
-                    }
-                    #[cfg(feature = "asd")]
-                    Format::Asd => {
-                        trace!("asd:json to cat21: {}", data);
-
-                        Cat21::from_asd(&data)?
-                    }
-                    #[cfg(feature = "flightaware")]
-                    Format::Flightaware => {
-                        trace!("flightaware:json to cat21: {}", data);
-
-                        Cat21::from_flightaware(&data)?
-                    }
-                    _ => unimplemented!(),
-                };
-                prepare_csv(res, false)?
-            }
             // This one is always enabled.
             //
             Format::DronePoint => {

@@ -206,7 +206,8 @@ These are there more to test and implement simple functions.
 
 ### Convert
 
-At the moment, this task only support converting into our own `Cat21`  pseudo format, usually as CSV.
+At the moment, this task only supports converting into our own `DronePoint` format, usually as CSV. This is a way
+to unify all drone data coming from different providers.
 
 ## Consumers
 
