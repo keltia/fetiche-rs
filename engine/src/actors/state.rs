@@ -9,18 +9,16 @@
 //!
 use std::collections::VecDeque;
 use std::path::PathBuf;
-use std::time::Duration;
 
+use crate::{ENGINE_PG, ENGINE_PID, StateError};
 use chrono::Utc;
-use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, pg};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::fs;
 use tracing::{error, info, trace, warn};
-use fetiche_formats::Update::D;
-use crate::{StateError, ENGINE_PG, ENGINE_PID};
 
-/// Main state data file, will be created in `basedir`.
+/// The main state data file will be created in `basedir`.
 pub(crate) const STATE_FILE: &str = "state";
 
 /// The actor itself.
@@ -170,10 +168,17 @@ impl Actor for StateActor {
                     Ok(st) => {
                         warn!("Previous version of the state file detected, resetting.");
                         st
-                    },
+                    }
                     Err(e) => {
-                        error!("Impossible to load state file in {:?}: {}", fname, e.to_string());
-                        return Err(StateError::UnrecognizedFile(fname.to_string_lossy().to_string()).into());
+                        error!(
+                            "Impossible to load state file in {:?}: {}",
+                            fname,
+                            e.to_string()
+                        );
+                        return Err(StateError::UnrecognizedFile(
+                            fname.to_string_lossy().to_string(),
+                        )
+                        .into());
                     }
                 };
                 // returns a new one using previous data
