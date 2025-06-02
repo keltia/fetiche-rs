@@ -13,11 +13,17 @@ The Engine is all about actors now.
 
 Upon startup and after loading the configuration, `Engine::new()` launches several common actors:
 
-- *engine::sources* will load `$BASEDIR/sources.hcl` and returns a `Site` when asked
-- *engine::state* will load `$BASEDIR/state` which will retrieve the last Job ID used, then will set up its own 30s sync
+- `engine::supervisor` will be the father of all actors here. That way we can track which ones are working, when, etc.
+- `engine::scheduler` will create the new in-memory empty job queues but will use the last Job ID as "next" so we don't
+  step on another job's data, even if it were interrupted. Then it will check the queues periodically and run each new
+  job
+- `engine::factory` will be the executing part of the engine, which means we can have several
+  instances of `engine::runner` in a worker pool pattern.
+- `engine::sources` will load `$BASEDIR/sources.hcl` and returns a `Site` when asked
+- `engine::state` will load `$BASEDIR/state` which will retrieve the last Job ID used, then will set up its own 30s sync
   timer.
-- *engine::queue* will create the new in-memory empty job queue but will use the last Job ID as "next" so we don't step
-  on another job's data, even if it were interrupted.
+- `engine::state` is the actor syncing the internal state into disk.
+-
 
 ## Sources
 
@@ -206,7 +212,8 @@ These are there more to test and implement simple functions.
 
 ### Convert
 
-At the moment, this task only support converting into our own `Cat21`  pseudo format, usually as CSV.
+At the moment, this task only supports converting into our own `DronePoint` format, usually as CSV. This is a way
+to unify all drone data coming from different providers.
 
 ## Consumers
 

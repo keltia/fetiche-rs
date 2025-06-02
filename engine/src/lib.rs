@@ -45,15 +45,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use eyre::Result;
-use ractor::factory::{queues, routing, Factory, FactoryArguments, FactoryMessage};
+use ractor::factory::{Factory, FactoryArguments, FactoryMessage, queues, routing};
 use ractor::registry::registered;
-use ractor::{call, cast, Actor, ActorRef};
+use ractor::{Actor, ActorRef, call, cast};
 use serde::Deserialize;
 use strum::EnumString;
 use tracing::{debug, error, info, trace};
 
 pub use auth::*;
-pub use cmds::*;
 pub use consumer::*;
 pub use error::*;
 pub use filter::*;
@@ -297,12 +296,12 @@ impl Engine {
         // Ensure we have sensible defaults.
         //
         let (workers, sync, tick) = if mode == EngineMode::Daemon {
-            let workers = cfg
-                .workers
-                .unwrap_or_else(|| match std::thread::available_parallelism() {
-                    Ok(n) => n.get(),
-                    Err(_) => 1,
-                });
+            let workers =
+                cfg.workers
+                    .unwrap_or_else(|| match std::thread::available_parallelism() {
+                        Ok(n) => n.get(),
+                        Err(_) => 1,
+                    });
             let sync = cfg.sync.unwrap_or_else(|| SYNC);
             let tick = cfg.tick.unwrap_or_else(|| TICK);
             (workers, sync, tick)
@@ -338,7 +337,7 @@ impl Engine {
             (),
             sup.get_cell(),
         )
-            .await?;
+        .await?;
 
         let count = call!(src, |port| SourcesMsg::Count(port))?;
         info!("{} sources loaded", count);
@@ -352,7 +351,7 @@ impl Engine {
             home.clone(),
             sup.get_cell(),
         )
-            .await?;
+        .await?;
         trace!("state={:?}", state);
 
         // Get last used ID from the previous state
@@ -366,7 +365,7 @@ impl Engine {
             (),
             sup.get_cell(),
         )
-            .await?;
+        .await?;
 
         // ----- Start Runner Factory
 
@@ -397,7 +396,7 @@ impl Engine {
             factory_args,
             sup.get_cell(),
         )
-            .await?;
+        .await?;
 
         // Spawn the actual scheduler
         //
@@ -415,7 +414,7 @@ impl Engine {
             sargs,
             sup.get_cell(),
         )
-            .await?;
+        .await?;
 
         // ----- Register non-actor subsystems
 

@@ -135,8 +135,8 @@ impl Display for Auth {
 /// A trait representing an entity that holds a key and can expire.
 ///
 /// The `Expirable` trait provides two essential methods:
-/// - [`key`]: Retrieves the unique identifier or "key" for the entity.
-/// - [`is_expired`]: Checks whether the entity is expired.
+/// - `key()`: Retrieves the unique identifier or "key" for the entity.
+/// - `is_expired()`: Checks whether the entity is expired.
 ///
 /// This trait can be used for managing credentials, tokens, or other
 /// expirable resources.
@@ -184,4 +184,3 @@ pub trait Expirable {
 pub enum TokenType {
     AsdToken,
 }
-

@@ -22,7 +22,7 @@ use ractor::{call, call_t, cast, pg};
 use tracing::trace;
 
 use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
-use crate::{Engine, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup, ENGINE_PG};
+use crate::{ENGINE_PG, Engine, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup};
 
 /// Basically, this is the exposed API to the Engine.
 ///
@@ -287,8 +287,7 @@ impl Engine {
     ///
     #[tracing::instrument(skip(self))]
     pub fn ps(&mut self) {
-        let v = self.version();
-        eprintln!("Engin version {} is running", self.version());
+        eprintln!("Engine version {} is running", self.version());
 
         let plist = registered().join("\n");
         eprintln!("Actor list:\n{plist}");

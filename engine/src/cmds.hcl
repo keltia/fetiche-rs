@@ -24,7 +24,7 @@ cmds "stream" {
 
 cmds "convert" {
   type        = "Filter"
-  description = "Convert between the various formats into Cat21."
+  description = "Convert between the various formats into DronePoint."
 }
 
 cmds "copy" {
