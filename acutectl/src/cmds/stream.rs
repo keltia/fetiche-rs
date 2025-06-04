@@ -1,10 +1,12 @@
+use std::env;
+use std::path::{absolute, Path};
 use std::time::Duration;
 
 use eyre::Result;
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle};
 use tracing::{debug, info, trace};
 
-use fetiche_client::{EngineSingle, Filter, Freq, JobState};
+use fetiche_client::{EngineSingle, Filter, Freq, JobBuilder, JobState};
 
 use crate::{Status, StreamOpts};
 
@@ -20,7 +22,20 @@ pub async fn stream_from_site(engine: &mut EngineSingle, sopts: &StreamOpts) -> 
 
     // Do we want a copy of the raw data (often before converting it)
     //
-    let tee = sopts.tee.clone().unwrap_or(String::from(""));
+    let tee = if let Some(path) = &sopts.tee {
+        let fname = Path::new(&path);
+        let fname = if fname.is_absolute() {
+            path.clone()
+        } else {
+            debug!("tee path: {:?}", fname);
+            let fname = absolute(fname)?;
+            let fname = env::current_dir()?.join(fname);
+            fname.to_string_lossy().to_string()
+        };
+        Some(fname)
+    } else {
+        None
+    };
 
     // Analyse our output strategy
     //
@@ -49,27 +64,20 @@ pub async fn stream_from_site(engine: &mut EngineSingle, sopts: &StreamOpts) -> 
     info!("Writing to {output}");
     eprintln!("Streaming into {output}");
 
-    let bar = ProgressBar::new_spinner();
+    let bar = ProgressBar::new_spinner().with_style(
+        ProgressStyle::default_spinner().template("{spinner:.green} [{elapsed_precise}] {msg}")?,
+    );
     bar.enable_steady_tick(Duration::from_millis(100));
 
-    let script = format!(r##"
-    name = "Stream from {name}"
-    type = "stream"
-    producer = {{
-      "Stream" = [
-        "{name}",
-        {{
-            {filter}
-        }}
-      ]
-    }}
-    middle = [ {tee} ]
-    {output}
-    "##);
+    let job = JobBuilder::new(&format!("Stream from {name}"))
+        .stream(&sopts.site)
+        .filter(filter_from_opts(sopts)?)
+        .tee(tee)
+        .store(&output, freq)
+        .build();
+    dbg!(&job);
 
-    debug!("script = {script}");
-
-    let job = engine.parse_job(&script).await?;
+    let job = engine.parse_job(job).await?;
     let id = job.id;
     trace!("Job running id #{id}");
 

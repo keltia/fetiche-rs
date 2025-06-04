@@ -11,7 +11,7 @@ use tracing::{debug, info, trace};
 
 use crate::FetchOpts;
 
-use fetiche_client::{ConsumerText::Save, EngineSingle, Filter, JobState, JobTextBuilder, MiddleText::Tee, ProducerText::Fetch};
+use fetiche_client::{EngineSingle, Filter, JobBuilder, JobState};
 use fetiche_common::DateOpts;
 
 /// Fetches data from a specified network site using the provided engine and options.
@@ -52,22 +52,20 @@ pub async fn fetch_from_site(engine: &mut EngineSingle, fopts: &FetchOpts) -> Re
 
     // Do we want a copy of the raw data (often before converting it)
     //
-    let middle = match fopts.tee.clone() {
-        Some(path) => {
-            let fname = Path::new(&path);
-            if fname.is_absolute() {
-                vec![Tee(path.clone())]
-            } else {
-                debug!("tee path: {:?}", fname);
-                let fname = absolute(fname)?;
-                let fname = env::current_dir()?.join(fname);
-                vec![Tee(fname.to_string_lossy().to_string())]
-            }
-        }
-        None => vec![],
+    let tee = if let Some(path) = &fopts.tee {
+        let fname = Path::new(&path);
+        let fname = if fname.is_absolute() {
+            path.clone()
+        } else {
+            debug!("tee path: {:?}", fname);
+            let fname = absolute(fname)?;
+            let fname = env::current_dir()?.join(fname);
+            fname.to_string_lossy().to_string()
+        };
+        Some(fname)
+    } else {
+        None
     };
-
-    let tee = hcl::to_string(&middle)?;
 
     // Are we writing to stdout?
     //
@@ -92,19 +90,17 @@ pub async fn fetch_from_site(engine: &mut EngineSingle, fopts: &FetchOpts) -> Re
     );
     bar.enable_steady_tick(Duration::from_millis(100));
 
-    let job = JobTextBuilder::default()
-        .name(format!("Fetch from {name}"))
-        .producer(Fetch(fopts.site.clone(), filter_from_opts(fopts)?))
-        .middle(Some(middle))
-        .output(Save(final_output.clone()))
-        .build()?;
-
-    let jobtext = hcl::to_string(&job)?;
-    debug!("jobtext = {jobtext}");
+    let job = JobBuilder::new(&format!("Fetch from {name}"))
+        .fetch(&fopts.site)
+        .filter(filter_from_opts(fopts)?)
+        .tee(tee)
+        .save(&final_output)
+        .build();
+    dbg!(&job);
 
     // We have a properly configured jon.
     //
-    let job = engine.parse_job(&jobtext).await?;
+    let job = engine.parse_job(job).await?;
     let id = job.id;
     trace!("Job #{id} parsed: {:?}", job);
 
