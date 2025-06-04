@@ -12,14 +12,12 @@
 //! use tracing::trace;
 //! use fetiche_engine::Engine;
 //!
-//! // Instantiate Engine
+//! // Instantiate Engine (in daemon mode).
+//! // For single usage mode, use `single()`.
 //! //
 //! let engine = Engine::new().await?;
 //!
 //! println!("Engine initialised and running.");
-//!
-//! // For the moment the whole of Engine is sync so we need to block.
-//! //
 //! println!("{}", engine.list_tokens().await?);
 //! # Ok(())
 //! # }
@@ -43,7 +41,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use eyre::Result;
+use futures_util::StreamExt;
 use object_store::local::LocalFileSystem;
+use object_store::ObjectStore;
 use ractor::factory::{queues, routing, Factory, FactoryArguments, FactoryMessage};
 use ractor::registry::registered;
 use ractor::{call, cast, Actor, ActorRef};
@@ -464,6 +464,14 @@ impl Engine {
         //
         let plist = registered().join("\n");
         trace!("Actor list:\n{plist}");
+
+        // Display the current storage objects.
+        //
+        trace!("Storage objects:");
+        let mut flist = base.list(None);
+        while let Some(meta) = flist.next().await.transpose()? {
+            trace!("{:?} ({} bytes)", meta.location, meta.size);
+        }
 
         // Get the ball rolling.  Next tick, we will check the queue.
         //
