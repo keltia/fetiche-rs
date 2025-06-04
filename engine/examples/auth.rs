@@ -5,7 +5,7 @@ use fetiche_engine::Engine;
 async fn main() -> eyre::Result<()> {
     init_logging("auth", false, false, None)?;
 
-    let engine = Engine::new().await;
+    let engine = Engine::new().await?;
     dbg!(&engine);
 
     let str = engine.list_tokens().await?;
