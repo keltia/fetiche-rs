@@ -185,7 +185,7 @@ async fn remove_macros(dbh: &Client) -> Result<()> {
 ///
 /// ### Details
 ///
-/// This function creates the `encounters` table (`acute.airplane_prox`) in the database.
+/// This function creates the `encounters` table (`airplane_prox`) in the database.
 /// The table is structured to store proximity data related to drone and airplane encounters
 /// within a specified distance threshold.
 ///
@@ -210,7 +210,7 @@ async fn remove_macros(dbh: &Client) -> Result<()> {
 /// - `distance_vert_m`: Vertical distance in meters between the drone and airplane.
 /// - `distance_home_m`: Distance in meters between the drone and its home location.
 ///
-/// This command creates the `acute.airplane_prox` table in the database to store the
+/// This command creates the `airplane_prox` table in the database to store the
 /// described data points for encounters.
 ///
 /// ### Errors
@@ -226,8 +226,7 @@ async fn remove_macros(dbh: &Client) -> Result<()> {
 #[tracing::instrument(skip(dbh))]
 async fn add_encounters_table(dbh: &Client) -> Result<()> {
     let sq = r##"
-CREATE
-OR REPLACE TABLE acute.airplane_prox (
+CREATE TABLE IF NOT EXISTS airplane_prox (
   site             INT,
   en_id            VARCHAR,
   time             TIMESTAMP,
@@ -261,7 +260,7 @@ OR REPLACE TABLE acute.airplane_prox (
 #[tracing::instrument(skip(dbh))]
 async fn drop_encounters_table(dbh: &Client) -> Result<()> {
     let sq = r##"
-DROP TABLE IF EXISTS acute.airplane_prox;
+DROP TABLE IF EXISTS airplane_prox;
     "##;
 
     Ok(dbh.execute(sq).await?)
@@ -272,7 +271,7 @@ DROP TABLE IF EXISTS acute.airplane_prox;
 #[tracing::instrument(skip(dbh))]
 async fn add_pbi_encounters_view(dbh: &Client) -> Result<()> {
     let sq = r##"
-CREATE MATERIALIZED VIEW acute.pbi_encounters
+CREATE MATERIALIZED VIEW pbi_encounters
 ENGINE = ReplacingMergeTree
 PRIMARY KEY (time, journey) POPULATE
 AS (
@@ -302,8 +301,8 @@ SELECT
   distance_hor_m,
   distance_vert_m,
   distance_home_m
-FROM acute.airplane_prox AS ap, acute.pbi_deployments AS d
-LEFT OUTER JOIN acute.sites AS s
+FROM airplane_prox AS ap, pbi_deployments AS d
+LEFT OUTER JOIN sites AS s
 ON ap.site = s.id
 WHERE s.name = d.sitename
 )
@@ -318,7 +317,7 @@ WHERE s.name = d.sitename
 #[tracing::instrument(skip(dbh))]
 async fn drop_pbi_encounters_view(dbh: &Client) -> Result<()> {
     let sq = r##"
-DROP VIEW IF EXISTS acute.pbi_encounters;
+DROP VIEW IF EXISTS pbi_encounters;
     "##;
 
     Ok(dbh.execute(sq).await?)
@@ -334,7 +333,7 @@ async fn add_airplanes_view(dbh: &Client) -> Result<()> {
     //
     let r1 = r##"
 CREATE
-OR REPLACE VIEW acute.airplanes
+OR REPLACE VIEW airplanes
 AS
 (
     SELECT EmitterCategory,
@@ -359,7 +358,7 @@ AS
        SurfaceGroundSpeed,
        SurfaceGroundTrack,
        site
-    FROM acute.airplanes_raw AS f
+    FROM airplanes_raw AS f
 )
     COMMENT 'View for airplanes data.'
 "##;
@@ -372,7 +371,7 @@ AS
 #[tracing::instrument(skip(dbh))]
 async fn drop_airplanes_view(dbh: &Client) -> Result<()> {
     let rm1 = r##"
-DROP VIEW IF EXISTS acute.airplanes;
+DROP VIEW IF EXISTS airplanes;
     "##;
 
     Ok(dbh.execute(rm1).await?)
@@ -387,7 +386,7 @@ DROP VIEW IF EXISTS acute.airplanes;
 #[tracing::instrument(skip(dbh))]
 async fn add_drones_view(dbh: &Client) -> Result<()> {
     let r2 = r##"
-CREATE MATERIALIZED VIEW acute.drones
+CREATE MATERIALIZED VIEW drones
     ENGINE = ReplacingMergeTree
     PRIMARY KEY (time, journey)
 AS
@@ -414,7 +413,7 @@ AS
         toUnixTimestamp(timestamp) as time,
         dist_2d(longitude,latitude,home_lon,home_lat) AS home_distance_2d,
         dist_3d(longitude,latitude,0,home_lon,home_lat,home_height) AS home_distance_3d
-    FROM acute.drones_raw
+    FROM drones_raw
 )
     COMMENT 'View for drones data with distances.'
 "##;
@@ -425,7 +424,7 @@ AS
 #[tracing::instrument(skip(dbh))]
 async fn drop_drones_view(dbh: &Client) -> Result<()> {
     let rm2 = r##"
-DROP VIEW IF EXISTS acute.drones;
+DROP VIEW IF EXISTS drones;
     "##;
 
     Ok(dbh.execute(rm2).await?)
@@ -439,7 +438,7 @@ DROP VIEW IF EXISTS acute.drones;
 #[tracing::instrument(skip(dbh))]
 async fn add_pbi_drones_view(dbh: &Client) -> Result<()> {
     let r2b = r##"
-CREATE MATERIALIZED VIEW acute.pbi_drones
+CREATE MATERIALIZED VIEW  IF NOT EXISTS pbi_drones
 ENGINE = ReplacingMergeTree
 PRIMARY KEY (time, journey) POPULATE
 AS (SELECT `journey`,
@@ -470,7 +469,7 @@ AS (SELECT `journey`,
       dist_3d(dr.longitude,dr.latitude,0,home_lon,home_lat,drone_reported_height_m) AS home_distance_3d,
       dist_2d(dr.longitude,dr.latitude,station_longitude,station_latitude) AS antenna_distance_2d,
       dist_3d(dr.longitude,dr.latitude,dr.altitude,station_longitude,station_latitude, d.ref_altitude) AS antenna_distance_3d
-    FROM acute.drones_raw AS dr LEFT OUTER JOIN acute.pbi_deployments AS d
+    FROM drones_raw AS dr LEFT OUTER JOIN pbi_deployments AS d
      ON dr.station_name = d.antenna_name and dr.timestamp between d.start_at and d.end_at
     WHERE dr.station_name != 'ASDSTATIONV1' AND sitename != ''
   )
@@ -484,7 +483,7 @@ AS (SELECT `journey`,
 // Alternate version for later, with date & time separated for both UTC and Local time
 //
     let r2b = r##"
-CREATE MATERIALIZED VIEW acute.pbi_drones
+CREATE MATERIALIZED VIEW  IF NOT EXISTS pbi_drones
 ENGINE = ReplacingMergeTree
 PRIMARY KEY (time, journey) POPULATE
 AS (SELECT `journey`,
@@ -515,7 +514,7 @@ AS (SELECT `journey`,
       dist_3d(dr.longitude,dr.latitude,0,home_lon,home_lat,drone_reported_height_m) AS home_distance_3d,
       dist_2d(dr.longitude,dr.latitude,station_longitude,station_latitude) AS antenna_distance_2d,
       dist_3d(dr.longitude,dr.latitude,dr.altitude,station_longitude,station_latitude, d.ref_altitude) AS antenna_distance_3d
-    FROM acute.drones_raw AS dr LEFT OUTER JOIN acute.pbi_deployments AS d
+    FROM drones_raw AS dr LEFT OUTER JOIN pbi_deployments AS d
      ON dr.station_name = d.antenna_name and dr.timestamp between d.start_at and d.end_at
     WHERE dr.station_name != 'ASDSTATIONV1' AND sitename != ''
   )
@@ -527,7 +526,7 @@ AS (SELECT `journey`,
 #[tracing::instrument(skip(dbh))]
 async fn drop_pbi_drones_view(dbh: &Client) -> Result<()> {
     let rm2b = r##"
-DROP VIEW IF EXISTS acute.pbi_drones;
+DROP VIEW IF EXISTS pbi_drones;
     "##;
     Ok(dbh.execute(rm2b).await?)
 }
@@ -539,7 +538,7 @@ async fn add_deployments_view(dbh: &Client) -> Result<()> {
     // Deployments tracking view
     //
     let r3 = r##"
- CREATE VIEW acute.deployments
+ CREATE VIEW  IF NOT EXISTS deployments
  AS SELECT
     i.id AS install_id,
     i.start_at,
@@ -548,7 +547,7 @@ async fn add_deployments_view(dbh: &Client) -> Result<()> {
     a.name AS antenna_name,
     s.name AS site_name,
     s.timezone AS timezone
- FROM acute.installations AS i, acute.antennas AS a, acute.sites AS s
+ FROM installations AS i, antennas AS a, sites AS s
  WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
  COMMENT 'Find the site for each drone points.'
     "##;
@@ -559,7 +558,7 @@ async fn add_deployments_view(dbh: &Client) -> Result<()> {
 #[tracing::instrument(skip(dbh))]
 async fn drop_deployments_view(dbh: &Client) -> Result<()> {
     let rm3 = r##"
-DROP VIEW IF EXISTS acute.deployments;
+DROP VIEW IF EXISTS deployments;
     "##;
 
     Ok(dbh.execute(rm3).await?)
@@ -572,7 +571,7 @@ async fn add_pbi_deployments_view(dbh: &Client) -> Result<()> {
     // PBI-specific view
     //
     let r3b = r##"
- CREATE VIEW acute.pbi_deployments
+ CREATE VIEW  IF NOT EXISTS pbi_deployments
  AS SELECT
     i.id AS installation_id,
     i.start_at,
@@ -585,7 +584,7 @@ async fn add_pbi_deployments_view(dbh: &Client) -> Result<()> {
     s.latitude AS latitude,
     s.longitude AS longitude,
     s.ref_altitude AS ref_altitude
- FROM acute.installations AS i, acute.antennas AS a, acute.sites AS s
+ FROM installations AS i, antennas AS a, sites AS s
  WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
  COMMENT 'Find the site for each drone points for PBI.'
     "##;
@@ -596,7 +595,7 @@ async fn add_pbi_deployments_view(dbh: &Client) -> Result<()> {
 #[tracing::instrument(skip(dbh))]
 async fn drop_pbi_deployments_view(dbh: &Client) -> Result<()> {
     let rm4 = r##"
-DROP VIEW IF EXISTS acute.pbi_deployments
+DROP VIEW IF EXISTS pbi_deployments
     "##;
 
     Ok(dbh.execute(rm4).await?)
@@ -607,7 +606,7 @@ DROP VIEW IF EXISTS acute.pbi_deployments
 #[tracing::instrument(skip(dbh))]
 async fn add_airprox_summary_view(dbh: &Client) -> Result<()> {
     let r4 = r##"
-CREATE OR REPLACE VIEW airprox_summary AS
+CREATE OR REPLACE VIEW  IF NOT EXISTS airprox_summary AS
 (SELECT
         en_id,
         journey,
@@ -627,7 +626,7 @@ CREATE OR REPLACE VIEW airprox_summary AS
 #[tracing::instrument(skip(dbh))]
 async fn drop_airprox_summary_view(dbh: &Client) -> Result<()> {
     let rm4 = r##"
-DROP VIEW IF EXISTS acute.airprox_summary
+DROP VIEW IF EXISTS airprox_summary
     "##;
 
     Ok(dbh.execute(rm4).await?)
@@ -638,7 +637,7 @@ DROP VIEW IF EXISTS acute.airprox_summary
 #[tracing::instrument(skip(dbh))]
 async fn add_pbi_encounters_summary_view(dbh: &Client) -> Result<()> {
     let r4 = r##"
-CREATE MATERIALIZED VIEW pbi_encounters_summary ENGINE = ReplacingMergeTree
+CREATE MATERIALIZED VIEW IF NOT EXISTS pbi_encounters_summary ENGINE = ReplacingMergeTree
 PRIMARY KEY (en_id) POPULATE AS (  SELECT *
   FROM
     airplane_prox AS a JOIN airprox_summary AS s
@@ -658,7 +657,7 @@ PRIMARY KEY (en_id) POPULATE AS (  SELECT *
 #[tracing::instrument(skip(dbh))]
 async fn drop_pbi_encounters_summary_view(dbh: &Client) -> Result<()> {
     let rm5 = r##"
-DROP VIEW IF EXISTS acute.pbi_encounters_summary
+DROP VIEW IF EXISTS pbi_encounters_summary
     "##;
 
     Ok(dbh.execute(rm5).await?)
