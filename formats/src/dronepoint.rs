@@ -1,5 +1,17 @@
-// ----- New `DronePoint`, flattened struct
-
+//! Drone data structures and related enumerations for processing telemetry data.
+//!
+//! This module provides the core data structures used for representing and processing
+//! drone telemetry information. It includes:
+//!
+//! - `DronePoint`: A flattened structure containing comprehensive drone data
+//! - `VehicleStateType`: Enumeration of possible drone vehicle states
+//! - `FusionType`: Categorization of data fusion methods
+//! - `UAVType`: Classification of different drone/UAV types
+//! - `DataSource`: Available data sources for drone tracking
+//!
+//! The structures and enums in this module are designed to provide a standardized
+//! way to handle drone telemetry data across different data sources and drone types.
+//!
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
