@@ -109,7 +109,7 @@ def move_one_adsb(fn, action):
 
         # Create target
         #
-        ourdir = f"{datadir}/{ftype}/site={site}/year={year}/month={month:02}"
+        ourdir = Path(datadir) / ftype / f"site={site}" / f"year={year}" / f"month={month:02}"
         if not Path(ourdir).exists():
             os.makedirs(ourdir)
         final = Path(ourdir) / fname
@@ -140,16 +140,15 @@ def move_one_drone(fn, action):
     if fc is not None:
         year = fc.group('year')
         month = fc.group('month')
-        ourdir = f"{datadir}/{ftype}/year={year}/month={month:02}"
+        ourdir = Path(datadir) / ftype / f"year={year}" / f"month={month:02}"
         if not Path(ourdir).exists():
             os.makedirs(ourdir)
         final = Path(ourdir) / fname
-        if action:
-            print(f"Moving {fn} into {final}")
         logging.info(f"Moving {fn} into {final}")
-        Path(fn).rename(final)
+        if action:
+            Path(fn).rename(final)
     else:
-        print(f"Ignoring {fn}")
+        logging.info(f"Ignoring {fn}")
 
 
 # Setup arguments
