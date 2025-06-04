@@ -244,6 +244,9 @@ pub struct StreamOpts {
     /// Output file -- default is stdout
     #[clap(short = 'o', long)]
     pub output: Option<String>,
+    /// Do not detach from the terminal
+    #[clap(short = 'N', long)]
+    pub no_daemon: bool,
     /// Create a copy of the raw file before any conversion
     #[clap(long)]
     pub tee: Option<String>,

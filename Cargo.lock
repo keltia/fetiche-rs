@@ -239,6 +239,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "ctrlc",
+ "daemonize",
  "eyre",
  "fetiche-client",
  "fetiche-common",
