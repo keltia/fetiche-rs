@@ -100,23 +100,11 @@ site "safesky" {
   }
 }
 
-// Avionix Cube on the EIH roof - ADS-B flow
+// Avionix Cube on the EIH roof through server - RemoteID flow
 //
-site "avionix-adsb" {
-  feature  = "stream"
-  type     = "adsb"
-  format   = "cubedata"
-  base_url = "tcp.aero-network.com:50007"
-  auth = {
-    user_key = "MAYBE"
-    api_key  = "PERHAPS"
-  }
-  routes = {
-    get = "A"
-  }
-}
-
-// Avionix Cube on the EIH roof - -RemoteID flow
+// Traffic is not drone or ADS-B specific, you have to filter.
+//
+// ports: 50007 for json output
 //
 site "avionix-rid" {
   feature  = "stream"
@@ -133,6 +121,8 @@ site "avionix-rid" {
 }
 
 // Thales Senhive antenna on the EIH roof.
+//
+// This uses AMQP 0.9.1
 //
 site "eih-senhive" {
   feature  = "stream"
