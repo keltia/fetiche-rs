@@ -374,7 +374,7 @@ pub async fn handle_subcmd(engine: &mut EngineSingle, subcmd: &SubCommand) -> Re
         // Standalone `version` command
         //
         SubCommand::Version => {
-            eprintln!("Modules: \t{}", engine.version());
+            eprintln!("Modules: \t{} {}", fetiche_client::version(), engine.version());
         }
 
         _ => {
