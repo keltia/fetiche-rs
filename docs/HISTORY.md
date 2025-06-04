@@ -31,7 +31,3 @@ The `formats.hcl` add metadata about all supported formats.
 - v1 was generic
 - v2 added the datatype for each format
 
-The `dbfile.hcl` list possible database connections.
-
-- v1 as the original design, to be evolved.
-
