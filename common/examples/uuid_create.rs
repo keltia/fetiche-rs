@@ -105,15 +105,15 @@ fn process_one(acc: StringRecord, record: StringRecord, threshold: f64) -> Resul
 
     // Current record
     //
-    let journey = record[0].to_string();
-    let ident = record[1].to_string();
-    let tm = record[2].to_string();
+    let journey = &record[0];
+    let ident = &record[1];
+    let tm = &record[2];
     let curr_tm: DateTime = tm.parse()?;
 
     // get previous state
     //
-    let prev_journey = acc[0].to_string();
-    let prev_ident = acc[1].to_string();
+    let prev_journey = &acc[0];
+    let prev_ident = &acc[1];
     let prev_tm: DateTime = acc[2].parse()?;
 
     let new = if prev_ident == ident {
@@ -128,13 +128,10 @@ fn process_one(acc: StringRecord, record: StringRecord, threshold: f64) -> Resul
             // Starting a new journey with an uuid, use the record timestamp as base for it
             //
             let ctx = ContextV7::new();
-            let unx = curr_tm
-                .to_zoned(TimeZone::UTC)?
-                .timestamp()
-                .as_second();
-            let base_ts = uuid::Timestamp::from_unix(ctx, unx as u64, 0);
+            let unix_tm = curr_tm.to_zoned(TimeZone::UTC)?.timestamp().as_second();
+            let base_ts = uuid::Timestamp::from_unix(ctx, unix_tm as u64, 0);
             let uuid = Uuid::new_v7(base_ts);
-            StringRecord::from(vec![uuid.to_string(), ident, tm])
+            StringRecord::from(vec![uuid.to_string(), ident.to_string(), tm.to_string()])
         } else {
             // Same journey, just another point
             //
@@ -168,42 +165,41 @@ fn process_one(acc: StringRecord, record: StringRecord, threshold: f64) -> Resul
 ///
 fn main() -> Result<()> {
     let opts = Opts::parse();
-
     let threshold = parse_threshold(&opts.threshold)?;
 
+    // input/output
+    //
     let mut rdr = ReaderBuilder::new()
         .delimiter(b',')
-        .from_path(opts.fname.clone())?;
-    let mut data = rdr.records();
+        .from_path(&opts.fname)?;
+    let mut wrt = WriterBuilder::new()
+        .delimiter(b',')
+        .from_path(&opts.output)?;
 
-    let prev = data.next().unwrap()?;
-
-    // Initialise with the header
+    // Write the header to the output file immediately
     //
-    let mut result = vec![StringRecord::from(vec!["uuid", "ident", "timestamp"])];
+    wrt.write_record(&["uuid", "ident", "timestamp"])?;
 
-    // Now process the whole file, using `fold` to keep the previous record in the accumulator
+    let mut records = rdr.records();
+
+    // Process the first record separately to establish the initial "previous" state
     //
-    let _ = data.fold(prev.clone(), |acc, r| {
-        let new = process_one(acc, r.unwrap(), threshold).unwrap();
+    if let Some(first_result) = records.next() {
+        let mut prev = first_result?;
+        wrt.write_record(&prev)?;
 
-        // Now store the update record
-        //
-        result.push(new.clone());
+        // Loop through the rest of the records, writing each result as we go
+        for result in records {
+            let record = result?;
+            let new_record = process_one(prev, record, threshold)?;
+            wrt.write_record(&new_record)?;
 
-        // This becomes our previous state
-        //
-        new
-    });
-
-    // Now write everything out
-    //
-    let output = opts.output.clone();
-    let mut wrt = WriterBuilder::new().delimiter(b',').from_path(output)?;
-
-    for record in result {
-        wrt.write_record(&record)?;
+            // The new record becomes the "previous" one for the next iteration
+            //
+            prev = new_record;
+        }
     }
+
     wrt.flush()?;
     Ok(())
 }
