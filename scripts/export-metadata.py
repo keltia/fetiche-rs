@@ -21,6 +21,7 @@ if sys.platform.startswith('darwin'):
 
 # All exportable tables
 reqs = {
+    'antennas': 'select * from {} order by id into outfile \'{}\'/{}.csv truncate format csvwithnames',
     'sites': 'select * from {} order by id into outfile \'{}/{}.csv\' truncate format csvwithnames',
     'installations': 'select * from {} order by id into outfile \'{}/{}.csv\' truncate format csvwithnames',
     'deployments': 'select * from {} order by install_id into outfile \'{}/{}.csv\' truncate format csvwithnames',
@@ -48,7 +49,6 @@ def export_one(tag, action):
 	    print(f"{cmd}")
     print(f"Exported {tag} to {filesdir}/{tag}.csv")
 
-
 parser = argparse.ArgumentParser(
     prog='export-metadata',
     description='Export ACUTE metadata as CSV files.')
@@ -70,6 +70,7 @@ logfile = f"{logdir}/export-metadata-{date}.log"
 logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
                     format='%(asctime)s - %(levelname)s: %(message)s')
 logging.info("Starting")
+os.chdir(importdir)
 
 if args.dry_run:
     action = False
