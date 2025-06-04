@@ -16,10 +16,7 @@ use strum::{EnumString, VariantNames};
 use tracing::{debug, trace};
 
 use crate::actors::{SchedulerMsg, SourcesMsg};
-use crate::{
-    Consumer, Copy, Engine, Fetch, Filter, Job, JobState, Middle, Producer, Read, Save, Store,
-    Stream, Tee,
-};
+use crate::{Consumer, Copy, Engine, Fetch, Filter, Job, JobState, Middle, ParserError, Producer, Read, Save, Store, Stream, Tee};
 
 /// Represents the type of job to be executed.
 ///
@@ -196,24 +193,47 @@ impl Engine {
         //
         let producer = match jt.producer {
             ProducerText::Fetch(p, args) => {
-                let site = call!(self.sources, |port| SourcesMsg::Get(p, port))?;
-                let mut f = Fetch::new(&jt.name);
-                f.site(site?);
-                f.with(args);
-                Producer::Fetch(f.clone())
+                let site = call!(self.sources, |port| SourcesMsg::Get(p.clone(), port))?;
+                let site = match site {
+                    Ok(s) => s,
+                    Err(e) => {
+                        return Err(e);
+                    }
+                };
+                if site.is_fetchable() {
+                    let mut f = Fetch::new(&jt.name);
+                    f.site(site);
+                    f.with(args);
+                    Producer::Fetch(f.clone())
+                } else {
+                    return Err(ParserError::NotFetchable(p).into());
+                }
             }
             ProducerText::Stream(p, args) => {
-                let site = call!(self.sources, |port| SourcesMsg::Get(p, port))?;
-                let mut s = Stream::new(&jt.name);
-                s.site(site?);
-                s.with(args);
-                Producer::Stream(s.clone())
+                let site = call!(self.sources, |port| SourcesMsg::Get(p.clone(), port))?;
+                let site = match site {
+                    Ok(s) => s,
+                    Err(e) => {
+                        return Err(e);
+                    }
+                };
+                if site.is_streamable() {
+                    let mut s = Stream::new(&jt.name);
+                    s.site(site);
+                    s.with(args);
+                    Producer::Stream(s.clone())
+                } else {
+                    return Err(ParserError::NotStreamable(p).into());
+                }
             }
             ProducerText::Read(p) => {
                 let r = Read::new(&p);
                 Producer::Read(r)
             }
         };
+
+        // Lets have a look at filters now.
+        //
         let list = if let Some(filters) = &jt.filters {
             filters
                 .iter()
@@ -234,6 +254,9 @@ impl Engine {
         } else {
             VecDeque::new()
         };
+
+        // And finally at consumers.
+        //
         let consumer = match jt.output {
             ConsumerText::Archive(_) => Consumer::Invalid,
             ConsumerText::Save(c) => {

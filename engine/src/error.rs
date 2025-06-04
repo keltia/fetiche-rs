@@ -51,11 +51,21 @@ pub enum EngineStatus {
 }
 
 #[derive(Debug, Error)]
+pub enum ParserError {
+    #[error("Unknown site {0}")]
+    UnknownSite(String),
+    #[error("Site {0} is not fetchable")]
+    NotFetchable(String),
+    #[error("Site {0} is not streamable")]
+    NotStreamable(String),
+}
+
+#[derive(Debug, Error)]
 pub enum RunnerError {}
 
 #[derive(Debug, Error)]
 pub enum StateError {
-    #[error("Unrecognized state file format in {0}")]   
+    #[error("Unrecognized state file format in {0}")]
     UnrecognizedFile(String),
 }
 
