@@ -14,13 +14,15 @@
 //!   6 (6.00%) low mild
 //! ```
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
+use std::io::Cursor;
+use std::time::UNIX_EPOCH;
+
+use criterion::{criterion_group, criterion_main, Criterion};
 use jiff::civil::DateTime;
 use jiff::tz::TimeZone;
 use polars::datatypes::Int64Chunked;
 use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, IntoColumn, SerReader};
-use std::io::Cursor;
-use std::time::UNIX_EPOCH;
 
 fn into_timestamp(col: &Column) -> Column {
     col.str()
@@ -35,7 +37,15 @@ fn into_humantime_secs(col: &Column) -> Column {
     col.str()
         .unwrap()
         .into_iter()
-        .map(|d: Option<&str>| d.map(|d: &str| humantime::parse_rfc3339_weak(d).unwrap().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64))
+        .map(|d: Option<&str>| {
+            d.map(|d: &str| {
+                humantime::parse_rfc3339_weak(d)
+                    .unwrap()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs() as i64
+            })
+        })
         .collect::<Int64Chunked>()
         .into_column()
 }
@@ -44,9 +54,16 @@ fn into_timestamp_jiff(col: &Column) -> Column {
     col.str()
         .unwrap()
         .into_iter()
-        .map(|d: Option<&str>| d.map(|d: &str| {
-            d.parse::<DateTime>().unwrap().to_zoned(TimeZone::UTC).unwrap().timestamp().as_second()
-        }))
+        .map(|d: Option<&str>| {
+            d.map(|d: &str| {
+                d.parse::<DateTime>()
+                    .unwrap()
+                    .to_zoned(TimeZone::UTC)
+                    .unwrap()
+                    .timestamp()
+                    .as_second()
+            })
+        })
         .collect::<Int64Chunked>()
         .into_column()
 }
@@ -68,38 +85,45 @@ fn setup() -> Column {
         .with_has_header(true)
         .with_parse_options(opts)
         .into_reader_with_file_handle(cur)
-        .finish().unwrap();
+        .finish()
+        .unwrap();
     df.column("timestamp").unwrap().clone()
 }
 
 fn dateparser(c: &mut Criterion) {
     let vl = setup();
-    c.bench_function("dateparser", |b| b.iter({
-        let v = vl.clone();
-        move || {
-            black_box(into_timestamp(&v));
-        }
-    }));
+    c.bench_function("dateparser", |b| {
+        b.iter({
+            let v = vl.clone();
+            move || {
+                black_box(into_timestamp(&v));
+            }
+        })
+    });
 }
 
 fn jiff(c: &mut Criterion) {
     let vl = setup();
-    c.bench_function("jiff", |b| b.iter({
-        let v = vl.clone();
-        move || {
-            black_box(into_timestamp_jiff(&v));
-        }
-    }));
+    c.bench_function("jiff", |b| {
+        b.iter({
+            let v = vl.clone();
+            move || {
+                black_box(into_timestamp_jiff(&v));
+            }
+        })
+    });
 }
 
 fn humantime(c: &mut Criterion) {
     let vl = setup();
-    c.bench_function("humantime", |b| b.iter({
-        let v = vl.clone();
-        move || {
-            black_box(into_humantime_secs(&v));
-        }
-    }));
+    c.bench_function("humantime", |b| {
+        b.iter({
+            let v = vl.clone();
+            move || {
+                black_box(into_humantime_secs(&v));
+            }
+        })
+    });
 }
 
 criterion_group!(benches, dateparser, jiff, humantime);
