@@ -73,3 +73,4 @@ divan = "0.1"
 rand = "0.9"
 rstest.workspace = true
 test-pretty-log = "0.6"
+uuid = { version = "1.17", features = ["serde", "v7"] }

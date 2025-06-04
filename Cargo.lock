@@ -3190,6 +3190,7 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "tracing-tree",
+ "uuid",
 ]
 
 [[package]]
