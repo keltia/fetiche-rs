@@ -3,6 +3,7 @@
 //! TODO: Add code for metrics.
 
 use eyre::Result;
+use tracing_subscriber::prelude::*;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 use tracing_tree::HierarchicalLayer;
 
@@ -97,12 +98,21 @@ pub fn init_logging(
         None
     };
 
+    // Enable tokio console
+    //
+    #[cfg(feature = "console")]
+    let console = console_subscriber::ConsoleLayer::builder().spawn();
+
+    #[cfg(not(feature = "console"))]
+    let console_layer: Option<console_subscriber::ConsoleLayer> = None;
+
     // Combine filters & exporters
     //
     tracing_subscriber::registry()
         .with(filter)
         .with(tree)
         .with(otlp)
+        .with(console)
         .with(file)
         .init();
 
