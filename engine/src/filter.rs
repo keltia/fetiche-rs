@@ -72,11 +72,7 @@ pub enum Filter {
     /// Duration as length of time in seconds (can be negative to go in the past for N seconds)
     Duration(i32),
     /// Altitude is for min and max altitude you want drone data for (`AvionixCube`).
-    Altitude {
-        duration: u32,
-        min: u32,
-        max: u32,
-    },
+    Altitude { duration: u32, min: u32, max: u32 },
     /// Special interval for stream: do we go back slightly in time?  For how long?  Do we have a
     /// delay between calls?
     Stream {
