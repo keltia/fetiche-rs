@@ -19,28 +19,21 @@
 //! This is using the new `Streamable` trait.
 
 mod actors;
+mod feed;
 mod stream;
+mod subr;
 
-use std::io::Cursor;
-use std::num::NonZeroUsize;
+pub(crate) use feed::*;
+pub(crate) use subr::*;
+
 use std::str::FromStr;
-
-use csv::{QuoteStyle, WriterBuilder};
-use eyre::Result;
-use lapin::options::BasicConsumeOptions;
-use lapin::types::FieldTable;
-use lapin::{Connection, Consumer};
-use polars::io::{SerReader, SerWriter};
-use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
-use ractor::ActorRef;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use tracing::{error, trace};
 
 use crate::actors::StatsMsg;
 use crate::{Auth, Capability, Site, StreamableSource};
-use fetiche_formats::senhive::FusedData;
-use fetiche_formats::{DronePoint, Format};
+use fetiche_formats::Format;
+use polars::io::{SerReader, SerWriter};
+use ractor::ActorRef;
+use serde::{Deserialize, Serialize};
 
 /// Senhive process/actor group
 pub(crate) const SENHIVE_PG: &str = "senhive-pg";
@@ -58,17 +51,11 @@ struct Credentials {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Senhive {
     /// Describe the different features of the source
-    pub features: Vec<Capability>,
+    pub feature: Capability,
     /// Input formats
     pub format: Format,
-    /// Username
-    pub login: String,
-    /// Password
-    pub password: String,
     /// Base site url taken from config
     pub base_url: String,
-    /// Virtual Host
-    pub vhost: String,
     /// Running time (for streams)
     pub duration: i32,
     /// Stats gathering actor
@@ -79,22 +66,18 @@ pub struct Senhive {
 impl Senhive {
     #[tracing::instrument]
     pub fn new() -> Self {
-        trace!("senhive::new");
         Senhive {
-            features: vec![Capability::Stream],
+            feature: Capability::Stream,
             format: Format::Senhive,
-            login: "".to_owned(),
-            password: "".to_owned(),
             base_url: "".to_owned(),
-            vhost: "".to_owned(),
             duration: 0,
             stat: None,
         }
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn load(&mut self, site: &Site) -> &mut Self {
-        self.format = Format::from_str(&site.format).unwrap();
+        self.format = Format::from_str(&site.format).unwrap_or(Format::Senhive);
         if let Some(auth) = &site.auth {
             match auth {
                 Auth::Vhost {
@@ -102,21 +85,16 @@ impl Senhive {
                     username,
                     password,
                 } => {
-                    self.vhost = vhost.to_owned();
-                    self.login = username.to_owned();
-                    self.password = password.to_owned();
+                    self.base_url = format!(
+                        "amqp://{username}:{password}@{}/{vhost}",
+                        site.base_url
+                    );
                 }
                 _ => {
-                    error!("Bad auth parameter: {}", json!(auth));
-                    panic!("nope");
+                    self.base_url = String::new()
                 }
             }
         }
-        let base_url = site.base_url.to_owned();
-        self.base_url = format!(
-            "amqp://{}:{}@{}/{}",
-            self.login, self.password, base_url, self.vhost
-        );
         self
     }
 
@@ -138,71 +116,3 @@ impl Default for Senhive {
     }
 }
 
-#[derive(Debug)]
-pub struct Feed {
-    pub name: String,
-    pub inp: Consumer,
-}
-
-impl Feed {
-    pub async fn new(conn: &Connection, name: &str, tag: &str) -> Result<Self> {
-        // Create a channel
-        let data_ch = conn.create_channel().await?;
-        eprintln!("Created {name} channel");
-
-        let data = data_ch
-            .basic_consume(
-                name,
-                tag,
-                BasicConsumeOptions::default(),
-                FieldTable::default(),
-            )
-            .await?;
-
-        Ok(Feed {
-            name: name.into(),
-            inp: data,
-        })
-    }
-}
-
-/// Helper to convert from multi-line JSON into proper JSONL records.
-///
-#[inline]
-fn from_json_to_nl(data: &[u8]) -> Result<String> {
-    let cur = Cursor::new(data);
-    let mut df = JsonReader::new(cur)
-        .with_json_format(JsonFormat::Json)
-        .infer_schema_len(NonZeroUsize::new(3))
-        .finish()?;
-
-    let mut buf = vec![];
-    JsonWriter::new(&mut buf)
-        .with_json_format(JsonFormat::JsonLines)
-        .finish(&mut df)?;
-    Ok(String::from_utf8(buf)?)
-}
-
-/// Take the JSON and turn it into our own `DronePoint`.
-///
-#[inline]
-fn from_json_to_csv(data: &[u8]) -> Result<String> {
-    let cur = Cursor::new(data);
-    let data: FusedData = serde_json::from_reader(cur)?;
-    let data: DronePoint = (&data).into();
-
-    let mut wtr = WriterBuilder::new()
-        .has_headers(false)
-        .quote_style(QuoteStyle::NonNumeric)
-        .from_writer(vec![]);
-
-    // Insert data
-    //
-    wtr.serialize(data)?;
-
-    // Output final csv line
-    //
-    let data = String::from_utf8(wtr.into_inner()?)?;
-
-    Ok(data)
-}

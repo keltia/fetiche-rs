@@ -1,8 +1,9 @@
-//! Module that implement the Actors.
+//! Module that implements AMQP actors for consuming data from topics.
 //!
-//! We currently have only one actor: `Worker`.
+//! This module provides the actor implementation for consuming data from AMQP topics,
+//! processing messages, and handling statistics gathering. The main component is the
+//! Worker actor that manages topic subscriptions and message processing.
 //!
-
 use std::fmt::Debug;
 use std::sync::mpsc::Sender;
 
@@ -11,23 +12,29 @@ use lapin::{options::BasicAckOptions, Connection, ConnectionProperties};
 use ractor::{call, Actor, ActorProcessingErr, ActorRef};
 use tracing::{error, trace, warn};
 
-use super::{from_json_to_csv, from_json_to_nl};
 use crate::actors::StatsMsg;
 use crate::{Feed, Stats};
 
-/// This is the worker that will consume a given topic.
+use super::{from_json_to_csv, from_json_to_nl};
+
+/// Worker actor responsible for consuming and processing AMQP topic messages.
 ///
-/// 1. connect to both topic and its dead letter one
-/// 2. listen and consume both, knowing that we might
-///    get interleaved packets from both but mainly dl_topic first
-/// 3. we also subscribe to the `alert` topic, just in case.
+/// The worker handles the following responsibilities:
+/// - Establishes connection to AMQP server
+/// - Subscribes to main topic and its associated dead letter queue
+/// - Processes messages from both queues with priority to dead letter queue
+/// - Monitors system alerts through the alert topic subscription
+/// - Converts received messages to CSV format
+/// - Tracks and reports message statistics
 ///
-/// We currently ignore the `system_state` topic.
-///
+/// Note: The `system_state` topic is currently not monitored.
 pub(crate) struct Worker;
 
-/// Contains the connection handle and the output stream.
-/// We also have the address of the stat gathering actor.
+/// Internal state maintained by the Worker actor during its lifecycle.
+///
+/// Contains essential components for AMQP connection management, message routing,
+/// and statistics tracking. The state is initialized during actor startup and
+/// maintained throughout the actor's lifetime.
 ///
 #[derive(Debug)]
 pub(crate) struct WorkerState {
@@ -41,7 +48,10 @@ pub(crate) struct WorkerState {
     pub stat: ActorRef<StatsMsg>,
 }
 
-/// How to start a Worker actor, regardless of topic(s) involved.
+/// Configuration parameters required to initialize a Worker actor.
+///
+/// These arguments are provided during actor creation and determine the AMQP
+/// connection details, output channel configuration, and statistics tracking setup.
 ///
 #[derive(Debug)]
 pub struct WorkerArgs {
@@ -53,7 +63,10 @@ pub struct WorkerArgs {
     pub stat: ActorRef<StatsMsg>,
 }
 
-/// This is a more or less one-task actor.
+/// Messages that can be processed by the Worker actor.
+///
+/// Currently supports topic consumption with an associated tag for message tracking
+/// and identification purposes.
 ///
 #[derive(Debug)]
 pub(crate) enum WorkerMsg {
