@@ -8,10 +8,10 @@ There are two variants of this library:
 
 - local
 
-This instanciate the `Engine` class directly.
+This instantiates the `Engine` class directly.
 
 - gRPC
 
-This one use gRPC to instanciate the `Engine` class on a remote server.
+This one uses gRPC to communicate to the `Engine` class on a remote server.
 
 
