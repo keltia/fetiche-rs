@@ -58,6 +58,8 @@ pub enum ParserError {
     NotFetchable(String),
     #[error("Site {0} is not streamable")]
     NotStreamable(String),
+    #[error("Invalid job type")]
+    InvalidJobType,
 }
 
 #[derive(Debug, Error)]
@@ -97,4 +99,10 @@ pub enum StatsError {
     TagNotFound(String),
     #[error("Stats are not initialised.")]
     NotInitialized,
+}
+
+#[derive(Debug, Error)]
+pub enum StorageError {
+    #[error("Can not create directory tree in {0}")]
+    CannotCreateTree(String),
 }

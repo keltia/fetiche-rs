@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 use std::num::ParseIntError;
 use std::path::PathBuf;
 
+use crate::StorageError;
 use eyre::Result;
 use nom::{
-    character::complete::{i8, one_of},
-    combinator::map_res,
+    character::complete::{i8, one_of}, combinator::map_res,
     IResult,
     Parser,
 };
@@ -131,22 +131,30 @@ impl Storage {
     /// ```
     ///
     #[tracing::instrument]
-    pub fn register(cfg: &BTreeMap<String, StorageConfig>) -> Self {
+    pub fn register(cfg: &BTreeMap<String, StorageConfig>) -> Result<Self> {
         trace!("load storage areas");
 
         let mut b = BTreeMap::<String, StoreArea>::new();
 
-        for (name, area) in cfg.iter() {
+        for (name, area) in cfg.into_iter() {
             match area {
                 // Local directory
                 //
                 StorageConfig::Directory { path, rotation } => {
                     if !path.exists() {
-                        std::fs::create_dir_all(path).unwrap_or_else(|_| {
-                            panic!("storage::init::create_dir_all failed: {:?}", path)
-                        });
+                        if let Err(_) = std::fs::create_dir_all(path) {
+                            let path = path.to_string_lossy().to_string();
+                            return Err(StorageError::CannotCreateTree(path).into());
+                        }
                     }
-                    let (_, rotation) = Self::parse_rotation(rotation).unwrap();
+                    let rotation = match Self::parse_rotation(rotation.as_str()) {
+                        Ok((_, v)) => v,
+                        Err(_e) => {
+                            return Err(eyre::eyre!(
+                                "Invalid rotation value for storage '{name}': {rotation}"
+                            ));
+                        }
+                    };
                     b.insert(
                         name.to_string(),
                         StoreArea::Directory {
@@ -164,16 +172,17 @@ impl Storage {
                 //
                 StorageConfig::Hive { path } => {
                     if !path.exists() {
-                        std::fs::create_dir_all(path).unwrap_or_else(|_| {
-                            panic!("storage::init::create_dir_all failed: {:?}", path)
-                        });
+                        if let Err(_) = std::fs::create_dir_all(path) {
+                            let path = path.to_string_lossy().to_string();
+                            return Err(StorageError::CannotCreateTree(path).into());
+                        }
                     }
                     b.insert(name.to_string(), StoreArea::Hive { path: path.clone() });
                 }
             }
         }
         debug!("b={:?}", b);
-        Storage(b)
+        Ok(Storage(b))
     }
 
     ///
@@ -293,16 +302,17 @@ impl Storage {
     /// - The parsing is case-sensitive and expects valid formats as described above.
     ///
     pub fn parse_rotation(input: &str) -> IResult<&str, u32> {
-        let into_seconds = |(n, tag): (std::primitive::i8, char)| -> std::result::Result<u32, ParseIntError> {
-            let res = match tag {
-                's' => n as u32,
-                'm' => (n as u32) * 60,
-                'h' => (n as u32) * 3_600,
-                'd' => (n as u32) * 3_600 * 24,
-                _ => n as u32,
+        let into_seconds =
+            |(n, tag): (std::primitive::i8, char)| -> std::result::Result<u32, ParseIntError> {
+                let res = match tag {
+                    's' => n as u32,
+                    'm' => (n as u32) * 60,
+                    'h' => (n as u32) * 3_600,
+                    'd' => (n as u32) * 3_600 * 24,
+                    _ => n as u32,
+                };
+                Ok(res)
             };
-            Ok(res)
-        };
 
         map_res((i8, one_of("smhd")), into_seconds).parse(input)
     }
@@ -357,7 +367,7 @@ mod tests {
             },
         );
 
-        let storage = Storage::register(&cfg);
+        let storage = Storage::register(&cfg).unwrap();
         assert_eq!(storage.len(), 1);
     }
 
@@ -373,7 +383,7 @@ mod tests {
             },
         );
 
-        let storage = Storage::register(&cfg);
+        let storage = Storage::register(&cfg).unwrap();
         assert_eq!(storage.len(), 1);
     }
 
@@ -388,7 +398,7 @@ mod tests {
             },
         );
 
-        let storage = Storage::register(&cfg);
+        let storage = Storage::register(&cfg).unwrap();
         assert_eq!(storage.len(), 1);
     }
 }

@@ -433,7 +433,7 @@ impl Engine {
         // Register storage areas
         //
         trace!("load storage areas");
-        let areas = Storage::register(&cfg.storage);
+        let areas = Storage::register(&cfg.storage)?;
         info!("{} areas loaded", areas.len());
 
         // Register tokens
