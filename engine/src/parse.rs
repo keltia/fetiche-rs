@@ -5,15 +5,18 @@
 //!
 //! See [this example](../../examples/parse.rs) for a simple usage example.
 //!
+
 use std::collections::VecDeque;
+use std::str::FromStr;
 
 use eyre::Result;
-use fetiche_common::Container;
-use fetiche_formats::Format;
 use ractor::call;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, VariantNames};
 use tracing::{debug, trace};
+
+use fetiche_common::Container;
+use fetiche_formats::Format;
 
 use crate::actors::{SchedulerMsg, SourcesMsg};
 use crate::{
