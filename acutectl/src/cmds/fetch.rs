@@ -2,12 +2,14 @@
 //!
 
 use eyre::Result;
-use indicatif::{ProgressBar, ProgressStyle};
-use std::time::Duration;
-use tracing::{debug, info, trace};
-
 use fetiche_common::DateOpts;
 use fetiche_engine::{Engine, Filter, JobState};
+use indicatif::{ProgressBar, ProgressStyle};
+use std::env;
+use std::path::Path;
+use std::time::Duration;
+use tracing::field::debug;
+use tracing::{debug, info, trace};
 
 use crate::FetchOpts;
 
@@ -53,8 +55,20 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
 
     // Are we writing to stdout?
     //
-    let final_output = fopts.output.clone().unwrap_or(String::from("-"));
-
+    let final_output = match fopts.output.clone() {
+        Some(path) => {
+            let fname = Path::new(&path);
+            if fname.is_absolute() {
+                path.clone()
+            } else {
+                let fname = env::current_dir()?.join(fname);
+                debug!("output path: {:?}", fname);
+                let path = fname.canonicalize()?;
+                path.to_string_lossy().to_string()
+            }
+        }
+        None => String::from("-"),
+    };
     info!("Writing to {final_output}");
 
     let bar = ProgressBar::new_spinner().with_style(

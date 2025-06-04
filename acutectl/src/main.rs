@@ -86,6 +86,7 @@ async fn main() -> Result<()> {
     let mut engine = Engine::single().await;
 
     trace!("Engine initialised and running.");
+    trace!("We are in{:?}", std::env::current_dir()?);
 
     // initialise signal handling
     //

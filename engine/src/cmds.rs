@@ -14,12 +14,13 @@
 //! with tracing for debugging and monitoring purposes.
 //!
 
+use std::env;
 use std::sync::mpsc::Sender;
 
 use eyre::Result;
 use ractor::registry::registered;
 use ractor::{call, call_t, cast, pg};
-use tracing::trace;
+use tracing::{info, trace};
 
 use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
 use crate::{Engine, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup, ENGINE_PG};
@@ -205,6 +206,13 @@ impl Engine {
             return Err(EngineStatus::JobNotReady(job.id).into());
         }
 
+        // Save where we are
+        //
+        let workdir = self.workdir.clone();
+        let olddir = env::current_dir()?;
+        let _ = env::set_current_dir(&workdir)?;
+        info!("Relocating to {workdir:?}");
+
         trace!("submit job {}", job.id);
         let wg = call!(self.scheduler, |port| {
             SchedulerMsg::Add(job.clone(), port)
@@ -218,6 +226,11 @@ impl Engine {
         trace!("job {} finished", job.id);
 
         let stats = call!(self.results, |port| ResultsMsg::Fetch(job.id, port))?;
+
+        // Go back
+        //
+        let _ = env::set_current_dir(&olddir)?;
+
         Ok(stats)
     }
 
