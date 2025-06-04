@@ -9,7 +9,7 @@ DESTDIR ?=	/Users/acute
 
 .VPATH = 	target/release target/debug
 
-BINARIES =	acutectl process-data
+BINARIES =	acutectl process-data compute-height compute-localtime
 SCRIPTS =	scripts/convert-csv.py scripts/dispatch-drops.py scripts/fetch-all-adsb.txt scripts/fetch-all-drones.py \
 	scripts/fetch-asd-drones.py scripts/fetch-ftp-adsb.py scripts/fetch-opensky.py scripts/import-adsb.py \
 	scripts/import-drones.py
@@ -25,9 +25,15 @@ acutectl: acutectl/src/main.rs
 
 process-data: process-data/src/main.rs
 
+compute-height: compute-height/src/main.rs
+
+compute-localtime: compute-localtime/src/main.rs
+
 install: $(BINARIES) $(SCRIPTS)
 	install -c -m 755 -s -o acute target/release/acutectl $(DESTDIR)/bin
 	install -c -m 755 -s -o acute target/release/process-data $(DESTDIR)/bin
+	install -c -m 755 -s -o acute target/release/compute-height $(DESTDIR)/bin
+	install -c -m 755 -s -o acute target/release/compute-localtime $(DESTDIR)/bin
 	install -c -m 755 -o acute $(SCRIPTS)  $(DESTDIR)/bin
 
 # Sync-push
