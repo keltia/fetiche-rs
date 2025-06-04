@@ -24,3 +24,6 @@ dependencies = [
     "push-gitlab"
 ]
 
+[tasks.move]
+command = "jj"
+args = ["b", "move", "--to", "@-", "develop"]
