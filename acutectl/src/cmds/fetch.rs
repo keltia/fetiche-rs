@@ -2,7 +2,7 @@
 //!
 
 use eyre::Result;
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle};
 use std::time::Duration;
 use tracing::{debug, info, trace};
 
@@ -29,7 +29,14 @@ use crate::FetchOpts;
 /// - The job parsing fails
 /// - The job execution fails
 ///
-#[tracing::instrument(skip(engine))]
+#[tracing::instrument(
+    skip(engine),
+    fields(
+        site = %fopts.site,
+        output = ?fopts.output,
+        has_filter = %fopts.dates.is_some()
+    )
+)]
 pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
 
@@ -50,12 +57,16 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
 
     info!("Writing to {final_output}");
 
-    let bar = ProgressBar::new_spinner();
+    let bar = ProgressBar::new_spinner().with_style(
+        ProgressStyle::default_spinner().template("{spinner:.green} [{elapsed_precise}] {msg}")?,
+    );
+
     bar.enable_steady_tick(Duration::from_millis(100));
 
     // FIXME: only supports `Save`  as output consumer.
     //
-    let script = format!(r##"
+    let script = format!(
+        r##"
     name = "Fetch from {name}"
     producer = {{
       "Fetch" = [
@@ -69,7 +80,8 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
     output = {{
       "Save" = "{final_output}"
     }}
-    "##);
+    "##
+    );
 
     debug!("script = {script}");
 
@@ -136,11 +148,15 @@ fn filter_from_opts(opts: &FetchOpts) -> Result<Filter> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::{prop_assert, prop_assert_eq, proptest};
 
     #[test]
     fn test_filter_from_opts_with_dates() {
         let opts = FetchOpts {
-            dates: Some(DateOpts::From { begin: "2024-01-01".into(), end: "2024-01-02".into() }),
+            dates: Some(DateOpts::From {
+                begin: "2024-01-01".into(),
+                end: "2024-01-02".into(),
+            }),
             keyword: None,
             since: None,
             ..Default::default()
@@ -205,5 +221,28 @@ mod tests {
         let filter = filter_from_opts(&opts).unwrap();
         let def = Filter::default();
         assert_eq!(filter, def);
+    }
+
+    proptest! {
+        #[test]
+        fn test_filter_from_opts_proptest(
+            keyword in "[a-zA-Z0-9]+:[a-zA-Z0-9]+",
+            since in 1..100000_i32
+        ) {
+            let opts = FetchOpts {
+                keyword: Some(keyword.clone()),
+                since: Some(since),
+                ..Default::default()
+            };
+            let filter = filter_from_opts(&opts).unwrap();
+            match filter {
+                Filter::Keyword { name, value } => {
+                    let parts: Vec<_> = keyword.split(':').collect();
+                    prop_assert_eq!(name, parts[0]);
+                    prop_assert_eq!(value, parts[1]);
+                }
+                _ => prop_assert!(false),
+            }
+        }
     }
 }
