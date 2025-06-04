@@ -60,7 +60,6 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
-console-subscriber = "0.4"
 ctrlc = { version = "3.4", features = ["termination"] }
 egm2008 = "0.1"
 enum_dispatch = "0.3"
@@ -68,6 +67,8 @@ humantime = "2.2"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
 tracing-tree = { version = "0.4", features = ["time"] }
+
+console-subscriber = { version = "0.4", optional = true }
 
 opentelemetry = { version = "0.30", features = ["logs", "metrics"], optional = true }
 opentelemetry-otlp = { version = "0.30", features = ["grpc-tonic"], optional = true }
