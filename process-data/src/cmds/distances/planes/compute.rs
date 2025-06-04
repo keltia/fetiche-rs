@@ -616,8 +616,8 @@ CREATE OR REPLACE TABLE ids{tag} (
             r##"INSERT INTO airplane_prox
      SELECT
       any_value(tc.site) AS site,
-      id.en_id AS en_id,
       id.sitename AS sitename,
+      id.en_id AS en_id,
       any_value(time) AS time,
       tc.journey AS journey,
       tc.drone_id AS drone_id,
