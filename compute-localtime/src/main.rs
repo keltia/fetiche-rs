@@ -32,9 +32,9 @@
 use jiff::Timestamp;
 use std::io::stdin;
 use tracing::{error, info};
-use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 
 fn main() -> eyre::Result<()> {
     info!("Starting compute-localtime");
@@ -42,7 +42,7 @@ fn main() -> eyre::Result<()> {
 
     // Log to file?
     //
-    let file_appender = tracing_appender::rolling::hourly("/tmp/compute-localtime", "");
+    let file_appender = tracing_appender::rolling::hourly("/tmp/compute-localtime", "ch-localtime");
     let fs = tracing_subscriber::fmt::layer().with_writer(file_appender);
 
     // Combine filters & exporters
@@ -51,15 +51,15 @@ fn main() -> eyre::Result<()> {
         .with(filter)
         .with(fs)
         .init();
-    
+
     stdin().lines().for_each(|l| {
         let text = match l {
             Ok(text) => text,
-            Err(_) => {
+            Err(e) => {
                 eprintln!("ERROR: {}", e.to_string());
                 error!("WARNING: could not read from stdin");
-                return
-            },
+                return;
+            }
         };
         let params: Vec<&str> = text.split_whitespace().collect();
         let ts = params[0].parse::<i64>().unwrap_or(0);
@@ -69,7 +69,7 @@ fn main() -> eyre::Result<()> {
                 eprintln!("ERROR: {}", e.to_string());
                 error!("ERROR: {}", e.to_string());
                 return;
-            },
+            }
         };
         let timezone = params[1].parse::<String>().unwrap_or("Europe/Paris".into());
 
