@@ -1,7 +1,7 @@
 //! # process-data
 //!
-//! `process-data` is a command-line utility for performing various data processing tasks 
-//! on locally stored data. It provides a flexible and extensible framework to handle diverse 
+//! `process-data` is a command-line utility for performing various data processing tasks
+//! on locally stored data. It provides a flexible and extensible framework to handle diverse
 //! operations using modern Rust features and libraries.
 //!
 //! ## Features
@@ -33,6 +33,7 @@ mod cli;
 mod cmds;
 mod config;
 mod error;
+mod record;
 mod runtime;
 
 /// Binary name, using a different binary name
