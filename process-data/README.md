@@ -96,7 +96,7 @@ version = 2
 
 datalake = "/path/to/datalake"
 
-url      = "http://SOME.HOST.NAME:8123"
+url      = "https://SOME.HOST.NAME:8443"
 database = "acute"
 user     = "WHOEVER"
 password = "HIDDEN"
@@ -112,19 +112,27 @@ Usage: process-data [OPTIONS] <COMMAND>
 
 Commands:
   acute       Display data about Acute sites, etc
-  distances   Distance-related calculations
-  export      Export results as CSV
-  cleanup     Remove macros and other stuff
+  bootstrap   Build the ACUTE env. from the ground up [aliases: boot, restart]
+  check       Check status of daily runs [aliases: c, chk]
+  distances   Distance-related calculations [aliases: d, dist]
+  export      Export results as CSV [aliases: e, exp]
+  cleanup     Import into a CH instance. Remove macros and other stuff [aliases: clean]
   setup       Prepare the database environment with some tables and macros
   completion  Generation completion stuff for shells
   version     List all package versions
   help        Print this message or the help of the given subcommand(s)
 
 Options:
-  -c, --config <CONFIG>      Alternate Configuration file
-  -d, --database <DATABASE>  Database file to use
-  -h, --help                 Print help
-  ```
+  -c, --config <CONFIG>        Alternate Configuration file
+  -d, --database <DATABASE>    Database file to use
+  -l, --datalake <DATALAKE>    Datalake location to use
+  -w, --wait <WAIT>            Delay between task in ms [default: 100]
+  -P, --pool-size <POOL_SIZE>  Database pool size [default: 32]
+  -T, --use-telemetry          Enable telemetry with OTLP
+  -L, --use-tree               Enable logging in hierarchical manner (aka tree)
+  -F, --use-file <USE_FILE>    This parameter enable logging to a file in that location
+  -n, --dry-run                Dry run
+  -h, --help                   Print help  ```
 
 </details>
 
