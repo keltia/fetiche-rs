@@ -20,15 +20,13 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use mini_moka::sync::ConcurrentCacheExt;
-use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
-use std::sync::mpsc::{channel, Sender};
-use tracing::{info, trace};
-
-use fetiche_formats::{Format, StateList};
 
 use crate::Site;
 use crate::{Auth, Capability, StreamableSource};
+
+pub use device::*;
+pub use server::*;
 
 /// Messages to send to the stats threads
 ///
@@ -43,4 +41,14 @@ enum StatMsg {
     Print,
     Exit,
 }
+
+/// We can go back only 1h in Opensky API
+const MAX_INTERVAL: i64 = 3600;
+
+/// Expiration after insert/get
+pub const CACHE_IDLE: Duration = Duration::from_secs(20);
+/// Expiration after insert
+pub const CACHE_MAX: Duration = Duration::from_secs(60);
+/// Cache max entries
+pub const CACHE_SIZE: u64 = 20;
 
