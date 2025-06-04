@@ -193,13 +193,7 @@ impl Engine {
         //
         let producer = match jt.producer {
             ProducerText::Fetch(p, args) => {
-                let site = call!(self.sources, |port| SourcesMsg::Get(p.clone(), port))?;
-                let site = match site {
-                    Ok(s) => s,
-                    Err(e) => {
-                        return Err(e);
-                    }
-                };
+                let site = call!(self.sources, |port| SourcesMsg::Get(p.clone(), port))??;
                 if site.is_fetchable() {
                     let mut f = Fetch::new(&jt.name);
                     f.site(site);
@@ -210,13 +204,7 @@ impl Engine {
                 }
             }
             ProducerText::Stream(p, args) => {
-                let site = call!(self.sources, |port| SourcesMsg::Get(p.clone(), port))?;
-                let site = match site {
-                    Ok(s) => s,
-                    Err(e) => {
-                        return Err(e);
-                    }
-                };
+                let site = call!(self.sources, |port| SourcesMsg::Get(p.clone(), port))??;
                 if site.is_streamable() {
                     let mut s = Stream::new(&jt.name);
                     s.site(site);
