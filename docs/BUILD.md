@@ -42,7 +42,7 @@ rustc 1.79.0 (129f3b996 2024-06-10)
 
 ## Cloning the repository
 
-Fetiche is hosted primarily on [Github] with clones on the different machines I work on.
+Fetiche is hosted primarily on [Github] with clones on our own internal Gitlab and on the different machines I work on.
 
 > NOTE: I do use [jujustu] myself now.
 
@@ -58,20 +58,29 @@ $ cargo install --path .
 
 See [jujutsu] documentation on how to use it instead of git.
 
+TL; DR:
+
+This will put the jj binary for the latest release in `~/.cargo/bin` by default
+
+```shell
+cargo install cargo-binstall
+cargo binstall --strategies crate-meta-data jj-cli
+```
+
 If you are not connected already on your GitHub account or, you don't have one.
 
 ```text
 git clone https://github.com/keltia/fetiche-rs
 ```
 
-However, it is better to use the SSH-based client if you have a GitHub account:
+However, it is better to use the SSH-based client if you have a GitHub account, and you have configured an SSH for it:
 
 ```text
 git clone git@github.com:keltia/fetiche-rs
 ```
 
 You can also fork the repository on your own GitHub account and clone it, it is better if you intend to submit patches.
-You will also need to be able to fetch packages over the Internet through https so see with yo0ur system administrator
+You will also need to be able to fetch packages over the Internet through https, so see with your system administrator
 for eventual proxy setup, etc.
 
 ## Building the Rust applications
