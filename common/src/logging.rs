@@ -3,7 +3,6 @@
 //! TODO: Add code for metrics.
 
 use eyre::Result;
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 use tracing_tree::HierarchicalLayer;
 
