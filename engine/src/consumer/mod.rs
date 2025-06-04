@@ -1,5 +1,21 @@
+//! Provides consumer implementations for processing and storing data in the pipeline.
 //!
+//! This module contains different consumer types that handle data at the end of the processing pipeline:
 //!
+//! * `Archive` - Archives stored data for long-term retention
+//! * `Save` - Saves data to temporary storage
+//! * `Stdout` - Displays data directly to the console/terminal
+//! * `Store` - Persists data in permanent storage
+//!
+//! The module is organized into submodules for each consumer type:
+//!
+//! - `archive.rs` - Archive consumer implementation
+//! - `save.rs` - Save consumer implementation  
+//! - `stdout.rs` - Stdout consumer implementation
+//! - `store.rs` - Store consumer implementation
+//!
+//! All consumers implement the `Runnable` trait which defines the core consumer behavior
+//! and lifecycle management.
 
 use std::fmt::Display;
 use std::sync::mpsc::Receiver;
