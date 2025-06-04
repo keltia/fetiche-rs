@@ -9,8 +9,12 @@ use eyre::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use tracing::{debug, info, trace};
 
-use crate::FetchOpts;
+use crate::client::JobText;
+use crate::{FetchOpts, JobTextBuilder, MiddleText};
 
+use crate::ConsumerText::Save;
+use crate::MiddleText::Tee;
+use crate::ProducerText::Fetch;
 use fetiche_common::DateOpts;
 use fetiche_engine::{Engine, Filter, JobState};
 
@@ -52,7 +56,22 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
 
     // Do we want a copy of the raw data (often before converting it)
     //
-    let tee = fopts.tee.clone().unwrap_or(String::from(""));
+    let middle = match fopts.tee.clone() {
+        Some(path) => {
+            let fname = Path::new(&path);
+            if fname.is_absolute() {
+                vec![Tee(path.clone())]
+            } else {
+                debug!("tee path: {:?}", fname);
+                let fname = absolute(fname)?;
+                let fname = env::current_dir()?.join(fname);
+                vec![Tee(fname.to_string_lossy().to_string())]
+            }
+        }
+        None => vec![],
+    };
+
+    let tee = hcl::to_string(&middle)?;
 
     // Are we writing to stdout?
     //
@@ -75,36 +94,24 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
     let bar = ProgressBar::new_spinner().with_style(
         ProgressStyle::default_spinner().template("{spinner:.green} [{elapsed_precise}] {msg}")?,
     );
-
     bar.enable_steady_tick(Duration::from_millis(100));
 
-    // FIXME: only supports `Save`  as output consumer.
+    let job = JobTextBuilder::default()
+        .name(format!("Fetch from {name}"))
+        .producer(Fetch(fopts.site.clone(), filter_from_opts(fopts)?))
+        .middle(Some(middle))
+        .output(Save(final_output.clone()))
+        .build()?;
+
+    let jobtext = hcl::to_string(&job)?;
+    debug!("jobtext = {jobtext}");
+
+    // We have a properly configured jon.
     //
-    let script = format!(
-        r##"
-    name = "Fetch from {name}"
-    producer = {{
-      "Fetch" = [
-        "{name}",
-        {{
-          {filter}
-        }}
-      ]
-    }}
-    middle = [ {tee} ]
-    output = {{
-      "Save" = "{final_output}"
-    }}
-    "##
-    );
-
-    debug!("script = {script}");
-
-    let job = engine.parse_job(&script).await?;
+    let job = engine.parse_job(&jobtext).await?;
     let id = job.id;
-    trace!("Job parsed: {:?}", job);
+    trace!("Job #{id} parsed: {:?}", job);
 
-    trace!("Job submitting id #{id}");
     assert_eq!(job.state(), JobState::Ready);
     let res = engine.submit_job_and_wait(job).await?;
 
