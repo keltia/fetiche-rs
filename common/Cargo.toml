@@ -37,7 +37,7 @@ harness = false
 
 [features]
 default = []
-telemetry = ["dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk"]
+telemetry = ["dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "dep:tracing-opentelemetry"]
 
 [dependencies]
 chrono.workspace = true
@@ -63,13 +63,14 @@ ctrlc = { version = "3.4", features = ["termination"] }
 egm2008 = "0.1"
 enum_dispatch = "0.3"
 humantime = "2.2"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
+tracing-tree = { version = "0.4", features = ["time"] }
+
 opentelemetry = { version = "0.30", features = ["logs", "metrics"], optional = true }
 opentelemetry-otlp = { version = "0.30", features = ["grpc-tonic"], optional = true }
 opentelemetry_sdk = { version = "0.30", features = ["rt-tokio"], optional = true }
-tracing-appender = "0.2"
-tracing-opentelemetry = "0.31"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
-tracing-tree = { version = "0.4", features = ["time"] }
+tracing-opentelemetry = { version = "0.31", optional = true }
 
 [dev-dependencies]
 criterion.workspace = true
