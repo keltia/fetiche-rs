@@ -92,7 +92,8 @@ impl From<Site> for StreamableSource {
         match value.format.as_str() {
             #[cfg(feature = "avionix")]
             "cubedata" => {
-                if value.base_url.contains("aero-network.com") {
+                let variant = value.variant().unwrap_or("avionixserver".into());
+                if variant.contains("avionixserver") {
                     let s = AvionixServer::new().load(&value).clone();
                     StreamableSource::from(s)
                 } else {

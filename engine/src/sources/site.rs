@@ -106,6 +106,8 @@ pub struct Site {
     pub auth: Option<Auth>,
     /// Different URLs available
     pub routes: Option<Routes>,
+    /// Optional variant
+    pub variant: Option<String>,
 }
 
 impl Site {
@@ -122,6 +124,7 @@ impl Site {
             base_url: String::new(),
             auth: None,
             routes: None,
+            variant: None,
         }
     }
 
@@ -196,6 +199,14 @@ impl Site {
             Some(routes) => routes.get(key),
             _ => None,
         }
+    }
+
+    /// Select a variant
+    ///
+    #[tracing::instrument]
+    #[inline]
+    pub fn variant(&self) -> Option<String> {
+        self.variant.clone()
     }
 
     /// Getter for dtype
