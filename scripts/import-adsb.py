@@ -9,7 +9,7 @@ all parquets files in the tree.
 XXX this is specific to the macOS version of the client, invoked as `clickhouse client` and not
 `clickhouse-client` or `clickhouse-local` like in the other versions.
 
-XXX You must have `bdt(1)` and `qsv(1)` somewhere in the `PATH`
+XXX You must have `bdt(1)` and `qsvlite(1)` somewhere in the `PATH`
 """
 
 import argparse
@@ -134,7 +134,7 @@ def process_one(dir_path, fname, action):
     tmpdir = Path(fname).stem
 
     logging.info(f"Creating {tmpdir} and splitting {fname} into it")
-    cmd = f"qsv split -s {chunk} {tmpdir} {fname}"
+    cmd = f"qsvlite split -s {chunk} {tmpdir} {fname}"
     ret = run(cmd, shell=True, capture_output=True)
     if ret.returncode != 0:
         logging.error("error", "(", fname, "): ", ret.stderr)
