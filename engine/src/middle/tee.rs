@@ -39,15 +39,15 @@ impl Tee {
     /// This is the main task.  Every data packet we receive will be written in the designed
     /// file then passed down.
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, stdout))]
     pub async fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
-        trace!("tee::execute");
         let mut fh = OpenOptions::new()
             .create(true)
             .append(true)
             .open(&self.fname)?;
         write!(fh, "{data}")?;
         fh.flush()?;
+        trace!("written into {}", &self.fname);
         Ok(stdout.send(data)?)
     }
 }
