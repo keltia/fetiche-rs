@@ -29,7 +29,7 @@ serde_json.workspace = true
 strum.workspace = true
 tracing.workspace = true
 
-derive_builder = "0.20"
+derive_builder.workspace = true
 
 [dev-dependencies]
-proptest = "1.7"
+proptest.workspace = true
