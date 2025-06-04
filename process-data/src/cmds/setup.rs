@@ -5,10 +5,12 @@
 //!
 
 use std::env;
+use std::path::Path;
 
 use clap::Parser;
 use eyre::Result;
 use klickhouse::Client;
+use tracing::trace;
 
 use crate::runtime::Context;
 
@@ -46,6 +48,7 @@ pub struct SetupOpts {
     /// Create encounters (aka calculation) table
     #[clap(short = 'E', long)]
     pub encounters: bool,
+    /// Create records table
     #[clap(short = 'R', long)]
     pub records: bool,
     /// Create permanent tables
@@ -664,11 +667,12 @@ DROP VIEW IF EXISTS acute.pbi_encounters_summary
 // ----- Record-related table
 
 #[tracing::instrument(skip(dbh))]
-async fn add_records_table(dbh: &Client) -> Result<()> {
+async fn add_daily_stats_table(dbh: &Client) -> Result<()> {
     let crt = r##"
-CREATE OR REPLACE TABLE acute.records (
+CREATE TABLE IF NOT EXISTS dayly_stats (
   day DATE,
-  site VARCHAR(10),
+  site_id INT,
+  site VARCHAR,
   status INT NOT NULL,
   stats VARCHAR,
   comment VARCHAR,
@@ -680,9 +684,9 @@ COMMENT 'Records the run history for all sites every day.';
 }
 
 #[tracing::instrument(skip(dbh))]
-async fn drop_records_table(dbh: &Client) -> Result<()> {
+async fn drop_daily_stats_table(dbh: &Client) -> Result<()> {
     let crt = r##"
-    DROP VIEW records IF EXISTS acute.records
+    DROP TABLE dayly_stats IF EXISTS dayly_stats
     "##;
     Ok(dbh.execute(crt).await?)
 }
@@ -726,25 +730,31 @@ async fn drop_views(dbh: &Client) -> Result<()> {
 pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
     let dbh = ctx.db().await;
     let dir = ctx.config["datalake"].clone();
+    let import = Path::new(&dir).join("import");
 
     // Move here.
     //
-    let _ = env::set_current_dir(&dir);
+    trace!("Moving into {import:?} directory.");
+    let _ = env::set_current_dir(&import);
 
     if opts.all {
+        trace!("Creating all ACUTE tables and views.");
         create_views(&dbh).await?;
         add_macros(&dbh).await?;
         let _ = add_encounters_table(&dbh).await;
-        let _ = add_records_table(&dbh).await;
+        let _ = add_daily_stats_table(&dbh).await;
     } else {
         if opts.macros {
+            trace!("Creating ACUTE macros.");
             add_macros(&dbh).await?;
         }
         if opts.encounters {
+            trace!("Creating ACUTE encounters table.");
             add_encounters_table(&dbh).await?;
         }
         if opts.records {
-            add_records_table(&dbh).await?;
+            trace!("Creating ACUTE daily stats table.");
+            add_daily_stats_table(&dbh).await?;
         }
     }
     Ok(())
@@ -757,7 +767,7 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
     let dbh = ctx.db().await;
     if opts.all {
         drop_encounters_table(&dbh).await?;
-        drop_records_table(&dbh).await?;
+        drop_daily_stats_table(&dbh).await?;
         remove_macros(&dbh).await?;
         drop_views(&dbh).await?;
     } else {
@@ -765,7 +775,7 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
             remove_macros(&dbh).await?;
         }
         if opts.records {
-            drop_records_table(&dbh).await?;
+            drop_daily_stats_table(&dbh).await?;
         }
         if opts.encounters {
             drop_encounters_table(&dbh).await?;

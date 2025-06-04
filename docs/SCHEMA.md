@@ -497,3 +497,18 @@ FROM acute.installations AS i,
 WHERE (i.antenna_id = a.id)
   AND (s.id = i.site_id) COMMENT 'Find the site for each drone points for PBI.'
 ```
+
+Table to store the history of `process-data distances` runs.
+
+```sql
+CREATE TABLE dayly_stats
+(
+    day     DATE,
+    site_id INT,
+    site    VARCHAR,
+    status  INT NOT NULL,
+    stats   VARCHAR,
+    comment VARCHAR,
+) ENGINE = ReplacingMergeTree PRIMARY KEY ( day, site)
+    COMMENT 'Records the run history for all sites every day.';
+```
