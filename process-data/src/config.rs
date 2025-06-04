@@ -18,7 +18,7 @@ use fetiche_common::{IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
 
 /// Current version
-pub const CVERSION: usize = 3;
+pub const CVERSION: usize = 4;
 
 /// This module provides the configuration structures and functionalities
 /// necessary for initializing the application. It includes definitions for
@@ -41,7 +41,7 @@ pub const CVERSION: usize = 3;
 ///
 /// # Example Configuration
 /// ```hcl
-/// version = 3
+/// version = 4
 ///
 /// datalake = "/path/to/datalake"
 ///
@@ -55,6 +55,7 @@ pub const CVERSION: usize = 3;
 /// distances {
 ///     threshold = 1852
 ///     factor = 3
+///     plane = 70
 /// }
 /// ```
 ///
@@ -87,6 +88,8 @@ pub struct Distances {
     pub threshold: u32,
     /// Factor for considering a safety issue, as N times `threshold`
     pub factor: u32,
+    /// Plane radius, in meters.
+    pub plane: u32,
 }
 
 impl Default for Distances {
@@ -94,6 +97,7 @@ impl Default for Distances {
         Self {
             threshold: 1852,
             factor: 3,
+            plane: 70,
         }
     }
 }

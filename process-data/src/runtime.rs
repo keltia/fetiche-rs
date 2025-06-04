@@ -272,6 +272,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
     //
     let threshold = cfg.distances.threshold;
     let factor = cfg.distances.factor;
+    let plane = cfg.distances.plane;
 
     let ctx = Context {
         config: HashMap::from([
@@ -280,7 +281,8 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ("datalake".to_string(), datalake.clone()),
             ("username".to_string(), user.clone()),
             ("threshold".to_string(), threshold.to_string()),
-            ("factor".to_string(), factor.to_string())
+            ("factor".to_string(), factor.to_string()),
+            ("distance".to_string(), plane.to_string()),
         ])
             .into(),
         dbh: pool.clone(),
