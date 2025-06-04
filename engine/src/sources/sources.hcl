@@ -47,7 +47,9 @@ site "lux" {
   }
 }
 
-site "opensky" {
+// Fetch from Opensky server, fed by invidual devices
+//
+site "opensky-server" {
   feature  = "stream"
   type     = "adsb"
   format   = "opensky"
@@ -58,6 +60,18 @@ site "opensky" {
   }
   routes = {
     stream = "/states/own"
+  }
+}
+
+// Local (or through VPN) antenna
+//
+site "opensky-local" {
+  feature  = "stream"
+  type     = "adsb"
+  format   = "opensky"
+  base_url = "tcp://192.168.42.1:30005"
+  routes = {
+    stream = "live"
   }
 }
 
