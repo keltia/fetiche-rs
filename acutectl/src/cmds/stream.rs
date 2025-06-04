@@ -41,31 +41,11 @@ pub async fn stream_from_site(engine: &mut EngineSingle, sopts: &StreamOpts) -> 
     //
     let freq = sopts.frequency.clone().unwrap_or(Freq::Daily);
     let output = if let Some(split) = &sopts.store {
-        format!(
-            r##"
-        output = {{
-            "Store" = {{ "freq" = "{}", "split" = "{}"
-        }}
-        "##,
-            freq, split
-        )
+        split
     } else if let Some(fname) = &sopts.output {
-        format!(
-            r##"
-        output = {{
-            "Save" = "{}"
-        }}
-        "##,
-            fname
-        )
+        fname
     } else {
-        format!(
-            r##"
-        output = {{
-            "Save" = "-"
-        }}
-        "##
-        )
+        "-"
     };
 
     info!("Writing to {output}");
