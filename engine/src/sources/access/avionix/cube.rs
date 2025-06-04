@@ -23,7 +23,7 @@ use serde_json::json;
 use tracing::{error, info, trace, warn};
 
 use crate::actors::{StatsMsg, Supervisor};
-use crate::{Auth, AuthError, Capability, Filter, LocalWorker, Routes, Site, Stats, StatsError, Streamable, StreamableSource, WorkerArgs, WorkerMsg, AVIONIX_PG};
+use crate::{Auth, AuthError, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, Worker, WorkerArgs, WorkerMode, WorkerMsg, AVIONIX_PG};
 use fetiche_formats::Format;
 
 /// TCP streaming port
@@ -31,8 +31,6 @@ const DEF_PORT: u16 = 50005;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Cube {
-    /// Describe the different features of the source
-    pub feature: Capability,
     /// Input formats
     pub format: Format,
     /// Local IP of the antenna
@@ -50,10 +48,10 @@ impl Cube {
     #[tracing::instrument]
     pub fn new() -> Self {
         Self {
-            feature: Capability::Stream,
             format: Format::CubeData,
             base_url: String::from("CHANGEME"),
             duration: 0,
+            // Default to RemoteID data: RID
             src: String::from("RID"),
             stat: None,
         }
@@ -160,6 +158,7 @@ Duration {}s
         // Launch the worker actor
         //
         let url = format!("tcp://{}", self.base_url.clone());
+
         // Do not forget port is there is none specified.
         //
         let url = match Url::from_str(&url)?.port() {
@@ -173,10 +172,11 @@ Duration {}s
             traffic: self.src.clone(),
             out,
             stat: stat.clone(),
+            mode: WorkerMode::Local,
         };
         let tag = String::from("avionixcube::worker");
         let (worker, _handle) =
-            Actor::spawn_linked(Some(tag.clone()), LocalWorker, args, sup.get_cell()).await?;
+            Actor::spawn_linked(Some(tag.clone()), Worker, args, sup.get_cell()).await?;
 
         // Insert each actor in the PG_SOURCES group.
         //
@@ -193,7 +193,7 @@ Duration {}s
 
         // Get the ball rolling.
         //
-        let _ = worker.cast(WorkerMsg::Consume(filter, stream_duration.as_secs()))?;
+        let _ = worker.cast(WorkerMsg::Consume(filter))?;
 
         // Set the clock ticking unless duration is 0
         //

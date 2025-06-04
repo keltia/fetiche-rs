@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::net::{Shutdown, TcpStream};
-use std::time::Duration;
 
 use eyre::Result;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
@@ -18,9 +17,15 @@ use fetiche_formats::DronePoint;
 
 const START_MARKER: &str = "\x02";
 
+#[derive(Debug, Clone)]
+pub enum WorkerMode {
+    Server,
+    Local,
+}
+
 #[derive(Debug)]
 pub enum WorkerMsg {
-    Consume(Filter, u64),
+    Consume(Filter),
 }
 
 #[derive(Debug)]
@@ -33,6 +38,8 @@ pub struct WorkerArgs {
     pub out: Sender<String>,
     /// For each packet, send statistics data
     pub stat: ActorRef<StatsMsg>,
+    /// Worker mode (Remote or Local)
+    pub mode: WorkerMode,
 }
 
 /// Contains the connection handle and the output stream.
@@ -48,13 +55,17 @@ pub struct WorkerState {
     pub out: Sender<String>,
     /// Who to send statistics-related events to
     pub stat: ActorRef<StatsMsg>,
+    /// Worker mode
+    pub mode: WorkerMode,
 }
 
 pub struct Worker;
 
-/// Worker Actor.
+/// Unified Worker Actor that can operate in both Remote and Local modes.
 ///
-/// Do we want one actor for all topics or one actor per topic?
+/// The mode determines:
+/// - Remote: Uses authentication and applies traffic filtering
+/// - Local: No authentication, sends raw data without filtering
 ///
 #[ractor::async_trait]
 impl Actor for Worker {
@@ -67,13 +78,14 @@ impl Actor for Worker {
         myself: ActorRef<Self::Msg>,
         args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        trace!("Starting worker actor {}", myself.get_cell().get_id());
+        trace!("Starting worker actor {} in {:?} mode", myself.get_cell().get_id(), args.mode);
 
         Ok(WorkerState {
             url: args.url,
-            traffic: String::new(),
+            traffic: args.traffic,
             out: args.out,
             stat: args.stat,
+            mode: args.mode,
         })
     }
 
@@ -84,18 +96,14 @@ impl Actor for Worker {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            WorkerMsg::Consume(filter, duration) => {
-                trace!("Starting worker thread");
+            WorkerMsg::Consume(filter) => {
+                trace!("Starting worker thread in {:?} mode", state.mode);
 
                 let (min, max) = read_filter(filter);
-                let stream_duration = Duration::from_secs(duration);
 
                 let url = Url::parse(state.url.as_str())?;
                 let site = url.host_str().unwrap_or(DEF_SITE);
                 let port = url.port().unwrap_or(DEF_PORT);
-
-                let user_key = url.password().unwrap_or("");
-                let api_key = url.username();
 
                 // Do the connection
                 //
@@ -106,45 +114,42 @@ impl Actor for Worker {
                 let mut conn_in = BufReader::new(&conn);
                 let mut conn_out = BufWriter::new(&conn);
 
-                // Send credentials
-                //
-                let auth_str = format!("{}\n{}\n", api_key, user_key);
-                conn_out
-                    .write_all(auth_str.as_bytes())
-                    .expect("auth write failed");
-                conn_out.flush().expect("flush auth");
+                // Handle authentication for remote mode only
+                if matches!(state.mode, WorkerMode::Server) {
+                    let user_key = url.password().unwrap_or("");
+                    let api_key = url.username();
 
-                trace!("avionix::stream(as {}:{})", api_key, user_key);
+                    // Send credentials
+                    let auth_str = format!("{}\n{}\n", api_key, user_key);
+                    conn_out
+                        .write_all(auth_str.as_bytes())
+                        .expect("auth write failed");
+                    conn_out.flush().expect("flush auth");
 
-                // Manage url parameters.  Assume that if one is defined, the other is as well.
-                //
-                if min.is_some() {
-                    let min = min.unwrap();
+                    trace!("avionix::stream(as {}:{})", api_key, user_key);
+                } else {
+                    trace!("avionix::stream(local)");
+                }
+
+                // Manage url parameters for both modes
+                if let Some(min) = min {
                     let min_str = format!("min_altitude={min}\n");
                     let _ = conn_out.write(min_str.as_bytes());
                 }
-                if max.is_some() {
-                    let max = max.unwrap();
+                if let Some(max) = max {
                     let max_str = format!("max_altitude={max}\n");
                     let _ = conn_out.write(max_str.as_bytes());
-                };
+                }
 
                 let out = state.out.clone();
 
-                info!(
-                    r##"
-StreamURL: {}
-Duration {}s
-        "##,
-                    url,
-                    stream_duration.as_secs()
-                );
+                info!("StreamURL: {}", url);
 
                 let stat = state.stat.clone();
-                stat.cast(StatsMsg::Reset("avionixcube".into())).expect("stat::error");
+                stat.cast(StatsMsg::Reset("avionixcube".into()))
+                    .expect("stat::error");
 
                 // Start stream
-                //
                 let _ = conn_out.write(START_MARKER.as_ref());
                 conn_out.flush().expect("flush marker");
 
@@ -159,197 +164,90 @@ Duration {}s
                         }
                         Err(e) => {
                             error!("worker-thread: {}", e.to_string());
-                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { err: 1, ..Default::default() })).expect("stat::error");
+                            stat.cast(StatsMsg::Update(
+                                "avionixcube".into(),
+                                Stats {
+                                    err: 1,
+                                    ..Default::default()
+                                },
+                            ))
+                                .expect("stat::error");
 
                             conn.shutdown(Shutdown::Both).expect("shutdown socket");
 
-                            // We need to drop otherwise `conn`  still remains.
-                            //
+                            // We need to drop otherwise `conn` still remains.
                             drop(conn_in);
                             drop(conn_out);
 
-                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { reconnect: 1, ..Default::default() })).expect("stat::error");
+                            stat.cast(StatsMsg::Update(
+                                "avionixcube".into(),
+                                Stats {
+                                    reconnect: 1,
+                                    ..Default::default()
+                                },
+                            ))
+                                .expect("stat::error");
 
                             conn = TcpStream::connect(format!("{site}:{port}"))
                                 .expect("connect failed");
 
-                            // Do the connection again
-                            //
+                            // Re-establish connection
                             conn_in = BufReader::new(&conn);
                             conn_out = BufWriter::new(&conn);
 
-                            // Send credentials again
-                            //
-                            let auth_str = format!("{}\n{}\n", api_key, user_key);
-                            conn_out
-                                .write_all(auth_str.as_bytes())
-                                .expect("auth write failed");
-                            conn_out.flush().expect("flush auth");
+                            // Re-authenticate for remote mode only
+                            if matches!(state.mode, WorkerMode::Server) {
+                                let user_key = url.password().unwrap_or("");
+                                let api_key = url.username();
+
+                                let auth_str = format!("{}\n{}\n", api_key, user_key);
+                                conn_out
+                                    .write_all(auth_str.as_bytes())
+                                    .expect("auth write failed");
+                                conn_out.flush().expect("flush auth");
+                            }
 
                             // Send marker again
-                            //
                             let _ = conn_out.write(START_MARKER.as_ref());
                             conn_out.flush().expect("flush marker");
 
                             continue;
                         }
                     };
+
                     let raw = String::from_utf8_lossy(&buf[..n]);
                     debug!("raw={}", raw);
 
-                    let filtered = filter_payload(&state.traffic, raw.as_ref())?;
+                    stat.cast(StatsMsg::Update(
+                        "avionixcube".into(),
+                        Stats {
+                            pkts: buf.len() as u32,
+                            bytes: n as u64,
+                            ..Default::default()
+                        },
+                    ))
+                        .expect("stat::error");
 
-                    stat.cast(StatsMsg::Update("avionixcube".into(), Stats {
-                        pkts: buf.len() as u32,
-                        bytes: n as u64,
-                        ..Default::default()
-                    },
-                    )).expect("stat::error");
-
-                    out.send(filtered).expect("send");
+                    // Handle output based on mode
+                    match state.mode {
+                        WorkerMode::Server => {
+                            // Apply traffic filtering for remote mode
+                            let filtered = filter_payload(&state.traffic, raw.as_ref())?;
+                            out.send(filtered).expect("send");
+                        }
+                        WorkerMode::Local => {
+                            // Send raw data for local mode
+                            out.send(String::from_utf8(buf[..n].to_vec())?)
+                                .expect("send");
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-pub struct LocalWorker;
-
-/// Worker Actor.
-///
-/// Do we want one actor for all topics or one actor per topic?
-///
-#[ractor::async_trait]
-impl Actor for LocalWorker {
-    type Msg = WorkerMsg;
-    type State = WorkerState;
-    type Arguments = WorkerArgs;
-
-    async fn pre_start(
-        &self,
-        myself: ActorRef<Self::Msg>,
-        args: Self::Arguments,
-    ) -> Result<Self::State, ActorProcessingErr> {
-        trace!("Starting worker actor {}", myself.get_cell().get_id());
-
-        Ok(WorkerState {
-            url: args.url,
-            traffic: String::new(),
-            out: args.out,
-            stat: args.stat,
-        })
-    }
-
-    async fn handle(
-        &self,
-        _myself: ActorRef<Self::Msg>,
-        message: Self::Msg,
-        state: &mut Self::State,
-    ) -> Result<(), ActorProcessingErr> {
-        match message {
-            WorkerMsg::Consume(filter, duration) => {
-                trace!("Starting worker thread");
-
-                let (min, max) = read_filter(filter);
-                let stream_duration = Duration::from_secs(duration);
-
-                let url = Url::parse(state.url.as_str())?;
-                let site = url.host_str().unwrap_or(DEF_SITE);
-                let port = url.port().unwrap_or(DEF_PORT);
-
-                // Do the connection
-                //
-                trace!("tcp::connect");
-                let mut conn =
-                    TcpStream::connect(format!("{site}:{port}")).expect("connect failed");
-
-                let mut conn_in = BufReader::new(&conn);
-                let mut conn_out = BufWriter::new(&conn);
-
-                trace!("avionix::stream(local)");
-
-                // Manage url parameters.  Assume that if one is defined, the other is as well.
-                //
-                if min.is_some() {
-                    let min = min.unwrap();
-                    let min_str = format!("min_altitude={min}\n");
-                    let _ = conn_out.write(min_str.as_bytes());
-                }
-                if max.is_some() {
-                    let max = max.unwrap();
-                    let max_str = format!("max_altitude={max}\n");
-                    let _ = conn_out.write(max_str.as_bytes());
-                };
-
-                let out = state.out.clone();
-
-                info!(
-                    r##"
-        StreamURL: {}
-        Duration {}s
-                "##,
-                    url,
-                    stream_duration.as_secs()
-                );
-
-                let stat = state.stat.clone();
-                stat.cast(StatsMsg::Reset("avionixcube".into())).expect("stat::error");
-
-                // Start stream
-                //
-                let _ = conn_out.write(START_MARKER.as_ref());
-                conn_out.flush().expect("flush marker");
-
-                trace!("avionixcube::stream started");
-                loop {
-                    let mut buf = vec![0u8; 4096];
-
-                    let n = match conn_in.read(&mut buf[..]) {
-                        Ok(size) => {
-                            trace!("{} bytes read.", size);
-                            size
-                        }
-                        Err(e) => {
-                            error!("worker-thread: {}", e.to_string());
-                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { err: 1, ..Default::default() })).expect("stat::error");
-
-                            conn.shutdown(Shutdown::Both).expect("shutdown socket");
-
-                            // We need to drop otherwise `conn`  still remains.
-                            //
-                            drop(conn_in);
-                            drop(conn_out);
-
-                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { reconnect: 1, ..Default::default() })).expect("stat::error");
-
-                            conn = TcpStream::connect(format!("{site}:{port}"))
-                                .expect("connect failed");
-
-                            // Do the connection again
-                            //
-                            conn_in = BufReader::new(&conn);
-                            conn_out = BufWriter::new(&conn);
-
-                            continue;
-                        }
-                    };
-                    let raw = String::from_utf8_lossy(&buf[..n]);
-                    debug!("raw={}", raw);
-
-                    stat.cast(StatsMsg::Update("avionixcube".into(), Stats {
-                        pkts: buf.len() as u32,
-                        bytes: n as u64,
-                        ..Default::default()
-                    },
-                    )).expect("stat::error");
-
-                    out.send(String::from_utf8(buf[..n].to_vec())?)
-                        .expect("send");
-                }
-            }
-        }
-    }
-}
+// Remove the LocalWorker struct and implementation as it's now merged
 
 // -----
 

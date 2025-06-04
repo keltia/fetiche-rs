@@ -24,9 +24,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info, trace, warn};
 
-use super::actors::{Worker, WorkerArgs};
 use crate::actors::{StatsMsg, Supervisor};
-use crate::{Auth, AuthError, Capability, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, WorkerMsg, ENGINE_PG};
+use crate::sources::AVIONIX_PG;
+use crate::{Auth, AuthError, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, Worker, WorkerArgs, WorkerMode, WorkerMsg};
 use fetiche_formats::Format;
 
 /// TCP streaming URL
@@ -36,8 +36,6 @@ pub(crate) const DEF_PORT: u16 = 50007;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AvionixServer {
-    /// Describe the different features of the source
-    pub features: Vec<Capability>,
     /// Input formats
     pub format: Format,
     /// API Key
@@ -59,7 +57,6 @@ impl AvionixServer {
     #[tracing::instrument]
     pub fn new() -> Self {
         Self {
-            features: vec![Capability::Stream],
             format: Format::CubeData,
             api_key: String::new(),
             user_key: String::new(),
@@ -177,6 +174,7 @@ impl Streamable for AvionixServer {
             traffic: self.src.clone(),
             out,
             stat: stat.clone(),
+            mode: WorkerMode::Server,
         };
         let tag = String::from("avionixserver::worker");
         let (worker, _handle) =
@@ -185,19 +183,19 @@ impl Streamable for AvionixServer {
         // Insert each actor in the PG_SOURCES group.
         //
         join(
-            ENGINE_PG.into(),
+            AVIONIX_PG.into(),
             vec![sup.get_cell(), worker.get_cell(), stat.get_cell()],
         );
 
         info!("List of actors.");
-        let list = pg::get_members(&ENGINE_PG.to_string());
+        let list = pg::get_members(&AVIONIX_PG.to_string());
         list.iter().for_each(|member| {
             info!("  {}", member.get_name().unwrap_or("<anon>".into()));
         });
 
         // Get the ball rolling.
         //
-        let _ = worker.cast(WorkerMsg::Consume(filter, stream_duration.as_secs()))?;
+        let _ = worker.cast(WorkerMsg::Consume(filter))?;
 
         // Set the clock ticking unless duration is 0
         //
@@ -218,11 +216,11 @@ impl Streamable for AvionixServer {
         //
         trace!("avionixserver::stream stopping.");
 
-        let stats = call!(stat, |port| StatsMsg::Get(tag, port))?;
+        let stats = call!(stat, |port| StatsMsg::Exit(tag, port))?;
 
         // Stop everyone in the group.
         //
-        pg::get_members(&ENGINE_PG.to_string())
+        pg::get_members(&AVIONIX_PG.to_string())
             .iter()
             .for_each(|member| {
                 member.stop(Some("Ending.".to_string()));
@@ -232,6 +230,6 @@ impl Streamable for AvionixServer {
     }
 
     fn format(&self) -> Format {
-        Format::CubeData
+        self.format
     }
 }
