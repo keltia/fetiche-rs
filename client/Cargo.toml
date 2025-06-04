@@ -36,6 +36,6 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 derive_builder = "0.20"
-proptest = "1.7"
 
 [dev-dependencies]
+proptest = "1.7"

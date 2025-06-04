@@ -1,7 +1,9 @@
 mod grpc;
+mod job;
 mod local;
 mod single;
 
+pub use job::*;
 pub use local::*;
 pub use single::*;
 

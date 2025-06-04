@@ -2,9 +2,10 @@
 //!
 use std::path::PathBuf;
 
+use crate::JobText;
 use eyre::Result;
-
 pub use fetiche_engine::{Engine, Job, Stats};
+use tracing::debug;
 
 #[derive(Clone, Debug)]
 pub struct EngineSingle {
@@ -28,8 +29,10 @@ impl EngineSingle {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn parse_job(&mut self, job: &str) -> Result<Job> {
-        self.e.parse_job(job).await
+    pub async fn parse_job(&mut self, job: JobText) -> Result<Job> {
+        let job = hcl::to_string(&job)?;
+        debug!("jobtext = {}", job);
+        self.e.parse_job(&job).await
     }
 
     #[tracing::instrument(skip(self))]
