@@ -23,9 +23,9 @@ hcl-rs = "0.19"
 jiff = { version = "0.2", features = ["serde"] }
 nom = "8"
 object_store = "0.12"
-opentelemetry = { version = "0.26", features = ["logs", "metrics"] }
-opentelemetry-otlp = "0.26"
-opentelemetry_sdk = { version = "0.26", features = ["rt-tokio"] }
+opentelemetry = { version = "0.30", features = ["logs", "metrics"] }
+opentelemetry-otlp = { version = "0.30", features = ["grpc-tonic"] }
+opentelemetry_sdk = { version = "0.30", features = ["rt-tokio"] }
 polars = { version = "0.49", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-categorical"] }
 proptest = "1.7"
 ractor = { version = "0.15", features = ["async-trait", "serde"] }
@@ -41,6 +41,6 @@ tempfile = "3"
 thiserror = "2.0"
 tokio = { version = "1", features = ["sync", "macros", "io-util", "rt", "time"] }
 tracing = "0.1"
-tracing-opentelemetry = "0.27"
+tracing-opentelemetry = "0.31"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
 tracing-tree = { version = "0.4", features = ["time"] }

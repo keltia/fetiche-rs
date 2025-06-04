@@ -3,10 +3,10 @@
 //! TODO: Add code for metrics.
 
 use eyre::Result;
-use opentelemetry::trace::TracerProvider;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
+use opentelemetry::{global, trace::TracerProvider};
+use opentelemetry_otlp::SpanExporter;
+use opentelemetry_sdk::{trace::SdkTracerProvider, Resource};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 use tracing_tree::HierarchicalLayer;
 
 /// Initializes logging for the application.
@@ -38,7 +38,7 @@ pub fn init_logging(
 ) -> Result<()> {
     // Initialise logging early
     //
-    // Load filters from environment
+    // Load filters from the environment
     //
     let filter = EnvFilter::from_default_env();
 
@@ -64,11 +64,14 @@ pub fn init_logging(
     // Enable telemetry?
     //
     let otlp = if use_telemetry {
-        let exporter = opentelemetry_otlp::new_exporter().tonic();
-        let provider = opentelemetry_otlp::new_pipeline()
-            .tracing()
-            .with_exporter(exporter)
-            .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+        let exporter = SpanExporter::builder().with_tonic().build()?;
+
+        let provider = SdkTracerProvider::builder()
+            .with_resource(Resource::builder().with_service_name("fetiche-rs").build())
+            .with_batch_exporter(exporter)
+            .build();
+
+        global::set_tracer_provider(provider.clone());
         let tracer = provider.tracer(name);
         Some(tracing_opentelemetry::layer().with_tracer(tracer))
     } else {
@@ -78,7 +81,7 @@ pub fn init_logging(
     // Log to file?
     //
     let file = if use_file.is_some() {
-        // Basic append-only rolling file for all traces.
+        // Basically append-only rolling file for all traces.
         //
         let file_appender = tracing_appender::rolling::hourly(use_file.unwrap(), name);
         Some(tracing_subscriber::fmt::layer().with_writer(file_appender))
@@ -100,5 +103,5 @@ pub fn init_logging(
 
 #[tracing::instrument]
 pub fn close_logging() {
-    opentelemetry::global::shutdown_tracer_provider();
+    // FIXME: we do not save the tracing provider fpr OLTP
 }
