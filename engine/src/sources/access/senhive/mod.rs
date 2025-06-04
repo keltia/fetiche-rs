@@ -37,16 +37,6 @@ use serde::{Deserialize, Serialize};
 /// Senhive process/actor group
 pub(crate) const SENHIVE_PG: &str = "senhive-pg";
 
-/// Credentials to submit to the site to get the token
-///
-#[derive(Debug, Deserialize, Serialize)]
-struct Credentials {
-    /// Email as username
-    username: String,
-    /// Password
-    password: String,
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Senhive {
     /// Describe the different features of the source
