@@ -25,12 +25,13 @@ use crate::AvionixServer;
 use crate::Cube;
 #[cfg(feature = "flightaware")]
 use crate::Flightaware;
-#[cfg(feature = "opensky")]
-use crate::Opensky;
 #[cfg(feature = "safesky")]
 use crate::Safesky;
 #[cfg(feature = "senhive")]
 use crate::Senhive;
+#[cfg(feature = "opensky")]
+use crate::{OpenskyDevice, OpenskyServer};
+
 use crate::{AccessError, Auth, FetchableSource, Site, StreamableSource, SOURCES_CONFIG};
 
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
@@ -173,9 +174,13 @@ impl Sources {
                     }
                     #[cfg(feature = "opensky")]
                     Format::Opensky => {
-                        let s = Opensky::new().load(site).clone();
-
-                        Ok(StreamableSource::Opensky(s))
+                        if let Some(Auth::Login { .. }) = site.auth {
+                            let s = OpenskyServer::new().load(site.clone()).clone();
+                            Ok(StreamableSource::OpenskyServer(s))
+                        } else {
+                            let s = OpenskyDevice::new().load(site.clone()).clone();
+                            Ok(StreamableSource::OpenskyDevice(s))
+                        }
                     }
                     #[cfg(feature = "flightaware")]
                     Format::Flightaware => {
