@@ -42,5 +42,5 @@ indicatif = "0.18"
 
 [dev-dependencies]
 assert_cmd = "2.0"
-proptest = "1.7.0"
+proptest.workspace = true
 

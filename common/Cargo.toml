@@ -70,6 +70,7 @@ serde_json = "1.0.140"
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
 divan = "0.1"
+proptest.workspace = true
 rand = "0.9"
 rstest.workspace = true
 test-pretty-log = "0.6"

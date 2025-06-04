@@ -3204,6 +3204,7 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "polars",
+ "proptest",
  "ractor",
  "rand 0.9.1",
  "rstest",
