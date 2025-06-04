@@ -26,7 +26,6 @@ pub enum JobType {
     Invalid,
 }
 
-#[derive(Debug, Clone, Default)]
 /// A builder for constructing data processing jobs with a fluent interface.
 ///
 /// `JobBuilder` provides methods to configure various aspects of a job:
@@ -39,6 +38,7 @@ pub enum JobType {
 /// All configuration is done through method chaining, with the final job
 /// being created by calling `build()`.
 ///
+#[derive(Debug, Clone, Default)]
 pub struct JobBuilder {
     /// Job description
     name: String,
