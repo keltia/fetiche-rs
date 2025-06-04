@@ -442,8 +442,9 @@ AS (SELECT `journey`,
       `model`,
       d.installation_id,
       sitename,
-      date_trunc('day', dr.timestamp) AS `date`,
+      formatDateTime(dr.timestamp, '%F', 'UTC') AS `utc_date`,
       formatDateTime(dr.timestamp, '%T', 'UTC') AS `utc_time`,
+      compute_localdate(toUnixTimestamp(dr.timestamp), d.tzname) AS local_date,
       compute_localtime(toUnixTimestamp(dr.timestamp), d.tzname) AS local_time,
       dr.latitude AS `drone_lat`,
       dr.longitude AS `drone_lon`,
@@ -465,8 +466,8 @@ AS (SELECT `journey`,
       dist_2d(dr.longitude,dr.latitude,station_longitude,station_latitude) AS antenna_distance_2d,
       dist_3d(dr.longitude,dr.latitude,dr.altitude,station_longitude,station_latitude, d.ref_altitude) AS antenna_distance_3d
     FROM acute.drones_raw AS dr LEFT OUTER JOIN acute.pbi_deployments AS d
-    ON dr.station_name = d.antenna_name and dr.timestamp between d.start_at and d.end_at
-    WHERE sitename = d.sitename AND dr.station_name != 'ASDSTATIONV1' AND sitename != ''
+     ON dr.station_name = d.antenna_name and dr.timestamp between d.start_at and d.end_at
+    WHERE dr.station_name != 'ASDSTATIONV1' AND sitename != ''
   )
   COMMENT 'PBI View for drones data with distances.'
 "##;
