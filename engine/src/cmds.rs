@@ -23,7 +23,7 @@ use ractor::{call, call_t, cast, pg};
 use tracing::{info, trace};
 
 use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
-use crate::{Engine, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup, ENGINE_PG};
+use crate::{Engine, EngineMode, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup, ENGINE_PG};
 
 /// Basically, this is the exposed API to the Engine.
 ///
@@ -337,6 +337,33 @@ impl Engine {
         cast!(self.state, StateMsg::Remove(job_id))?;
         cast!(self.scheduler, SchedulerMsg::RemoveById(job_id))?;
         self.sync()
+    }
+
+    /// Cleans up engine resources by removing the working directory in single mode.
+    ///
+    /// This method handles cleanup of filesystem resources used by the engine:
+    /// - In single mode: Removes the temporary working directory
+    /// - In other modes: No cleanup is performed
+    ///
+    /// # Returns
+    ///
+    /// - Returns `Ok(())` on successful cleanup or if no cleanup was needed
+    /// - Returns `Err` if directory removal fails
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if:
+    /// - The working directory cannot be removed
+    /// - Filesystem operations fail during cleanup
+    ///
+    #[tracing::instrument(skip(self))]
+    pub async fn cleanup(&self) -> Result<()> {
+        if self.mode == EngineMode::Single {
+            // We need to remove the directory known as `workdir`
+            //
+            let _ = std::fs::remove_dir_all(self.workdir.clone());
+        }
+        Ok(())
     }
 }
 
