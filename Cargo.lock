@@ -3349,7 +3349,7 @@ checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "fetiche-client"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "derive_builder",
  "eyre",
@@ -3407,7 +3407,7 @@ dependencies = [
 
 [[package]]
 name = "fetiche-engine"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "base64_light",
  "chrono",

@@ -1,6 +1,6 @@
 [package]
 name = "fetiche-engine"
-version = "0.25.0"
+version = "0.26.0"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Engine component for the Fetiche framework."
