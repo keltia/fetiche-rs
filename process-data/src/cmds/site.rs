@@ -90,8 +90,6 @@ impl Display for Site {
 #[tracing::instrument(skip(dbh))]
 #[cached(key = "String", result = true, convert = r#"{format!("{}", site)}"#)]
 pub async fn find_site(dbh: &Client, site: &str) -> eyre::Result<Site> {
-    // Load locations from DB
-    //
     let r = r##"
     SELECT * from sites WHERE name = $1
     "##;
@@ -99,6 +97,55 @@ pub async fn find_site(dbh: &Client, site: &str) -> eyre::Result<Site> {
     let site = match dbh.query_one::<Site>(q).await {
         Ok(site) => site,
         Err(_) => return Err(Status::UnknownSite(site.to_string()).into()),
+    };
+    Ok(site)
+}
+
+/// Searches for a specific site in the database based on the provided site ID.
+///
+/// This function utilizes caching to improve performance, storing the result
+/// of previous queries and reusing them for subsequent similar requests.
+/// The function logs the operation using `tracing` instrumentation for
+/// better debugging and observability.
+///
+/// ### Arguments
+/// - `dbh` - A reference to the ClickHouse database client.
+/// - `id` - The unique identifier of the site to search for.
+///
+/// ### Returns
+/// - `Ok(Site)`: If the site is found in the database.
+/// - `Err(eyre::Report)`: Returns an error if the site cannot be found or if an issue occurs during the query.
+///
+/// ### Notes
+/// - This function assumes the `sites` table has a column named `id` as the primary key.
+/// - The query runs against the ClickHouse database using `QueryBuilder`.
+///
+/// ### Example
+/// ```rust
+/// # use your_crate_name::{Client, find_site_by_id};
+/// let dbh = Client::new(); // Assume client is properly initialized
+/// let site_id = 1;
+/// let site = find_site_by_id(&dbh, site_id).await?;
+/// println!("Found site: {}", site);
+/// ```
+///
+/// ### Caching
+/// - This function leverages the `cached` crate to cache the result of queries,
+///   improving performance for frequently accessed site IDs.
+///
+/// ### Instrumentation
+/// - Tracing instrumentation is added to provide detailed logs of the function execution.
+///
+#[tracing::instrument(skip(dbh))]
+#[cached(key = "String", result = true, convert = r#"{format!("{}", id)}"#)]
+pub async fn find_site_by_id(dbh: &Client, id: u32) -> eyre::Result<Site> {
+    let r = r##"
+    SELECT * from sites WHERE id = $1
+    "##;
+    let q = QueryBuilder::new(r).arg(id);
+    let site = match dbh.query_one::<Site>(q).await {
+        Ok(site) => site,
+        Err(_) => return Err(Status::UnknownSiteId(id).into()),
     };
     Ok(site)
 }
