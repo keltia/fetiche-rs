@@ -8,7 +8,7 @@ default_to_workspace = false
 
 [tasks.pull]
 command = "jj"
-args = ["git", "push", "-b", "develop", "--remote", "origin"]
+args = ["git", "pull", "--remote", "origin"]
 
 [tasks.push-github]
 command = "jj"
