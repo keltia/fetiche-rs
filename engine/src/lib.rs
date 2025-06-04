@@ -431,7 +431,7 @@ impl Engine {
 
         // Register tokens
         //
-        let tokens_area = cfg.basedir.join("tokens").to_string_lossy().to_string();
+        let tokens_area = root.config_path().join("tokens").to_string_lossy().to_string();
         trace!("load tokens from {tokens_area}");
         let tokens = TokenStorage::register(&tokens_area);
         info!("{} tokens loaded", tokens.len());
