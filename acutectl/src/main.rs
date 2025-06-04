@@ -49,7 +49,7 @@ pub const CVERSION: usize = 2;
 #[allow(dead_code)]
 /// Configuration for the CLI tool, supposed to include parameters
 ///
-#[into_configfile]
+#[into_configfile(version = 2, filename = "acutectl.hcl")]
 #[derive(Debug, Default, Deserialize)]
 pub struct AcuteConfig {
     use_async: bool,
@@ -136,7 +136,7 @@ async fn main() -> Result<()> {
 ///
 #[inline]
 pub fn version() -> String {
-    format!("{}/{}", NAME, VERSION)
+    format!("{NAME}/{VERSION}")
 }
 
 /// Display banner
@@ -144,12 +144,10 @@ pub fn version() -> String {
 fn banner() {
     eprintln!(
         r##"
-{}/{} by {}
+{} by {AUTHORS}
 {}
 "##,
-        NAME,
-        VERSION,
-        AUTHORS,
+        version(),
         crate_description!()
     )
 }
