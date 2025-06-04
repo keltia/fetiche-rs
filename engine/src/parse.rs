@@ -242,7 +242,7 @@ impl Engine {
                 Consumer::Save(f)
             }
             ConsumerText::Store(c, f) => {
-                let s = Store::new(&c, id, f)?;
+                let s = Store::new(&c, id, f).await?;
                 Consumer::Store(s)
             }
         };
