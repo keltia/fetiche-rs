@@ -223,8 +223,8 @@ pub struct StateVector {
 /// - `heading`: The heading of the aircraft in degrees (north = 0°), if available; otherwise, `None`.
 /// - `vertical_rate`: The vertical rate measured in meters per second, if available; otherwise, `None`.
 /// - `callsign`: The optional call sign of the aircraft or vehicle, if available.
-/// - `on_ground`: Indicates whether the vehicle is on the ground. Stored as a string
-///                representation (`"True"` or `"False"`) to match the source system.
+/// - `on_ground`: Indicates whether the vehicle is on the ground. Stored as a string representation
+/// (`"True"` or `"False"`) to match the source system.
 /// - `alert`: String indicating the alert status.
 /// - `spi`: String indicating whether Special Position Identification is active.
 /// - `squawk`: The optional transponder squawk code, if available.
@@ -377,7 +377,7 @@ mod tests {
                 ]
             ]
         })
-        .to_string();
+            .to_string();
 
         let result = StateList::from_json(&input);
         assert!(result.is_ok());

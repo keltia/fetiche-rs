@@ -3,7 +3,6 @@ use std::num::ParseIntError;
 use std::path::PathBuf;
 
 use eyre::Result;
-use nom::sequence::tuple;
 use nom::{
     character::complete::{i8, one_of},
     combinator::map_res,
