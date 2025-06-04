@@ -103,6 +103,7 @@ impl History {
     ///
     /// # Returns
     /// Result indicating success or failure of the insert operation
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn insert(&mut self, day: DateTime<Utc>, site_id: u32, status: RecordStatus, stats: String, comment: String) -> Result<()> {
         let dbh = self.dbh.clone();
@@ -126,6 +127,7 @@ INSERT INTO {}.daily_stats (day, site_id, site_name, status, stats, comment) (?,
     ///
     /// # Returns
     /// Vector of Record instances matching the specified day
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn get_by_day(&mut self, day: DateTime<Utc>) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -146,6 +148,7 @@ SELECT * FROM {}.daily_stats WHERE day = ?
     ///
     /// # Returns
     /// Vector of Record instances associated with the specified site
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn get_by_site(&mut self, site: &str) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -159,6 +162,16 @@ SELECT * FROM {}.daily_stats WHERE site_name = ?
         Ok(daily_stats)
     }
 
+    /// Retrieves all incomplete processing records from the database
+    ///
+    /// This method queries the database for all processing records that have a non-zero
+    /// status, indicating incomplete or failed processing runs. This includes cases where
+    /// data was missing, no encounters were found, or other failure conditions occurred.
+    ///
+    /// # Returns
+    /// Vector of Record instances representing all incomplete processing runs across all
+    /// sites and dates
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn get_incomplete(&mut self) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -171,6 +184,17 @@ SELECT * FROM {}.daily_stats WHERE status != 0
         Ok(daily_stats)
     }
 
+    /// Retrieves all incomplete processing records for a specific day
+    ///
+    /// This method queries the database for all processing records associated with the given day
+    /// that have a non-zero status, indicating incomplete or failed processing runs.
+    ///
+    /// # Arguments
+    /// * `day` - The date to query incomplete records for
+    ///
+    /// # Returns
+    /// Vector of Record instances representing incomplete processing runs for the specified day
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn get_incomplete_by_day(&mut self, day: DateTime<Utc>) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -184,6 +208,17 @@ SELECT * FROM {}.daily_stats WHERE status != 0 AND day = ?
         Ok(daily_stats)
     }
 
+    /// Retrieves all incomplete processing records for a specific site
+    ///
+    /// This method queries the database for all processing records associated with the given site
+    /// that have a non-zero status, indicating incomplete or failed processing runs.
+    ///
+    /// # Arguments
+    /// * `site` - Name of the site to query incomplete records for
+    ///
+    /// # Returns
+    /// Vector of Record instances representing incomplete processing runs for the specified site
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn get_incomplete_by_site(&mut self, site: &str) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -197,6 +232,11 @@ SELECT * FROM {}.daily_stats WHERE status != 0 AND site_name = ?
         Ok(daily_stats)
     }
 
+    /// Retrieves all processing records where aircraft ADS-B data was missing
+    ///
+    /// # Returns
+    /// Vector of Record instances where processing failed due to missing aircraft data
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn get_missing_adsb(&mut self) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -209,6 +249,11 @@ SELECT * FROM {}.daily_stats WHERE status = 1
         Ok(daily_stats)
     }
 
+    /// Retrieves all processing records where drone tracking data was missing
+    ///
+    /// # Returns
+    /// Vector of Record instances where processing failed due to missing drone data
+    ///
     #[tracing::instrument(skip(self))]
     pub async fn get_missing_drones(&mut self) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
