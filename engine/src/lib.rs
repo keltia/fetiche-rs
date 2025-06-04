@@ -443,7 +443,8 @@ impl Engine {
             .join("tokens")
             .to_string_lossy()
             .to_string();
-        trace!("load tokens from {tokens_area}");
+
+        trace!("load tokens from {tokens_area:?}");
         let tokens = TokenStorage::register(&tokens_area).await?;
         info!("{} tokens loaded", tokens.len());
 

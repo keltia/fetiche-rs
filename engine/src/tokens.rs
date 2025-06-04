@@ -11,7 +11,7 @@ use object_store::{ObjectMeta, ObjectStore};
 use tabled::builder::Builder;
 use tabled::settings::Style;
 use tokio::runtime::Handle;
-use tracing::trace;
+use tracing::{debug, trace};
 
 use crate::token::AsdToken;
 use crate::{TokenStatus, TokenType};
@@ -74,12 +74,13 @@ impl TokenStorage {
     ///
     #[tracing::instrument]
     pub async fn register(path: &str) -> Result<Self> {
-        let store = Arc::new(LocalFileSystem::new());
-        let base_path = Path::from(path);
+        debug!("Registering token storage at {:?}", path);
+        let store = LocalFileSystem::new_with_prefix(&path)?;
         let mut db = BTreeMap::<String, TokenType>::new();
 
         // List all objects in the directory
-        let list_stream = store.list(Some(&base_path));
+        //
+        let list_stream = store.list(None);
         let objects: Vec<ObjectMeta> = list_stream.try_collect().await?;
 
         trace!("reading directory {path}");
@@ -102,8 +103,8 @@ impl TokenStorage {
         }
 
         Ok(TokenStorage {
-            store,
-            base_path,
+            store: Arc::new(store),
+            base_path: Path::from(path),
             list: db,
         })
     }
