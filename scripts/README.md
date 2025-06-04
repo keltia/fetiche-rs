@@ -110,7 +110,7 @@ options:
 - `import-adsb.py`
 
 Import a file or a tree of files in parquet or csv format into a [Clickhouse] instance. This version is specific
-to the `airplanes_raw` ADS-B table. You *must* have [qsv] somewhere in your PATH.
+to the `airplanes_raw` ADS-B table. You *must* have [qsvlite] somewhere in your PATH.
 
 ```text
 usage: import-adsb [-h] [--datalake DATALAKE] [--dry-run] [--delete] [files ...]
@@ -126,6 +126,32 @@ options:
                         Datalake is here.
   --dry-run, -n         Just show what would happen.
   --delete, -d          Delete final file.
+```
+
+- `import-avionix.py`
+
+Import a file or a tree of files in parquet or csv format into a [Clickhouse] instance. This version is specific
+to the `avionix_raw` Avionix table. You *must* have [qsvlite] somewhere in your PATH.
+
+```text
+usage: import-avionix [-h] [--chunk-size CHUNK_SIZE] [--datalake DATALAKE] [--dry-run] [--delete] [--interval INTERVAL] [--no-delay] [files ...]
+
+Import Avionix data into CH.
+
+positional arguments:
+  files                 List of files or directories.
+
+options:
+  -h, --help            show this help message and exit
+  --chunk-size, -S CHUNK_SIZE
+                        Import by batch of that many lines.
+  --datalake, -D DATALAKE
+                        Datalake is here.
+  --dry-run, -n         Just show what would happen.
+  --delete, -d          Delete final file.
+  --interval, -i INTERVAL
+                        Interval between imports.
+  --no-delay, -N        Do not add delay between imports.
 ```
 
 - `import-drones.py`
