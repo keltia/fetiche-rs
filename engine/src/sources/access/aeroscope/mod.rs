@@ -10,22 +10,19 @@
 //! This implement the `Fetchable` trait described in `mod.rs`.
 //!
 
-mod fetch;
-
 use std::str::FromStr;
-use std::vec;
 
+use chrono::Utc;
 use clap::{crate_name, crate_version};
 use eyre::Result;
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::sync::mpsc::Sender;
 use tracing::{debug, trace};
 
 use fetiche_formats::Format;
 
-use crate::site::Site;
-use crate::{http_get_auth, http_post, Auth, AuthError, Capability, Fetchable, FetchableSource};
+use crate::{Auth, AuthError, Capability, Fetchable, FetchableSource, Site, Stats};
 
 /// Data to send to authenticate ourselves and get a token
 ///
@@ -47,10 +44,10 @@ struct Token {
 
 /// This describes the Aeroscope "site" which is the PC we have here at the EIH
 /// ///
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Aeroscope {
     /// Describe the different features of the source
-    pub features: Vec<Capability>,
+    pub feature: Capability,
     /// Input formats
     pub format: Format,
     /// Auth data, username
@@ -73,7 +70,7 @@ impl Aeroscope {
         // Set some reasonable defaults
         //
         Aeroscope {
-            features: vec![Capability::Fetch, Capability::Read],
+            feature: Capability::Fetch,
             format: Format::Aeroscope,
             login: "".to_owned(),
             password: "".to_owned(),
@@ -85,10 +82,8 @@ impl Aeroscope {
 
     /// Load our site details from what is in the configuration file
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn load(&mut self, site: &Site) -> &mut Self {
-        trace!("aeroscope::load({site:?})");
-
         self.format = Format::from_str(&site.format).unwrap();
         self.base_url = site.base_url.to_owned();
         if let Some(auth) = &site.auth {
@@ -147,7 +142,19 @@ impl Fetchable for Aeroscope {
         let url = format!("{}{}", self.base_url, self.token);
         trace!("Fetching token through {}…", url);
 
-        let resp = http_post!(self, url, &cred).await.map_err(|e| AuthError::HTTP(e.to_string()))?;
+        let client = reqwest::Client::new();
+        let resp = client
+            .post(url)
+            .header(
+                "user-agent",
+                format!("{}/{}", crate_name!(), crate_version!()),
+            )
+            .header("content-type", "application/json")
+            .json(&cred)
+            .send()
+            .await
+            .map_err(|e| AuthError::HTTP(e.to_string()))?;
+
         let resp = resp
             .text()
             .await
@@ -162,17 +169,36 @@ impl Fetchable for Aeroscope {
     /// Fetch actual data from the site as a long String.
     ///
     #[tracing::instrument(skip(self))]
-    async fn fetch(&self, out: Sender<String>, token: &str, _args: &str) -> Result<()> {
-        trace!("aeroscope::fetch");
+    async fn fetch(&self, out: Sender<String>, token: &str, _args: &str) -> Result<Stats> {
 
         // Use the token to authenticate ourselves
         //
         let url = format!("{}{}", self.base_url, self.get);
-        let resp = http_get_auth!(self, url, token).await?;
+        let client = reqwest::Client::new();
+        let resp = client
+            .post(url)
+            .header("content-type", "application/json")
+            .header("user-agent", format!("{}/{}", crate_name!(), crate_version!()))
+            .body(json!(&token).to_string())
+            .send()
+            .await
+            .map_err(|e| AuthError::HTTP(e.to_string()))?;
+
+
         let resp = resp.text().await?;
 
         debug!("{} bytes read. ", resp.len());
-        Ok(out.send(resp)?)
+        // Send statistics
+        //
+        let stats = Stats {
+            tm: Utc::now().timestamp() as u64,
+            pkts: 1u32,
+            bytes: resp.len() as u64,
+            ..Default::default()
+        };
+
+        let _ = out.send(resp)?;
+        Ok(stats)
     }
 
     /// Returns the site's input formats
