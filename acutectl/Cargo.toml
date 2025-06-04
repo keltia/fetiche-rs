@@ -28,23 +28,19 @@ eyre.workspace = true
 clap.workspace = true
 fetiche-client.workspace = true
 fetiche-common.workspace = true
-fetiche-engine.workspace = true
 fetiche-formats.workspace = true
 fetiche-macros.workspace = true
 hcl-rs.workspace = true
 serde.workspace = true
-strum.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
 clap_complete = "4.5"
 ctrlc = { version = "3.4", features = ["termination"] }
-derive_builder = "0.20"
 indicatif = "0.18"
 
 [dev-dependencies]
 assert_cmd = "2.0"
 proptest.workspace = true
-serde_json.workspace = true
 
