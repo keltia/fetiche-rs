@@ -6,6 +6,7 @@ use std::fmt::Debug;
 use tracing::info;
 
 pub use acute::*;
+pub use check::*;
 pub use distances::*;
 pub use export::*;
 //pub use import::*;
@@ -17,6 +18,7 @@ use crate::cli::{Opts, SubCommand};
 use crate::runtime::Context;
 
 mod acute;
+mod check;
 mod distances;
 mod export;
 //mod import;
@@ -63,6 +65,10 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
                 export_encounters(ctx, opts).await?;
             }
         },
+        SubCommand::Check(copts) => {
+            eprintln!("Check daily runs status.");
+            todo!()
+        }
         SubCommand::Setup(sopts) => {
             eprintln!("Setup ACUTE environment in {}.\n", ctx.config["datalake"]);
             setup_acute_environment(ctx, sopts).await?;

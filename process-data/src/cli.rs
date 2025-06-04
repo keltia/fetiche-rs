@@ -1,7 +1,7 @@
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use clap_complete::Shell;
 
-use crate::cmds::{AcuteOpts, DistOpts, ExportOpts, SetupOpts};
+use crate::cmds::{AcuteOpts, CheckOpts, DistOpts, ExportOpts, SetupOpts};
 
 /// Global (aka non-command-related) options.
 ///
@@ -49,6 +49,9 @@ pub enum SubCommand {
     /// Build the ACUTE env. from the ground up.
     #[clap(visible_alias = "boot", visible_alias = "restart")]
     Bootstrap,
+    /// Check status of daily runs.
+    #[clap(visible_alias = "check", visible_alias = "chk")]
+    Check(CheckOpts),
     /// Distance-related calculations.
     #[clap(visible_alias = "dist", visible_alias = "d")]
     Distances(DistOpts),
