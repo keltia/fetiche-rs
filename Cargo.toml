@@ -20,7 +20,8 @@ fetiche-macros = { version = "0", path = "macros" }
 futures = "0.3"
 hcl-rs = "0.18"
 jiff = { version = "0.2", features = ["serde"] }
-nom = "7"
+nom = "8"
+object_store = "0.12"
 opentelemetry = { version = "0.26", features = ["logs", "metrics"] }
 opentelemetry-otlp = "0.26"
 opentelemetry_sdk = { version = "0.26", features = ["rt-tokio"] }

@@ -53,6 +53,8 @@ fetiche-common.workspace = true
 fetiche-formats.workspace = true
 fetiche-macros.workspace = true
 hcl-rs.workspace = true
+nom.workspace = true
+object_store.workspace = true
 polars.workspace = true
 ractor.workspace = true
 reqwest.workspace = true
@@ -74,7 +76,6 @@ indicatif = "0.17"
 lapin = { version = "2.5", features = ["serde_json"] }
 mini-moka = "0.10"
 native-tls = "0.2"
-nom = "8"
 percent-encoding = "2.3"
 futures-util = "0.3"
 futures = "0.3.31"
