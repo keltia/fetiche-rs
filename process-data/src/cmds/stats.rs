@@ -177,6 +177,67 @@ pub struct PlanesStats {
     pub time: u128,
 }
 
+/// Represents statistical data for a specific site on a given day.
+///
+/// This structure contains various metrics about planes and drones activity
+/// recorded at a particular monitoring site during a specific day.
+///
+/// # Fields
+///
+/// * `site` - The name or identifier of the monitoring site.
+/// * `day` - The UTC datetime when these statistics were recorded.
+/// * `planes` - The number of planes detected during this period.
+/// * `drones` - The number of drones detected during this period.
+/// * `potential` - The number of potential encounters identified.
+/// * `encounters` - The number of actual encounters confirmed.
+/// * `distance` - The radius around the site used for calculations, in nautical miles.
+/// * `proximity` - The proximity threshold used for encounter detection, in meters.
+///
+#[derive(Clone, Debug)]
+pub struct Day {
+    /// The name or identifier of the monitoring site.
+    pub site: String,
+    /// The UTC datetime when these statistics were recorded.
+    pub day: DateTime<Utc>,
+    /// The number of planes detected during this period.
+    pub planes: usize,
+    /// The number of drones detected during this period.
+    pub drones: usize,
+    /// The number of potential encounters identified.
+    pub potential: usize,
+    /// The number of actual encounters confirmed.
+    pub encounters: usize,
+    /// The radius around the site used for calculations, in nautical miles.
+    pub distance: f64,
+    /// The proximity threshold used for encounter detection, in meters.
+    pub proximity: f64,
+}
+
+impl Day {
+    pub fn new() -> Self {
+        Self {
+            site: String::new(),
+            day: Utc::now(),
+            planes: 0,
+            drones: 0,
+            potential: 0,
+            encounters: 0,
+            distance: 0.0,
+            proximity: 0.0,
+        }
+    }
+
+    pub fn header(&self) -> String {
+        format!("{}-{}", &self.site, &self.day.format("%Y-%m-%d"))
+    }
+}
+
+impl Default for Day {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Provides a default implementation for creating a new `PlanesStats` instance.
 ///
 /// # Details
@@ -184,6 +245,7 @@ pub struct PlanesStats {
 /// The default implementation sets all fields of the `PlanesStats` structure to their
 /// initial values:
 ///
+/// * `site`*: site name.
 /// * `day`: A vector containing the current UTC time.
 /// * `planes`: 0 (no planes detected by default).
 /// * `drones`: 0 (no drones detected by default).
@@ -271,9 +333,11 @@ impl PlanesStats {
 
 impl Display for PlanesStats {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let str = format!("{} drones in potential airprox with {} planes, {} found within {}m in a {} nm radius.\n\
+        let str = format!(
+            "{} drones in potential airprox with {} planes, {} found within {}m in a {} nm radius.\n\
         Time spent: {} ms\n",
-                          self.drones, self.planes, self.encounters, self.proximity, self.distance, self.time);
+            self.drones, self.planes, self.encounters, self.proximity, self.distance, self.time
+        );
         write!(f, "{}", str)
     }
 }
@@ -465,5 +529,39 @@ mod tests {
         if let Stats::Planes(planes_stats) = summarised {
             assert!(planes_stats.day.len() >= 2);
         }
+    }
+
+    #[test]
+    fn test_day_new() {
+        let day = Day::new();
+        assert_eq!(day.site, String::new());
+        assert_eq!(day.planes, 0);
+        assert_eq!(day.drones, 0);
+        assert_eq!(day.potential, 0);
+        assert_eq!(day.encounters, 0);
+        assert_eq!(day.distance, 0.0);
+        assert_eq!(day.proximity, 0.0);
+    }
+
+    #[test]
+    fn test_day_header() {
+        let mut day = Day::new();
+        day.site = "TestSite".to_string();
+        day.day = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .into();
+        assert_eq!(day.header(), "TestSite-2024-01-01");
+    }
+
+    #[test]
+    fn test_day_default() {
+        let day = Day::default();
+        assert_eq!(day.site, String::new());
+        assert_eq!(day.planes, 0);
+        assert_eq!(day.drones, 0);
+        assert_eq!(day.potential, 0);
+        assert_eq!(day.encounters, 0);
+        assert_eq!(day.distance, 0.0);
+        assert_eq!(day.proximity, 0.0);
     }
 }
