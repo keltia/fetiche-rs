@@ -29,7 +29,26 @@
 //!         </function>
 //! </functions>
 //! ```
-//!
+//! or
+//! ```xml
+//! <functions>
+//!         <function>
+//!                 <type>executable</type>
+//!                 <name>compute_localdate</name>
+//!                 <return_type>String</return_type>
+//!                 <argument>
+//!                         <type>UInt32</type>
+//!                         <name>ts</name>
+//!                 </argument>
+//!                 <argument>
+//!                         <type>String</type>
+//!                         <name>timezone</name>
+//!                 </argument>
+//!                 <format>TabSeparated</format>
+//!                 <command>compute-localtime -d</command>
+//!         </function>
+//! </functions>
+//! ```
 
 use clap::Parser;
 use jiff::{Timestamp, Zoned};
@@ -50,9 +69,14 @@ fn main() -> eyre::Result<()> {
 
     let name = std::env::current_exe()?;
     let name = name.file_stem().unwrap().to_str().unwrap();
-    info!("Running {:?} {:?}", name, opts);
 
-    let output = if name == "compute-localdate" || opts.date {
+    let is_date_mode = name == "compute-localdate" || opts.date;
+    info!(
+        "Running in {} mode",
+        if is_date_mode { "date" } else { "time" }
+    );
+
+    let output = if is_date_mode {
         |p: Zoned| p.date().to_string()
     } else {
         |p: Zoned| p.time().to_string()
@@ -64,7 +88,7 @@ fn main() -> eyre::Result<()> {
         let text = match l {
             Ok(text) => text,
             Err(e) => {
-                error!("WARNING: could not read from stdin");
+                error!("WARNING: could not read from stdin: {e}");
                 return;
             }
         };
@@ -73,7 +97,7 @@ fn main() -> eyre::Result<()> {
         let ts = match Timestamp::from_second(ts) {
             Ok(ts) => ts,
             Err(e) => {
-                error!("ERROR: {}", e.to_string());
+                error!("ERROR: {e}");
                 return;
             }
         };
@@ -82,7 +106,7 @@ fn main() -> eyre::Result<()> {
         let ts = match ts.in_tz(timezone) {
             Ok(ts) => ts,
             Err(e) => {
-                error!("ERROR: {}", e.to_string());
+                error!("ERROR: {e}");
                 return;
             }
         };
