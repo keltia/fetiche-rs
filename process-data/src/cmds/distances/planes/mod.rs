@@ -10,6 +10,7 @@ use clap::Parser;
 use derive_builder::Builder;
 use eyre::Result;
 use futures::future::join_all;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use tracing::{debug, error, info, trace};
 
@@ -117,6 +118,9 @@ pub struct PlaneDistance {
     /// List of temporary tables created along the way, for cleanup.
     #[builder(default = "vec![]")]
     state: Vec<TempTables>,
+    /// Multi-progress bar for tracking progress
+    #[builder(default = "None")]
+    pub progress: Option<MultiProgress>,
 }
 
 /// Temporary tables created during the processing of distance calculations.
@@ -193,27 +197,24 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     let site_filter = opts.name.as_deref().unwrap_or("");
     let work_list = prepare_work_list(ctx, dates, site_filter).await?;
 
-    // Pass down the parameters for calculations.
-    //
-    let threshold = match ctx.config.get("threshold") {
-        Some(v) => v.parse::<f64>().unwrap_or(1852.),
-        None => 1852.,
-    };
-
-    let factor = match ctx.config.get("factor") {
-        Some(v) => v.parse::<f64>().unwrap_or(3.),
-        None => 3.,
-    };
-
     // Step 4: Process batches of computations in parallel
     //
-    let all_stats = process_batches(ctx, work_list, opts.distance, threshold, factor).await;
+    let all_stats = process_batches(ctx, work_list).await;
 
     // Step 5: Gather and summarize statistics
     //
     let stats = Stats::summarise(all_stats);
     trace!("summary={stats:?}");
     Ok(stats)
+}
+
+#[derive(Clone, Debug, Builder)]
+struct WorkItem {
+    day: DateTime<Utc>,
+    site: Site,
+    distance: f64,
+    threshold: f64,
+    factor: f64,
 }
 
 /// Prepares the work list for distance calculations by generating combinations of
@@ -250,7 +251,7 @@ async fn prepare_work_list(
     ctx: &Context,
     dates: Vec<DateTime<Utc>>,
     site_filter: &str,
-) -> Result<Vec<(DateTime<Utc>, Site)>> {
+) -> Result<Vec<WorkItem>> {
 
     // Let us generate the list we want:
     //
@@ -269,6 +270,23 @@ async fn prepare_work_list(
     };
     trace!("Site = {name} (all if empty)");
 
+    // Pass down the parameters for calculations.
+    //
+    let threshold = match ctx.config.get("threshold") {
+        Some(v) => v.parse::<f64>().unwrap_or(1852.),
+        None => 1852.,
+    };
+
+    let factor = match ctx.config.get("factor") {
+        Some(v) => v.parse::<f64>().unwrap_or(3.),
+        None => 3.,
+    };
+
+    let distance = match ctx.config.get("distance") {
+        Some(v) => v.parse::<f64>().unwrap_or(70.),
+        None => 70.,
+    };
+
     let dbh = ctx.db().await;
     let work_list: Vec<_> = dates
         .iter()
@@ -280,13 +298,30 @@ async fn prepare_work_list(
                 //
                 if !name.is_empty() {
                     let site = find_site(&dbh, name).await.unwrap();
-                    let res = vec![(day, site)];
-                    res
+                    let w = WorkItemBuilder::default()
+                        .site(site)
+                        .day(day)
+                        .distance(distance)
+                        .threshold(threshold)
+                        .factor(factor)
+                        .build()
+                        .unwrap();
+                    vec![w]
                 } else {
                     // Process all sites
                     //
                     let list = enumerate_sites(&dbh, day).await.unwrap();
-                    let list: Vec<_> = list.iter().map(|site| (day, site.clone())).collect();
+                    let list: Vec<_> = list.iter()
+                        .map(|site| {
+                            WorkItemBuilder::default()
+                                .site(site.clone())
+                                .day(day)
+                                .distance(distance)
+                                .threshold(threshold)
+                                .factor(factor)
+                                .build()
+                                .unwrap()
+                        }).collect();
                     list
                 }
             }
@@ -339,34 +374,53 @@ async fn prepare_work_list(
 #[tracing::instrument(skip(ctx))]
 async fn process_batches(
     ctx: &Context,
-    work_list: Vec<(DateTime<Utc>, Site)>,
-    distance: f64,
-    threshold: f64,
-    factor: f64,
+    work_list: Vec<WorkItem>,
 ) -> Vec<Stats> {
+
+
+    // Prepare progress bar
+    //
+    let m = MultiProgress::new();
+    let sty = ProgressStyle::with_template(
+        "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>7}/{len:7} {msg}",
+    ).unwrap()
+        .progress_chars("##-");
 
     // We have a potentially large set of day+site to compute.  Try to not batch more than out current
     // pool size
     //
     let mut all = vec![];
     for batch in &work_list.into_iter().chunks(ctx.pool_size) {
+        let pb = ProgressBar::new(40);
+        pb.set_style(sty.clone());
+        m.add(pb.clone());
+
         let stats: Vec<_> = batch
             .into_iter()
-            .map(|(day, site)| async move {
-                trace!("Calculate for site {site} on day {day}");
-                let current = site.clone();
-                let ctx = ctx.clone();
+            .map(|work_item: WorkItem| {
+                let pb = pb.clone();
 
-                match tokio::spawn(async move {
-                    calculate_one_day_on_site(&ctx, &current, &day, distance, threshold, factor)
-                        .await
-                        .unwrap()
-                })
-                    .await {
-                    Ok(res) => res,
-                    Err(e) => {
-                        error!("Error for day {day} on {site}: {}", e.to_string(), day = day);
-                        Stats::Planes(PlanesStats::default())
+                async move {
+                    trace!("Calculate for site {} on day {}", work_item.site, work_item.day);
+                    let ctx = ctx.clone();
+                    let work = work_item.clone();
+                    let pb = pb.clone();
+
+                    match tokio::spawn({
+                        let work = work.clone();
+                        let pb = pb.clone();
+                        async move {
+                            calculate_one_day_on_site(&ctx, &work, &pb)
+                                .await
+                                .unwrap()
+                        }
+                    })
+                        .await {
+                        Ok(res) => res,
+                        Err(e) => {
+                            error!("Error for day {} on {}: {}", work.day, work.site, e.to_string());
+                            Stats::Planes(PlanesStats::default())
+                        }
                     }
                 }
             })
@@ -378,6 +432,78 @@ async fn process_batches(
     debug!("all={all:?}");
 
     all
+}
+
+/// Perform the calculation for a specific day and a specific site.
+///
+/// This function is responsible for calculating the plane distances for
+/// a given site on a specific day. It takes into account the provided
+/// parameters such as distance and separation, and uses the database
+/// connection to process and store the results. It builds the necessary
+/// input using the `PlaneDistanceBuilder` and executes the calculation.
+///
+/// # Arguments
+///
+/// * `ctx` - The application context containing configurations and resources.
+/// * `site` - A reference to the `Site` for which the calculation is being performed.
+/// * `day` - The date for which the calculation is intended.
+/// * `distance` - Maximum distance to be considered for calculations.
+/// * `separation` - Minimum proximity for the calculations.
+///
+/// # Returns
+///
+/// Returns a `Result` containing `Stats` on success, or an error type if the calculation fails.
+///
+/// # Errors
+///
+/// This function will return an error in the following cases:
+/// * Failure to acquire a database connection.
+/// * Issues during the normalization of the provided day.
+/// * Errors occurring during the building of the `PlaneDistance` object.
+/// * Errors occurring while running the actual calculation process.
+///
+/// # Note
+///
+/// If the `dry_run` setting is enabled in the context, this function will not run real calculations.
+/// Instead, it will return a default `PlanesStats` result without modifying any data.
+///
+#[tracing::instrument(skip(ctx))]
+async fn calculate_one_day_on_site(
+    ctx: &Context,
+    work: &WorkItem,
+    pbar: &ProgressBar,
+) -> Result<Stats> {
+    let dbh = ctx
+        .dbh
+        .get()
+        .await
+        .map_err(|e| CmdError::ConnectionUnavailable(e.to_string()))?;
+
+    let day = normalise_day(work.day)?;
+
+    let pbm = format!("Processing site {} on day {}", work.site.name, day);
+    pbar.set_message(pbm);
+    let mut work = PlaneDistanceBuilder::default()
+        .site(work.site.clone())
+        .lat(work.site.latitude as f64)
+        .lon(work.site.longitude as f64)
+        .distance(work.distance)
+        .date(work.day)
+        .threshold(work.threshold)
+        .factor(work.factor)
+        .wait(ctx.wait)
+        .build()?;
+
+    trace!("worklist for {:?} on {}: {:?}", work.site.name, day, work);
+
+    let stats = if !ctx.dry_run {
+        work.run(&dbh).await?
+    } else {
+        trace!("dry run!");
+        Stats::Planes(PlanesStats::default())
+    };
+    pbar.finish_and_clear();
+    Ok(stats)
 }
 
 /// Parses the provided `DateOpts` into a start and end date range.
@@ -401,16 +527,16 @@ async fn process_batches(
 ///
 /// - If `date_opts` is valid, the function logs the interval and returns
 ///   the calculated start and stop dates.
-/// - If an error occurs, it defaults to the current day, logs the fallback, 
+/// - If an error occurs, it defaults to the current day, logs the fallback,
 ///   and returns both `start` and `stop` as the start of the current day.
 ///
 /// # Examples
 ///
 /// Valid date range:
 /// ```rust
-/// let date_opts = DateOpts::From { 
+/// let date_opts = DateOpts::From {
 ///     begin: "2023-10-01T00:00:00Z".to_string(),
-///     end: "2023-10-10T00:00:00Z".to_string() 
+///     end: "2023-10-10T00:00:00Z".to_string()
 /// };
 /// let result = parse_date_interval(date_opts).unwrap();
 /// assert_eq!(result.0, Utc.with_ymd_and_hms(2023, 10, 1, 0, 0, 0).unwrap());
@@ -443,89 +569,6 @@ fn parse_date_interval(date_opts: DateOpts) -> Result<(DateTime<Utc>, DateTime<U
             Ok((tm, tm))
         }
     }
-}
-
-
-/// Perform the calculation for a specific day and a specific site.
-///
-/// This function is responsible for calculating the plane distances for
-/// a given site on a specific day. It takes into account the provided
-/// parameters such as distance and separation, and uses the database
-/// connection to process and store the results. It builds the necessary
-/// input using the `PlaneDistanceBuilder` and executes the calculation.
-///
-/// # Arguments
-///
-/// * `ctx` - The application context containing configurations and resources.
-/// * `site` - A reference to the `Site` for which the calculation is being performed.
-/// * `day` - The date for which the calculation is intended.
-/// * `distance` - Maximum distance to be considered for calculations.
-/// * `separation` - Minimum proximity for the calculations.
-///
-/// # Returns
-///
-/// Returns a `Result` containing `Stats` on success, or an error type if the calculation fails.
-///
-/// # Errors
-///
-/// This function will return an error in the following cases:
-/// * Failure to acquire a database connection.
-/// * Issues during the normalization of the provided day.
-/// * Errors occurring during the building of the `PlaneDistance` object.
-/// * Errors occurring while running the actual calculation process.
-///
-/// # Examples
-///
-/// ```rust
-/// let stats = calculate_one_day_on_site(&ctx, &site, &day, 70.0, 5500.0).await?;
-/// println!("Calculated stats: {:?}", stats);
-/// ```
-///
-/// # Note
-///
-/// If the `dry_run` setting is enabled in the context, this function will not run real calculations.
-/// Instead, it will return a default `PlanesStats` result without modifying any data.
-///
-#[tracing::instrument(skip(ctx))]
-async fn calculate_one_day_on_site(
-    ctx: &Context,
-    site: &Site,
-    day: &DateTime<Utc>,
-    distance: f64,
-    threshold: f64,
-    factor: f64,
-) -> Result<Stats> {
-    let dbh = ctx
-        .dbh
-        .get()
-        .await
-        .map_err(|e| CmdError::ConnectionUnavailable(e.to_string()))?;
-
-    let day = normalise_day(*day)?;
-
-    let mut work = PlaneDistanceBuilder::default()
-        .site(site.clone())
-        .lat(site.latitude as f64)
-        .lon(site.longitude as f64)
-        .distance(distance)
-        .date(day)
-        .threshold(threshold)
-        .factor(factor)
-        .wait(ctx.wait)
-        .build()?;
-
-    trace!("worklist for {:?} on {}: {:?}", site.name, day, work);
-
-    // We use rayon to reduce the overhead during parallel calculations
-    //
-
-    let stats = if !ctx.dry_run {
-        work.run(&dbh).await?
-    } else {
-        trace!("dry run!");
-        Stats::Planes(PlanesStats::default())
-    };
-    Ok(stats)
 }
 
 #[cfg(test)]
