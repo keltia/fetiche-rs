@@ -40,7 +40,7 @@ use uuid::{ContextV7, Uuid};
 #[derive(Parser, Debug)]
 struct Opts {
     /// Time threshold in seconds to determine when to start a new journey
-    #[clap(short = 't', long, default_value = "30")]
+    #[clap(short = 't', long, default_value = "5m")]
     threshold: String,
     #[clap(short = 'o', long, default_value = "output.csv")]
     output: String,
@@ -75,74 +75,53 @@ fn parse_threshold(s: &str) -> Result<f64> {
         .map_err(|e| eyre::eyre!(e))
 }
 
-/// Processes a single trajectory point record and determines if it belongs to a new journey
-/// based on time differences with the previous point.
-///
-/// # Arguments
-///
-/// * `acc` - The previous record containing journey_id, drone_id and timestamp
-/// * `record` - The current record to process containing journey_id, drone_id and timestamp
-/// * `threshold` - Time threshold in seconds to determine when to start a new journey
-///
-/// # Returns
-///
-/// Returns a Result containing:
-/// - `Ok(StringRecord)` - New record with potentially updated journey ID
-/// - `Err` - If timestamp parsing or calculations fail
-///
-/// # Examples
-///
-/// ```
-/// use csv::StringRecord;
-///
-/// let prev = StringRecord::from(vec!["journey1", "drone1", "2024-01-01T10:00:00"]);
-/// let curr = StringRecord::from(vec!["journey1", "drone1", "2024-01-01T10:00:15"]);
-/// let result = process_one(prev, curr, 30.0).unwrap();
-/// ```
-///
-fn process_one(acc: StringRecord, record: StringRecord, threshold: f64) -> Result<StringRecord> {
+fn process_one(
+    previous_record: StringRecord,
+    current_record: StringRecord,
+    threshold: f64,
+    uuid_ctx: &ContextV7,
+) -> Result<StringRecord> {
     let marker = SpanRelativeTo::days_are_24_hours();
 
-    // Current record
+    // Extract data from records
+    let current_journey_id = &current_record[0];
+    let current_ident = &current_record[1];
+    let current_tm_str = &current_record[2];
+    let current_tm: DateTime = current_tm_str.parse()?;
+
+    let previous_journey_id = &previous_record[0];
+    let previous_ident = &previous_record[1];
+    let previous_tm: DateTime = previous_record[2].parse()?;
+
+    // Determine the journey ID for the new record
     //
-    let journey = &record[0];
-    let ident = &record[1];
-    let tm = &record[2];
-    let curr_tm: DateTime = tm.parse()?;
-
-    // get previous state
-    //
-    let prev_journey = &acc[0];
-    let prev_ident = &acc[1];
-    let prev_tm: DateTime = acc[2].parse()?;
-
-    let new = if prev_ident == ident {
-        // Time difference
+    let new_journey_id = if current_ident != previous_ident {
+        // Different drone, so it's a different journey by definition
         //
-        let diff = curr_tm - prev_tm;
-        let diff = diff.total((Unit::Second, marker))?;
-
-        // Same drone
-        //
-        if diff > threshold {
-            // Starting a new journey with an uuid, use the record timestamp as base for it
-            //
-            let ctx = ContextV7::new();
-            let unix_tm = curr_tm.to_zoned(TimeZone::UTC)?.timestamp().as_second();
-            let base_ts = uuid::Timestamp::from_unix(ctx, unix_tm as u64, 0);
-            let uuid = Uuid::new_v7(base_ts);
-            StringRecord::from(vec![uuid.to_string(), ident.to_string(), tm.to_string()])
-        } else {
-            // Same journey, just another point
-            //
-            StringRecord::from(vec![prev_journey, ident, tm])
-        }
+        current_journey_id.to_string()
     } else {
-        // Different drone now
+        // Same drone, check time difference
         //
-        StringRecord::from(vec![journey, ident, tm])
+        let diff = (current_tm - previous_tm).total((Unit::Second, marker))?;
+
+        if diff > threshold {
+            // Time difference is over the threshold, start a new journey
+            //
+            let unix_tm = current_tm.to_zoned(TimeZone::UTC)?.timestamp().as_second();
+            let ts = uuid::Timestamp::from_unix(uuid_ctx, unix_tm as u64, 0);
+            Uuid::new_v7(ts).to_string()
+        } else {
+            // Still the same journey
+            //
+            previous_journey_id.to_string()
+        }
     };
-    Ok(new)
+
+    Ok(StringRecord::from(vec![
+        new_journey_id,
+        current_ident.to_string(),
+        current_tm_str.to_string(),
+    ]))
 }
 
 /// Takes a CSV file containing trajectory points and assigns journey IDs based on time thresholds.
@@ -181,6 +160,7 @@ fn main() -> Result<()> {
     wrt.write_record(&["uuid", "ident", "timestamp"])?;
 
     let mut records = rdr.records();
+    let ctx = ContextV7::new();
 
     // Process the first record separately to establish the initial "previous" state
     //
@@ -191,7 +171,7 @@ fn main() -> Result<()> {
         // Loop through the rest of the records, writing each result as we go
         for result in records {
             let record = result?;
-            let new_record = process_one(prev, record, threshold)?;
+            let new_record = process_one(prev, record, threshold, &ctx)?;
             wrt.write_record(&new_record)?;
 
             // The new record becomes the "previous" one for the next iteration
