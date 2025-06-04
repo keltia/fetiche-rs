@@ -175,10 +175,10 @@ impl Sources {
                     #[cfg(feature = "opensky")]
                     Format::Opensky => {
                         if let Some(Auth::Login { .. }) = site.auth {
-                            let s = OpenskyServer::new().load(site.clone()).clone();
+                            let s = OpenskyServer::new().load(site).clone();
                             Ok(StreamableSource::OpenskyServer(s))
                         } else {
-                            let s = OpenskyDevice::new().load(site.clone()).clone();
+                            let s = OpenskyDevice::new().load(site).clone();
                             Ok(StreamableSource::OpenskyDevice(s))
                         }
                     }
