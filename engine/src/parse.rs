@@ -7,7 +7,6 @@
 //!
 
 use std::collections::VecDeque;
-use std::str::FromStr;
 
 use eyre::Result;
 use ractor::call;

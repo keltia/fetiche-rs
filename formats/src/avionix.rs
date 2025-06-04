@@ -3,7 +3,7 @@
 //! URL: http://www.avionix.pl
 //!
 
-use crate::{DataSource, DronePoint, UAVType, to_meters};
+use crate::{to_meters, DataSource, DronePoint, UAVType};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, serde_conv};
@@ -257,6 +257,7 @@ pub struct AvionixCat21 {
 /// The enum variants are serialized and deserialized from uppercase strings (e.g., "A", "G")
 /// to remain consistent with input/output formats.
 ///
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
 #[strum(serialize_all = "UPPERCASE")]
 enum Gda {
@@ -272,6 +273,7 @@ enum Gda {
 /// These categories range from "Glider" to "UFO" and include other classifications like powered aircraft,
 /// parachutes, and ground vehicles.
 ///
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Serialize, strum::Display, EnumString, strum::VariantNames)]
 enum Category {
     /// Unknown
