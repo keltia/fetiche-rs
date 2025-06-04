@@ -21,7 +21,7 @@ if sys.platform.startswith('darwin'):
 
 # All exportable tables
 reqs = {
-    'antennas': 'select * from {} order by id into outfile \'{}\'/{}.csv truncate format csvwithnames',
+    'antennas': 'select * from {} order by id into outfile \'{}/{}.csv\' truncate format csvwithnames',
     'sites': 'select * from {} order by id into outfile \'{}/{}.csv\' truncate format csvwithnames',
     'installations': 'select * from {} order by id into outfile \'{}/{}.csv\' truncate format csvwithnames',
     'deployments': 'select * from {} order by install_id into outfile \'{}/{}.csv\' truncate format csvwithnames',
