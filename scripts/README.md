@@ -148,6 +148,23 @@ options:
   --dry-run, -n         Do not actually move the file.
 ```
 
+- `export-metadata.py`
+
+After an update has been to one of the main metadata tables, this script will export the current state of all concerned
+tables into CSV files.
+
+```text
+usage: export-metadata [-h] [--datalake DATALAKE] [--dry-run]
+
+Export ACUTE metadata as CSV files.
+
+options:
+  -h, --help            show this help message and exit
+  --datalake, -D DATALAKE
+                        Datalake is here.
+  --dry-run, -n         Just show what would happen.
+```
+
 - `location-to-geojson.py`
 
 Take the Lat/Lon coordinates from `locations.hcl` and generate a proper GeoJSON file for DuckDB.
