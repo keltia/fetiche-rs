@@ -52,8 +52,8 @@ colorsys = "0.6"
 derive_builder = "0.20"
 geo = "0.30"
 itertools = "0.14"
-klickhouse = { version = "0.13", features = ["derive", "geo-types", "serde", "bb8"] }
-kml = "0.8"
+klickhouse = { version = "0.14", features = ["derive", "geo-types", "serde", "bb8"] }
+kml = "0.9"
 ml-progress = "0.1"
 rust-3d = "0.34"
 regex = "1.11"

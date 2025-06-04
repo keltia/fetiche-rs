@@ -1240,11 +1240,10 @@ checksum = "55248b47b0caf0546f7988906588779981c43bb1bc9d0c44087278f80cdb44ba"
 
 [[package]]
 name = "bb8"
-version = "0.8.6"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d89aabfae550a5c44b43ab941844ffcd2e993cb6900b342debf59e9ea74acdb8"
+checksum = "212d8b8e1a22743d9241575c6ba822cf9c8fef34771c86ab7e477a4fbfd254e5"
 dependencies = [
- "async-trait",
  "futures-util",
  "parking_lot",
  "tokio",
@@ -1649,17 +1648,6 @@ dependencies = [
 
 [[package]]
 name = "chrono-tz"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93698b29de5e97ad0ae26447b344c482a7284c737d9ddc5f9e52b74a336671bb"
-dependencies = [
- "chrono",
- "chrono-tz-build 0.3.0",
- "phf",
-]
-
-[[package]]
-name = "chrono-tz"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "efdce149c370f133a071ca8ef6ea340b7b88748ab0810097a9e2976eaa34b4f3"
@@ -1674,17 +1662,6 @@ name = "chrono-tz-build"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "433e39f13c9a060046954e0592a8d0a4bcb1040125cbf91cb8ee58964cfb350f"
-dependencies = [
- "parse-zoneinfo",
- "phf",
- "phf_codegen",
-]
-
-[[package]]
-name = "chrono-tz-build"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c088aee841df9c3041febbb73934cfc39708749bf96dc827e3359cd39ef11b1"
 dependencies = [
  "parse-zoneinfo",
  "phf",
@@ -4438,14 +4415,13 @@ dependencies = [
 
 [[package]]
 name = "klickhouse"
-version = "0.13.2"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97059bf2db462de12af0ad96b68c69a66895f17d02c340726bb19e11492577d6"
+checksum = "f54188349939b1505dee5d42a51ea0c86de59b41656f1a92932ea98cf3b7b7d8"
 dependencies = [
- "async-trait",
  "bb8",
  "chrono",
- "chrono-tz 0.9.0",
+ "chrono-tz 0.10.3",
  "cityhash-rs",
  "compiler-tools",
  "compiler-tools-derive",
@@ -4459,7 +4435,7 @@ dependencies = [
  "rustc_version",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tokio",
  "tokio-stream",
  "uuid",
@@ -4478,9 +4454,9 @@ dependencies = [
 
 [[package]]
 name = "kml"
-version = "0.8.7"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15ee323a0101f0a088261d45379c1127038a0df04991975e76c4ce427b4bfd6d"
+checksum = "e3d0c0ab882000f8d8fcbe38bde0a0437db5efd1ad65df34da65bba8ae46b877"
 dependencies = [
  "geo-types",
  "num-traits",
