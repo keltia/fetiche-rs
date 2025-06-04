@@ -38,6 +38,7 @@ pub struct ExpDistOpts {
 /// # Fields
 ///
 /// - `site` - Identifier of the site where the encounter occurred.
+/// - `sitename` - Name of the site where the encounter occurred.
 /// - `en_id` - Unique ID of the encounter.
 /// - `time` - Timestamp of when the encounter happened.
 /// - `journey` - Journey identifier associated with the encounter.
@@ -61,6 +62,7 @@ pub struct ExpDistOpts {
 #[derive(Debug, Deserialize, Row, Serialize)]
 struct Encounter {
     site: i32,
+    sitename: String,
     en_id: String,
     time: DateTime,
     journey: i32,
@@ -135,6 +137,7 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     let r = r##"
   SELECT
     site,
+    sitename,
     en_id,
     time,
     journey,
@@ -153,7 +156,7 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     distance_slant_m,
     distance_hor_m,
     distance_vert_m,
-    distance_home_m,
+    distance_home_m
   FROM airplane_prox
   ORDER BY time
         "##;
@@ -192,7 +195,28 @@ async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> 
     // Match with airprox_summary for export
     //
     let r1 = r##"
-  SELECT *
+  SELECT
+    site,
+    sitename,
+    en_id,
+    time,
+    journey,
+    drone_id,
+    model,
+    drone_lat,
+    drone_lon,
+    drone_alt_m,
+    drone_height_m,
+    prox_callsign,
+    prox_id,
+    prox_lat,
+    prox_lon,
+    prox_alt_m,
+    prox_mode_a,
+    distance_slant_m,
+    distance_hor_m,
+    distance_vert_m,
+    distance_home_m
   FROM
     airplane_prox AS a JOIN airprox_summary AS s
     ON
