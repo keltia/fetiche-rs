@@ -5,4 +5,5 @@ mod single;
 pub use local::*;
 pub use single::*;
 
-pub use fetiche_engine::Freq;
+// Re-export engine stuff.
+pub use fetiche_engine::{Filter, Freq, JobState};

@@ -11,12 +11,8 @@ use tracing::{debug, info, trace};
 
 use crate::FetchOpts;
 
-use fetiche_client::{ConsumerText::Save,
-                     JobTextBuilder,
-                     MiddleText::Tee,
-                     ProducerText::Fetch};
+use fetiche_client::{ConsumerText::Save, EngineSingle, Filter, JobState, JobTextBuilder, MiddleText::Tee, ProducerText::Fetch};
 use fetiche_common::DateOpts;
-use fetiche_engine::{Engine, Filter, JobState};
 
 /// Fetches data from a specified network site using the provided engine and options.
 ///
@@ -44,7 +40,7 @@ use fetiche_engine::{Engine, Filter, JobState};
         has_filter = %fopts.dates.is_some()
     )
 )]
-pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<()> {
+pub async fn fetch_from_site(engine: &mut EngineSingle, fopts: &FetchOpts) -> Result<()> {
     trace!("fetch_from_site({:?})", fopts.site);
 
     let name = &fopts.site;

@@ -282,7 +282,6 @@ pub struct ConvertOpts {
 
 #[tracing::instrument(skip(engine))]
 pub async fn handle_subcmd(engine: &mut EngineSingle, subcmd: &SubCommand) -> Result<()> {
-    let mut engine = engine.inner();
     match subcmd {
         // Handle `archive site`
         //

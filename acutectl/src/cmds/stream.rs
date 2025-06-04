@@ -4,12 +4,12 @@ use eyre::Result;
 use indicatif::ProgressBar;
 use tracing::{debug, info, trace};
 
-use fetiche_engine::{Engine, Filter, Freq, JobState};
+use fetiche_client::{EngineSingle, Filter, Freq, JobState};
 
 use crate::{Status, StreamOpts};
 
 #[tracing::instrument(skip(engine))]
-pub async fn stream_from_site(engine: &mut Engine, sopts: &StreamOpts) -> Result<()> {
+pub async fn stream_from_site(engine: &mut EngineSingle, sopts: &StreamOpts) -> Result<()> {
     check_args(sopts)?;
 
     let name = &sopts.site;
