@@ -87,14 +87,16 @@ impl Store {
             }
         }
 
-        let curr = base.join("current");
         #[cfg(unix)]
-        if curr.exists() {
-            if let Err(e) = fs::remove_file(&curr).await {
-                let curr = curr.to_string_lossy().to_string();
+        {
+            let curr = base.join("current");
+            if curr.exists() {
+                if let Err(e) = fs::remove_file(&curr).await {
+                    let curr = curr.to_string_lossy().to_string();
 
-                error!("Store: can not remove symlink {}: {}", curr, e.to_string());
-                return Err(EngineStatus::RemoveLink(curr).into());
+                    error!("Store: can not remove symlink {}: {}", curr, e.to_string());
+                    return Err(EngineStatus::RemoveLink(curr).into());
+                }
             }
         }
 
