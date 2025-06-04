@@ -11,7 +11,7 @@ categories = ["aerospace::drones"]
 keywords = ["drones", "aeronautical-data", "ads-b"]
 
 [features]
-default = ["asd", "senhive", "avionix", "aeroscope", "opensky"]
+default = ["asd", "senhive", "avionix", "aeroscope"]
 privacy = []
 json = []
 
@@ -54,6 +54,7 @@ fetiche-formats.workspace = true
 fetiche-macros.workspace = true
 futures.workspace = true
 hcl-rs.workspace = true
+jiff.workspace = true
 nom.workspace = true
 object_store.workspace = true
 polars.workspace = true
@@ -78,12 +79,12 @@ mini-moka = "0.10"
 native-tls = "0.2"
 percent-encoding = "2.3"
 futures-util = "0.3"
+tokio-native-tls = "0.3"
 
 [dev-dependencies]
 criterion.workspace = true
 dateparser.workspace = true
 directories.workspace = true
-jiff.workspace = true
 rstest.workspace = true
 
 ctrlc = "3.4"
