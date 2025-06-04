@@ -39,7 +39,7 @@ fn main() -> eyre::Result<()> {
             Err(_) => return,
         };
         let params: Vec<&str> = text.split_whitespace().collect();
-        let ts = params[0].parse::<u32>().unwrap();
+        let ts = params[0].parse::<u32>().unwrap_or(0);
         let timezone = params[1].parse::<String>().unwrap_or("Europe/Paris".into());
 
         let ts = Timestamp::from_second(ts as i64).unwrap().in_tz(&timezone).unwrap();
