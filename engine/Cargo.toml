@@ -76,8 +76,8 @@ tracing.workspace = true
 base64_light = "0.1"
 derive_builder = "0.20"
 enum_dispatch = "0.3"
-humantime = "2.2"
-lapin = { version = "3.1", features = ["native-tls"] }
+humantime = "2.3"
+lapin = { version = "3.4", features = ["native-tls"] }
 mini-moka = "0.10"
 native-tls = "0.2"
 percent-encoding = "2.3"
