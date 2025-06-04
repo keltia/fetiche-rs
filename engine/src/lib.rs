@@ -36,8 +36,6 @@
 //! member function for the main task.  It takes the previous stage output as a string and should
 //! return a string with the transformed output that will be sent to the next stage.
 //!
-//! FIXME: at some point, a `[u8]`  might be preferable to a `String`.
-//!
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
