@@ -35,6 +35,7 @@
 //! return a string with the transformed output that will be sent to the next stage.
 //!
 use std::collections::BTreeMap;
+use std::env;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -49,6 +50,7 @@ use ractor::registry::registered;
 use ractor::{call, cast, Actor, ActorRef};
 use serde::Deserialize;
 use strum::EnumString;
+use tokio::fs;
 use tracing::{debug, error, info, trace};
 
 pub use auth::*;
@@ -174,6 +176,8 @@ pub struct Engine {
     pub pid: u32,
     /// Main area where state is saved (PID, jobs, etc.)
     pub home: Arc<LocalFileSystem>,
+    /// Working area where data is fetched into, etc.
+    pub workdir: PathBuf,
     /// Storage area for long-running jobs
     pub storage: Arc<Storage>,
     /// Storage areas for auth tokens
@@ -310,11 +314,28 @@ impl Engine {
             (1, SYNC, Duration::from_secs(1))
         };
 
+        debug!("Engine config: {:#?}", cfg);
+
+        let pid = std::process::id();
+        info!("Engine PID={}", pid);
+
         // Create our object storage "vision" out of our base directory.
         //
         let base = Arc::new(LocalFileSystem::new_with_prefix(home)?);
 
-        debug!("Engine config: {:#?}", cfg);
+        // Move ourselves into our base
+        //
+        // BASEDIR/var/run/<PID> for single instance runs
+        // BASEDIR/var/run/acute for fetiched runs
+        //
+        let workdir = if mode == EngineMode::Single {
+            cfg.basedir.join("var").join("run").join(pid.to_string())
+        } else {
+            cfg.basedir.join("var").join("run").join("acute")
+        };
+        fs::create_dir_all(&workdir).await?;
+        let _ = env::set_current_dir(&workdir)?;
+        info!("Relocating to {workdir:?}");
 
         // ----- Start actors
 
@@ -434,17 +455,13 @@ impl Engine {
         let tokens = TokenStorage::register(&tokens_area);
         info!("{} tokens loaded", tokens.len());
 
-        // Get PID from the state service
-        //
-        let pid = call!(state, StateMsg::GetPid)?;
-        info!("Engine PID={}", pid);
-
         // Instantiate everything
         //
         let engine = Engine {
             mode,
             pid,
             home: base.clone(),
+            workdir: workdir.clone(),
             storage: Arc::new(areas),
             tokens: Arc::new(tokens),
             supervisor: sup.clone(),
