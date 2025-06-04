@@ -29,7 +29,7 @@ dateparser = "0.2"
 clap = { version = "4", features = ["cargo", "derive"] }
 eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
 fetiche-common = { version = "0", path = "../common" }
-polars = { version = "0.46", features = ["async", "serde", "lazy", "strings", "parquet", "json"] }
+polars = { version = "0.49", features = ["async", "serde", "lazy", "strings", "parquet", "json"] }
 strum = { version = "0.27", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
@@ -37,7 +37,7 @@ tracing = "0.1"
 inline-python = "0.13"
 
 [dev-dependencies]
-rstest = "0.24"
+rstest = "0.26"
 
 [dependencies.pyo3]
 version = "0.23"

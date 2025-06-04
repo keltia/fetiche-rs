@@ -68,7 +68,6 @@ tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
 
 base64_light = "0.1"
 derive_builder = "0.20"

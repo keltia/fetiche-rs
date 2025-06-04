@@ -32,8 +32,6 @@ tabled.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
-tracing-tree.workspace = true
 
 actix = "0.13"
 actix-rt = "2.10"

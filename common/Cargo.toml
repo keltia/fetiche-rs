@@ -45,33 +45,34 @@ eyre.workspace = true
 fetiche-macros.workspace = true
 hcl-rs.workspace = true
 jiff.workspace = true
-opentelemetry.workspace = true
-opentelemetry-otlp.workspace = true
-opentelemetry_sdk.workspace = true
 polars.workspace = true
 ractor.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 strum.workspace = true
 tabled.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-opentelemetry.workspace = true
-tracing-subscriber.workspace = true
-tracing-tree.workspace = true
 
 ctrlc = { version = "3.4", features = ["termination"] }
 egm2008 = "0.1"
 enum_dispatch = "0.3"
 humantime = "2.2"
+opentelemetry = { version = "0.30", features = ["logs", "metrics"] }
+opentelemetry-otlp = { version = "0.30", features = ["grpc-tonic"] }
+opentelemetry_sdk = { version = "0.30", features = ["rt-tokio"] }
 tracing-appender = "0.2"
-serde_json = "1.0.140"
+tracing-opentelemetry = "0.31"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
+tracing-tree = { version = "0.4", features = ["time"] }
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["async_tokio"] }
-divan = "0.1"
+criterion.workspace = true
 proptest.workspace = true
-rand = "0.9"
 rstest.workspace = true
+
+divan = "0.1"
+rand = "0.9"
 test-pretty-log = "0.6"
 uuid = { version = "1.17", features = ["serde", "v7"] }

@@ -28,15 +28,15 @@ harness = false
 clap.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
-opentelemetry.workspace = true
 polars.workspace = true
 serde.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
 arrow2 = { version = "0.18", features = ["chrono-tz", "io_json", "io_csv", "io_parquet"] }
-datafusion = { version = "46", features = ["zstd", "serde"] }
+datafusion = { version = "49", features = ["zstd", "serde"] }
 parquet2 = "0.17"
 rayon = "1.10"
+
 [dev-dependencies]
-criterion = { version = "0.5", features = ["async_tokio"] }
+criterion.workspace = true

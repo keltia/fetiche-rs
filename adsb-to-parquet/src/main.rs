@@ -64,6 +64,5 @@ async fn main() -> Result<()> {
         //
         parquet_through_df(&input, &output, opt).await?;
     }
-    opentelemetry::global::shutdown_tracer_provider();
     Ok(())
 }
