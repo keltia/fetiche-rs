@@ -14,7 +14,7 @@ use std::sync::mpsc::Sender;
 use chrono::{Datelike, Timelike, Utc};
 use eyre::Result;
 use tokio::fs;
-use tokio::io::{AsyncWriteExt, BufWriter};
+use tokio::io::AsyncWriteExt;
 use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;

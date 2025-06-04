@@ -3,13 +3,13 @@
 //! This is for saving data into a specific (or not) format like plain file (None) or Parquet.
 //!
 
-use std::fs;
 use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
 use eyre::Result;
 use polars::prelude::*;
+use tokio::fs;
 use tracing::{info, trace};
 
 use fetiche_common::Container;
@@ -97,13 +97,13 @@ impl Save {
                         .finish()?;
 
                     info!("writing {}", p);
-                    let mut file = fs::File::create(p)?;
+                    let mut file = std::fs::File::create(p)?;
 
                     ParquetWriter::new(&mut file).finish(&mut df)?;
                 }
                 _ => {
                     trace!("raw data");
-                    fs::write(PathBuf::from(p), &data)?
+                    fs::write(PathBuf::from(p), &data).await?;
                 }
             }
         }
@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_save_output_raw_data() {
+    async fn test_save_output_raw_data() -> Result<()> {
         let mut t = Save::new("test_raw_write", Format::None, Container::Raw);
         t.path("test_output.txt");
 
@@ -178,12 +178,13 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(
-            fs::read_to_string("test_output.txt").unwrap(),
+            fs::read_to_string("test_output.txt").await?,
             "test_raw_data"
         );
 
         // Clean up
-        fs::remove_file("test_output.txt").unwrap();
+        fs::remove_file("test_output.txt").await?;
+        Ok(())
     }
 
     #[tokio::test]
