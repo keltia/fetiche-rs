@@ -1,12 +1,12 @@
-use std::collections::BTreeMap;
-use std::fmt::Debug;
-
 use chrono::{DateTime, Utc};
 use eyre::Result;
 use futures::TryStreamExt;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path;
 use object_store::{ObjectMeta, ObjectStore};
+use std::collections::BTreeMap;
+use std::fmt::Debug;
+use std::sync::Arc;
 use tabled::builder::Builder;
 use tabled::settings::Style;
 use tokio::runtime::Handle;
@@ -32,20 +32,21 @@ use crate::{TokenStatus, TokenType};
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```no_run
+/// use futures::executor::block_on;
 /// use fetiche_engine::{TokenStorage, TokenType};
 /// use fetiche_engine::token::AsdToken;
 ///
-/// # tokio_test::block_on(async {
+/// # block_on(async {
 /// // Register a directory containing token files
 /// let mut storage = TokenStorage::register("path/to/tokens").await?;
 ///
 /// // Store a new token
 /// let token_data = TokenType::AsdToken(AsdToken::default());
-/// let _ = storage.store("new_token_file", token_data).await;
+/// let _ = storage.store("asd_token_file", token_data).await;
 ///
 /// // Retrieve a token by key
-/// if let Ok(token) = storage.load("existing_token_file").await {
+/// if let Ok(token) = storage.load("asd_existing_token_file").await {
 ///     println!("Loaded token: {:?}", token);
 /// }
 ///
@@ -60,7 +61,7 @@ use crate::{TokenStatus, TokenType};
 #[derive(Debug)]
 pub struct TokenStorage {
     /// Object store backend
-    store: std::sync::Arc<dyn ObjectStore>,
+    store: Arc<dyn ObjectStore>,
     /// Base path for token files
     base_path: Path,
     /// Btree of (key, AuthToken)
@@ -72,7 +73,7 @@ impl TokenStorage {
     ///
     #[tracing::instrument]
     pub async fn register(path: &str) -> Result<Self> {
-        let store = std::sync::Arc::new(LocalFileSystem::new());
+        let store = Arc::new(LocalFileSystem::new());
         let base_path = Path::from(path);
         let mut db = BTreeMap::<String, TokenType>::new();
 
@@ -129,11 +130,13 @@ impl TokenStorage {
     #[tracing::instrument(skip(self))]
     pub async fn load(&self, key: &str) -> Result<TokenType> {
         // First check the in-memory cache
+        //
         if let Some(token) = self.list.get(key) {
             return Ok(token.clone());
         }
 
         // If not in cache, try to load from object store
+        //
         let file_path = self.base_path.child(key);
 
         match self.store.get(&file_path).await {
