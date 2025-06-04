@@ -5,11 +5,6 @@ use klickhouse::{Client, ClientOptions, Progress, QueryBuilder, RawRow, Row, Uui
 use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
 
-#[derive(Debug, Row)]
-struct Ans {
-    id: u32,
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let name = std::env::var("CLICKHOUSE_DB")?;
