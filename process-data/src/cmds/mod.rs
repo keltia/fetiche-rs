@@ -10,8 +10,9 @@
 //! and function `handle_cmds` for routing and executing command requests.
 //!
 
-use klickhouse::Client;
 use std::fmt::Debug;
+
+use klickhouse::Client;
 use tracing::info;
 
 pub use acute::*;
