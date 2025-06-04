@@ -96,7 +96,7 @@ impl Stream {
             Some(site) => {
                 trace!("Site: {}", site);
 
-                let src = StreamableSource::from(site);
+                let src = StreamableSource::from_site(site)?;
 
                 // Stream data as bytes
                 //

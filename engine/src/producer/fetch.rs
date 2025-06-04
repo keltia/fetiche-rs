@@ -70,7 +70,7 @@ impl Fetch {
             Some(site) => {
                 trace!("Site: {}", site.name);
 
-                let src = FetchableSource::from(site);
+                let src = FetchableSource::from_site(site)?;
 
                 // Stream data as bytes
                 //

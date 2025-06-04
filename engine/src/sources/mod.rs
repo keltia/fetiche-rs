@@ -47,9 +47,10 @@ pub enum FetchableSource {
     Safesky,
 }
 
-impl From<Site> for FetchableSource {
-    fn from(value: Site) -> Self {
-        match value.format.as_str() {
+impl FetchableSource {
+    #[tracing::instrument]
+    pub fn from_site(value: Site) -> Result<Self> {
+        Ok(match value.format.as_str() {
             #[cfg(feature = "asd")]
             "asd" => {
                 let s = Asd::new().load(&value).clone();
@@ -66,7 +67,7 @@ impl From<Site> for FetchableSource {
                 FetchableSource::from(s)
             }
             _ => unimplemented!(),
-        }
+        })
     }
 }
 
@@ -87,9 +88,10 @@ pub enum StreamableSource {
     Senhive,
 }
 
-impl From<Site> for StreamableSource {
-    fn from(value: Site) -> Self {
-        match value.format.as_str() {
+impl StreamableSource {
+    #[tracing::instrument]
+    pub fn from_site(value: Site) -> Result<Self> {
+        Ok(match value.format.as_str() {
             #[cfg(feature = "avionix")]
             "cubedata" => {
                 let variant = value.variant().unwrap_or("avionixserver".into());
@@ -122,7 +124,7 @@ impl From<Site> for StreamableSource {
                 StreamableSource::from(s)
             }
             _ => unimplemented!(),
-        }
+        })
     }
 }
 
