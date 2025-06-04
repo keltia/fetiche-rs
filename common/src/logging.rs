@@ -104,7 +104,7 @@ pub fn init_logging(
     let console = console_subscriber::ConsoleLayer::builder().spawn();
 
     #[cfg(not(feature = "console"))]
-    let console_layer: Option<console_subscriber::ConsoleLayer> = None;
+    let console: Option<HierarchicalLayer> = None;
 
     // Combine filters & exporters
     //
