@@ -50,7 +50,7 @@ pub enum SubCommand {
     #[clap(visible_alias = "boot", visible_alias = "restart")]
     Bootstrap,
     /// Check status of daily runs.
-    #[clap(visible_alias = "check", visible_alias = "chk")]
+    #[clap(visible_alias = "chk")]
     Check(CheckOpts),
     /// Distance-related calculations.
     #[clap(visible_alias = "dist", visible_alias = "d")]
