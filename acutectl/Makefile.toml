@@ -1,0 +1,15 @@
+# For `cargo make`
+#
+[tasks.yesterday-csv]
+command = "cargo"
+args = ["run", "--", "fetch", "-o", "yes.csv", "lux-me", "yesterday"]
+
+[tasks.yesterday-parquet]
+command = "cargo"
+args = ["run", "--", "fetch", "-o", "yes.parquet", "lux-me", "yesterday"]
+
+[tasks.yesterday]
+dependencies = [
+    "yesterday-csv",
+    "yesterday-parquet"
+]
