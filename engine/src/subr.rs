@@ -56,7 +56,7 @@ impl Engine {
     /// which maintains the authoritative list of all configured data sources.
     ///
     pub async fn sources(&self) -> Result<Sources> {
-        let src = call!(self.sources, |port| SourcesMsg::List(port))?;
+        let src = call!(self.sources, SourcesMsg::List)?;
         Ok(src)
     }
 
@@ -84,7 +84,7 @@ impl Engine {
     /// details about each configured data source and its capabilities.
     ///
     pub async fn list_sources(&self) -> Result<String> {
-        let src = call!(self.sources, |port| SourcesMsg::Table(port))?;
+        let src = call!(self.sources, SourcesMsg::Table)?;
         Ok(src)
     }
 
