@@ -1,6 +1,8 @@
 ## DuckDB
 
-This document describes the different tables and macros used for the prototype calculation using DuckDB has DB engine.
+**THIS IS OBSOLETE**
+
+his document describes the different tables and macros used for the prototype calculation using DuckDB as a DB engine.
 
 ### Macros
 
