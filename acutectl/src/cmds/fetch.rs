@@ -1,17 +1,20 @@
 //! This is the module handling the `fetch` sub-command.
 //!
 
-use eyre::Result;
-use fetiche_common::DateOpts;
-use fetiche_engine::{Engine, Filter, JobState};
-use indicatif::{ProgressBar, ProgressStyle};
 use std::env;
-use std::path::Path;
+use std::path::{absolute, Path};
 use std::time::Duration;
+
+use eyre::Result;
+use indicatif::{ProgressBar, ProgressStyle};
+use tokio::fs;
 use tracing::field::debug;
 use tracing::{debug, info, trace};
 
 use crate::FetchOpts;
+
+use fetiche_common::DateOpts;
+use fetiche_engine::{Engine, Filter, JobState};
 
 /// Fetches data from a specified network site using the provided engine and options.
 ///
@@ -61,10 +64,10 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
             if fname.is_absolute() {
                 path.clone()
             } else {
-                let fname = env::current_dir()?.join(fname);
                 debug!("output path: {:?}", fname);
-                let path = fname.canonicalize()?;
-                path.to_string_lossy().to_string()
+                let fname = absolute(fname)?;
+                let fname = env::current_dir()?.join(fname);
+                fname.to_string_lossy().to_string()
             }
         }
         None => String::from("-"),
@@ -114,7 +117,7 @@ pub async fn fetch_from_site(engine: &mut Engine, fopts: &FetchOpts) -> Result<(
     //
     trace!("Job({}) done.", id);
 
-    Ok(())
+    Ok(engine.cleanup().await?)
 }
 
 /// Generates a `Filter` from the provided `FetchOpts`.
