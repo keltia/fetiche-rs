@@ -190,7 +190,7 @@ impl Engine {
 
         // Assign a new ID
         //
-        let id = call!(self.scheduler, |port| SchedulerMsg::Allocate(port))?;
+        let id = call!(self.scheduler, SchedulerMsg::Allocate)?;
 
         // Retrieve the site's data from the Sources actor.
         //
@@ -226,7 +226,7 @@ impl Engine {
                         Middle::Copy(c)
                     }
                     MiddleText::Tee(fname) => {
-                        let tee = Tee::into(&fname);
+                        let tee = Tee::into(fname);
                         Middle::Tee(tee)
                     }
                 })

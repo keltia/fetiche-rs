@@ -301,13 +301,13 @@ impl Engine {
                         Ok(n) => n.get(),
                         Err(_) => 1,
                     });
-            let sync = cfg.sync.unwrap_or_else(|| SYNC);
-            let tick = cfg.tick.unwrap_or_else(|| TICK);
+            let sync = cfg.sync.unwrap_or(SYNC);
+            let tick = cfg.tick.unwrap_or(TICK);
             (workers, sync, tick)
         } else {
             // When running as a single instance, we have no need for multiple workers or a 2s tick
             //
-            (1, SYNC, TICK)
+            (1, SYNC, Duration::from_secs(1))
         };
 
         // Create our object storage "vision" out of our base directory.
@@ -342,7 +342,7 @@ impl Engine {
         )
             .await?;
 
-        let count = call!(src, |port| SourcesMsg::Count(port))?;
+        let count = call!(src, SourcesMsg::Count)?;
         info!("{} sources loaded", count);
 
         // Start state service
@@ -359,7 +359,7 @@ impl Engine {
 
         // Get last used ID from the previous state
         //
-        let last = call!(state, |port| StateMsg::Last(port))?;
+        let last = call!(state, StateMsg::Last)?;
 
         trace!("load results");
         let (results, _h) = Actor::spawn_linked(
@@ -436,7 +436,7 @@ impl Engine {
 
         // Get PID from the state service
         //
-        let pid = call!(state, |port| StateMsg::GetPid(port))?;
+        let pid = call!(state, StateMsg::GetPid)?;
         info!("Engine PID={}", pid);
 
         // Instantiate everything
@@ -458,7 +458,7 @@ impl Engine {
 
         // Sync immediately, ensuring the state is clean
         //
-        let _ = engine.sync()?;
+        engine.sync()?;
 
         // If debug/trace, list all the actors running at this point.
         //
@@ -467,7 +467,7 @@ impl Engine {
 
         // Get the ball rolling.  Next tick, we will check the queue.
         //
-        let _ = cast!(scheduler, SchedulerMsg::Start)?;
+        cast!(scheduler, SchedulerMsg::Start)?;
 
         Ok(engine)
     }

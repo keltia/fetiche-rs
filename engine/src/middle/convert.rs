@@ -10,17 +10,17 @@ use std::sync::mpsc::Sender;
 use eyre::Result;
 use tracing::trace;
 
-use fetiche_formats::{DronePoint, Format, prepare_csv};
+use fetiche_formats::{prepare_csv, DronePoint, Format};
 use fetiche_macros::RunnableDerive;
 
-#[cfg(feature = "opensky")]
-use fetiche_formats::StateList;
 #[cfg(feature = "avionix")]
 use fetiche_formats::avionix::CubeData;
 #[cfg(feature = "senhive")]
 use fetiche_formats::senhive::FusedData;
+#[cfg(feature = "opensky")]
+use fetiche_formats::StateList;
 
-use crate::{IO, Middle, Runnable};
+use crate::{Middle, Runnable, IO};
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Convert {
@@ -77,7 +77,7 @@ impl Convert {
                         trace!("cube_data:json to dronepoint: {}", data);
 
                         let r: Vec<CubeData> = serde_json::from_str(&data)?;
-                        let r: Vec<_> = r.iter().map(|e| DronePoint::from(e)).collect();
+                        let r: Vec<_> = r.iter().map(DronePoint::from).collect();
                         r
                     }
                     #[cfg(feature = "senhive")]
@@ -85,7 +85,7 @@ impl Convert {
                         trace!("senhive:json to dronepoint: {}", data);
 
                         let r: Vec<FusedData> = serde_json::from_str(&data)?;
-                        let r: Vec<_> = r.iter().map(|e| DronePoint::from(e)).collect();
+                        let r: Vec<_> = r.iter().map(DronePoint::from).collect();
                         r
                     }
                     _ => unimplemented!(),

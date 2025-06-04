@@ -13,7 +13,7 @@ use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{IO, Middle, Runnable};
+use crate::{Middle, Runnable, IO};
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Tee {
     io: IO,
@@ -44,7 +44,6 @@ impl Tee {
         trace!("tee::execute");
         let mut fh = OpenOptions::new()
             .create(true)
-            .write(true)
             .append(true)
             .open(&self.fname)?;
         write!(fh, "{data}")?;

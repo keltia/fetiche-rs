@@ -69,7 +69,7 @@ impl Actor for TokenActor {
             }
             TokenMsg::List(sender) => {
                 let list = state.to_string()?;
-                sender.send(state.list().iter().cloned().collect::<Vec<TokenType>>())?;
+                sender.send(state.list().to_vec())?;
             }
             TokenMsg::Store(path, store) => { todo!() }
         }

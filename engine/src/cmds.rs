@@ -22,7 +22,7 @@ use ractor::{call, call_t, cast, pg};
 use tracing::trace;
 
 use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
-use crate::{ENGINE_PG, Engine, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup};
+use crate::{Engine, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup, ENGINE_PG};
 
 /// Basically, this is the exposed API to the Engine.
 ///
@@ -81,7 +81,7 @@ impl Engine {
     pub async fn create_job(&mut self, s: &str) -> Result<Job> {
         // Fetch next ID
         //
-        let nextid = call!(self.scheduler, |port| SchedulerMsg::Allocate(port))?;
+        let nextid = call!(self.scheduler, SchedulerMsg::Allocate)?;
 
         // Initialise the job, list of tasks is empty
         //
@@ -89,7 +89,7 @@ impl Engine {
 
         // Update state
         //
-        let _ = cast!(self.state, StateMsg::Submit(nextid))?;
+        cast!(self.state, StateMsg::Submit(nextid))?;
 
         trace!("job {} created.", nextid);
         self.sync()?;
@@ -214,7 +214,7 @@ impl Engine {
         // Next tick, the job will run
         //
         trace!("wait for job {}", job.id);
-        let _ = wg.rx.recv()?;
+        wg.rx.recv()?;
         trace!("job {} finished", job.id);
 
         let stats = call!(self.results, |port| ResultsMsg::Fetch(job.id, port))?;
@@ -321,8 +321,8 @@ impl Engine {
     ///
     #[tracing::instrument(skip(self))]
     pub async fn remove_job(&mut self, job_id: usize) -> Result<()> {
-        let _ = cast!(self.state, StateMsg::Remove(job_id))?;
-        let _ = cast!(self.scheduler, SchedulerMsg::RemoveById(job_id))?;
+        cast!(self.state, StateMsg::Remove(job_id))?;
+        cast!(self.scheduler, SchedulerMsg::RemoveById(job_id))?;
         self.sync()
     }
 }

@@ -17,7 +17,6 @@ use serde_json::json;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::fs;
 use tracing::{error, info, trace, warn};
 
 /// The main state data file will be created in `basedir`.
@@ -190,7 +189,7 @@ impl Actor for StateActor {
 
         // Reset everything except the last pid we just loaded
         //
-        data.state = base.into();
+        data.state = base;
         data.pid = std::process::id();
         data.waiting = VecDeque::new();
         data.running = VecDeque::new();
