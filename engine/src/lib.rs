@@ -45,9 +45,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use eyre::Result;
-use ractor::factory::{Factory, FactoryArguments, FactoryMessage, queues, routing};
+use object_store::local::LocalFileSystem;
+use ractor::factory::{queues, routing, Factory, FactoryArguments, FactoryMessage};
 use ractor::registry::registered;
-use ractor::{Actor, ActorRef, call, cast};
+use ractor::{call, cast, Actor, ActorRef};
 use serde::Deserialize;
 use strum::EnumString;
 use tracing::{debug, error, info, trace};
@@ -174,7 +175,7 @@ pub struct Engine {
     /// Current process DI
     pub pid: u32,
     /// Main area where state is saved (PID, jobs, etc.)
-    pub home: Arc<PathBuf>,
+    pub home: Arc<LocalFileSystem>,
     /// Storage area for long-running jobs
     pub storage: Arc<Storage>,
     /// Storage areas for auth tokens
@@ -311,6 +312,10 @@ impl Engine {
             (1, SYNC, TICK)
         };
 
+        // Create our object storage "vision" out of our base directory.
+        //
+        let base = Arc::new(LocalFileSystem::new_with_prefix(home)?);
+
         debug!("Engine config: {:#?}", cfg);
 
         // ----- Start actors
@@ -337,7 +342,7 @@ impl Engine {
             (),
             sup.get_cell(),
         )
-        .await?;
+            .await?;
 
         let count = call!(src, |port| SourcesMsg::Count(port))?;
         info!("{} sources loaded", count);
@@ -348,10 +353,10 @@ impl Engine {
         let (state, _h) = Actor::spawn_linked(
             Some("engine::state".into()),
             StateActor,
-            home.clone(),
+            base.clone(),
             sup.get_cell(),
         )
-        .await?;
+            .await?;
         trace!("state={:?}", state);
 
         // Get last used ID from the previous state
@@ -365,7 +370,7 @@ impl Engine {
             (),
             sup.get_cell(),
         )
-        .await?;
+            .await?;
 
         // ----- Start Runner Factory
 
@@ -396,7 +401,7 @@ impl Engine {
             factory_args,
             sup.get_cell(),
         )
-        .await?;
+            .await?;
 
         // Spawn the actual scheduler
         //
@@ -414,7 +419,7 @@ impl Engine {
             sargs,
             sup.get_cell(),
         )
-        .await?;
+            .await?;
 
         // ----- Register non-actor subsystems
 
@@ -441,7 +446,7 @@ impl Engine {
         let engine = Engine {
             mode,
             pid,
-            home: Arc::new(home),
+            home: base.clone(),
             storage: Arc::new(areas),
             tokens: Arc::new(tokens),
             supervisor: sup.clone(),

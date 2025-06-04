@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use eyre::Result;
+use object_store::path::Path;
 use ractor::{call, cast};
 use serde::Deserialize;
 use tabled::builder::Builder;
@@ -28,12 +29,12 @@ impl Engine {
     ///
     #[inline]
     pub fn state_file(&self) -> PathBuf {
-        self.home.join(STATE_FILE)
+        self.home.path_to_filesystem(&Path::from(STATE_FILE)).unwrap()
     }
 
     #[inline]
     pub fn sources_file(&self) -> PathBuf {
-        self.home.join(SOURCES_CONFIG)
+        self.home.path_to_filesystem(&Path::from(SOURCES_CONFIG)).unwrap()
     }
 
     /// Synchronizes all engine state by persisting it to disk
@@ -120,7 +121,7 @@ impl Engine {
     /// to locate the HCL configuration file.
     ///
     pub fn config_file(&self) -> PathBuf {
-        self.home.join(ENGINE_CONFIG)
+        self.home.path_to_filesystem(&Path::from(ENGINE_CONFIG)).unwrap()
     }
 
     /// Returns a string containing version information for the engine and its modules

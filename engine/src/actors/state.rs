@@ -7,14 +7,16 @@
 //! - Remove a job after completion
 //! - Sync file on-disk
 //!
-use std::collections::VecDeque;
-use std::path::PathBuf;
-
-use crate::{ENGINE_PG, ENGINE_PID, StateError};
+use crate::{StateError, ENGINE_PG, ENGINE_PID};
 use chrono::Utc;
-use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, pg};
+use object_store::local::LocalFileSystem;
+use object_store::{path::Path, ObjectStore};
+use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::VecDeque;
+use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::fs;
 use tracing::{error, info, trace, warn};
 
@@ -79,7 +81,7 @@ pub enum StateMsg {
 pub struct State {
     /// Our state file path.
     #[serde(skip_deserializing, skip_serializing)]
-    pub fname: PathBuf,
+    pub state: Arc<LocalFileSystem>,
     /// Timestamp of last sync
     pub tm: i64,
     #[serde(skip_deserializing)]
@@ -119,7 +121,7 @@ pub struct State1 {
 impl Actor for StateActor {
     type Msg = StateMsg;
     type State = State;
-    type Arguments = PathBuf;
+    type Arguments = Arc<LocalFileSystem>;
 
     /// Prepares the `StateActor` when it starts, initializing its state from a file or setting up new state data.
     ///
@@ -153,18 +155,17 @@ impl Actor for StateActor {
         myself: ActorRef<Self::Msg>,
         args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        let basedir = args.clone();
-        let fname = basedir.join(STATE_FILE);
+        let base = args.clone();
 
-        let data = fs::read_to_string(&fname).await?;
+        let data = base.get(&Path::from(STATE_FILE)).await?.bytes().await?.to_vec();
 
         // Read the `state` file.  If we can't read it as `State`, try with the previous
         // version.  If it succeeds, regenerate a new one.
         //
-        let mut data: State = match serde_json::from_str(&data) {
+        let mut data: State = match serde_json::from_slice(&data) {
             Ok(state) => state,
             Err(_) => {
-                let st: State1 = match serde_json::from_str(&data) {
+                let st: State1 = match serde_json::from_slice(&data) {
                     Ok(st) => {
                         warn!("Previous version of the state file detected, resetting.");
                         st
@@ -172,13 +173,10 @@ impl Actor for StateActor {
                     Err(e) => {
                         error!(
                             "Impossible to load state file in {:?}: {}",
-                            fname,
+                            STATE_FILE,
                             e.to_string()
                         );
-                        return Err(StateError::UnrecognizedFile(
-                            fname.to_string_lossy().to_string(),
-                        )
-                        .into());
+                        return Err(StateError::UnrecognizedFile(STATE_FILE.into()).into());
                     }
                 };
                 // returns a new one using previous data
@@ -192,18 +190,16 @@ impl Actor for StateActor {
 
         // Reset everything except the last pid we just loaded
         //
-        data.fname = fname;
+        data.state = base.into();
         data.pid = std::process::id();
         data.waiting = VecDeque::new();
         data.running = VecDeque::new();
         data.finished = VecDeque::new();
         data.dirty = false;
 
-        let pidfile = basedir.join(ENGINE_PID);
-        fs::write(&pidfile, format!("{}", data.pid))
-            .await
-            .unwrap_or_else(|_| panic!("can not write {}", pidfile.to_string_lossy()));
-        info!("PID {} written in {:?}", data.pid, pidfile);
+        let pidfile = Path::from(ENGINE_PID);
+        let _ = data.state.put(&pidfile, format!("{}", data.pid).into()).await;
+        info!("PID {} written in {:?}", data.pid, data.state.path_to_filesystem(&Path::from(ENGINE_PID))?);
 
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
 
@@ -305,7 +301,8 @@ impl Actor for StateActor {
 
                 state.tm = Utc::now().timestamp();
                 let data = json!(state).to_string();
-                let _ = fs::write(&state.fname, data).await?;
+                let state_file = Path::from(STATE_FILE);
+                let _ = state.state.put(&state_file, data.into()).await?;
                 state.dirty = false;
             }
         }
