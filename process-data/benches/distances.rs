@@ -3,19 +3,19 @@
 //!
 //! # Benchmarking Functions
 //!
-//! This file uses the `Criterion` crate for benchmarking, providing both synchronous and 
+//! This file uses the `Criterion` crate for benchmarking, providing both synchronous and
 //! asynchronous execution contexts where required.
 //!
 //! ## Self-Implemented Distance Methods
 //!
 //! 1. **self::haversines**
 //!    - Benchmarks the `haversine_distance` function implemented on the `Pt` struct.
-//!    - The haversine formula calculates the great-circle distance between two points 
+//!    - The haversine formula calculates the great-circle distance between two points
 //!      on a sphere using their longitudes and latitudes.
 //!
 //! 2. **self::sincosines**
 //!    - Benchmarks the `spherical_law_of_cosines_distance` function on the `Pt` struct.
-//!    - This method uses the spherical law of cosines for computing the distance between two 
+//!    - This method uses the spherical law of cosines for computing the distance between two
 //!      geographic points.
 //!
 //! ## Geo Crate Methods
@@ -23,20 +23,20 @@
 //! The `geo` crate provides several methods for geodesic calculations:
 //!
 //! 3. **geo::geodesic**
-//!    - Benchmarks the `Geodesic::distance` method from the `geo` crate, which computes distances 
+//!    - Benchmarks the `Geodesic::distance` method from the `geo` crate, which computes distances
 //!      using geodesic principles.
 //!
 //! 4. **geo::haversines**
 //!    - Benchmarks the `Haversine::distance` method from the `geo` crate, using the haversine formula.
 //!
 //! 5. **geo::vincenty**
-//!    - Benchmarks the `vincenty_distance` method from the `geo` crate to compute distances based on 
+//!    - Benchmarks the `vincenty_distance` method from the `geo` crate to compute distances based on
 //!      the Vincenty inverse formula for ellipsoids.
 //!
 //! ## Klickhouse Database Method
 //!
 //! 6. **klickhouse**
-//!    - Benchmarks the `geoDistance` function provided by the `klickhouse` library, which performs 
+//!    - Benchmarks the `geoDistance` function provided by the `klickhouse` library, which performs
 //!      distance calculations directly on the ClickHouse database server via SQL queries.
 //!    - This benchmark uses asynchronous execution and connects to ClickHouse using environment variables
 //!      to retrieve the necessary credentials (KLICKHOUSE_URL, CLICKHOUSE_DB, CLICKHOUSE_USER, and CLICKHOUSE_PASSWD).
@@ -48,13 +48,13 @@
 //! cargo bench
 //! ```
 //!
-//! Ensure that required environment variables are set for the ClickHouse benchmarks, and the `klickhouse` 
+//! Ensure that required environment variables are set for the ClickHouse benchmarks, and the `klickhouse`
 //! server is accessible.
 //!
 //! # Structs
 //!
-//! - `Pt`: A helper struct holding latitude and longitude coordinates. It provides methods for computing 
-//! distances using both the haversine formula (`haversine_distance`) and the spherical law of cosines 
+//! - `Pt`: A helper struct holding latitude and longitude coordinates. It provides methods for computing
+//! distances using both the haversine formula (`haversine_distance`) and the spherical law of cosines
 //! (`spherical_law_of_cosines_distance`).
 //!
 //! # Setup
@@ -92,9 +92,9 @@ impl Pt {
 
         let a = (d_lat / 2.0).sin() * (d_lat / 2.0).sin()
             + self.latitude.to_radians().cos()
-            * other.latitude.to_radians().cos()
-            * (d_lon / 2.0).sin()
-            * (d_lon / 2.0).sin();
+                * other.latitude.to_radians().cos()
+                * (d_lon / 2.0).sin()
+                * (d_lon / 2.0).sin();
 
         let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
         Pt::R * c
@@ -106,8 +106,8 @@ impl Pt {
 
         let a = (self.latitude.to_radians()).sin() * (other.latitude.to_radians()).sin()
             + (self.latitude.to_radians()).cos()
-            * (other.latitude.to_radians()).cos()
-            * d_lon.cos();
+                * (other.latitude.to_radians()).cos()
+                * d_lon.cos();
 
         let c = a.acos();
 
@@ -220,8 +220,8 @@ async fn inner_ch_geodistance(c: &mut Criterion) {
             ..Default::default()
         },
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
 
     c.bench_function("klickhouse", move |b| {
         b.to_async(FuturesExecutor).iter(|| async {
