@@ -669,25 +669,27 @@ DROP VIEW IF EXISTS acute.pbi_encounters_summary
 #[tracing::instrument(skip(dbh))]
 async fn add_daily_stats_table(dbh: &Client) -> Result<()> {
     let crt = r##"
-CREATE TABLE IF NOT EXISTS dayly_stats (
+CREATE TABLE IF NOT EXISTS daily_stats (
   day DATE,
   site_id INT,
-  site VARCHAR,
+  site_name VARCHAR,
   status INT NOT NULL,
   stats VARCHAR,
   comment VARCHAR,
 )
-ENGINE = ReplacingMergeTree PRIMARY KEY (day, site)
+ENGINE = ReplacingMergeTree PRIMARY KEY (day, site_name)
 COMMENT 'Records the run history for all sites every day.';
     "##;
-    Ok(())
+
+    Ok(dbh.execute(crt).await?)
 }
 
 #[tracing::instrument(skip(dbh))]
 async fn drop_daily_stats_table(dbh: &Client) -> Result<()> {
     let crt = r##"
-    DROP TABLE dayly_stats IF EXISTS dayly_stats
+DROP TABLE daily_stats IF EXISTS daily_stats
     "##;
+
     Ok(dbh.execute(crt).await?)
 }
 
