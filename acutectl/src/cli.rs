@@ -362,7 +362,7 @@ pub async fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<(
             ListSubCommand::Tokens => {
                 info!("Listing all tokens:");
 
-                let str = engine.list_tokens()?;
+                let str = engine.list_tokens().await?;
                 eprintln!("{}", str);
             }
             ListSubCommand::Storage => {
