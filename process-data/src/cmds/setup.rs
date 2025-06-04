@@ -466,7 +466,7 @@ AS (SELECT `journey`,
       dist_3d(dr.longitude,dr.latitude,dr.altitude,station_longitude,station_latitude, d.ref_altitude) AS antenna_distance_3d
     FROM acute.drones_raw AS dr LEFT OUTER JOIN acute.pbi_deployments AS d
     ON dr.station_name = d.antenna_name and dr.timestamp between d.start_at and d.end_at
-    WHERE sitename = d.sitename AND dr.station_name != 'ASDSTATIONV1'
+    WHERE sitename = d.sitename AND dr.station_name != 'ASDSTATIONV1' and sitename != ""
   )
   COMMENT 'PBI View for drones data with distances.'
 "##;
