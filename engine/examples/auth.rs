@@ -8,7 +8,7 @@ async fn main() -> eyre::Result<()> {
     let engine = Engine::new().await;
     dbg!(&engine);
 
-    let str = engine.list_tokens()?;
+    let str = engine.list_tokens().await?;
     eprintln!("{}", str);
     Ok(())
 }
