@@ -27,7 +27,7 @@ mod stats;
 /// One degree in *kilometers*
 const ONE_DEG: f64 = 40_000. / 360.;
 
-/// This trait define an object that can be calculated
+/// This trait defines an object that can be calculated
 ///
 pub trait Calculate: Debug {
     async fn run(&mut self, dbh: &Client) -> eyre::Result<Stats>;
@@ -74,6 +74,10 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
         SubCommand::Acute(aopts) => {
             eprintln!("ACUTE specific commands.\n");
             run_acute_cmd(ctx, aopts).await?;
+        }
+        SubCommand::Bootstrap => {
+            eprintln!("Initial bootstrapping.");
+            bootstrap(ctx).await?;
         }
         // These are done already.
         //
