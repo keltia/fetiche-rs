@@ -1,4 +1,13 @@
-//! This is the main driver module for all the different commands.
+//! Commands module for processing data.
+//!
+//! This module contains implementations of various commands for data processing:
+//! - Distance calculations between drones and planes
+//! - Data export functionality for distances, drones and encounters
+//! - Environment setup and cleanup 
+//! - Status checking and bootstrapping
+//!
+//! The module provides trait `Calculate` that defines calculation interface
+//! and function `handle_cmds` for routing and executing command requests.
 //!
 
 use klickhouse::Client;
