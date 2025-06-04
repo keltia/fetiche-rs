@@ -501,14 +501,14 @@ WHERE (i.antenna_id = a.id)
 Table to store the history of `process-data distances` runs.
 
 ```sql
-CREATE TABLE dayly_stats
+CREATE TABLE daily_stats
 (
-    day     DATE,
-    site_id INT,
-    site    VARCHAR,
-    status  INT NOT NULL,
-    stats   VARCHAR,
-    comment VARCHAR,
-) ENGINE = ReplacingMergeTree PRIMARY KEY ( day, site)
+    day       DATE,
+    site_id   INT,
+    site_name VARCHAR,
+    status    INT NOT NULL,
+    stats     VARCHAR,
+    comment   VARCHAR,
+) ENGINE = ReplacingMergeTree PRIMARY KEY ( day, site_name)
     COMMENT 'Records the run history for all sites every day.';
 ```
