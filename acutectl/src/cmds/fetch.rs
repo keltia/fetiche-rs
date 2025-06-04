@@ -7,8 +7,6 @@ use std::time::Duration;
 
 use eyre::Result;
 use indicatif::{ProgressBar, ProgressStyle};
-use tokio::fs;
-use tracing::field::debug;
 use tracing::{debug, info, trace};
 
 use crate::FetchOpts;

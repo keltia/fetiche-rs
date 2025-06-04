@@ -307,7 +307,7 @@ pub async fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<(
 
         // Handle `convert from to`
         //
-        SubCommand::Convert(copts) => {
+        SubCommand::Convert(_copts) => {
             trace!("convert");
 
             //convert_from_to(engine, copts).await?;
