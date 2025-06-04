@@ -91,14 +91,14 @@ impl From<Site> for StreamableSource {
     fn from(value: Site) -> Self {
         match value.format.as_str() {
             #[cfg(feature = "avionix")]
-            "avionixcube" => {
-                let s = Cube::new().load(&value).clone();
-                StreamableSource::from(s)
-            }
-            #[cfg(feature = "avionix")]
-            "avionixserver" => {
-                let s = AvionixServer::new().load(&value).clone();
-                StreamableSource::from(s)
+            "cubedata" => {
+                if value.base_url.contains("aero-network.com") {
+                    let s = AvionixServer::new().load(&value).clone();
+                    StreamableSource::from(s)
+                } else {
+                    let s = Cube::new().load(&value).clone();
+                    StreamableSource::from(s)
+                }
             }
             #[cfg(feature = "flightaware")]
             "flightaware" => {
