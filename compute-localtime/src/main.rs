@@ -30,33 +30,21 @@
 //!
 
 use jiff::Timestamp;
+use log::{error, info};
 use std::io::stdin;
-use tracing::{error, info};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
+use stderrlog::LogLevelNum::Trace;
 
 fn main() -> eyre::Result<()> {
     info!("Starting compute-localtime");
-    let filter = EnvFilter::from_default_env();
 
-    // Log to file?
-    //
-    let file_appender = tracing_appender::rolling::hourly("/tmp/compute-localtime", "ch-localtime");
-    let fs = tracing_subscriber::fmt::layer().with_writer(file_appender);
-
-    // Combine filters & exporters
-    //
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(fs)
-        .init();
+    stderrlog::new()
+        .verbosity(Trace)
+        .init()?;
 
     stdin().lines().for_each(|l| {
         let text = match l {
             Ok(text) => text,
             Err(e) => {
-                eprintln!("ERROR: {}", e.to_string());
                 error!("WARNING: could not read from stdin");
                 return;
             }
@@ -66,7 +54,6 @@ fn main() -> eyre::Result<()> {
         let ts = match Timestamp::from_second(ts) {
             Ok(ts) => ts,
             Err(e) => {
-                eprintln!("ERROR: {}", e.to_string());
                 error!("ERROR: {}", e.to_string());
                 return;
             }
@@ -76,7 +63,6 @@ fn main() -> eyre::Result<()> {
         let ts = match ts.in_tz(&timezone) {
             Ok(ts) => ts,
             Err(e) => {
-                eprintln!("ERROR: {}", e.to_string());
                 error!("ERROR: {}", e.to_string());
                 return;
             }

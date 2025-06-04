@@ -22,6 +22,5 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 eyre.workspace = true
 jiff.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
-tracing-appender = "0.2"
+stderrlog = "0.6"
+log = "0.4"
