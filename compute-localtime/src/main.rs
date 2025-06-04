@@ -34,7 +34,10 @@ use std::io::stdin;
 
 fn main() -> eyre::Result<()> {
     stdin().lines().for_each(|l| {
-        let text = l.unwrap();
+        let text = match l {
+            Ok(text) => text,
+            Err(_) => return,
+        };
         let params: Vec<&str> = text.split_whitespace().collect();
         let ts = params[0].parse::<u32>().unwrap();
         let timezone = params[1].parse::<String>().unwrap_or("Europe/Paris".into());
