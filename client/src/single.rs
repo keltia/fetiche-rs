@@ -15,10 +15,10 @@ pub struct EngineSingle {
 
 impl EngineSingle {
     #[tracing::instrument]
-    pub async fn new() -> Self {
-        Self {
-            e: Engine::single().await,
-        }
+    pub async fn new() -> Result<Self> {
+        Ok(Self {
+            e: Engine::single().await?,
+        })
     }
 
     // ----- wrappers

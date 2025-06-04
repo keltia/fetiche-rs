@@ -227,15 +227,10 @@ impl Engine {
     /// Will panic if the Engine cannot be created due to configuration or initialization errors.
     ///
     #[tracing::instrument]
-    pub async fn new() -> Self {
+    pub async fn new() -> Result<Self> {
         // Load storage areas from `engine.hcl`
         //
-        Self::load(ENGINE_CONFIG, EngineMode::Daemon)
-            .await
-            .unwrap_or_else(|e| {
-                error!("Cannot create daemon Engine: {}", e.to_string());
-                panic!("Error: {e}")
-            })
+        Self::load(ENGINE_CONFIG, EngineMode::Daemon).await
     }
 
     /// Creates a new Engine instance in single mode with configuration loaded from engine.hcl
@@ -249,15 +244,10 @@ impl Engine {
     /// Will panic if the Engine cannot be created due to configuration or initialization errors.
     ///
     #[tracing::instrument]
-    pub async fn single() -> Self {
+    pub async fn single() -> Result<Self> {
         // Load storage areas from `engine.hcl`
         //
-        Self::load(ENGINE_CONFIG, EngineMode::Single)
-            .await
-            .unwrap_or_else(|e| {
-                error!("Can not create single Engine: {}", e.to_string());
-                panic!("Error: {e}")
-            })
+        Self::load(ENGINE_CONFIG, EngineMode::Single).await
     }
 
     /// Creates a new Engine instance by loading configuration from the specified file
