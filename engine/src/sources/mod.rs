@@ -39,6 +39,7 @@ mod macros;
 #[enum_dispatch]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum FetchableSource {
+    #[cfg(feature = "asd")]
     Asd,
     #[cfg(feature = "aeroscope")]
     Aeroscope,

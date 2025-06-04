@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use eyre::Result;
 use ractor::pg::join;
-use ractor::{call, pg, Actor};
+use ractor::{call, pg, Actor, ActorRef};
 use tracing::{info, trace};
 
 use fetiche_formats::Format;
@@ -15,6 +15,32 @@ use super::actors::{Worker, WorkerArgs, WorkerMsg};
 use crate::actors::StatsMsg;
 use crate::sources::SENHIVE_PG;
 use crate::{AuthError, Filter, Senhive, Stats, StatsError, Streamable};
+
+impl Senhive {
+    async fn setup_actors(
+        &self,
+        out: Sender<String>,
+        stat: ActorRef<StatsMsg>,
+    ) -> Result<(ActorRef<WorkerMsg>, String)> {
+        let url = self.base_url.clone();
+        trace!("Starting worker actor.");
+
+        let args = WorkerArgs { url, out, stat: stat.clone() };
+        let tag = String::from("senhive::worker");
+        let (worker, _handle) = Actor::spawn(Some(tag.clone()), Worker, args).await?;
+
+        pg::join(SENHIVE_PG.into(), vec![worker.get_cell(), stat.get_cell()]);
+
+        info!("List of actors in PG.");
+        pg::get_members(&SENHIVE_PG.to_string())
+            .iter()
+            .for_each(|member| {
+                info!("  {}", member.get_name().unwrap_or("<anon>".into()));
+            });
+
+        Ok((worker, tag))
+    }
+}
 
 impl Streamable for Senhive {
     fn name(&self) -> String {
@@ -39,17 +65,9 @@ impl Streamable for Senhive {
     ///   get both stored and current data.
     ///
     ///
+    #[tracing::instrument(skip(self, out, _token, args))]
     async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<Stats> {
-        trace!("Senhive::stream");
-
         let args = Filter::from(args);
-        let stat = match self.stat.clone() {
-            Some(stat) => stat,
-            None => return Err(StatsError::NotInitialized.into())
-        };
-
-        // 0 means forever.
-        //
         let stream_duration = match args {
             Filter::Stream { duration, .. } => Duration::from_secs(duration as u64),
             _ => Duration::new(0, 0),
@@ -60,25 +78,8 @@ impl Streamable for Senhive {
             stream_duration.as_secs()
         );
 
-        // Launch the worker actor
-        //
-        let url = self.base_url.clone();
-        trace!("Starting worker actor.");
-        let args = WorkerArgs {
-            url,
-            out,
-            stat: stat.clone(),
-        };
-        let tag = String::from("senhive::worker");
-        let (worker, _handle) =
-            Actor::spawn(Some(tag.clone()), Worker, args).await?;
-
-        // Insert each actor in the PG_SOURCES group.
-        //
-        join(
-            SENHIVE_PG.into(),
-            vec![worker.get_cell(), stat.get_cell()],
-        );
+        let stat = self.stat.clone().ok_or(StatsError::NotInitialized)?;
+        let (worker, tag) = self.setup_actors(out, stat.clone()).await?;
 
         info!("List of actors.");
         let list = pg::get_members(&SENHIVE_PG.to_string());

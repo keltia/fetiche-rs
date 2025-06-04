@@ -2,37 +2,31 @@
 //!
 //! FIXME: this is not using an actor
 
-use std::sync::atomic::AtomicBool;
+use std::convert::TryInto;
+use std::str::FromStr;
 use std::sync::mpsc::{channel, Sender};
-use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::{thread, time};
 
 use chrono::Utc;
 use clap::{crate_name, crate_version};
 use eyre::Result;
 use mini_moka::sync::{Cache, ConcurrentCacheExt};
+use ractor::ActorRef;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use tokio::time;
 use tracing::{debug, error, info, trace};
 
 use crate::sources::access::opensky::{StatMsg, MAX_INTERVAL};
-use crate::{Auth, AuthError, Capability, Filter, Opensky, Site, Stats, Streamable, StreamableSource, CACHE_IDLE, CACHE_MAX, CACHE_SIZE};
+use crate::{
+    Auth, AuthError, Capability, Filter, Site, Stats, Streamable, StreamableSource, CACHE_IDLE,
+    CACHE_MAX, CACHE_SIZE,
+};
 use fetiche_formats::{Format, StateList};
-
-/// We can go back only 1h in Opensky API
-const MAX_INTERVAL: i64 = 3600;
-
-/// Expiration after insert/get
-pub const CACHE_IDLE: Duration = Duration::from_secs(20);
-/// Expiration after insert
-pub const CACHE_MAX: Duration = Duration::from_secs(60);
-/// Cache max entries
-pub const CACHE_SIZE: u64 = 20;
 
 /// This si the Opensky client/source struct.
 ///
-/// FIXME: this had only the "get" route (which will be "stream" for the streamable part.
+/// FIXME: this had only the "get" route (which will be "stream" for the streamable part).
 ///        this is confusing and incorrect.
 ///
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -41,16 +35,14 @@ pub struct OpenskyServer {
     pub feature: Capability,
     /// Input formats
     pub format: Format,
-    /// Username
-    pub login: String,
-    /// Password
-    pub password: String,
-    /// Base site url taken from config
+    /// Full URL
     pub base_url: String,
     /// Add this to `base_url` to fetch data
     pub get: String,
     /// Running time (for streams)
     pub duration: i32,
+    /// Stats actor ref
+    pub stats: Option<ActorRef<Stats>>,
 }
 
 #[allow(dead_code)]
@@ -80,47 +72,46 @@ struct Credentials {
 impl OpenskyServer {
     #[tracing::instrument]
     pub fn new() -> Self {
-        trace!("opensky::new");
-
         OpenskyServer {
-            features: vec![Capability::Fetch, Capability::Stream],
+            feature: Capability::Stream,
             format: Format::Opensky,
-            login: "".to_owned(),
-            password: "".to_owned(),
-            base_url: "".to_owned(),
+            base_url: "".into(),
             get: "".to_owned(),
             duration: 0,
+            stats: None,
         }
     }
 
     /// Load some data from in-memory loaded config
     ///
-    #[tracing::instrument]
-    pub fn load(&mut self, site: &Site) -> &mut Self {
-        trace!("opensky::load");
-
-        self.format = Format::from_str(&site.format).unwrap();
-        self.base_url = site.base_url.to_owned();
+    #[tracing::instrument(skip(self))]
+    pub fn load(&mut self, site: Site) -> &mut Self {
+        self.format = Format::from_str(&site.format).unwrap_or(Format::None);
+        let base_url = site.base_url.clone();
+        let get = site.route("stream").unwrap_or("".into());
         if let Some(auth) = &site.auth {
             match auth {
                 Auth::Login {
-                    username: login,
+                    username,
                     password,
                 } => {
-                    self.login = login.to_owned();
-                    self.password = password.to_owned();
+                    self.base_url = format!("https://{username}:{password}@{base_url}/{get}");
                 }
-                _ => panic!("nope"),
+                _ => self.base_url = "".into(),
             }
-        }
-        // FIXME: should get the entire set of routes
-        //
-        self.get = site.route("stream").unwrap().to_owned();
+        };
         self
     }
 
+    #[tracing::instrument(skip(self))]
+    pub fn stats(&mut self, stats: ActorRef<Stats>) -> &mut Self {
+        self.stats = Some(stats);
+        self
+    }
+
+    #[tracing::instrument(skip(self))]
     pub fn source(&self) -> StreamableSource {
-        StreamableSource::Opensky(self.clone())
+        StreamableSource::OpenskyServer(self.clone())
     }
 }
 
@@ -142,7 +133,7 @@ struct Args {
     lomax: f32,
 }
 
-impl Streamable for Opensky {
+impl Streamable for OpenskyServer {
     #[tracing::instrument(skip(self))]
     fn name(&self) -> String {
         "openskyserver".to_string()
@@ -249,25 +240,20 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
 
             let d = stream_duration;
             let tx1 = tx.clone();
-            thread::spawn(move || {
+            tokio::spawn(async move || {
                 trace!("alarm set to {}s", d);
-                thread::sleep(time::Duration::from_secs(d as u64));
+                tokio::time::sleep(time::Duration::from_secs(d as u64)).await;
                 tx1.send("TIMEOUT".to_string()).unwrap();
             });
             trace!("end of sleep");
         }
 
-        // reqwest::blocking::Client
-        //
-        let client = self.client.clone();
-
-        let login = self.login.clone();
-        let password = self.password.clone();
+        let client = reqwest::Client::new();
 
         // Launch stat gathering thread.
         //
         let (st_tx, st_rx) = channel::<StatMsg>();
-        thread::spawn(move || {
+        tokio::spawn(async move || {
             trace!("stats::thread");
 
             let start = Instant::now();
@@ -298,10 +284,10 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         // Launch a thread that sleep for 30s then ask for statistics
         //
         let disp_tx = st_tx.clone();
-        thread::spawn(move || {
+        tokio::spawn(async move || {
             trace!("stats::display");
             loop {
-                thread::sleep(Duration::from_secs(30_u64));
+                tokio::time::sleep(Duration::from_secs(30_u64)).await;
                 let _ = disp_tx.send(StatMsg::Print);
             }
         });
@@ -309,7 +295,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         // Worker thread1
         //
         let stat_tx = st_tx.clone();
-        thread::spawn(move || {
+        tokio::spawn(async move || {
             trace!("Starting worker thread");
 
             // Cache is local to the worker thread
@@ -323,13 +309,13 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             loop {
                 let resp = client
                     .get(&url)
-                    .basic_auth(&login, Some(&password))
                     .header(
                         "user-agent",
                         format!("{}/{}", crate_name!(), crate_version!()),
                     )
                     .header("content-type", "application/json")
-                    .send();
+                    .send()
+                    .await;
 
                 // Do not exit thread on server error, sleep and try to recover
                 //
@@ -337,10 +323,8 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     Ok(resp) => resp,
                     Err(e) => {
                         error!("worker-thread: {}", e.to_string());
-                        stat_tx
-                            .send(StatMsg::Error)
-                            .expect("stat::error");
-                        thread::sleep(Duration::from_secs(2));
+                        stat_tx.send(StatMsg::Error).expect("stat::error");
+                        tokio::time::sleep(Duration::from_secs(2)).await;
                         continue;
                     }
                 };
@@ -357,19 +341,17 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     code => {
                         let h = &resp.headers();
                         eprintln!("Error({}): {:?},", code, h);
-                        stat_tx
-                            .send(StatMsg::Error)
-                            .expect("stat::error");
-                        thread::sleep(Duration::from_millis(stream_delay as u64));
+                        stat_tx.send(StatMsg::Error).expect("stat::error");
+                        tokio::time::sleep(Duration::from_millis(stream_delay as u64)).await;
                         continue;
                     }
                 }
 
-                let buf = resp.text().unwrap();
+                let buf = resp.text().await?;
 
                 // Retrieve the answer and look into it, if answer was empty this should be rather fast
                 //
-                let sl: StateList = serde_json::from_str(buf.as_str()).expect("broken data");
+                let sl: StateList = serde_json::from_str(buf.as_str())?;
 
                 // Check whether data was returned
                 //
@@ -382,7 +364,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         Some(_time) => {
                             eprint!("*");
                             let _ = stat_tx.send(StatMsg::Hits);
-                            thread::sleep(Duration::from_millis(stream_delay as u64));
+                            tokio::time::sleep(Duration::from_millis(stream_delay as u64)).await;
                             continue;
                         }
                         // No, send it it and cache its `time`
@@ -392,8 +374,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
 
                             let _ = stat_tx.send(StatMsg::Miss);
                             let _ = stat_tx.send(StatMsg::Pkts);
-                            let _ = stat_tx
-                                .send(StatMsg::Bytes(buf.len() as u64));
+                            let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
 
                             tx.send(buf).expect("send");
                             cache.insert(sl.time, true);
@@ -407,7 +388,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     cache.sync();
                     if cache.entry_count() == 0 {
                         eprintln!("No traffic, waiting for 2s.");
-                        thread::sleep(Duration::from_secs(2_u64));
+                        tokio::time::sleep(Duration::from_secs(2_u64)).await;
                     } else {
                         eprint!(".");
                     }
@@ -415,7 +396,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
 
                 // Whatever happened, sleep for to avoid CPU/network overload
                 if stream_delay != 0 {
-                    thread::sleep(Duration::from_millis(stream_delay as u64));
+                    tokio::time::sleep(Duration::from_millis(stream_delay as u64)).await;
                 }
             }
         });

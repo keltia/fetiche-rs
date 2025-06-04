@@ -26,7 +26,7 @@ use tracing::{error, info, trace, warn};
 
 use super::actors::{Worker, WorkerArgs};
 use crate::actors::{StatsMsg, Supervisor};
-use crate::{Auth, AuthError, Capability, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, WorkerMsg, ENGINE_PG};
+use crate::{Auth, AuthError, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, WorkerMsg, ENGINE_PG};
 use fetiche_formats::Format;
 
 /// TCP streaming URL
@@ -36,8 +36,6 @@ pub(crate) const DEF_PORT: u16 = 50007;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AvionixServer {
-    /// Describe the different features of the source
-    pub features: Vec<Capability>,
     /// Input formats
     pub format: Format,
     /// API Key
@@ -59,7 +57,6 @@ impl AvionixServer {
     #[tracing::instrument]
     pub fn new() -> Self {
         Self {
-            features: vec![Capability::Stream],
             format: Format::CubeData,
             api_key: String::new(),
             user_key: String::new(),
@@ -197,7 +194,7 @@ impl Streamable for AvionixServer {
 
         // Get the ball rolling.
         //
-        let _ = worker.cast(WorkerMsg::Consume(filter, stream_duration.as_secs()))?;
+        let _ = worker.cast(WorkerMsg::Consume(filter))?;
 
         // Set the clock ticking unless duration is 0
         //

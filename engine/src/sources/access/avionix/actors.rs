@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::net::{Shutdown, TcpStream};
-use std::time::Duration;
 
 use eyre::Result;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
@@ -20,7 +19,7 @@ const START_MARKER: &str = "\x02";
 
 #[derive(Debug)]
 pub enum WorkerMsg {
-    Consume(Filter, u64),
+    Consume(Filter),
 }
 
 #[derive(Debug)]
@@ -84,11 +83,10 @@ impl Actor for Worker {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            WorkerMsg::Consume(filter, duration) => {
+            WorkerMsg::Consume(filter) => {
                 trace!("Starting worker thread");
 
                 let (min, max) = read_filter(filter);
-                let stream_duration = Duration::from_secs(duration);
 
                 let url = Url::parse(state.url.as_str())?;
                 let site = url.host_str().unwrap_or(DEF_SITE);
@@ -131,17 +129,11 @@ impl Actor for Worker {
 
                 let out = state.out.clone();
 
-                info!(
-                    r##"
-StreamURL: {}
-Duration {}s
-        "##,
-                    url,
-                    stream_duration.as_secs()
-                );
+                info!("StreamURL: {}", url);
 
                 let stat = state.stat.clone();
-                stat.cast(StatsMsg::Reset("avionixcube".into())).expect("stat::error");
+                stat.cast(StatsMsg::Reset("avionixcube".into()))
+                    .expect("stat::error");
 
                 // Start stream
                 //
@@ -159,7 +151,14 @@ Duration {}s
                         }
                         Err(e) => {
                             error!("worker-thread: {}", e.to_string());
-                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { err: 1, ..Default::default() })).expect("stat::error");
+                            stat.cast(StatsMsg::Update(
+                                "avionixcube".into(),
+                                Stats {
+                                    err: 1,
+                                    ..Default::default()
+                                },
+                            ))
+                                .expect("stat::error");
 
                             conn.shutdown(Shutdown::Both).expect("shutdown socket");
 
@@ -168,7 +167,14 @@ Duration {}s
                             drop(conn_in);
                             drop(conn_out);
 
-                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { reconnect: 1, ..Default::default() })).expect("stat::error");
+                            stat.cast(StatsMsg::Update(
+                                "avionixcube".into(),
+                                Stats {
+                                    reconnect: 1,
+                                    ..Default::default()
+                                },
+                            ))
+                                .expect("stat::error");
 
                             conn = TcpStream::connect(format!("{site}:{port}"))
                                 .expect("connect failed");
@@ -199,12 +205,15 @@ Duration {}s
 
                     let filtered = filter_payload(&state.traffic, raw.as_ref())?;
 
-                    stat.cast(StatsMsg::Update("avionixcube".into(), Stats {
-                        pkts: buf.len() as u32,
-                        bytes: n as u64,
-                        ..Default::default()
-                    },
-                    )).expect("stat::error");
+                    stat.cast(StatsMsg::Update(
+                        "avionixcube".into(),
+                        Stats {
+                            pkts: buf.len() as u32,
+                            bytes: n as u64,
+                            ..Default::default()
+                        },
+                    ))
+                        .expect("stat::error");
 
                     out.send(filtered).expect("send");
                 }
@@ -247,11 +256,10 @@ impl Actor for LocalWorker {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            WorkerMsg::Consume(filter, duration) => {
+            WorkerMsg::Consume(filter) => {
                 trace!("Starting worker thread");
 
                 let (min, max) = read_filter(filter);
-                let stream_duration = Duration::from_secs(duration);
 
                 let url = Url::parse(state.url.as_str())?;
                 let site = url.host_str().unwrap_or(DEF_SITE);
@@ -283,17 +291,11 @@ impl Actor for LocalWorker {
 
                 let out = state.out.clone();
 
-                info!(
-                    r##"
-        StreamURL: {}
-        Duration {}s
-                "##,
-                    url,
-                    stream_duration.as_secs()
-                );
+                info!("StreamURL: {}", url);
 
                 let stat = state.stat.clone();
-                stat.cast(StatsMsg::Reset("avionixcube".into())).expect("stat::error");
+                stat.cast(StatsMsg::Reset("avionixcube".into()))
+                    .expect("stat::error");
 
                 // Start stream
                 //
@@ -311,7 +313,14 @@ impl Actor for LocalWorker {
                         }
                         Err(e) => {
                             error!("worker-thread: {}", e.to_string());
-                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { err: 1, ..Default::default() })).expect("stat::error");
+                            stat.cast(StatsMsg::Update(
+                                "avionixcube".into(),
+                                Stats {
+                                    err: 1,
+                                    ..Default::default()
+                                },
+                            ))
+                                .expect("stat::error");
 
                             conn.shutdown(Shutdown::Both).expect("shutdown socket");
 
@@ -320,7 +329,14 @@ impl Actor for LocalWorker {
                             drop(conn_in);
                             drop(conn_out);
 
-                            stat.cast(StatsMsg::Update("avionixcube".into(), Stats { reconnect: 1, ..Default::default() })).expect("stat::error");
+                            stat.cast(StatsMsg::Update(
+                                "avionixcube".into(),
+                                Stats {
+                                    reconnect: 1,
+                                    ..Default::default()
+                                },
+                            ))
+                                .expect("stat::error");
 
                             conn = TcpStream::connect(format!("{site}:{port}"))
                                 .expect("connect failed");
@@ -336,12 +352,15 @@ impl Actor for LocalWorker {
                     let raw = String::from_utf8_lossy(&buf[..n]);
                     debug!("raw={}", raw);
 
-                    stat.cast(StatsMsg::Update("avionixcube".into(), Stats {
-                        pkts: buf.len() as u32,
-                        bytes: n as u64,
-                        ..Default::default()
-                    },
-                    )).expect("stat::error");
+                    stat.cast(StatsMsg::Update(
+                        "avionixcube".into(),
+                        Stats {
+                            pkts: buf.len() as u32,
+                            bytes: n as u64,
+                            ..Default::default()
+                        },
+                    ))
+                        .expect("stat::error");
 
                     out.send(String::from_utf8(buf[..n].to_vec())?)
                         .expect("send");
