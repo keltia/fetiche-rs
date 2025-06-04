@@ -248,3 +248,81 @@ impl TokenStorage {
         rt.block_on(async { self.as_string().await })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::*;
+    use tempfile::tempdir;
+
+    #[fixture]
+    fn temp_dir() -> String {
+        let dir = tempdir().unwrap();
+        dir.path().to_str().unwrap().to_string()
+    }
+
+    #[rstest]
+    #[tokio::test]
+    async fn test_register_empty_directory(temp_dir: String) -> Result<()> {
+        let storage = TokenStorage::register(&temp_dir).await?;
+        assert_eq!(storage.len(), 0);
+        assert!(storage.is_empty());
+        Ok(())
+    }
+
+    #[rstest]
+    #[tokio::test]
+    async fn test_store_and_load(temp_dir: String) -> Result<()> {
+        let mut storage = TokenStorage::register(&temp_dir).await?;
+
+        let token = AsdToken::default();
+        let token_type = TokenType::AsdToken(token.clone());
+        storage.store("asd_test_token", token_type.clone()).await?;
+
+        assert_eq!(storage.len(), 1);
+        assert!(!storage.is_empty());
+
+        let loaded = storage.load("asd_test_token").await?;
+        assert_eq!(loaded, token_type);
+        Ok(())
+    }
+
+    #[rstest]
+    #[tokio::test]
+    async fn test_load_nonexistent(temp_dir: String) -> Result<()> {
+        let storage = TokenStorage::register(&temp_dir).await?;
+        let result = storage.load("nonexistent").await;
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[rstest]
+    #[tokio::test]
+    async fn test_as_string(temp_dir: String) -> Result<()> {
+        let mut storage = TokenStorage::register(&temp_dir).await?;
+
+        let token = AsdToken::default();
+        let token_type = TokenType::AsdToken(token);
+        storage.store("asd_default_token", token_type).await?;
+
+        let output = storage.as_string().await?;
+        assert!(output.contains("asd_default_token"));
+        assert!(output.contains("Asd"));
+        Ok(())
+    }
+
+    #[rstest]
+    #[tokio::test]
+    async fn test_list(temp_dir: String) -> Result<()> {
+        let mut storage = TokenStorage::register(&temp_dir).await?;
+
+        let token = AsdToken::default();
+        let token_type = TokenType::AsdToken(token);
+        storage.store("asd_test_token", token_type.clone()).await?;
+
+        let tokens = storage.list();
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0], token_type);
+        Ok(())
+    }
+}
