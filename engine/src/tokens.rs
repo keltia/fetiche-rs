@@ -1,21 +1,22 @@
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::fs;
-use std::fs::read_dir;
-use std::path::Path;
-use std::time::UNIX_EPOCH;
 
 use chrono::{DateTime, Utc};
 use eyre::Result;
+use futures::TryStreamExt;
+use object_store::local::LocalFileSystem;
+use object_store::path::Path;
+use object_store::{ObjectMeta, ObjectStore};
 use tabled::builder::Builder;
 use tabled::settings::Style;
+use tokio::runtime::Handle;
 use tracing::trace;
 
 use crate::token::AsdToken;
 use crate::{TokenStatus, TokenType};
 
 /// The `TokenStorage` struct provides functionality for managing tokens
-/// stored as serialized files in a specified directory. It allows operations
+/// stored as serialized files using the `object_store` crate. It allows operations
 /// such as registering the directory containing token files, storing tokens,
 /// and retrieving tokens by key, as well as listing all tokens present in the
 /// directory.
@@ -25,38 +26,43 @@ use crate::{TokenStatus, TokenType};
 /// determined based on the file content.
 ///
 /// # Fields
-/// - `path`: A string representing the relative path to the directory containing token files.
+/// - `store`: An `Arc<dyn ObjectStore>` providing the storage backend.
+/// - `base_path`: A `Path` representing the base path in the object store for token files.
 /// - `list`: A `BTreeMap` storing the tokens. The keys are file names, and the values are the parsed `TokenType`s.
 ///
 /// # Examples
 ///
 /// ```rust
-///
-/// // Register a directory containing token files
 /// use fetiche_engine::{TokenStorage, TokenType};
 /// use fetiche_engine::token::AsdToken;
 ///
-/// let mut storage = TokenStorage::register("path/to/tokens");
+/// # tokio_test::block_on(async {
+/// // Register a directory containing token files
+/// let mut storage = TokenStorage::register("path/to/tokens").await?;
 ///
 /// // Store a new token
 /// let token_data = TokenType::AsdToken(AsdToken::default());
-/// let _ = storage.store("new_token_file", token_data);
+/// let _ = storage.store("new_token_file", token_data).await;
 ///
 /// // Retrieve a token by key
-/// if let Ok(token) = storage.load("existing_token_file") {
+/// if let Ok(token) = storage.load("existing_token_file").await {
 ///     println!("Loaded token: {:?}", token);
 /// }
 ///
 /// // List all tokens
-/// if let Ok(token_list) = storage.to_string() {
+/// if let Ok(token_list) = storage.as_string().await {
 ///     println!("{}", token_list);
 /// }
+/// # Ok::<(), eyre::Report>(())
+/// # })?;
 /// ```
 ///
 #[derive(Debug)]
 pub struct TokenStorage {
-    /// `path` is relative to `root`.
-    path: String,
+    /// Object store backend
+    store: std::sync::Arc<dyn ObjectStore>,
+    /// Base path for token files
+    base_path: Path,
     /// Btree of (key, AuthToken)
     list: BTreeMap<String, TokenType>,
 }
@@ -65,51 +71,90 @@ impl TokenStorage {
     /// Read the directory and return all tokens (one per file)
     ///
     #[tracing::instrument]
-    pub fn register(path: &str) -> Self {
+    pub async fn register(path: &str) -> Result<Self> {
+        let store = std::sync::Arc::new(LocalFileSystem::new());
+        let base_path = Path::from(path);
         let mut db = BTreeMap::<String, TokenType>::new();
-        if let Ok(dir) = read_dir(path) {
-            trace!("reading directory {path}");
-            dir.into_iter().for_each(|entry| {
-                if let Ok(p) = entry {
-                    let f = p.file_name().to_str().unwrap().to_string();
-                    let full = Path::new(path).join(f.as_str());
-                    let raw = fs::read_to_string(full).unwrap();
 
-                    if f.starts_with("asd_") {
-                        let data: AsdToken = serde_json::from_str(&raw).unwrap();
-                        db.insert(
-                            p.file_name().to_string_lossy().to_string(),
-                            TokenType::AsdToken(data),
-                        );
-                    } else {
-                        unimplemented!()
-                    }
+        // List all objects in the directory
+        let list_stream = store.list(Some(&base_path));
+        let objects: Vec<ObjectMeta> = list_stream.try_collect().await?;
+
+        trace!("reading directory {path}");
+
+        for object in objects {
+            if let Some(file_name) = object.location.filename() {
+                trace!("Processing file: {}", file_name);
+
+                let data = store.get(&object.location).await?;
+                let bytes = data.bytes().await?;
+                let raw = String::from_utf8(bytes.to_vec())?;
+
+                if file_name.starts_with("asd_") {
+                    let token_data: AsdToken = serde_json::from_str(&raw)?;
+                    db.insert(file_name.to_string(), TokenType::AsdToken(token_data));
+                } else {
+                    unimplemented!("Unsupported token type for file: {}", file_name)
                 }
-            });
+            }
         }
-        TokenStorage {
-            path: path.into(),
+
+        Ok(TokenStorage {
+            store,
+            base_path,
             list: db,
-        }
+        })
     }
 
+    /// Store a token in the object store and update the in-memory list
     #[tracing::instrument(skip(self))]
-    pub fn store(&mut self, key: &str, data: TokenType) -> Result<()> {
+    pub async fn store(&mut self, key: &str, data: TokenType) -> Result<()> {
+        // Serialize the token data
+        let serialized = match &data {
+            TokenType::AsdToken(token) => serde_json::to_string(token)?,
+        };
+
+        // Create the full path for the token file
+        let file_path = self.base_path.child(key);
+
+        // Store in the object store
+        self.store.put(&file_path, serialized.into()).await?;
+
+        // Update the in-memory cache
         self.list.insert(key.into(), data);
+
         Ok(())
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn load(&self, key: &str) -> Result<TokenType> {
-        match self.list.get(key) {
-            Some(t) => Ok(t.clone()),
-            None => Err(TokenStatus::NotFound(key.to_string()).into()),
+    pub async fn load(&self, key: &str) -> Result<TokenType> {
+        // First check the in-memory cache
+        if let Some(token) = self.list.get(key) {
+            return Ok(token.clone());
+        }
+
+        // If not in cache, try to load from object store
+        let file_path = self.base_path.child(key);
+
+        match self.store.get(&file_path).await {
+            Ok(data) => {
+                let bytes = data.bytes().await?;
+                let raw = String::from_utf8(bytes.to_vec())?;
+
+                if key.starts_with("asd_") {
+                    let token_data: AsdToken = serde_json::from_str(&raw)?;
+                    Ok(TokenType::AsdToken(token_data))
+                } else {
+                    unimplemented!("Unsupported token type for key: {}", key)
+                }
+            }
+            Err(_) => Err(TokenStatus::NotFound(key.to_string()).into()),
         }
     }
 
     #[tracing::instrument(skip(self))]
     pub fn path(&self) -> String {
-        self.path.clone()
+        self.base_path.to_string()
     }
 
     #[tracing::instrument(skip(self))]
@@ -133,7 +178,7 @@ impl TokenStorage {
     ///       we do not know which kind of token each one is.
     ///
     #[tracing::instrument(skip(self))]
-    pub fn to_string(&self) -> Result<String> {
+    pub async fn as_string(&self) -> Result<String> {
         trace!("listing tokens");
 
         let header = vec!["Path", "Producer", "Created at"];
@@ -141,38 +186,65 @@ impl TokenStorage {
         let mut builder = Builder::default();
         builder.push_record(header);
 
-        let p = self.path.as_str();
-        if let Ok(dir) = fs::read_dir(p) {
-            for fname in dir {
-                let mut row = vec![];
+        // List all objects in the base path
+        let list_stream = self.store.list(Some(&self.base_path));
+        let objects: Vec<ObjectMeta> = list_stream.try_collect().await?;
 
-                if let Ok(fname) = fname {
-                    // Using strings is easier
-                    //
-                    let name = format!("{}", fname.file_name().to_string_lossy());
-                    row.push(name.clone());
+        for object in objects {
+            let mut row = vec![];
 
-                    // FIXME
-                    if name.starts_with("asd_default_token") {
-                        row.push("Asd".into());
-                    } else {
-                        row.push("Unknown".into());
-                    }
+            if let Some(file_name) = object.location.filename() {
+                row.push(file_name.to_string());
 
-                    let st = fname.metadata()?;
-                    let modified = DateTime::<Utc>::from(st.modified()?);
-                    let modified = format!("{}", modified);
-                    row.push(modified);
+                // FIXME: Determine producer based on file name
+                if file_name.starts_with("asd_default_token") {
+                    row.push("Asd".into());
                 } else {
-                    row.push("INVALID".to_string());
-                    let origin = format!("{}", DateTime::<Utc>::from(UNIX_EPOCH));
-                    row.push(origin);
+                    row.push("Unknown".into());
                 }
-                builder.push_record(row);
+
+                let modified = DateTime::<Utc>::from(object.last_modified);
+                let modified = format!("{}", modified);
+                row.push(modified);
+            } else {
+                row.push("INVALID".to_string());
+                row.push("Unknown".to_string());
+                let origin = format!("{}", DateTime::<Utc>::from(std::time::UNIX_EPOCH));
+                row.push(origin);
             }
+            builder.push_record(row);
         }
+
         let table = builder.build().with(Style::rounded()).to_string();
         let table = format!("Listing all tokens:\n{}", table);
         Ok(table)
+    }
+
+    /// Synchronous version of register for backward compatibility
+    #[tracing::instrument]
+    pub fn register_sync(path: &str) -> Self {
+        let rt = Handle::current();
+        rt.block_on(async { Self::register(path).await.unwrap() })
+    }
+
+    /// Synchronous version of store for backward compatibility
+    #[tracing::instrument(skip(self))]
+    pub fn store_sync(&mut self, key: &str, data: TokenType) -> Result<()> {
+        let rt = Handle::current();
+        rt.block_on(async { self.store(key, data).await })
+    }
+
+    /// Synchronous version of load for backward compatibility
+    #[tracing::instrument(skip(self))]
+    pub fn load_sync(&self, key: &str) -> Result<TokenType> {
+        let rt = Handle::current();
+        rt.block_on(async { self.load(key).await })
+    }
+
+    /// Synchronous version of to_string for backward compatibility
+    #[tracing::instrument(skip(self))]
+    pub fn to_string_sync(&self) -> Result<String> {
+        let rt = Handle::current();
+        rt.block_on(async { self.as_string().await })
     }
 }

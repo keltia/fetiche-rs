@@ -2,7 +2,7 @@
 //!
 //! This module provides an actor-based token management system that handles:
 //! - Token storage and retrieval
-//! - Token listing capabilities 
+//! - Token listing capabilities
 //! - Persistent token storage operations
 //!
 //! The actor maintains tokens in a storage backend and provides async message-based
@@ -47,33 +47,46 @@ impl Actor for TokenActor {
     type Arguments = TokenArgs;
 
     #[tracing::instrument(skip(self, myself))]
-    async fn pre_start(&self, myself: ActorRef<Self::Msg>, args: Self::Arguments) -> Result<Self::State, ActorProcessingErr> {
+    async fn pre_start(
+        &self,
+        myself: ActorRef<Self::Msg>,
+        args: Self::Arguments,
+    ) -> Result<Self::State, ActorProcessingErr> {
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
 
         // Register tokens
         //
         trace!("load tokens");
-        let tokens_area = Path::new(&args.path).join("tokens").to_string_lossy().to_string();
-        let tokens = TokenStorage::register(&tokens_area);
+        let tokens_area = Path::new(&args.path)
+            .join("tokens")
+            .to_string_lossy()
+            .to_string();
+        let tokens = TokenStorage::register(&tokens_area).await?;
         info!("{} tokens loaded", tokens.len());
 
         Ok(tokens)
     }
 
     #[tracing::instrument(skip(self, _myself))]
-    async fn handle(&self, _myself: ActorRef<Self::Msg>, message: Self::Msg, state: &mut Self::State) -> Result<(), ActorProcessingErr> {
+    async fn handle(
+        &self,
+        _myself: ActorRef<Self::Msg>,
+        message: Self::Msg,
+        state: &mut Self::State,
+    ) -> Result<(), ActorProcessingErr> {
         match message {
             TokenMsg::Get(key, sender) => {
-                let token = state.load(&key)?;
+                let token = state.load(&key).await?;
                 sender.send(token)?;
             }
             TokenMsg::List(sender) => {
-                let list = state.to_string()?;
-                sender.send(state.list().to_vec())?;
+                let list = state.list();
+                sender.send(state.list())?;
             }
-            TokenMsg::Store(path, store) => { todo!() }
+            TokenMsg::Store(path, store) => {
+                todo!()
+            }
         }
         Ok(())
     }
 }
-

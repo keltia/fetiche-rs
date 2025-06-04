@@ -29,12 +29,16 @@ impl Engine {
     ///
     #[inline]
     pub fn state_file(&self) -> PathBuf {
-        self.home.path_to_filesystem(&Path::from(STATE_FILE)).unwrap()
+        self.home
+            .path_to_filesystem(&Path::from(STATE_FILE))
+            .unwrap()
     }
 
     #[inline]
     pub fn sources_file(&self) -> PathBuf {
-        self.home.path_to_filesystem(&Path::from(SOURCES_CONFIG)).unwrap()
+        self.home
+            .path_to_filesystem(&Path::from(SOURCES_CONFIG))
+            .unwrap()
     }
 
     /// Synchronizes all engine state by persisting it to disk
@@ -111,8 +115,8 @@ impl Engine {
     /// Provides information about active authentication tokens used for
     /// accessing various data sources.
     ///
-    pub fn list_tokens(&self) -> Result<String> {
-        self.tokens.to_string()
+    pub async fn list_tokens(&self) -> Result<String> {
+        self.tokens.as_string().await
     }
 
     /// Returns the full path to the engine's configuration file
@@ -121,7 +125,9 @@ impl Engine {
     /// to locate the HCL configuration file.
     ///
     pub fn config_file(&self) -> PathBuf {
-        self.home.path_to_filesystem(&Path::from(ENGINE_CONFIG)).unwrap()
+        self.home
+            .path_to_filesystem(&Path::from(ENGINE_CONFIG))
+            .unwrap()
     }
 
     /// Returns a string containing version information for the engine and its modules
@@ -164,7 +170,6 @@ pub struct CmdsFile {
     /// Ordered list of format metadata
     pub cmds: BTreeMap<String, CmdsDescr>,
 }
-
 
 impl Engine {
     /// Returns a formatted table of all available commands from the cmds.hcl file
