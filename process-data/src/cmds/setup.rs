@@ -46,6 +46,8 @@ pub struct SetupOpts {
     /// Create encounters (aka calculation) table
     #[clap(short = 'E', long)]
     pub encounters: bool,
+    #[clap(short = 'R', long)]
+    pub records: bool,
     /// Create permanent tables
     #[clap(short = 'V', long)]
     pub views: bool,
@@ -659,6 +661,31 @@ DROP VIEW IF EXISTS acute.pbi_encounters_summary
     Ok(dbh.execute(rm5).await?)
 }
 
+// ----- Record-related table
+
+#[tracing::instrument(skip(dbh))]
+async fn add_records_table(dbh: &Client) -> Result<()> {
+    let crt = r##"
+CREATE OR REPLACE TABLE acute.records (
+  day DATE,
+  site VARCHAR(10),
+  status INT NOT NULL,
+  comment VARCHAR,
+)
+ENGINE = ReplacingMergeTree PRIMARY KEY (day, site)
+COMMENT 'Records the run history for all sites every day.';
+    "##;
+    Ok(())
+}
+
+#[tracing::instrument(skip(dbh))]
+async fn drop_records_table(dbh: &Client) -> Result<()> {
+    let crt = r##"
+    DROP VIEW records IF EXISTS acute.records
+    "##;
+    Ok(dbh.execute(crt).await?)
+}
+
 // -----
 
 /// Create various views
@@ -707,12 +734,16 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
         create_views(&dbh).await?;
         add_macros(&dbh).await?;
         let _ = add_encounters_table(&dbh).await;
+        let _ = add_records_table(&dbh).await;
     } else {
         if opts.macros {
             add_macros(&dbh).await?;
         }
         if opts.encounters {
             add_encounters_table(&dbh).await?;
+        }
+        if opts.records {
+            add_records_table(&dbh).await?;
         }
     }
     Ok(())
@@ -725,11 +756,15 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
     let dbh = ctx.db().await;
     if opts.all {
         drop_encounters_table(&dbh).await?;
+        drop_records_table(&dbh).await?;
         remove_macros(&dbh).await?;
         drop_views(&dbh).await?;
     } else {
         if opts.macros {
             remove_macros(&dbh).await?;
+        }
+        if opts.records {
+            drop_records_table(&dbh).await?;
         }
         if opts.encounters {
             drop_encounters_table(&dbh).await?;
