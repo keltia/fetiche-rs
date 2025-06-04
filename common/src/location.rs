@@ -178,7 +178,7 @@ pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<St
         builder.push_record(row);
     });
 
-    let allf = builder.build().with(Style::modern()).to_string();
+    let allf = builder.build().with(Style::sharp()).to_string();
     Ok(format!("List all locations ({dist} nm):\n{allf}"))
 }
 

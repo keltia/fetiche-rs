@@ -125,7 +125,7 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
 
             let res = if opts.table {
                 let mut table = Table::new(res.as_slice());
-                table.with(Style::modern());
+                table.with(Style::sharp());
                 table.to_string()
             } else {
                 json!(res).to_string()
@@ -149,7 +149,7 @@ ORDER BY start_at ASC
 
             let res = if opts.table {
                 let mut table = Table::new(res.as_slice());
-                table.with(Style::modern());
+                table.with(Style::sharp());
                 table.to_string()
             } else {
                 json!(res).to_string()
@@ -186,7 +186,7 @@ ORDER BY
             println!("Listing all sites:");
             let res = if opts.table {
                 let mut table = Table::new(res.as_slice());
-                table.with(Style::modern());
+                table.with(Style::sharp());
                 table.to_string()
             } else {
                 json!(res).to_string()

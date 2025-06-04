@@ -131,7 +131,7 @@ impl StorageAreas {
             };
             builder.push_record(row);
         });
-        let allc = builder.build().with(Style::modern()).to_string();
+        let allc = builder.build().with(Style::sharp()).to_string();
         let str = format!("List all storage areas:\n{allc}");
         Ok(str)
     }

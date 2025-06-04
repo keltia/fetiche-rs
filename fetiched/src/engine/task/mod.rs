@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use eyre::Result;
 use serde::Deserialize;
-use strum::{VariantNames, EnumIter};
+use strum::{EnumIter, VariantNames};
 use tabled::{builder::Builder, settings::Style};
 use tracing::trace;
 
@@ -104,7 +104,7 @@ impl Engine {
                 builder.push_record(row);
             });
 
-        let allc = builder.build().with(Style::modern()).to_string();
+        let allc = builder.build().with(Style::sharp()).to_string();
         let str = format!("List all commands:\n{allc}");
 
         Ok(str)

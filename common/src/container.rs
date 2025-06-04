@@ -198,7 +198,7 @@ impl Container {
             row.push(&row_text);
             builder.push_record(row);
         });
-        let allf = builder.build().with(Style::modern()).to_string();
+        let allf = builder.build().with(Style::sharp()).to_string();
         let str = format!("List all formats:\n{allf}");
         Ok(str)
     }
