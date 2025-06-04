@@ -325,4 +325,18 @@ mod tests {
         let (_, v) = Storage::parse_rotation(input).unwrap();
         assert_eq!(val, v);
     }
+
+    #[rstest]
+    #[case("42s", 42_f64)]
+    #[case("60s", 60_f64)]
+    #[case("2m", 120_f64)]
+    #[case("5h", 18_000_f64)]
+    #[case("24h", 86_400_f64)]
+    #[case("1d", 86_400_f64)]
+    fn test_parse_rotation_jiff(#[case] input: &str, #[case] val: f64) -> eyre::Result<()> {
+        let marker = SpanRelativeTo::days_are_24_hours();
+        let v: Span = input.parse()?;
+        assert_eq!(v.total((Unit::Second, marker))?, val);
+        Ok(())
+    }
 }
