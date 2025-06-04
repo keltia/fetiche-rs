@@ -84,6 +84,23 @@ impl Worker for RunnerActor {
         Ok(state)
     }
 
+    /// Handles incoming messages for the Runner actor.
+    ///
+    /// This method processes RunnerMsg messages to execute jobs in a pipeline pattern:
+    /// - Creates a pipeline of tasks from producer through filters to consumer
+    /// - Executes tasks sequentially, passing data between them
+    /// - Collects execution statistics and reports results
+    ///
+    /// # Parameters
+    /// * `wid` - Worker ID for this Runner instance
+    /// * `_factory` - Reference to the actor factory (unused)
+    /// * `msg` - The message containing job details to be processed
+    /// * `key` - Unique identifier for this job execution
+    /// * `state` - Mutable reference to actor's state containing results/stats actors
+    ///
+    /// # Returns
+    /// Returns the job key on successful execution, or an ActorProcessingErr on failure
+    ///
     #[tracing::instrument(skip(self, _factory))]
     async fn handle(
         &self,
