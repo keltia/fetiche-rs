@@ -3,20 +3,22 @@
 //! This provides a CRUD-like interface with subcommands like `add` & `delete`.
 //!
 
+use chrono::{DateTime, Utc};
 use clap::Parser;
 use eyre::Result;
 use geo::coord;
-use klickhouse::{DateTime, QueryBuilder, Row};
+use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fs::read_to_string;
 use tracing::trace;
 
+use crate::cmds::Site;
+use crate::runtime::Context;
+
 pub(crate) use antennas::*;
 pub(crate) use install::*;
 pub(crate) use sites::*;
-
-use crate::runtime::Context;
 
 mod antennas;
 mod install;
@@ -73,7 +75,7 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
         AcuteSubCommand::Antennas(_) => {
             #[derive(Debug, Deserialize, Serialize, Row)]
             struct Antenna {
-                pub id: u32,
+                pub id: i32,
                 #[serde(rename = "type")]
                 pub atype: String,
                 pub name: String,
@@ -96,35 +98,28 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
         AcuteSubCommand::Install(_) => {
             #[derive(Debug, Deserialize, Serialize, Row)]
             struct Install {
-                pub id: i32,
-                pub name: String,
-                pub start_at: DateTime,
-                pub end_at: DateTime,
-                pub station_name: String,
-                pub comment: String,
+                pub install_id: i32,
+                pub start_at: DateTime<Utc>,
+                pub end_at: DateTime<Utc>,
+                #[serde(rename = "type")]
+                pub atype: String,
+                pub antenna_name: String,
+                pub site_name: String,
+                pub timezone: String,
             }
 
             // Find all installations with sites' name and antenna's ID
             //
             let r = r##"
-SELECT
-    inst.id,
-    sites.name,
-    start_at,
-    end_at,
-    antennas.name AS station_name,
-    inst.comment
-FROM installations AS inst
-INNER JOIN antennas ON antennas.id = inst.antenna_id
-INNER JOIN sites ON inst.site_id = sites.id
+SELECT * FROM deployments
 ORDER BY start_at ASC
-INTO OUTFILE '/tmp/installations.txt' AND STDOUT
-FORMAT Pretty
            "##;
 
             eprintln!("Listing all installations:");
             dbh.execute(r).await?;
-            let res = read_to_string("/tmp/installations.txt")?;
+            let q = QueryBuilder::new(r);
+            let res = dbh.query_collect::<Install>(q).await?;
+            let res = json!(&res).to_string();
             println!("{res}");
         }
         AcuteSubCommand::Sites(_) => {
@@ -133,9 +128,13 @@ FORMAT Pretty
                 pub id: i32,
                 pub name: String,
                 pub code: String,
-                pub home: f32,
-                pub here: f32,
-                pub distance: f32,
+                pub basename: String,
+                pub latitude: f64,
+                pub longitude: f64,
+                pub ref_altitude: i32,
+                pub timezone: String,
+                pub offset: i32,
+                pub distance_km: f64,
             }
 
             // This is our current location in Brétigny
@@ -149,9 +148,12 @@ SELECT
   id,
   name,
   code,
-  longitude,
+  basename,
   latitude,
+  longitude,
   ref_altitude,
+  timezone,
+  offset,
   floor(dist_2d($1, $2, longitude, latitude) / 1000.) AS distance_km
 FROM
   sites
