@@ -1,12 +1,14 @@
 use std::collections::BTreeMap;
+use std::num::ParseIntError;
 use std::path::PathBuf;
 
 use eyre::Result;
+use nom::sequence::tuple;
 use nom::{
     character::complete::{i8, one_of},
-    combinator::map,
-    sequence::tuple,
+    combinator::map_res,
     IResult,
+    Parser,
 };
 use serde::Deserialize;
 use strum::EnumString;
@@ -292,15 +294,18 @@ impl Storage {
     /// - The parsing is case-sensitive and expects valid formats as described above.
     ///
     pub fn parse_rotation(input: &str) -> IResult<&str, u32> {
-        let into_s = |(n, tag): (std::primitive::i8, char)| match tag {
-            's' => n as u32,
-            'm' => (n as u32) * 60,
-            'h' => (n as u32) * 3_600,
-            'd' => (n as u32) * 3_600 * 24,
-            _ => n as u32,
+        let into_seconds = |(n, tag): (std::primitive::i8, char)| -> std::result::Result<u32, ParseIntError> {
+            let res = match tag {
+                's' => n as u32,
+                'm' => (n as u32) * 60,
+                'h' => (n as u32) * 3_600,
+                'd' => (n as u32) * 3_600 * 24,
+                _ => n as u32,
+            };
+            Ok(res)
         };
-        let r = tuple((i8, one_of("smhd")));
-        map(r, into_s)(input)
+
+        map_res((i8, one_of("smhd")), into_seconds).parse(input)
     }
 
     pub fn insert<T: Into<String>>(&mut self, key: T, val: StoreArea) -> Option<StoreArea> {
