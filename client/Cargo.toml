@@ -1,6 +1,6 @@
 [package]
 name = "fetiche-client"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Stub Engine component for Fetiche."

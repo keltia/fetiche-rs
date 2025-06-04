@@ -12,9 +12,11 @@
 //! It allows configuring various aspects of a job including data sources (fetch or stream),
 //! filters, middleware operations (tee), and output destinations (save or store).
 //!
+use eyre::Result;
+
 use crate::{ConsumerText, Freq, JobText, JobTextBuilder, MiddleText, ProducerText};
 
-use fetiche_engine::Filter;
+use fetiche_engine::{Filter, ParserError};
 
 #[derive(Clone, Debug, Default)]
 pub enum JobType {
@@ -135,24 +137,22 @@ impl JobBuilder {
 
     /// Builds the final job configuration.
     ///
-    /// # Panics
-    /// Panics if the job type is invalid or required components are missing
-    ///
     #[tracing::instrument(skip(self))]
-    pub fn build(&mut self) -> JobText {
+    pub fn build(&mut self) -> Result<JobText> {
         let producer = match &self.producer {
             JobType::Fetch(site) => ProducerText::Fetch(site.clone(), self.filter.clone().unwrap()),
-            JobType::Stream(site) => ProducerText::Stream(site.clone(), self.filter.clone().unwrap()),
-            _ => panic!("Invalid job type"),
+            JobType::Stream(site) => {
+                ProducerText::Stream(site.clone(), self.filter.clone().unwrap())
+            }
+            _ => return Err(ParserError::InvalidJobType.into()),
         };
 
-        JobTextBuilder::default()
+        Ok(JobTextBuilder::default()
             .name(self.name.clone())
             .producer(producer)
             .middle(Some(self.middle.clone()))
             .output(self.output.clone().unwrap())
-            .build()
-            .unwrap_or_else(|e| panic!("{}", e))
+            .build()?)
     }
 }
 
@@ -169,61 +169,65 @@ mod tests {
     }
 
     #[test]
-    fn test_fetch_job() {
+    fn test_fetch_job() -> Result<()> {
         let mut builder = JobBuilder::new("test_fetch");
         let filter = Filter::default();
         builder.fetch("somesite").filter(filter);
-        let job = builder.save("file").build();
+        let job = builder.save("file").build()?;
         assert_eq!(job.name, "test_fetch");
         assert!(matches!(job.producer, ProducerText::Fetch(_, _)));
+        Ok(())
     }
 
     #[test]
-    fn test_stream_job() {
+    fn test_stream_job() -> Result<()> {
         let mut builder = JobBuilder::new("test_stream");
         let filter = Filter::default();
         builder.stream("anothersite").filter(filter);
-        let job = builder.save("file").build();
+        let job = builder.save("file").build()?;
         assert_eq!(job.name, "test_stream");
         assert!(matches!(job.producer, ProducerText::Stream(_, _)));
+        Ok(())
     }
 
     #[test]
-    fn test_tee_middleware() {
+    fn test_tee_middleware() -> Result<()> {
         let mut builder = JobBuilder::new("test_tee");
         let filter = Filter::default();
         builder
             .fetch("https://example.com")
             .filter(filter)
-            .tee("output.txt")
+            .tee(Some("output.txt".to_string()))
             .save("final.txt");
-        let job = builder.build();
+        let job = builder.build()?;
         assert_eq!(job.middle.clone().unwrap().len(), 1);
         assert!(matches!(job.middle.unwrap()[0], MiddleText::Tee(_)));
+        Ok(())
     }
 
     #[test]
-    fn test_save_output() {
+    fn test_save_output() -> Result<()> {
         let mut builder = JobBuilder::new("test_save");
         let filter = Filter::default();
         builder
             .fetch("https://example.com")
             .filter(filter)
             .save("output.txt");
-        let job = builder.build();
+        let job = builder.build()?;
         assert!(matches!(job.output, ConsumerText::Save(_)));
+        Ok(())
     }
 
     #[test]
-    fn test_store_output() {
+    fn test_store_output() -> Result<()> {
         let mut builder = JobBuilder::new("test_store");
         let filter = Filter::default();
         builder
             .fetch("https://example.com")
             .filter(filter)
             .store("data", Freq::Daily);
-        let job = builder.build();
+        let job = builder.build()?;
         assert!(matches!(job.output, ConsumerText::Store(_, _)));
+        Ok(())
     }
 }
-
