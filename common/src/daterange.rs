@@ -93,6 +93,7 @@ mod tests {
     use super::*;
     use chrono::{TimeZone, Utc};
     use jiff::civil::date;
+    use jiff::Timestamp;
     use rstest::rstest;
 
     #[test]
@@ -191,5 +192,34 @@ mod tests {
 
         let result = expand_interval_jiff(start, end).unwrap();
         assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_timestamp_to_paris_time() -> Result<()> {
+        let timestamps = vec![
+            1735689600, // 2025-01-01 00:00:00 UTC
+            1735776000, // 2025-01-02 00:00:00 UTC
+            1751328000, // 2025-07-01 00:00:00 UTC
+        ];
+
+        let paris_tz = "Europe/Paris";
+
+        for ts in timestamps {
+            let utc = Timestamp::from_second(ts)?;
+            let utc = utc.in_tz("UTC")?;
+            let paris_time = utc.in_tz(paris_tz)?;
+
+            // Verify same date
+            assert_eq!(utc.date(), paris_time.date());
+
+            // Verify +1h in winter and +2h in summer
+            let month = paris_time.date().month();
+            if month >= 4 && month <= 10 {
+                assert_eq!(paris_time.hour(), (utc.hour() + 2) % 24); // Summer time
+            } else {
+                assert_eq!(paris_time.hour(), (utc.hour() + 1) % 24); // Winter time
+            }
+        }
+        Ok(())
     }
 }
