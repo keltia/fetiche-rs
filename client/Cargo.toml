@@ -1,5 +1,5 @@
 [package]
-name = "engine-client"
+name = "fetiche-client"
 version = "0.1.0"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]

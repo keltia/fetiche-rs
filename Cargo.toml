@@ -1,5 +1,5 @@
 [workspace]
-members = ["common", "engine", "fetiched", "formats", "acutectl", "adsb-to-parquet", "process-data", "compute-height", 'compute-localtime', "engine-client"]
+members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "adsb-to-parquet", "process-data", "compute-height", 'compute-localtime']
 default-members = ["acutectl", "process-data", "compute-height", "compute-localtime"]
 exclude = ["opensky-history"]
 resolver = "2"
@@ -13,7 +13,7 @@ dateparser = "0.2"
 directories = "6"
 env_logger = "0.11"
 eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
-engine-client = { version = "0", path = "engine-client" }
+fetiche-client = { version = "0", path = "client" }
 fetiche-common = { version = "0", path = "common" }
 fetiche-engine = { version = "0", path = "engine" }
 fetiche-formats = { version = "0", path = "formats" }

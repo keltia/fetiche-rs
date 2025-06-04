@@ -17,7 +17,7 @@
 //! # Example
 //!
 //! ```rust
-//! use engine_client::{ConsumerText, JobTextBuilder, ProducerText};
+//! use fetiche_client::{ConsumerText, JobTextBuilder, ProducerText};
 //!
 //! let job = JobTextBuilder::default()
 //!     .name("example_job")

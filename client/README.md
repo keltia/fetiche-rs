@@ -1,4 +1,4 @@
-# engine-client
+# fetiche-client
 
 This is the stub library part of the engine. It is the front end that all applications use.
 

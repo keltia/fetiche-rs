@@ -11,10 +11,10 @@ use tracing::{debug, info, trace};
 
 use crate::FetchOpts;
 
-use engine_client::{ConsumerText::Save,
-                    JobTextBuilder,
-                    MiddleText::Tee,
-                    ProducerText::Fetch};
+use fetiche_client::{ConsumerText::Save,
+                     JobTextBuilder,
+                     MiddleText::Tee,
+                     ProducerText::Fetch};
 use fetiche_common::DateOpts;
 use fetiche_engine::{Engine, Filter, JobState};
 
