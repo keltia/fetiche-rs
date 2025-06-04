@@ -19,3 +19,9 @@ pub enum DataError {
     #[error("Invalid packet received, can not decode.")]
     BadPacketData,
 }
+
+#[derive(Debug, Error)]
+pub enum ParamError {
+    #[error("No stats actor configured, exiting.")]
+    NoStatsActor,
+}
