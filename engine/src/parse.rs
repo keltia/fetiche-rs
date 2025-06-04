@@ -286,7 +286,7 @@ mod tests {
     #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_fetch_job() -> Result<()> {
-        let mut engine = Engine::new().await;
+        let mut engine = Engine::single().await;
         engine.ps();
 
         let job_str = r#"
@@ -319,7 +319,7 @@ mod tests {
     #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_stream_job() -> Result<()> {
-        let mut engine = Engine::new().await;
+        let mut engine = Engine::single().await;
         engine.ps();
 
         let job_str = r#"
@@ -351,7 +351,7 @@ mod tests {
     #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_read_job() -> Result<()> {
-        let mut engine = Engine::new().await;
+        let mut engine = Engine::single().await;
         engine.ps();
 
         let job_str = r#"
@@ -376,7 +376,7 @@ mod tests {
     #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_job_with_filters() -> Result<()> {
-        let mut engine = Engine::new().await;
+        let mut engine = Engine::single().await;
         engine.ps();
 
         let job_str = r#"
@@ -412,7 +412,7 @@ mod tests {
     #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_invalid_hcl() -> Result<()> {
-        let mut engine = Engine::new().await;
+        let mut engine = Engine::single().await;
         engine.ps();
 
         let job_str = r#"
