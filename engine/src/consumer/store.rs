@@ -158,7 +158,13 @@ impl Store {
                 format!("{}{:02}{:02}-000000", tm.year(), tm.month(), tm.day())
             }
             Freq::Hourly => {
-                format!("{}{:02}{:02}-{:02}0000", tm.year(), tm.month(), tm.day(), tm.hour())
+                format!(
+                    "{}{:02}{:02}-{:02}0000",
+                    tm.year(),
+                    tm.month(),
+                    tm.day(),
+                    tm.hour()
+                )
             }
         };
 
@@ -179,7 +185,8 @@ impl Store {
         let mut fh = fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .open(fname).await?;
+            .open(fname)
+            .await?;
 
         fh.write_all(data.as_bytes()).await?;
         fh.flush().await?;
@@ -231,7 +238,13 @@ mod tests {
         assert!(result.is_ok());
 
         let tm = Utc::now();
-        let fname = store.path.join(format!("{}{:02}{:02}-{:02}0000", tm.year(), tm.month(), tm.day(), tm.hour()));
+        let fname = store.path.join(format!(
+            "{}{:02}{:02}-{:02}0000",
+            tm.year(),
+            tm.month(),
+            tm.day(),
+            tm.hour()
+        ));
         assert_eq!(std::fs::exists(fname.to_str().unwrap()).unwrap(), true);
     }
 
@@ -248,13 +261,21 @@ mod tests {
         //
         assert!(std::fs::exists(&store.path).unwrap());
         assert!(std::fs::exists(&dir.path().join(Path::new("1"))).unwrap());
+
+        #[cfg(unix)]
         assert!(std::fs::exists(&dir.path().join(Path::new("current"))).unwrap());
 
         let result = store.execute("test data".to_string(), tx).await;
         assert!(result.is_ok());
 
         let tm = Utc::now();
-        let fname = store.path.join(format!("{}{:02}{:02}-{:02}0000.json", tm.year(), tm.month(), tm.day(), tm.hour()));
+        let fname = store.path.join(format!(
+            "{}{:02}{:02}-{:02}0000.json",
+            tm.year(),
+            tm.month(),
+            tm.day(),
+            tm.hour()
+        ));
         assert_eq!(std::fs::exists(fname.to_str().unwrap()).unwrap(), true);
     }
 }

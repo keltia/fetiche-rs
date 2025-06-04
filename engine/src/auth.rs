@@ -180,7 +180,7 @@ pub trait Expirable {
 }
 
 #[enum_dispatch]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum TokenType {
     AsdToken,
 }
