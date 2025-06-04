@@ -30,8 +30,8 @@ use serde::Deserialize;
 use tracing::{debug, trace};
 
 use acutectl::{handle_subcmd, ConfigCmd, Opts, Status, SubCommand};
+use fetiche_client::EngineSingle;
 use fetiche_common::{close_logging, init_logging, ConfigFile, IntoConfig, Versioned};
-use fetiche_engine::Engine;
 use fetiche_macros::into_configfile;
 
 /// Binary name, using a different binary name
@@ -83,7 +83,7 @@ async fn main() -> Result<()> {
     trace!("Engine starting.");
     // Instantiate Engine
     //
-    let mut engine = Engine::single().await;
+    let mut engine = EngineSingle::new().await;
 
     trace!("Engine initialised and running.");
     trace!("We are in{:?}", std::env::current_dir()?);

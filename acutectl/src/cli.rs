@@ -26,19 +26,17 @@
 
 use std::io;
 
+use crate::{fetch_from_site, stream_from_site};
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, CommandFactory, Parser, ValueEnum,
 };
 use clap_complete::generate;
 use clap_complete::shells::Shell;
 use eyre::Result;
-use tracing::{info, trace};
-
+use fetiche_client::{EngineSingle, Freq};
 use fetiche_common::{list_locations, load_locations, Container, DateOpts};
-use fetiche_engine::{Engine, Freq};
 use fetiche_formats::Format;
-
-use crate::{fetch_from_site, stream_from_site};
+use tracing::{info, trace};
 
 /// CLI options
 #[derive(Parser)]
@@ -283,7 +281,8 @@ pub struct ConvertOpts {
 }
 
 #[tracing::instrument(skip(engine))]
-pub async fn handle_subcmd(engine: &mut Engine, subcmd: &SubCommand) -> Result<()> {
+pub async fn handle_subcmd(engine: &mut EngineSingle, subcmd: &SubCommand) -> Result<()> {
+    let mut engine = engine.inner();
     match subcmd {
         // Handle `archive site`
         //
