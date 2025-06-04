@@ -4,12 +4,12 @@
 
 ### `direnv`
 
-[direnv] a special utility that enable users to have a set of environment variables for specific directories,
+[direnv] is a special utility that enables users to have a set of environment variables for specific directories,
 both in interactive and unattended mode (i.e. cron jobs). You create a `.envrc` file there, use `direnv allow .`  to
 enable direnv usage and every time you enter this directory, variables will be read and defined. As soon as you leave
 said directory, all these are removed.
 
-This needs a shell-specific hook of course. For `zsh` it goes line this inside your `.zshrc`:
+This needs a shell-specific hook, of course. For `zsh` it goes line this inside your `.zshrc`:
 
 ```shell
 eval "$(direnv hook zsh)"
