@@ -84,6 +84,9 @@ mod tests {
     fn test_capability_invalid_deserialization() {
         let json = "\"invalid\"";
         let result: Result<Capability, _> = serde_json::from_str(json);
-        assert!(result.is_err());
+        dbg!(&result);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result, Capability::Invalid);
     }
 }
