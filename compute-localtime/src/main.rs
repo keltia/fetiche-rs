@@ -11,18 +11,18 @@
 //!<functions>
 //!         <function>
 //!                 <type>executable</type>
-//!                 <name>compute_height</name>
-//!                 <return_type>Float64</return_type>
+//!                 <name>compute_localtime</name>
+//!                 <return_type>String</return_type>
 //!                 <argument>
-//!                         <type>Float64</type>
-//!                         <name>lat</name>
+//!                         <type>Datetime</type>
+//!                         <name>ts</name>
 //!                 </argument>
 //!                 <argument>
-//!                         <type>Float64</type>
-//!                         <name>lon</name>
+//!                         <type>String</type>
+//!                         <name>timezone</name>
 //!                 </argument>
 //!                 <format>TabSeparated</format>
-//!                 <command>compute-height</command>
+//!                 <command>compute-localtime</command>
 //!         </function>
 //! </functions>
 //! ```
@@ -30,8 +30,6 @@
 //! # Timing
 //!
 //! ```text
-//! 1383527 rows in set. Elapsed: 0.851 sec. Processed 1.38 million rows, 248.77 MB (1.63 million rows/s., 292.30 MB/s.)
-//! Peak memory usage: 49.37 MiB.
 //! ```
 //!
 
@@ -60,7 +58,10 @@ fn main() -> eyre::Result<()> {
 
         let height = geoid_height(lat, lon).unwrap_or(0.);
         if opts.verbose {
-            eprintln!("Variation aka geoid height at {},{} = {} m", lat, lon, height);
+            eprintln!(
+                "Variation aka geoid height at {},{} = {} m",
+                lat, lon, height
+            );
         } else {
             println!("{}", height);
         }

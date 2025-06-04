@@ -1,5 +1,5 @@
 [package]
-name = "generate-localtime"
+name = "compute-localtime"
 version = "0.1.0"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
