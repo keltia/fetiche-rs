@@ -192,7 +192,7 @@ impl TokenStorage {
         builder.push_record(header);
 
         // List all objects in the base path
-        let list_stream = self.store.list(Some(&self.base_path));
+        let list_stream = self.store.list(None);
         let objects: Vec<ObjectMeta> = list_stream.try_collect().await?;
 
         for object in objects {

@@ -119,7 +119,8 @@ impl Worker for RunnerActor {
 
                 let mut job = work.job.clone();
 
-                job.register(stat.clone());
+                let job = job.register(stat.clone());
+                dbg!(&job);
 
                 info!(
                     "Job({})::run({}) with {} tasks",
