@@ -95,7 +95,7 @@ pub async fn fetch_from_site(engine: &mut EngineSingle, fopts: &FetchOpts) -> Re
         .filter(filter_from_opts(fopts)?)
         .tee(tee)
         .save(&final_output)
-        .build();
+        .build()?;
     dbg!(&job);
 
     // We have a properly configured jon.

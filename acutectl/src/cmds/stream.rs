@@ -41,24 +41,32 @@ pub async fn stream_from_site(engine: &mut EngineSingle, sopts: &StreamOpts) -> 
     //
     let freq = sopts.frequency.clone().unwrap_or(Freq::Daily);
     let output = if let Some(split) = &sopts.store {
-        format!(r##"
+        format!(
+            r##"
         output = {{
             "Freq" = {}
             "Store" = "{}"
         }}
-        "##, freq, split)
+        "##,
+            freq, split
+        )
     } else if let Some(fname) = &sopts.output {
-        format!(r##"
+        format!(
+            r##"
         output = {{
             "Save" = "{}"
         }}
-        "##, fname)
+        "##,
+            fname
+        )
     } else {
-        format!(r##"
+        format!(
+            r##"
         output = {{
             "Save" = "-"
         }}
-        "##)
+        "##
+        )
     };
 
     info!("Writing to {output}");
@@ -74,7 +82,7 @@ pub async fn stream_from_site(engine: &mut EngineSingle, sopts: &StreamOpts) -> 
         .filter(filter_from_opts(sopts)?)
         .tee(tee)
         .store(&output, freq)
-        .build();
+        .build()?;
     dbg!(&job);
 
     let job = engine.parse_job(job).await?;
