@@ -39,6 +39,7 @@ mod macros;
 #[enum_dispatch]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum FetchableSource {
+    #[cfg(feature = "asd")]
     Asd,
     #[cfg(feature = "aeroscope")]
     Aeroscope,
@@ -127,8 +128,6 @@ impl From<Site> for StreamableSource {
 /// This trait enables us to manage different ways of connecting and fetching data under
 /// a single interface.
 ///
-/// This is the async version of `Fetchable`, making it easier to use async clients and/or actors.
-///
 #[allow(async_fn_in_trait)]
 #[enum_dispatch(FetchableSource)]
 pub trait Fetchable {
@@ -145,8 +144,6 @@ pub trait Fetchable {
 /// This trait enables us to manage different ways of connecting and streaming data under
 /// a single interface.  The object can connect to a TCP stream or create one by repeatedly calling
 /// some API (cf. Opensky).
-///
-/// This is the async version of `Streamable`, making it easier to use async clients and/or actors.
 ///
 #[allow(async_fn_in_trait)]
 #[enum_dispatch(StreamableSource)]
