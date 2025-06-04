@@ -1,6 +1,6 @@
 [package]
 name = "compute-localtime"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Compute localtime from UTC for each drone point."
