@@ -16,7 +16,10 @@ use strum::{EnumString, VariantNames};
 use tracing::{debug, trace};
 
 use crate::actors::{SchedulerMsg, SourcesMsg};
-use crate::{Consumer, Copy, Engine, Fetch, Filter, Job, JobState, Middle, ParserError, Producer, Read, Save, Store, Stream, Tee};
+use crate::{
+    Consumer, Copy, Engine, Fetch, Filter, Job, JobState, Middle, ParserError, Producer, Read,
+    Save, Store, Stream, Tee,
+};
 
 /// Represents the type of job to be executed.
 ///
@@ -388,7 +391,7 @@ mod tests {
                     }
                 ]
             }
-            filters = [
+            middle = [
                 "Copy",
                 { "Tee" = "copy.csv" }
             ]
