@@ -1,0 +1,26 @@
+# For `cargo make`
+#
+[env]
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+
+[config]
+default_to_workspace = false
+
+[tasks.pull]
+command = "jj"
+args = ["git", "push", "-b", "develop", "--remote", "origin"]
+
+[tasks.push-github]
+command = "jj"
+args = ["git", "push", "-b", "develop", "--remote", "origin"]
+
+[tasks.push-gitlab]
+command = "jj"
+args = ["git", "push", "-b", "develop", "--remote", "gitlab"]
+
+[tasks.push]
+dependencies = [
+    "push-github",
+    "push-gitlab"
+]
+
