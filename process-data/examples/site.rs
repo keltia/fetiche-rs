@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
         ClientOptions {
             username: user,
             password: pass,
-            default_database: name,
+            default_database: name.clone(),
             ..Default::default()
         },
     )
