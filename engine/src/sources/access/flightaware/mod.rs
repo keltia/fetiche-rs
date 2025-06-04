@@ -25,19 +25,21 @@ use std::sync::mpsc::Sender;
 
 use base64_light::base64_encode;
 use eyre::{eyre, Result};
-use native_tls::{TlsConnector, TlsStream};
 use ractor::ActorRef;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
 use strum::VariantNames;
+// Add these imports
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
+use tokio_native_tls::TlsConnector as TokioTlsConnector;
 use tracing::trace;
 
 use fetiche_formats::Format;
 
 use crate::actors::StatsMsg;
-use crate::{version, Auth, AuthError, Capability, Fetchable, Site, Stats, Streamable, StreamableSource};
+use crate::{version, AccessError, Auth, AuthError, Capability, Fetchable, Site, Stats, Streamable, StreamableSource};
 
 /// Firehose is out target
 const SITE: &str = "firehose.flightaware.com";
@@ -212,56 +214,61 @@ impl Flightaware {
     ///
     #[tracing::instrument(skip(self))]
     async fn connect(&self, proxy: Option<String>) -> Result<TlsStream<TcpStream>> {
-        let connector = TlsConnector::new()?;
+        let native_connector = native_tls::TlsConnector::new()?;
+        let connector = TokioTlsConnector::from(native_connector);
 
         // FIXME: this only support HTTP proxy, not HTTPS nor SOCKS
         //
-        let stream = if proxy.is_some() {
+        let stream = if let Some(proxy_url_str) = proxy {
             trace!("using proxy");
 
-            let url = Url::parse(&proxy.unwrap())?;
-            let (host, port) = (url.host().unwrap(), url.port().unwrap());
+            let url = Url::parse(&proxy_url_str).map_err(|e| AccessError::BadProxyString(proxy_url_str).into())?;
+            let (host, port) = (url.host_str().unwrap(), url.port().unwrap_or(80));
 
             trace!("proxy = {}:{}", host, port);
 
-            let username = url.username();
-            let passwd = url.password().unwrap_or("");
+            // Connect to the proxy server
+            let mut stream = TcpStream::connect(format!("{}:{}", host, port)).await?;
 
-            // base64_light API is better.
-            //
-            let auth = base64_encode(&format!("{}:{}", username, passwd));
-            trace!("Auth token is {}", auth);
+            // If proxy requires authentication
+            let auth = if !url.username().is_empty() {
+                let passwd = url.password().unwrap_or("");
+                let credentials = format!("{}:{}", url.username(), passwd);
+                format!("Proxy-Authorization: Basic {}\r\n", base64_light::base64_encode(&credentials))
+            } else {
+                String::new()
+            };
 
-            trace!("CONNECT");
-            let mut stream = TcpStream::connect(format!("{}:{}", host, port))?;
+            // Send the CONNECT request to the proxy
+            let connect_req = format!(
+                "CONNECT {}:{} HTTP/1.1\r\nHost: {}\r\n{}User-Agent: {}\r\n\r\n",
+                SITE, PORT, SITE, auth, version()
+            );
 
-            stream.write_all(
-                format!(
-                    r##"CONNECT {}:{} HTTP/1.1
-Proxy-Authorization: Basic {}
-User-Agent: {}
-Proxy-Connection: Keep-Alive
+            stream.write_all(connect_req.as_bytes()).await?;
 
-"##,
-                    SITE,
-                    PORT,
-                    auth,
-                    version()
-                )
-                    .as_bytes(),
-            )?;
+            // Read the proxy's response
+            let mut buf = vec![0; 1024];
+            let n = stream.read(&mut buf).await?;
+            let response = String::from_utf8_lossy(&buf[..n]);
+
+            if !response.starts_with("HTTP/1.1 200") {
+                return Err(AccessError::ProxyConnectFailed.into());
+            }
+
             stream
         } else {
             trace!("no proxy");
-
             TcpStream::connect(format!("{}:{}", SITE, PORT)).await?
         };
-        // Handover to the TLS engine hopefully
-        //
-        trace!("TCP={:?}", stream);
 
-        let stream = connector.connect(SITE, stream)?;
-        Ok(stream)
+        // Handover to the TLS engine
+        trace!("TCP={:?}", stream);
+        let tls_stream = connector.connect(SITE, stream)
+            .await
+            .map_err(|e| AccessError::TlsConnectFailed(e).into())?;
+
+        Ok(tls_stream)
     }
 
 

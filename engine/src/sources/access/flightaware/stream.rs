@@ -28,12 +28,9 @@ impl Streamable for Flightaware {
         trace!("stream with TLS");
         let args: Param = serde_json::from_str(args)?;
 
-        let stat = match self.stat.clone() {
-            Some(stat) => stat,
-            None => return Err(StatsError::NotInitialized.into())
-        };
+        let stat = self.stat.clone().ok_or(StatsError::NotInitialized)?;
 
-        let tag = String::from("avionixserver::supervisor");
+        let tag = String::from("flightaware::supervisor");
         let _ = cast!(stat, StatsMsg::New(tag.clone()));
         // Check arguments
         //
@@ -52,7 +49,7 @@ impl Streamable for Flightaware {
         };
 
         trace!("tls connect");
-        let mut stream = self.connect(proxy)?;
+        let mut stream = self.connect(proxy).await;
 
         // Send request
         //
@@ -62,7 +59,7 @@ impl Streamable for Flightaware {
         trace!("read answer");
 
         let buf = BufReader::new(&mut stream);
-        for line in buf.lines() {
+        for line in buf.lines().await {
             let line = line.unwrap();
             trace!("line={}", line);
             let _ = out.send(line);

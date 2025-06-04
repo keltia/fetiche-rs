@@ -12,6 +12,12 @@ pub enum AccessError {
     InvalidSite(String),
     #[error("Bad Filter.")]
     BadFilter,
+    #[error("Bad Proxy String {0}.")]
+    BadProxyString(String),
+    #[error("Proxy Connect Failed.")]
+    ProxyConnectFailed,
+    #[error("TLS Connect Failed: {0}.")]
+    TlsConnectFailed(String),
 }
 
 #[derive(Debug, Error)]
@@ -24,4 +30,8 @@ pub enum DataError {
 pub enum ParamError {
     #[error("No stats actor configured, exiting.")]
     NoStatsActor,
+    #[error("No address given.")]
+    NoAddrGiven,
+    #[error("No auth configured for {0}")]
+    NoAuthConfigured(String),
 }
