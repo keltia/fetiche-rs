@@ -41,10 +41,13 @@ pub struct AcuteOpts {
 #[derive(Debug, Parser)]
 pub enum AcuteSubCommand {
     /// Display all antennas.
+    #[clap(visible_alias = "a")]
     Antennas(AntennasOpts),
     /// Fetch which antenna was on a site and when.
+    #[clap(visible_alias = "i", visible_alias = "inst")]
     Install(InstOpts),
     /// Display all sites.
+    #[clap(visible_alias = "s")]
     Sites(SiteOpts),
 }
 
