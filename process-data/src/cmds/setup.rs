@@ -444,7 +444,7 @@ AS (SELECT `journey`,
       sitename,
       date_trunc('day', dr.timestamp) AS `date`,
       formatDateTime(dr.timestamp, '%T', 'UTC') AS `utc_time`,
-      formatDateTime((timestamp + d.timezone * 3600), '%T', 'UTC') AS local_time,
+      compute_localtime(dr.timestamp, d.tzname) AS local_time,
       dr.latitude AS `drone_lat`,
       dr.longitude AS `drone_lon`,
       dr.altitude AS `drone_alt_m`,
@@ -530,10 +530,11 @@ async fn add_pbi_deployments_view(dbh: &Client) -> Result<()> {
     a.type,
     a.name AS antenna_name,
     s.name AS sitename,
-    s.offset AS timezone
+    s.offset AS timezone,
+    s.timezone AS tzname,
     s.latitude AS latitude,
     s.longitude AS longitude,
-    s.ref_altitude AS ref_altitude,
+    s.ref_altitude AS ref_altitude
  FROM acute.installations AS i, acute.antennas AS a, acute.sites AS s
  WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
  COMMENT 'Find the site for each drone points for PBI.'
@@ -612,7 +613,7 @@ DROP VIEW IF EXISTS acute.pbi_encounters_summary
 
     Ok(dbh.execute(rm5).await?)
 }
-    
+
 // -----
 
 /// Create various views
