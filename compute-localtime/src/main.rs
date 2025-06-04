@@ -36,13 +36,23 @@ fn main() -> eyre::Result<()> {
     stdin().lines().for_each(|l| {
         let text = match l {
             Ok(text) => text,
-            Err(_) => return,
+            Err(_) => {
+                eprintln!("WARNING: could not read from stdin");
+                return
+            },
         };
         let params: Vec<&str> = text.split_whitespace().collect();
-        let ts = params[0].parse::<u32>().unwrap_or(0);
+        let ts = params[0].parse::<i64>().unwrap_or(0);
+        let ts = match Timestamp::from_second(ts) {
+            Ok(ts) => ts,
+            Err(e) => {
+                eprintln!("ERROR: {}", e.to_string());
+                return;
+            },
+        };
         let timezone = params[1].parse::<String>().unwrap_or("Europe/Paris".into());
 
-        let ts = Timestamp::from_second(ts as i64).unwrap().in_tz(&timezone).unwrap();
+        let ts = ts.in_tz(&timezone).unwrap();
         println!("{}", ts.time())
     });
     Ok(())
