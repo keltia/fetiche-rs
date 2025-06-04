@@ -16,10 +16,10 @@ All tables and macros configuration [here](DUCKDB.md)
 
 ```sql
 CREATE
-DATABASE acute COMMENT 'ACUTE Project data.';
+    DATABASE IF NOT EXISTS acute COMMENT 'ACUTE Project data.';
 ```
 
-### Functions
+### Functions — These are global and available in all databases.
 
 Geodesic distance rounded to the nearest upper integer.
 
@@ -37,20 +37,20 @@ CREATE FUNCTION dist_3d AS(dx, dy, dz, px, py, pz) ->
     ceil(sqrt(pow(dist_2d(dx, dy, px, py), 2) + pow((dz - pz), 2)));
 ```
 
-### Tables
+### Tables — These are specific to each database.
 
 ```sql
 -- Store data for the sites
 --
-CREATE TABLE acute.sites
+CREATE TABLE IF NOT EXISTS sites
 (
     id           INTEGER,
     name         VARCHAR NOT NULL,
     code         VARCHAR NOT NULL,
     basename     VARCHAR NOT NULL,
-    latitude     FLOAT   NOT NULL,
-    longitude    FLOAT   NOT NULL,
-    ref_altitude FLOAT   NOT NULL,
+    latitude     FLOAT NOT NULL,
+    longitude    FLOAT NOT NULL,
+    ref_altitude FLOAT NOT NULL
 ) ENGINE MergeTree PRIMARY KEY id ORDER BY id
       COMMENT 'All sites with an antenna in time.';
 ```
@@ -58,13 +58,13 @@ CREATE TABLE acute.sites
 ```sql
 -- Store one antenna
 --
-CREATE TABLE acute.antennas
+CREATE TABLE IF NOT EXISTS antennas
 (
     id          INTEGER,
     type        VARCHAR,
     name        VARCHAR NOT NULL,
     owned       BOOLEAN,
-    description VARCHAR,
+    description VARCHAR
 ) ENGINE MergeTree PRIMARY KEY id ORDER BY id
       COMMENT 'All known antennas.';
 ```
@@ -72,14 +72,14 @@ CREATE TABLE acute.antennas
 ```sql
 -- Store one installation of one antenna on one site 1:1
 --
-CREATE TABLE acute.installations
+CREATE TABLE IF NOT EXISTS installations
 (
     id         INTEGER,
     site_id    INTEGER,
     antenna_id INTEGER,
     start_at   TIMESTAMP,
     end_at     TIMESTAMP,
-    comment    VARCHAR,
+    comment    VARCHAR
 ) ENGINE MergeTree PRIMARY KEY id ORDER BY id
       COMMENT 'Which antenna on each site in time.';
 ```
@@ -87,7 +87,7 @@ CREATE TABLE acute.installations
 `installations` is also the base for two views to help finding some info, `deployments` and `pbi_deployments`
 
 ```sql
- CREATE VIEW acute.deployments
+CREATE VIEW IF NOT EXISTS deployments
 AS
 SELECT i.id       AS install_id,
        i.start_at,
@@ -106,7 +106,7 @@ WHERE (i.antenna_id = a.id)
 and
 
 ```sql
- CREATE VIEW acute.pbi_deployments
+CREATE VIEW IF NOT EXISTS pbi_deployments
 AS
 SELECT i.id           AS installation_id,
        i.start_at,
@@ -116,16 +116,14 @@ SELECT i.id           AS installation_id,
        s.name         AS sitename,
        s.offset       AS timezone s.latitude AS latitude, s.longitude AS longitude,
        s.ref_altitude AS ref_altitude,
-FROM acute.installations AS i,
-     acute.antennas AS a,
-     acute.sites AS s
+       FROM acute.installations AS i, acute.antennas AS a,
+       acute.sites    AS s
 WHERE (i.antenna_id = a.id)
   AND (s.id = i.site_id) COMMENT 'Find the site for each drone points for PBI.'
 ```
 
 ```sql
-CREATE
-OR REPLACE TABLE acute.airplane_prox
+CREATE TABLE IF NOT EXISTS airplane_prox
 (
     site             VARCHAR,
     en_id            VARCHAR,
@@ -147,55 +145,54 @@ OR REPLACE TABLE acute.airplane_prox
     distance_vert_m  INT,
     distance_home_m  INT
 )
-    ENGINE = MergeTree PRIMARY KEY (time, journey)
+    ENGINE = MergeTree PRIMARY KEY
+        (time, journey)
         COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
 ```
 
 and we have a PBI-tailored view as well:
 
 ```sql
-CREATE
-MATERIALIZED VIEW acute.pbi_encounters
-ENGINE = ReplacingMergeTree
-PRIMARY KEY (time, journey) POPULATE
-AS (
-SELECT
-  en_id,
-  installation_id,
-  site,
-  d.sitename,
-  `time`,
-  date_trunc('day', ap.time) AS `date`,
-  formatDateTime(ap.time, '%T', 'UTC') AS `utc_time`,
-  formatDateTime((ap.time + d.timezone * 3600), '%T', 'UTC') AS `local_time`,
-  journey,
-  drone_id,
-  model,
-  drone_lat,
-  drone_lon,
-  drone_alt_m,
-  drone_height_m,
-  prox_callsign,
-  prox_id,
-  prox_lat,
-  prox_lon,
-  prox_alt_m,
-  prox_mode_a,
-  distance_slant_m,
-  distance_hor_m,
-  distance_vert_m,
-  distance_home_m
-FROM acute.airplane_prox AS ap, acute.pbi_deployments AS d
-LEFT OUTER JOIN acute.sites AS s
-ON ap.site = s.id
+CREATE MATERIALIZED VIEW IF NOT EXISTS pbi_encounters
+            ENGINE = ReplacingMergeTree
+                PRIMARY KEY (time, journey) POPULATE
+AS
+(
+SELECT en_id,
+       installation_id,
+       site,
+       d.sitename,
+       `time`,
+       date_trunc('day', ap.time)                                 AS `date`,
+       formatDateTime(ap.time, '%T', 'UTC')                       AS `utc_time`,
+       formatDateTime((ap.time + d.timezone * 3600), '%T', 'UTC') AS `local_time`,
+       journey,
+       drone_id,
+       model,
+       drone_lat,
+       drone_lon,
+       drone_alt_m,
+       drone_height_m,
+       prox_callsign,
+       prox_id,
+       prox_lat,
+       prox_lon,
+       prox_alt_m,
+       prox_mode_a,
+       distance_slant_m,
+       distance_hor_m,
+       distance_vert_m,
+       distance_home_m
+FROM acute.airplane_prox AS ap,
+     acute.pbi_deployments AS d
+         LEFT OUTER JOIN acute.sites AS s
+                         ON ap.site = s.id
 WHERE s.name = d.sitename
-)
-    COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI.';
+    ) COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI.';
 ```
 
 ```sql
-CREATE
-OR REPLACE TABLE daily_stats
+CREATE TABLE IF NOT EXISTS daily_stats
 (
     date       DATE,
     planes     INT,
@@ -204,7 +201,10 @@ OR REPLACE TABLE daily_stats
     encounters INT,
     distance   FLOAT,
     proximity  FLOAT
-) ENGINE = MergeTree PRIMARY KEY (date) ORDER BY date
+) ENGINE = MergeTree PRIMARY KEY
+        (
+            date
+            ) ORDER BY date
       COMMENT 'Statistics for a day run.'
 ```
 
@@ -213,8 +213,7 @@ we are putting everything inside CH, no need for year/month optimisations we got
 parquet files.
 
 ```sql
-CREATE
-OR REPLACE TABLE acute.airplanes_raw
+CREATE TABLE IF NOT EXISTS airplanes_raw
 (
     site                   INT,
     EmitterCategory        INT DEFAULT 3,
@@ -238,45 +237,48 @@ OR REPLACE TABLE acute.airplanes_raw
     MagneticNorth          VARCHAR,
     SurfaceGroundSpeed     VARCHAR,
     SurfaceGroundTrack     VARCHAR
-) ENGINE = MergeTree PRIMARY KEY (TimeRecPosition, AircraftAddress)
+) ENGINE = MergeTree PRIMARY KEY
+        (
+         TimeRecPosition,
+         AircraftAddress
+            )
       COMMENT 'Table for raw ADS-B positions.';
 ```
 
 Then we create the view with our more usable names.
 
 ```sql
-CREATE VIEW acute.airplanes
+CREATE VIEW IF NOT EXISTS airplanes
 AS
 (
 SELECT EmitterCategory,
-       (GBS == 1) AS GBS,
+       (GBS == 1)                          AS GBS,
        ModeA,
-       TimeRecPosition AS time,
-    AircraftAddress AS prox_id,
-    Latitude AS prox_lat,
-    Longitude AS prox_lon,
-    truncate (GeometricAltitude * 0.305) AS prox_alt_m,
-    FlightLevel AS flight_level,
-    BarometricVerticalRate AS baro_vert_rate,
-    (GeoVertRateExceeded == '1') AS geo_vert_exceeded,
-    GeometricVerticalRate AS geo_vert_rate,
-    GroundSpeed AS ground_speed,
-    TrackAngle,
-    Callsign AS prox_callsign,
-    (AircraftStopped == '1') AS stopped,
-    (GroundTrackValid == '1') AS GroundTrackValid,
-    (GroundHeadingProvided == '1') AS GroundHeadingProvided,
-    (MagneticNorth == '1') AS MagneticNorth,
-    SurfaceGroundSpeed,
-    SurfaceGroundTrack,
-    site
-FROM acute.airplanes_raw
+       TimeRecPosition                     AS time,
+       AircraftAddress                     AS prox_id,
+       Latitude                            AS prox_lat,
+       Longitude                           AS prox_lon,
+       truncate(GeometricAltitude * 0.305) AS prox_alt_m,
+       FlightLevel                         AS flight_level,
+       BarometricVerticalRate              AS baro_vert_rate,
+       (GeoVertRateExceeded == '1')        AS geo_vert_exceeded,
+       GeometricVerticalRate               AS geo_vert_rate,
+       GroundSpeed                         AS ground_speed,
+       TrackAngle,
+       Callsign                            AS prox_callsign,
+       (AircraftStopped == '1')            AS stopped,
+       (GroundTrackValid == '1')           AS GroundTrackValid,
+       (GroundHeadingProvided == '1')      AS GroundHeadingProvided,
+       (MagneticNorth == '1')              AS MagneticNorth,
+       SurfaceGroundSpeed,
+       SurfaceGroundTrack,
+       site
+FROM airplanes_raw
     ) COMMENT 'View for airplanes data.'
 ```
 
 ```sql
-CREATE
-OR REPLACE TABLE acute.drones_raw
+CREATE TABLE IF NOT EXISTS drones_raw
 (
     journey           INT,
     ident             VARCHAR,
@@ -312,86 +314,87 @@ clickhouse client -d acute -q "insert into acute.drones from infile 'data/drones
 From `drones`, we derive two different materialized views, `drones` and `pbi_drones`.
 
 ```sql
-CREATE
-MATERIALIZED VIEW acute.drones
-    ENGINE = ReplacingMergeTree
-    PRIMARY KEY (time, journey)
+CREATE MATERIALIZED VIEW IF NOT EXISTS drones
+            ENGINE = ReplacingMergeTree
+                PRIMARY KEY (time, journey)
 AS
 (
-    SELECT
-        `journey`,
-        `ident`,
-        `model`,
-        `source`,
-        `timestamp`,
-        `latitude`,
-        `longitude`,
-        `altitude`,
-        ceil((CAST(altitude AS Float64)  + compute_height(latitude,longitude))) AS altitude_geo,
-        `elevation`,
-        `home_lat`,
-        `home_lon`,
-        `home_height`,
-        `speed`,
-        `heading`,
-        `station_name`,
-        `station_latitude`,
-        `station_longitude`,
-        toUnixTimestamp(timestamp) as time,
-        dist_2d(longitude,latitude,home_lon,home_lat) AS home_distance_2d,
-        dist_3d(longitude,latitude,0,home_lon,home_lat,home_height) AS home_distance_3d
-    FROM acute.drones_raw
-)
-    COMMENT 'View for drones data with distances.'
+SELECT `journey`,
+       `ident`,
+       `model`,
+       `source`,
+       `timestamp`,
+       `latitude`,
+       `longitude`,
+       `altitude`,
+       ceil((CAST(altitude AS Float64) + compute_height(latitude, longitude))) AS altitude_geo,
+       `elevation`,
+       `home_lat`,
+       `home_lon`,
+       `home_height`,
+       `speed`,
+       `heading`,
+       `station_name`,
+       `station_latitude`,
+       `station_longitude`,
+       toUnixTimestamp(timestamp)                                              as time,
+       dist_2d(longitude, latitude, home_lon, home_lat)                        AS home_distance_2d,
+       dist_3d(longitude, latitude, 0, home_lon, home_lat, home_height)        AS home_distance_3d
+FROM drones_raw
+    ) COMMENT 'View for drones data with distances.'
 ```
 
 ```sql
-CREATE
-MATERIALIZED VIEW acute.pbi_drones
-ENGINE = ReplacingMergeTree
-PRIMARY KEY (time, journey) POPULATE
-AS (SELECT `journey`,
-      `ident`,
-      `model`,
-      d.installation_id,
-      sitename,
-      date_trunc('day', dr.timestamp) AS `date`,
-      formatDateTime(dr.timestamp, '%T', 'UTC') AS `utc_time`,
-      formatDateTime((timestamp + d.timezone * 3600), '%T', 'UTC') AS local_time,
-      dr.latitude AS `drone_lat`,
-      dr.longitude AS `drone_lon`,
-      dr.altitude AS `drone_alt_m`,
-      CEIL((CAST(dr.altitude AS Float64)  + compute_height(drone_lat,drone_lon))) AS `drone_alt_geo_m`,
-      (dr.altitude - dr.elevation) AS `drone_height_m`,
-      `elevation` AS `elevation_m`,
-      `home_lat`,
-      `home_lon`,
-      `home_height` AS `drone_reported_height_m`,
-      (`speed` / 3.6) AS `speed_m_s`,
-      `heading`,
-      `station_name`,
-      `station_latitude`,
-      `station_longitude`,
-      toUnixTimestamp(timestamp) as time,
-      dist_2d(dr.longitude,dr.latitude,home_lon,home_lat) AS home_distance_2d,
-      dist_3d(dr.longitude,dr.latitude,0,home_lon,home_lat,drone_reported_height_m) AS home_distance_3d,
-      dist_2d(dr.longitude,dr.latitude,station_longitude,station_latitude) AS antenna_distance_2d,
-      dist_3d(dr.longitude,dr.latitude,dr.altitude,station_longitude,station_latitude, d.ref_altitude) AS antenna_distance_3d
-    FROM acute.drones_raw AS dr LEFT OUTER JOIN acute.pbi_deployments AS d
-    ON dr.station_name = d.antenna_name and dr.timestamp between d.start_at and d.end_at
-    WHERE sitename = d.sitename AND dr.station_name != 'ASDSTATIONV1'
-  )
-  COMMENT 'PBI View for drones data with distances.'
+CREATE MATERIALIZED VIEW IF NOT EXISTS pbi_drones
+            ENGINE = ReplacingMergeTree
+                PRIMARY KEY (time, journey) POPULATE
+AS
+(
+SELECT `journey`,
+       `ident`,
+       `model`,
+       d.installation_id,
+       sitename,
+       date_trunc('day', dr.timestamp)                                             AS `date`,
+       formatDateTime(dr.timestamp, '%T', 'UTC')                                   AS `utc_time`,
+       formatDateTime((timestamp + d.timezone * 3600), '%T', 'UTC')                AS local_time,
+       dr.latitude                                                                 AS `drone_lat`,
+       dr.longitude                                                                AS `drone_lon`,
+       dr.altitude                                                                 AS `drone_alt_m`,
+       CEIL((CAST(dr.altitude AS Float64) + compute_height(drone_lat, drone_lon))) AS `drone_alt_geo_m`,
+       (dr.altitude - dr.elevation)                                                AS `drone_height_m`,
+       `elevation`                                                                 AS `elevation_m`,
+       `home_lat`,
+       `home_lon`,
+       `home_height`                                                               AS `drone_reported_height_m`,
+       (`speed` / 3.6)                                                             AS `speed_m_s`,
+       `heading`,
+       `station_name`,
+       `station_latitude`,
+       `station_longitude`,
+       toUnixTimestamp(timestamp)                                                  as time,
+       dist_2d(dr.longitude, dr.latitude, home_lon, home_lat)                      AS home_distance_2d,
+       dist_3d(dr.longitude, dr.latitude, 0, home_lon, home_lat,
+               drone_reported_height_m)                                            AS home_distance_3d,
+       dist_2d(dr.longitude, dr.latitude, station_longitude,
+               station_latitude)                                                   AS antenna_distance_2d,
+       dist_3d(dr.longitude, dr.latitude, dr.altitude, station_longitude, station_latitude,
+               d.ref_altitude)                                                     AS antenna_distance_3d
+FROM drones_raw AS dr
+         LEFT OUTER JOIN pbi_deployments AS d
+                         ON dr.station_name = d.antenna_name and dr.timestamp between d.start_at and d.end_at
+WHERE sitename = d.sitename
+  AND dr.station_name != 'ASDSTATIONV1'
+    ) COMMENT 'PBI View for drones data with distances.'
 ```
 
 AVIONIX streaming data:
 
 ```sql
-CREATE
-OR REPLACE TABLE acute.avionix_drones_raw
+CREATE TABLE IF NOT EXISTS avionix_drones_raw
 (
     uti  INT,
-    dat  VARCHAR, ,
+    dat  VARCHAR,
     hex  VARCHAR,
     tim  VARCHAR,
     fli  VARCHAR,
@@ -417,7 +420,7 @@ OR REPLACE TABLE acute.avionix_drones_raw
     opr  VARCHAR,
     typ  VARCHAR,
     reg  VARCHAR,
-    cou  VARCHAR,
+    cou  VARCHAR
 )
     ENGINE = MergeTree PRIMARY KEY (uti, fli)
         COMMENT 'Raw positions for drones from Cube.'
@@ -426,43 +429,40 @@ OR REPLACE TABLE acute.avionix_drones_raw
 Updating the distances:
 
 ```sql
-CREATE
-MATERIALIZED VIEW acute.drones
-    ENGINE = ReplacingMergeTree
-    PRIMARY KEY (time, journey)
+CREATE MATERIALIZED VIEW IF NOT EXISTS drones
+            ENGINE = ReplacingMergeTree
+                PRIMARY KEY (time, journey)
 AS
 (
-    SELECT
-        `journey`,
-        `ident`,
-        `model`,
-        `source`,
-        `timestamp`,
-        `latitude`,
-        `longitude`,
-        `altitude`,
-        ceil((CAST(altitude AS Float64)  + compute_height(latitude,longitude))) AS altitude_geo,
-        `elevation`,
-        `home_lat`,
-        `home_lon`,
-        `home_height`,
-        `speed`,
-        `heading`,
-        `station_name`,
-        `station_latitude`,
-        `station_longitude`,
-        toUnixTimestamp(timestamp) as time,
-        dist_2d(longitude,latitude,home_lon,home_lat) AS home_distance_2d,
-        dist_3d(longitude,latitude,0,home_lon,home_lat,home_height) AS home_distance_3d
-    FROM acute.drones_raw
-)
-    COMMENT 'View for drones data with distances.'
+SELECT `journey`,
+       `ident`,
+       `model`,
+       `source`,
+       `timestamp`,
+       `latitude`,
+       `longitude`,
+       `altitude`,
+       ceil((CAST(altitude AS Float64) + compute_height(latitude, longitude))) AS altitude_geo,
+       `elevation`,
+       `home_lat`,
+       `home_lon`,
+       `home_height`,
+       `speed`,
+       `heading`,
+       `station_name`,
+       `station_latitude`,
+       `station_longitude`,
+       toUnixTimestamp(timestamp)                                              as time,
+       dist_2d(longitude, latitude, home_lon, home_lat)                        AS home_distance_2d,
+       dist_3d(longitude, latitude, 0, home_lon, home_lat, home_height)        AS home_distance_3d
+FROM acute.drones_raw
+    ) COMMENT 'View for drones data with distances.'
 ```
 
 Join the main metadata tables to identify the site on which every antenna was installed on in time.
 
 ```sql
- CREATE VIEW acute.deployments
+CREATE VIEW IF NOT EXISTS deployments
 AS
 SELECT i.id       AS install_id,
        i.start_at,
@@ -471,9 +471,9 @@ SELECT i.id       AS install_id,
        a.name     AS antenna_name,
        s.name     AS site_name,
        s.timezone AS timezone
-FROM acute.installations AS i,
-     acute.antennas AS a,
-     acute.sites AS s
+FROM installations AS i,
+     antennas AS a,
+     sites AS s
 WHERE (i.antenna_id = a.id)
   AND (s.id = i.site_id) COMMENT 'Find the site for each drone points.'
 ```
@@ -481,8 +481,9 @@ WHERE (i.antenna_id = a.id)
 And its PowerBI (pbi)-tailored version.
 
 ```sql
- CREATE VIEW acute.pbi_deployments
+CREATE VIEW IF NOT EXISTS pbi_deployments
 AS
+(
 SELECT i.id           AS installation_id,
        i.start_at,
        i.end_at,
@@ -491,24 +492,26 @@ SELECT i.id           AS installation_id,
        s.name         AS sitename,
        s.offset       AS timezone s.latitude AS latitude, s.longitude AS longitude,
        s.ref_altitude AS ref_altitude,
-FROM acute.installations AS i,
-     acute.antennas AS a,
-     acute.sites AS s
-WHERE (i.antenna_id = a.id)
-  AND (s.id = i.site_id) COMMENT 'Find the site for each drone points for PBI.'
+       FROM              installations AS i, antennas AS a,
+       sites          AS s
+WHERE (i.antenna_id = a.id
+    )
+  AND (s.id = i.site_id
+    )
+    ) COMMENT 'Find the site for each drone points for PBI.'
 ```
 
 Table to store the history of `process-data distances` runs.
 
 ```sql
-CREATE TABLE daily_stats
+CREATE TABLE IF NOT EXISTS daily_stats
 (
     day       DATE,
     site_id   INT,
     site_name VARCHAR,
     status    INT NOT NULL,
     stats     VARCHAR,
-    comment   VARCHAR,
-) ENGINE = ReplacingMergeTree PRIMARY KEY ( day, site_name)
-    COMMENT 'Records the run history for all sites every day.';
+    comment   VARCHAR
+) ENGINE = ReplacingMergeTree PRIMARY KEY (day, site_name)
+      COMMENT 'Records the run history for all sites every day.';
 ```
