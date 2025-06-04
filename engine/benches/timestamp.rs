@@ -6,8 +6,6 @@
 //! ╰─ bench_jiff        2.29 µs       │ 7.249 µs      │ 2.374 µs      │ 2.455 µs      │ 100     │ 100
 //!
 use divan::{black_box, Bencher};
-use jiff::civil::DateTime;
-use jiff::Timestamp;
 
 fn main() {
     divan::main();
