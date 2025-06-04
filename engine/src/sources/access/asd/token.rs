@@ -190,3 +190,57 @@ impl Expirable for AsdToken {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{Days, TimeZone, Utc};
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_new_token_is_expired() {
+        let token = AsdToken::new();
+        assert!(token.is_expired());
+    }
+
+    #[test]
+    fn test_token_serialization() {
+        let token = AsdToken::new();
+        let json = serde_json::to_string(&token).unwrap();
+        let deserialized: AsdToken = serde_json::from_str(&json).unwrap();
+        assert_eq!(token, deserialized);
+    }
+
+    #[test]
+    fn test_token_expiry() {
+        let future = Utc::now().checked_add_days(Days::new(1)).unwrap();
+        let mut token = AsdToken::new();
+        token.expired_at = future.timestamp();
+        assert!(!token.is_expired());
+    }
+
+    #[test]
+    fn test_store_and_retrieve_token() -> Result<()> {
+        let dir = tempdir()?;
+        let token_path = dir.path().join("token.json");
+        let token = AsdToken::new();
+        let json = serde_json::to_string(&token)?;
+
+        AsdToken::store(&token_path, &json)?;
+        let retrieved = AsdToken::retrieve(&token_path)?;
+        assert_eq!(token, retrieved);
+        Ok(())
+    }
+
+    #[test]
+    fn test_purge_token() -> Result<()> {
+        let dir = tempdir()?;
+        let token_path = dir.path().join("token.json");
+        fs::write(&token_path, "test")?;
+
+        AsdToken::purge(&token_path)?;
+        assert!(!token_path.exists());
+        Ok(())
+    }
+}
+
