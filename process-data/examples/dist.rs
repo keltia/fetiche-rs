@@ -1,10 +1,10 @@
-//! This example demonstrates multiple methods to calculate the distance between 
-//! two geographical points specified by their latitude and longitude. It 
-//! includes implementations using the Haversine formula, the Spherical Law 
+//! This example demonstrates multiple methods to calculate the distance between
+//! two geographical points specified by their latitude and longitude. It
+//! includes implementations using the Haversine formula, the Spherical Law
 //! of Cosines, and multiple distance calculations provided by the `geo` crate.
 //!  
-//! Additionally, it shows how to interact with a ClickHouse database to use 
-//! its `geoDistance` function for distance computation. The example uses 
+//! Additionally, it shows how to interact with a ClickHouse database to use
+//! its `geoDistance` function for distance computation. The example uses
 //! command-line arguments to input the coordinates and outputs the results of all methods.
 //!
 use clap::Parser;
@@ -17,6 +17,8 @@ const R: f64 = 6_371_088.0;
 
 #[derive(Debug, Parser)]
 pub struct Opts {
+    #[clap(short = 'O', long, default_value = "false")]
+    pub offline: bool,
     #[clap(short = 'p', long)]
     pub password: Option<String>,
     pub lat1: f64,
@@ -63,9 +65,9 @@ impl Point {
 
         let a = (d_lat / 2.0).sin() * (d_lat / 2.0).sin()
             + self.latitude.to_radians().cos()
-            * other.latitude.to_radians().cos()
-            * (d_lon / 2.0).sin()
-            * (d_lon / 2.0).sin();
+                * other.latitude.to_radians().cos()
+                * (d_lon / 2.0).sin()
+                * (d_lon / 2.0).sin();
 
         let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
         R * c
@@ -98,8 +100,8 @@ impl Point {
 
         let a = (self.latitude.to_radians()).sin() * (other.latitude.to_radians()).sin()
             + (self.latitude.to_radians()).cos()
-            * (other.latitude.to_radians()).cos()
-            * d_lon.cos();
+                * (other.latitude.to_radians()).cos()
+                * d_lon.cos();
 
         let c = a.acos();
 
@@ -173,7 +175,7 @@ async fn ch_distance(point1: Point, point2: Point) -> eyre::Result<f64> {
             ..Default::default()
         },
     )
-        .await?;
+    .await?;
 
     let q = QueryBuilder::new("SELECT geoDistance($1,$2,$3,$4) AS dist")
         .arg(point1.longitude)
@@ -209,7 +211,11 @@ async fn main() -> eyre::Result<()> {
     let geo_h = Haversine.distance(p1, p2);
     let geo_vin = p1.vincenty_distance(&p2)?;
 
-    let ch_dist = ch_distance(point1, point2).await?;
+    let ch_dist = if !opts.offline {
+        ch_distance(point1, point2).await?
+    } else {
+        0.0_f64
+    };
 
     println!("Distance between\n  {:?}\nand\n  {:?}", p1, p2);
     println!(
