@@ -108,19 +108,19 @@ fn process_one(acc: StringRecord, record: StringRecord, threshold: f64) -> Resul
     let journey = record[0].to_string();
     let ident = record[1].to_string();
     let tm = record[2].to_string();
-    let curr_tm: DateTime = tm.parse().unwrap();
+    let curr_tm: DateTime = tm.parse()?;
 
     // get previous state
     //
     let prev_journey = acc[0].to_string();
     let prev_ident = acc[1].to_string();
-    let prev_tm: DateTime = acc[2].parse().unwrap();
+    let prev_tm: DateTime = acc[2].parse()?;
 
     let new = if prev_ident == ident {
         // Time difference
         //
         let diff = curr_tm - prev_tm;
-        let diff = diff.total((Unit::Second, marker)).unwrap();
+        let diff = diff.total((Unit::Second, marker))?;
 
         // Same drone
         //
@@ -129,8 +129,7 @@ fn process_one(acc: StringRecord, record: StringRecord, threshold: f64) -> Resul
             //
             let ctx = ContextV7::new();
             let unx = curr_tm
-                .to_zoned(TimeZone::UTC)
-                .unwrap()
+                .to_zoned(TimeZone::UTC)?
                 .timestamp()
                 .as_second();
             let base_ts = uuid::Timestamp::from_unix(ctx, unx as u64, 0);

@@ -25,10 +25,10 @@ const VERSION: &str = crate_version!();
 
 // -----
 
-/// How to retrieve specific version of this crate.
+/// How to retrieve the version of this crate.
 ///
 pub fn version() -> String {
-    format!("{}/{}", NAME, VERSION)
+    format!("{NAME}/{VERSION}")
 }
 
 // -----

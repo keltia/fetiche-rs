@@ -182,7 +182,7 @@ impl Container {
             let source = entry.source.clone();
             let url = entry.url.clone();
 
-            let row_text = format!("{}\nSource: {} -- URL: {}", description, source, url);
+            let row_text = format!("{description}\nSource: {source} -- URL: {url}");
             let dtype = dtype.to_string();
             row.push(&name);
             row.push(&dtype);
