@@ -12,7 +12,7 @@
 [![Docs](https://img.shields.io/docsrs/dmarc-rs)](https://docs.rs/fetiche-rs)
 [![GitHub release](https://img.shields.io/github/release/keltia/dmarc-rs.svg)](https://github.com/keltia/fetiche-rs/releases/)
 [![GitHub issues](https://img.shields.io/github/issues/keltia/fetiche-rs.svg)](https://github.com/keltia/fetiche-rs/issues)
-[![fetiche-rs: 1.85+]][Rust 1.85]
+[![fetiche-rs: 1.85+](https://img.shields.io/badge/Rust%20version-1.85%2B-lightgrey)][Rust 1.85]
 [![SemVer](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/spec/v2.0.0.html)
 [![License](https://img.shields.io/crates/l/mit)](https://opensource.org/licenses/MIT)
 
@@ -170,7 +170,7 @@ I use Git Flow for this package so please use something similar or the usual Git
 
 [ASTERIX]: https://www.eurocontrol.int/asterix/
 
-[fetiche-rs: 1.85+]: https://img.shields.io/badge/Rust%20version-1.85%2B-lightgrey
+[Rust 1.85]: https://blog.rust-lang.org/2025/02/20/Rust-1.85.0/
 
 [Mozilla]: https://mozilla.org/
 
@@ -179,8 +179,6 @@ I use Git Flow for this package so please use something similar or the usual Git
 [Parquet]: https://parquet.apache.org/
 
 [RUST]: https://www.rust-lang.org/
-
-[Rust 1.78]: https://blog.rust-lang.org/2024/05/02/Rust-1.78.0.html
 
 [Safesky]: https://safesky.app/
 
