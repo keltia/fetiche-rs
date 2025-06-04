@@ -126,7 +126,7 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
     let data = if let Some(fname) = fname {
         fs::read_to_string(fname)?
     } else {
-        include_str!("sites.csv").to_owned()
+        include_str!("../../data/sites.csv").to_owned()
     };
 
     let mut list = BTreeMap::<String, Location>::new();
