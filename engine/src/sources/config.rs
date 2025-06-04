@@ -564,7 +564,7 @@ mod tests {
 
     #[test]
     fn test_sites_load_hcl() {
-        let cn = PathBuf::from("src").join("sources.hcl");
+        let cn = PathBuf::from("src").join("sources").join("sources.hcl");
         assert!(cn.try_exists().is_ok());
 
         let cfile = ConfigFile::<SourcesConfig>::load(Some(&cn.to_string_lossy().to_string()));
