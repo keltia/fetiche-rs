@@ -31,12 +31,13 @@
 
 use jiff::Timestamp;
 use std::io::stdin;
-use tracing::error;
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 fn main() -> eyre::Result<()> {
+    info!("Starting compute-localtime");
     let filter = EnvFilter::from_default_env();
 
     // Log to file?
@@ -50,12 +51,12 @@ fn main() -> eyre::Result<()> {
         .with(filter)
         .with(fs)
         .init();
-
     
     stdin().lines().for_each(|l| {
         let text = match l {
             Ok(text) => text,
             Err(_) => {
+                eprintln!("ERROR: {}", e.to_string());
                 error!("WARNING: could not read from stdin");
                 return
             },
@@ -65,13 +66,21 @@ fn main() -> eyre::Result<()> {
         let ts = match Timestamp::from_second(ts) {
             Ok(ts) => ts,
             Err(e) => {
+                eprintln!("ERROR: {}", e.to_string());
                 error!("ERROR: {}", e.to_string());
                 return;
             },
         };
         let timezone = params[1].parse::<String>().unwrap_or("Europe/Paris".into());
 
-        let ts = ts.in_tz(&timezone).unwrap();
+        let ts = match ts.in_tz(&timezone) {
+            Ok(ts) => ts,
+            Err(e) => {
+                eprintln!("ERROR: {}", e.to_string());
+                error!("ERROR: {}", e.to_string());
+                return;
+            }
+        };
         println!("{}", ts.time())
     });
     Ok(())

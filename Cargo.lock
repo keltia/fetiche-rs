@@ -1876,6 +1876,9 @@ version = "0.1.0"
 dependencies = [
  "eyre",
  "jiff",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
 ]
 
 [[package]]
