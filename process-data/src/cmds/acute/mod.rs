@@ -3,13 +3,10 @@
 //! This provides a CRUD-like interface with subcommands like `add` & `delete`.
 //!
 
-use std::fs::read_to_string;
-
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use eyre::Result;
 use geo::coord;
-use jiff::fmt::rfc2822::to_string;
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::json;

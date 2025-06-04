@@ -72,6 +72,7 @@ fn from_points_to_ls(points: &Vec<DataPoint>) -> eyre::Result<LineString> {
 ///
 /// This function does not return an error in its current implementation.
 ///
+#[allow(dead_code)]
 #[tracing::instrument]
 pub(crate) fn make_style(name: &str, colour: &str, size: f64) -> Kml {
     Kml::Style(Style {

@@ -93,11 +93,6 @@ impl EngineSingle {
     }
 
     #[tracing::instrument(skip(self))]
-    fn inner(&mut self) -> &mut Engine {
-        &mut self.e
-    }
-
-    #[tracing::instrument(skip(self))]
     pub fn version(&mut self) -> String {
         self.e.version()
     }

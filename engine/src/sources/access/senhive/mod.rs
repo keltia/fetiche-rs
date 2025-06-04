@@ -31,7 +31,6 @@ use std::str::FromStr;
 use crate::actors::StatsMsg;
 use crate::{Auth, Capability, Site, StreamableSource};
 use fetiche_formats::Format;
-use polars::io::{SerReader, SerWriter};
 use ractor::ActorRef;
 use serde::{Deserialize, Serialize};
 

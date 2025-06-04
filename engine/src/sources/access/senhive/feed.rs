@@ -11,6 +11,7 @@ use lapin::{Connection, Consumer};
 ///
 /// * `name` - The name of the queue to consume from
 /// * `inp` - The AMQP consumer instance
+#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) struct Feed {
     pub name: String,

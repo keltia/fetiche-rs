@@ -19,10 +19,12 @@ use tracing::{info, trace};
 ///
 /// Handles token retrieval, listing and persistence operations through
 /// an async message-based interface.
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct TokenActor;
 
 /// Messages that can be sent to the TokenActor
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum TokenMsg {
     /// Retrieve a token by its key
@@ -80,10 +82,9 @@ impl Actor for TokenActor {
                 sender.send(token)?;
             }
             TokenMsg::List(sender) => {
-                let list = state.list();
                 sender.send(state.list())?;
             }
-            TokenMsg::Store(path, store) => {
+            TokenMsg::Store(_path, _store) => {
                 todo!()
             }
         }

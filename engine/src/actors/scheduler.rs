@@ -70,6 +70,7 @@ pub struct SchedulerArguments {
 }
 
 /// Internal state maintained by the scheduler actor
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct SchedulerState {
     mode: Mode,

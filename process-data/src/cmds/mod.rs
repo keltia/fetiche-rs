@@ -77,7 +77,7 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
                 export_encounters(ctx, opts).await?;
             }
         },
-        SubCommand::Check(copts) => {
+        SubCommand::Check(_copts) => {
             eprintln!("Check daily runs status.");
             todo!()
         }

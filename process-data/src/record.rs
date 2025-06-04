@@ -23,6 +23,7 @@ use crate::cmds::find_site_by_id;
 /// including successful completion and various failure conditions related to missing data
 /// or lack of relevant encounters.
 ///
+#[allow(dead_code)]
 #[derive(Debug)]
 #[repr(u8)]
 pub enum RecordStatus {
@@ -42,6 +43,7 @@ pub enum RecordStatus {
 ///
 /// This allow to target another db, not just the default one (think test/production).
 ///
+#[allow(dead_code)]
 pub struct History {
     /// database handle.
     pub dbh: Client,
@@ -67,6 +69,7 @@ impl History {
     ///
     /// # Returns
     /// A new History instance configured with the provided database connection
+    #[allow(dead_code)]
     #[tracing::instrument(skip(dbh))]
     pub async fn new(dbh: &Client, dbname: String) -> Self {
         Self { dbh: dbh.clone(), dbname: dbname.clone() }
@@ -75,6 +78,7 @@ impl History {
 
 /// This records the status and statistics of a `process-data distances` run.
 ///
+#[allow(dead_code)]
 #[derive(Debug, Row)]
 pub struct Record {
     /// Specific day of the run.
@@ -104,6 +108,7 @@ impl History {
     /// # Returns
     /// Result indicating success or failure of the insert operation
     ///
+    #[allow(dead_code)]
     #[tracing::instrument(skip(self))]
     pub async fn insert(&mut self, day: DateTime<Utc>, site_id: u32, status: RecordStatus, stats: String, comment: String) -> Result<()> {
         let dbh = self.dbh.clone();
@@ -128,6 +133,7 @@ INSERT INTO {}.daily_stats (day, site_id, site_name, status, stats, comment) (?,
     /// # Returns
     /// Vector of Record instances matching the specified day
     ///
+    #[allow(dead_code)]
     #[tracing::instrument(skip(self))]
     pub async fn get_by_day(&mut self, day: DateTime<Utc>) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -149,6 +155,7 @@ SELECT * FROM {}.daily_stats WHERE day = ?
     /// # Returns
     /// Vector of Record instances associated with the specified site
     ///
+    #[allow(dead_code)]
     #[tracing::instrument(skip(self))]
     pub async fn get_by_site(&mut self, site: &str) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -172,6 +179,7 @@ SELECT * FROM {}.daily_stats WHERE site_name = ?
     /// Vector of Record instances representing all incomplete processing runs across all
     /// sites and dates
     ///
+    #[allow(dead_code)]
     #[tracing::instrument(skip(self))]
     pub async fn get_incomplete(&mut self) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -195,6 +203,7 @@ SELECT * FROM {}.daily_stats WHERE status != 0
     /// # Returns
     /// Vector of Record instances representing incomplete processing runs for the specified day
     ///
+    #[allow(dead_code)]
     #[tracing::instrument(skip(self))]
     pub async fn get_incomplete_by_day(&mut self, day: DateTime<Utc>) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -219,6 +228,7 @@ SELECT * FROM {}.daily_stats WHERE status != 0 AND day = ?
     /// # Returns
     /// Vector of Record instances representing incomplete processing runs for the specified site
     ///
+    #[allow(dead_code)]
     #[tracing::instrument(skip(self))]
     pub async fn get_incomplete_by_site(&mut self, site: &str) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -237,6 +247,7 @@ SELECT * FROM {}.daily_stats WHERE status != 0 AND site_name = ?
     /// # Returns
     /// Vector of Record instances where processing failed due to missing aircraft data
     ///
+    #[allow(dead_code)]
     #[tracing::instrument(skip(self))]
     pub async fn get_missing_adsb(&mut self) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
@@ -254,6 +265,7 @@ SELECT * FROM {}.daily_stats WHERE status = 1
     /// # Returns
     /// Vector of Record instances where processing failed due to missing drone data
     ///
+    #[allow(dead_code)]
     #[tracing::instrument(skip(self))]
     pub async fn get_missing_drones(&mut self) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();

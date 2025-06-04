@@ -30,7 +30,7 @@
 
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use strum::{EnumString, VariantNames};
+use strum::EnumString;
 
 use fetiche_engine::Filter;
 use fetiche_formats::Format;

@@ -212,7 +212,7 @@ impl Actor for Worker {
                         },
                         else => {
                                 error!("Unknown event, stopping.");
-                                let stats = call!(stat, |port| StatsMsg::Exit(tag, port))?;
+                                let _stats = call!(stat, |port| StatsMsg::Exit(tag, port))?;
                                 break;
                             },
                     }
