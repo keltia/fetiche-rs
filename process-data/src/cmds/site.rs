@@ -3,13 +3,12 @@
 
 use cached::proc_macro::cached;
 use chrono::{DateTime, Datelike, Utc};
-use klickhouse::{QueryBuilder, Row};
+use klickhouse::{Client, QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use tracing::debug;
 
 use crate::error::Status;
-use crate::runtime::Context;
 
 /// Represents a site entity stored in the database within the `sites` table.
 ///
@@ -88,11 +87,9 @@ impl Display for Site {
 /// ### Instrumentation
 /// - Tracing instrumentation is added to provide detailed logs of the function execution.
 ///
-#[tracing::instrument(skip(ctx))]
+#[tracing::instrument(skip(dbh))]
 #[cached(key = "String", result = true, convert = r#"{format!("{}", site)}"#)]
-pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
-    let dbh = ctx.db().await;
-
+pub async fn find_site(dbh: &Client, site: &str) -> eyre::Result<Site> {
     // Load locations from DB
     //
     let r = r##"
@@ -139,10 +136,8 @@ pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
 /// ### Instrumentation
 /// - This function is instrumented with tracing for debugging purposes.
 ///
-#[tracing::instrument(skip(ctx))]
-pub async fn enumerate_sites(ctx: &Context, day: DateTime<Utc>) -> eyre::Result<Vec<Site>> {
-    let dbh = ctx.db().await;
-
+#[tracing::instrument(skip(dbh))]
+pub async fn enumerate_sites(dbh: &Client, day: DateTime<Utc>) -> eyre::Result<Vec<Site>> {
     let day_tag = format!("{:4}-{:02}-{:02}", day.year(), day.month(), day.day());
     let r = r##"
 SELECT
@@ -196,10 +191,8 @@ WHERE (s.id = installations.site_id) AND
     convert = r#"{ format!("{}{}", day,antenna.to_string()) }"#,
     result = true
 )]
-#[tracing::instrument(skip(ctx))]
-pub async fn match_site(ctx: &Context, day: DateTime<Utc>, antenna: &str) -> eyre::Result<String> {
-    let dbh = ctx.db().await;
-
+#[tracing::instrument(skip(dbh))]
+pub async fn match_site(dbh: &Client, day: DateTime<Utc>, antenna: &str) -> eyre::Result<String> {
     #[derive(Deserialize, Row, Serialize)]
     struct Depl {
         pub site_name: String,

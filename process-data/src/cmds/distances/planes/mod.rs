@@ -270,21 +270,26 @@ async fn prepare_work_list(
     };
     trace!("Site = {name} (all if empty)");
 
+    let dbh = ctx.db().await;
     let work_list: Vec<_> = dates
         .iter()
-        .map(|&day| async move {
-            // We have a specific site
-            //
-            if !name.is_empty() {
-                let site = find_site(ctx, name).await.unwrap();
-                let res = vec![(day, site)];
-                res
-            } else {
-                // Process all sites
+        .map(|&day| {
+            let dbh = dbh.clone();
+
+            async move {
+                // We have a specific site
                 //
-                let list = enumerate_sites(ctx, day).await.unwrap();
-                let list: Vec<_> = list.iter().map(|site| (day, site.clone())).collect();
-                list
+                if !name.is_empty() {
+                    let site = find_site(&dbh, name).await.unwrap();
+                    let res = vec![(day, site)];
+                    res
+                } else {
+                    // Process all sites
+                    //
+                    let list = enumerate_sites(&dbh, day).await.unwrap();
+                    let list: Vec<_> = list.iter().map(|site| (day, site.clone())).collect();
+                    list
+                }
             }
         })
         .collect::<Vec<_>>();
