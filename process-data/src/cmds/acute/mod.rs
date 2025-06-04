@@ -3,17 +3,22 @@
 //! This provides a CRUD-like interface with subcommands like `add` & `delete`.
 //!
 
+use std::fs::read_to_string;
+
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use eyre::Result;
 use geo::coord;
+use jiff::fmt::rfc2822::to_string;
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::fs::read_to_string;
+use tabled::{
+    settings::Style,
+    Table, Tabled,
+};
 use tracing::trace;
 
-use crate::cmds::Site;
 use crate::runtime::Context;
 
 pub(crate) use antennas::*;
@@ -62,6 +67,42 @@ pub enum CrudSubCommand {
     List,
 }
 
+#[derive(Debug, Deserialize, Row, Serialize, Tabled)]
+struct Antenna {
+    pub id: i32,
+    #[serde(rename = "type")]
+    pub atype: String,
+    pub name: String,
+    pub owned: bool,
+    pub description: String,
+}
+
+#[derive(Debug, Deserialize, Row, Serialize, Tabled)]
+struct Install {
+    pub install_id: i32,
+    pub start_at: DateTime<Utc>,
+    pub end_at: DateTime<Utc>,
+    #[serde(rename = "type")]
+    pub atype: String,
+    pub antenna_name: String,
+    pub site_name: String,
+    pub timezone: String,
+}
+
+#[derive(Debug, Deserialize, Row, Serialize, Tabled)]
+struct Site {
+    pub id: i32,
+    pub name: String,
+    pub code: String,
+    pub basename: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub ref_altitude: i32,
+    pub timezone: String,
+    pub offset_h: i32,
+    pub distance_km: f64,
+}
+
 // ----- Dispatching
 
 #[tracing::instrument(skip(ctx))]
@@ -69,45 +110,30 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
     trace!("run_acute_cmd");
 
     let dbh = ctx.db().await;
-    match opts.subcmd {
+    match &opts.subcmd {
         // List all antennas
         //
-        AcuteSubCommand::Antennas(_) => {
-            #[derive(Debug, Deserialize, Serialize, Row)]
-            struct Antenna {
-                pub id: i32,
-                #[serde(rename = "type")]
-                pub atype: String,
-                pub name: String,
-                pub owned: bool,
-                pub description: String,
-            }
-
+        AcuteSubCommand::Antennas(opts) => {
             // Fetch antennas as Arrow
             //
             let res = dbh
-                .query_collect::<Antenna>("SELECT * FROM antennas")
+                .query_collect::<Antenna>("SELECT * FROM antennas ORDER BY id ASC")
                 .await?;
 
             println!("Listing all antennas:");
-            let res = json!(&res).to_string();
+
+            let res = if opts.table {
+                let mut table = Table::new(res.as_slice());
+                table.with(Style::modern());
+                table.to_string()
+            } else {
+                json!(res).to_string()
+            };
             println!("{res}");
         }
         // List all installations
         //
-        AcuteSubCommand::Install(_) => {
-            #[derive(Debug, Deserialize, Serialize, Row)]
-            struct Install {
-                pub install_id: i32,
-                pub start_at: DateTime<Utc>,
-                pub end_at: DateTime<Utc>,
-                #[serde(rename = "type")]
-                pub atype: String,
-                pub antenna_name: String,
-                pub site_name: String,
-                pub timezone: String,
-            }
-
+        AcuteSubCommand::Install(opts) => {
             // Find all installations with sites' name and antenna's ID
             //
             let r = r##"
@@ -119,24 +145,17 @@ ORDER BY start_at ASC
             dbh.execute(r).await?;
             let q = QueryBuilder::new(r);
             let res = dbh.query_collect::<Install>(q).await?;
-            let res = json!(&res).to_string();
+
+            let res = if opts.table {
+                let mut table = Table::new(res.as_slice());
+                table.with(Style::modern());
+                table.to_string()
+            } else {
+                json!(res).to_string()
+            };
             println!("{res}");
         }
-        AcuteSubCommand::Sites(_) => {
-            #[derive(Debug, Deserialize, Serialize, Row)]
-            struct Site {
-                pub id: i32,
-                pub name: String,
-                pub code: String,
-                pub basename: String,
-                pub latitude: f64,
-                pub longitude: f64,
-                pub ref_altitude: i32,
-                pub timezone: String,
-                pub offset: i32,
-                pub distance_km: f64,
-            }
-
+        AcuteSubCommand::Sites(opts) => {
             // This is our current location in Brétigny
             //
             let home = coord! {x: 48.600052, y:2.347038};
@@ -153,21 +172,29 @@ SELECT
   longitude,
   ref_altitude,
   timezone,
-  offset,
+  offset AS offset_h,
   floor(dist_2d($1, $2, longitude, latitude) / 1000.) AS distance_km
 FROM
   sites
 ORDER BY
-  name
+  id
     "##;
             let q = QueryBuilder::new(r).arg(home.y).arg(home.x);
             let res = dbh.query_collect::<Site>(q).await?;
 
             println!("Listing all sites:");
-            let res = json!(&res).to_string();
+            let res = if opts.table {
+                let mut table = Table::new(res.as_slice());
+                table.with(Style::modern());
+                table.to_string()
+            } else {
+                json!(res).to_string()
+            };
+
             println!("{res}");
         }
     }
 
     Ok(())
 }
+
