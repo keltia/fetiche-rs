@@ -1,5 +1,5 @@
-//! Clickhouse UDF executable that converts UTC Unix timestamp to local time string
-//! based on provided timezone.
+//! Clickhouse UDF executable that converts UTC Unix timestamp to local date/time string
+//! based on the provided timezone.
 //!
 //! # Installation
 //!
@@ -8,8 +8,10 @@
 //!
 //! It needs to be referenced inside an XML file, here in `/etc/clickhouse-server/udf`.
 //!
+//! For now, it can be run as either `compute-localdate` or `compute-localtime`.
+//!
 //! ```xml
-//!<functions>
+//! <functions>
 //!         <function>
 //!                 <type>executable</type>
 //!                 <name>compute_localtime</name>
@@ -29,17 +31,34 @@
 //! ```
 //!
 
-use jiff::Timestamp;
+use clap::Parser;
+use jiff::{Timestamp, Zoned};
 use log::{error, info};
 use std::io::stdin;
 use stderrlog::LogLevelNum::Trace;
 
-fn main() -> eyre::Result<()> {
-    info!("Starting compute-localtime");
+#[derive(Debug, Parser)]
+struct Opts {
+    #[clap(short = 'd', long)]
+    date: bool,
+}
 
-    stderrlog::new()
-        .verbosity(Trace)
-        .init()?;
+fn main() -> eyre::Result<()> {
+    info!("Starting compute-localtime/date");
+
+    let opts = Opts::parse();
+
+    let name = std::env::current_exe()?;
+    let name = name.file_stem().unwrap().to_str().unwrap();
+    info!("Running {:?} {:?}", name, opts);
+
+    let output = if name == "compute-localdate" || opts.date {
+        |p: Zoned| p.date().to_string()
+    } else {
+        |p: Zoned| p.time().to_string()
+    };
+
+    stderrlog::new().verbosity(Trace).init()?;
 
     stdin().lines().for_each(|l| {
         let text = match l {
@@ -67,7 +86,7 @@ fn main() -> eyre::Result<()> {
                 return;
             }
         };
-        println!("{}", ts.time())
+        println!("{}", output(ts));
     });
     Ok(())
 }

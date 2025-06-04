@@ -24,3 +24,4 @@ eyre.workspace = true
 jiff.workspace = true
 stderrlog = "0.6"
 log = "0.4"
+clap = { version = "4.5.40", features = ["derive"] }
