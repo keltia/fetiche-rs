@@ -37,7 +37,7 @@ def export_one(tag, action):
     dbn = os.getenv('CLICKHOUSE_DB') or db
 
     req = reqs[tag]
-    cmd = f"{clickhouse} -h localhost -u {user} -d {dbn} --password {pwd} -q \"{req.format(tag, filesdir, tag)}\""
+    cmd = f"{clickhouse} -h {host} -u {user} -d {dbn} --password {pwd} -q \"{req.format(tag, filesdir, tag)}\""
     logging.info(f"{cmd}")
     if action:
         ret = run(cmd, shell=True, capture_output=True)
