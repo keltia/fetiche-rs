@@ -56,8 +56,6 @@ pub struct RunnerArgs {
 
 #[derive(Clone, Debug)]
 pub struct RunnerState {
-    /// ID of the runner.
-    pub id: WorkerId,
     /// Reference to the Result actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -80,7 +78,6 @@ impl Worker for RunnerActor {
     ) -> Result<Self::State, ActorProcessingErr> {
         trace!("runner {} starting", wid);
         let state = RunnerState {
-            id: wid,
             results: startup_context.results.clone(),
             stats: startup_context.stats.clone(),
         };
