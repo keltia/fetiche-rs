@@ -333,7 +333,7 @@ mod tests {
             name = "test_stream"
             producer = {
                 "Stream" = [
-                    "lux-me",
+                    "opensky",
                     {
                         "from" = 1746898373376
                         "duration" = 3600
