@@ -28,17 +28,15 @@ impl Engine {
     /// to provide the full path where state information should be persisted.
     ///
     #[inline]
-    pub fn state_file(&self) -> PathBuf {
-        self.home
-            .path_to_filesystem(&Path::from(STATE_FILE))
-            .unwrap()
+    pub fn state_file(&self) -> Result<PathBuf> {
+        Ok(self.home
+            .path_to_filesystem(&Path::from(STATE_FILE))?)
     }
 
     #[inline]
-    pub fn sources_file(&self) -> PathBuf {
-        self.home
-            .path_to_filesystem(&Path::from(SOURCES_CONFIG))
-            .unwrap()
+    pub fn sources_file(&self) -> Result<PathBuf> {
+        Ok(self.home
+            .path_to_filesystem(&Path::from(SOURCES_CONFIG))?)
     }
 
     /// Synchronizes all engine state by persisting it to disk
@@ -124,10 +122,9 @@ impl Engine {
     /// Combines the engine's home directory with the ENGINE_CONFIG constant
     /// to locate the HCL configuration file.
     ///
-    pub fn config_file(&self) -> PathBuf {
-        self.home
-            .path_to_filesystem(&Path::from(ENGINE_CONFIG))
-            .unwrap()
+    pub fn config_file(&self) -> Result<PathBuf> {
+        Ok(self.home
+            .path_to_filesystem(&Path::from(ENGINE_CONFIG))?)
     }
 
     /// Returns a string containing version information for the engine and its modules

@@ -115,11 +115,11 @@ async fn main() -> Result<()> {
                 println!("{p}");
             }
             ConfigCmd::Engine => {
-                let p = engine.config_file().to_string_lossy().to_string();
+                let p = engine.config_file()?.to_string_lossy().to_string();
                 println!("{p}");
             }
             ConfigCmd::Sources => {
-                let p = engine.sources_file().to_string_lossy().to_string();
+                let p = engine.sources_file()?.to_string_lossy().to_string();
                 println!("{p}");
             }
         },

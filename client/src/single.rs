@@ -53,12 +53,12 @@ impl EngineSingle {
     // ----- Misc. wrappers
 
     #[tracing::instrument(skip(self))]
-    pub fn config_file(&self) -> PathBuf {
+    pub fn config_file(&self) -> Result<PathBuf> {
         self.e.config_file()
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn sources_file(&self) -> PathBuf {
+    pub fn sources_file(&self) -> Result<PathBuf> {
         self.e.sources_file()
     }
 
