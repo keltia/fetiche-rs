@@ -50,19 +50,19 @@ pub enum SubCommand {
     #[clap(visible_alias = "boot", visible_alias = "restart")]
     Bootstrap,
     /// Check status of daily runs.
-    #[clap(visible_alias = "chk")]
+    #[clap(visible_alias = "c", visible_alias = "chk")]
     Check(CheckOpts),
     /// Distance-related calculations.
-    #[clap(visible_alias = "dist", visible_alias = "d")]
+    #[clap(visible_alias = "d", visible_alias = "dist")]
     Distances(DistOpts),
     /// Export results as CSV.
-    #[clap(visible_alias = "exp", visible_alias = "e")]
+    #[clap(visible_alias = "e", visible_alias = "exp")]
     Export(ExportOpts),
     /// Import into a CH instance.
     //#[clap(visible_alias = "imp")]
     //Import(ImportOpts),
     /// Remove macros and other stuff
-    #[clap(visible_alias = "clean", visible_alias = "cls")]
+    #[clap(visible_alias = "clean")]
     Cleanup(SetupOpts),
     /// Prepare the database environment with some tables and macros.
     Setup(SetupOpts),

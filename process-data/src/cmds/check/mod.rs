@@ -16,8 +16,10 @@ pub struct CheckOpts {
 #[derive(Debug, Parser)]
 pub enum CheckSubCommand {
     /// Check for completed runs.
+    #[clap(visible_alias = "c", visible_alias = "compl")]
     Completed(ComplOpts),
     /// Check for missing data
+    #[clap(visible_alias = "m", visible_alias = "miss")]
     Missing(MissingOpts),
 }
 
@@ -31,8 +33,10 @@ pub struct MissingOpts {
 #[derive(Debug, Parser)]
 pub enum MissingSubCommand {
     /// Missing ADS-B data for all days & sites.
+    #[clap(visible_alias = "a")]
     Adsb(MAdsbOpts),
     /// Missing drone data for all days & sites.
+    #[clap(visible_alias = "d")]
     Drones(MDronesOpts),
 }
 
