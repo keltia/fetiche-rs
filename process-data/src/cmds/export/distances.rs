@@ -14,8 +14,7 @@ use serde::{Deserialize, Serialize};
 use tempfile::Builder;
 use tracing::{debug, info, trace};
 
-use crate::cmds::Format;
-use crate::error::Status;
+use crate::cmds::{CmdError, Format};
 use crate::runtime::Context;
 
 #[derive(Debug, Parser)]
@@ -420,7 +419,7 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
                     _ => {
                         return {
                             eprintln!("Unknown format specified.");
-                            Err(Status::UnknownFormat(opts.format.to_string()).into())
+                            Err(CmdError::UnknownFormat(opts.format.to_string()).into())
                         }
                     }
                 }
@@ -428,7 +427,7 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
         }
         None => {
             eprintln!("No output file specified.");
-            return Err(Status::NoOutputDestination.into());
+            return Err(CmdError::NoOutputDestination.into());
         }
     }
     drop(client);

@@ -18,9 +18,8 @@
 mod create;
 mod data;
 
-use crate::cmds::Format;
+use crate::cmds::{CmdError, Format};
 use crate::runtime::Context;
-use crate::error::Status;
 
 use create::*;
 use data::*;
@@ -94,12 +93,12 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
     // Can't have -A and an ID
     //
     if all && id.is_some() {
-        return Err(Status::NoAllAndENID.into());
+        return Err(CmdError::NoAllAndENID.into());
     }
     // Can't have a specific date and -A
     //
     if all && date.is_some() {
-        return Err(Status::NoAllAndDate.into());
+        return Err(CmdError::NoAllAndDate.into());
     }
 
     // Create the list of `en_id` to analyse.
@@ -121,7 +120,7 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
                 //
                 let en_id = match opts.id.clone() {
                     Some(id) => id,
-                    None => return Err(Status::NoEncounterSpecified.into()),
+                    None => return Err(CmdError::NoEncounterSpecified.into()),
                 };
                 vec![en_id]
             }
@@ -132,11 +131,11 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
     //
     if let Some(output) = output {
         if !output.is_dir() {
-            return Err(Status::NotADirectory(output.to_string_lossy().to_string()).into());
+            return Err(CmdError::NotADirectory(output.to_string_lossy().to_string()).into());
         }
         let _ = export_encounter_list(ctx, &list, output).await?;
     } else {
-        return Err(Status::NoOutputDestination.into());
+        return Err(CmdError::NoOutputDestination.into());
     }
 
     Ok(())
@@ -154,7 +153,7 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
 /// # Returns
 ///
 /// * `Ok(String)` - A string representation of the KML document if the export is successful.
-/// * `Err(Status)` - An error if the encounter ID is invalid, if the data points are insufficient, or if
+/// * `Err(CmdError)` - An error if the encounter ID is invalid, if the data points are insufficient, or if
 ///   any other validation or processing errors occur.
 ///
 /// # Errors
@@ -181,7 +180,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
 
         let re = Regex::new(r##"^(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})$"##)?;
         if re.captures(date).is_none() {
-            return Err(Status::BadDateFormat(id.to_string()).into());
+            return Err(CmdError::BadDateFormat(id.to_string()).into());
         }
         (
             &caps["name"].to_string(),
@@ -189,7 +188,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
             caps["journey"].parse::<i32>()?,
         )
     } else {
-        return Err(Status::BadEncounterID(id.to_string()).into());
+        return Err(CmdError::BadEncounterID(id.to_string()).into());
     };
     debug!("name: {}, date: {}, journey: {}", name, date, journey);
 
@@ -203,7 +202,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
 
     let drones = fetch_drones(&client, journey, &drone_id).await?;
     if drones.len() <= 1 {
-        return Err(Status::NotEnoughData("drones".to_string()).into());
+        return Err(CmdError::NotEnoughData("drones".to_string()).into());
     }
 
     // Extract first and last timestamp to have a suitable interval for plane points.
@@ -218,7 +217,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
 
     let planes = fetch_planes(&client, &prox_id, first, last).await?;
     if planes.len() <= 1 {
-        return Err(Status::NotEnoughData("planes".to_string()).into());
+        return Err(CmdError::NotEnoughData("planes".to_string()).into());
     }
 
     // Pre-load default styles
@@ -274,7 +273,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
 /// # Returns
 ///
 /// * `Ok(usize)` - The total number of encounters exported successfully.
-/// * `Err(Status)` - An error if the output path is invalid (not a directory),
+/// * `Err(CmdError)` - An error if the output path is invalid (not a directory),
 ///   or if any other processing or IO errors occur.
 ///
 /// # Errors

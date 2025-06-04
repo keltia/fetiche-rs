@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use tracing::debug;
 
-use crate::error::Status;
+use crate::cmds::CmdError;
 
 /// Represents a site entity stored in the database within the `sites` table.
 ///
@@ -96,7 +96,7 @@ pub async fn find_site(dbh: &Client, site: &str) -> eyre::Result<Site> {
     let q = QueryBuilder::new(r).arg(site);
     let site = match dbh.query_one::<Site>(q).await {
         Ok(site) => site,
-        Err(_) => return Err(Status::UnknownSite(site.to_string()).into()),
+        Err(_) => return Err(CmdError::UnknownSite(site.to_string()).into()),
     };
     Ok(site)
 }
@@ -145,7 +145,7 @@ pub async fn find_site_by_id(dbh: &Client, id: u32) -> eyre::Result<Site> {
     let q = QueryBuilder::new(r).arg(id);
     let site = match dbh.query_one::<Site>(q).await {
         Ok(site) => site,
-        Err(_) => return Err(Status::UnknownSiteId(id).into()),
+        Err(_) => return Err(CmdError::UnknownSiteId(id).into()),
     };
     Ok(site)
 }

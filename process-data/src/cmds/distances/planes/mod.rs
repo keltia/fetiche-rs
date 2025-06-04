@@ -15,8 +15,7 @@ use tracing::{debug, error, info, trace};
 
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
-use crate::cmds::{enumerate_sites, find_site, Calculate, PlanesStats, Site, Stats};
-use crate::error::Status;
+use crate::cmds::{enumerate_sites, find_site, Calculate, CmdError, PlanesStats, Site, Stats};
 use crate::runtime::Context;
 
 mod compute;
@@ -500,7 +499,7 @@ async fn calculate_one_day_on_site(
         .dbh
         .get()
         .await
-        .map_err(|e| Status::ConnectionUnavailable(e.to_string()))?;
+        .map_err(|e| CmdError::ConnectionUnavailable(e.to_string()))?;
 
     let day = normalise_day(*day)?;
 
