@@ -14,10 +14,11 @@ use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use serde::{Deserialize, Serialize};
+use strum::VariantNames;
+
 use crate::{Auth, Capability, Routes};
 use fetiche_formats::Format;
-use serde::{Deserialize, Serialize};
-use strum::EnumString;
 
 /// Define the kind of data the source is managing
 ///
@@ -40,7 +41,7 @@ use strum::EnumString;
     Deserialize,
     PartialEq,
     strum::Display,
-    EnumString
+    VariantNames
 )]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
@@ -52,6 +53,20 @@ pub enum DataType {
     /// Invalid datatype
     #[default]
     Invalid,
+}
+
+/// Implement our own `From<>` because `EnumString` is limited to the actual names.
+///
+impl From<&str> for DataType {
+    fn from(value: &str) -> Self {
+        match value.to_lowercase().as_str() {
+            "adsb" => Self::Adsb,
+            "ads-b" => Self::Adsb,
+            "drone" => Self::Drone,
+            "drones" => Self::Drone,
+            _ => Self::Invalid,
+        }
+    }
 }
 
 /// Represents a `Site` with its configuration details and behavior.
@@ -300,12 +315,13 @@ mod tests {
     }
 
     #[rstest]
+    #[case("", DataType::Invalid)]
     #[case("adsb", DataType::Adsb)]
-    #[case("ads-b", DataType::Invalid)]
+    #[case("ads-b", DataType::Adsb)]
     #[case("drone", DataType::Drone)]
-    #[case("drones", DataType::Invalid)]
+    #[case("drones", DataType::Drone)]
     #[case("foobar", DataType::Invalid)]
     fn test_datatype_from(#[case] s: &str, #[case] dt: DataType) {
-        assert_eq!(dt, DataType::from_str(s).unwrap());
+        assert_eq!(dt, DataType::from(s));
     }
 }
