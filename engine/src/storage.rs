@@ -127,7 +127,7 @@ impl Storage {
     ///     },
     /// );
     ///
-    /// let storage = Storage::register(&config);
+    /// let storage = Storage::register(&config)?;
     /// ```
     ///
     #[tracing::instrument]
@@ -216,7 +216,7 @@ impl Storage {
     ///     },
     /// );
     ///
-    /// let storage = Storage::register(&config);
+    /// let storage = Storage::register(&config)?;
     /// println!("{}", storage.list().unwrap());
     /// ```
     ///
