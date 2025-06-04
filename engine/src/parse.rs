@@ -128,6 +128,7 @@ enum ConsumerText {
     strum::Display,
     VariantNames,
 )]
+#[strum(serialize_all = "lowercase")]
 pub enum Freq {
     #[default]
     Daily,

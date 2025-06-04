@@ -44,8 +44,7 @@ pub async fn stream_from_site(engine: &mut EngineSingle, sopts: &StreamOpts) -> 
         format!(
             r##"
         output = {{
-            "Freq" = {}
-            "Store" = "{}"
+            "Store" = {{ "freq" = "{}", "split" = "{}"
         }}
         "##,
             freq, split
