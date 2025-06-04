@@ -9,12 +9,12 @@ use eyre::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use tracing::{debug, info, trace};
 
-use crate::client::JobText;
-use crate::{FetchOpts, JobTextBuilder, MiddleText};
+use crate::FetchOpts;
 
-use crate::ConsumerText::Save;
-use crate::MiddleText::Tee;
-use crate::ProducerText::Fetch;
+use engine_client::{ConsumerText::Save,
+                    JobTextBuilder,
+                    MiddleText::Tee,
+                    ProducerText::Fetch};
 use fetiche_common::DateOpts;
 use fetiche_engine::{Engine, Filter, JobState};
 

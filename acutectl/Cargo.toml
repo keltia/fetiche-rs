@@ -26,6 +26,7 @@ flightaware = []
 [dependencies]
 eyre.workspace = true
 clap.workspace = true
+engine-client.workspace = true
 fetiche-common.workspace = true
 fetiche-engine.workspace = true
 fetiche-formats.workspace = true

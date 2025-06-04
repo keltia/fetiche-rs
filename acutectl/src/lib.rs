@@ -13,12 +13,10 @@
 /// Re-export
 ///
 pub use cli::*;
-pub use client::*;
 pub use cmds::*;
 pub use error::*;
 
 
 mod cli;
-mod client;
 mod cmds;
 mod error;
