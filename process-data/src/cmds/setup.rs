@@ -670,6 +670,7 @@ CREATE OR REPLACE TABLE acute.records (
   day DATE,
   site VARCHAR(10),
   status INT NOT NULL,
+  stats VARCHAR,
   comment VARCHAR,
 )
 ENGINE = ReplacingMergeTree PRIMARY KEY (day, site)
