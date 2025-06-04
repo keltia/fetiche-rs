@@ -3,11 +3,15 @@
 //! TODO: Add code for metrics.
 
 use eyre::Result;
-use opentelemetry::{global, trace::TracerProvider};
-use opentelemetry_otlp::SpanExporter;
-use opentelemetry_sdk::{trace::SdkTracerProvider, Resource};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 use tracing_tree::HierarchicalLayer;
+
+#[cfg(feature = "telemetry")]
+use opentelemetry::{global, trace::TracerProvider};
+#[cfg(feature = "telemetry")]
+use opentelemetry_otlp::SpanExporter;
+#[cfg(feature = "telemetry")]
+use opentelemetry_sdk::{trace::SdkTracerProvider, Resource};
 
 /// Initializes logging for the application.
 ///
@@ -63,6 +67,7 @@ pub fn init_logging(
 
     // Enable telemetry?
     //
+    #[cfg(feature = "telemetry")]
     let otlp = if use_telemetry {
         let exporter = SpanExporter::builder().with_tonic().build()?;
 
@@ -77,6 +82,9 @@ pub fn init_logging(
     } else {
         None
     };
+
+    #[cfg(not(feature = "telemetry"))]
+    let otlp: Option<HierarchicalLayer> = None;
 
     // Log to file?
     //

@@ -35,6 +35,10 @@ harness = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+telemetry = ["dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk"]
+
 [dependencies]
 chrono.workspace = true
 clap.workspace = true
@@ -59,9 +63,9 @@ ctrlc = { version = "3.4", features = ["termination"] }
 egm2008 = "0.1"
 enum_dispatch = "0.3"
 humantime = "2.2"
-opentelemetry = { version = "0.30", features = ["logs", "metrics"] }
-opentelemetry-otlp = { version = "0.30", features = ["grpc-tonic"] }
-opentelemetry_sdk = { version = "0.30", features = ["rt-tokio"] }
+opentelemetry = { version = "0.30", features = ["logs", "metrics"], optional = true }
+opentelemetry-otlp = { version = "0.30", features = ["grpc-tonic"], optional = true }
+opentelemetry_sdk = { version = "0.30", features = ["rt-tokio"], optional = true }
 tracing-appender = "0.2"
 tracing-opentelemetry = "0.31"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
