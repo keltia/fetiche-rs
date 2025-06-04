@@ -4,6 +4,7 @@
 //!
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::str::FromStr;
 use strum::VariantNames;
 use tabled::{builder::Builder, settings::Style};
 
@@ -67,14 +68,22 @@ pub enum Container {
     Raw,
 }
 
-impl From<&str> for Container {
-    fn from(path: &str) -> Self {
-        let extension = path.rsplit('.').next().unwrap_or_default().to_lowercase();
-        match extension.as_str() {
+impl FromStr for Container {
+    type Err = eyre::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let extension = s.rsplit('.').next().unwrap_or_default().to_lowercase();
+        Ok(match extension.as_str() {
             "csv" => Container::CSV,
             "parquet" => Container::Parquet,
             _ => Container::Raw,
-        }
+        })
+    }
+}
+
+impl From<&str> for Container {
+    fn from(path: &str) -> Self {
+        Container::from_str(path).unwrap_or(Container::Raw)
     }
 }
 
