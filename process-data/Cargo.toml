@@ -51,10 +51,10 @@ cached = { version = "0.56", features = ["async", "async_tokio_rt_multi_thread"]
 clap_complete = "4.5"
 colorsys = "0.7"
 derive_builder = "0.20"
-geo = "0.30"
+geo = "0.31"
 itertools = "0.14"
 klickhouse = { version = "0.14", features = ["derive", "geo-types", "serde", "bb8"] }
-kml = "0.10"
+kml = "0.11"
 ml-progress = "0.1"
 rust-3d = "0.34"
 regex = "1.11"
