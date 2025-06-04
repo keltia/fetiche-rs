@@ -312,14 +312,17 @@ impl Storage {
 mod tests {
     use jiff::{Span, SpanRelativeTo, Unit};
     use rstest::rstest;
+    use std::collections::BTreeMap;
+    use tempfile::TempDir;
 
-    use crate::Storage;
+    use crate::{Storage, StorageConfig};
 
     #[rstest]
     #[case("42s", 42_u32)]
     #[case("60s", 60_u32)]
     #[case("2m", 120_u32)]
     #[case("5h", 18_000_u32)]
+    #[case("24h", 86_400_u32)]
     #[case("1d", 86_400_u32)]
     fn test_parse_rotation(#[case] input: &str, #[case] val: u32) {
         let (_, v) = Storage::parse_rotation(input).unwrap();
@@ -338,5 +341,50 @@ mod tests {
         let v: Span = input.parse()?;
         assert_eq!(v.total((Unit::Second, marker))?, val);
         Ok(())
+    }
+
+    #[test]
+    fn test_register_cache() {
+        let mut cfg = BTreeMap::new();
+        cfg.insert(
+            "test_cache".to_string(),
+            StorageConfig::Cache {
+                url: "redis://localhost:6379".to_string(),
+            },
+        );
+
+        let storage = Storage::register(&cfg);
+        assert_eq!(storage.len(), 1);
+    }
+
+    #[test]
+    fn test_register_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut cfg = BTreeMap::new();
+        cfg.insert(
+            "test_dir".to_string(),
+            StorageConfig::Directory {
+                path: temp_dir.path().to_path_buf(),
+                rotation: "1h".to_string(),
+            },
+        );
+
+        let storage = Storage::register(&cfg);
+        assert_eq!(storage.len(), 1);
+    }
+
+    #[test]
+    fn test_register_hive() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut cfg = BTreeMap::new();
+        cfg.insert(
+            "test_hive".to_string(),
+            StorageConfig::Hive {
+                path: temp_dir.path().to_path_buf(),
+            },
+        );
+
+        let storage = Storage::register(&cfg);
+        assert_eq!(storage.len(), 1);
     }
 }
