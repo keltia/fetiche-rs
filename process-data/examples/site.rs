@@ -49,7 +49,8 @@ async fn main() -> Result<()> {
     });
 
     let site = "AUS";
-    let q = QueryBuilder::new("SELECT id FROM sites WHERE name = $1;").arg(site);
+    let r = format!("SELECT id FROM {}.sites WHERE name = $1;", name);
+    let q = QueryBuilder::new(&r).arg(site);
 
     trace!("Get site_id for {}", site);
     let mut id_site = client.query_one::<RawRow>(q).await?;
@@ -68,15 +69,13 @@ async fn main() -> Result<()> {
     let antenna = "0QRDJCAR0383TD";
     let day = "2024-03-01 00:00:00 UTC".parse::<DateTime<Utc>>()?;
 
-    let q = r##"
+    let q = format!(r##"
 SELECT site_name
-FROM deployments AS d
+FROM {}.deployments AS d
 WHERE d.antenna_name = $1 AND $2 BETWEEN d.start_at AND d.end_at
-    "##;
+    "##, name);
 
-    let qb = QueryBuilder::new(q)
-        .arg(antenna)
-        .arg(day);
+    let qb = QueryBuilder::new(&q).arg(antenna).arg(day);
 
     let depl = client.query_one::<Depl>(qb).await?;
     let site = depl.site_name;

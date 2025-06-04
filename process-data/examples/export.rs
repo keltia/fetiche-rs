@@ -83,7 +83,7 @@ async fn main() -> Result<()> {
 
     let fname = opts.fname.clone();
     eprintln!("Created fname: {}", fname);
-    let r = r##"
+    let r = format!(r##"
   SELECT
     en_id,
     site,
@@ -104,9 +104,9 @@ async fn main() -> Result<()> {
     distance_vert_m,
     distance_home_m,
     distance_slant_m,
-  FROM airplane_prox
+  FROM {}.airplane_prox
   ORDER BY time
-        "##;
+        "##, name);
 
     let q = QueryBuilder::new(&r);
     let res = client.query_collect::<Encounter>(q).await?;

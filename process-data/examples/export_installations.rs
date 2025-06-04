@@ -77,9 +77,8 @@ async fn main() -> Result<()> {
     )
         .await?;
 
-    let all = client
-        .query_collect::<Install>("SELECT * FROM acute.installations")
-        .await?;
+    let q = format!("SELECT * FROM {}.installations", name);
+    let all = client.query_collect::<Install>(q).await?;
 
     let fh = File::create(FNAME)?;
     let mut wtr = csv::Writer::from_writer(fh);
