@@ -58,9 +58,9 @@ fn main() -> eyre::Result<()> {
                 return;
             }
         };
-        let timezone = params[1].parse::<String>().unwrap_or("Europe/Paris".into());
+        let timezone = params.get(1).unwrap_or(&"Europe/Paris");
 
-        let ts = match ts.in_tz(&timezone) {
+        let ts = match ts.in_tz(timezone) {
             Ok(ts) => ts,
             Err(e) => {
                 error!("ERROR: {}", e.to_string());
