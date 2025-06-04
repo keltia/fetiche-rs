@@ -45,13 +45,19 @@ pub struct SetupOpts {
     /// Add only macros.
     #[clap(short = 'M', long)]
     pub macros: bool,
+    /// Create airplanes stuff.
+    #[clap(short = 'P', long)]
+    pub airplanes: bool,
+    /// Create drones stuff.
+    #[clap(short = 'D', long)]
+    pub drones: bool,
     /// Create encounters (aka calculation) table
     #[clap(short = 'E', long)]
     pub encounters: bool,
     /// Create records table
     #[clap(short = 'R', long)]
     pub records: bool,
-    /// Create permanent tables
+    /// Create work views
     #[clap(short = 'V', long)]
     pub views: bool,
     /// Everything.
@@ -332,8 +338,7 @@ async fn add_airplanes_view(dbh: &Client) -> Result<()> {
     // Calculations view
     //
     let r1 = r##"
-CREATE
-OR REPLACE VIEW airplanes
+CREATE VIEW IF NOT EXISTS airplanes
 AS
 (
     SELECT EmitterCategory,
@@ -637,7 +642,8 @@ DROP VIEW IF EXISTS airprox_summary
 #[tracing::instrument(skip(dbh))]
 async fn add_pbi_encounters_summary_view(dbh: &Client) -> Result<()> {
     let r4 = r##"
-CREATE MATERIALIZED VIEW IF NOT EXISTS pbi_encounters_summary ENGINE = ReplacingMergeTree
+CREATE MATERIALIZED VIEW IF NOT EXISTS pbi_encounters_summary
+ENGINE = ReplacingMergeTree
 PRIMARY KEY (en_id) POPULATE AS (  SELECT *
   FROM
     airplane_prox AS a JOIN airprox_summary AS s
@@ -697,11 +703,9 @@ DROP TABLE daily_stats IF EXISTS daily_stats
 /// Create various views
 ///
 #[tracing::instrument(skip(dbh))]
-async fn create_views(dbh: &Client) -> Result<()> {
-    add_airplanes_view(dbh).await?;
+async fn create_work_views(dbh: &Client) -> Result<()> {
     add_deployments_view(dbh).await?;
     add_pbi_deployments_view(dbh).await?;
-    add_drones_view(dbh).await?;
     add_pbi_drones_view(dbh).await?;
     add_airprox_summary_view(dbh).await?;
     add_pbi_encounters_view(dbh).await?;
@@ -713,19 +717,47 @@ async fn create_views(dbh: &Client) -> Result<()> {
 /// Drop all views
 ///
 #[tracing::instrument(skip(dbh))]
-async fn drop_views(dbh: &Client) -> Result<()> {
+async fn drop_work_views(dbh: &Client) -> Result<()> {
     drop_pbi_encounters_summary_view(dbh).await?;
     drop_pbi_encounters_view(dbh).await?;
     drop_airprox_summary_view(dbh).await?;
     drop_pbi_drones_view(dbh).await?;
     drop_pbi_deployments_view(dbh).await?;
-    drop_drones_view(dbh).await?;
     drop_deployments_view(dbh).await?;
-    drop_airplanes_view(dbh).await?;
     Ok(())
 }
 
-/// Create parts or all of the ACUTE environment
+/// Creates or updates components of the ACUTE database environment based on provided options.
+///
+/// ### Parameters
+///
+/// - `ctx`: Application context containing database connection and configuration
+/// - `opts`: Setup options specifying which components to create/update
+///
+/// ### Component Setup
+///
+/// The following components can be created:
+/// - Database macros for distance calculations
+/// - Views for airplanes data
+/// - Views for drones data
+/// - Work views for analysis
+/// - Encounters table for storing proximity data
+/// - Daily stats table for recording run history
+///
+/// When the `all` flag is set, all components are created. Otherwise, components
+/// are created selectively based on individual option flags.
+///
+/// ### Returns
+///
+/// Returns `Ok(())` if setup succeeds, or an error if any creation operation fails.
+///
+/// ### Errors
+///
+/// May return errors in cases such as:
+/// - Database connection issues
+/// - Insufficient privileges
+/// - SQL syntax errors
+/// - Existing components that can't be replaced
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
@@ -740,14 +772,24 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
 
     if opts.all {
         trace!("Creating all ACUTE tables and views.");
-        create_views(&dbh).await?;
         add_macros(&dbh).await?;
+        add_airplanes_view(&dbh).await?;
+        add_drones_view(&dbh).await?;
+        create_work_views(&dbh).await?;
         let _ = add_encounters_table(&dbh).await;
         let _ = add_daily_stats_table(&dbh).await;
     } else {
         if opts.macros {
             trace!("Creating ACUTE macros.");
             add_macros(&dbh).await?;
+        }
+        if opts.airplanes {
+            trace!("Creating ACUTE airplanes table.");
+            add_airplanes_view(&dbh).await?;
+        }
+        if opts.drones {
+            trace!("Creating ACUTE drones table.");
+            add_drones_view(&dbh).await?;
         }
         if opts.encounters {
             trace!("Creating ACUTE encounters table.");
@@ -757,23 +799,58 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
             trace!("Creating ACUTE daily stats table.");
             add_daily_stats_table(&dbh).await?;
         }
+        if opts.views {
+            trace!("Creating ACUTE views.");
+            create_work_views(&dbh).await?;
+        }
     }
     Ok(())
 }
 
-/// Cleanup by erasing parts or all
+/// This function removes database components based on the provided options. It can remove
+/// all components when the `all` flag is set, or selectively remove specific components
+/// based on individual option flags.
+///
+/// ### Parameters
+///
+/// - `ctx`: The application context containing database connection and configuration
+/// - `opts`: Setup options specifying which components to remove
+///
+/// ### Component Removal
+///
+/// The following components can be removed:
+/// - Views (work views, deployment views, etc.)
+/// - Daily stats table
+/// - Encounters table
+/// - Drones view
+/// - Airplanes view  
+/// - Database macros
+///
+/// ### Returns
+///
+/// Returns `Ok(())` if cleanup succeeds, or an error if any removal operation fails.
+///
+/// ### Errors
+///
+/// May return errors in cases such as:
+/// - Database connection issues
+/// - Insufficient privileges
+/// - Components that don't exist
+/// - SQL execution errors
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> {
     let dbh = ctx.db().await;
     if opts.all {
-        drop_encounters_table(&dbh).await?;
+        drop_work_views(&dbh).await?;
         drop_daily_stats_table(&dbh).await?;
+        drop_encounters_table(&dbh).await?;
+        drop_drones_view(&dbh).await?;
+        drop_airplanes_view(&dbh).await?;
         remove_macros(&dbh).await?;
-        drop_views(&dbh).await?;
     } else {
-        if opts.macros {
-            remove_macros(&dbh).await?;
+        if opts.views {
+            drop_work_views(&dbh).await?;
         }
         if opts.records {
             drop_daily_stats_table(&dbh).await?;
@@ -781,8 +858,14 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
         if opts.encounters {
             drop_encounters_table(&dbh).await?;
         }
-        if opts.views {
-            drop_views(&dbh).await?;
+        if opts.drones {
+            drop_drones_view(&dbh).await?;
+        }
+        if opts.airplanes {
+            drop_airplanes_view(&dbh).await?;
+        }
+        if opts.macros {
+            remove_macros(&dbh).await?;
         }
     }
 
