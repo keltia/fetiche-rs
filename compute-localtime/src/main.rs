@@ -1,5 +1,6 @@
+//! Clickhouse UDF executable that converts UTC Unix timestamp to local time string
+//! based on provided timezone.
 //!
-
 //! # Installation
 //!
 //! This needs to be installed on the Clickhouse server in
@@ -14,7 +15,7 @@
 //!                 <name>compute_localtime</name>
 //!                 <return_type>String</return_type>
 //!                 <argument>
-//!                         <type>Datetime</type>
+//!                         <type>UInt32</type>
 //!                         <name>ts</name>
 //!                 </argument>
 //!                 <argument>
@@ -27,44 +28,19 @@
 //! </functions>
 //! ```
 //!
-//! # Timing
-//!
-//! ```text
-//! ```
-//!
 
-use clap::Parser;
-use egm2008::geoid_height;
+use jiff::Timestamp;
 use std::io::stdin;
 
-/// Command-line options for computing geoid height.
-///
-/// # Fields
-/// - `verbose` or `-v`: Enables detailed output.
-///
-#[derive(Debug, Parser)]
-pub struct Opts;
-
 fn main() -> eyre::Result<()> {
-    // Basic option parsing.
-    //
-    let opts = Opts::parse();
-
     stdin().lines().for_each(|l| {
         let text = l.unwrap();
-        let coords: Vec<&str> = text.split_whitespace().collect();
-        let lat = coords[0].parse::<f32>().unwrap_or(0.);
-        let lon = coords[1].parse::<f32>().unwrap_or(0.);
+        let params: Vec<&str> = text.split_whitespace().collect();
+        let ts = params[0].parse::<u32>().unwrap();
+        let timezone = params[1].parse::<String>().unwrap_or("Europe/Paris".into());
 
-        let height = geoid_height(lat, lon).unwrap_or(0.);
-        if opts.verbose {
-            eprintln!(
-                "Variation aka geoid height at {},{} = {} m",
-                lat, lon, height
-            );
-        } else {
-            println!("{}", height);
-        }
+        let ts = Timestamp::from_second(ts as i64).unwrap().in_tz(&timezone).unwrap();
+        println!("{}", ts.time())
     });
     Ok(())
 }
