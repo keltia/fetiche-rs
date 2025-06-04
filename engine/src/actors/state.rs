@@ -98,6 +98,7 @@ pub struct State {
 
 /// This is version 1 of the state file
 ///
+#[allow(dead_code)]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct State1 {
     /// Our state file path.
