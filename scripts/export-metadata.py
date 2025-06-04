@@ -19,16 +19,17 @@ clickhouse = 'clickhouse-client'
 if sys.platform.startswith('darwin'):
     clickhouse = 'clickhouse client'
 
+# All exportable tables
 reqs = {
-    'sites': 'select * from sites order by id into outfile \'{}/sites.csv\' truncate format csvwithnames',
-    'installations': 'select * from installations order by id into outfile \'{}/installations.csv\' truncate format csvwithnames',
-    'deployments': 'select * from deployments order by install_id into outfile \'{}/deployments.csv\' truncate format csvwithnames',
-    'pni_deployments': "select * from pbi_deployments order by installation_id into outfile '{}/pbi_deployments.csv' truncate format csvwithnames",
+    'sites': 'select * from {} order by id into outfile \'{}/{}.csv\' truncate format csvwithnames',
+    'installations': 'select * from {} order by id into outfile \'{}/{}.csv\' truncate format csvwithnames',
+    'deployments': 'select * from {} order by install_id into outfile \'{}/{}.csv\' truncate format csvwithnames',
+    'pbi_deployments': 'select * from {} order by installation_id into outfile \'{}/{}.csv\' truncate format csvwithnames',
 }
 
 
-def export_one(tag):
-    # Now do the import, `fname` is a csv file in any case
+def export_one(tag, action):
+    # tag is the name of the table and the final csv file
     #
     host = os.getenv('CLICKHOUSE_HOST')
     user = os.getenv('CLICKHOUSE_USER')
@@ -36,13 +37,15 @@ def export_one(tag):
     dbn = os.getenv('CLICKHOUSE_DB') or db
 
     req = reqs[tag]
-    cmd = f"{clickhouse} -h localhost -u {user} -d {dbn} --password {pwd} -q \"{req.format(filesdir)}\""
+    cmd = f"{clickhouse} -h localhost -u {user} -d {dbn} --password {pwd} -q \"{req.format(tag, filesdir, tag)}\""
     logging.info(f"{cmd}")
     if action:
         ret = run(cmd, shell=True, capture_output=True)
         if ret.returncode != 0:
             logging.error("error: ", ret.stderr)
             print("error: ", ret.stderr, file=sys.stderr)
+    else:
+	    print(f"{cmd}")
     print(f"Exported {tag} to {filesdir}/{tag}.csv")
 
 
@@ -51,6 +54,7 @@ parser = argparse.ArgumentParser(
     description='Export ACUTE metadata as CSV files.')
 
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
+parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
 args = parser.parse_args()
 
 if args.datalake is not None:
@@ -71,3 +75,6 @@ if args.dry_run:
     action = False
 else:
     action = True
+
+for table in reqs.keys():
+    export_one(table, action)
