@@ -136,7 +136,7 @@ struct JobText {
     /// Data generator
     pub producer: ProducerText,
     /// Optional list of filters like `Tee` or `Save`.
-    pub filters: Option<Vec<MiddleText>>,
+    pub middle: Option<Vec<MiddleText>>,
     /// Output file name.
     pub output: ConsumerText,
 }
@@ -181,9 +181,10 @@ impl Engine {
     /// # }
     /// ```
     ///
+    #[tracing::instrument(skip(self))]
     pub async fn parse(&mut self, job_str: &str) -> Result<Job> {
         let jt: JobText = hcl::from_str(job_str)?;
-        trace!("{:?}", &jt);
+        trace!("jobtext = {:?}", &jt);
 
         // Assign a new ID
         //
@@ -220,9 +221,10 @@ impl Engine {
             }
         };
 
+        debug!("Filters: {:?}", &jt.middle);
         // Lets have a look at filters now.
         //
-        let list = if let Some(filters) = &jt.filters {
+        let list = if let Some(filters) = &jt.middle {
             filters
                 .iter()
                 .map(|t| match t {
