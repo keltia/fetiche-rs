@@ -79,7 +79,9 @@ pub enum StreamableSource {
     #[cfg(feature = "flightaware")]
     Flightaware,
     #[cfg(feature = "opensky")]
-    Opensky,
+    OpenskyDevice,
+    #[cfg(feature = "opensky")]
+    OpenskyServer,
     #[cfg(feature = "senhive")]
     Senhive,
 }
@@ -108,8 +110,13 @@ impl From<Site> for StreamableSource {
                 StreamableSource::from(s)
             }
             #[cfg(feature = "opensky")]
-            "opensky" => {
-                let s = Opensky::new().load(&value).clone();
+            "openskyserver" => {
+                let s = OpenskyServer::new().load(&value).clone();
+                StreamableSource::from(s)
+            }
+            #[cfg(feature = "opensky")]
+            "openskydevice" => {
+                let s = OpenskyDevice::new().load(&value).clone();
                 StreamableSource::from(s)
             }
             _ => unimplemented!(),
