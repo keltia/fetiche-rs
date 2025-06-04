@@ -6,11 +6,10 @@ use std::net::TcpStream;
 
 use base64_light::base64_encode;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use fetiche_common::init_logging;
 use native_tls::TlsConnector;
 use reqwest::Url;
 use tracing::trace;
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
 
 const URL: &str = "www.whatismyipaddress.com";
 
@@ -27,18 +26,9 @@ pub struct Opts {
 }
 
 fn main() -> eyre::Result<()> {
+    init_logging("tls", false, true, None)?;
+
     trace!("open connection");
-
-    let fmt = fmt::layer().with_target(false).compact();
-
-    // Load filters from environment
-    //
-    let filter = EnvFilter::from_default_env();
-
-    // Combine middle & specific format
-    //
-    tracing_subscriber::registry().with(filter).with(fmt).init();
-
     let opts: Opts = Opts::parse();
     let site = opts.site.unwrap();
     let port = opts.port.unwrap();
@@ -83,7 +73,7 @@ Proxy-Connection: Keep-Alive
 "##,
                 site, 443, auth
             )
-                .as_bytes(),
+            .as_bytes(),
         )?;
         stream
     };

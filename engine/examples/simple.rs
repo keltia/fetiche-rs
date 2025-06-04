@@ -17,9 +17,8 @@ use std::time::Duration;
 use std::{fs, io, thread};
 
 use eyre::Result;
+use fetiche_common::init_logging;
 use tracing::info;
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::{filter::EnvFilter, fmt};
 
 pub trait Runnable: Debug {
     fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
@@ -120,19 +119,7 @@ impl Job {
 }
 
 fn main() -> Result<()> {
-    let fmt = fmt::layer()
-        .with_thread_ids(true)
-        .with_thread_names(true)
-        .with_target(false)
-        .compact();
-
-    // Load filters from environment
-    //
-    let filter = EnvFilter::from_default_env();
-
-    // Combine middle & specific format
-    //
-    tracing_subscriber::registry().with(filter).with(fmt).init();
+    init_logging("simple", false, true, None)?;
 
     let pid = PathBuf::from("/tmp/simple.pid");
     if pid.exists() {
