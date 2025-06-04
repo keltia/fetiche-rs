@@ -3013,6 +3013,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine-client"
+version = "0.1.0"
+dependencies = [
+ "derive_builder",
+ "eyre",
+ "fetiche-common",
+ "fetiche-engine",
+ "fetiche-formats",
+ "futures",
+ "hcl-rs",
+ "jiff",
+ "proptest",
+ "serde",
+ "serde_json",
+ "strum 0.27.1",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "enum_dispatch"
 version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
