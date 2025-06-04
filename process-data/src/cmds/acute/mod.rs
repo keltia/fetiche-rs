@@ -83,6 +83,7 @@ struct Install {
     pub atype: String,
     pub antenna_name: String,
     pub site_name: String,
+    pub site_id: i32,
     pub timezone: String,
 }
 
