@@ -1,31 +1,157 @@
-//! This is the streaming implementation for Opensky
+//! This is the streaming implementation for Opensky, server-side.
 //!
 //! FIXME: this is not using an actor
 
 use std::sync::atomic::AtomicBool;
+use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{thread, time};
 
 use chrono::Utc;
 use clap::{crate_name, crate_version};
-use mini_moka::sync::Cache;
+use eyre::Result;
+use mini_moka::sync::{Cache, ConcurrentCacheExt};
 use reqwest::StatusCode;
-use std::sync::mpsc::{channel, Sender};
+use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, trace};
 
-use crate::{AuthError, Filter, Stats, Streamable};
-use fetiche_formats::Format;
+use crate::sources::access::opensky::{StatMsg, MAX_INTERVAL};
+use crate::{Auth, AuthError, Capability, Filter, Opensky, Site, Stats, Streamable, StreamableSource, CACHE_IDLE, CACHE_MAX, CACHE_SIZE};
+use fetiche_formats::{Format, StateList};
+
+/// We can go back only 1h in Opensky API
+const MAX_INTERVAL: i64 = 3600;
+
+/// Expiration after insert/get
+pub const CACHE_IDLE: Duration = Duration::from_secs(20);
+/// Expiration after insert
+pub const CACHE_MAX: Duration = Duration::from_secs(60);
+/// Cache max entries
+pub const CACHE_SIZE: u64 = 20;
+
+/// This si the Opensky client/source struct.
+///
+/// FIXME: this had only the "get" route (which will be "stream" for the streamable part.
+///        this is confusing and incorrect.
+///
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OpenskyServer {
+    /// Describe the different features of the source
+    pub feature: Capability,
+    /// Input formats
+    pub format: Format,
+    /// Username
+    pub login: String,
+    /// Password
+    pub password: String,
+    /// Base site url taken from config
+    pub base_url: String,
+    /// Add this to `base_url` to fetch data
+    pub get: String,
+    /// Running time (for streams)
+    pub duration: i32,
+}
+
+#[allow(dead_code)]
+/// This is the struct holding potential parameters to the API
+///
+#[derive(Debug, Serialize)]
+struct Param {
+    /// timestamp of the state vectors to be retrieved
+    pub time: Option<u32>,
+    /// One or more ICAO24 transponder address
+    pub icao24: Option<Vec<String>>,
+    /// One or more receiver IDs
+    pub serials: Option<Vec<u32>>,
+}
+
+#[allow(dead_code)]
+/// Credentials to submit to the site to get the token
+///
+#[derive(Debug, Serialize)]
+struct Credentials {
+    /// Email as username
+    username: String,
+    /// Password
+    password: String,
+}
+
+impl OpenskyServer {
+    #[tracing::instrument]
+    pub fn new() -> Self {
+        trace!("opensky::new");
+
+        OpenskyServer {
+            features: vec![Capability::Fetch, Capability::Stream],
+            format: Format::Opensky,
+            login: "".to_owned(),
+            password: "".to_owned(),
+            base_url: "".to_owned(),
+            get: "".to_owned(),
+            duration: 0,
+        }
+    }
+
+    /// Load some data from in-memory loaded config
+    ///
+    #[tracing::instrument]
+    pub fn load(&mut self, site: &Site) -> &mut Self {
+        trace!("opensky::load");
+
+        self.format = Format::from_str(&site.format).unwrap();
+        self.base_url = site.base_url.to_owned();
+        if let Some(auth) = &site.auth {
+            match auth {
+                Auth::Login {
+                    username: login,
+                    password,
+                } => {
+                    self.login = login.to_owned();
+                    self.password = password.to_owned();
+                }
+                _ => panic!("nope"),
+            }
+        }
+        // FIXME: should get the entire set of routes
+        //
+        self.get = site.route("stream").unwrap().to_owned();
+        self
+    }
+
+    pub fn source(&self) -> StreamableSource {
+        StreamableSource::Opensky(self.clone())
+    }
+}
+
+impl Default for OpenskyServer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Represent the area we want to get all from
+///
+/// FIXME: this is not handled
+///
+#[derive(Debug, Serialize, Deserialize)]
+struct Args {
+    lamin: f32,
+    lomin: f32,
+    lamax: f32,
+    lomax: f32,
+}
 
 impl Streamable for Opensky {
+    #[tracing::instrument(skip(self))]
     fn name(&self) -> String {
-        "opensky".to_string()
+        "openskyserver".to_string()
     }
 
     /// All credentials are passed every time we call the API so return a fake token
     ///
-    fn authenticate(&self) -> Result<String, AuthError> {
-        trace!("fake token retrieval");
+    #[tracing::instrument(skip(self))]
+    async fn authenticate(&self) -> Result<String, AuthError> {
         Ok("".into())
     }
 
@@ -43,7 +169,7 @@ impl Streamable for Opensky {
     ///   cached entries
     ///
     #[tracing::instrument(skip(self, out))]
-    async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
+    async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<Stats> {
         let mut stream_duration = 0;
         let mut stream_delay = 1000;
 
@@ -71,8 +197,8 @@ impl Streamable for Opensky {
                 if from == 0 {
                     None
                 } else {
-                    let start = if now - from > crate::access::opensky::MAX_INTERVAL {
-                        now - crate::access::opensky::MAX_INTERVAL
+                    let start = if now - from > MAX_INTERVAL {
+                        now - MAX_INTERVAL
                     } else {
                         from
                     };
@@ -255,7 +381,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                         //
                         Some(_time) => {
                             eprint!("*");
-                            let _ = stat_tx.send(crate::access::opensky::StatMsg::Hits);
+                            let _ = stat_tx.send(StatMsg::Hits);
                             thread::sleep(Duration::from_millis(stream_delay as u64));
                             continue;
                         }
@@ -266,7 +392,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
 
                             let _ = stat_tx.send(StatMsg::Miss);
                             let _ = stat_tx.send(StatMsg::Pkts);
-                            let _ = st
+                            let _ = stat_tx
                                 .send(StatMsg::Bytes(buf.len() as u64));
 
                             tx.send(buf).expect("send");
