@@ -451,6 +451,7 @@ AS (SELECT `journey`,
       `model`,
       d.installation_id,
       sitename,
+      d.site_id,
       date_trunc('day', dr.timestamp) AS `date`,
       formatDateTime(dr.timestamp, '%T', 'UTC') AS `utc_time`,
       compute_localdate(toUnixTimestamp(dr.timestamp), d.tzname) AS local_date,
@@ -551,6 +552,7 @@ async fn add_deployments_view(dbh: &Client) -> Result<()> {
     a.type,
     a.name AS antenna_name,
     s.name AS site_name,
+    s.id AS site_id,
     s.timezone AS timezone
  FROM installations AS i, antennas AS a, sites AS s
  WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
@@ -584,6 +586,7 @@ async fn add_pbi_deployments_view(dbh: &Client) -> Result<()> {
     a.type,
     a.name AS antenna_name,
     s.name AS sitename,
+    s.id AS site_id,
     s.offset AS timezone,
     s.timezone AS tzname,
     s.latitude AS latitude,
