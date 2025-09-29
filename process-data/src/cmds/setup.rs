@@ -197,6 +197,7 @@ async fn remove_macros(dbh: &Client) -> Result<()> {
 ///
 /// - `site`: Represents the site ID where the encounter occurs.
 /// - `en_id`: Unique identifier for the encounter.
+/// - `sitename`: Name of the site where the encounter occurs.
 /// - `time`: Timestamp indicating when the encounter occurred.
 /// - `journey`: Identifier for the journey or flight path of the drone.
 /// - `drone_id`: The unique identifier for the drone.
@@ -235,6 +236,7 @@ async fn add_encounters_table(dbh: &Client) -> Result<()> {
 CREATE TABLE IF NOT EXISTS airplane_prox (
   site             INT,
   en_id            VARCHAR,
+  sitename         VARCHAR,
   time             TIMESTAMP,
   journey          INT,
   drone_id         VARCHAR,
