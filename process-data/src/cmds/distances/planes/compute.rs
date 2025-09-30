@@ -55,18 +55,6 @@ use std::ops::Add;
 use tokio::time::{sleep, Duration, Instant};
 use tracing::{debug, error, info, trace};
 
-// ----- These are the default names for different bases
-
-/// DB name for airplane data.
-const AIRPLANE_DB: &str = "acute";
-/// DB name for drone data
-const DRONE_DB: &str = "acute";
-/// DB name for working tables & views
-const WORK_DB: &str = "acute";
-
-// -----
-
-/// Timings during the calculation process.
 #[derive(Debug, Default, Deserialize)]
 struct Timings {
     select_planes: u128,
@@ -74,8 +62,6 @@ struct Timings {
     find_close: u128,
     select_encounters: u128,
 }
-
-// ----- Main implementation
 
 impl PlaneDistance {
     // -- private
@@ -152,7 +138,6 @@ impl PlaneDistance {
         //
         let day_name = self.date.format("%Y%m%d").to_string();
         let tag = format!("_{name}_{day_name}");
-
         let r1 = format!(
             r##"
 CREATE OR REPLACE TABLE today{tag}
@@ -168,7 +153,7 @@ AS SELECT
   prox_alt_m AS palt,
   ModeA AS prox_mode_a
 FROM
-  {}.airplanes
+  acute.airplanes 
 WHERE
   site = $1 AND
   toStartOfInterval(time, toIntervalDay(1)) = toDateTime($2) AND
@@ -176,8 +161,7 @@ WHERE
   NOT(palt = 0 AND flight_level != 0) AND
   pointInEllipses(plon, plat, $3, $4, $5, $6)
 ORDER BY time
-"##,
-            AIRPLANE_DB
+"##
         );
 
         // Given lat/lon and dist, we define the "ellipse" aka circle
@@ -294,15 +278,14 @@ AS SELECT
     home_lon,
     home_distance_2d,
     home_distance_3d
-FROM {}.drones
+FROM drones
 WHERE
   toStartOfInterval(timestamp, toIntervalDay(1)) = toDateTime($1) AND
   altitude_geo IS NOT NULL AND
   latitude IS NOT NULL AND
   longitude IS NOT NULL AND
   pointInEllipses(longitude,latitude, $2, $3, $4, $5)
-    "##,
-            DRONE_DB
+    "##
         );
         let q = QueryBuilder::new(&r2)
             .arg(time_from)
@@ -467,6 +450,7 @@ CREATE OR REPLACE TABLE ids{tag} (
     callsign VARCHAR,
     journey INT,
     en_id VARCHAR DEFAULT '',
+    sitename VARCHAR,
 ) ENGINE = Memory
 "##
         );
@@ -510,6 +494,7 @@ CREATE OR REPLACE TABLE ids{tag} (
         #[derive(Clone, Debug, Default, Serialize, Deserialize, Row)]
         struct Ids {
             en_id: String,
+            sitename: String,
             journey: i32,
             drone_id: String,
             callsign: String,
@@ -547,6 +532,7 @@ CREATE OR REPLACE TABLE ids{tag} (
                 let journey = elem.journey;
                 let elem = Ids {
                     en_id: format!("{}-{}-{}-{}", site, day_name, journey, id),
+                    sitename: site.to_string(),
                     journey: elem.journey,
                     drone_id: elem.drone_id.clone(),
                     callsign: elem.callsign.clone(),
@@ -614,6 +600,7 @@ CREATE OR REPLACE TABLE ids{tag} (
      SELECT
       any_value(tc.site) AS site,
       id.en_id AS en_id,
+      id.sitename AS sitename,
       any_value(time) AS time,
       tc.journey AS journey,
       tc.drone_id AS drone_id,
