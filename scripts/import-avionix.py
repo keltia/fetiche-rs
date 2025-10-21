@@ -131,6 +131,13 @@ def process_one(dir_path, fname, action):
         print("error: ", ret.stderr, file=sys.stderr)
         return fname
     logging.info(f"Removing {tmpdir}.")
+
+    # Remove file if requested
+    #
+    if delete:
+        logging.info("delete done.")
+        os.remove(fname)
+
     return fname
 
 
