@@ -107,7 +107,7 @@ const ENGINE_VERSION: usize = 3;
 const ENGINE_PG: &str = "engine.pg";
 
 /// Clock tick
-const TICK: Duration = Duration::from_secs(2);
+const TICK: Duration = Duration::from_secs(1);
 
 /// Sync state every 30s by default.
 const SYNC: Duration = Duration::from_secs(30);
@@ -199,40 +199,7 @@ pub struct Engine {
     pub stats: ActorRef<StatsMsg>,
 }
 
-/// Engine can be instantiated into two modes:
-/// - `Single` means we will run one job and exit
-/// - `Daemon` means we will be part of a daemon (`fetiched`).
-///
-#[derive(Clone, Copy, Default, Debug, EnumString, strum::Display, PartialEq)]
-pub enum EngineMode {
-    #[default]
-    Single,
-    Daemon,
-}
-
 impl Engine {
-    /// Creates a new Engine instance in daemon mode with configuration loaded from engine.hcl
-    ///
-    /// This method initializes an Engine configured for long-running daemon operation.
-    /// It loads configuration from the engine.hcl file and sets up all necessary components
-    /// including storage, actors, and state management systems.
-    ///
-    /// The daemon mode enables features like:
-    /// - Multiple concurrent worker threads
-    /// - Periodic state synchronization
-    /// - Regular system health checks via tick intervals
-    ///
-    /// # Errors
-    ///
-    /// Will panic if the Engine cannot be created due to configuration or initialization errors.
-    ///
-    #[tracing::instrument]
-    pub async fn new() -> Result<Self> {
-        // Load storage areas from `engine.hcl`
-        //
-        Self::load(ENGINE_CONFIG, EngineMode::Daemon).await
-    }
-
     /// Creates a new Engine instance in single mode with configuration loaded from engine.hcl
     ///
     /// This method initializes an Engine configured for single-job execution mode.
@@ -244,10 +211,10 @@ impl Engine {
     /// Will panic if the Engine cannot be created due to configuration or initialization errors.
     ///
     #[tracing::instrument]
-    pub async fn single() -> Result<Self> {
+    pub async fn new() -> Result<Self> {
         // Load storage areas from `engine.hcl`
         //
-        Self::load(ENGINE_CONFIG, EngineMode::Single).await
+        Self::load(ENGINE_CONFIG).await
     }
 
     /// Creates a new Engine instance by loading configuration from the specified file
@@ -270,9 +237,8 @@ impl Engine {
     /// - Required directories cannot be created or accessed
     ///
     #[tracing::instrument]
-    pub async fn load(fname: &str, mode: EngineMode) -> Result<Self> {
+    pub async fn load(fname: &str) -> Result<Self> {
         info!("Engine v{} starting", env!("CARGO_PKG_VERSION"));
-        info!("Starting in {} mode", mode);
 
         let root = ConfigFile::<EngineConfig>::load(Some(fname))?;
         let cfg = root.inner();
@@ -286,24 +252,6 @@ impl Engine {
             return Err(EngineStatus::BadConfigVersion(cfg.version(), ENGINE_VERSION).into());
         }
 
-        // Ensure we have sensible defaults.
-        //
-        let (workers, sync, tick) = if mode == EngineMode::Daemon {
-            let workers =
-                cfg.workers
-                    .unwrap_or_else(|| match std::thread::available_parallelism() {
-                        Ok(n) => n.get(),
-                        Err(_) => 1,
-                    });
-            let sync = cfg.sync.unwrap_or(SYNC);
-            let tick = cfg.tick.unwrap_or(TICK);
-            (workers, sync, tick)
-        } else {
-            // When running as a single instance, we have no need for multiple workers or a 2s tick
-            //
-            (1, SYNC, Duration::from_secs(1))
-        };
-
         debug!("Engine config: {:#?}", cfg);
 
         let pid = std::process::id();
@@ -315,14 +263,9 @@ impl Engine {
 
         // Move ourselves into our base
         //
-        // BASEDIR/var/run/<PID> for single instance runs
-        // BASEDIR/var/run/acute for fetiched runs
+        // BASEDIR/var/run/<PID>
         //
-        let workdir = if mode == EngineMode::Single {
-            cfg.basedir.join("var").join("run").join(pid.to_string())
-        } else {
-            cfg.basedir.join("var").join("run").join("acute")
-        };
+        let workdir = cfg.basedir.join("var").join("run").join(pid.to_string());
         fs::create_dir_all(&workdir).await?;
 
         // ----- Start actors
@@ -397,7 +340,7 @@ impl Engine {
             .worker_builder(Box::new(runner_builder))
             .queue(Default::default())
             .router(Default::default())
-            .num_initial_workers(workers)
+            .num_initial_workers(1)
             .build();
 
         // Spawn factory under supervision too.
@@ -413,8 +356,8 @@ impl Engine {
         // Spawn the actual scheduler
         //
         let sargs = SchedulerArguments {
-            sync,
-            tick,
+            sync: SYNC,
+            tick: TICK,
             last,
             state: state.clone(),
             results: results.clone(),
