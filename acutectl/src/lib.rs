@@ -12,8 +12,10 @@
 pub use cli::*;
 pub use cmds::*;
 pub use error::*;
+pub use subr::*;
 
 
 mod cli;
 mod cmds;
 mod error;
+mod subr;
