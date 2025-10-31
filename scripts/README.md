@@ -105,6 +105,13 @@ options:
   --keep, -K            Do not delete files after download.
 ```
 
+- `fetch-avionix-api.sh`
+
+Simple shell script calling the Avionix API and saving the result in a file.
+Need to have two environment variables defined: `AVIONIX_API_KEY` and `AVIONIX_API_SECRET`.
+
+It uses `curl(1)` in a forever `while` loop, transforming the JSON into JSONL for usability.
+
 ## Python (both Windows and UNIX)
 
 - `import-adsb.py`
