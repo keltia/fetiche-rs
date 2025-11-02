@@ -7,12 +7,13 @@
 ///
 #[cfg(unix)]
 #[tracing::instrument]
-pub fn start_daemon(pid: &PathBuf) -> eyre::Result<()> {
+pub fn start_daemon(workdir: &PathBuf) -> eyre::Result<()> {
     let stdout = File::create(format!("/tmp/{NAME}.out"))?;
     let stderr = File::create(format!("/tmp/{NAME}.err"))?;
 
+    let pid = Path::new(workdir).join("pid");
     let daemon = daemonize::Daemonize::new()
-        .pid_file(&pid)
+        .pid_file(&workdir)
         .working_directory("/tmp")
         .umask(0o077)
         .stdout(stdout)
