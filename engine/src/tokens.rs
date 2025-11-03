@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::fmt::Debug;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
@@ -73,7 +74,7 @@ impl TokenStorage {
     /// Read the directory and return all tokens (one per file)
     ///
     #[tracing::instrument]
-    pub async fn register(path: &str) -> Result<Self> {
+    pub async fn register(path: &PathBuf) -> Result<Self> {
         debug!("Registering token storage at {:?}", path);
         let store = LocalFileSystem::new_with_prefix(&path)?;
         let mut db = BTreeMap::<String, TokenType>::new();
@@ -83,7 +84,7 @@ impl TokenStorage {
         let list_stream = store.list(None);
         let objects: Vec<ObjectMeta> = list_stream.try_collect().await?;
 
-        trace!("reading directory {path}");
+        trace!("reading directory {path:?}");
 
         for object in objects {
             if let Some(file_name) = object.location.filename() {
@@ -104,7 +105,7 @@ impl TokenStorage {
 
         Ok(TokenStorage {
             store: Arc::new(store),
-            base_path: Path::from(path),
+            base_path: Path::from_filesystem_path(path)?,
             list: db,
         })
     }
@@ -227,7 +228,7 @@ impl TokenStorage {
 
     /// Synchronous version of register for backward compatibility
     #[tracing::instrument]
-    pub fn register_sync(path: &str) -> Self {
+    pub fn register_sync(path: &PathBuf) -> Self {
         let rt = Handle::current();
         rt.block_on(async { Self::register(path).await.unwrap() })
     }
@@ -258,18 +259,19 @@ impl TokenStorage {
 mod tests {
     use super::*;
     use rstest::*;
-    use tempfile::tempdir;
+    use std::path::PathBuf;
+    use tempfile::{tempdir, TempDir};
 
     #[fixture]
-    fn temp_dir() -> String {
-        let dir = tempdir().unwrap();
-        dir.path().to_str().unwrap().to_string()
+    fn temp_dir() -> TempDir {
+        tempdir().unwrap()
     }
 
     #[rstest]
     #[tokio::test]
-    async fn test_register_empty_directory(temp_dir: String) -> Result<()> {
-        let storage = TokenStorage::register(&temp_dir).await?;
+    async fn test_register_empty_directory(temp_dir: TempDir) -> Result<()> {
+        let temp = PathBuf::from(temp_dir.path());
+        let storage = TokenStorage::register(&temp).await?;
         assert_eq!(storage.len(), 0);
         assert!(storage.is_empty());
         Ok(())
@@ -277,8 +279,9 @@ mod tests {
 
     #[rstest]
     #[tokio::test]
-    async fn test_store_and_load(temp_dir: String) -> Result<()> {
-        let mut storage = TokenStorage::register(&temp_dir).await?;
+    async fn test_store_and_load(temp_dir: TempDir) -> Result<()> {
+        let temp = PathBuf::from(temp_dir.path());
+        let mut storage = TokenStorage::register(&temp).await?;
 
         let token = AsdToken::default();
         let token_type = TokenType::AsdToken(token.clone());
@@ -294,8 +297,9 @@ mod tests {
 
     #[rstest]
     #[tokio::test]
-    async fn test_load_nonexistent(temp_dir: String) -> Result<()> {
-        let storage = TokenStorage::register(&temp_dir).await?;
+    async fn test_load_nonexistent(temp_dir: TempDir) -> Result<()> {
+        let temp = PathBuf::from(temp_dir.path());
+        let storage = TokenStorage::register(&temp).await?;
         let result = storage.load("nonexistent").await;
         assert!(result.is_err());
         Ok(())
@@ -303,8 +307,9 @@ mod tests {
 
     #[rstest]
     #[tokio::test]
-    async fn test_as_string(temp_dir: String) -> Result<()> {
-        let mut storage = TokenStorage::register(&temp_dir).await?;
+    async fn test_as_string(temp_dir: TempDir) -> Result<()> {
+        let temp = PathBuf::from(temp_dir.path());
+        let mut storage = TokenStorage::register(&temp).await?;
 
         let token = AsdToken::default();
         let token_type = TokenType::AsdToken(token);
@@ -318,8 +323,9 @@ mod tests {
 
     #[rstest]
     #[tokio::test]
-    async fn test_list(temp_dir: String) -> Result<()> {
-        let mut storage = TokenStorage::register(&temp_dir).await?;
+    async fn test_list(temp_dir: TempDir) -> Result<()> {
+        let temp = PathBuf::from(temp_dir.path());
+        let mut storage = TokenStorage::register(&temp).await?;
 
         let token = AsdToken::default();
         let token_type = TokenType::AsdToken(token);

@@ -440,10 +440,8 @@ impl Engine {
         //
         let tokens_area = root
             .config_path()
-            .join("tokens")
-            .to_string_lossy()
-            .to_string();
-
+            .join("tokens");
+        
         trace!("load tokens from {tokens_area:?}");
         let tokens = TokenStorage::register(&tokens_area).await?;
         info!("{} tokens loaded", tokens.len());

@@ -60,9 +60,7 @@ impl Actor for TokenActor {
         //
         trace!("load tokens");
         let tokens_area = Path::new(&args.path)
-            .join("tokens")
-            .to_string_lossy()
-            .to_string();
+            .join("tokens");
         let tokens = TokenStorage::register(&tokens_area).await?;
         info!("{} tokens loaded", tokens.len());
 
