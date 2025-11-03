@@ -193,7 +193,7 @@ impl Expirable for AsdToken {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{Days, TimeZone, Utc};
+    use chrono::{Days, Utc};
     use std::fs;
     use tempfile::tempdir;
 
