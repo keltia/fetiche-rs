@@ -112,6 +112,13 @@ Need to have two environment variables defined: `AVIONIX_API_KEY` and `AVIONIX_A
 
 It uses `curl(1)` in a forever `while` loop, transforming the JSON into JSONL for usability.
 
+- `avionix-pipeline.sh`
+
+Simple shell script that converts, archives and imports Avionix data.
+
+We use `bdt(1)` to convert the JSONL files into CSV and Parquet, then we use `import-avionix.py` to import the CSV file
+into the `avionix_raw` table. The Parquet file is archived in a separate directory.
+
 ## Python (both Windows and UNIX)
 
 - `import-adsb.py`
