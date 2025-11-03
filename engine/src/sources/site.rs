@@ -267,7 +267,7 @@ mod tests {
         let s = set_default();
 
         assert!(!s.is_empty());
-        assert_eq!(10, s.len());
+        assert_eq!(9, s.len());
 
         for (name, s) in s.iter() {
             match name.as_str() {

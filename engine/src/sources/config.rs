@@ -543,6 +543,7 @@ mod tests {
                 auth: None,
                 format: "".to_string(),
                 routes: None,
+                variant: None,
             },
         );
         sources.site.insert(
@@ -556,6 +557,7 @@ mod tests {
                 auth: None,
                 format: "".to_string(),
                 routes: None,
+                variant: None,
             },
         );
 
@@ -578,7 +580,7 @@ mod tests {
         let cfile = cfile.unwrap();
         let cfg = cfile.inner();
         assert!(!cfg.site.is_empty());
-        assert_eq!(10, cfg.site.len());
+        assert_eq!(9, cfg.site.len());
 
         // Check one
         //
