@@ -11,8 +11,8 @@
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
-use chrono::{Datelike, Timelike, Utc};
 use eyre::Result;
+use jiff::{tz::TimeZone, Timestamp};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use tracing::{error, trace};
@@ -149,7 +149,7 @@ impl Store {
     pub async fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
         trace!("store::execute");
 
-        let tm = Utc::now();
+        let tm = Timestamp::now().to_zoned(TimeZone::UTC);
 
         // Extract parts to create a filename
         //
@@ -199,6 +199,7 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use jiff::Timestamp;
     use std::path::Path;
     use std::sync::mpsc;
     use tempfile::tempdir;
@@ -239,7 +240,7 @@ mod tests {
         let result = store.execute("test data".to_string(), tx).await;
         assert!(result.is_ok());
 
-        let tm = Utc::now();
+        let tm = Timestamp::now().to_zoned(TimeZone::UTC);
         let fname = store.path.join(format!(
             "{}{:02}{:02}-{:02}0000",
             tm.year(),
@@ -247,7 +248,7 @@ mod tests {
             tm.day(),
             tm.hour()
         ));
-        assert_eq!(std::fs::exists(fname.to_str().unwrap()).unwrap(), true);
+        assert!(std::fs::read_to_string(&fname).unwrap().contains("test data"));
     }
 
     #[tokio::test]
@@ -270,7 +271,7 @@ mod tests {
         let result = store.execute("test data".to_string(), tx).await;
         assert!(result.is_ok());
 
-        let tm = Utc::now();
+        let tm = Timestamp::now().to_zoned(TimeZone::UTC);
         let fname = store.path.join(format!(
             "{}{:02}{:02}-{:02}0000.json",
             tm.year(),
@@ -278,6 +279,6 @@ mod tests {
             tm.day(),
             tm.hour()
         ));
-        assert_eq!(std::fs::exists(fname.to_str().unwrap()).unwrap(), true);
+        assert!(std::fs::read_to_string(&fname).unwrap().contains("test data"));
     }
 }
