@@ -26,22 +26,10 @@ fn main() -> Result<()> {
         .into_reader_with_file_handle(cur)
         .finish()?;
 
-    //let r = df.apply("timestamp", into_timestamp)?;
-    //dbg!(r.select_columns(["timestamp"])?);
-
     let r = df.apply("timestamp", into_timestamp_jiff)?;
     dbg!(&r.select_columns(["timestamp"])?);
 
     Ok(())
-}
-
-fn into_timestamp(col: &Column) -> Column {
-    col.str()
-        .unwrap()
-        .into_iter()
-        .map(|d: Option<&str>| d.map(|d: &str| dateparser::parse(d).unwrap().timestamp()))
-        .collect::<Int64Chunked>()
-        .into_column()
 }
 
 fn into_timestamp_jiff(col: &Column) -> Column {
