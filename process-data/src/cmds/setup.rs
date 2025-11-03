@@ -237,6 +237,7 @@ CREATE TABLE IF NOT EXISTS airplane_prox (
   site             INT,
   sitename         VARCHAR,
   en_id            VARCHAR,
+  station_name     VARCHAR, 
   time             TIMESTAMP,
   journey          INT,
   drone_id         VARCHAR,
@@ -286,8 +287,9 @@ AS (
 SELECT
   en_id,
   installation_id,
-  site,
+  ap.site,
   d.sitename,
+  d.antenna_name AS station_name
   `time`,
   date_trunc('day', ap.time) AS `date`,
   formatDateTime(ap.time, '%T', 'UTC') AS `utc_time`,
@@ -311,7 +313,7 @@ SELECT
   distance_home_m
 FROM airplane_prox AS ap, pbi_deployments AS d
 LEFT OUTER JOIN sites AS s
-ON ap.site = s.id
+ON ap.site_id = s.id
 WHERE s.name = d.sitename
 )
     COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI.';

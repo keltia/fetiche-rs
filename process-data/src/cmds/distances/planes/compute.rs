@@ -285,6 +285,7 @@ AS SELECT
     journey,
     ident,
     model,
+    station_name,
     timestamp,
     latitude,
     longitude,
@@ -383,6 +384,7 @@ AS SELECT
   c.journey AS journey,
   c.ident AS drone_id,
   c.model,
+  c.station_name,
   c.timestamp AS time,
   c.longitude AS dlon,
   c.latitude AS dlat,
@@ -615,9 +617,10 @@ CREATE OR REPLACE TABLE ids{tag} (
         let r = format!(
             r##"INSERT INTO airplane_prox
      SELECT
-      any_value(tc.site) AS site,
+      any_value(tc.site),
       id.sitename AS sitename,
       id.en_id AS en_id,
+      tc.station_name AS station_name,
       any_value(time) AS time,
       tc.journey AS journey,
       tc.drone_id AS drone_id,
