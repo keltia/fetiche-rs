@@ -1,6 +1,8 @@
 use directories::ProjectDirs;
 use fetiche_common::ConfigFile;
 use fetiche_engine::SourcesConfig;
+use object_store::local::LocalFileSystem;
+use tempfile::tempdir;
 
 fn main() -> eyre::Result<()> {
     let p = ProjectDirs::from("", "", "drone-utils");
@@ -23,5 +25,10 @@ fn main() -> eyre::Result<()> {
     let config = ConfigFile::<SourcesConfig>::load(Some("sources.hcl"))?;
     println!("basedir = {:?}", config.config_path());
     println!("config={:?}", config.inner());
+
+    let tmp = tempdir()?;
+    let store = LocalFileSystem::new_with_prefix(&tmp)?;
+    println!("tmp={:?} store={}", tmp, store);
+
     Ok(())
 }
