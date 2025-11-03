@@ -23,3 +23,5 @@ fd -S 0b -x rm
 # Now import all csv
 /acute/bin/import-avionix.py -D /acute -d avionix-20251026.csv
 ```
+
+See [avionix-pipeline.sh](../scripts/avionix-pipeline.sh) and [import-avionix.py](../scripts/import-avionix.py).
