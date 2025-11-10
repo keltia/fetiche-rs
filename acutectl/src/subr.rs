@@ -9,6 +9,8 @@ use tracing::{error, info};
 
 /// UNIX-specific detach from terminal if -D/--debug is not specified
 ///
+/// FIXME: using /tmp by default sucks.
+///
 #[cfg(unix)]
 #[tracing::instrument]
 pub fn start_daemon(base: &str, workdir: &PathBuf) -> eyre::Result<()> {
