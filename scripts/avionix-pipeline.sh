@@ -18,7 +18,7 @@ sort -u "${BNAME}.json" > "${BNAME}s.json" && \
 	bdt convert -s "${BNAME}.csv" "${BNAME}.parquet"
 #
 [[ ! -d "${DATADIR}/year=${YEAR}/month=${MONTH}" ]] && \
-	mkdir "${DATADIR}/year=${YEAR}/month=${MONTH}"
+	mkdir -p "${DATADIR}/year=${YEAR}/month=${MONTH}"
 #
 mv "${BNAME}.parquet" "${DATADIR}/year=${YEAR}/month=${MONTH}/"
 ${BASEDIR}/bin/import-avionix.py -D ${BASEDIR} -d "${BNAME}.csv" && \
