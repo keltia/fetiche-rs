@@ -3,13 +3,17 @@
 //! This is mostly for UNIX-specific stuff.
 //!
 
+use std::fs::File;
+use std::path::{Path, PathBuf};
+use tracing::{error, info};
+
 /// UNIX-specific detach from terminal if -D/--debug is not specified
 ///
 #[cfg(unix)]
 #[tracing::instrument]
-pub fn start_daemon(workdir: &PathBuf) -> eyre::Result<()> {
-    let stdout = File::create(format!("/tmp/{NAME}.out"))?;
-    let stderr = File::create(format!("/tmp/{NAME}.err"))?;
+pub fn start_daemon(base: &str, workdir: &PathBuf) -> eyre::Result<()> {
+    let stdout = File::create(format!("/tmp/{}.out", base))?;
+    let stderr = File::create(format!("/tmp/{}.err", base))?;
 
     let pid = Path::new(workdir).join("pid");
     let daemon = daemonize::Daemonize::new()
