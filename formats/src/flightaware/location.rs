@@ -3,16 +3,18 @@
 //!
 //! It is supposed to represent an ICAO name, a waypoint name or a precise geo location
 //!
+
 use nom::{
-    branch::alt,
-    bytes::complete::tag,
+    branch::alt, bytes::complete::tag,
     character::complete::{alphanumeric1, space1},
-    combinator::map,
+    combinator::{map, map_res},
     number::complete::float,
     sequence::{pair, preceded, terminated},
     IResult,
+    Parser,
 };
 use serde::Deserialize;
+use std::num::ParseFloatError;
 
 /// Represents a location in the Flightaware system, which can be either a tagged name
 /// (such as an ICAO code, airport code, or waypoint) or a geographical position
@@ -92,23 +94,25 @@ pub enum Location {
 /// ```
 ///
 pub fn parse_location(input: &str) -> IResult<&str, Location> {
-    alt((position, tagged_name))(input)
+    alt((position, tagged_name)).parse(input)
 }
 
 #[inline]
 fn tagged_name(input: &str) -> IResult<&str, Location> {
-    map(alphanumeric1, |s: &str| Location::Tag(s.to_string()))(input)
+    map(alphanumeric1, |s: &str| Location::Tag(s.to_string())).parse(input)
 }
 
 #[inline]
 fn position(input: &str) -> IResult<&str, Location> {
-    let pos = |(lat, lon): (f32, f32)| Location::Position { lat, lon };
+    let pos = |(lat, lon): (f32, f32)| -> Result<Location, ParseFloatError> {
+        Ok(Location::Position { lat, lon })
+    };
 
     let p = preceded(
         terminated(tag("L"), space1),
         pair(terminated(float, space1), float),
     );
-    map(p, pos)(input)
+    map_res(p, pos).parse(input)
 }
 
 #[cfg(test)]
