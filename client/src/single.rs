@@ -96,4 +96,9 @@ impl EngineSingle {
     pub fn version(&mut self) -> String {
         self.e.version()
     }
+
+    #[tracing::instrument(skip(self))]
+    pub fn inner(&mut self) -> &Engine {
+        &self.e
+    }
 }
