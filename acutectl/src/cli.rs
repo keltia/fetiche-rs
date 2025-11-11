@@ -24,19 +24,19 @@
 //! & `fetch()`/`stream()`) from the `sources` crate.  File formats are from the `formats` crate.
 //!
 
-use std::io;
-
-use crate::{fetch_from_site, stream_from_site};
+use crate::{fetch_from_site, status_of_workspace, stream_from_site};
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, CommandFactory, Parser, ValueEnum,
 };
 use clap_complete::generate;
 use clap_complete::shells::Shell;
 use eyre::Result;
+use std::io;
+use tracing::{info, trace};
+
 use fetiche_client::{EngineSingle, Freq};
 use fetiche_common::{Container, DateOpts};
 use fetiche_formats::Format;
-use tracing::{info, trace};
 
 /// CLI options
 #[derive(Parser)]
@@ -96,6 +96,8 @@ pub enum SubCommand {
     Fetch(FetchOpts),
     /// List information about formats and sources
     List(ListOpts),
+    /// Show status of running jobs
+    Status(StatusOpts),
     /// Stream from a source
     Stream(StreamOpts),
     /// List all package versions
@@ -263,6 +265,9 @@ pub struct StreamOpts {
     pub site: String,
 }
 
+#[derive(Debug, PartialEq, Parser)]
+pub struct StatusOpts {}
+
 // -----
 
 /// Options for the `convert` command, take a filename and format
@@ -310,6 +315,15 @@ pub async fn handle_subcmd(engine: &mut EngineSingle, subcmd: &SubCommand) -> Re
             trace!("convert");
 
             //convert_from_to(engine, copts).await?;
+        }
+
+        // Handle `status` to show if there are any running `acutectl` jobs (like streaming) that
+        //were detached form the terminal.
+        SubCommand::Status(_sopts) => {
+            trace!("status");
+
+            status_of_workspace(engine).await?;
+            engine.shutdown().await?
         }
 
         // Standalone completion generation
