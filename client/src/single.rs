@@ -46,8 +46,8 @@ impl EngineSingle {
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn shutdown(&mut self) {
-        self.e.shutdown();
+    pub async fn shutdown(&mut self) -> Result<()> {
+        Ok(self.e.shutdown().await?)
     }
 
     // ----- Misc. wrappers

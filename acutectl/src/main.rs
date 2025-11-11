@@ -27,6 +27,7 @@
 use clap::{crate_authors, crate_description, crate_version, Parser};
 use eyre::Result;
 use serde::Deserialize;
+use tokio::runtime::Runtime;
 use tracing::{debug, trace};
 
 use acutectl::{handle_subcmd, ConfigCmd, Opts, Status, SubCommand};
@@ -93,7 +94,8 @@ async fn main() -> Result<()> {
     let mut e = engine.clone();
     let _ = ctrlc::set_handler(move || {
         trace!("Ctrl-C pressed");
-        e.shutdown();
+        let rt = Runtime::new().unwrap();
+        let _ = rt.block_on(async { e.shutdown().await });
         close_logging();
         std::process::exit(1);
     });
