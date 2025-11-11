@@ -65,6 +65,7 @@ pub use sources::*;
 pub use storage::*;
 pub use task::*;
 pub use tokens::TokenStorage;
+pub use workspace::*;
 
 use crate::actors::*;
 
@@ -87,6 +88,7 @@ mod storage;
 mod subr;
 mod task;
 mod tokens;
+mod workspace;
 
 /// Engine signature
 ///
@@ -105,6 +107,9 @@ const ENGINE_VERSION: usize = 3;
 
 /// Engine process group for the actors
 const ENGINE_PG: &str = "engine.pg";
+
+/// File created into our workdir to indicate something is running.
+const CANARY_FILE: &str = "running";
 
 /// Clock tick
 const TICK: Duration = Duration::from_secs(2);
@@ -176,6 +181,8 @@ pub struct Engine {
     pub pid: u32,
     /// Main area where state is saved (PID, jobs, etc.)
     pub home: Arc<LocalFileSystem>,
+    /// Workspace for jobs and other data
+    ws: Workspace,
     /// Working area where data is fetched into, etc.
     pub workdir: PathBuf,
     /// Storage area for long-running jobs
@@ -311,19 +318,27 @@ impl Engine {
 
         // Create our object storage "vision" out of our base directory.
         //
-        let base = Arc::new(LocalFileSystem::new_with_prefix(home)?);
+        let base = Arc::new(LocalFileSystem::new_with_prefix(home)?.with_automatic_cleanup(true));
 
         // Move ourselves into our base
         //
         // BASEDIR/var/run/<PID> for single instance runs
         // BASEDIR/var/run/acute for fetiched runs
         //
+        let work_prefix = cfg.basedir.join("var").join("run");
+        let ws = Workspace::new(&work_prefix)?;
+
         let workdir = if mode == EngineMode::Single {
-            cfg.basedir.join("var").join("run").join(pid.to_string())
+            ws.path().join(pid.to_string())
         } else {
-            cfg.basedir.join("var").join("run").join("acute")
+            ws.path().join("acute")
         };
         fs::create_dir_all(&workdir).await?;
+
+        // Put our canary file.
+        //
+        let canary = workdir.join(CANARY_FILE);
+        fs::File::create(&canary).await?;
 
         // ----- Start actors
 
@@ -441,7 +456,7 @@ impl Engine {
         let tokens_area = root
             .config_path()
             .join("tokens");
-        
+
         trace!("load tokens from {tokens_area:?}");
         let tokens = TokenStorage::register(&tokens_area).await?;
         info!("{} tokens loaded", tokens.len());
@@ -452,6 +467,7 @@ impl Engine {
             mode,
             pid,
             home: base.clone(),
+            ws: ws.clone(),
             workdir: workdir.clone(),
             storage: Arc::new(areas),
             tokens: Arc::new(tokens),

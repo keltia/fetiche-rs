@@ -8,8 +8,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use eyre::Result;
+use object_store::local::LocalFileSystem;
 use object_store::path::Path;
-use ractor::{call, cast};
+use object_store::ObjectStore;
+use ractor::{call, cast, pg};
 use serde::Deserialize;
 use tabled::builder::Builder;
 use tabled::settings::Style;
@@ -19,7 +21,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 
 use crate::actors::{SourcesMsg, StateMsg};
-use crate::{version, Engine, Sources, Storage, ENGINE_CONFIG, IO, SOURCES_CONFIG, STATE_FILE};
+use crate::{version, Engine, Sources, Storage, Workspace, CANARY_FILE, ENGINE_CONFIG, ENGINE_PG, IO, SOURCES_CONFIG, STATE_FILE};
 
 impl Engine {
     /// Returns the path of the default state file in the engine's base directory
@@ -57,6 +59,7 @@ impl Engine {
     /// This asynchronous method requests the current list of sources from the sources actor,
     /// which maintains the authoritative list of all configured data sources.
     ///
+    #[tracing::instrument(skip(self))]
     pub async fn sources(&self) -> Result<Sources> {
         let src = call!(self.sources, SourcesMsg::List)?;
         Ok(src)
@@ -67,6 +70,7 @@ impl Engine {
     /// This provides access to the storage areas configuration while maintaining
     /// proper reference counting through Arc.
     ///
+    #[tracing::instrument(skip(self))]
     pub fn storage(&self) -> Arc<Storage> {
         Arc::clone(&self.storage)
     }
@@ -76,6 +80,7 @@ impl Engine {
     /// The returned string contains a human-readable list of all configured
     /// storage locations and their properties.
     ///
+    #[tracing::instrument(skip(self))]
     pub fn list_storage(&self) -> Result<String> {
         self.storage.list()
     }
@@ -85,6 +90,7 @@ impl Engine {
     /// This asynchronous method generates a human-readable table containing
     /// details about each configured data source and its capabilities.
     ///
+    #[tracing::instrument(skip(self))]
     pub async fn list_sources(&self) -> Result<String> {
         let src = call!(self.sources, SourcesMsg::Table)?;
         Ok(src)
@@ -95,6 +101,7 @@ impl Engine {
     /// Provides information about which data formats the engine can process,
     /// including their names and characteristics.
     ///
+    #[tracing::instrument(skip(self))]
     pub fn list_formats(&self) -> Result<String> {
         Format::list()
     }
@@ -104,6 +111,7 @@ impl Engine {
     /// Lists all container formats that can be used to package and
     /// transport data within the engine.
     ///
+    #[tracing::instrument(skip(self))]
     pub fn list_containers(&self) -> Result<String> {
         Container::list()
     }
@@ -113,6 +121,7 @@ impl Engine {
     /// Provides information about active authentication tokens used for
     /// accessing various data sources.
     ///
+    #[tracing::instrument(skip(self))]
     pub async fn list_tokens(&self) -> Result<String> {
         self.tokens.as_string().await
     }
@@ -122,9 +131,50 @@ impl Engine {
     /// Combines the engine's home directory with the ENGINE_CONFIG constant
     /// to locate the HCL configuration file.
     ///
+    #[tracing::instrument(skip(self))]
     pub fn config_file(&self) -> Result<PathBuf> {
         Ok(self.home
             .path_to_filesystem(&Path::from(ENGINE_CONFIG))?)
+    }
+
+    /// Returns a clone of the engine's workspace configuration
+    ///
+    /// This method provides access to the engine's workspace settings by returning
+    /// a copy of the WorkSpace instance, which contains information about the
+    /// working environment.
+    ///
+    #[tracing::instrument(skip(self))]
+    pub fn ws(&self) -> Workspace {
+        self.ws.clone()
+    }
+
+    /// Performs a graceful shutdown of the engine
+    ///
+    /// This method handles the cleanup and shutdown process by:
+    /// - Removing the canary file that indicates the engine is running
+    /// - Stopping all actor processes in the engine process group
+    ///
+    /// The shutdown is considered complete once all actors have been stopped
+    /// and the canary file has been deleted.
+    ///
+    #[tracing::instrument(skip(self))]
+    pub async fn shutdown(&self) -> Result<()> {
+        // Shutdown all actors.
+        //
+        pg::get_members(&ENGINE_PG.to_string())
+            .iter()
+            .for_each(|cell| {
+                cell.stop(Some("Shutdown requested.".into()));
+            });
+
+        // Delete the canary file
+        //
+        let canary = self.workdir.join(CANARY_FILE);
+
+        trace!("delete canary file {:?} ...", canary);
+        std::fs::remove_file(canary)?;
+
+        Ok(())
     }
 
     /// Returns a string containing version information for the engine and its modules

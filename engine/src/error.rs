@@ -106,3 +106,10 @@ pub enum StorageError {
     #[error("Can not create directory tree in {0}")]
     CannotCreateTree(String),
 }
+
+#[derive(Debug, Error)]
+pub enum WsError {
+    #[error("{0} is not a directory")]
+    NotADirectory(String),
+}
+
