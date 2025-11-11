@@ -266,26 +266,6 @@ impl Engine {
         Ok(res)
     }
 
-    /// Shuts down the engine and all its associated actors.
-    ///
-    /// This method gracefully terminates the engine by stopping all registered actors
-    /// in the engine process group.
-    ///
-    /// # Behavior
-    ///
-    /// - Retrieves all members of the engine process group
-    /// - Iterates through each actor and sends a stop signal
-    /// - Actors will clean up resources before terminating
-    ///
-    #[tracing::instrument]
-    pub fn shutdown(&mut self) {
-        pg::get_members(&ENGINE_PG.to_string())
-            .iter()
-            .for_each(|cell| {
-                cell.stop(Some("Shutdown requested.".into()));
-            });
-    }
-
     /// Prints the current engine version and lists all registered actors.
     ///
     /// This method outputs diagnostic information about the running engine instance:
