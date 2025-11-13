@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[allow(clippy::upper_case_acronyms)]
+#[allow(clippy::upper_case_acronyms, dead_code)]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Cat21 {
     #[serde(rename = "020.EmitterCategory")]
@@ -37,7 +37,7 @@ pub struct Cat21 {
     pub r: Option<SGV>,
 }
 
-#[allow(clippy::upper_case_acronyms)]
+#[allow(clippy::upper_case_acronyms, dead_code)]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SGV {
     #[serde(rename = "STP")]
