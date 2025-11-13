@@ -8,9 +8,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use eyre::Result;
-use object_store::local::LocalFileSystem;
 use object_store::path::Path;
-use object_store::ObjectStore;
 use ractor::{call, cast, pg};
 use serde::Deserialize;
 use tabled::builder::Builder;
@@ -21,7 +19,10 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 
 use crate::actors::{SourcesMsg, StateMsg};
-use crate::{version, Engine, Sources, Storage, Workspace, CANARY_FILE, ENGINE_CONFIG, ENGINE_PG, IO, SOURCES_CONFIG, STATE_FILE};
+use crate::{
+    CANARY_FILE, ENGINE_CONFIG, ENGINE_PG, Engine, IO, SOURCES_CONFIG, STATE_FILE, Sources,
+    Storage, Workspace, version,
+};
 
 impl Engine {
     /// Returns the path of the default state file in the engine's base directory
@@ -31,14 +32,12 @@ impl Engine {
     ///
     #[inline]
     pub fn state_file(&self) -> Result<PathBuf> {
-        Ok(self.home
-            .path_to_filesystem(&Path::from(STATE_FILE))?)
+        Ok(self.home.path_to_filesystem(&Path::from(STATE_FILE))?)
     }
 
     #[inline]
     pub fn sources_file(&self) -> Result<PathBuf> {
-        Ok(self.home
-            .path_to_filesystem(&Path::from(SOURCES_CONFIG))?)
+        Ok(self.home.path_to_filesystem(&Path::from(SOURCES_CONFIG))?)
     }
 
     /// Synchronizes all engine state by persisting it to disk
@@ -133,8 +132,7 @@ impl Engine {
     ///
     #[tracing::instrument(skip(self))]
     pub fn config_file(&self) -> Result<PathBuf> {
-        Ok(self.home
-            .path_to_filesystem(&Path::from(ENGINE_CONFIG))?)
+        Ok(self.home.path_to_filesystem(&Path::from(ENGINE_CONFIG))?)
     }
 
     /// Returns a clone of the engine's workspace configuration
