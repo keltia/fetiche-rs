@@ -293,7 +293,8 @@ AS SELECT
     home_lat,
     home_lon,
     home_distance_2d,
-    home_distance_3d
+    home_distance_3d,
+    station_name
 FROM {}.drones
 WHERE
   toStartOfInterval(timestamp, toIntervalDay(1)) = toDateTime($1) AND
@@ -390,6 +391,7 @@ AS SELECT
   c.elevation AS dh,
   c.home_distance_2d AS hdist2d,
   c.home_distance_3d AS hdist3d,
+  c.station_name,
   t.site,
   t.addr AS addr,
   t.callsign,
@@ -635,7 +637,8 @@ CREATE OR REPLACE TABLE ids{tag} (
       CEIL(dist_drone_plane) AS distance_slant_m,
       any_value(CEIL(dist2d)) AS distance_hor_m,
       any_value(CEIL(ABS(palt - dalt))) AS distance_vert_m,
-      any_value(CEIL(hdist2d)) as distance_home_m
+      any_value(CEIL(hdist2d)) as distance_home_m,
+      tc.station_name AS station_name
     FROM today_close{tag} AS tc JOIN ids{tag} AS id
       ON id.journey = tc.journey AND id.callsign = tc.callsign
     WHERE

@@ -255,6 +255,7 @@ CREATE TABLE IF NOT EXISTS airplane_prox (
   distance_hor_m   INT,
   distance_vert_m  INT,
   distance_home_m  INT,
+  station_name     VARCHAR
 )
     ENGINE = ReplacingMergeTree PRIMARY KEY (time, journey)
     COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
@@ -288,6 +289,7 @@ SELECT
   installation_id,
   site,
   d.sitename,
+  d.antenna_name AS station_name,
   `time`,
   date_trunc('day', ap.time) AS `date`,
   formatDateTime(ap.time, '%T', 'UTC') AS `utc_time`,
