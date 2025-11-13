@@ -46,8 +46,10 @@
 //! -a---          21/10/2024    18:15         603072 test-polars.parquet
 //! ```
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 use std::time::Duration;
+
+use criterion::{Criterion, criterion_group, criterion_main};
 
 use crate::arw::{read_csv, write_chunk};
 use crate::df::parquet_through_df;
@@ -92,10 +94,10 @@ mod arw {
         chunk::Chunk,
         datatypes::Schema,
         io::csv::read::{
-            deserialize_column, infer, infer_schema, read_rows, ByteRecord, ReaderBuilder,
+            ByteRecord, ReaderBuilder, deserialize_column, infer, infer_schema, read_rows,
         },
         io::parquet::write::{
-            transverse, CompressionOptions, FileWriter, RowGroupIterator, Version, WriteOptions,
+            CompressionOptions, FileWriter, RowGroupIterator, Version, WriteOptions, transverse,
         },
     };
     use eyre::Result;
