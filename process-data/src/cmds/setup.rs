@@ -288,7 +288,7 @@ SELECT
   en_id,
   installation_id,
   ap.site_id AS site_id,
-  d.sitename,
+  d.sitename AS sitename,
   d.antenna_name AS station_name,
   `time`,
   date_trunc('day', ap.time) AS `date`,
