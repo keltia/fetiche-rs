@@ -287,7 +287,7 @@ AS (
 SELECT
   en_id,
   installation_id,
-  ap.site_id,
+  ap.site_id AS site_id,
   d.sitename,
   d.antenna_name AS station_name,
   `time`,
