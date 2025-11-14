@@ -1,8 +1,8 @@
 //! # Data Export Module
 //!
-//! This module handles data fetching and processing for export purposes, 
-//! specifically related to drone and proximate aircraft encounters. 
-//! It interacts with a ClickHouse database to retrieve relevant data points 
+//! This module handles data fetching and processing for export purposes,
+//! specifically related to drone and proximate aircraft encounters.
+//! It interacts with a ClickHouse database to retrieve relevant data points
 //! and encounter records based on specific criteria.
 //!
 //! ## Key Features
@@ -80,6 +80,7 @@ pub(crate) struct Encounter {
     pub prox_lat: f32,
     pub prox_lon: f32,
     pub prox_alt_m: f32,
+    pub station_name: String,
 }
 
 /// Fetch data points for a specific drone ID and journey from the database.
@@ -218,7 +219,7 @@ pub(crate) async fn fetch_one_encounter(client: &Client, id: &str) -> Result<Enc
     //
     let rp = r##"
 SELECT
-  en_id, journey, time, drone_id, drone_lat, drone_lon, drone_alt_m, prox_id, prox_callsign, prox_lat, prox_lon, truncate(prox_alt_m) AS prox_alt_m
+  en_id, journey, time, drone_id, drone_lat, drone_lon, drone_alt_m, prox_id, prox_callsign, prox_lat, prox_lon, truncate(prox_alt_m) AS prox_alt_m,station_name
 FROM airplane_prox
 WHERE en_id = $1
     "##;

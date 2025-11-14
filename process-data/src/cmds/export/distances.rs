@@ -136,7 +136,7 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
 
     let r = r##"
   SELECT
-    site,
+    site_id,
     sitename,
     en_id,
     time,
@@ -196,7 +196,7 @@ async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> 
     //
     let r1 = r##"
   SELECT
-    site,
+    site_id,
     sitename,
     en_id,
     time,
@@ -444,7 +444,7 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
                         return {
                             eprintln!("Unknown format specified.");
                             Err(CmdError::UnknownFormat(opts.format.to_string()).into())
-                        }
+                        };
                     }
                 }
             };

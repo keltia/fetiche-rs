@@ -19,7 +19,7 @@ else
 fi
 
 # Check file exists
-[[ ! -f "${BNAME}.json"]] && exit 1
+[[ ! -f "${BNAME}.json" ]] && exit 1
 #
 echo "Basename is ${BNAME}"
 #
