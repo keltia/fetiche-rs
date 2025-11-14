@@ -234,7 +234,7 @@ async fn remove_macros(dbh: &Client) -> Result<()> {
 async fn add_encounters_table(dbh: &Client) -> Result<()> {
     let sq = r##"
 CREATE TABLE IF NOT EXISTS airplane_prox (
-  site             INT,
+  site_id          INT,
   sitename         VARCHAR,
   en_id            VARCHAR,
   time             TIMESTAMP,
@@ -287,7 +287,7 @@ AS (
 SELECT
   en_id,
   installation_id,
-  site,
+  ap.site_id,
   d.sitename,
   d.antenna_name AS station_name,
   `time`,
@@ -313,7 +313,7 @@ SELECT
   distance_home_m
 FROM airplane_prox AS ap, pbi_deployments AS d
 LEFT OUTER JOIN sites AS s
-ON ap.site = s.id
+ON ap.site_id = s.id
 WHERE s.name = d.sitename
 )
     COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI.';
