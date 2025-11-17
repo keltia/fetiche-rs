@@ -151,7 +151,7 @@ def import_one_chunk(dir_path, fname):
     """
     logging.info(f"Processing {fname}")
 
-    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {dbn} --password {pwd} -q \"INSERT INTO avionix_raw FORMAT Csv\""
+    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {dbn} --password {pwd} -q \"INSERT INTO avionix_raw FORMAT CsvWithNames\""
     cmd = f"/bin/cat {os.path.join(dir_path, fname)} | {ch_cmd}"
     logging.info(f"cmd={cmd}")
     if action:
