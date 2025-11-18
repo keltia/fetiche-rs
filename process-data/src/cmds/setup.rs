@@ -335,6 +335,68 @@ DROP VIEW IF EXISTS pbi_encounters;
 
 // -----
 
+#[tracing::instrument(skip(dbh))]
+async fn add_pbi_encounters_summary_view(dbh: &Client) -> Result<()> {
+    let r4 = r##"
+CREATE MATERIALIZED VIEW IF NOT EXISTS pbi_encounters_summary
+ENGINE = ReplacingMergeTree
+PRIMARY KEY (en_id)
+POPULATE
+AS (
+  SELECT
+      en_id,
+      installation_id,
+      site_id,
+      sitename,
+      station_name,
+      time,
+      date,
+      utc_time,
+      local_time,
+      journey,
+      drone_id,
+      model,
+      drone_lat,
+      drone_lon,
+      drone_alt_m,
+      drone_height_m,
+      prox_callsign,
+      prox_id,
+      prox_lat,
+      prox_lon,
+      prox_alt_m,
+      prox_mode_a,
+      distance_slant_m,
+      distance_hor_m,
+      distance_vert_m,
+      distance_home_m
+  FROM
+    pbi_encounters AS p JOIN airprox_summary AS s
+    ON
+        s.en_id = p.en_id AND
+        s.journey = p.journey AND
+        s.drone_id = p.drone_id
+  WHERE
+    p.distance_slant_m = s.distance_slant_m
+  ORDER BY time
+)
+COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI, summarized by drone and encounter.'
+"##;
+
+    Ok(dbh.execute(r4).await?)
+}
+
+#[tracing::instrument(skip(dbh))]
+async fn drop_pbi_encounters_summary_view(dbh: &Client) -> Result<()> {
+    let rm5 = r##"
+DROP VIEW IF EXISTS pbi_encounters_summary
+    "##;
+
+    Ok(dbh.execute(rm5).await?)
+}
+
+// -----
+
 /// Create airplanes view
 ///
 #[tracing::instrument(skip(dbh))]
@@ -643,38 +705,6 @@ DROP VIEW IF EXISTS airprox_summary
     "##;
 
     Ok(dbh.execute(rm4).await?)
-}
-
-// -----
-
-#[tracing::instrument(skip(dbh))]
-async fn add_pbi_encounters_summary_view(dbh: &Client) -> Result<()> {
-    let r4 = r##"
-CREATE MATERIALIZED VIEW IF NOT EXISTS pbi_encounters_summary
-ENGINE = ReplacingMergeTree
-PRIMARY KEY (en_id) POPULATE AS (  SELECT *
-  FROM
-    airplane_prox AS a JOIN airprox_summary AS s
-    ON
-        s.en_id = a.en_id AND
-        s.journey = a.journey AND
-        s.drone_id = a.drone_id
-  WHERE
-    a.distance_slant_m = s.distance_slant_m
-  ORDER BY time
-)
-"##;
-
-    Ok(dbh.execute(r4).await?)
-}
-
-#[tracing::instrument(skip(dbh))]
-async fn drop_pbi_encounters_summary_view(dbh: &Client) -> Result<()> {
-    let rm5 = r##"
-DROP VIEW IF EXISTS pbi_encounters_summary
-    "##;
-
-    Ok(dbh.execute(rm5).await?)
 }
 
 // ----- Record-related table
