@@ -44,18 +44,21 @@
 //! to manage workspace resources across multiple Engine instances.
 //!
 
-use crate::WsError;
-use eyre::Result;
-use object_store::local::LocalFileSystem;
-use object_store::path::Path;
-use object_store::ObjectStore;
-use regex::Regex;
 use std::fmt::{Debug, Display};
 use std::fs::File;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::{fs, vec};
+
+use eyre::Result;
+use object_store::local::LocalFileSystem;
+use object_store::path::Path;
+use object_store::ObjectStore;
+use regex::Regex;
+use strum::EnumString;
 use tracing::{error, trace};
+
+use crate::WsError;
 
 // -----
 
@@ -65,12 +68,14 @@ const CANARY_FILE: &str = "running";
 /// Magic file used to identify workspace directories.
 const WS_MAGIC: &str = "FETICHE_WS";
 
+// -----
+
 /// Represents the current status of a workspace directory.
 ///
 /// This enum indicates whether a workspace is currently in use
 /// or has been abandoned/left in an inconsistent state.
 ///
-#[derive(Clone, Copy, Debug, strum::EnumString, strum::Display)]
+#[derive(Clone, Copy, Debug, EnumString, strum::Display)]
 pub enum WsStatus {
     /// Indicates that the workspace is currently active and in use
     Running,
@@ -88,7 +93,7 @@ pub struct WsItem {
     path: PathBuf,
     /// Current status of the workspace item
     status: Vec<WsStatus>,
-    ///
+    /// files in item directory
     size: usize,
 }
 
@@ -156,7 +161,9 @@ impl Display for WsItem {
             1 => "1 file".to_string(),
             n => format!("{} files", n),
         };
-        write!(f, "{} ({}), {}", self.path.to_string_lossy(), format!("{:?}", self.state()), size)
+        let entry = self.path.file_name().unwrap().to_string_lossy();
+        let state = self.state().join(", ");
+        write!(f, "{} ({}), {}", entry, state, size)
     }
 }
 
