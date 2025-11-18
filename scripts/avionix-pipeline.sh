@@ -1,4 +1,4 @@
-#! /bin/zsh
+#!/bin/zsh
 #
 # Short pipeline for importing/archiving Avionix data.
 #
