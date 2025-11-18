@@ -32,7 +32,7 @@ use clap_complete::generate;
 use clap_complete::shells::Shell;
 use eyre::Result;
 use std::io;
-use tracing::{info, trace};
+use tracing::{debug, info, trace};
 
 use fetiche_client::{EngineSingle, Freq};
 use fetiche_common::{Container, DateOpts};
@@ -100,6 +100,8 @@ pub enum SubCommand {
     Status(StatusOpts),
     /// Stream from a source
     Stream(StreamOpts),
+    /// Workspace management
+    Ws(WsOpts),
     /// List all package versions
     Version,
 }
@@ -206,6 +208,21 @@ pub enum ListSubCommand {
     Storage,
     /// List all currently stored tokens
     Tokens,
+}
+
+// -----
+
+#[derive(Debug, PartialEq, Parser)]
+pub struct WsOpts {
+    #[clap(value_parser)]
+    pub cmd: WsSubCommand,
+}
+
+#[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq, ValueEnum)]
+pub enum WsSubCommand {
+    Clean,
+    Info,
+    List,
 }
 
 // -----
@@ -379,6 +396,28 @@ pub async fn handle_subcmd(engine: &mut EngineSingle, subcmd: &SubCommand) -> Re
             }
         },
 
+        SubCommand::Ws(wsopts) => match wsopts.cmd {
+            WsSubCommand::Clean => {
+                info!("Cleaning workspace");
+            }
+            WsSubCommand::Info => {
+                info!("Workspace info");
+
+                let ws = engine.ws();
+                eprintln!("Workspace in {:?}: has_magic ", ws.path());
+            }
+            WsSubCommand::List => {
+                info!("Listing all jobs");
+                eprintln!("Workspace in {:?}: ", engine.ws().path());
+
+                let ws = engine.ws();
+                let wsl = ws.list().await?;
+                let wsl_str = wsl.iter().map(|i| format!("  {}", i.to_string()))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                eprintln!("{}", wsl_str);
+            }
+        }
         // Standalone `version` command
         //
         SubCommand::Version => {

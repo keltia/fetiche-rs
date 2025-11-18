@@ -32,6 +32,7 @@ fetiche-formats.workspace = true
 fetiche-macros.workspace = true
 hcl-rs.workspace = true
 serde.workspace = true
+strum.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true

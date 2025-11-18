@@ -27,11 +27,12 @@
 use clap::{crate_authors, crate_description, crate_version, Parser};
 use eyre::Result;
 use serde::Deserialize;
+use std::path::PathBuf;
 use tokio::runtime::Runtime;
 use tracing::{debug, trace};
 
 use acutectl::{handle_subcmd, ConfigCmd, Opts, Status, SubCommand};
-use fetiche_client::EngineSingle;
+use fetiche_client::{EngineSingle, Workspace};
 use fetiche_common::{close_logging, init_logging, ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
 
@@ -45,15 +46,18 @@ pub const AUTHORS: &str = crate_authors!();
 /// Config filename
 const CONFIG: &str = "acutectl.hcl";
 /// Current version
-pub const CVERSION: usize = 2;
+pub const CVERSION: usize = 3;
 
 #[allow(dead_code)]
 /// Configuration for the CLI tool, supposed to include parameters
 ///
-#[into_configfile(version = 2, filename = "acutectl.hcl")]
+#[into_configfile(version = 3, filename = "acutectl.hcl")]
 #[derive(Debug, Default, Deserialize)]
 pub struct AcuteConfig {
+    /// Mostly obsolete, but kept for compatibility.
     use_async: bool,
+    /// Path to the main workspace directory.
+    workspace: String,
 }
 
 #[tokio::main]
@@ -80,6 +84,18 @@ async fn main() -> Result<()> {
     if !opts.quiet {
         banner();
     }
+
+    // Load workspace
+    //
+    let pws = PathBuf::from(&cfg.workspace);
+    let ws = Workspace::load(&pws).await?;
+    debug!("Workspace = {:?}", ws);
+
+    // Get current list of wsitems
+    //
+    let wsl = ws.list().await?;
+    let wsl_str = wsl.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("\n");
+    trace!("Workspace items:\n{}", wsl_str);
 
     trace!("Engine starting.");
     // Instantiate Engine
