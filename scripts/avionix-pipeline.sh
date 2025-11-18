@@ -13,7 +13,7 @@ BASEDIR="/acute"
 DATADIR="${BASEDIR}/data/avionix"
 
 # Check arguments
-ARG=$1; shift
+ARG=$1;
 if [ x"$ARG" = x"." ]; then
   BNAME=$(date +"%Y%m%d" -d yesterday)
 else
