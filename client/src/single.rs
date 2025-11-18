@@ -2,11 +2,11 @@
 //!
 use std::path::PathBuf;
 
-use crate::JobText;
 use eyre::Result;
-use fetiche_engine::Workspace;
-pub use fetiche_engine::{Engine, Job, Stats};
 use tracing::debug;
+
+use crate::{JobText, Workspace};
+pub use fetiche_engine::{Engine, Job, Stats};
 
 #[derive(Clone, Debug)]
 pub struct EngineSingle {
@@ -16,7 +16,10 @@ pub struct EngineSingle {
 
 impl EngineSingle {
     #[tracing::instrument]
-    pub async fn new() -> Result<Self> {
+    pub async fn new(ws: &Workspace) -> Result<Self> {
+        // Any `Engine` instance should be within a `Workspace`.
+        //
+        let basedir = ws.path();
         Ok(Self {
             e: Engine::single().await?,
         })
