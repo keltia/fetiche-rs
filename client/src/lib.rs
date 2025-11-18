@@ -24,4 +24,10 @@ pub fn version() -> String {
 pub enum WsError {
     #[error("{0} is not a directory")]
     NotADirectory(String),
+    #[error("cannot create workspace directory {0}")]
+    CannotCreate(String),
+    #[error("cannot create magic file in {0}")]
+    CannotCreateMagic(String),
+    #[error("directory {0} is not a workspace, use create()")]
+    WsNotInitialized(String),
 }

@@ -44,22 +44,26 @@
 //! to manage workspace resources across multiple Engine instances.
 //!
 
-use std::fmt::{Debug, Display};
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::{fs, vec};
-
 use crate::WsError;
 use eyre::Result;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path;
 use object_store::ObjectStore;
 use regex::Regex;
+use std::fmt::{Debug, Display};
+use std::fs::File;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::{fs, vec};
 use tracing::{error, trace};
+
 // -----
 
 /// File created into our workdir to indicate something is running.
 const CANARY_FILE: &str = "running";
+
+/// Magic file used to identify workspace directories.
+const WS_MAGIC: &str = "FETICHE_WS";
 
 /// Represents the current status of a workspace directory.
 ///
@@ -175,20 +179,38 @@ pub struct Workspace {
 }
 
 impl Workspace {
+    /// Creates a new WorkSpace instance with the given base directory path.
+    ///
+    /// The function initializes a workspace in the specified base directory. If the directory
+    /// does not exist, it will be created. The workspace is configured with automatic
+    /// cleanup of temporary files enabled.
+    ///
+    /// # Arguments
+    ///
+    /// * `base` - Path to the base directory for the workspace
+    ///
+    /// # Returns
+    ///
+    /// Returns a Result containing either:
+    /// * A new WorkSpace instance if successful
+    /// * An error if the directory cannot be created or accessed
+    ///
     #[tracing::instrument]
-    pub fn create(base: &PathBuf) -> Result<Self> {
-        // Creates a new WorkSpace instance with the given base directory path.
-        //
-        // The base directory will be used as the root for all workspace operations.
-        // Automatically enables cleanup of temporary files.
-        //
-        if !base.exists() {
-            fs::create_dir_all(base)?;
+    pub fn create(basedir: &PathBuf) -> Result<Self, WsError> {
+        if !basedir.exists() {
+            fs::create_dir_all(basedir).map_err(|_| WsError::CannotCreate(basedir.to_string_lossy().to_string()))?;
         }
-        let dir = LocalFileSystem::new_with_prefix(base)?.with_automatic_cleanup(true);
 
+        // Create our magic marker
+        //
+        let magic = basedir.join(WS_MAGIC);
+        let _ = File::create(magic).map_err(|_| WsError::CannotCreateMagic(basedir.to_string_lossy().to_string()))?;
+
+        let dir = LocalFileSystem::new_with_prefix(basedir).map_err(|_|
+            WsError::CannotCreate(basedir.to_string_lossy().to_string())
+        )?.with_automatic_cleanup(true);
         Ok(Self {
-            basedir: base.clone(),
+            basedir: basedir.clone(),
             dir: dir.into(),
             items: None,
         })
@@ -208,6 +230,13 @@ impl Workspace {
     ///
     #[tracing::instrument]
     pub async fn load(basedir: &PathBuf) -> Result<Self> {
+        // Check our magic file.
+        //
+        let magic = basedir.join(WS_MAGIC);
+        if !magic.exists() {
+            return Err(WsError::WsNotInitialized(basedir.to_string_lossy().to_string()).into());
+        }
+
         // Create a regex to match directory names with only numbers (aka PIDs)
         //
         let dir_re = Regex::new(r"/(\d+)$")?;
