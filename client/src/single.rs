@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use crate::JobText;
 use eyre::Result;
+use fetiche_engine::Workspace;
 pub use fetiche_engine::{Engine, Job, Stats};
 use tracing::debug;
 
@@ -95,6 +96,11 @@ impl EngineSingle {
     #[tracing::instrument(skip(self))]
     pub fn version(&mut self) -> String {
         self.e.version()
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub fn ws(&mut self) -> Workspace {
+        self.e.ws()
     }
 
     #[tracing::instrument(skip(self))]

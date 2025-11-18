@@ -1,6 +1,6 @@
 [package]
 name = "fetiche-client"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Stub Engine component for Fetiche."
@@ -20,6 +20,7 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+derive_builder.workspace = true
 eyre.workspace = true
 fetiche-engine.workspace = true
 fetiche-formats.workspace = true
@@ -27,9 +28,11 @@ hcl-rs.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
+thiserror.workspace = true
 tracing.workspace = true
 
-derive_builder.workspace = true
+object_store = "0.12"
+regex = "1.12"
 
 [dev-dependencies]
 proptest.workspace = true
