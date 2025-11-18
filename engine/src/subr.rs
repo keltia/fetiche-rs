@@ -20,8 +20,8 @@ use fetiche_formats::Format;
 
 use crate::actors::{SourcesMsg, StateMsg};
 use crate::{
-    CANARY_FILE, ENGINE_CONFIG, ENGINE_PG, Engine, IO, SOURCES_CONFIG, STATE_FILE, Sources,
-    Storage, Workspace, version,
+    version, Engine, Sources, Storage, CANARY_FILE, ENGINE_CONFIG, ENGINE_PG, IO,
+    SOURCES_CONFIG, STATE_FILE,
 };
 
 impl Engine {
@@ -133,17 +133,6 @@ impl Engine {
     #[tracing::instrument(skip(self))]
     pub fn config_file(&self) -> Result<PathBuf> {
         Ok(self.home.path_to_filesystem(&Path::from(ENGINE_CONFIG))?)
-    }
-
-    /// Returns a clone of the engine's workspace configuration
-    ///
-    /// This method provides access to the engine's workspace settings by returning
-    /// a copy of the WorkSpace instance, which contains information about the
-    /// working environment.
-    ///
-    #[tracing::instrument(skip(self))]
-    pub fn ws(&self) -> Workspace {
-        self.ws.clone()
     }
 
     /// Performs a graceful shutdown of the engine
