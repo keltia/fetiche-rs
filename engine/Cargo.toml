@@ -89,9 +89,9 @@ regex = "1.12.2"
 criterion.workspace = true
 dateparser.workspace = true
 directories.workspace = true
+indicatif.workspace = true
 rstest.workspace = true
 
 ctrlc = "3.4"
 divan = "0.1"
-indicatif = "0.18"
 test-pretty-log = "0.6"

@@ -36,6 +36,7 @@ eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-macros.workspace = true
 futures.workspace = true
+indicatif.workspace = true
 jiff.workspace = true
 polars.workspace = true
 serde.workspace = true
@@ -52,7 +53,6 @@ clap_complete = "4.5"
 colorsys = "0.7"
 derive_builder = "0.20"
 geo = "0.31"
-indicatif = "0.18"
 itertools = "0.14"
 klickhouse = { version = "0.14", features = ["derive", "geo-types", "serde", "bb8"] }
 kml = "0.12"
