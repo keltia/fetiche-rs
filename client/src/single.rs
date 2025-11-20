@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use eyre::Result;
 use tracing::debug;
 
-use crate::{JobText, Workspace};
-pub use fetiche_engine::{Engine, Job, Stats};
+use crate::JobText;
+pub use fetiche_engine::{Engine, Job, Stats, Workspace};
 
 #[derive(Clone, Debug)]
 pub struct EngineSingle {
@@ -21,7 +21,7 @@ impl EngineSingle {
         //
         let basedir = ws.path();
         Ok(Self {
-            e: Engine::single().await?,
+            e: Engine::new(basedir).await?,
         })
     }
 
@@ -99,11 +99,6 @@ impl EngineSingle {
     #[tracing::instrument(skip(self))]
     pub fn version(&mut self) -> String {
         self.e.version()
-    }
-
-    #[tracing::instrument(skip(self))]
-    pub fn ws(&mut self) -> Workspace {
-        self.e.ws()
     }
 
     #[tracing::instrument(skip(self))]

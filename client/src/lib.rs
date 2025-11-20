@@ -7,14 +7,12 @@ use tracing::{info, trace};
 mod job;
 mod local;
 mod single;
-mod workspace;
 mod sources;
 mod supervisor;
 
 pub use job::*;
 pub use local::*;
 pub use single::*;
-pub use workspace::*;
 pub use sources::*;
 pub use supervisor::*;
 
