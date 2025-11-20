@@ -48,6 +48,8 @@ pub enum EngineStatus {
     JobNotZombie(usize),
     #[error("Job {0} is not created")]
     JobNotCreated(usize),
+    #[error("No actual sources defined in {0} ")]
+    NoSourcesDefined(String),
 }
 
 #[derive(Debug, Error)]
@@ -111,5 +113,10 @@ pub enum StorageError {
 pub enum WsError {
     #[error("{0} is not a directory")]
     NotADirectory(String),
+    #[error("cannot create workspace directory {0}")]
+    CannotCreate(String),
+    #[error("cannot create magic file in {0}")]
+    CannotCreateMagic(String),
+    #[error("directory {0} is not a workspace, use create()")]
+    NotAWorkspace(String),
 }
-

@@ -6,13 +6,11 @@ use std::sync::mpsc::Sender;
 use eyre::Result;
 use tracing::trace;
 
-use fetiche_macros::RunnableDerive;
+use crate::stats::Stats;
+use crate::{EngineStatus, Filter, Producer, Runnable, IO};
 
-use crate::sources::Fetchable;
-use crate::{
-    EngineStatus, FetchableSource, Filter, Producer, Runnable, Site,
-    Stats, IO,
-};
+use fetiche_macros::RunnableDerive;
+use fetiche_sources::{FetchableSource, Site};
 
 /// The Fetch task
 ///

@@ -23,7 +23,9 @@ use ractor::{call, call_t, cast, pg};
 use tracing::{info, trace};
 
 use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
-use crate::{Engine, EngineMode, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup, ENGINE_PG};
+use crate::{
+    Engine, EngineMode, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup, ENGINE_PG,
+};
 
 /// Basically, this is the exposed API to the Engine.
 ///
@@ -338,11 +340,9 @@ impl Engine {
     ///
     #[tracing::instrument(skip(self))]
     pub async fn cleanup(&self) -> Result<()> {
-        if self.mode == EngineMode::Single {
-            // We need to remove the directory known as `workdir`
-            //
-            let _ = std::fs::remove_dir_all(self.workdir.clone());
-        }
+        // We need to remove the directory known as `workdir`
+        //
+        let _ = std::fs::remove_dir_all(self.workdir.clone());
         Ok(())
     }
 }

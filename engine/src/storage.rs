@@ -46,7 +46,7 @@ pub enum StorageConfig {
 
 /// This is the part describing the available storage areas
 ///
-#[derive(Clone, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct Storage(BTreeMap<String, StoreArea>);
 
 /// `StoreArea` represents the different types of storage locations that can
