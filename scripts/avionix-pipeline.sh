@@ -23,6 +23,7 @@ fi
 # Check file exists
 [[ ! -f "${BNAME}.json" ]] && exit 1
 #
+echo "Cwd is ${PWD}"
 echo "Basename is ${BNAME}"
 #
 MONTH=$(date +%m)
@@ -32,23 +33,27 @@ YEAR=$(date +%Y)
 #
 # FIXME columns order will be sorted, this is a datafusion BUG
 #
+echo "Convert to parquet"
 sort -u "${BNAME}.json" > "${BNAME}s.json" && \
 	bdt convert -s "${BNAME}s.json" "${BNAME}.parquet"
 
 # Second step — create our archive tree
 #
+echo "Create dir tree"
 [[ ! -d "${DATADIR}/year=${YEAR}/month=${MONTH}" ]] && \
 	mkdir -p "${DATADIR}/year=${YEAR}/month=${MONTH}"
 
 # Third step a  — move
+echo "Move files."
 mv "${BNAME}.parquet" "${DATADIR}/year=${YEAR}/month=${MONTH}/"
 
 # Third step b  — import
 #
 #${BASEDIR}/bin/import-avionix.py -D ${BASEDIR} -d "${BNAME}.csv" && \
 #	rm -f "${BNAME}s.json" "${BNAME}.json" "${BNAME}.csv"
-
+echo "Insert into CH."
 cat "${BNAME}s.json" | clickhouse-client -h $CLICKHOUSE_HOST -u $CLICKHOUSE_USER \
   --password $CLICKHOUSE_PASSWD -d $CLICKHOUSE_DB \
   -q 'INSERT INTO avionix_raw FORMAT JSONEachRow' && \
   rm -f "${BNAME}s.json" "${BNAME}.json"
+[[ $? == 0 ]] && echo "End."
