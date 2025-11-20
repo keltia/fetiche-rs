@@ -1,5 +1,6 @@
-// Safety check
+ Safety check for `config.hcl`
 //
-version = 2
+version = 3
 
-use_async = false
+use_async = true
+workspace = "/acute/var/run"
