@@ -24,15 +24,14 @@ derive_builder.workspace = true
 eyre.workspace = true
 fetiche-engine.workspace = true
 fetiche-formats.workspace = true
+fetiche-sources.workspace = true
 hcl-rs.workspace = true
+ractor.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-
-object_store = "0.12"
-regex = "1.12"
 
 [dev-dependencies]
 proptest.workspace = true
