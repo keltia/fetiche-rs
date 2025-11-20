@@ -41,7 +41,11 @@ impl Senhive {
         let url = self.base_url.clone();
         trace!("Starting worker actor.");
 
-        let args = WorkerArgs { url, out, stat: stat.clone() };
+        let args = WorkerArgs {
+            url,
+            out,
+            stat: stat.clone(),
+        };
         let tag = String::from("senhive::worker");
         let (worker, _handle) = Actor::spawn(Some(tag.clone()), Worker, args).await?;
 
@@ -71,7 +75,7 @@ impl Streamable for Senhive {
 
     /// Set up streaming from the AMQP queues.
     ///
-    /// We now use different actors (see [actor.rs]) to handle the manage the different
+    /// We now use different actors (see [sources]) to handle the manage the different
     /// topics/queues.
     ///
     /// - `Supervisor` to manage the worker and stats actors

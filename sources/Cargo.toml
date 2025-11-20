@@ -36,7 +36,6 @@ maintenance = { status = "actively-developed" }
 chrono.workspace = true
 clap.workspace = true
 csv.workspace = true
-directories.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-formats.workspace = true
@@ -45,7 +44,6 @@ futures.workspace = true
 hcl-rs.workspace = true
 jiff.workspace = true
 nom.workspace = true
-object_store.workspace = true
 polars.workspace = true
 ractor.workspace = true
 reqwest.workspace = true
@@ -68,7 +66,6 @@ native-tls = "0.2"
 percent-encoding = "2.3"
 futures-util = "0.3"
 tokio-native-tls = "0.3"
-regex = "1.12.2"
 
 [dev-dependencies]
 rstest.workspace = true

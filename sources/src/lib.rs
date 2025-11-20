@@ -15,23 +15,27 @@ use serde::{Deserialize, Serialize};
 
 use fetiche_formats::Format;
 
-pub use crate::stats::*;
-
 // Re-export these modules for a shorted import path.
 //
 pub use access::*;
+pub use auth::*;
 pub use capability::*;
-pub use config::*;
 pub use error::*;
+pub use filter::*;
 pub use route::*;
 pub use site::*;
+pub use sources::*;
+pub use subr::*;
 
 mod access;
+mod auth;
 mod capability;
-mod config;
 mod error;
+mod filter;
 mod route;
 mod site;
+mod sources;
+mod subr;
 
 #[macro_use]
 mod macros;
