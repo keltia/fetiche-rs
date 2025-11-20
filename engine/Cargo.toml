@@ -56,6 +56,7 @@ eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-formats.workspace = true
 fetiche-macros.workspace = true
+fetiche-sources.workspace = true
 futures.workspace = true
 hcl-rs.workspace = true
 jiff.workspace = true
@@ -78,11 +79,8 @@ derive_builder = "0.20"
 enum_dispatch = "0.3"
 humantime = "2.3"
 lapin = { version = "3.4", features = ["native-tls"] }
-mini-moka = "0.10"
 native-tls = "0.2"
-percent-encoding = "2.3"
 futures-util = "0.3"
-tokio-native-tls = "0.3"
 regex = "1.12.2"
 
 [dev-dependencies]

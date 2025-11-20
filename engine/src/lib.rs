@@ -34,13 +34,7 @@
 //! member function for the main task.  It takes the previous stage output as a string and should
 //! return a string with the transformed output that will be sent to the next stage.
 //!
-use std::collections::BTreeMap;
-use std::env;
-use std::fmt::Debug;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
-
+use derive_builder::Builder;
 use eyre::Result;
 use futures_util::StreamExt;
 use object_store::local::LocalFileSystem;
@@ -49,22 +43,28 @@ use ractor::factory::{queues, routing, Factory, FactoryArguments, FactoryMessage
 use ractor::registry::registered;
 use ractor::{call, cast, Actor, ActorRef};
 use serde::Deserialize;
+use std::collections::BTreeMap;
+use std::env;
+use std::fmt::Debug;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
 use strum::EnumString;
 use tokio::fs;
 use tracing::{debug, error, info, trace};
 
-pub use auth::*;
 pub use consumer::*;
 pub use error::*;
+pub use fetiche_sources::auth::*;
 pub use filter::*;
 pub use job::*;
 pub use middle::*;
 pub use parse::*;
 pub use producer::*;
-pub use sources::*;
 pub use storage::*;
 pub use task::*;
 pub use tokens::TokenStorage;
+pub use workspace::*;
 
 use crate::actors::*;
 
@@ -72,7 +72,6 @@ use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
 
 mod actors;
-mod auth;
 mod cmds;
 mod consumer;
 mod error;
@@ -81,12 +80,12 @@ mod job;
 mod middle;
 mod parse;
 mod producer;
-mod sources;
 mod stats;
 mod storage;
 mod subr;
 mod task;
 mod tokens;
+mod workspace;
 
 /// Engine signature
 ///
@@ -173,8 +172,6 @@ pub struct EngineConfig {
 ///
 #[derive(Clone, Debug)]
 pub struct Engine {
-    /// Running mode
-    mode: EngineMode,
     /// Current process DI
     pub pid: u32,
     /// Main area where state is saved (PID, jobs, etc.)
@@ -202,40 +199,7 @@ pub struct Engine {
     pub stats: ActorRef<StatsMsg>,
 }
 
-/// Engine can be instantiated into two modes:
-/// - `Single` means we will run one job and exit
-/// - `Daemon` means we will be part of a daemon (`fetiched`).
-///
-#[derive(Clone, Copy, Default, Debug, EnumString, strum::Display, PartialEq)]
-pub enum EngineMode {
-    #[default]
-    Single,
-    Daemon,
-}
-
 impl Engine {
-    /// Creates a new Engine instance in daemon mode with configuration loaded from engine.hcl
-    ///
-    /// This method initializes an Engine configured for long-running daemon operation.
-    /// It loads configuration from the engine.hcl file and sets up all necessary components
-    /// including storage, actors, and state management systems.
-    ///
-    /// The daemon mode enables features like:
-    /// - Multiple concurrent worker threads
-    /// - Periodic state synchronization
-    /// - Regular system health checks via tick intervals
-    ///
-    /// # Errors
-    ///
-    /// Will panic if the Engine cannot be created due to configuration or initialization errors.
-    ///
-    #[tracing::instrument]
-    pub async fn new() -> Result<Self> {
-        // Load storage areas from `engine.hcl`
-        //
-        Self::load(ENGINE_CONFIG, EngineMode::Daemon).await
-    }
-
     /// Creates a new Engine instance in single mode with configuration loaded from engine.hcl
     ///
     /// This method initializes an Engine configured for single-job execution mode.
@@ -250,7 +214,37 @@ impl Engine {
     pub async fn single() -> Result<Self> {
         // Load storage areas from `engine.hcl`
         //
-        Self::load(ENGINE_CONFIG, EngineMode::Single).await
+        Self::load(ENGINE_CONFIG).await
+    }
+
+    #[tracing::instrument]
+    pub async fn new(home: &str) -> Result<Self> {
+        let fname = home.join(ENGINE_CONFIG);
+
+        // Load storage areas from `engine.hcl`
+        //
+        let root = ConfigFile::<EngineConfig>::load(Some(fname))?;
+        let cfg = root.inner();
+        let home = root.config_path();
+        info!("Home is in {home:?}");
+
+        // Bail out if different
+        //
+        if cfg.version() != ENGINE_VERSION {
+            error!("Bad config version {}", cfg.version());
+            return Err(EngineStatus::BadConfigVersion(cfg.version(), ENGINE_VERSION).into());
+        }
+
+        Self::load(home).await
+    }
+
+    #[tracing::instrument]
+    pub fn home(&mut self, path: &PathBuf) -> &mut Self {
+        // Create our object storage "vision" out of our base directory.
+        //
+        let base = Arc::new(LocalFileSystem::new_with_prefix(path)?.with_automatic_cleanup(true));
+        self.home = base;
+        self
     }
 
     /// Creates a new Engine instance by loading configuration from the specified file
@@ -273,9 +267,8 @@ impl Engine {
     /// - Required directories cannot be created or accessed
     ///
     #[tracing::instrument]
-    pub async fn load(fname: &str, mode: EngineMode) -> Result<Self> {
+    pub async fn load(fname: &str) -> Result<Self> {
         info!("Engine v{} starting", env!("CARGO_PKG_VERSION"));
-        info!("Starting in {} mode", mode);
 
         let root = ConfigFile::<EngineConfig>::load(Some(fname))?;
         let cfg = root.inner();
@@ -291,21 +284,7 @@ impl Engine {
 
         // Ensure we have sensible defaults.
         //
-        let (workers, sync, tick) = if mode == EngineMode::Daemon {
-            let workers =
-                cfg.workers
-                    .unwrap_or_else(|| match std::thread::available_parallelism() {
-                        Ok(n) => n.get(),
-                        Err(_) => 1,
-                    });
-            let sync = cfg.sync.unwrap_or(SYNC);
-            let tick = cfg.tick.unwrap_or(TICK);
-            (workers, sync, tick)
-        } else {
-            // When running as a single instance, we have no need for multiple workers or a 2s tick
-            //
-            (1, SYNC, Duration::from_secs(1))
-        };
+        let (workers, sync, tick) = (1, SYNC, Duration::from_secs(1));
 
         debug!("Engine config: {:#?}", cfg);
 
@@ -323,11 +302,7 @@ impl Engine {
         //
         let work_prefix = cfg.basedir.join("var").join("run");
 
-        let workdir = if mode == EngineMode::Single {
-            ws.path().join(pid.to_string())
-        } else {
-            ws.path().join("acute")
-        };
+        let workdir = ws.path().join(pid.to_string());
         fs::create_dir_all(&workdir).await?;
 
         // Put our canary file.
@@ -349,20 +324,6 @@ impl Engine {
         let tag = String::from("engine::stats");
         let (stat, _h) =
             Actor::spawn_linked(Some(tag), StatsActor, "sources".into(), sup.get_cell()).await?;
-
-        // Start sources service
-        //
-        trace!("load sources");
-        let (src, _h) = Actor::spawn_linked(
-            Some("engine::sources".into()),
-            SourcesActor,
-            (),
-            sup.get_cell(),
-        )
-        .await?;
-
-        let count = call!(src, SourcesMsg::Count)?;
-        info!("{} sources loaded", count);
 
         // Start state service
         //
@@ -457,7 +418,6 @@ impl Engine {
         // Instantiate everything
         //
         let engine = Engine {
-            mode,
             pid,
             home: base.clone(),
             workdir: workdir.clone(),
