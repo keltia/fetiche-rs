@@ -83,6 +83,14 @@ pub struct Sources {
     site: BTreeMap<String, Site>,
 }
 
+impl Default for Sources {
+    fn default() -> Self {
+        Self {
+            site: BTreeMap::new(),
+        }
+    }
+}
+
 impl Sources {
     /// Creates a new instance of `Sources` by loading the configuration from
     /// the predefined `sources.hcl` configuration file.

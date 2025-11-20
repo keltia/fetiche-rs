@@ -1,0 +1,76 @@
+[package]
+name = "fetiche-sources"
+version = "0.1.0"
+edition = "2024"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "Sources component for the Fetiche framework."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/fetiche-rs"
+categories = ["aerospace::drones"]
+keywords = ["drones", "aeronautical-data", "ads-b"]
+
+[features]
+default = ["asd", "senhive", "avionix", "aeroscope"]
+privacy = []
+json = []
+
+aeroscope = []
+asd = []
+avionix = []
+flightaware = []
+opensky = []
+safesky = []
+senhive = []
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono.workspace = true
+clap.workspace = true
+csv.workspace = true
+directories.workspace = true
+eyre.workspace = true
+fetiche-common.workspace = true
+fetiche-formats.workspace = true
+fetiche-macros.workspace = true
+futures.workspace = true
+hcl-rs.workspace = true
+jiff.workspace = true
+nom.workspace = true
+object_store.workspace = true
+polars.workspace = true
+ractor.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+strum.workspace = true
+tabled.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+base64_light = "0.1"
+derive_builder = "0.20"
+enum_dispatch = "0.3"
+humantime = "2.3"
+lapin = { version = "3.4", features = ["native-tls"] }
+mini-moka = "0.10"
+native-tls = "0.2"
+percent-encoding = "2.3"
+futures-util = "0.3"
+tokio-native-tls = "0.3"
+regex = "1.12.2"
+
+[dev-dependencies]
+rstest.workspace = true
+
+test-pretty-log = "0.6"
