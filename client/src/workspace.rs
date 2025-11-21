@@ -1,10 +1,10 @@
 //! Management of workspace directories for Engine instances.
 //!
-//! This module provides functionality for handling workspace directories that are used by 
+//! This module provides functionality for handling workspace directories that are used by
 //! different Engine instances. It includes:
 //!
 //! - Managing a local filesystem backend for workspace operations
-//! - Creating and initializing workspace directories 
+//! - Creating and initializing workspace directories
 //! - Listing existing workspace directories that follow the naming convention
 //! - Deleting workspace directories and their contents
 //! - Automatic cleanup of temporary files
@@ -55,10 +55,13 @@ use object_store::local::LocalFileSystem;
 use object_store::path::Path;
 use object_store::ObjectStore;
 use regex::Regex;
-use strum::EnumString;
+use serde::{Deserialize, Serialize};
+use strum::{EnumString, VariantNames};
+use sysinfo::{Pid, System};
 use tracing::{error, trace};
 
-use crate::WsError;
+use crate::Client;
+use fetiche_engine::WsError;
 
 // -----
 
@@ -75,7 +78,10 @@ const WS_MAGIC: &str = "FETICHE_WS";
 /// This enum indicates whether a workspace is currently in use
 /// or has been abandoned/left in an inconsistent state.
 ///
-#[derive(Clone, Copy, Debug, EnumString, strum::Display)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, EnumString, Serialize, strum::Display, VariantNames, PartialEq,
+)]
+#[strum(serialize_all = "lowercase")]
 pub enum WsStatus {
     /// Indicates that the workspace is currently active and in use
     Running,
@@ -107,7 +113,26 @@ impl WsItem {
             // Check whether process is still running
             //
             let mut state = if canary.exists() {
-                vec![WsStatus::Running]
+                // File exists, but is the process still running?
+                //
+                let pid_str = path.file_name().unwrap().to_string_lossy().to_string();
+
+                // Use sysinfo to check existence safely on both Windows and Unix
+                //
+                let mut system = System::new_all();
+                system.refresh_all();
+
+                let is_running = if let Ok(pid_num) = pid_str.parse::<usize>() {
+                    system.process(Pid::from(pid_num)).is_some()
+                } else {
+                    false
+                };
+
+                if is_running {
+                    vec![WsStatus::Running]
+                } else {
+                    vec![WsStatus::Stale]
+                }
             } else {
                 vec![WsStatus::Stale]
             };
@@ -127,6 +152,8 @@ impl WsItem {
                     count += 1;
                 }
             }
+            state.dedup();
+
             trace!("{} files in {}", count, path.to_string_lossy().to_string());
 
             Ok(WsItem {
@@ -205,17 +232,19 @@ impl Workspace {
     #[tracing::instrument]
     pub fn create(basedir: &PathBuf) -> Result<Self, WsError> {
         if !basedir.exists() {
-            fs::create_dir_all(basedir).map_err(|_| WsError::CannotCreate(basedir.to_string_lossy().to_string()))?;
+            fs::create_dir_all(basedir)
+                .map_err(|_| WsError::CannotCreate(basedir.to_string_lossy().to_string()))?;
         }
 
         // Create our magic marker
         //
         let magic = basedir.join(WS_MAGIC);
-        let _ = File::create(magic).map_err(|_| WsError::CannotCreateMagic(basedir.to_string_lossy().to_string()))?;
+        let _ = File::create(magic)
+            .map_err(|_| WsError::CannotCreateMagic(basedir.to_string_lossy().to_string()))?;
 
-        let dir = LocalFileSystem::new_with_prefix(basedir).map_err(|_|
-            WsError::CannotCreate(basedir.to_string_lossy().to_string())
-        )?.with_automatic_cleanup(true);
+        let dir = LocalFileSystem::new_with_prefix(basedir)
+            .map_err(|_| WsError::CannotCreate(basedir.to_string_lossy().to_string()))?
+            .with_automatic_cleanup(true);
         Ok(Self {
             basedir: basedir.clone(),
             dir: dir.into(),
@@ -241,7 +270,7 @@ impl Workspace {
         //
         let magic = basedir.join(WS_MAGIC);
         if !magic.exists() {
-            return Err(WsError::WsNotInitialized(basedir.to_string_lossy().to_string()).into());
+            return Err(WsError::NotAWorkspace(basedir.to_string_lossy().to_string()).into());
         }
 
         // Create a regex to match directory names with only numbers (aka PIDs)
@@ -259,7 +288,7 @@ impl Workspace {
         for entry in base {
             if let Ok(entry) = entry {
                 let entry_str = entry.path().to_string_lossy().to_string();
-                trace!(entry={&entry_str});
+                trace!(entry = { &entry_str });
 
                 if entry.path().is_dir() && dir_re.is_match(&entry_str) {
                     let item = WsItem::new_from_path(&entry.path())?;
@@ -274,6 +303,9 @@ impl Workspace {
         };
         Ok(ws)
     }
+
+    #[tracing::instrument(skip(self))]
+    pub async fn attach(&mut self, client: Client) -> Result<()> {}
 
     #[tracing::instrument(skip(self))]
     pub async fn list(&self) -> Result<Vec<WsItem>> {
