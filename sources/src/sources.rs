@@ -37,10 +37,7 @@ use crate::Senhive;
 #[cfg(feature = "opensky")]
 use crate::{OpenskyDevice, OpenskyServer};
 
-use crate::{
-    AccessError, Auth, FetchableSource, Site, SourcesActor, SourcesMsg, StreamableSource,
-    SOURCES_CONFIG,
-};
+use crate::{AccessError, Auth, FetchableSource, Site, StreamableSource, SOURCES_CONFIG};
 
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_formats::Format;

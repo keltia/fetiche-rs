@@ -263,7 +263,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::env::temp_dir;
 
-    use crate::{Capability, DataType};
+    use crate::{Capability, DataType, SourcesConfig};
     use eyre::bail;
     use fetiche_common::ConfigFile;
     use tracing::debug;

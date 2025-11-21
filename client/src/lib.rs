@@ -9,12 +9,14 @@ mod local;
 mod single;
 mod sites;
 mod supervisor;
+mod workspace;
 
 pub use job::*;
 pub use local::*;
 pub use single::*;
 pub use sites::*;
 pub use supervisor::*;
+pub use workspace::*;
 
 // Re-export engine stuff.
 pub use fetiche_engine::{Filter, Freq, JobState};

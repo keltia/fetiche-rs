@@ -143,7 +143,7 @@ pub trait Fetchable {
     /// If credentials are needed, get a token for subsequent operations
     async fn authenticate(&self) -> Result<String, AuthError>;
     /// Stream actual data
-    async fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<Stats>;
+    async fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> Result<()>;
     /// Returns the input formats
     fn format(&self) -> Format;
 }
@@ -160,7 +160,7 @@ pub trait Streamable: Debug {
     /// If credentials are needed, get a token for subsequent operations
     async fn authenticate(&self) -> Result<String, AuthError>;
     /// Stream actual data
-    async fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<Stats>;
+    async fn stream(&self, out: Sender<String>, token: &str, args: &str) -> Result<()>;
     /// Returns the input formats
     fn format(&self) -> Format;
 }

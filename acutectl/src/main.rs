@@ -32,7 +32,7 @@ use tokio::runtime::Runtime;
 use tracing::{debug, trace};
 
 use acutectl::{handle_subcmd, ConfigCmd, Opts, Status, SubCommand};
-use fetiche_client::{EngineSingle, Workspace};
+use fetiche_client::{Client, EngineSingle, Workspace};
 use fetiche_common::{close_logging, init_logging, ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
 
@@ -94,12 +94,19 @@ async fn main() -> Result<()> {
     // Get current list of wsitems
     //
     let wsl = ws.list().await?;
-    let wsl_str = wsl.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("\n");
+    let wsl_str = wsl
+        .iter()
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
     trace!("Workspace items:\n{}", wsl_str);
 
-    trace!("Engine starting.");
+    let client = Client::init().await?;
+    trace!("Client initialised.");
+
     // Instantiate Engine
     //
+    trace!("Engine starting.");
     let mut engine = EngineSingle::new().await?;
 
     trace!("Engine initialised and running.");
