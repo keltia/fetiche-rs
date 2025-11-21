@@ -6,10 +6,10 @@ use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 
 use fetiche_sources::{Site, Sources};
 
-/// Messages handled by the `SourcesActor`.
+/// Messages handled by the `SitesActor`.
 ///
-/// The `SourcesMsg` enum defines various types of requests that can be sent
-/// to the `SourcesActor` to manage and interact with the loaded `Sources`.
+/// The `SitesMsg` enum defines various types of requests that can be sent
+/// to the `SitesActor` to manage and interact with the loaded `Sources`.
 ///
 /// Variants:
 /// - `Get(String)`: Retrieves a specific source by its identifier.
@@ -21,7 +21,7 @@ use fetiche_sources::{Site, Sources};
 /// Each variant corresponds to a specific behavior implemented within the actor.
 ///
 #[derive(Debug)]
-pub enum SourcesMsg {
+pub enum SitesMsg {
     Get(String, RpcReplyPort<Result<Site>>),
     Count(RpcReplyPort<usize>),
     List(RpcReplyPort<Sources>),
@@ -31,32 +31,32 @@ pub enum SourcesMsg {
 
 /// The actor responsible for managing and interacting with loaded sources.
 ///
-/// The `SourcesActor` provides functionality to interface with the `Sources`
+/// The `SitesActor` provides functionality to interface with the `Sources`
 /// data structure, including retrieving specific data, counting existing sources,
 /// listing all sources, and generating a table representation of the sources.
 ///
-/// Messages handled by the `SourcesActor`:
-/// - `SourcesMsg::Get(String)`: Retrieves a specific source by its identifier.
-/// - `SourcesMsg::Count(RpcReplyPort<usize>)`: Returns the total number of sources.
-/// - `SourcesMsg::List(RpcReplyPort<Sources>)`: Returns a full list of loaded sources.
-/// - `SourcesMsg::Table(RpcReplyPort<String>)`: Returns the data in a table format.
+/// Messages handled by the `SitesActor`:
+/// - `SitesMsg::Get(String)`: Retrieves a specific source by its identifier.
+/// - `SitesMsg::Count(RpcReplyPort<usize>)`: Returns the total number of sources.
+/// - `SitesMsg::List(RpcReplyPort<Sources>)`: Returns a full list of loaded sources.
+/// - `SitesMsg::Table(RpcReplyPort<String>)`: Returns the data in a table format.
 ///
 #[derive(Debug)]
-pub struct SourcesActor;
+pub struct SitesActor;
 
 #[derive(Debug)]
-pub struct SourcesArgs {
+pub struct SitesArgs {
     pg: String,
 }
 
 #[ractor::async_trait]
-impl Actor for SourcesActor {
-    type Msg = SourcesMsg;
+impl Actor for SitesActor {
+    type Msg = SitesMsg;
     type State = Sources;
-    type Arguments = SourcesArgs;
+    type Arguments = SitesArgs;
 
     ///
-    /// Pre-start hook for the `SourcesActor`.
+    /// Pre-start hook for the `SitesActor`.
     ///
     /// The `pre_start` method is invoked before the main actor loop begins and is used to initialize
     /// the actor's state. This includes setting up any resources, connections, or data structures
@@ -72,7 +72,7 @@ impl Actor for SourcesActor {
     /// or an `ActorProcessingErr` if an error occurs during initialization.
     ///
     /// # Behavior
-    /// - The `SourcesActor` joins the actor system's process group identified by `ENGINE_PG`.
+    /// - The `SitesActor` joins the actor system's process group identified by `ENGINE_PG`.
     /// - Initializes the actor's state as a new instance of the `Sources` data structure.
     ///
     /// # Errors
@@ -91,10 +91,10 @@ impl Actor for SourcesActor {
         Ok(src)
     }
 
-    /// Main message handling method for the `SourcesActor`.
+    /// Main message handling method for the `SitesActor`.
     ///
     /// This method processes incoming messages and updates the actor's state accordingly.
-    /// It handles various types of messages defined in the `SourcesMsg` enum.
+    /// It handles various types of messages defined in the `SitesMsg` enum.
     ///
     /// # Parameters
     /// - `_myself`: A reference to the current actor instance
@@ -120,7 +120,7 @@ impl Actor for SourcesActor {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            SourcesMsg::Get(key, sender) => {
+            SitesMsg::Get(key, sender) => {
                 let site = match state.get(&key) {
                     Some(site) => site.clone(),
                     None => {
@@ -132,19 +132,19 @@ impl Actor for SourcesActor {
                 };
                 sender.send(Ok(site))?;
             }
-            SourcesMsg::List(sender) => {
+            SitesMsg::List(sender) => {
                 let sources = state.clone();
                 sender.send(sources)?;
             }
-            SourcesMsg::Table(sender) => {
+            SitesMsg::Table(sender) => {
                 let table = state.list()?;
                 sender.send(table)?;
             }
-            SourcesMsg::Count(sender) => {
+            SitesMsg::Count(sender) => {
                 let res = state.len();
                 sender.send(res)?;
             }
-            SourcesMsg::Reload(sender) => {
+            SitesMsg::Reload(sender) => {
                 let sources = Sources::new()?;
                 sender.send(sources.clone())?;
                 *state = sources;

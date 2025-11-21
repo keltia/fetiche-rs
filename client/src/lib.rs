@@ -7,19 +7,17 @@ use tracing::{info, trace};
 mod job;
 mod local;
 mod single;
-mod sources;
+mod sites;
 mod supervisor;
 
 pub use job::*;
 pub use local::*;
 pub use single::*;
-pub use sources::*;
+pub use sites::*;
 pub use supervisor::*;
 
 // Re-export engine stuff.
 pub use fetiche_engine::{Filter, Freq, JobState};
-
-use fetiche_sources::{SourcesActor, SourcesMsg};
 
 /// Our main process group
 pub const FETICHE_PG: &str = "fetiche.pg";
@@ -39,7 +37,7 @@ pub struct Client {
     /// Reference to the supervisor actor handling overall system coordination
     sup: ActorRef<SuperMsg>,
     /// Reference to the sources actor managing data sources
-    sources: ActorRef<SourcesMsg>,
+    sites: ActorRef<SitesMsg>,
 }
 
 impl Client {
@@ -60,20 +58,20 @@ impl Client {
         let tag = String::from("init");
         let (sup, _h) = Actor::spawn(Some(tag), Supervisor, FETICHE_PG.into()).await?;
 
-        // Start sources service
+        // Start sites service
         //
-        trace!("load sources");
-        let (sources, _h) = Actor::spawn_linked(
-            Some("engine::sources".into()),
-            SourcesActor,
+        trace!("load sites");
+        let (sites, _h) = Actor::spawn_linked(
+            Some("fetiche::sites".into()),
+            SitesActor,
             FETICHE_PG.into(),
             sup.get_cell(),
         )
         .await?;
 
-        let count = call!(sources, SourcesMsg::Count)?;
+        let count = call!(sites, SitesMsg::Count)?;
         info!("{} sources loaded", count);
 
-        Ok(Self { sources, sup })
+        Ok(Self { sites, sup })
     }
 }
