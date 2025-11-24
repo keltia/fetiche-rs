@@ -1,5 +1,5 @@
 [workspace]
-members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "adsb-to-parquet", "process-data", "compute-height", "compute-localtime", "convert-from-json"]
+members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "process-data", "compute-height", "compute-localtime", "convert-from-json"]
 default-members = ["acutectl", "process-data", "compute-height", "compute-localtime", "convert-from-json"]
 exclude = ["opensky-history"]
 resolver = "2"
@@ -7,7 +7,7 @@ resolver = "2"
 [workspace.dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
-criterion = { version = "0.7", features = ["async_tokio", "async_futures"] }
+criterion = { version = "0.7", features = ["async", "async_tokio", "async_futures"] }
 csv = "1.3"
 dateparser = "0.2"
 derive_builder = "0.20"
@@ -37,5 +37,5 @@ strum = { version = "0.27", features = ["derive"] }
 tabled = "0.20"
 tempfile = "3"
 thiserror = "2.0"
-tokio = { version = "1", features = ["sync", "macros", "io-util", "rt", "time", "tracing"] }
+tokio = { version = "1", features = ["parking_lot", "sync", "macros", "io-util", "rt", "rt-multi-thread", "time", "tracing"] }
 tracing = "0.1"
