@@ -4,6 +4,7 @@ use eyre::Result;
 
 use crate::Runnable;
 
+use crate::stats::Stats;
 use fetiche_macros::RunnableDerive;
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
