@@ -7,19 +7,18 @@ use eyre::Result;
 use std::sync::mpsc::Sender;
 use tracing::trace;
 
-use fetiche_macros::RunnableDerive;
-
+use crate::stats::Stats;
 use crate::{
-    EngineStatus, Filter, Producer, Runnable, Site,
-    Stats, Streamable, StreamableSource, IO,
+    EngineStatus, Filter, Producer, Runnable,
+    Streamable, StreamableSource,
 };
+use fetiche_macros::RunnableDerive;
+use fetiche_sources::Site;
 
 /// The Stream task
 ///
 #[derive(Clone, PartialEq, RunnableDerive)]
 pub struct Stream {
-    /// I/O capabilities
-    io: IO,
     /// name for the task
     pub name: String,
     /// Site
@@ -55,7 +54,6 @@ impl Stream {
     pub fn new(name: &str) -> Self {
         trace!("New Stream {}", name);
         Stream {
-            io: IO::Producer,
             name: name.to_owned(),
             site: None,
             args: "".to_string(),

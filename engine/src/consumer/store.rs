@@ -19,7 +19,7 @@ use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{Consumer, EngineStatus, Freq, Runnable, IO};
+use crate::{Consumer, EngineStatus, Freq, Runnable};
 
 /// Struct describing the data for the `Store` task.
 ///
@@ -28,8 +28,6 @@ use crate::{Consumer, EngineStatus, Freq, Runnable, IO};
 ///
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Store {
-    /// IO Capability
-    io: IO,
     /// Our storage directory
     path: PathBuf,
     /// Our rollover strategy
@@ -47,7 +45,6 @@ impl From<Store> for Consumer {
 impl Default for Store {
     fn default() -> Self {
         Store {
-            io: IO::Consumer,
             path: PathBuf::from(""),
             freq: Freq::Hourly,
             ext: None,
@@ -129,7 +126,6 @@ impl Store {
         }
 
         Ok(Store {
-            io: IO::Consumer,
             path,
             freq,
             ext: None,
@@ -214,7 +210,6 @@ mod tests {
 
         let store = store.unwrap();
         assert_eq!(store.freq, Freq::Hourly);
-        assert_eq!(store.io, IO::Consumer);
         assert!(store.ext.is_none());
     }
 

@@ -13,14 +13,13 @@ use tracing::trace;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{EngineStatus, Producer, Runnable, Stats, IO};
+use crate::stats::Stats;
+use crate::{EngineStatus, Producer, Runnable};
 
 /// The Read task
 ///
 #[derive(Clone, Debug, PartialEq, RunnableDerive)]
 pub struct Read {
-    /// I/O capabilities
-    io: IO,
     /// name for the task
     pub name: String,
     /// If we need a specific format as output.
@@ -43,7 +42,6 @@ impl Read {
     #[tracing::instrument]
     pub fn new(name: &str) -> Self {
         Read {
-            io: IO::Producer,
             name: name.to_owned(),
             format: Format::None,
             path: None,

@@ -13,10 +13,9 @@ use tracing::trace;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{Middle, Runnable, IO};
+use crate::{Middle, Runnable};
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Tee {
-    io: IO,
     pub fname: String,
 }
 
@@ -31,7 +30,6 @@ impl Tee {
     #[tracing::instrument]
     pub fn into(p: &str) -> Self {
         Tee {
-            io: IO::Filter,
             fname: p.to_string(),
         }
     }
@@ -55,7 +53,6 @@ impl Tee {
 impl Default for Tee {
     fn default() -> Self {
         Self {
-            io: IO::Filter,
             fname: "".to_string(),
         }
     }

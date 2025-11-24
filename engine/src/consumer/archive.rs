@@ -10,13 +10,11 @@ use std::sync::mpsc::Sender;
 use eyre::Result;
 use tracing::trace;
 
-use crate::{Consumer, Runnable, IO};
+use crate::{Consumer, Runnable};
 use fetiche_macros::RunnableDerive;
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
-pub struct Archive {
-    io: IO,
-}
+pub struct Archive;
 
 impl From<Archive> for Consumer {
     fn from(f: Archive) -> Self {
@@ -28,7 +26,7 @@ impl Archive {
     #[tracing::instrument]
     pub fn new(s: &str) -> Self {
         trace!("Creating archive {s}");
-        Archive { io: IO::Consumer }
+        Archive {}
     }
 
     #[tracing::instrument(skip(self, _stdout))]

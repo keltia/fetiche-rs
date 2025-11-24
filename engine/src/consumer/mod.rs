@@ -33,7 +33,7 @@ pub use save::*;
 pub use stdout::*;
 pub use store::*;
 
-use crate::{Runnable, IO};
+use crate::Runnable;
 
 /// Represents different types of consumers that can process and store data
 /// in the processing pipeline.
@@ -56,10 +56,6 @@ pub enum Consumer {
 }
 
 impl Runnable for Consumer {
-    fn cap(&self) -> IO {
-        IO::Consumer
-    }
-
     async fn run(
         &mut self,
         out: Receiver<String>,

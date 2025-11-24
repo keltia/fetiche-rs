@@ -7,7 +7,7 @@ use eyre::Result;
 use tracing::trace;
 
 use crate::stats::Stats;
-use crate::{EngineStatus, Filter, Producer, Runnable, IO};
+use crate::{EngineStatus, Filter, Producer, Runnable};
 
 use fetiche_macros::RunnableDerive;
 use fetiche_sources::{FetchableSource, Site};
@@ -16,8 +16,6 @@ use fetiche_sources::{FetchableSource, Site};
 ///
 #[derive(Clone, Debug, PartialEq, RunnableDerive)]
 pub struct Fetch {
-    /// I/O capabilities
-    io: IO,
     /// name for the task
     pub name: String,
     /// Site
@@ -36,7 +34,6 @@ impl Fetch {
     #[tracing::instrument]
     pub fn new(s: &str) -> Self {
         Self {
-            io: IO::Producer,
             name: s.to_string(),
             args: String::new(),
             site: None,

@@ -9,7 +9,7 @@ pub use fetch::*;
 pub use read::*;
 pub use stream::*;
 
-use crate::{Runnable, IO};
+use crate::Runnable;
 
 mod dummy;
 mod fetch;
@@ -37,11 +37,6 @@ pub enum Producer {
 }
 
 impl Runnable for Producer {
-    #[tracing::instrument(skip(self))]
-    fn cap(&self) -> IO {
-        IO::Producer
-    }
-
     #[tracing::instrument(skip(self))]
     async fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
         match self {

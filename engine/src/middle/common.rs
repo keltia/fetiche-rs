@@ -11,16 +11,14 @@ use eyre::Result;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{IO, Middle, Runnable};
+use crate::{Middle, Runnable};
 
 // -----
 
 /// NOP
 ///
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
-pub struct Nothing {
-    io: IO,
-}
+pub struct Nothing;
 
 impl From<Nothing> for Middle {
     fn from(t: Nothing) -> Self {
@@ -32,7 +30,7 @@ impl Nothing {
     #[inline]
     #[tracing::instrument]
     pub fn new() -> Self {
-        Nothing { io: IO::Producer }
+        Nothing {}
     }
 
     #[inline]
@@ -51,10 +49,7 @@ impl Default for Nothing {
 /// Copy
 ///
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
-pub struct Copy {
-    /// I/O capabilities
-    io: IO,
-}
+pub struct Copy;
 
 impl From<Copy> for Middle {
     fn from(t: Copy) -> Self {
@@ -66,7 +61,7 @@ impl Copy {
     #[inline]
     #[tracing::instrument]
     pub fn new() -> Self {
-        Copy { io: IO::Filter }
+        Copy {}
     }
 
     #[inline]
@@ -88,8 +83,6 @@ impl Default for Copy {
 ///
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Message {
-    /// I/O capabilities
-    io: IO,
     /// What to display
     msg: String,
 }
@@ -105,7 +98,6 @@ impl Message {
     #[tracing::instrument]
     pub fn new(s: &str) -> Self {
         Message {
-            io: IO::Filter,
             msg: s.to_owned(),
         }
     }
@@ -120,7 +112,6 @@ impl Message {
 impl Default for Message {
     fn default() -> Self {
         Self {
-            io: IO::Filter,
             msg: "".to_owned(),
         }
     }
@@ -129,17 +120,18 @@ impl Default for Message {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::any::Any;
 
     #[test]
     fn test_nothing_new() {
         let nothing = Nothing::new();
-        assert_eq!(matches!(nothing.io, IO::Producer), true);
+        assert_eq!(nothing.type_id(), Nothing::new().type_id());
     }
 
     #[test]
     fn test_nothing_default() {
         let nothing = Nothing::default();
-        assert_eq!(matches!(nothing.io, IO::Producer), true);
+        assert_eq!(nothing.type_id(), Nothing::new().type_id());
     }
 
     #[tokio::test]
@@ -157,13 +149,13 @@ mod tests {
     #[test]
     fn test_copy_new() {
         let copy = Copy::new();
-        assert_eq!(matches!(copy.io, IO::Filter), true);
+        assert_eq!(copy.type_id(), Copy::new().type_id());
     }
 
     #[test]
     fn test_copy_default() {
         let copy = Copy::default();
-        assert_eq!(matches!(copy.io, IO::Filter), true);
+        assert_eq!(copy.type_id(), Copy::new().type_id());
     }
 
     #[tokio::test]
@@ -184,7 +176,7 @@ mod tests {
         let message = Message::new(msg);
 
         assert_eq!(message.msg, msg);
-        assert_eq!(matches!(message.io, IO::Filter), true);
+        assert_eq!(message.type_id(), Message::new("").type_id());
     }
 
     #[tokio::test]

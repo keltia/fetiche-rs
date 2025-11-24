@@ -4,7 +4,7 @@ use std::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
 use tracing::error;
 
-use crate::{Runnable, IO};
+use crate::Runnable;
 
 pub use common::*;
 pub use convert::*;
@@ -39,10 +39,6 @@ pub enum Middle {
 }
 
 impl Runnable for Middle {
-    fn cap(&self) -> IO {
-        IO::Consumer
-    }
-
     async fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
         match self {
             Middle::Convert(c) => c.run(out).await,

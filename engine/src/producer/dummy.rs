@@ -2,19 +2,16 @@ use std::sync::mpsc::Sender;
 
 use eyre::Result;
 
-use crate::{Runnable, Stats, IO};
+use crate::Runnable;
 
 use fetiche_macros::RunnableDerive;
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
-pub struct Dummy {
-    io: IO,
-    stats: Stats,
-}
+pub struct Dummy;
 
 impl Dummy {
     pub fn new() -> Self {
-        Self { io: IO::Producer, stats: Stats::default() }
+        Self {}
     }
 
     #[tracing::instrument(skip(self))]

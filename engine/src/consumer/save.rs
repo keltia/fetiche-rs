@@ -16,14 +16,12 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{Consumer, Runnable, IO};
+use crate::{Consumer, Runnable};
 
 /// The Save task
 ///
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Save {
-    /// I/O capabilities
-    io: IO,
     /// name for the task
     pub name: String,
     /// File path
@@ -48,7 +46,6 @@ impl Save {
     #[tracing::instrument]
     pub fn new(name: &str, inp: Format, out: Container) -> Self {
         Save {
-            io: IO::Consumer,
             name: name.to_owned(),
             path: None,
             inp,

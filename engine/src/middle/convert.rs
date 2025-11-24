@@ -20,11 +20,10 @@ use fetiche_formats::senhive::FusedData;
 #[cfg(feature = "opensky")]
 use fetiche_formats::StateList;
 
-use crate::{Middle, Runnable, IO};
+use crate::{Middle, Runnable};
 
 #[derive(Clone, Debug, RunnableDerive, PartialEq)]
 pub struct Convert {
-    io: IO,
     pub from: Format,
     pub into: Format,
 }
@@ -40,7 +39,6 @@ impl Convert {
     #[tracing::instrument]
     pub fn new() -> Self {
         Self {
-            io: IO::Filter,
             from: Format::None,
             into: Format::None,
         }
@@ -63,8 +61,6 @@ impl Convert {
     ///
     #[tracing::instrument(skip(self))]
     pub async fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
-        trace!("convert::execute");
-
         // Bow out early
         //
         let res = match self.into {

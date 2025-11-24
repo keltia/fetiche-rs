@@ -4,12 +4,10 @@ use eyre::Result;
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{Consumer, Runnable, IO};
+use crate::{Consumer, Runnable};
 
 #[derive(Clone, Debug, PartialEq, RunnableDerive)]
-pub struct Stdout {
-    io: IO,
-}
+pub struct Stdout;
 
 impl From<Stdout> for Consumer {
     fn from(f: Stdout) -> Self {
@@ -20,7 +18,7 @@ impl From<Stdout> for Consumer {
 impl Stdout {
     #[tracing::instrument]
     pub fn new() -> Self {
-        Self { io: IO::Consumer }
+        Self {}
     }
 
     #[tracing::instrument(skip(self, data, _out))]
