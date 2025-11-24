@@ -394,6 +394,7 @@ AS (
       time,
       date,
       utc_time,
+      local_date,
       local_time,
       journey,
       drone_id,
