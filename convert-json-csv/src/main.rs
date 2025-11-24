@@ -35,8 +35,7 @@ pub struct Opts {
     pub input: String,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
     let input = opts.input.as_str();
 

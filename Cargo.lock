@@ -2106,12 +2106,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "eyre",
- "fetiche-common",
- "polars",
  "polars-io",
- "serde",
- "tokio",
- "tracing",
 ]
 
 [[package]]

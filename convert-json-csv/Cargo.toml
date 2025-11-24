@@ -23,9 +23,4 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 clap.workspace = true
 eyre.workspace = true
-fetiche-common.workspace = true
-polars.workspace = true
-serde.workspace = true
-tokio.workspace = true
-tracing.workspace = true
-polars-io = "0.52"
+polars-io = { version = "0.52", features = ["csv", "json"] }
