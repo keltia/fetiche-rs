@@ -19,7 +19,7 @@ use fetiche_formats::Format;
 
 use crate::actors::{SchedulerMsg, SourcesMsg};
 use crate::{
-    Consumer, Copy, Engine, Fetch, Filter, Job, JobState, Middle, ParserError, Producer, Read,
+    Consumer, Copy, Engine, Feeder, Fetch, Filter, Job, JobState, Middle, ParserError, Producer, Read,
     Save, Store, Stream, Tee,
 };
 
@@ -79,6 +79,7 @@ enum MiddleText {
 /// # Variants
 ///
 /// - `Archive`: Archives the job output to the specified location.
+/// - `Feeder`: Sends the job output to an AMQP feeder.
 /// - `Save`: Saves the job output to the specified file path.
 /// - `Store`: Splits the job output into multiple files in the specified directory.
 ///
@@ -91,6 +92,8 @@ enum MiddleText {
 enum ConsumerText {
     /// Archive multiple files in a single one.
     Archive(String),
+    /// Send the data to an AMQP feeder.
+    Feeder(String, Format),
     /// Save in a file.
     Save(String),
     /// Store files by frequency in the specified directory.
@@ -255,6 +258,10 @@ impl Engine {
         //
         let consumer = match jt.output {
             ConsumerText::Archive(_) => Consumer::Invalid,
+            ConsumerText::Feeder(c, f) => {
+                let mut feeder = Feeder::new(&c, f);
+                Consumer::Feeder(feeder)
+            }
             ConsumerText::Save(c) => {
                 let mut f = Save::new(&c, Format::None, Container::Raw);
                 f.path(&c);

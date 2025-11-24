@@ -3,6 +3,7 @@
 //! This module contains different consumer types that handle data at the end of the processing pipeline:
 //!
 //! * `Archive` - Archives stored data for long-term retention
+//! * `Feeder` - Sends data to a specific AMQP topic for further processing
 //! * `Save` - Saves data to temporary storage
 //! * `Stdout` - Displays data directly to the console/terminal
 //! * `Store` - Persists data in permanent storage
@@ -10,6 +11,7 @@
 //! The module is organized into submodules for each consumer type:
 //!
 //! - `archive.rs` - Archive consumer implementation
+//! - `feeder.rs` - Feeder consumer implementation
 //! - `save.rs` - Save consumer implementation  
 //! - `stdout.rs` - Stdout consumer implementation
 //! - `store.rs` - Store consumer implementation
@@ -24,11 +26,13 @@ use tokio::task::JoinHandle;
 use tracing::error;
 
 mod archive;
+mod feeder;
 mod save;
 mod stdout;
 mod store;
 
 pub use archive::*;
+pub use feeder::*;
 pub use save::*;
 pub use stdout::*;
 pub use store::*;
@@ -50,6 +54,8 @@ pub enum Consumer {
     Stdout(Stdout),
     /// Consumer that stores data in permanent storage
     Store(Store),
+    /// Consumer that send everything into a specific AMQP topic
+    Feeder(Feeder),
     /// Invalid consumer
     #[default]
     Invalid,
@@ -62,6 +68,7 @@ impl Runnable for Consumer {
     ) -> (Receiver<String>, JoinHandle<eyre::Result<()>>) {
         match self {
             Consumer::Archive(c) => c.run(out).await,
+            Consumer::Feeder(c) => c.run(out).await,
             Consumer::Save(c) => c.run(out).await,
             Consumer::Store(c) => c.run(out).await,
             Consumer::Stdout(s) => s.run(out).await,
@@ -77,6 +84,7 @@ impl Display for Consumer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Consumer::Archive(_) => write!(f, "Archive"),
+            Consumer::Feeder(_) => write!(f, "Feeder"),
             Consumer::Save(_) => write!(f, "Save"),
             Consumer::Store(_) => write!(f, "Store"),
             Consumer::Stdout(_) => write!(f, "Stdout"),
