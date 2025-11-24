@@ -53,7 +53,7 @@ sort -u "${BNAME}.json" > "${BNAME}s.json" && \
 # Second step — create our archive tree
 #
 echo "Create dir tree"
-DESTDIR = "${DATADIR}/year=${YEAR}/month=${MONTH}"
+DESTDIR="${DATADIR}/year=${YEAR}/month=${MONTH}"
 [[ ! -d "${DESTDIR}" ]] && \
 	mkdir -p "${DESTDIR}"
 
