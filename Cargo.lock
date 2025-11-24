@@ -2101,6 +2101,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c74b8349d32d297c9134b8c88677813a227df8f779daa29bfc29c183fe3dca6"
 
 [[package]]
+name = "convert-json-csv"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "eyre",
+ "fetiche-common",
+ "polars",
+ "polars-io",
+ "serde",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "cookie-factory"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6343,6 +6357,7 @@ dependencies = [
  "bytes",
  "chrono",
  "fast-float2",
+ "flate2",
  "fs4",
  "futures",
  "glob",
@@ -6372,6 +6387,7 @@ dependencies = [
  "simd-json",
  "simdutf8",
  "tokio",
+ "zstd 0.13.3",
 ]
 
 [[package]]
