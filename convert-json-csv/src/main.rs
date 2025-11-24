@@ -31,6 +31,9 @@ use polars_io::prelude::*;
 #[clap(name = crate_name!(), about = crate_description!())]
 #[clap(version = crate_version!(), author = crate_authors!())]
 pub struct Opts {
+    /// Output parquet file instead of CSV
+    #[clap(short = 'P', long)]
+    pub parquet: bool,
     /// Filename, can be just the basename and .csv/.parquet are implied
     pub input: String,
 }
@@ -42,20 +45,30 @@ fn main() -> Result<()> {
     let inp = File::open(input)?;
     let rdr = BufReader::new(inp);
 
-    let output = Path::new(input).file_stem().unwrap().to_str().unwrap();
-    let output = Path::new(output).with_extension("csv");
-
     let mut df = JsonReader::new(rdr)
         .with_json_format(JsonFormat::JsonLines)
         .infer_schema_len(NonZeroUsize::new(10))
         .finish()?;
 
-    let mut out = File::create(&output)?;
-    let _ = CsvWriter::new(&mut out)
-        .include_header(true)
-        .with_quote_style(QuoteStyle::Necessary)
-        .finish(&mut df)?;
+    let output = Path::new(input).file_stem().unwrap().to_str().unwrap();
+    let output = if opts.parquet {
+        Path::new(output).with_extension("parquet")
+    } else {
+        Path::new(output).with_extension("csv")
+    };
 
+    let mut out = File::create(&output)?;
+    if opts.parquet {
+        let _ = ParquetWriter::new(&mut out)
+            .with_compression(ParquetCompression::Zstd(Some(ZstdLevel::try_new(8)?)))
+            .with_statistics(StatisticsOptions::default())
+            .finish(&mut df)?;
+    } else {
+        let _ = CsvWriter::new(&mut out)
+            .include_header(true)
+            .with_quote_style(QuoteStyle::Necessary)
+            .finish(&mut df)?;
+    }
     eprintln!("\n{input} converted to {output:?}.");
     Ok(())
 }
