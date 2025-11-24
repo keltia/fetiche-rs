@@ -75,6 +75,7 @@ tokio.workspace = true
 tracing.workspace = true
 
 base64_light = "0.1"
+bytes = "1.11"
 derive_builder = "0.20"
 enum_dispatch = "0.3"
 humantime = "2.3"
