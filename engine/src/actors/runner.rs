@@ -156,7 +156,7 @@ impl Worker for RunnerActor {
 
                 // Set the pipeline up
                 //
-                let (key, stdout) = std::sync::mpsc::channel::<String>();
+                let (start, stdout) = std::sync::mpsc::channel::<String>();
 
                 trace!("create pipeline");
 
@@ -173,11 +173,11 @@ impl Worker for RunnerActor {
 
                 // Start the pipeline
                 //
-                let _ = key.send("start".to_string())?;
+                let _ = start.send("start".to_string())?;
 
                 // Close the pipeline which will stop all threads in sequence
                 //
-                drop(key);
+                drop(start);
 
                 // Wait for the final output to be received and send it out
                 //
