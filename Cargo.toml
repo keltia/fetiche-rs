@@ -1,6 +1,6 @@
 [workspace]
-members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "adsb-to-parquet", "process-data", "compute-height", "compute-localtime", "convert-json-csv"]
-default-members = ["acutectl", "process-data", "compute-height", "compute-localtime", "convert-json-csv"]
+members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "adsb-to-parquet", "process-data", "compute-height", "compute-localtime", "convert-from-json"]
+default-members = ["acutectl", "process-data", "compute-height", "compute-localtime", "convert-from-json"]
 exclude = ["opensky-history"]
 resolver = "2"
 

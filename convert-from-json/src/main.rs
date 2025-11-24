@@ -14,7 +14,11 @@
 //! # Usage
 //!
 //! ```shell
-//! convert-json-csv input.jsonl
+//! convert-from-json input.jsonl
+//! ```
+//!
+//! ```shell
+//! convert-from-json -P input.jsonl
 //! ```
 //!
 //! The tool will create an output file with the same base name but with a .csv extension.
@@ -27,7 +31,6 @@ use eyre::Result;
 use polars_io::prelude::*;
 
 #[derive(Parser)]
-#[command(disable_version_flag = true)]
 #[clap(name = crate_name!(), about = crate_description!())]
 #[clap(version = crate_version!(), author = crate_authors!())]
 pub struct Opts {

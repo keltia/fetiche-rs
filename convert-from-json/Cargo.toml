@@ -1,9 +1,9 @@
 [package]
-name = "convert-json-csv"
+name = "convert-from-json"
 version = "0.1.0"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
-description = "Load JSON from Avionix and output as CSV."
+description = "Load JSON from Avionix and output as CSV/Parquet."
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/keltia/fetiche-rs"
