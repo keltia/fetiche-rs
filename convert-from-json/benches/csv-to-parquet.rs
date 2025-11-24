@@ -1,11 +1,11 @@
 //! Preliminary results:
 //!
-//! Mac Studio 2020, M2 Pro, 64 GB RAM, 4 TB NVMe SSD, macOS 14.6 Sonoma
+//! Mac Studio 2020, M2 Pro, 64 GB RAM, 4 TB NVMe SSD, macOS 26.1 Tahoe
 //! ```text
 //!
-//! using_df                time:   [111.15 ms 113.77 ms 116.77 ms]
+//! using_df                time:   [58.125 ms 58.316 ms 58.516 ms]
 //!
-//! using_polars            time:   [68.143 ms 69.217 ms 70.438 ms]
+//! using_polars            time:   [38.088 ms 38.203 ms 38.352 ms]
 //! ```
 //!
 //! PC, Windows 11 24H2, AMD 7700X, 32 GB, 500 MB M2 SSD
