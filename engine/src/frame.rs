@@ -18,6 +18,7 @@
 
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[cfg(feature = "avionix")]
 use fetiche_formats::avionix::CubeData;
@@ -40,5 +41,50 @@ pub enum Frame {
     Avionix(Vec<CubeData>),
     #[cfg(feature = "senhive")]
     Senhive(Vec<FusedData>),
+}
+
+impl From<String> for Frame {
+    fn from(s: String) -> Self {
+        Frame::Bytes(s.into_bytes().into())
+    }
+}
+
+impl FromStr for Frame {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Frame::Bytes(s.into()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_frame_from_string() {
+        let s = String::from("test");
+        let frame = Frame::from(s);
+        match frame {
+            Frame::Bytes(b) => assert_eq!(b, Bytes::from("test")),
+            _ => panic!("Expected Frame::Bytes"),
+        }
+    }
+
+    #[test]
+    fn test_frame_from_str() {
+        let s = "test";
+        let frame = Frame::from_str(s).unwrap();
+        match frame {
+            Frame::Bytes(b) => assert_eq!(b, Bytes::from("test")),
+            _ => panic!("Expected Frame::Bytes"),
+        }
+    }
+
+    #[test]
+    fn test_frame_default() {
+        let frame = Frame::default();
+        assert!(matches!(frame, Frame::Null));
+    }
 }
 
