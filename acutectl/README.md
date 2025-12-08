@@ -203,39 +203,4 @@ Listing all tokens:
 
 </details>
 
-### DB Import (incomplete)
-
-The `acutectl import` sub-command will also use another one called `dbfile.hcl`  located in the same directory.
-
-Here is an example of `dbfile.hcl`:
-
-<details>
-<summary>`dbfile.hcl`</summary>
-
-```hcl
-version = 1
-
-db "local" {
-  type   = sqlite
-  format = "dronepoint"
-  file   = "sqlite:///var/db/adsb.sqlite"
-}
-
-db "next" {
-  type   = pgsql
-  format = "opensky"
-  url    = "pgsql://mydbserver:5432/adsb-data"
-}
-
-db "time" {
-  type  = influxdb
-  url   = "http://localhost:8600"
-  token = "NOT DISCLOSED HERE"
-}
-```
-
-> NOTE:  This will almost certainly change in the near future when I get to implement the DB import.
-
-</details>
-
 [Parquet]: https://parquet.apache.org/docs/file-format/
