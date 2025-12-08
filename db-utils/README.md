@@ -1,4 +1,8 @@
-# `compute-height`
+# Clickhouse Database utilities
+
+These are modules that are used as Clickhouse UDF (User Defined Functions).
+
+## `compute-height`
 
 Geoid height and geometric altitude are concepts from geodesy, and they deal with how we measure height above the
 Earth's surface. Understanding the distinction between them is essential to various applications, including GPS systems
@@ -56,3 +60,10 @@ longitude. This result can then aid in determining orthometric height.
 
 - For calculations involving drones, we will add a column calculating the geometric altitude and this will be used
   for the distance calculations.
+
+## `compute-localtime`
+
+The current drone dataset is using UTC time for everything, as it is easier not to have to deal with
+timezone. For PowerBI though, due to the way it deals with date and time, need to have separate columns, and
+to have another column with localtime as well.
+

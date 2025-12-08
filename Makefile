@@ -25,9 +25,9 @@ acutectl: acutectl/src/main.rs
 
 process-data: process-data/src/main.rs
 
-compute-height: compute-height/src/main.rs
+compute-height: db-utils/src/compute-height.rs
 
-compute-localtime: compute-localtime/src/main.rs
+compute-localtime: db-utils/src/compute-localtime.rs
 
 install: $(BINARIES) $(SCRIPTS)
 	install -c -m 755 -s -o acute target/release/acutectl $(DESTDIR)/bin

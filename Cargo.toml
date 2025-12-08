@@ -1,6 +1,6 @@
 [workspace]
-members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "process-data", "compute-height", "compute-localtime", "convert-from-json"]
-default-members = ["acutectl", "process-data", "compute-height", "compute-localtime", "convert-from-json"]
+members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "process-data", "convert-from-json"]
+default-members = ["acutectl", "process-data", "compute-height", "compute-localtime", "convert-from-json", "db-utils"]
 exclude = ["opensky-history"]
 resolver = "2"
 
