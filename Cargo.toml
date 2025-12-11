@@ -1,13 +1,13 @@
 [workspace]
-members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "process-data", "convert-from-json"]
-default-members = ["acutectl", "process-data", "compute-height", "compute-localtime", "convert-from-json", "db-utils"]
+members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "process-data", "convert-from-json", "db-utils"]
+default-members = ["acutectl", "process-data", "convert-from-json", "db-utils"]
 exclude = ["opensky-history"]
 resolver = "2"
 
 [workspace.dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["cargo", "derive"] }
-criterion = { version = "0.7", features = ["async", "async_tokio", "async_futures"] }
+criterion = { version = "0.8", features = ["async", "async_tokio", "async_futures"] }
 csv = "1.3"
 dateparser = "0.2"
 derive_builder = "0.20"
