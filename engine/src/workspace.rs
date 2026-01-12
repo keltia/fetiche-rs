@@ -52,7 +52,7 @@ use std::{fs, vec};
 use eyre::Result;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path;
-use object_store::ObjectStore;
+use object_store::ObjectStoreExt;
 use regex::Regex;
 use tracing::{error, trace};
 

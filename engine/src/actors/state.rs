@@ -7,17 +7,19 @@
 //! - Remove a job after completion
 //! - Sync file on-disk
 //!
-use crate::{StateError, ENGINE_PG, ENGINE_PID};
-use chrono::Utc;
-use object_store::local::LocalFileSystem;
-use object_store::{path::Path, ObjectStore};
-use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use chrono::Utc;
+use object_store::local::LocalFileSystem;
+use object_store::{path::Path, ObjectStoreExt};
+use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tracing::{error, info, trace, warn};
+
+use crate::{StateError, ENGINE_PG, ENGINE_PID};
 
 /// The main state data file will be created in `basedir`.
 pub(crate) const STATE_FILE: &str = "state";

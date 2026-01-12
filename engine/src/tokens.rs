@@ -8,7 +8,7 @@ use eyre::Result;
 use futures::TryStreamExt;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path;
-use object_store::{ObjectMeta, ObjectStore};
+use object_store::{ObjectMeta, ObjectStore, ObjectStoreExt};
 use tabled::builder::Builder;
 use tabled::settings::Style;
 use tokio::runtime::Handle;
@@ -28,7 +28,7 @@ use crate::{TokenStatus, TokenType};
 /// determined based on the file content.
 ///
 /// # Fields
-/// - `store`: An `Arc<dyn ObjectStore>` providing the storage backend.
+/// - `store`: An `Arc<LocalFileSystem>` providing the storage backend.
 /// - `base_path`: A `Path` representing the base path in the object store for token files.
 /// - `list`: A `BTreeMap` storing the tokens. The keys are file names, and the values are the parsed `TokenType`s.
 ///
@@ -63,7 +63,7 @@ use crate::{TokenStatus, TokenType};
 #[derive(Debug)]
 pub struct TokenStorage {
     /// Object store backend
-    store: Arc<dyn ObjectStore>,
+    store: Arc<LocalFileSystem>,
     /// Base path for token files
     base_path: Path,
     /// Btree of (key, AuthToken)
