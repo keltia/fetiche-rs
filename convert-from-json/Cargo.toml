@@ -32,5 +32,5 @@ polars-io = { version = "0.52", features = ["csv", "json", "parquet"] }
 tokio = { version = "1", features = ["sync", "macros", "io-util", "rt", "time", "rt-multi-thread"] }
 
 [dev-dependencies]
-criterion = { version = "0.7", features = ["async", "async_tokio"] }
+criterion = { version = "0.8", features = ["async", "async_tokio"] }
 datafusion = "51"
