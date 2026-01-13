@@ -4,12 +4,267 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### API
+
+- EngineSingle::shutdown() is async now.
+
+### FIX
+
+- Now compiling.
+
+### Refactor
+
+- Move all CH UDF utilities under the "db" crate.
+
+## [process-data-v4] - 2025-10-15
+
+### Consistency
+
+- Shorter aliases first.
+
+### FIX
+
+- Field name is important, was not matching the proper middle filters.
+- Site short name can include digits.
+- Rust version number URL.
+- Be careful with cfg and variable scope.
+- Better way to distinguish between local and server-based antenna.
+- Loading tokens.
+
+### Refactor
+
+- Unify LocalWorker and Worker.
+- Use object_store crate, thus it async.
+
+### Refactoring
+
+- Making process_one() clearer.
+- Simply, split and add documentation.
+
+### WIP
+
+- Rewrite opensky module with actors.
+
+### Clippy
+
+- Remove warnings.
+
+## [fetiched-actix-last] - 2025-06-23
+
+### Criterion
+
+- :black_box is apparently deprecated.
+
+### WIP
+
+- Bring back flightaware module, bring it up to date.
+
+### Cargo
+
+- Crates update../
+
+### Clippy
+
+- Remove warnings.
+
+## [engine-v0.25] - 2025-05-20
+
+### WIP
+
+- Fixing remaining issues after merge.
+
+## [acutectl-0.25] - 2025-05-19
+
+### Error
+
+- Move back cmds.hcl into src.
+
+### FIX
+
+- Sync examples & bench with last version of geo crate.
+- Save path was not initialized.  Queue -> Scheduler.
+- Infer container format from the file extension.
+
+### Refactor
+
+- For all the view creation/dropping, one function per operation.
+
+### Clippy
+
+- Remove warning.
+
+## [process-data-v0.7.1] - 2025-03-28
+
+### FIX
+
+- Ensure we have the complete (lon,lat,alt) for each point.
+- It is prox_mode_a.
+- Do not ignore something that does not exist.
+- Dummy signature was wrong; tracing for stdout too.
+- Types for Site.
+
+### Fefactor
+
+- Move Engine commands into cmds.rs.
+
+### Refactor
+
+- Divide into Producers & Filters.
+- Create Consumer as well.
+- Act the merge of sources into engine.
+
+### Simplify
+
+- We are not limited to Asd.
+
+### WIP
+
+- Describe the new worflow with actors, runner, etc.
+
+## [process-data-v3] - 2025-02-18
+
+### WIP
+
+- Converting aeroscope & asd into actors.
+
+## [process-data-v0.6] - 2025-02-17
+
+### Refactor
+
+- Break into smaller functions and add some tests.
+
+### Clippy
+
+- Fix warnings.
+
+## [before-altitude-geo] - 2025-02-11
+
+### Engine
+
+- :remove_job takes the id, not the full job.
+
+### Refactor
+
+- Merge actors.rs & init.rs into a single actors module.
+
+### WIP
+
+- Cleanup initiailisation of the Sources actor.
+- Try to sort out actors initialisation.
+- Adding a Runner actor to actually execute a job.
+- Parse the job as text.
+- Pass a site, not a trait object.  Pre-req for removing said objects.
+
+## [acutectl-v0.24] - 2025-01-20
+
+### Engine
+
+- :new() is now async.
+
+### Refactor
+
+- Move utility functions to subr.rs.
+
+### WIP
+
+- Add a new sub-command "archive".  To be used to extract data from streaming sites.
+- Add the Archive sub-command to the Engine.  Consumer, one-shot.
+- Rework fetiche-sources.
+- Another try at moving from dynamic to static dispatch for flows.
+
+### Clippy
+
+- Remove warnings.
+- Remove warnings.
+- Remove the "let _ = " part.
+- Remove the useless loop.
+- Cleanup warnings.
+- Use is_some().
+- Remove Site from import.
+
+## [process-data-v0.5.2] - 2024-12-13
+
+### FIX
+
+- We take the plane points from airplanes view, where they are using feet for altitude.
+
+### Refactor
+
+- Move Format and DronePoint into their own file.
+- Move remainder of structs to common.rs.
+
+### Update
+
+- Avionix is now using actors. Add more TODO.
+
+### Clippy
+
+- Remove redundant conversion and use unwrap_or_default().
+
+## [sources-v0.18] - 2024-11-26
+
+### FIX
+
+- Dl_fused_data packets were not converted to JSONL.
+- Using "_" here is disturbing it.
+
+### WIP
+
+- Convert Avionix into an Actor-based system.
+- Actor conversion.
+- Convert Avionix data into DronePoint.
+
+### Clippy
+
+- Replace unwrap() with "?" when appropriate.
+
+## [sources-v0.17.1] - 2024-11-16
+
+### Clippy
+
+- Fix warnings.
+- Fix warnings.
+
+## [acutectl-0.23.1] - 2024-11-15
+
+### WIP
+
+- Split "senhive.rs".  Use AsyncStreamable.
+- Convert to actors.
+
+### Clippy
+
+- Imports cleanup.
+- Not sure why it considers we are documenting output and not the macro.
+- Fix warnings.
+
+## [formats-v0.18] - 2024-11-11
+
+### Refactor
+
+- Create subscribe() and make it run on both Windows & Unix systems.
+
+### WIP
+
+- Senhive AMQP streaming.
+- Senhive AMQP streaming.
+
+## [process-data-v0.5] - 2024-11-07
+
 ### FIX
 
 - Pass the site name, not the struct.
 - Do not inverse the logic.
 - Ordering of fields is wrong.
 - Missing '$'.
+- When we create the temp tables, if there were no planes, it is success, but there is no table.
+
+### Refactor
+
+- Create fetch_all_en_id().
+- Push all CH queries into "data" module with fetch_one_encounter().
+- Move data structs as well to be consistent.
+- Split into files.
 
 ### WIP
 
@@ -19,6 +274,12 @@ All notable changes to this project will be documented in this file.
 - Implement Avionix Cube API for Aero Network (drones).
 - Export all & summary encounters.
 - Use klickhouse.
+- Bring it up to date.
+- Avionix cube support.
+- Implement TCP streaming.
+- Reuse buffer.
+- Dealing with buffer & connections
+- Exporting encounters as KML.
 
 ### Clippy
 
@@ -30,8 +291,11 @@ All notable changes to this project will be documented in this file.
 - No need for a ref here and remove Client.
 - Fix warnings.
 - Remove borrow.
+- Fix warnings.
+- Fix warnings.
+- Fix warnings.
 
-## [acutectl-v2] - 2024-08-25
+## [engine-v0.23] - 2024-08-23
 
 ### FIX
 
@@ -104,17 +368,22 @@ All notable changes to this project will be documented in this file.
 
 ### WIP
 
+- Port to Clickhouse.
+- Port to Clickhouse.
+- Update to clickhouse client, async, etc.
+- Update to clickhouse client, async, etc.
+- Port to Clickhouse.
+- Port to Clickhouse.
+- Port to Clickhouse.
+- Update to clickhouse client, async, etc.
+- Update to clickhouse client, async, etc.
+- Port to Clickhouse.
+
+## [end-sprint-4] - 2024-06-27
+
+### WIP
+
 - Add Makefile for install binaries and scripts.
-- Port to Clickhouse.
-- Port to Clickhouse.
-- Update to clickhouse client, async, etc.
-- Update to clickhouse client, async, etc.
-- Port to Clickhouse.
-- Port to Clickhouse.
-- Port to Clickhouse.
-- Update to clickhouse client, async, etc.
-- Update to clickhouse client, async, etc.
-- Port to Clickhouse.
 
 ## [end-sprint-3] - 2024-04-01
 
@@ -224,13 +493,46 @@ All notable changes to this project will be documented in this file.
 
 ### FIX
 
-- Do not create link inside the directory.
-- Do not hardcode the site name.
 - Deadlock because calling sync() with held lock.
+
+### WIP
+
+- Update to pyopensky 2.1.
+- This will return more information.
+- Submit a job to the engine. Some issues with return.
+- Add state management actor.
+
+### Std
+
+- :env::var() return a Result, not an Option.
+
+## [0.15.0] - 2023-08-30
+
+### FIX
+
+- Do not hardcode the site name.
 
 ### Fixes
 
 - TOC, typos, details.
+
+### WIP
+
+- Search with ICAO id.
+- Describe FA types.
+- Flightaware connection code.
+- Flightaware conversion code.
+- Try to use proxy still.
+
+### Clippy
+
+- Let is unused now.
+
+## [0.14.0] - 2023-07-31
+
+### FIX
+
+- Do not create link inside the directory.
 
 ### WIP
 
@@ -247,33 +549,24 @@ All notable changes to this project will be documented in this file.
 - We can retrieve all data wanted. Next: convert it.
 - Add channel to the control thread.
 - Split into files, if nothing is given list locations, etc.
-- Search with ICAO id.
-- Describe FA types.
-- Flightaware connection code.
-- Flightaware conversion code.
-- Try to use proxy still.
-- Update to pyopensky 2.1.
-- This will return more information.
-- Submit a job to the engine. Some issues with return.
-- Add state management actor.
 
 ### Clippy
 
 - Remove warnings.
 - Needless borrows & Ok().
 - Fix warnings.
-- Let is unused now.
 
-### Std
+## [0.13.0] - 2023-06-26
 
-- :env::var() return a Result, not an Option.
+### Clippy
 
-## [cat21conv-is-back] - 2023-06-29
+- Fix imports.
+
+## [0.12.0] - 2023-06-22
 
 ### Clippy
 
 - Simplify & add defaults.
-- Fix imports.
 
 ## [multithread-engine] - 2023-06-14
 
