@@ -11,7 +11,7 @@ push-gitlab:
     jj git push --tracked --remote gitlab
 
 # Push to both github and gitlab
-push: push-github push-gitlab
+push: push-github
 
 # Move changes to develop
 move:
