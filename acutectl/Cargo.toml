@@ -37,7 +37,7 @@ tokio.workspace = true
 tracing.workspace = true
 
 clap_complete = "4.5"
-ctrlc = { version = "3.4", features = ["termination"] }
+ctrlc = { version = "3.5", features = ["termination"] }
 indicatif = "0.18"
 
 [dev-dependencies]
