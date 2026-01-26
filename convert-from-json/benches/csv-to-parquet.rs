@@ -51,7 +51,8 @@ fn use_polars(c: &mut Criterion) {
 }
 
 mod df {
-    use datafusion::config::TableParquetOptions;
+    use datafusion::common::parquet_config::DFParquetWriterVersion;
+    use datafusion::config::{ParquetOptions, TableParquetOptions};
     use datafusion::dataframe::DataFrameWriteOptions;
     use datafusion::prelude::*;
     use eyre::Result;
@@ -77,15 +78,16 @@ mod df {
         let fname = "../data/test-df.parquet";
 
         let dfopts = DataFrameWriteOptions::default().with_single_file_output(true);
+        let mut wpopts = ParquetOptions::default();
+        wpopts.writer_version = DFParquetWriterVersion::V2_0;
+        wpopts.compression = Some("zstd(8)".into());
+        wpopts.encoding = Some("plain".into());
+        wpopts.created_by = "bench_df".to_string();
+        wpopts.statistics_enabled = Some("page".into());
 
-        let mut options = TableParquetOptions::default();
-        options.global.created_by = "bench_df".to_string();
-        options.global.writer_version = "2.0".to_string();
-        options.global.encoding = Some("plain".to_string());
-        options.global.statistics_enabled = Some("page".to_string());
-        options.global.compression = Some("zstd(8)".to_string());
-
-        let _ = df.write_parquet(fname, dfopts, Some(options)).await?;
+        let mut opts = TableParquetOptions::new();
+        opts.global = wpopts;
+        let _ = df.write_parquet(fname, dfopts, Some(opts)).await?;
 
         Ok(())
     }
