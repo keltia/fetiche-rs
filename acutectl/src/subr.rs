@@ -19,7 +19,7 @@ pub fn start_daemon(base: &str, workdir: &PathBuf) -> eyre::Result<()> {
 
     let pid = Path::new(workdir).join("pid");
     let daemon = daemonize::Daemonize::new()
-        .pid_file(&workdir)
+        .pid_file(&pid)
         .working_directory("/tmp")
         .umask(0o077)
         .stdout(stdout)
