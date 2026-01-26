@@ -33,4 +33,4 @@ tokio = { version = "1", features = ["sync", "macros", "io-util", "rt", "time", 
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["async", "async_tokio"] }
-datafusion = "51"
+datafusion = "52"
