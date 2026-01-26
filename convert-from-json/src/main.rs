@@ -24,7 +24,7 @@
 //! The tool will create an output file with the same base name but with a .csv extension.
 //! For example, `input.jsonl` will be converted to `input.csv`.
 //!
-use std::{fs::File, io::BufReader, num::NonZeroUsize, path::Path};
+use std::{fs, fs::File, io::BufReader, num::NonZeroUsize, path::Path};
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use eyre::Result;
@@ -47,6 +47,14 @@ fn main() -> Result<()> {
 
     let inp = File::open(input)?;
     let rdr = BufReader::new(inp);
+
+    // Early exit if input file is empty.
+    //
+    let attr = fs::metadata(input)?;
+    if attr.len() == 0 {
+        eprintln!("{input} is empty.");
+        return Err(eyre::eyre!("Input file is empty"));
+    }
 
     let mut df = JsonReader::new(rdr)
         .with_json_format(JsonFormat::JsonLines)
