@@ -18,11 +18,11 @@
 //!
 //! File sizes for 9999 records.
 //! ```text
-//! Mode                 LastWriteTime         Length Name
-//! ----                 -------------         ------ ----
-//! -a---          21/05/2025    16:10        3178176 test-bench.csv
-//! -a---          24/11/2025    22:36         674664 test-df.parquet
-//! -a---          24/11/2025    22:37         569587 test-polars.parquet
+//! Mode                            Length LastWriteTime Name
+//! ----                           ------- ------------- ----
+//! -rw-r--r--@ 1 roberto  staff   3178176 Apr  4  2024  test-bench.csv
+//! -rw-r--r--@ 1 roberto  staff    674664 Jan 26 14:02  test-df.parquet
+//! -rw-r--r--@ 1 roberto  staff    510656 Jan 26 14:03  test-polars.parquet
 //! ```
 //!
 //! 11/2025 UPDATE: datafusion is getting better speed-wise, but almost twice as slow as polars and
@@ -111,6 +111,8 @@ mod prs {
         let mut file = std::fs::File::create(fname)?;
         ParquetWriter::new(&mut file)
             .with_compression(ParquetCompression::Zstd(Some(ZstdLevel::try_new(8)?)))
+            .with_statistics(StatisticsOptions::default())
+            .set_parallel(true)
             .finish(&mut df)?;
         Ok(())
     }
