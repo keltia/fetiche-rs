@@ -315,7 +315,7 @@ mod tests {
         assert!(matches!(job.producer, Producer::Fetch(_)));
         assert!(matches!(job.consumer, Consumer::Save(_)));
 
-        engine.shutdown();
+        let _ = engine.shutdown();
         Ok(())
     }
 
@@ -347,7 +347,7 @@ mod tests {
         assert_eq!(job.name, "test_stream");
         assert!(matches!(job.producer, Producer::Stream(_)));
         assert!(matches!(job.consumer, Consumer::Save(_)));
-        engine.shutdown();
+        let _ = engine.shutdown();
         Ok(())
     }
 
@@ -372,7 +372,7 @@ mod tests {
         assert_eq!(job.name, "test_read");
         assert!(matches!(job.producer, Producer::Read(_)));
         assert!(matches!(job.consumer, Consumer::Save(_)));
-        engine.shutdown();
+        let _ = engine.shutdown();
         Ok(())
     }
 
@@ -408,7 +408,7 @@ mod tests {
         assert_eq!(job.middle.len(), 2);
         assert!(matches!(job.middle[0], Middle::Copy(_)));
         assert!(matches!(job.middle[1], Middle::Tee(_)));
-        engine.shutdown();
+        let _ = engine.shutdown();
         Ok(())
     }
 
@@ -424,7 +424,7 @@ mod tests {
 
         let result = engine.parse(job_str).await;
         assert!(result.is_err());
-        engine.shutdown();
+        let _ = engine.shutdown();
         Ok(())
     }
 }
