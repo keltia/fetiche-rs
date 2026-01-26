@@ -24,3 +24,4 @@ target/
 *.kml
 data
 venv
+mutants.out
