@@ -3542,7 +3542,6 @@ name = "fetiche-engine"
 version = "0.26.0"
 dependencies = [
  "base64_light",
- "chrono",
  "clap",
  "criterion 0.8.1",
  "csv",
