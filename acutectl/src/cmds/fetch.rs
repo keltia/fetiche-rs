@@ -179,8 +179,8 @@ mod tests {
         let filter = filter_from_opts(&opts).unwrap();
         match filter {
             Filter::Interval { begin, end } => {
-                assert_eq!(begin.to_rfc3339(), "2024-01-02T00:00:00+00:00");
-                assert_eq!(end.to_rfc3339(), "2024-01-03T00:00:00+00:00");
+                assert_eq!(begin.to_string(), "2024-01-02T00:00:00Z");
+                assert_eq!(end.to_string(), "2024-01-03T00:00:00Z");
             }
             _ => panic!("Expected Interval middle"),
         }
