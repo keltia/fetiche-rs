@@ -7,9 +7,9 @@ use std::str::FromStr;
 use std::sync::mpsc::{channel, Sender};
 use std::time::{Duration, Instant};
 
-use chrono::Utc;
 use clap::{crate_name, crate_version};
 use eyre::Result;
+use jiff::Timestamp;
 use mini_moka::sync::{Cache, ConcurrentCacheExt};
 use ractor::ActorRef;
 use reqwest::StatusCode;
@@ -164,7 +164,7 @@ impl Streamable for OpenskyServer {
         let mut stream_duration = 0;
         let mut stream_delay = 1000;
 
-        let now = Utc::now().timestamp();
+        let now = Timestamp::now().as_second();
 
         let login = self.login.clone();
         let password = self.password.clone();

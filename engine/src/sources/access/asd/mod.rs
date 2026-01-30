@@ -19,7 +19,7 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, VariantNames};
 use tracing::{error, trace, warn};
@@ -69,9 +69,11 @@ struct Credentials {
 #[serde(rename_all = "camelCase")]
 struct Param {
     /// Limit ourselves to this time interval beginning at
-    start_time: DateTime<Utc>,
+    #[serde(with = "crate::time::serde_rfc3339")]
+    start_time: Timestamp,
     /// Limit ourselves to this time interval ending at
-    end_time: DateTime<Utc>,
+    #[serde(with = "crate::time::serde_rfc3339")]
+    end_time: Timestamp,
     /// Source of data from ASD, see below `Source` enum.
     sources: Vec<Source>,
 }

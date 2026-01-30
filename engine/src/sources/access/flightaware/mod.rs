@@ -25,6 +25,7 @@ use std::sync::mpsc::Sender;
 
 use base64_light::base64_encode;
 use eyre::{eyre, Result};
+use jiff::Timestamp;
 use ractor::ActorRef;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -289,8 +290,8 @@ impl Flightaware {
 fn get_timestamp(date: Option<String>) -> Result<i64> {
     let date = date.unwrap();
     trace!("date={date}");
-    let date = dateparser::parse(&date).unwrap();
-    Ok(date.timestamp())
+    let date: Timestamp = date.parse()?;
+    Ok(date.as_second())
 }
 
 impl Fetchable for Flightaware {
@@ -367,14 +368,14 @@ impl Fetchable for Flightaware {
 
 #[cfg(test)]
 mod tests {
-    use chrono::{TimeZone, Utc};
+    use jiff::Timestamp;
 
     #[test]
     fn test_get_timestamp() {
         let t = get_timestamp(Some("2023-08-02T00:00:00Z".to_string()));
-        let d = Utc.with_ymd_and_hms(2023, 8, 2, 0, 0, 0).unwrap();
+        let d: Timestamp = "2023-08-02T00:00:00Z".parse().unwrap();
 
         assert!(t.is_ok());
-        assert_eq!(d.timestamp(), t.unwrap());
+        assert_eq!(d.as_second(), t.unwrap());
     }
 }

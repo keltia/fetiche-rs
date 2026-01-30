@@ -12,12 +12,14 @@
 use std::fs;
 use std::path::PathBuf;
 
-use chrono::{Days, Utc};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tracing::trace;
 
 use crate::Expirable;
+use crate::time::now_seconds;
+
+const DAY_SECONDS: i64 = 86_400;
 
 /// Access token derived from username/password
 ///
@@ -50,11 +52,11 @@ impl AsdToken {
     /// Return an invalid (and expired) token by default.
     ///
     pub fn new() -> Self {
-        let d = Utc::now().checked_sub_days(Days::new(1)).unwrap();
+        let d = now_seconds() - DAY_SECONDS;
         AsdToken {
             token: "INVALID".into(),
             gjrt: "INVALID".into(),
-            expired_at: d.timestamp(),
+            expired_at: d,
             roles: vec![],
             name: "INVALID".into(),
             supervision: None,
@@ -181,7 +183,7 @@ impl Default for AsdToken {
 impl Expirable for AsdToken {
     #[inline]
     fn is_expired(&self) -> bool {
-        Utc::now().timestamp() > self.expired_at
+        now_seconds() > self.expired_at
     }
 
     #[inline]
@@ -193,7 +195,6 @@ impl Expirable for AsdToken {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{Days, Utc};
     use std::fs;
     use tempfile::tempdir;
 
@@ -213,9 +214,9 @@ mod tests {
 
     #[test]
     fn test_token_expiry() {
-        let future = Utc::now().checked_add_days(Days::new(1)).unwrap();
+        let future = now_seconds() + DAY_SECONDS;
         let mut token = AsdToken::new();
-        token.expired_at = future.timestamp();
+        token.expired_at = future;
         assert!(!token.is_expired());
     }
 
@@ -243,4 +244,3 @@ mod tests {
         Ok(())
     }
 }
-

@@ -12,9 +12,9 @@
 
 use std::str::FromStr;
 
-use chrono::Utc;
 use clap::{crate_name, crate_version};
 use eyre::Result;
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::mpsc::Sender;
@@ -191,7 +191,7 @@ impl Fetchable for Aeroscope {
         // Send statistics
         //
         let stats = Stats {
-            tm: Utc::now().timestamp() as u64,
+            tm: Timestamp::now().as_second() as u64,
             pkts: 1u32,
             bytes: resp.len() as u64,
             ..Default::default()

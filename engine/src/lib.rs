@@ -366,7 +366,7 @@ impl Engine {
             (),
             sup.get_cell(),
         )
-            .await?;
+        .await?;
 
         let count = call!(src, SourcesMsg::Count)?;
         info!("{} sources loaded", count);
@@ -380,7 +380,7 @@ impl Engine {
             base.clone(),
             sup.get_cell(),
         )
-            .await?;
+        .await?;
         trace!("state={:?}", state);
 
         // Get last used ID from the previous state
@@ -394,7 +394,7 @@ impl Engine {
             (),
             sup.get_cell(),
         )
-            .await?;
+        .await?;
 
         // ----- Start Runner Factory
 
@@ -425,7 +425,7 @@ impl Engine {
             factory_args,
             sup.get_cell(),
         )
-            .await?;
+        .await?;
 
         // Spawn the actual scheduler
         //
@@ -443,7 +443,7 @@ impl Engine {
             sargs,
             sup.get_cell(),
         )
-            .await?;
+        .await?;
 
         // ----- Register non-actor subsystems
 
@@ -455,9 +455,7 @@ impl Engine {
 
         // Register tokens
         //
-        let tokens_area = root
-            .config_path()
-            .join("tokens");
+        let tokens_area = root.config_path().join("tokens");
 
         trace!("load tokens from {tokens_area:?}");
         let tokens = TokenStorage::register(&tokens_area).await?;

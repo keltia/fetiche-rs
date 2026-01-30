@@ -3,7 +3,7 @@
 //! We have different statistics in parallel now, just use New with a tag.
 //!
 
-use chrono::Utc;
+use jiff::Timestamp;
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
@@ -94,7 +94,7 @@ impl Actor for StatsActor {
         //
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
         Ok(State {
-            start: Utc::now().timestamp(),
+            start: Timestamp::now().as_second(),
             stats: BTreeMap::new(),
         })
     }
@@ -122,7 +122,7 @@ impl Actor for StatsActor {
             //
             StatsMsg::Get(tag, sender) => {
                 let mut s = state.stats.get(&tag).unwrap_or(&Stats::default()).clone();
-                s.tm = (Utc::now().timestamp() - state.start) as u64;
+                s.tm = (Timestamp::now().as_second() - state.start) as u64;
                 sender.send(s.clone())?;
             }
             StatsMsg::List(sender) => {
@@ -131,7 +131,7 @@ impl Actor for StatsActor {
             }
             StatsMsg::Print(tag) => {
                 let mut s = state.stats.get(&tag).unwrap_or(&Stats::default()).clone();
-                s.tm = (Utc::now().timestamp() - state.start) as u64;
+                s.tm = (Timestamp::now().as_second() - state.start) as u64;
                 info!("Stats: {}", s);
             }
             StatsMsg::Reset(tag) => {
@@ -140,7 +140,7 @@ impl Actor for StatsActor {
             // The end
             StatsMsg::Exit(tag, sender) => {
                 let mut s = state.stats.get(&tag).unwrap_or(&Stats::default()).clone();
-                s.tm = (Utc::now().timestamp() - state.start) as u64;
+                s.tm = (Timestamp::now().as_second() - state.start) as u64;
                 sender.send(s.clone())?;
                 myself.kill();
             }

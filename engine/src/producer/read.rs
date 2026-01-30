@@ -3,8 +3,8 @@
 
 use std::path::PathBuf;
 
-use chrono::Utc;
 use eyre::Result;
+use jiff::Timestamp;
 use std::sync::mpsc::Sender;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -81,7 +81,7 @@ impl Read {
             //
             let _ = stdout.send(lines)?;
             Ok(Stats {
-                tm: Utc::now().timestamp() as u64,
+                tm: Timestamp::now().as_second() as u64,
                 bytes: size as u64,
                 pkts: 1u32,
                 ..Default::default()

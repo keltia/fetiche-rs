@@ -3,9 +3,9 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use chrono::{DateTime, Utc};
 use eyre::Result;
 use futures::TryStreamExt;
+use jiff::Timestamp;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path;
 use object_store::{ObjectMeta, ObjectStore, ObjectStoreExt};
@@ -209,14 +209,11 @@ impl TokenStorage {
                     row.push("Unknown".into());
                 }
 
-                let modified = DateTime::<Utc>::from(object.last_modified);
-                let modified = format!("{}", modified);
-                row.push(modified);
+                row.push(object.last_modified.to_string());
             } else {
                 row.push("INVALID".to_string());
                 row.push("Unknown".to_string());
-                let origin = format!("{}", DateTime::<Utc>::from(std::time::UNIX_EPOCH));
-                row.push(origin);
+                row.push(Timestamp::from_second(0).unwrap().to_string());
             }
             builder.push_record(row);
         }

@@ -11,7 +11,7 @@ use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use chrono::Utc;
+use jiff::Timestamp;
 use object_store::local::LocalFileSystem;
 use object_store::{path::Path, ObjectStoreExt};
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
@@ -301,7 +301,7 @@ impl Actor for StateActor {
             StateMsg::Sync => {
                 trace!("stateactor::sync");
 
-                state.tm = Utc::now().timestamp();
+                state.tm = Timestamp::now().as_second();
                 let data = json!(state).to_string();
                 let state_file = Path::from(STATE_FILE);
                 let _ = state.state.put(&state_file, data.into()).await?;

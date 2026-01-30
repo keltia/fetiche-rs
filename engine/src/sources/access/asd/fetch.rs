@@ -10,13 +10,12 @@
 //!
 
 use std::io::Cursor;
-use std::ops::Add;
 use std::sync::mpsc::Sender;
 use std::time::UNIX_EPOCH;
 
-use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use clap::{crate_name, crate_version};
 use eyre::eyre;
+use jiff::{Span, Timestamp};
 use polars::datatypes::Int64Chunked;
 use polars::io::SerWriter;
 use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, CsvWriter, IntoColumn, SerReader};
@@ -125,21 +124,25 @@ impl Fetchable for Asd {
         // If we have a middle defined, extract times
         //
         let data = match f {
-            Filter::Duration(d) => Param {
-                start_time: NaiveDateTime::default().and_utc(),
-                end_time: NaiveDateTime::default()
-                    .and_utc()
-                    .add(Duration::try_seconds(d as i64).unwrap()),
-                sources: DEF_SOURCES.to_vec(),
-            },
+            Filter::Duration(d) => {
+                let start_time = epoch_timestamp();
+                let end_time = start_time
+                    .checked_add(Span::new().seconds(d as i64))
+                    .unwrap_or(start_time);
+                Param {
+                    start_time,
+                    end_time,
+                    sources: DEF_SOURCES.to_vec(),
+                }
+            }
             Filter::Interval { begin, end } => Param {
                 start_time: begin,
                 end_time: end,
                 sources: DEF_SOURCES.to_vec(),
             },
             _ => Param {
-                start_time: DateTime::<Utc>::MIN_UTC,
-                end_time: DateTime::<Utc>::MIN_UTC,
+                start_time: epoch_timestamp(),
+                end_time: epoch_timestamp(),
                 sources: DEF_SOURCES.to_vec(),
             },
         };
@@ -216,7 +219,7 @@ impl Fetchable for Asd {
         // Send statistics
         //
         let stats = Stats {
-            tm: Utc::now().timestamp() as u64,
+            tm: Timestamp::now().as_second() as u64,
             pkts: data.len() as u32,
             bytes: resp.len() as u64,
             ..Default::default()
@@ -261,15 +264,18 @@ fn into_timestamp(col: &Column) -> Column {
         .into_column()
 }
 
+fn epoch_timestamp() -> Timestamp {
+    Timestamp::from_second(0).unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
 
     #[test]
     fn test_clean_asd_data() {
-        let start_time = Utc.with_ymd_and_hms(2023, 10, 1, 10, 0, 0).unwrap();
-        let end_time = Utc.with_ymd_and_hms(2023, 10, 2, 12, 30, 45).unwrap();
+        let start_time: Timestamp = "2023-10-01T10:00:00Z".parse().unwrap();
+        let end_time: Timestamp = "2023-10-02T12:30:45Z".parse().unwrap();
         let data = Param {
             start_time,
             end_time,

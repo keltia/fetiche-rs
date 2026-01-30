@@ -7,10 +7,10 @@ use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::{env, vec};
 
-use chrono::{Datelike, Utc};
 use csv::{QuoteStyle, WriterBuilder};
 use eyre::Result;
 use futures_util::stream::StreamExt;
+use jiff::{tz::TimeZone, Timestamp};
 use lapin::{options::*, types::FieldTable, Connection, ConnectionProperties, Consumer};
 use polars::io::{SerReader, SerWriter};
 use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
@@ -51,7 +51,7 @@ impl Feed {
             )
             .await?;
 
-        let now = Utc::now();
+        let now = Timestamp::now().to_zoned(TimeZone::UTC);
         let fname = format!("{:4}{:02}{:02}-{name}", now.year(), now.month(), now.day());
         let fname = Path::new(&fname).with_extension("json");
 
