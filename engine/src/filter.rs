@@ -8,7 +8,7 @@
 //!       to define a syntax first.
 //!
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::{Display, Formatter};
@@ -33,8 +33,8 @@ use std::fmt::{Display, Formatter};
 /// ```rust
 /// use fetiche_engine::Filter;
 ///
-/// let begin = dateparser::parse("2023-10-01").unwrap();
-/// let end = dateparser::parse("2023-10-02").unwrap();
+/// let begin: jiff::Timestamp = "2023-10-01T00:00:00Z".parse().unwrap();
+/// let end: jiff::Timestamp = "2023-10-02T00:00:00Z".parse().unwrap();
 /// let middle = Filter::Interval { begin, end };
 /// ```
 ///
@@ -64,8 +64,10 @@ use std::fmt::{Display, Formatter};
 pub enum Filter {
     /// Date-based interval as "%Y-%m-%d %H:%M:%S"
     Interval {
-        begin: DateTime<Utc>,
-        end: DateTime<Utc>,
+        #[serde(with = "crate::time::serde_rfc3339")]
+        begin: Timestamp,
+        #[serde(with = "crate::time::serde_rfc3339")]
+        end: Timestamp,
     },
     /// Special parameter with name=value
     Keyword { name: String, value: String },
@@ -87,7 +89,7 @@ pub enum Filter {
 impl Filter {
     /// from two time points
     ///
-    pub fn interval(begin: DateTime<Utc>, end: DateTime<Utc>) -> Self {
+    pub fn interval(begin: Timestamp, end: Timestamp) -> Self {
         Filter::Interval { begin, end }
     }
 
@@ -124,8 +126,10 @@ impl Display for Filter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         #[derive(Debug, Serialize)]
         struct Minimal {
-            begin: DateTime<Utc>,
-            end: DateTime<Utc>,
+            #[serde(with = "crate::time::serde_rfc3339")]
+            begin: Timestamp,
+            #[serde(with = "crate::time::serde_rfc3339")]
+            end: Timestamp,
         }
 
         #[derive(Debug, Serialize)]
@@ -152,8 +156,8 @@ impl Display for Filter {
             Filter::None => "{}".to_owned(),
             Filter::Interval { begin, end } => {
                 let m = Minimal {
-                    begin: *begin,
-                    end: *end,
+                    begin: begin.clone(),
+                    end: end.clone(),
                 };
                 json!(m).to_string()
             }
@@ -216,8 +220,8 @@ impl From<String> for Filter {
 
 #[cfg(test)]
 mod tests {
-    use chrono::TimeZone;
     use eyre::Result;
+    use jiff::Timestamp;
     use rstest::rstest;
 
     use super::*;
@@ -268,15 +272,10 @@ mod tests {
 
     #[test]
     fn test_filter_interval_new() -> Result<()> {
-        let begin = "2022-11-11 12:34:56";
-        let end = "2022-11-30 12:34:56";
+        let begin: Timestamp = "2022-11-11T12:34:56Z".parse().unwrap();
+        let end: Timestamp = "2022-11-30T12:34:56Z".parse().unwrap();
 
-        let begin = humantime::parse_rfc3339_weak(&begin);
-        assert!(begin.is_ok());
-        let end = humantime::parse_rfc3339_weak(&end);
-        assert!(end.is_ok());
-
-        let f = Filter::interval(begin.unwrap().into(), end.unwrap().into());
+        let f = Filter::interval(begin, end);
         assert_ne!(Filter::None, f);
         println!("{}", json!(f));
         Ok(())
@@ -284,8 +283,8 @@ mod tests {
 
     #[test]
     fn test_filter_interval_to_string() -> Result<()> {
-        let begin: DateTime<Utc> = Utc.with_ymd_and_hms(2022, 11, 11, 12, 34, 56).unwrap();
-        let end: DateTime<Utc> = Utc.with_ymd_and_hms(2022, 11, 30, 12, 34, 56).unwrap();
+        let begin: Timestamp = "2022-11-11T12:34:56Z".parse().unwrap();
+        let end: Timestamp = "2022-11-30T12:34:56Z".parse().unwrap();
 
         let r = r##"{"begin":"2022-11-11T12:34:56Z","end":"2022-11-30T12:34:56Z"}"##;
 
