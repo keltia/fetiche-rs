@@ -18,9 +18,10 @@
 //! - `serde`: For serialization support.
 //! - `tracing`: For logging and instrumentation.
 //!
-use chrono::{DateTime, Datelike, Utc};
+use chrono::{DateTime, Utc};
 use eyre::Result;
 use fetiche_common::DateOpts;
+use jiff::tz::TimeZone;
 use klickhouse::{Client, QueryBuilder, RawRow, Row};
 use serde::Serialize;
 use tracing::{debug, trace};
@@ -282,7 +283,9 @@ ORDER BY
 #[tracing::instrument(skip(client))]
 pub(crate) async fn fetch_encounters_on(client: &Client, date: DateOpts) -> Result<Vec<String>> {
     let (begin, _) = DateOpts::parse(date)?;
-    let en_id_pat = format!("{:4}{:02}{:02}", begin.year(), begin.month(), begin.day());
+    let begin = begin.to_zoned(TimeZone::UTC);
+    let date = begin.date();
+    let en_id_pat = format!("{:4}{:02}{:02}", date.year(), date.month(), date.day());
 
     debug!("en_id_pat={}", en_id_pat);
     let r = format!(

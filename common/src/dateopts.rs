@@ -3,6 +3,7 @@ use std::ops::{Add, Sub};
 use chrono::{DateTime, Datelike, Days, Months, TimeDelta, TimeZone, Utc};
 use clap::Parser;
 use eyre::Report;
+use jiff::Timestamp;
 use thiserror::Error;
 use tracing::trace;
 
@@ -78,7 +79,7 @@ impl From<Report> for ErrDateOpts {
 impl DateOpts {
     /// Parse the provided `DateOpts` and return a corresponding time interval `(begin, end)`.
     ///
-    /// The returned interval will be a tuple of `DateTime<Utc>` values representing
+    /// The returned interval will be a tuple of `jiff::Timestamp` values representing
     /// the start (`begin`) and end (`end`) of the specified range.
     ///
     /// # Arguments
@@ -89,7 +90,7 @@ impl DateOpts {
     ///
     /// A `Result` containing:
     /// * `Ok((begin, end))` if the parsing succeeds, where `begin` and `end`
-    ///   are `DateTime<Utc>` values representing the range.
+    ///   are `jiff::Timestamp` values representing the range.
     /// * `Err(ErrDateOpts)` if an error occurs during parsing, such as invalid date, week number,
     ///   or month value.
     ///
@@ -105,28 +106,32 @@ impl DateOpts {
     ///
     /// Parsing "Today":
     /// ```rust
-    /// use chrono::{Utc, Datelike, TimeZone};
+    /// use jiff::{Timestamp, ToSpan};
+    /// use jiff::tz::TimeZone;
     /// use fetiche_common::DateOpts;
     ///
     /// let result = DateOpts::parse(DateOpts::Today).unwrap();
-    /// let now = Utc::now();
-    /// let today_start = Utc.ymd(now.year(), now.month(), now.day()).and_hms_opt(0, 0, 0).unwrap();
-    /// let today_end = today_start + chrono::Duration::days(1);
+    /// let now = Timestamp::now().to_zoned(TimeZone::UTC);
+    /// let begin = result.0.to_zoned(TimeZone::UTC);
+    /// let end = result.1.to_zoned(TimeZone::UTC);
     ///
-    /// assert_eq!(result, (today_start, today_end));
+    /// assert_eq!(begin.date(), now.date());
+    /// assert_eq!(result.1, result.0.checked_add(24.hours()).unwrap());
     /// ```
     ///
     /// Parsing "Yesterday":
     /// ```rust
-    /// use chrono::{Utc, Datelike, Duration, TimeZone};
+    /// use jiff::{Timestamp, ToSpan};
+    /// use jiff::tz::TimeZone;
     /// use fetiche_common::DateOpts;
     ///
     /// let result = DateOpts::parse(DateOpts::Yesterday).unwrap();
-    /// let now = Utc::now();
-    /// let yesterday_start = Utc.ymd(now.year(), now.month(), now.day()).and_hms_opt(0, 0, 0).unwrap() - Duration::days(1);
-    /// let yesterday_end = yesterday_start + Duration::days(1);
+    /// let now = Timestamp::now().to_zoned(TimeZone::UTC);
+    /// let begin = result.0.to_zoned(TimeZone::UTC);
+    /// let end = result.1.to_zoned(TimeZone::UTC);
     ///
-    /// assert_eq!(result, (yesterday_start, yesterday_end));
+    /// assert_eq!(begin.date(), now.date().checked_sub(1.days()).unwrap());
+    /// assert_eq!(end.date(), now.date());
     /// ```
     ///
     /// Parsing a specific date:
@@ -137,14 +142,16 @@ impl DateOpts {
     /// let result = DateOpts::parse(DateOpts::Day { date: date.into() }).unwrap();
     ///
     /// // Verify the parsed date range.
-    /// let begin = dateparser::parse("2023-10-01 00:00:00 UTC").unwrap();
-    /// let expected_end = begin + chrono::Duration::days(1);
+    /// use jiff::Timestamp;
+    ///
+    /// let begin: Timestamp = "2023-10-01T00:00:00Z".parse().unwrap();
+    /// let expected_end: Timestamp = "2023-10-02T00:00:00Z".parse().unwrap();
     ///
     /// assert_eq!(result, (begin, expected_end));
     /// ```
     ///
     #[tracing::instrument]
-    pub fn parse(opts: Self) -> Result<(DateTime<Utc>, DateTime<Utc>), ErrDateOpts> {
+    pub fn parse(opts: Self) -> Result<(Timestamp, Timestamp), ErrDateOpts> {
         Ok(match opts {
             DateOpts::Today => {
                 trace!("got today true");
@@ -152,7 +159,7 @@ impl DateOpts {
                 let begin = normalise_day(today)?;
                 let end = begin.add(Days::new(1));
                 trace!("today gives from {} to {}", begin, end);
-                (begin, end)
+                (to_timestamp(begin)?, to_timestamp(end)?)
             }
             DateOpts::Yesterday => {
                 trace!("got yesterday true");
@@ -161,7 +168,7 @@ impl DateOpts {
                 let begin = normalise_day(yest)?;
                 let end = normalise_day(today)?;
                 trace!("yesterday gives from {} to {}", begin, end);
-                (begin, end)
+                (to_timestamp(begin)?, to_timestamp(end)?)
             }
             DateOpts::Day { date } => {
                 trace!("Got day {}", date);
@@ -172,7 +179,7 @@ impl DateOpts {
                 let begin = normalise_day(begin)?;
                 let end = begin.add(Days::new(1));
                 trace!("this day={} gives from {} to {}", date, begin, end);
-                (begin, end)
+                (to_timestamp(begin)?, to_timestamp(end)?)
             }
             DateOpts::Week { num } => {
                 trace!("Got week {}", num);
@@ -187,7 +194,7 @@ impl DateOpts {
                     .unwrap();
                 let end = begin.add(Days::new(7));
                 trace!("week={} is from {} to {}", num, begin, end);
-                (begin, end)
+                (to_timestamp(begin)?, to_timestamp(end)?)
             }
             DateOpts::From { begin, end } => {
                 trace!("Got from {} to {}", begin, end);
@@ -203,7 +210,7 @@ impl DateOpts {
                 let end = normalise_day(end)?;
 
                 trace!("begin={} end={}", begin, end);
-                (begin, end)
+                (to_timestamp(begin)?, to_timestamp(end)?)
             }
             DateOpts::Month { num } => {
                 let now = Utc::now();
@@ -215,16 +222,25 @@ impl DateOpts {
                 let end: DateTime<Utc> = begin.add(Months::new(1));
 
                 trace!("begin={} end={}", begin, end);
-                (begin, end)
+                (to_timestamp(begin)?, to_timestamp(end)?)
             }
         })
     }
+}
+
+#[inline]
+fn to_timestamp(dt: DateTime<Utc>) -> Result<Timestamp, ErrDateOpts> {
+    Timestamp::from_second(dt.timestamp()).map_err(|e| ErrDateOpts::BadDate(e.to_string()))
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use test_pretty_log::test;
+
+    fn to_ts(dt: DateTime<Utc>) -> Timestamp {
+        Timestamp::from_second(dt.timestamp()).unwrap()
+    }
 
     #[test]
     fn test_dateopts_parse_today() -> eyre::Result<()> {
@@ -239,8 +255,8 @@ mod test {
             .unwrap();
         let expected_end = expected_begin + chrono::Duration::days(1);
 
-        assert_eq!(begin, expected_begin);
-        assert_eq!(end, expected_end);
+        assert_eq!(begin, to_ts(expected_begin));
+        assert_eq!(end, to_ts(expected_end));
 
         Ok(())
     }
@@ -259,8 +275,8 @@ mod test {
             - chrono::Duration::days(1);
         let expected_end = expected_begin + chrono::Duration::days(1);
 
-        assert_eq!(begin, expected_begin);
-        assert_eq!(end, expected_end);
+        assert_eq!(begin, to_ts(expected_begin));
+        assert_eq!(end, to_ts(expected_end));
 
         Ok(())
     }
@@ -277,8 +293,8 @@ mod test {
         let expected_begin = dateparser::parse("2023-10-15 00:00:00 UTC").unwrap();
         let expected_end = expected_begin + chrono::Duration::days(1);
 
-        assert_eq!(begin, expected_begin);
-        assert_eq!(end, expected_end);
+        assert_eq!(begin, to_ts(expected_begin));
+        assert_eq!(end, to_ts(expected_end));
 
         Ok(())
     }
@@ -310,8 +326,8 @@ mod test {
         let expected_begin = year_begin + chrono::Duration::weeks(4); // Week 5 starts at the 5th week
         let expected_end = expected_begin + chrono::Duration::days(7);
 
-        assert_eq!(begin, expected_begin);
-        assert_eq!(end, expected_end);
+        assert_eq!(begin, to_ts(expected_begin));
+        assert_eq!(end, to_ts(expected_end));
 
         Ok(())
     }
@@ -340,8 +356,8 @@ mod test {
         let expected_begin = Utc.with_ymd_and_hms(now.year(), 3, 1, 0, 0, 0).unwrap();
         let expected_end = Utc.with_ymd_and_hms(now.year(), 4, 1, 0, 0, 0).unwrap();
 
-        assert_eq!(begin, expected_begin);
-        assert_eq!(end, expected_end);
+        assert_eq!(begin, to_ts(expected_begin));
+        assert_eq!(end, to_ts(expected_end));
 
         Ok(())
     }
@@ -369,8 +385,14 @@ mod test {
 
         assert!(r.is_ok());
         let (b, e) = r.unwrap();
-        assert_eq!(dateparser::parse("2022-06-14 00:00:00 UTC").unwrap(), b);
-        assert_eq!(dateparser::parse("2023-02-28 00:00:00 UTC").unwrap(), e);
+        assert_eq!(
+            to_ts(dateparser::parse("2022-06-14 00:00:00 UTC").unwrap()),
+            b
+        );
+        assert_eq!(
+            to_ts(dateparser::parse("2023-02-28 00:00:00 UTC").unwrap()),
+            e
+        );
         Ok(())
     }
 }

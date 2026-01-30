@@ -8,7 +8,7 @@ use std::env;
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use derive_builder::Builder;
-use eyre::Result;
+use eyre::{eyre, Result};
 use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
@@ -559,6 +559,8 @@ async fn calculate_one_day_on_site(
 fn parse_date_interval(date_opts: DateOpts) -> Result<(DateTime<Utc>, DateTime<Utc>)> {
     match DateOpts::parse(date_opts) {
         Ok((start, stop)) => {
+            let start = timestamp_to_chrono(start)?;
+            let stop = timestamp_to_chrono(stop)?;
             info!("Interval: from {} to {}", start, stop);
             Ok((start, stop))
         }
@@ -569,6 +571,11 @@ fn parse_date_interval(date_opts: DateOpts) -> Result<(DateTime<Utc>, DateTime<U
             Ok((tm, tm))
         }
     }
+}
+
+fn timestamp_to_chrono(ts: jiff::Timestamp) -> Result<DateTime<Utc>> {
+    DateTime::<Utc>::from_timestamp(ts.as_second(), 0)
+        .ok_or_else(|| eyre!("timestamp out of range: {ts}"))
 }
 
 #[cfg(test)]
