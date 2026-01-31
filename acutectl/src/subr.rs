@@ -11,7 +11,6 @@ use tracing::{error, info};
 ///
 /// FIXME: using /tmp by default sucks.
 ///
-#[cfg(unix)]
 #[tracing::instrument]
 pub fn start_daemon(base: &str, workdir: &PathBuf) -> eyre::Result<()> {
     let stdout = File::create(format!("/tmp/{}.out", base))?;

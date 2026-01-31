@@ -12,10 +12,12 @@
 pub use cli::*;
 pub use cmds::*;
 pub use error::*;
+#[cfg(unix)]
 pub use subr::*;
 
 
 mod cli;
 mod cmds;
 mod error;
+#[cfg(unix)]
 mod subr;
