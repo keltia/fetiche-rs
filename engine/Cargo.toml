@@ -76,13 +76,13 @@ base64_light = "0.1"
 derive_builder = "0.20"
 enum_dispatch = "0.3"
 humantime = "2.3"
-lapin = { version = "3.4", features = ["native-tls"] }
+lapin = { version = "3.7", features = ["native-tls"] }
 mini-moka = "0.10"
 native-tls = "0.2"
 percent-encoding = "2.3"
 futures-util = "0.3"
 tokio-native-tls = "0.3"
-regex = "1.12.2"
+regex = "1.12"
 
 [dev-dependencies]
 criterion.workspace = true
