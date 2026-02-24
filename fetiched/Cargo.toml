@@ -37,7 +37,7 @@ actix = "0.13"
 actix-rt = "2.10"
 actix-storage = { version = "0.3", features = ["serde", "serde-json", "serde-cbor"] }
 actix-storage-dashmap = { version = "0.3", features = ["actor", "delay-queue"] }
-parquet = { version = "53.0", features = ["json", "async", "cli"] }
+parquet = { version = "58.0", features = ["json", "async", "cli"] }
 
 [target.'cfg(unix)'.dependencies]
 daemonize = "0.5"
