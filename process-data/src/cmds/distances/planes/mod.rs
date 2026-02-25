@@ -10,7 +10,7 @@ use eyre::{eyre, Result};
 use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
-use rand::rng;
+use rand::{rng, RngExt};
 use std::env;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -505,7 +505,7 @@ async fn calculate_one_day_on_site(
     } else {
         trace!("dry run!");
         let mut rng = rng();
-        let _ = sleep(Duration::from_secs(rng.gen_range(1..=5)));
+        let _ = sleep(Duration::from_secs(rng.random_range(1..=5)));
         Stats::Planes(PlanesStats::default())
     };
     pbar.finish_and_clear();
