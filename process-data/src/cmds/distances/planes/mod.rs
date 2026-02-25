@@ -3,8 +3,6 @@
 //! XXX be extra careful when dealing with degrees, meters and nautical miles.
 //!
 
-use std::env;
-
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use derive_builder::Builder;
@@ -12,6 +10,10 @@ use eyre::{eyre, Result};
 use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
+use rand::rng;
+use std::env;
+use std::time::Duration;
+use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
@@ -252,7 +254,6 @@ async fn prepare_work_list(
     dates: Vec<DateTime<Utc>>,
     site_filter: &str,
 ) -> Result<Vec<WorkItem>> {
-
     // Let us generate the list we want:
     //
     // if there is only one site we want then
@@ -311,7 +312,8 @@ async fn prepare_work_list(
                     // Process all sites
                     //
                     let list = enumerate_sites(&dbh, day).await.unwrap();
-                    let list: Vec<_> = list.iter()
+                    let list: Vec<_> = list
+                        .iter()
                         .map(|site| {
                             WorkItemBuilder::default()
                                 .site(site.clone())
@@ -321,7 +323,8 @@ async fn prepare_work_list(
                                 .factor(factor)
                                 .build()
                                 .unwrap()
-                        }).collect();
+                        })
+                        .collect();
                     list
                 }
             }
@@ -372,19 +375,15 @@ async fn prepare_work_list(
 /// are processed sequentially to avoid overloading the task scheduler or environment.
 ///
 #[tracing::instrument(skip(ctx))]
-async fn process_batches(
-    ctx: &Context,
-    work_list: Vec<WorkItem>,
-) -> Vec<Stats> {
-
-
+async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> {
     // Prepare progress bar
     //
     let m = MultiProgress::new();
     let sty = ProgressStyle::with_template(
         "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>7}/{len:7} {msg}",
-    ).unwrap()
-        .progress_chars("##-");
+    )
+    .unwrap()
+    .progress_chars("##-");
 
     // We have a potentially large set of day+site to compute.  Try to not batch more than out current
     // pool size
@@ -401,7 +400,10 @@ async fn process_batches(
                 let pb = pb.clone();
 
                 async move {
-                    trace!("Calculate for site {} on day {}", work_item.site, work_item.day);
+                    trace!(
+                        "Calculate for site {} on day {}",
+                        work_item.site, work_item.day
+                    );
                     let ctx = ctx.clone();
                     let work = work_item.clone();
                     let pb = pb.clone();
@@ -409,16 +411,18 @@ async fn process_batches(
                     match tokio::spawn({
                         let work = work.clone();
                         let pb = pb.clone();
-                        async move {
-                            calculate_one_day_on_site(&ctx, &work, &pb)
-                                .await
-                                .unwrap()
-                        }
+                        async move { calculate_one_day_on_site(&ctx, &work, &pb).await.unwrap() }
                     })
-                        .await {
+                    .await
+                    {
                         Ok(res) => res,
                         Err(e) => {
-                            error!("Error for day {} on {}: {}", work.day, work.site, e.to_string());
+                            error!(
+                                "Error for day {} on {}: {}",
+                                work.day,
+                                work.site,
+                                e.to_string()
+                            );
                             Stats::Planes(PlanesStats::default())
                         }
                     }
@@ -500,6 +504,8 @@ async fn calculate_one_day_on_site(
         work.run(&dbh).await?
     } else {
         trace!("dry run!");
+        let mut rng = rng();
+        let _ = sleep(Duration::from_secs(rng.gen_range(1..=5)));
         Stats::Planes(PlanesStats::default())
     };
     pbar.finish_and_clear();
@@ -566,7 +572,9 @@ fn parse_date_interval(date_opts: DateOpts) -> Result<(DateTime<Utc>, DateTime<U
         }
         Err(_) => {
             let tm = Utc::now();
-            let day = Utc.with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0).unwrap();
+            let day = Utc
+                .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
+                .unwrap();
             info!("Defaulting to current day: {}", day);
             Ok((tm, tm))
         }
@@ -591,11 +599,20 @@ mod tests {
     fn test_parse_date_interval_valid_range() {
         let start_date = "2023-10-01T00:00:00Z";
         let end_date = "2023-10-10T00:00:00Z";
-        let date_opts = DateOpts::From { begin: start_date.to_string(), end: end_date.to_string() };
+        let date_opts = DateOpts::From {
+            begin: start_date.to_string(),
+            end: end_date.to_string(),
+        };
 
         let result = parse_date_interval(date_opts).unwrap();
-        assert_eq!(result.0, Utc.with_ymd_and_hms(2023, 10, 1, 0, 0, 0).unwrap());
-        assert_eq!(result.1, Utc.with_ymd_and_hms(2023, 10, 10, 0, 0, 0).unwrap());
+        assert_eq!(
+            result.0,
+            Utc.with_ymd_and_hms(2023, 10, 1, 0, 0, 0).unwrap()
+        );
+        assert_eq!(
+            result.1,
+            Utc.with_ymd_and_hms(2023, 10, 10, 0, 0, 0).unwrap()
+        );
     }
 
     #[test]
