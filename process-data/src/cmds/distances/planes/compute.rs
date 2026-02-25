@@ -749,13 +749,18 @@ impl Calculate for PlaneDistance {
     #[tracing::instrument(skip(self, dbh))]
     async fn run(&mut self, dbh: &Client) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
-        let bar = ProgressBar::new(4);
+        let bar = self
+            .progress
+            .clone()
+            .unwrap_or_else(|| ProgressBar::new(4));
+        bar.set_length(4);
         let style = ProgressStyle::with_template(
             "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>2}/{len:2} {msg}",
         )
         .unwrap()
         .progress_chars("##-");
         bar.set_style(style);
+        bar.enable_steady_tick(Duration::from_millis(100));
 
         // Create our stat struct
         //
@@ -775,7 +780,7 @@ impl Calculate for PlaneDistance {
         if c_planes == 0 {
             stats.time = (Instant::now() - start).as_millis();
             bar.set_message("No planes found.");
-            bar.finish();
+            bar.finish_and_clear();
             self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
@@ -794,7 +799,7 @@ impl Calculate for PlaneDistance {
         if c_drones == 0 {
             stats.time = (Instant::now() - start).as_millis();
             bar.set_message("No drones found.");
-            bar.finish();
+            bar.finish_and_clear();
             self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
@@ -813,7 +818,7 @@ impl Calculate for PlaneDistance {
         if c_potential == 0 {
             stats.time = (Instant::now() - start).as_millis();
             bar.set_message("No potential airprox found.");
-            bar.finish();
+            bar.finish_and_clear();
             self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
@@ -832,7 +837,7 @@ impl Calculate for PlaneDistance {
         stats.time = (Instant::now() - start).as_millis();
         if c_encounters == 0 {
             bar.set_message("No close encounters of any kind found.");
-            bar.finish();
+            bar.finish_and_clear();
             self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
@@ -842,7 +847,7 @@ impl Calculate for PlaneDistance {
 
         info!("Stats for {}\n{}", self.date, stats);
         bar.set_message("Done.");
-        bar.finish();
+        bar.finish_and_clear();
 
         self.cleanup_temp_tables(dbh).await?;
 

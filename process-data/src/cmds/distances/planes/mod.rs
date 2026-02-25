@@ -120,9 +120,9 @@ pub struct PlaneDistance {
     /// List of temporary tables created along the way, for cleanup.
     #[builder(default = "vec![]")]
     state: Vec<TempTables>,
-    /// Multi-progress bar for tracking progress
+    /// Progress bar for tracking progress
     #[builder(default = "None")]
-    pub progress: Option<MultiProgress>,
+    pub progress: Option<ProgressBar>,
 }
 
 /// Temporary tables created during the processing of distance calculations.
@@ -379,11 +379,9 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
     // Prepare progress bar
     //
     let m = MultiProgress::new();
-    let sty = ProgressStyle::with_template(
-        "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>7}/{len:7} {msg}",
-    )
-    .unwrap()
-    .progress_chars("##-");
+    let sty = ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] {msg}")
+        .unwrap()
+        .progress_chars("##-");
 
     // We have a potentially large set of day+site to compute.  Try to not batch more than out current
     // pool size
@@ -391,15 +389,13 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
     let mut all = vec![];
     for batch in &work_list.into_iter().chunks(ctx.pool_size) {
         let batch: Vec<WorkItem> = batch.collect();
-        let pb = ProgressBar::new(batch.len() as u64);
-        pb.set_style(sty.clone());
-        pb.set_message("Processing batch");
-        m.add(pb.clone());
 
         let stats: Vec<_> = batch
             .into_iter()
             .map(|work_item: WorkItem| {
-                let pb = pb.clone();
+                let pb = m.add(ProgressBar::new_spinner());
+                pb.set_style(sty.clone());
+                pb.enable_steady_tick(Duration::from_millis(100));
 
                 async move {
                     trace!(
@@ -428,7 +424,7 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                             Stats::Planes(PlanesStats::default())
                         }
                     };
-                    pb.inc(1);
+                    pb.finish_and_clear();
                     res
                 }
             })
@@ -500,6 +496,7 @@ async fn calculate_one_day_on_site(
         .threshold(work.threshold)
         .factor(work.factor)
         .wait(ctx.wait)
+        .progress(Some(pbar.clone()))
         .build()?;
 
     trace!("worklist for {:?} on {}: {:?}", work.site.name, day, work);
@@ -512,7 +509,6 @@ async fn calculate_one_day_on_site(
         let _ = sleep(Duration::from_secs(rng.random_range(1..=5)));
         Stats::Planes(PlanesStats::default())
     };
-    pbar.finish_and_clear();
     Ok(stats)
 }
 
