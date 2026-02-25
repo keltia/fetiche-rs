@@ -390,8 +390,10 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
     //
     let mut all = vec![];
     for batch in &work_list.into_iter().chunks(ctx.pool_size) {
-        let pb = ProgressBar::new(40);
+        let batch: Vec<WorkItem> = batch.collect();
+        let pb = ProgressBar::new(batch.len() as u64);
         pb.set_style(sty.clone());
+        pb.set_message("Processing batch");
         m.add(pb.clone());
 
         let stats: Vec<_> = batch
@@ -408,7 +410,7 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                     let work = work_item.clone();
                     let pb = pb.clone();
 
-                    match tokio::spawn({
+                    let res = match tokio::spawn({
                         let work = work.clone();
                         let pb = pb.clone();
                         async move { calculate_one_day_on_site(&ctx, &work, &pb).await.unwrap() }
@@ -425,7 +427,9 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                             );
                             Stats::Planes(PlanesStats::default())
                         }
-                    }
+                    };
+                    pb.inc(1);
+                    res
                 }
             })
             .collect();
