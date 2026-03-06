@@ -16,7 +16,6 @@ use klickhouse::Client;
 use tracing::info;
 
 pub use acute::*;
-pub use airport::*;
 pub use check::*;
 pub use distances::*;
 pub use error::*;
@@ -30,7 +29,6 @@ use crate::cli::{Opts, SubCommand};
 use crate::runtime::Context;
 
 mod acute;
-mod airport;
 mod check;
 mod distances;
 mod error;

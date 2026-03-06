@@ -10,10 +10,7 @@ use geo::coord;
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tabled::{
-    settings::Style,
-    Table, Tabled,
-};
+use tabled::{settings::Style, Table, Tabled};
 use tracing::trace;
 
 use crate::runtime::Context;
@@ -161,9 +158,11 @@ ORDER BY start_at ASC
             //
             let home = coord! {x: 48.600052, y:2.347038};
 
-            // Fetch sites
-            //
-            let r = r##"
+            match &opts.subcmd {
+                SitesSubCommand::List => {
+                    // Fetch sites
+                    //
+                    let r = r##"
 SELECT
   id,
   name,
@@ -180,22 +179,26 @@ FROM
 ORDER BY
   id
     "##;
-            let q = QueryBuilder::new(r).arg(home.y).arg(home.x);
-            let res = dbh.query_collect::<Site>(q).await?;
+                    let q = QueryBuilder::new(r).arg(home.y).arg(home.x);
+                    let res = dbh.query_collect::<Site>(q).await?;
 
-            println!("Listing all sites:");
-            let res = if opts.table {
-                let mut table = Table::new(res.as_slice());
-                table.with(Style::sharp());
-                table.to_string()
-            } else {
-                json!(res).to_string()
-            };
+                    println!("Listing all sites:");
+                    let res = if opts.table {
+                        let mut table = Table::new(res.as_slice());
+                        table.with(Style::sharp());
+                        table.to_string()
+                    } else {
+                        json!(res).to_string()
+                    };
 
-            println!("{res}");
+                    println!("{res}");
+                }
+                SitesSubCommand::Add(_opts) => todo!(),
+                SitesSubCommand::Modify => todo!(),
+                SitesSubCommand::Remove => todo!(),
+            }
         }
     }
 
     Ok(())
 }
-
