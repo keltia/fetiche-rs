@@ -216,6 +216,12 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
         return Err(Status::NoDatabase(def).into());
     }
 
+    // We need the airports parquet file
+    //
+    if cfg.airports.is_none() {
+        return Err(Status::MissingAirportsFile(def).into());
+    }
+
     // Get some sane values
     //
     let database = match &opts.database {
@@ -258,7 +264,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ..Default::default()
         },
     )
-        .await?;
+    .await?;
 
     let pool_size = opts.pool_size;
     let pool = bb8::Pool::builder()
@@ -279,12 +285,13 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ("url".to_string(), endpoint.clone()),
             ("database".to_string(), name.clone()),
             ("datalake".to_string(), datalake.clone()),
+            ("airports".to_string(), cfg.airports.clone().unwrap()),
             ("username".to_string(), user.clone()),
             ("threshold".to_string(), threshold.to_string()),
             ("factor".to_string(), factor.to_string()),
             ("distance".to_string(), plane.to_string()),
         ])
-            .into(),
+        .into(),
         dbh: pool.clone(),
         pool_size,
         wait: opts.wait,
@@ -300,4 +307,3 @@ pub fn finish_runtime(_ctx: &Context) -> eyre::Result<()> {
     close_logging();
     Ok(())
 }
-

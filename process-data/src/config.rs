@@ -44,6 +44,7 @@ pub const CVERSION: usize = 4;
 /// version = 4
 ///
 /// datalake = "/path/to/datalake"
+/// airports = "/path/to/airports.parquet"
 ///
 /// db {
 ///     database = "example_db"
@@ -59,11 +60,13 @@ pub const CVERSION: usize = 4;
 /// }
 /// ```
 ///
-#[into_configfile(version = 3, filename = "proces-data.hcl")]
+#[into_configfile(version = 4, filename = "proces-data.hcl")]
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ProcessConfig {
     /// Directory holding the parquet files for the datalake.
     pub datalake: Option<String>,
+    /// Path to the "airports.parquet" file.
+    pub airports: Option<String>,
     /// Section for database parameters.
     pub db: Database,
     /// Section for calculations on distances.

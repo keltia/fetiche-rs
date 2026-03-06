@@ -17,4 +17,6 @@ pub enum Status {
     MissingConfig(String),
     #[error("Error reading configuration({0})")]
     MissingConfigParameter(String),
+    #[error("Missing airports file {0}")]
+    MissingAirportsFile(String),
 }
