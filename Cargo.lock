@@ -3728,6 +3728,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "find-airport"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "criterion 0.8.2",
+ "eyre",
+ "fetiche-common",
+ "fetiche-macros",
+ "itertools 0.14.0",
+ "polars",
+ "reqwest 0.13.2",
+ "rstest",
+ "serde",
+ "tabled",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6771,7 +6792,6 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
- "tzf-rs",
 ]
 
 [[package]]
