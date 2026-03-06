@@ -114,7 +114,7 @@ fn airports_from_df(df: &DataFrame) -> PolarsResult<Vec<Airport>> {
 /// This function is compatible with Polars 0.52 and older versions.
 ///
 #[tracing::instrument]
-pub fn find_airport(ctx: Context, name: &str) -> Result<Vec<Airport>> {
+pub fn find_airport(ctx: &Context, name: &str) -> Result<Vec<Airport>> {
     let fname = ctx.config["airports"].clone();
     let fname = PlPath::from_str(&fname);
 
