@@ -56,13 +56,13 @@ geo = "0.32"
 indicatif = "0.18"
 klickhouse = { version = "0.14", features = ["derive", "geo-types", "serde", "bb8"] }
 kml = "0.13"
-ml-progress = "0.1"
 rand = "0.10"
 rust-3d = "0.34"
 regex = "1.12"
 
 [dev-dependencies]
 criterion.workspace = true
+rstest = "0.26"
 
 [target.'cfg(unix)'.dependencies]
 pprof = { version = "0.15", features = ["criterion", "flamegraph"] }
