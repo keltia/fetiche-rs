@@ -81,6 +81,6 @@ proptest.workspace = true
 rstest.workspace = true
 
 divan = "0.1"
-rand = "0.9"
+rand = "0.10"
 test-pretty-log = "0.6"
 uuid = { version = "1.17", features = ["serde", "v7"] }

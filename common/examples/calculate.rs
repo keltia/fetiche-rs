@@ -1,6 +1,6 @@
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
-use rand::Rng;
+use rand::RngExt;
 use std::fmt::Debug;
 
 /// This trait defines an object that can be calculated
