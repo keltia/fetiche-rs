@@ -5,7 +5,7 @@ exclude = ["opensky-history"]
 resolver = "2"
 
 [workspace.dependencies]
-chrono = { version = "0.4.42", features = ["serde", "std", "rkyv-32", "rkyv-validation"] }
+chrono = { version = "0.4.41", features = ["serde", "std", "rkyv-32", "rkyv-validation"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 criterion = { version = "0.8", features = ["async", "async_tokio", "async_futures"] }
 csv = "1.3"
