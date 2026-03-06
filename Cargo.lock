@@ -1809,7 +1809,7 @@ dependencies = [
  "anstyle",
  "clap_lex",
  "strsim",
- "terminal_size 0.4.3",
+ "terminal_size",
 ]
 
 [[package]]
@@ -3594,6 +3594,7 @@ dependencies = [
  "fetiche-macros",
  "hcl-rs",
  "humantime",
+ "itertools 0.14.0",
  "jiff",
  "opentelemetry",
  "opentelemetry-otlp",
@@ -4036,6 +4037,12 @@ checksum = "c5a7f08910fd98737a6eda7568e7c5e645093e073328eeef49758cfe8b0489c7"
 dependencies = [
  "libm",
 ]
+
+[[package]]
+name = "geometry-rs"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8a0b4dc167f84f57bd3744e8a87efead6abb3fa1cebd25b49920c5088d41330"
 
 [[package]]
 name = "getrandom"
@@ -5224,15 +5231,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ml-progress"
-version = "0.1.0"
+name = "multimap"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78fe99ae1d313e32355ad992482eba8cee77858de3bf6415b194c4d4df41bc13"
-dependencies = [
- "parking_lot",
- "readme-rustdocifier",
- "terminal_size 0.1.17",
-]
+checksum = "1d87ecb2933e8aeadb3e3a02b828fed80a7528047e68b4f424523a0981a3a084"
 
 [[package]]
 name = "munge"
@@ -6743,7 +6745,6 @@ dependencies = [
  "clap_complete",
  "colorsys",
  "criterion 0.8.2",
- "csv",
  "dateparser",
  "derive_builder",
  "eyre",
@@ -6756,11 +6757,11 @@ dependencies = [
  "jiff",
  "klickhouse",
  "kml",
- "ml-progress",
  "polars",
  "pprof",
  "rand 0.10.0",
  "regex",
+ "rstest",
  "rust-3d",
  "serde",
  "serde_json",
@@ -6770,6 +6771,7 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "tzf-rs",
 ]
 
 [[package]]
@@ -6799,6 +6801,25 @@ checksum = "d2ea70524a2f82d518bce41317d0fae74151505651af45faf1ffbd6fd33f0568"
 dependencies = [
  "bytes",
  "prost-derive",
+]
+
+[[package]]
+name = "prost-build"
+version = "0.14.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "343d3bd7056eda839b03204e68deff7d1b13aba7af2b2fd16890697274262ee7"
+dependencies = [
+ "heck",
+ "itertools 0.14.0",
+ "log",
+ "multimap",
+ "petgraph",
+ "prettyplease",
+ "prost",
+ "prost-types",
+ "regex",
+ "syn 2.0.117",
+ "tempfile",
 ]
 
 [[package]]
@@ -7188,12 +7209,6 @@ dependencies = [
  "futures-core",
  "futures-io",
 ]
-
-[[package]]
-name = "readme-rustdocifier"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08ad765b21a08b1a8e5cdce052719188a23772bcbefb3c439f0baaf62c56ceac"
 
 [[package]]
 name = "recursive"
@@ -8478,16 +8493,6 @@ dependencies = [
 
 [[package]]
 name = "terminal_size"
-version = "0.1.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
-dependencies = [
- "libc",
- "winapi",
-]
-
-[[package]]
-name = "terminal_size"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60b8cb979cb11c32ce1603f8137b22262a9d131aaa5c37b5678025f22b8becd0"
@@ -9018,6 +9023,27 @@ name = "typenum"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
+
+[[package]]
+name = "tzf-rel"
+version = "0.0.2025-c"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43ecf4f6cd5b2e02a0a7765f05c3a68c0897549c952a906d693b30df316879d8"
+
+[[package]]
+name = "tzf-rs"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1a26f626d94ee507ce69a3ee5d4009e96f3847d028b98705c610b0fcbadb462"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "clap",
+ "geometry-rs",
+ "prost",
+ "prost-build",
+ "tzf-rel",
+]
 
 [[package]]
 name = "unarray"

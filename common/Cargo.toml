@@ -49,6 +49,7 @@ directories.workspace = true
 eyre.workspace = true
 fetiche-macros.workspace = true
 hcl-rs.workspace = true
+itertools.workspace = true
 jiff.workspace = true
 polars.workspace = true
 ractor.workspace = true
