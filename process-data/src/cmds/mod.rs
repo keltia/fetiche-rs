@@ -3,7 +3,7 @@
 //! This module contains implementations of various commands for data processing:
 //! - Distance calculations between drones and planes
 //! - Data export functionality for distances, drones and encounters
-//! - Environment setup and cleanup 
+//! - Environment setup and cleanup
 //! - Status checking and bootstrapping
 //!
 //! The module provides trait `Calculate` that defines calculation interface
@@ -16,6 +16,7 @@ use klickhouse::Client;
 use tracing::info;
 
 pub use acute::*;
+pub use airport::*;
 pub use check::*;
 pub use distances::*;
 pub use error::*;
@@ -29,6 +30,7 @@ use crate::cli::{Opts, SubCommand};
 use crate::runtime::Context;
 
 mod acute;
+mod airport;
 mod check;
 mod distances;
 mod error;
