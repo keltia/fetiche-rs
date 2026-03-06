@@ -10,6 +10,7 @@
 //!
 use eyre::Result;
 use itertools::izip;
+use pluscodes::Coordinate;
 use polars::error::PolarsResult;
 use polars::frame::DataFrame;
 use polars::prelude::*;
@@ -41,6 +42,8 @@ pub struct Airport {
     pub timezone: String,
     /// UTC offset in hours
     pub offset: i32,
+    /// Pluscode for the given coordinates
+    pub pluscode: String,
 }
 
 /// Converts a Polars DataFrame into a vector of Airport structures.
@@ -76,8 +79,10 @@ fn airports_from_df(df: &DataFrame) -> PolarsResult<Vec<Airport>> {
         iata.into_iter(),
     )
     .map(|(ident, name, lat, lon, elev, iata)| {
+        // Calculate some more data for the struct
+        //
         let tzd = find_tz(lat.unwrap(), lon.unwrap()).unwrap();
-
+        let pluscode = compute_pluscode(lat.unwrap(), lon.unwrap()).unwrap();
         Airport {
             ident: ident.unwrap().to_string(),
             name: name.unwrap().to_string(),
@@ -87,6 +92,7 @@ fn airports_from_df(df: &DataFrame) -> PolarsResult<Vec<Airport>> {
             iata_code: iata.unwrap().to_string(),
             timezone: tzd.tzname,
             offset: tzd.offset / 3600,
+            pluscode,
         }
     })
     .collect();
@@ -115,7 +121,7 @@ fn airports_from_df(df: &DataFrame) -> PolarsResult<Vec<Airport>> {
 ///
 #[tracing::instrument]
 pub fn find_airport(ctx: &Context, name: &str) -> Result<Vec<Airport>> {
-    let fname = ctx.config["airports"].clone();
+    let fname = ctx.cfg["airports"].clone();
     let fname = PlPath::from_str(&fname);
 
     let lf = LazyFrame::scan_parquet(fname, Default::default())?
@@ -141,6 +147,18 @@ pub fn find_airport(ctx: &Context, name: &str) -> Result<Vec<Airport>> {
     // let airports: Vec<Airport> = lf.deserialize()?;
     let airports = airports_from_df(&lf)?;
     Ok(airports)
+}
+
+const DEF_LENGTH: usize = 8;
+
+#[tracing::instrument]
+fn compute_pluscode(latitude: f64, longitude: f64) -> Result<String> {
+    let coord = Coordinate {
+        latitude,
+        longitude,
+    };
+    let pluscode = pluscodes::encode(&coord, DEF_LENGTH)?;
+    Ok(pluscode)
 }
 
 #[cfg(test)]

@@ -1,0 +1,42 @@
+[package]
+name = "find-airport"
+version = "0.1.0"
+edition = "2024"
+authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
+description = "Fetch OurAirports data into Parquet, and search it."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/keltia/fetiche-rs"
+categories = ["aerospace", "command-line-utilities"]
+keywords = ["opendata", "airport", "aeronautical-data"]
+publish = false
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap.workspace = true
+eyre.workspace = true
+fetiche-common.workspace = true
+fetiche-macros.workspace = true
+itertools.workspace = true
+polars.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+tabled.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+pluscodes = "0.5"
+
+[dev-dependencies]
+criterion = { version = "0.8", features = ["async", "async_tokio"] }
+rstest.workspace = true
