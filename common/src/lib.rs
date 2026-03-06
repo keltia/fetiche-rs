@@ -1,16 +1,12 @@
 //! This library is there to share some common code amongst all fetiche modules.
 //!
-
-use chrono::{DateTime, Datelike, TimeZone, Utc};
-use clap::{crate_name, crate_version};
 pub use config::*;
 pub use container::*;
 pub use dateopts::*;
 pub use daterange::*;
-use eyre::Result;
-use jiff::{RoundMode, Unit, ZonedRound};
 pub use location::*;
 pub use logging::*;
+pub use tz::*;
 
 mod config;
 mod container;
@@ -19,6 +15,12 @@ mod daterange;
 mod location;
 mod logging;
 mod macros;
+mod tz;
+
+use chrono::{DateTime, Datelike, TimeZone, Utc};
+use clap::{crate_name, crate_version};
+use eyre::Result;
+use jiff::{RoundMode, Unit, ZonedRound};
 
 const NAME: &str = crate_name!();
 const VERSION: &str = crate_version!();
@@ -123,7 +125,6 @@ pub fn normalise_day_jiff(date: jiff::Zoned) -> Result<jiff::Zoned> {
     let date = date.round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Trunc))?;
     Ok(date)
 }
-
 
 #[cfg(test)]
 mod tests {
