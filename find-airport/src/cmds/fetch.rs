@@ -38,76 +38,132 @@ pub async fn fetch(ctx: &Context) -> Result<usize> {
     dbg!(&ctx.cfg);
     // Get our filenames
     //
-    let fname = ctx.cfg["file"].clone();
-    let basename = Path::new(&fname)
-        .file_stem()
-        .unwrap()
-        .to_str()
-        .unwrap();
+    let srcs = ctx.cfg["sources"].clone();
 
-    // Check current file mtime (if it exists)
+    // Check the current file mtime (if it exists)
     //
     let target_dir = Path::new(&ctx.cfg["datalake"]).join("files");
+
     // Let us move into the final destination
     //
     set_current_dir(&target_dir)?;
 
-    let current = target_dir.join(&fname)
-        .with_extension("parquet");
-    info!("Looking for file: {:?}", current);
+    // Check and update if necessary each file in the list
+    //
+    let list: Vec<_> = srcs
+        .split(",")
+        .map(|fname| {
+            let base_url = base_url.clone();
+
+            async move {
+                let current = match fetch_one(&base_url, fname).await {
+                    Ok(work) => work,
+                    Err(e) => {
+                        warn!("error={}", e.to_string());
+                        return Work::default();
+                    }
+                };
+
+                // Now look at the file we got
+                //
+                let current_st = match fs::metadata(&current.name).await {
+                    Ok(st) => st,
+                    Err(e) => {
+                        warn!("error={}", e.to_string());
+                        return Work::default();
+                    }
+                };
+                let mtime = current_st.modified().unwrap();
+                info!("size={}, mtime={:?}", current_st.len(), mtime);
+
+                let bytes = match read_parquet_size(&current.name).await {
+                    Ok(st) => st,
+                    Err(e) => {
+                        warn!("error={}", e.to_string());
+                        return Work::default();
+                    }
+                };
+                info!("file={} rows={:?}", &current.name, bytes);
+                current
+            }
+        })
+        .collect();
+
+    let list = join_all(list).await;
+
+    Ok(list)
+}
+
+/// Fetch one file into the configured directory, checking mtime, etc.
+///
+#[tracing::instrument(skip(base_url))]
+async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
+    let mut status: WorkStatus;
+    let mut bytes = 0u64;
+
+    // Get our filename
+    //
+    let basename = Path::new(&fname);
+
+    // Compare the parquet file mtime with now
+    //
+    let current = basename.with_extension("parquet");
 
     // Get mtime
     //
     let mtime = if current.exists() {
         let current_st = fs::metadata(&current).await?;
         let mtime = current_st.modified()?;
-        let bytes = current_st.len();
+        bytes = current_st.len();
+
         info!("File found, size={bytes}, mtime={mtime:?}");
+        status = WorkStatus::Present;
         mtime
     } else {
-        info!("No file found, fetching.");
+        warn!("No file found, fetching.");
+        status = WorkStatus::Refreshed;
         UNIX_EPOCH
     };
 
     // Do we have a file that is older than one day?
     //
     let now = SystemTime::now();
-    let current = if now.duration_since(mtime)? > ONE_DAY {
+    if now.duration_since(mtime)? > ONE_DAY {
         info!("Fetching new version.");
 
         // We need to fetch a new version of the file.
         //
-        let output = Path::new(&basename).with_extension("parquet");
+        let output = basename.with_extension("csv");
 
         let tempdir = tempfile::tempdir()?;
         let output = tempdir.path().join(output);
         info!("Writing to {:?}", output);
 
         let url = format!("{}{}", base_url, fname);
-        let st = fetch_file(&url, &output).await?;
+        let _ = fetch_file(&url, &output).await?;
 
         let input = output;
 
-        let output = Path::new(&input).file_stem().unwrap().to_str().unwrap();
-        let output = Path::new(output).with_extension("parquet");
+        let output = basename.with_extension("parquet");
 
         info!("Converting to parquet in {:?}", output);
         let _ = convert_into_parquet(&input, &output).await?;
-        output
-    } else {
-        current
-    };
+    }
 
-    // Now look at the file we got
-    //
     let current_st = fs::metadata(&current).await?;
     let mtime = current_st.modified()?;
-    info!("File size: {} bytes, from {:?}", current_st.len(), mtime);
+    bytes = current_st.len();
 
-    let bytes = read_parquet_size(&current).await?;
-    info!("Parquet length: {:?} records", bytes);
+    let rows = read_parquet_size(&current).await?;
+    info!("Parquet length: {:?} records", rows);
 
-    Ok(bytes)
+    Ok(Work {
+        status,
+        name: fname.to_string(),
+        mtime,
+        size: bytes,
+        rows,
+    })
 }
 
 #[tracing::instrument]

@@ -24,5 +24,5 @@ pub enum Status {
     #[error("Base url cannot be empty")]
     BaseUrlCannotBeEmpty,
     #[error("Missing files list in {0}")]
-    NeedFiles(String),
+    NeedSources(String),
 }
