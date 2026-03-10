@@ -8,6 +8,8 @@
 //! - v1 is for the duckdb-backed database, database is path to the .duckdb file.
 //! - v2 is the ClickHouse-backed database, added url/user/password/database
 //! - v3 has different sections for parameters
+//! - v4 added the plane parameter into the distances section
+//! - v5 splits database into plane_db, drone_db a,d work_db.
 //!
 
 use std::fmt::Debug;
@@ -18,7 +20,7 @@ use fetiche_common::{IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
 
 /// Current version
-pub const CVERSION: usize = 4;
+pub const CVERSION: usize = 5;
 
 /// This module provides the configuration structures and functionalities
 /// necessary for initializing the application. It includes definitions for
@@ -41,13 +43,17 @@ pub const CVERSION: usize = 4;
 ///
 /// # Example Configuration
 /// ```hcl
-/// version = 4
+/// version = 5
 ///
 /// datalake = "/path/to/datalake"
 /// airports = "/path/to/airports.parquet"
 ///
 /// db {
-///     database = "example_db"
+///     plane_db = "allplanes_db"
+///     drone_db = "alldrones_db"
+///     work_db  = "working"
+///     // relative to datalake
+///     airports = "/files/airports.parquet"
 ///     url = "http://localhost"
 ///     user = "admin"
 ///     password = "password123"
@@ -60,11 +66,11 @@ pub const CVERSION: usize = 4;
 /// }
 /// ```
 ///
-#[into_configfile(version = 4, filename = "proces-data.hcl")]
+#[into_configfile(version = 5, filename = "proces-data.hcl")]
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ProcessConfig {
-    /// Directory holding the parquet files for the datalake.
-    pub datalake: Option<String>,
+    /// Path to the datalake.
+    pub datalake: String,
     /// Path to the "airports.parquet" file.
     pub airports: Option<String>,
     /// Section for database parameters.
@@ -75,6 +81,12 @@ pub struct ProcessConfig {
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Database {
+    /// Database holding the plane data.
+    pub plane_db: Option<String>,
+    /// Database holding the drone data.
+    pub drone_db: Option<String>,
+    /// Database holding the working tables.
+    pub work_db: Option<String>,
     /// Database name or path.
     pub database: Option<String>,
     /// URL
