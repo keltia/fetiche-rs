@@ -212,6 +212,7 @@ async fn remove_macros(dbh: &Client) -> Result<()> {
 /// - `prox_lon`: Longitude of the airplane.
 /// - `prox_alt_m`: Altitude of the airplane in meters.
 /// - `prox_mode_a`: Squawk code of the aircraft.
+/// - `prox_ecat`: Category of the airplane (e.g., GBS, UAS, etc. EmitterCategory from ADS-B).
 /// - `distance_slant_m`: Slant distance in meters between the drone and airplane.
 /// - `distance_hor_m`: Horizontal distance in meters between the drone and airplane.
 /// - `distance_vert_m`: Vertical distance in meters between the drone and airplane.
@@ -251,6 +252,7 @@ CREATE TABLE IF NOT EXISTS airplane_prox (
   prox_lon         FLOAT,
   prox_alt_m       FLOAT,
   prox_mode_a      VARCHAR,
+  prox_ecat        INT,
   distance_slant_m INT,
   distance_hor_m   INT,
   distance_vert_m  INT,
@@ -307,6 +309,7 @@ SELECT
   prox_lon,
   prox_alt_m,
   prox_mode_a,
+  prox_ecat,
   distance_slant_m,
   distance_hor_m,
   distance_vert_m,
@@ -351,6 +354,7 @@ SELECT
   prox_lon,
   prox_alt_m,
   prox_mode_a,
+  prox_ecat,
   distance_slant_m,
   distance_hor_m,
   distance_vert_m,
@@ -409,6 +413,7 @@ AS (
       prox_lon,
       prox_alt_m,
       prox_mode_a,
+      prox_ecat,
       distance_slant_m,
       distance_hor_m,
       distance_vert_m,
