@@ -8,6 +8,9 @@
 //! bdt convert -s airports.csv airports.parquet
 //! ```
 //!
+
+use std::path::Path;
+
 use eyre::Result;
 use itertools::izip;
 use pluscodes::Coordinate;
@@ -16,9 +19,11 @@ use polars::frame::DataFrame;
 use polars::prelude::*;
 use serde::Deserialize;
 use tabled::Tabled;
+use tracing::info;
+
+use fetiche_common::find_tz;
 
 use crate::runtime::Context;
-use fetiche_common::find_tz;
 
 /// Represents an airport with its geographical and identification information.
 ///
@@ -121,8 +126,11 @@ fn airports_from_df(df: &DataFrame) -> PolarsResult<Vec<Airport>> {
 ///
 #[tracing::instrument]
 pub fn find_airport(ctx: &Context, name: &str) -> Result<Vec<Airport>> {
-    let fname = ctx.cfg["airports"].clone();
-    let fname = PlPath::from_str(&fname);
+    let basedir = ctx.cfg["datalake"].clone();
+    info!("Datalake is {}", basedir);
+    let fname = Path::new(&basedir).join("files").join("airports.parquet");
+    info!("Looking for airports in {}", fname.display());
+    let fname = PlPath::Local(fname.into());
 
     let lf = LazyFrame::scan_parquet(fname, Default::default())?
         .select([
