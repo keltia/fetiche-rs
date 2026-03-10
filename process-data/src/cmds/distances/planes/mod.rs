@@ -117,6 +117,8 @@ pub struct PlaneDistance {
     /// Lon of antenna
     #[builder]
     pub lon: f64,
+    #[builder(default = "acute")]
+    pub workdb: String,
     /// List of temporary tables created along the way, for cleanup.
     #[builder(default = "vec![]")]
     state: Vec<TempTables>,
@@ -411,7 +413,7 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                         let pb = pb.clone();
                         async move { calculate_one_day_on_site(&ctx, &work, &pb).await.unwrap() }
                     })
-                    .await
+                        .await
                     {
                         Ok(res) => res,
                         Err(e) => {
