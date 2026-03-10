@@ -33,7 +33,7 @@ pub struct FindOpts {
 }
 
 #[derive(Debug, Default, Parser)]
-struct AddSiteOpts {
+pub struct AddSiteOpts {
     name: String,
     lat: f64,
     lon: f64,
