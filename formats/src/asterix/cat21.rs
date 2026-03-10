@@ -153,7 +153,7 @@ impl Cat21 {
 pub enum emitter_category {
     /// No specific information available.
     NoInfo = 0,
-    // ----
+    // ---- A
     /// Light aircraft <= 15500 lbs
     LightAircraft = 1,
     /// 15500 lbs < Small <= 75000 lbs
@@ -169,8 +169,9 @@ pub enum emitter_category {
     Reserved7 = 7,
     Reserved8 = 8,
     Reserved9 = 9,
-    // ----
-    Rotocraft = 10,
+    /// Helicopter / Rotorcraft
+    Rotorcraft = 10,
+    // ---- B
     /// Glider / sailplane
     Glider = 11,
     /// Lighter then air
@@ -186,7 +187,7 @@ pub enum emitter_category {
     Reserved17 = 17,
     Reserved18 = 18,
     Reserved19 = 19,
-    // ----
+    // ---- C
     SurfaceEmergency = 20,
     SurfaceService = 21,
     FixedGround = 22,
