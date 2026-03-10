@@ -2,8 +2,11 @@
 //
 version = 1
 
-// Basedir for everything
+// Basedir for everything -- will load files into "{datalake}/files"
 datalake = "/path/to/datalake"
 
+// Source site
 base_url = "https://davidmegginson.github.io/ourairports-data/"
-file     = "airports.csv"
+
+// We do not need everything, these are csv, will be converted to parquet
+sources = ["airports", "airport-frequencies", "navaids", "runways"]

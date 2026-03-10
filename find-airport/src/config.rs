@@ -38,10 +38,10 @@ pub const CVERSION: usize = 1;
 #[into_configfile(version = 1, filename = "airports.hcl")]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct FindConfig {
-    /// Directory holding the parquet files for the datalake.
+    /// Directory holding the parquet files in the datalake.
     pub datalake: Option<String>,
     /// Base URL for all downloads.
     pub base_url: String,
-    /// File to be fetched.
-    pub file: String,
+    /// Files to be fetched.
+    pub sources: Vec<String>,
 }
