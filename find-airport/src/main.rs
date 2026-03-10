@@ -40,8 +40,8 @@ async fn main() -> Result<()> {
             let _ = clean(&ctx).await?;
         }
         SubCommand::Fetch => {
-            let nentries = fetch(&ctx).await?;
-            println!("Fetched {} entries", nentries);
+            let files = fetch(&ctx).await?;
+            println!("Fetched {} entries", files.len());
         }
         SubCommand::Find(opts) => {
             println!("Looking for airport: {}", &opts.name);
