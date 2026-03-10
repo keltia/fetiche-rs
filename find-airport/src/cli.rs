@@ -3,7 +3,7 @@ use clap::Parser;
 /// Command-line options for the airport lookup application.
 ///
 /// Contains the search parameter for finding airports by IATA code or name.
-#[derive(Debug, clap::Parser)]
+#[derive(Debug, Parser)]
 pub struct Opts {
     /// Directory holding the parquet files for the datalake.
     pub datalake: Option<String>,
