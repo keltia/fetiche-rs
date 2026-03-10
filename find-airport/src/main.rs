@@ -16,9 +16,9 @@ use tabled::{Table, Tabled};
 
 use crate::airport::find_airport;
 use crate::cli::{Opts, SubCommand};
-use crate::runtime::init_runtime;
+use crate::runtime::{finish_runtime, init_runtime};
 
-use crate::cmds::fetch;
+use crate::cmds::{clean, fetch, show};
 pub use cli::*;
 
 mod airport;
@@ -38,6 +38,9 @@ async fn main() -> Result<()> {
     let ctx = init_runtime(&opts).await?;
 
     match &opts.cmd {
+        SubCommand::Clean => {
+            let _ = clean(&ctx).await?;
+        }
         SubCommand::Fetch => {
             let nentries = fetch(&ctx).await?;
             println!("Fetched {} entries", nentries);
@@ -52,6 +55,9 @@ async fn main() -> Result<()> {
         SubCommand::List(opts) => {
             todo!()
         }
+        SubCommand::Show => {
+            let _ = show(&ctx).await?;
+        }
     }
-    Ok(())
+    Ok(finish_runtime(&ctx)?)
 }

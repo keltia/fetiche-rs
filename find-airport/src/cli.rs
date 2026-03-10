@@ -33,9 +33,11 @@ pub enum Format {
 
 #[derive(Debug, Parser)]
 pub enum SubCommand {
+    Clean,
     Fetch,
     Find(FindOpts),
     List(ListOpts),
+    Show,
 }
 
 #[derive(Debug, Parser)]

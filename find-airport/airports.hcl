@@ -6,4 +6,4 @@ version = 1
 datalake = "/path/to/datalake"
 
 base_url = "https://davidmegginson.github.io/ourairports-data/"
-files = ["airports.csv"]
+file = "airports.csv"
