@@ -222,7 +222,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
         return Err(Status::MissingAirportsFile(def).into());
     }
 
-    // Get some sane values
+    // Get some sane values from the database section
     //
     let database = match &opts.database {
         Some(v) => v,
@@ -230,14 +230,16 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             if let Some(v) = &cfg.db.database {
                 v
             } else {
-                eprintln!("Error: you must define database.");
+                eprintln!("Error: you must define plane_db.");
                 return Err(Status::NoDatabase(def).into());
             }
         }
     };
-    // Extract parameters
+
+    // Retrieve some values out of the environment.
+    // If not, values are extracted from the configuration file.
     //
-    // Allow database to be overridden on command line
+    // Allow database names to be overridden on command line
     //
     let name = std::env::var("CLICKHOUSE_DB")
         .unwrap_or(opts.database.clone().unwrap_or(database.to_string()));
@@ -264,7 +266,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ..Default::default()
         },
     )
-    .await?;
+        .await?;
 
     let pool_size = opts.pool_size;
     let pool = bb8::Pool::builder()
@@ -291,7 +293,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ("factor".to_string(), factor.to_string()),
             ("distance".to_string(), plane.to_string()),
         ])
-        .into(),
+            .into(),
         dbh: pool.clone(),
         pool_size,
         wait: opts.wait,
