@@ -116,7 +116,7 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
         return Err(Status::MissingBaseUrl(def).into());
     }
 
-    if cfg.files.is_empty() {
+    if cfg.file.is_empty() {
         return Err(Status::NeedFiles(def).into());
     }
 
@@ -126,8 +126,9 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
         cfg: HashMap::from([
             ("base_url".to_string(), cfg.base_url.clone()),
             ("datalake".to_string(), datalake.clone()),
+            ("file".to_string(), cfg.file.clone()),
         ])
-        .into(),
+            .into(),
         dry_run: opts.dry_run,
     };
     Ok(ctx)
