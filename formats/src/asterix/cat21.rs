@@ -146,6 +146,8 @@ impl Cat21 {
 
 /// EmitterCategory, ADS-B Asterix I021/020
 ///
+/// cf.<https://www.eurocontrol.int/sites/default/files/2025-07/asterix-adsbtr-cat021-part12-v2-7.pdf>
+///
 #[derive(Debug, Copy, Clone, PartialEq, Eq, strum::EnumString, Serialize)]
 #[repr(u8)]
 pub enum emitter_category {
