@@ -10,7 +10,6 @@
 //!
 use clap::Parser;
 use eyre::Result;
-use serde::Deserialize;
 use tabled::settings::Style;
 use tabled::{Table, Tabled};
 
@@ -19,7 +18,6 @@ use crate::cli::{Opts, SubCommand};
 use crate::runtime::{finish_runtime, init_runtime};
 
 use crate::cmds::{clean, fetch, show};
-pub use cli::*;
 
 mod airport;
 mod cli;
