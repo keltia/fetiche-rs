@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use eyre::Result;
-use tracing::{error, info, trace};
+use tracing::trace;
 
 use crate::cli::Opts;
 use crate::config::FindConfig;
@@ -116,8 +116,8 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
         return Err(Status::MissingBaseUrl(def).into());
     }
 
-    if cfg.file.is_empty() {
-        return Err(Status::NeedFiles(def).into());
+    if cfg.sources.is_empty() {
+        return Err(Status::NeedSources(def).into());
     }
 
     // Create context
@@ -126,9 +126,9 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
         cfg: HashMap::from([
             ("base_url".to_string(), cfg.base_url.clone()),
             ("datalake".to_string(), datalake.clone()),
-            ("file".to_string(), cfg.file.clone()),
+            ("sources".to_string(), cfg.sources.join(",")),
         ])
-            .into(),
+        .into(),
         dry_run: opts.dry_run,
     };
     Ok(ctx)
