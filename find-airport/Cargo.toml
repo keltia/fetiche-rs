@@ -26,6 +26,7 @@ eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-macros.workspace = true
 itertools.workspace = true
+jiff.workspace = true
 polars.workspace = true
 reqwest.workspace = true
 serde.workspace = true
