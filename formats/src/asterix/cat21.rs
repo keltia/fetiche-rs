@@ -143,3 +143,55 @@ impl Cat21 {
         }
     }
 }
+
+/// EmitterCategory, ADS-B Asterix I021/020
+///
+#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::EnumString, Serialize)]
+#[repr(u8)]
+pub enum emitter_category {
+    /// No specific information available.
+    NoInfo = 0,
+    // ----
+    /// Light aircraft <= 15500 lbs
+    LightAircraft = 1,
+    /// 15500 lbs < Small <= 75000 lbs
+    SmallAircraft = 2,
+    /// 75000 lbs < Medium < 300000 lbs
+    MediumAircraft = 3,
+    /// Higfh Vortex Large
+    LargeAircraft = 4,
+    /// 300000 lbs <= Heavy
+    HeavyAircraft = 5,
+    /// Highly Manoeuvrable / High Speed
+    FighterJet = 6,
+    Reserved7 = 7,
+    Reserved8 = 8,
+    Reserved9 = 9,
+    // ----
+    Rotocraft = 10,
+    /// Glider / sailplane
+    Glider = 11,
+    /// Lighter then air
+    LighterThanAir = 12,
+    /// Unmanned Aerial Vehicule
+    UAV = 13,
+    /// Space / transatmospheric Vehicule
+    SpaceAircraft = 14,
+    /// Ultra Light Aircraft / Handglider / Paraglider
+    UltraLight = 15,
+    /// Parachutist / Skydiver
+    Skydiver = 16,
+    Reserved17 = 17,
+    Reserved18 = 18,
+    Reserved19 = 19,
+    // ----
+    SurfaceEmergency = 20,
+    SurfaceService = 21,
+    FixedGround = 22,
+    ClusterObstacle = 23,
+    LineObstacle = 24,
+    // ----
+    /// After 128, probably private usage
+    Private216 = 216,
+    Private245 = 245,
+}
