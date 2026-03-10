@@ -2,17 +2,18 @@
 //!
 
 use std::env::set_current_dir;
+use std::fmt::Debug;
 use std::fs::{File, Metadata};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use eyre::Result;
-use jiff::civil::DateTime;
+use futures::future::join_all;
 use polars::prelude::*;
 use reqwest::redirect::Policy;
-use tokio::fs;
 use tokio::io::AsyncRead;
-use tracing::{info, trace};
+use tokio::{fs, join};
+use tracing::{info, trace, warn};
 
 use crate::error::Status;
 use crate::runtime::Context;
@@ -20,10 +21,40 @@ use crate::USER_AGENT;
 
 const ONE_DAY: Duration = Duration::from_hours(24);
 
+#[derive(Clone, Debug, Default)]
+pub enum WorkStatus {
+    Present,
+    Refreshed,
+    #[default]
+    Unknown,
+}
+
+/// `Work` describe a file that was present, fetched, or refreshed
+#[derive(Clone, Debug)]
+pub struct Work {
+    status: WorkStatus,
+    name: String,
+    mtime: SystemTime,
+    size: u64,
+    rows: usize,
+}
+
+impl Default for Work {
+    fn default() -> Self {
+        Self {
+            status: WorkStatus::Unknown,
+            name: "".to_string(),
+            mtime: UNIX_EPOCH,
+            size: 0,
+            rows: 0,
+        }
+    }
+}
+
 /// Fetch the main file, then convert it into parquet.
 ///
 #[tracing::instrument]
-pub async fn fetch(ctx: &Context) -> Result<usize> {
+pub async fn fetch(ctx: &Context) -> Result<Vec<Work>> {
     let base_url = ctx.cfg["base_url"].clone();
     if base_url.is_empty() {
         return Err(Status::BaseUrlCannotBeEmpty.into());
@@ -167,7 +198,10 @@ async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
 }
 
 #[tracing::instrument]
-async fn read_parquet_size(fname: &PathBuf) -> Result<usize> {
+async fn read_parquet_size<P>(fname: P) -> Result<usize>
+where
+    P: AsRef<Path> + Debug,
+{
     let fh = File::open(fname)?;
     let mut rdr = ParquetReader::new(fh);
     Ok(rdr.num_rows()?)
@@ -175,13 +209,12 @@ async fn read_parquet_size(fname: &PathBuf) -> Result<usize> {
 
 #[tracing::instrument]
 async fn fetch_file(url: &str, output: &Path) -> Result<Metadata> {
-    let client =
-        reqwest::ClientBuilder::new()
-            .user_agent(USER_AGENT)
-            .gzip(true)
-            .redirect(Policy::limited(5))
-            .connect_timeout(Duration::from_secs(10))
-            .build()?;
+    let client = reqwest::ClientBuilder::new()
+        .user_agent(USER_AGENT)
+        .gzip(true)
+        .redirect(Policy::limited(5))
+        .connect_timeout(Duration::from_secs(10))
+        .build()?;
     let resp = client.get(url).send().await?;
     let resp = resp.bytes().await?;
 
@@ -191,7 +224,11 @@ async fn fetch_file(url: &str, output: &Path) -> Result<Metadata> {
 }
 
 #[tracing::instrument]
-async fn convert_into_parquet(input: &Path, output: &Path) -> Result<()> {
+async fn convert_into_parquet<P>(input: P, output: P) -> Result<()>
+where
+    P: AsRef<Path> + Debug,
+{
+    let input = input.as_ref();
     let mut df = CsvReadOptions::default()
         .with_has_header(true)
         .with_ignore_errors(true)
