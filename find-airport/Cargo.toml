@@ -25,6 +25,7 @@ clap.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-macros.workspace = true
+futures.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 polars.workspace = true
@@ -37,6 +38,7 @@ tokio.workspace = true
 tracing.workspace = true
 
 pluscodes = "0.5"
+polars-utils = "0.52"
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["async", "async_tokio"] }
