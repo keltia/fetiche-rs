@@ -1,7 +1,7 @@
 use std::env::set_current_dir;
 use std::path::Path;
 
-use crate::cmds::{read_parquet_size, Work, WorkStatus};
+use crate::cmds::{Work, WorkStatus};
 use crate::runtime::Context;
 use eyre::Result;
 use futures::future::join_all;
@@ -46,7 +46,6 @@ async fn clean_one(fname: &Path) -> Result<Work> {
     if parquet.exists() {
         info!("clean_one file={:?}", parquet);
         let st = fs::metadata(&parquet).await?;
-        let rows = read_parquet_size(&parquet).await?;
         let mtime = Timestamp::try_from(st.modified()?)?;
 
         let status = match fs::remove_file(&parquet).await {
