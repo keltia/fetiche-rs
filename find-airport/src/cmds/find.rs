@@ -124,14 +124,15 @@ fn airports_from_df(df: &DataFrame) -> PolarsResult<Vec<Airport>> {
 ///
 /// This function is compatible with Polars 0.52 and older versions.
 ///
-#[tracing::instrument]
+#[tracing::instrument(skip(ctx))]
 pub fn cmd_find(ctx: &Context, name: &str) -> Result<Vec<Airport>> {
     let basedir = ctx.cfg["datalake"].clone();
-    info!("Datalake is {}", basedir);
-    let fname = Path::new(&basedir).join("files").join("airports.parquet");
-    info!("Looking for airports in {}", fname.display());
-    let fname = PlPath::Local(fname.into());
+    info!("datalake={}", basedir);
 
+    let fname = Path::new(&basedir).join("files").join("airports.parquet");
+    info!("find={} airports={:?}", name, fname.display());
+
+    let fname = PlPath::Local(fname.into());
     let lf = LazyFrame::scan_parquet(fname, Default::default())?
         .select([
             col("ident"),

@@ -12,7 +12,7 @@ use jiff::{SignedDuration, Timestamp};
 use polars::prelude::*;
 use reqwest::redirect::Policy;
 use tokio::fs;
-use tracing::{info, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 use crate::cmds::{read_parquet_size, Work, WorkStatus};
 use crate::error::Status;
@@ -23,7 +23,7 @@ const ONE_DAY: SignedDuration = SignedDuration::from_hours(24);
 
 /// Fetch the main file, then convert it into parquet.
 ///
-#[tracing::instrument]
+#[tracing::instrument(skip(ctx))]
 pub async fn cmd_fetch(ctx: &Context) -> Result<Vec<Work>> {
     let base_url = ctx.cfg["base_url"].clone();
     if base_url.is_empty() {
@@ -35,8 +35,8 @@ pub async fn cmd_fetch(ctx: &Context) -> Result<Vec<Work>> {
     } else {
         base_url
     };
+    debug!("cfg={:?}", &ctx.cfg);
 
-    dbg!(&ctx.cfg);
     // Get our filenames
     //
     let srcs = ctx.cfg["sources"].clone();
@@ -164,7 +164,7 @@ pub async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
         size: bytes,
         rows,
     };
-    dbg!(&work);
+    debug!("work={}", work);
     Ok(work)
 }
 
