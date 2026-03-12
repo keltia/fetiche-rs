@@ -11,7 +11,7 @@ pub use show::*;
 use std::fmt::{Debug, Display};
 use std::fs::File;
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
 
 use jiff::Timestamp;
 use polars::prelude::{ParquetReader, SerReader};
@@ -40,15 +40,14 @@ pub enum WorkStatus {
 pub struct Work {
     status: WorkStatus,
     name: String,
-    mtime: SystemTime,
+    mtime: Timestamp,
     size: u64,
     rows: usize,
 }
 
 impl Display for Work {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mtime = Timestamp::try_from(self.mtime).unwrap_or_default();
-        let mtime = mtime.strftime("%Y-%m-%d %H:%M:%S").to_string();
+        let mtime = self.mtime.strftime("%Y-%m-%d %H:%M:%S").to_string();
         write!(
             f,
             "File {{ status: {:?}, name: {:?}, mtime: {}, size: {:?}, rows: {:?} }}",
@@ -62,7 +61,7 @@ impl Default for Work {
         Self {
             status: WorkStatus::Unknown,
             name: "".to_string(),
-            mtime: UNIX_EPOCH,
+            mtime: Timestamp::try_from(UNIX_EPOCH).unwrap(),
             size: 0,
             rows: 0,
         }
