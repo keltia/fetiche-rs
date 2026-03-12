@@ -1,11 +1,11 @@
 use std::env::set_current_dir;
 use std::path::Path;
 
+use crate::cmds::read_parquet_size;
+use crate::runtime::Context;
 use eyre::Result;
 use jiff::Timestamp;
 use tokio::fs;
-
-use crate::runtime::Context;
 
 #[tracing::instrument(skip(ctx))]
 pub async fn cmd_show(ctx: &Context) -> Result<()> {
@@ -35,8 +35,9 @@ async fn show_one(fname: &Path) -> Result<()> {
     let parquet = fname.with_extension("parquet");
     if parquet.exists() {
         let st = fs::metadata(&parquet).await?;
+        let rows = read_parquet_size(&parquet).await?;
         let mtime = Timestamp::try_from(st.modified()?)?;
-        println!("file={parquet:?} size={} mtime=\"{}\"", st.len(), mtime.strftime("%Y-%m-%d %H:%M:%S"));
+        println!("file={parquet:?} size={} rows={} mtime=\"{}\"", st.len(), rows, mtime.strftime("%Y-%m-%d %H:%M:%S"));
     }
     Ok(())
 }
