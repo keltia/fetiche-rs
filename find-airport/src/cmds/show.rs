@@ -2,36 +2,41 @@ use std::env::set_current_dir;
 use std::path::Path;
 
 use eyre::Result;
+use jiff::Timestamp;
 use tokio::fs;
-use tracing::info;
 
 use crate::runtime::Context;
 
-#[tracing::instrument]
-pub async fn show(ctx: &Context) -> Result<()> {
-    info!("Show downloaded file");
-
-    // Get our filename
-    //
-    let fname = ctx.cfg["file"].clone();
-    let fname = Path::new(&fname);
-    let basename = fname.file_stem().unwrap().to_str().unwrap();
-
-    let parquet = Path::new(&basename).with_extension("parquet");
-
-    // Check the current file mtime (if it exists)
+#[tracing::instrument(skip(ctx))]
+pub async fn cmd_show(ctx: &Context) -> Result<()> {
+    // Move ourselves in the right directory.
     //
     let target_dir = Path::new(&ctx.cfg["datalake"]).join("files");
-
-    // Let us move into the final destination
-    //
     set_current_dir(&target_dir)?;
 
+    // Get our filenames
+    //
+    let sources = ctx.cfg["sources"]
+        .clone()
+        .split(",")
+        .map(|s| s.to_owned())
+        .collect::<Vec<_>>();
+
+    for fname in sources.into_iter() {
+        let basename = Path::new(&fname);
+        let _ = show_one(&basename).await?;
+    }
+
+    Ok(())
+}
+
+#[tracing::instrument]
+async fn show_one(fname: &Path) -> Result<()> {
+    let parquet = fname.with_extension("parquet");
     if parquet.exists() {
         let st = fs::metadata(&parquet).await?;
-        println!("{:?}", st);
-        return Ok(());
+        let mtime = Timestamp::try_from(st.modified()?)?;
+        println!("file={parquet:?} size={} mtime=\"{}\"", st.len(), mtime.strftime("%Y-%m-%d %H:%M:%S"));
     }
-    eprintln!("No file to show");
     Ok(())
 }
