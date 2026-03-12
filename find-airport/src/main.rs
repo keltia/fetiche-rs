@@ -52,9 +52,6 @@ async fn main() -> Result<()> {
             let table = Table::new(&airport_iata).with(Style::sharp()).to_string();
             println!("Found by IATA:\n{table}");
         }
-        SubCommand::List(opts) => {
-            todo!()
-        }
         SubCommand::Show => {
             let _ = cmd_show(&ctx).await?;
         }

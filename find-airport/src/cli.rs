@@ -36,19 +36,15 @@ pub enum SubCommand {
     Clean,
     Fetch,
     Find(FindOpts),
-    List(ListOpts),
     Show,
 }
 
 #[derive(Debug, Parser)]
 pub struct FindOpts {
+    /// Display by country code
+    #[clap(short = 'C', long)]
+    pub country: String,
     /// Airport IATA code or name to search for (default: "CDG")
     #[clap(default_value = "CDG")]
     pub name: String,
-}
-
-#[derive(Debug, Parser)]
-pub struct ListOpts {
-    #[clap(short = 'C', long)]
-    pub country: String,
 }
