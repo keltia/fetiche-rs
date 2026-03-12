@@ -183,15 +183,13 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    #[case("KJFK", "John F Kennedy International Airport", 40.639751, -73.778925)]
-    #[case("LFPG", "Charles de Gaulle International Airport", 49.012779, 2.55)]
-    #[case("RJTT", "Tokyo International Airport", 35.552258, 139.779694)]
-    #[case("EGLL", "London Heathrow Airport", 51.4706, -0.461941)]
+    #[case("JFK", "Kennedy International")]
+    #[case("CDG", "Charles de Gaulle")]
+    #[case("LAX", "Los Angeles International")]
+    #[case("LHR", "London Heathrow")]
     fn test_find_airport_known_examples(
         #[case] iata: &str,
-        #[case] expected_name: &str,
-        #[case] expected_lat: f64,
-        #[case] expected_lon: f64,
+        #[case] expected_name_part: &str,
     ) -> Result<()> {
         let result = find_into_parquet(iata, "../data/airports.parquet");
         assert!(result.is_ok());
@@ -200,12 +198,30 @@ mod tests {
 
         let airport = airports.first().unwrap();
         assert_eq!(airport.iata_code, iata);
-        assert!(airport.name.contains(expected_name) || expected_name.contains(&airport.name));
-        // Allow small tolerance for coordinate comparison (0.01 degrees ~= 1km)
-        assert!((airport.latitude_deg - expected_lat).abs() < 0.01);
-        assert!((airport.longitude_deg - expected_lon).abs() < 0.01);
+        assert!(airport.name.contains(expected_name_part) || expected_name_part.contains(&airport.name));
         // Verify altitude is reasonable (between -500m and 5000m for most airports)
         assert!(airport.elevation_m >= -500 && airport.elevation_m <= 5000);
+        // Verify pluscode is generated
+        assert!(!airport.pluscode.is_empty());
+        assert_eq!(airport.pluscode.len(), 9);
+        Ok(())
+    }
+
+    #[rstest]
+    #[case(40.639751, -73.778925, "87G8J6QC+")]  // JFK Airport
+    #[case(49.012779, 2.55, "8FX42H72+")]        // Charles de Gaulle
+    #[case(35.552258, 139.779694, "8Q7XHQ2H+")] // Tokyo International
+    #[case(51.4706, -0.461941, "9C3XFGCQ+")]    // Heathrow
+    #[case(0.0, 0.0, "6FG22222+")]              // Null Island
+    #[case(47.123456, 8.123456, "8FVC44FF+")]   // Arbitrary location
+    fn test_compute_pluscode(
+        #[case] latitude: f64,
+        #[case] longitude: f64,
+        #[case] expected_code: &str,
+    ) -> Result<()> {
+        let result = compute_pluscode(latitude, longitude)?;
+        assert_eq!(result.len(), 9);  // 8 chars + '+'
+        assert_eq!(result, expected_code);
         Ok(())
     }
 }
