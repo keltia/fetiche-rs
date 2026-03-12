@@ -10,13 +10,14 @@
 //!
 use clap::Parser;
 use eyre::Result;
+use tabled::Table;
 use tabled::settings::object::Columns;
 use tabled::settings::{Alignment, Style};
-use tabled::Table;
+use tokio::task::spawn_blocking;
 use tracing::debug;
 
 use crate::cli::{Opts, SubCommand};
-use crate::cmds::{cmd_clean, cmd_fetch, cmd_find, cmd_show, Work};
+use crate::cmds::{Work, cmd_clean, cmd_fetch, cmd_find, cmd_show};
 use crate::runtime::{finish_runtime, init_runtime};
 
 mod cli;
@@ -28,7 +29,7 @@ mod runtime;
 const NAME: &str = "find-airport";
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
@@ -38,7 +39,14 @@ async fn main() -> Result<()> {
         SubCommand::Clean => {
             if !ctx.dry_run {
                 let files = cmd_clean(&ctx).await?;
-                debug!("files={}", files.iter().map(|f| f.to_string()).collect::<Vec<_>>().join(","));
+                debug!(
+                    "files={}",
+                    files
+                        .iter()
+                        .map(|f| f.to_string())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                );
 
                 let table = display_work_table(files);
                 println!("\nRemoved Files:\n{table}");
@@ -49,7 +57,14 @@ async fn main() -> Result<()> {
         SubCommand::Fetch => {
             if !ctx.dry_run {
                 let files = cmd_fetch(&ctx).await?;
-                debug!("files={}", files.iter().map(|f| f.to_string()).collect::<Vec<_>>().join(","));
+                debug!(
+                    "files={}",
+                    files
+                        .iter()
+                        .map(|f| f.to_string())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                );
 
                 let table = display_work_table(files);
                 println!("\nFiles:\n{table}");
@@ -59,9 +74,23 @@ async fn main() -> Result<()> {
         }
         SubCommand::Find(opts) => {
             println!("Looking for airport: {}", &opts.name);
-            let airport_iata = cmd_find(&ctx, &opts.name)?;
 
-            let table = Table::new(&airport_iata).with(Style::sharp()).to_string();
+            // polars is not async-friendly, when using lazy frames
+            // cf.https://stackoverflow.com/questions/77294105/how-do-i-call-the-polars-rust-api-from-an-async-function#77312986
+            //
+            let ctx1 = ctx.clone();
+            let name = opts.name.clone();
+            let airport_iata = spawn_blocking(move || cmd_find(&ctx1, &name)).await?;
+
+            let results = match airport_iata {
+                Ok(airport_iata) => airport_iata,
+                Err(e) => {
+                    eprintln!("Error finding airport: {}", e.to_string());
+                    return Err(e);
+                }
+            };
+
+            let table = Table::new(&results).with(Style::sharp()).to_string();
             println!("\nFound by IATA:\n{table}");
         }
         SubCommand::Show => {
@@ -82,4 +111,3 @@ fn display_work_table(list: Vec<Work>) -> String {
         .to_string();
     table
 }
-
