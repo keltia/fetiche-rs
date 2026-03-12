@@ -18,7 +18,7 @@ use tracing::debug;
 
 use crate::cli::{Opts, SubCommand};
 use crate::cmds::{Work, cmd_clean, cmd_fetch, cmd_find, cmd_show};
-use crate::runtime::{finish_runtime, init_runtime};
+use crate::runtime::{Context, finish_runtime, init_runtime};
 
 mod cli;
 mod cmds;
@@ -26,7 +26,7 @@ mod config;
 mod error;
 mod runtime;
 
-const NAME: &str = "find-airport";
+const NAME: &str = env!("CARGO_PKG_NAME");
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 #[tokio::main(flavor = "multi_thread")]
@@ -35,6 +35,8 @@ async fn main() -> Result<()> {
 
     let ctx = init_runtime(&opts).await?;
 
+    println!("{USER_AGENT}\n");
+    println!("Repository: {}", repo_path(&ctx));
     match &opts.cmd {
         SubCommand::Clean => {
             if !ctx.dry_run {
@@ -110,4 +112,10 @@ fn display_work_table(list: Vec<Work>) -> String {
         .modify(Columns::one(4), Alignment::right())
         .to_string();
     table
+}
+
+#[tracing::instrument]
+fn repo_path(ctx: &Context) -> String {
+    let repo_path = ctx.cfg["datalake"].clone();
+    format!("{}/files", repo_path)
 }
