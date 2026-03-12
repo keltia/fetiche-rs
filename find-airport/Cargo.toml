@@ -31,15 +31,13 @@ jiff.workspace = true
 polars.workspace = true
 reqwest.workspace = true
 serde.workspace = true
+strum.workspace = true
 tabled.workspace = true
-tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
 pluscodes = "0.5"
-polars-utils = "0.52"
 
 [dev-dependencies]
-criterion = { version = "0.8", features = ["async", "async_tokio"] }
 rstest.workspace = true
