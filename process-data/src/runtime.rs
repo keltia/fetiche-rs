@@ -212,8 +212,14 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
 
     // We must operate on a database.
     //
-    if opts.database.is_none() && cfg.db.database.is_none() {
-        return Err(Status::NoDatabase(def).into());
+    if cfg.db.plane_db.is_none() {
+        return Err(Status::MissingConfigParameter("plane_db".into()).into());
+    }
+    if cfg.db.drone_db.is_none() {
+        return Err(Status::MissingConfigParameter("drone_db".into()).into());
+    }
+    if cfg.db.work_db.is_none() {
+        return Err(Status::MissingConfigParameter("work_db".into()).into());
     }
 
     // We need the airports parquet file
@@ -222,27 +228,13 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
         return Err(Status::MissingAirportsFile(def).into());
     }
 
-    // Get some sane values from the database section
-    //
-    let database = match &opts.database {
-        Some(v) => v,
-        None => {
-            if let Some(v) = &cfg.db.database {
-                v
-            } else {
-                eprintln!("Error: you must define plane_db.");
-                return Err(Status::NoDatabase(def).into());
-            }
-        }
-    };
-
     // Retrieve some values out of the environment.
     // If not, values are extracted from the configuration file.
     //
     // Allow database names to be overridden on command line
     //
     let name = std::env::var("CLICKHOUSE_DB")
-        .unwrap_or(opts.database.clone().unwrap_or(database.to_string()));
+        .unwrap_or(cfg.db.work_db.clone().unwrap_or("acute".into()));
     let user = std::env::var("CLICKHOUSE_USER").unwrap_or(cfg.db.user.clone().unwrap());
     let pass = std::env::var("CLICKHOUSE_PASSWD").unwrap_or(cfg.db.password.clone().unwrap());
     let endpoint = std::env::var("KLICKHOUSE_URL").unwrap_or(cfg.db.url.clone());

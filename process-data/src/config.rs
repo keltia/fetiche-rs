@@ -70,7 +70,7 @@ pub const CVERSION: usize = 5;
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ProcessConfig {
     /// Path to the datalake.
-    pub datalake: String,
+    pub datalake: Option<String>,
     /// Path to the "airports.parquet" file.
     pub airports: Option<String>,
     /// Section for database parameters.
