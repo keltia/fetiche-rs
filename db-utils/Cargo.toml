@@ -23,5 +23,4 @@ eyre.workspace = true
 jiff.workspace = true
 
 egm2008 = "0.1"
-stderrlog = "0.6"
 log = "0.4"

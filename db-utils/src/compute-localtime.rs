@@ -54,7 +54,6 @@ use clap::Parser;
 use jiff::{Timestamp, Zoned};
 use log::{error, info};
 use std::io::stdin;
-use stderrlog::LogLevelNum::Trace;
 
 #[derive(Debug, Parser)]
 struct Opts {
@@ -81,8 +80,6 @@ fn main() -> eyre::Result<()> {
     } else {
         |p: Zoned| p.time().to_string()
     };
-
-    stderrlog::new().verbosity(Trace).init()?;
 
     stdin().lines().for_each(|l| {
         let text = match l {
