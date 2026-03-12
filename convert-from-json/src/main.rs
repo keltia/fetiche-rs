@@ -29,6 +29,7 @@ use std::{fs, fs::File, io::BufReader, num::NonZeroUsize, path::Path};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use eyre::Result;
 use polars_io::prelude::*;
+use polars_utils::compression::ZstdLevel;
 
 #[derive(Parser)]
 #[clap(name = crate_name!(), about = crate_description!())]
@@ -70,8 +71,9 @@ fn main() -> Result<()> {
 
     let mut out = File::create(&output)?;
     if opts.parquet {
+        let zstdlevel = ZstdLevel::try_new(8)?;
         let _ = ParquetWriter::new(&mut out)
-            .with_compression(ParquetCompression::Zstd(Some(ZstdLevel::try_new(8)?)))
+            .with_compression(ParquetCompression::Zstd(Some(zstdlevel)))
             .with_statistics(StatisticsOptions::default())
             .finish(&mut df)?;
     } else {
