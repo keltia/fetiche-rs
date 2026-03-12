@@ -11,7 +11,7 @@
 use clap::Parser;
 use eyre::Result;
 use tabled::settings::Style;
-use tabled::{Table, Tabled};
+use tabled::Table;
 use tracing::debug;
 
 use crate::cli::{Opts, SubCommand};

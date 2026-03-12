@@ -4,15 +4,14 @@
 use std::env::set_current_dir;
 use std::fmt::Debug;
 use std::fs::{File, Metadata};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use eyre::Result;
 use futures::future::join_all;
 use polars::prelude::*;
 use reqwest::redirect::Policy;
-use tokio::io::AsyncRead;
-use tokio::{fs, join};
+use tokio::fs;
 use tracing::{info, trace, warn};
 
 use crate::cmds::{read_parquet_size, Work, WorkStatus};
