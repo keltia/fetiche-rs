@@ -117,7 +117,7 @@ pub struct PlaneDistance {
     /// Lon of antenna
     #[builder]
     pub lon: f64,
-    #[builder(default = "self.default_db()?")]
+    #[builder(default = "PlaneDistance::default_db()")]
     pub workdb: String,
     /// List of temporary tables created along the way, for cleanup.
     #[builder(default = "vec![]")]
@@ -128,8 +128,8 @@ pub struct PlaneDistance {
 }
 
 impl PlaneDistance {
-    fn default_db(&self) -> Result<String, String> {
-        Ok(String::from("acute"))
+    fn default_db() -> String {
+        String::from("acute")
     }
 }
 
@@ -419,7 +419,7 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                         let pb = pb.clone();
                         async move { calculate_one_day_on_site(&ctx, &work, &pb).await.unwrap() }
                     })
-                    .await
+                        .await
                     {
                         Ok(res) => res,
                         Err(e) => {
