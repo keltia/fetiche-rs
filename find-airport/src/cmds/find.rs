@@ -131,7 +131,21 @@ pub fn cmd_find(ctx: &Context, name: &str) -> Result<Vec<Airport>> {
     let fname = fname.to_string_lossy().to_string();
     info!("find={} airports={}", name, fname);
 
-    let lf = LazyFrame::scan_parquet(fname.as_str().into(), Default::default())?
+    let lf = find_into_parquet(name, &fname)?;
+
+    // This is only work in 0.53 (aka WHEN THEY FIX 0.53 which is broken with regard to chrono)
+    // FML.
+    // let airports: Vec<Airport> = lf.deserialize()?;
+    let airports = airports_from_df(&lf)?;
+    Ok(airports)
+}
+
+
+#[tracing::instrument]
+fn find_into_parquet(name: &str, fname: &str) -> Result<DataFrame> {
+    info!("find={} airports={}", name, fname);
+
+    let lf = LazyFrame::scan_parquet(fname.into(), Default::default())?
         .select([
             col("ident"),
             col("name"),
@@ -148,12 +162,7 @@ pub fn cmd_find(ctx: &Context, name: &str) -> Result<Vec<Airport>> {
         )
         .filter(col("iata_code").is_not_null())
         .collect()?;
-
-    // This is only work in 0.53 (aka WHEN THEY FIX 0.53 which is broken with regard to chrono)
-    // FML.
-    // let airports: Vec<Airport> = lf.deserialize()?;
-    let airports = airports_from_df(&lf)?;
-    Ok(airports)
+    Ok(lf)
 }
 
 const DEF_LENGTH: usize = 8;
@@ -183,10 +192,13 @@ mod tests {
         #[case] expected_name: &str,
         #[case] expected_lat: f64,
         #[case] expected_lon: f64,
-    ) {
-        let result = cmd_find(iata);
+    ) -> Result<()> {
+        let result = find_into_parquet(iata, "../data/airports.parquet");
         assert!(result.is_ok());
-        let airport = result.unwrap().first().unwrap();
+        let result = result.unwrap();
+        let airports = airports_from_df(&result)?;
+
+        let airport = airports.first().unwrap();
         assert_eq!(airport.iata_code, iata);
         assert!(airport.name.contains(expected_name) || expected_name.contains(&airport.name));
         // Allow small tolerance for coordinate comparison (0.01 degrees ~= 1km)
@@ -194,5 +206,6 @@ mod tests {
         assert!((airport.longitude_deg - expected_lon).abs() < 0.01);
         // Verify altitude is reasonable (between -500m and 5000m for most airports)
         assert!(airport.elevation_m >= -500 && airport.elevation_m <= 5000);
+        Ok(())
     }
 }
