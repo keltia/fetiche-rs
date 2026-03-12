@@ -8,11 +8,14 @@ pub use fetch::*;
 pub use find::*;
 pub use show::*;
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::fs::File;
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
+use jiff::Timestamp;
 use polars::prelude::{ParquetReader, SerReader};
+use strum::VariantNames;
 
 #[tracing::instrument]
 pub async fn read_parquet_size<P>(fname: P) -> eyre::Result<usize>
@@ -22,5 +25,47 @@ where
     let fh = File::open(fname)?;
     let mut rdr = ParquetReader::new(fh);
     Ok(rdr.num_rows()?)
+}
+
+#[derive(Clone, Debug, Default, strum::Display, VariantNames)]
+pub enum WorkStatus {
+    Present,
+    Refreshed,
+    #[default]
+    Unknown,
+}
+
+/// `Work` describe a file that was present, fetched, or refreshed
+#[derive(Clone, Debug)]
+pub struct Work {
+    status: WorkStatus,
+    name: String,
+    mtime: SystemTime,
+    size: u64,
+    rows: usize,
+}
+
+impl Display for Work {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mtime = Timestamp::try_from(self.mtime).unwrap_or_default();
+        let mtime = mtime.strftime("%Y-%m-%d %H:%M:%S").to_string();
+        write!(
+            f,
+            "File {{ status: {:?}, name: {:?}, mtime: {}, size: {:?}, rows: {:?} }}",
+            self.status, self.name, mtime, self.size, self.rows
+        )
+    }
+}
+
+impl Default for Work {
+    fn default() -> Self {
+        Self {
+            status: WorkStatus::Unknown,
+            name: "".to_string(),
+            mtime: UNIX_EPOCH,
+            size: 0,
+            rows: 0,
+        }
+    }
 }
 

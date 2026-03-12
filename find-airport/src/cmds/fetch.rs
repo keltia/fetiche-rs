@@ -15,41 +15,12 @@ use tokio::io::AsyncRead;
 use tokio::{fs, join};
 use tracing::{info, trace, warn};
 
+use crate::cmds::{read_parquet_size, Work, WorkStatus};
 use crate::error::Status;
 use crate::runtime::Context;
 use crate::USER_AGENT;
 
 const ONE_DAY: Duration = Duration::from_hours(24);
-
-#[derive(Clone, Debug, Default)]
-pub enum WorkStatus {
-    Present,
-    Refreshed,
-    #[default]
-    Unknown,
-}
-
-/// `Work` describe a file that was present, fetched, or refreshed
-#[derive(Clone, Debug)]
-pub struct Work {
-    status: WorkStatus,
-    name: String,
-    mtime: SystemTime,
-    size: u64,
-    rows: usize,
-}
-
-impl Default for Work {
-    fn default() -> Self {
-        Self {
-            status: WorkStatus::Unknown,
-            name: "".to_string(),
-            mtime: UNIX_EPOCH,
-            size: 0,
-            rows: 0,
-        }
-    }
-}
 
 /// Fetch the main file, then convert it into parquet.
 ///
