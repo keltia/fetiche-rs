@@ -10,6 +10,7 @@ use eyre::Result;
 use futures::future::join_all;
 use jiff::{SignedDuration, Timestamp};
 use polars::prelude::*;
+use polars_utils::compression::ZstdLevel;
 use reqwest::redirect::Policy;
 use tokio::fs;
 use tracing::{debug, info, trace, warn};

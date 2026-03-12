@@ -14,8 +14,6 @@ use std::path::Path;
 use eyre::Result;
 use itertools::izip;
 use pluscodes::Coordinate;
-use polars::error::PolarsResult;
-use polars::frame::DataFrame;
 use polars::prelude::*;
 use serde::Deserialize;
 use tabled::Tabled;
@@ -130,10 +128,10 @@ pub fn cmd_find(ctx: &Context, name: &str) -> Result<Vec<Airport>> {
     info!("datalake={}", basedir);
 
     let fname = Path::new(&basedir).join("files").join("airports.parquet");
-    info!("find={} airports={:?}", name, fname.display());
+    let fname = fname.to_string_lossy().to_string();
+    info!("find={} airports={}", name, fname);
 
-    let fname = PlPath::Local(fname.into());
-    let lf = LazyFrame::scan_parquet(fname, Default::default())?
+    let lf = LazyFrame::scan_parquet(fname.as_str().into(), Default::default())?
         .select([
             col("ident"),
             col("name"),
