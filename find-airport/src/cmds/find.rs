@@ -83,24 +83,24 @@ fn airports_from_df(df: &DataFrame) -> PolarsResult<Vec<Airport>> {
         elev.into_iter(),
         iata.into_iter(),
     )
-    .map(|(ident, name, lat, lon, elev, iata)| {
-        // Calculate some more data for the struct
-        //
-        let tzd = find_tz(lat.unwrap(), lon.unwrap()).unwrap();
-        let pluscode = compute_pluscode(lat.unwrap(), lon.unwrap()).unwrap();
-        Airport {
-            ident: ident.unwrap().to_string(),
-            name: name.unwrap().to_string(),
-            latitude_deg: lat.unwrap(),
-            longitude_deg: lon.unwrap(),
-            elevation_m: (elev.unwrap_or(0) as f64 * 0.3048) as i32,
-            iata_code: iata.unwrap().to_string(),
-            timezone: tzd.tzname,
-            offset: tzd.offset / 3600,
-            pluscode,
-        }
-    })
-    .collect();
+        .map(|(ident, name, lat, lon, elev, iata)| {
+            // Calculate some more data for the struct
+            //
+            let tzd = find_tz(lat.unwrap(), lon.unwrap()).unwrap();
+            let pluscode = compute_pluscode(lat.unwrap(), lon.unwrap()).unwrap();
+            Airport {
+                ident: ident.unwrap().to_string(),
+                name: name.unwrap().to_string(),
+                latitude_deg: lat.unwrap(),
+                longitude_deg: lon.unwrap(),
+                elevation_m: (elev.unwrap_or(0) as f64 * 0.3048) as i32,
+                iata_code: iata.unwrap().to_string(),
+                timezone: tzd.tzname,
+                offset: tzd.offset / 3600,
+                pluscode,
+            }
+        })
+        .collect();
 
     Ok(airports)
 }
@@ -125,7 +125,7 @@ fn airports_from_df(df: &DataFrame) -> PolarsResult<Vec<Airport>> {
 /// This function is compatible with Polars 0.52 and older versions.
 ///
 #[tracing::instrument]
-pub fn find_airport(ctx: &Context, name: &str) -> Result<Vec<Airport>> {
+pub fn cmd_find(ctx: &Context, name: &str) -> Result<Vec<Airport>> {
     let basedir = ctx.cfg["datalake"].clone();
     info!("Datalake is {}", basedir);
     let fname = Path::new(&basedir).join("files").join("airports.parquet");
@@ -185,7 +185,7 @@ mod tests {
         #[case] expected_lat: f64,
         #[case] expected_lon: f64,
     ) {
-        let result = find_airport(iata);
+        let result = cmd_find(iata);
         assert!(result.is_ok());
         let airport = result.unwrap().first().unwrap();
         assert_eq!(airport.iata_code, iata);
