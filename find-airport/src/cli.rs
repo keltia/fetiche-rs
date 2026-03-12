@@ -43,7 +43,7 @@ pub enum SubCommand {
 pub struct FindOpts {
     /// Display by country code
     #[clap(short = 'C', long)]
-    pub country: String,
+    pub country: Option<String>,
     /// Airport IATA code or name to search for (default: "CDG")
     #[clap(default_value = "CDG")]
     pub name: String,
