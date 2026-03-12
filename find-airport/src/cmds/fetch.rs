@@ -1,6 +1,5 @@
 //! Main module for fetching files.
 //!
-
 use std::env::set_current_dir;
 use std::fmt::Debug;
 use std::fs::{File, Metadata};
@@ -24,7 +23,7 @@ const ONE_DAY: Duration = Duration::from_hours(24);
 /// Fetch the main file, then convert it into parquet.
 ///
 #[tracing::instrument]
-pub async fn fetch(ctx: &Context) -> Result<Vec<Work>> {
+pub async fn cmd_fetch(ctx: &Context) -> Result<Vec<Work>> {
     let base_url = ctx.cfg["base_url"].clone();
     if base_url.is_empty() {
         return Err(Status::BaseUrlCannotBeEmpty.into());
@@ -98,9 +97,9 @@ pub async fn fetch(ctx: &Context) -> Result<Vec<Work>> {
 /// Fetch one file into the configured directory, checking mtime, etc.
 ///
 #[tracing::instrument(skip(base_url))]
-async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
-    let mut status: WorkStatus;
-    let mut bytes = 0u64;
+pub async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
+    let status: WorkStatus;
+    let mut bytes: u64;
 
     // Get our filename
     //
@@ -117,11 +116,11 @@ async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
         let mtime = current_st.modified()?;
         bytes = current_st.len();
 
-        info!("File found, size={bytes}, mtime={mtime:?}");
+        info!("file={:?} size={bytes}, mtime={mtime:?}", current);
         status = WorkStatus::Present;
         mtime
     } else {
-        warn!("No file found, fetching.");
+        warn!("no_file fetching=true");
         status = WorkStatus::Refreshed;
         UNIX_EPOCH
     };
@@ -130,24 +129,22 @@ async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
     //
     let now = SystemTime::now();
     if now.duration_since(mtime)? > ONE_DAY {
-        info!("Fetching new version.");
+        info!("fetch_new_version");
 
         // We need to fetch a new version of the file.
         //
         let output = basename.with_extension("csv");
 
-        let tempdir = tempfile::tempdir()?;
-        let output = tempdir.path().join(output);
-        info!("Writing to {:?}", output);
+        info!("write file={:?}", output);
 
-        let url = format!("{}{}", base_url, fname);
+        let url = format!("{}{}.csv", base_url, fname);
         let _ = fetch_file(&url, &output).await?;
 
         let input = output;
 
         let output = basename.with_extension("parquet");
 
-        info!("Converting to parquet in {:?}", output);
+        info!("to_parquet file={:?}", output);
         let _ = convert_into_parquet(&input, &output).await?;
     }
 
@@ -156,29 +153,22 @@ async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
     bytes = current_st.len();
 
     let rows = read_parquet_size(&current).await?;
-    info!("Parquet length: {:?} records", rows);
+    info!("file={:?} bytes={} nrows={}", current, bytes, rows);
 
-    Ok(Work {
+    let work = Work {
         status,
-        name: fname.to_string(),
+        name: current.to_string_lossy().to_string(),
         mtime,
         size: bytes,
         rows,
-    })
+    };
+    dbg!(&work);
+    Ok(work)
 }
 
 #[tracing::instrument]
-async fn read_parquet_size<P>(fname: P) -> Result<usize>
-where
-    P: AsRef<Path> + Debug,
-{
-    let fh = File::open(fname)?;
-    let mut rdr = ParquetReader::new(fh);
-    Ok(rdr.num_rows()?)
-}
-
-#[tracing::instrument]
-async fn fetch_file(url: &str, output: &Path) -> Result<Metadata> {
+pub async fn fetch_file(url: &str, output: &Path) -> Result<Metadata> {
+    trace!("fetch_file url={}", url);
     let client = reqwest::ClientBuilder::new()
         .user_agent(USER_AGENT)
         .gzip(true)
@@ -194,7 +184,7 @@ async fn fetch_file(url: &str, output: &Path) -> Result<Metadata> {
 }
 
 #[tracing::instrument]
-async fn convert_into_parquet<P>(input: P, output: P) -> Result<()>
+pub async fn convert_into_parquet<P>(input: P, output: P) -> Result<()>
 where
     P: AsRef<Path> + Debug,
 {
