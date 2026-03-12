@@ -13,9 +13,6 @@ pub struct Opts {
     /// Alternate Configuration file
     #[clap(short = 'c', long)]
     pub config: Option<String>,
-    /// Database file to use
-    #[clap(short = 'd', long)]
-    pub database: Option<String>,
     /// Datalake location to use
     #[clap(short = 'l', long)]
     pub datalake: Option<String>,

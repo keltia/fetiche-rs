@@ -87,8 +87,6 @@ pub struct Database {
     pub drone_db: Option<String>,
     /// Database holding the working tables.
     pub work_db: Option<String>,
-    /// Database name or path.
-    pub database: Option<String>,
     /// URL
     pub url: String,
     /// User to connect with
