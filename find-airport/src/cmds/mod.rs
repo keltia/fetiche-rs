@@ -16,6 +16,7 @@ use std::time::UNIX_EPOCH;
 use jiff::Timestamp;
 use polars::prelude::{ParquetReader, SerReader};
 use strum::VariantNames;
+use tabled::Tabled;
 
 #[tracing::instrument]
 pub async fn read_parquet_size<P>(fname: P) -> eyre::Result<usize>
@@ -31,12 +32,13 @@ where
 pub enum WorkStatus {
     Present,
     Refreshed,
+    Removed,
     #[default]
     Unknown,
 }
 
 /// `Work` describe a file that was present, fetched, or refreshed
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Tabled)]
 pub struct Work {
     status: WorkStatus,
     name: String,
@@ -67,4 +69,3 @@ impl Default for Work {
         }
     }
 }
-

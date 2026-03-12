@@ -4,10 +4,11 @@ use std::env::set_current_dir;
 use std::fmt::Debug;
 use std::fs::{File, Metadata};
 use std::path::Path;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, UNIX_EPOCH};
 
 use eyre::Result;
 use futures::future::join_all;
+use jiff::{SignedDuration, Timestamp};
 use polars::prelude::*;
 use reqwest::redirect::Policy;
 use tokio::fs;
@@ -18,7 +19,7 @@ use crate::error::Status;
 use crate::runtime::Context;
 use crate::USER_AGENT;
 
-const ONE_DAY: Duration = Duration::from_hours(24);
+const ONE_DAY: SignedDuration = SignedDuration::from_hours(24);
 
 /// Fetch the main file, then convert it into parquet.
 ///
@@ -74,6 +75,7 @@ pub async fn cmd_fetch(ctx: &Context) -> Result<Vec<Work>> {
                     }
                 };
                 let mtime = current_st.modified().unwrap();
+                let mtime = Timestamp::try_from(mtime).unwrap_or_default();
                 info!("size={}, mtime={:?}", current_st.len(), mtime);
 
                 let bytes = match read_parquet_size(&current.name).await {
@@ -113,7 +115,7 @@ pub async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
     //
     let mtime = if current.exists() {
         let current_st = fs::metadata(&current).await?;
-        let mtime = current_st.modified()?;
+        let mtime = Timestamp::try_from(current_st.modified()?)?;
         bytes = current_st.len();
 
         info!("file={:?} size={bytes}, mtime={mtime:?}", current);
@@ -122,13 +124,13 @@ pub async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
     } else {
         warn!("no_file fetching=true");
         status = WorkStatus::Refreshed;
-        UNIX_EPOCH
+        Timestamp::try_from(UNIX_EPOCH)?
     };
 
     // Do we have a file that is older than one day?
     //
-    let now = SystemTime::now();
-    if now.duration_since(mtime)? > ONE_DAY {
+    let now = Timestamp::now();
+    if now.duration_since(mtime) > ONE_DAY {
         info!("fetch_new_version");
 
         // We need to fetch a new version of the file.
@@ -149,7 +151,7 @@ pub async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
     }
 
     let current_st = fs::metadata(&current).await?;
-    let mtime = current_st.modified()?;
+    let mtime = Timestamp::try_from(current_st.modified()?)?;
     bytes = current_st.len();
 
     let rows = read_parquet_size(&current).await?;
