@@ -12,14 +12,12 @@ use clap::Parser;
 use eyre::Result;
 use tabled::settings::Style;
 use tabled::{Table, Tabled};
+use tracing::debug;
 
-use crate::airport::find_airport;
 use crate::cli::{Opts, SubCommand};
+use crate::cmds::{cmd_clean, cmd_fetch, cmd_find, cmd_show};
 use crate::runtime::{finish_runtime, init_runtime};
 
-use crate::cmds::{clean, fetch, show};
-
-mod airport;
 mod cli;
 mod cmds;
 mod config;
@@ -37,15 +35,19 @@ async fn main() -> Result<()> {
 
     match &opts.cmd {
         SubCommand::Clean => {
-            let _ = clean(&ctx).await?;
+            let _ = cmd_clean(&ctx).await?;
         }
         SubCommand::Fetch => {
-            let files = fetch(&ctx).await?;
-            println!("Fetched {} entries", files.len());
+            let files = cmd_fetch(&ctx).await?;
+            println!("Fetched files:");
+            debug!("{}", files.iter().map(|f| f.to_string()).collect::<Vec<_>>().join(","));
+            for file in files {
+                println!("  {}", file);
+            }
         }
         SubCommand::Find(opts) => {
             println!("Looking for airport: {}", &opts.name);
-            let airport_iata = find_airport(&ctx, &opts.name)?;
+            let airport_iata = cmd_find(&ctx, &opts.name)?;
 
             let table = Table::new(&airport_iata).with(Style::sharp()).to_string();
             println!("Found by IATA:\n{table}");
@@ -54,7 +56,7 @@ async fn main() -> Result<()> {
             todo!()
         }
         SubCommand::Show => {
-            let _ = show(&ctx).await?;
+            let _ = cmd_show(&ctx).await?;
         }
     }
     Ok(finish_runtime(&ctx)?)
