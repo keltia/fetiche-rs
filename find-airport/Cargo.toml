@@ -28,7 +28,6 @@ fetiche-macros.workspace = true
 futures.workspace = true
 itertools.workspace = true
 jiff.workspace = true
-polars.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 strum.workspace = true
@@ -38,6 +37,8 @@ tokio.workspace = true
 tracing.workspace = true
 
 pluscodes = "0.5"
+polars = { version = "0.53", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-categorical"] }
+polars-utils = "0.53"
 
 [dev-dependencies]
 rstest.workspace = true
