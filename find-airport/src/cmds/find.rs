@@ -53,8 +53,10 @@ pub struct Airport {
     /// Full name of the airport
     pub name: String,
     /// Latitude in decimal degrees
+    #[tabled(rename = "Latitude", format("{:.6}"))]
     pub latitude_deg: f64,
     /// Longitude in decimal degrees
+    #[tabled(rename = "Longitude", format("{:.6}"))]
     pub longitude_deg: f64,
     /// Elevation in meters above sea level
     pub elevation_m: i32,

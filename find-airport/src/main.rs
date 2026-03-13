@@ -112,8 +112,11 @@ async fn main() -> Result<()> {
 fn display_work_table(list: Vec<Work>) -> String {
     let table = Table::new(list)
         .with(Style::sharp())
+        .modify(Columns::one(2), Alignment::right())
         .modify(Columns::one(3), Alignment::right())
         .modify(Columns::one(4), Alignment::right())
+        .modify(Columns::one(5), Alignment::center())
+        .modify(Columns::one(7), Alignment::center())
         .to_string();
     table
 }
