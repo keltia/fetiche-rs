@@ -1,13 +1,13 @@
-//! Try find a specific airport by IATA code.
+//! Search for a specific airport by IATA code/ICAO code/Name, or list a specific country.
 //!
-//! Use opendata from OurAirports: https://ourairports.com/data/
+//! Source: Use opendata from OurAirports: https://ourairports.com/data/
 //!
-//! Get the csv file with curl, and convert into parquet:
-//! ```text
-//! curl -O  https://davidmegginson.github.io/ourairports-data/airports.csv
-//! bdt convert -s airports.csv airports.parquet
+//! Before doing any search, retrieve data with:
+//! ```shell
+//! find-airport fetch
 //! ```
 //!
+
 use clap::Parser;
 use eyre::Result;
 use std::fmt::Debug;
