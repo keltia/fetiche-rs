@@ -36,6 +36,7 @@ async fn main() -> Result<()> {
 
     let ctx = init_runtime(&opts).await?;
 
+    println!("{}", env!("CARGO_PKG_DESCRIPTION"));
     println!("{USER_AGENT}\n");
     println!("Repository: {}", repo_path(&ctx));
     match &opts.cmd {
