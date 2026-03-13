@@ -10,15 +10,15 @@
 //!
 use clap::Parser;
 use eyre::Result;
-use tabled::Table;
 use tabled::settings::object::Columns;
 use tabled::settings::{Alignment, Style};
+use tabled::Table;
 use tokio::task::spawn_blocking;
 use tracing::debug;
 
 use crate::cli::{Opts, SubCommand};
-use crate::cmds::{Work, cmd_clean, cmd_fetch, cmd_find, cmd_show};
-use crate::runtime::{Context, finish_runtime, init_runtime};
+use crate::cmds::{cmd_clean, cmd_fetch, cmd_find, cmd_show, Work};
+use crate::runtime::{finish_runtime, init_runtime, Context};
 
 mod cli;
 mod cmds;
@@ -74,18 +74,22 @@ async fn main() -> Result<()> {
                 println!("Dry run, not fetching anything.");
             }
         }
-        SubCommand::Find(opts) => {
-            println!("Looking for airport: {}", &opts.name);
+        SubCommand::Find(fopts) => {
+            println!("Looking for airport: {}", &fopts.name);
 
             // polars is not async-friendly, when using lazy frames
             // cf.https://stackoverflow.com/questions/77294105/how-do-i-call-the-polars-rust-api-from-an-async-function#77312986
             //
             let ctx1 = ctx.clone();
-            let name = opts.name.clone();
-            let airport_iata = spawn_blocking(move || cmd_find(&ctx1, &name)).await?;
+            let opts1 = fopts.clone();
+            let airport_iata = spawn_blocking(move || cmd_find(&ctx1, &opts1)).await?;
 
             let results = match airport_iata {
-                Ok(airport_iata) => airport_iata,
+                Ok(airport_iata) => {
+                    debug!("res={:?}", airport_iata);
+
+                    airport_iata
+                }
                 Err(e) => {
                     eprintln!("Error finding airport: {}", e.to_string());
                     return Err(e);
