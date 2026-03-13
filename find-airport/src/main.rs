@@ -10,14 +10,15 @@
 //!
 use clap::Parser;
 use eyre::Result;
+use std::fmt::Debug;
 use tabled::settings::object::Columns;
 use tabled::settings::{Alignment, Style};
-use tabled::Table;
+use tabled::{Table, Tabled};
 use tokio::task::spawn_blocking;
 use tracing::debug;
 
 use crate::cli::{Opts, SubCommand};
-use crate::cmds::{cmd_clean, cmd_fetch, cmd_find, cmd_show, Work};
+use crate::cmds::{cmd_clean, cmd_fetch, cmd_find, cmd_show};
 use crate::runtime::{finish_runtime, init_runtime, Context};
 
 mod cli;
@@ -50,7 +51,7 @@ async fn main() -> Result<()> {
                         .join(",")
                 );
 
-                let table = display_work_table(files);
+                let table = display_result_table(files);
                 println!("\nRemoved Files:\n{table}");
             } else {
                 println!("Dry run, not removing anything.");
@@ -68,14 +69,14 @@ async fn main() -> Result<()> {
                         .join(",")
                 );
 
-                let table = display_work_table(files);
+                let table = display_result_table(files);
                 println!("\nFiles:\n{table}");
             } else {
                 println!("Dry run, not fetching anything.");
             }
         }
         SubCommand::Find(fopts) => {
-            println!("Looking for airport: {}", &fopts.name);
+            println!("Looking for airport: {}", &fopts.text);
 
             // polars is not async-friendly, when using lazy frames
             // cf.https://stackoverflow.com/questions/77294105/how-do-i-call-the-polars-rust-api-from-an-async-function#77312986
@@ -96,12 +97,12 @@ async fn main() -> Result<()> {
                 }
             };
 
-            let table = Table::new(&results).with(Style::sharp()).to_string();
-            println!("\nFound by IATA:\n{table}");
+            let table = display_result_table(results);
+            println!("\nFound by IATA/ICAO/Name/Country:\n{table}");
         }
         SubCommand::Show => {
             let files = cmd_show(&ctx).await?;
-            let table = display_work_table(files);
+            let table = display_result_table(files);
             println!("\nFiles:\n{table}");
         }
     }
@@ -109,7 +110,10 @@ async fn main() -> Result<()> {
 }
 
 #[tracing::instrument]
-fn display_work_table(list: Vec<Work>) -> String {
+fn display_result_table<T>(list: Vec<T>) -> String
+where
+    T: Debug + Tabled,
+{
     let table = Table::new(list)
         .with(Style::sharp())
         .modify(Columns::one(2), Alignment::right())
