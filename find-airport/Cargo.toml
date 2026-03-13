@@ -1,6 +1,6 @@
 [package]
 name = "find-airport"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Fetch OurAirports data into Parquet, and search it."
@@ -28,6 +28,7 @@ fetiche-macros.workspace = true
 futures.workspace = true
 itertools.workspace = true
 jiff.workspace = true
+polars.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 strum.workspace = true
@@ -37,7 +38,6 @@ tokio.workspace = true
 tracing.workspace = true
 
 pluscodes = "0.5"
-polars = { version = "0.53", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-categorical"] }
 polars-utils = "0.53"
 
 [dev-dependencies]
