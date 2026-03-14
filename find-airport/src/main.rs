@@ -10,7 +10,7 @@
 
 use std::fmt::Debug;
 
-use clap::Parser;
+use clap::{crate_authors, crate_description, Parser};
 use csv::Writer;
 use eyre::Result;
 use serde_json::json;
@@ -37,10 +37,18 @@ const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VE
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
+    if opts.version {
+        eprintln!("{} {}", NAME, env!("CARGO_PKG_VERSION"));
+        banner();
+        return Ok(());
+    }
+
+    if !opts.quiet {
+        banner();
+    }
+
     let ctx = init_runtime(&opts).await?;
 
-    println!("{}", env!("CARGO_PKG_DESCRIPTION"));
-    println!("{USER_AGENT}\n");
     println!("Repository: {}", repo_path(&ctx));
     match &opts.cmd {
         SubCommand::Clean => {
@@ -168,4 +176,25 @@ fn format_result_as(results: Vec<Airport>, fmt: Format) -> Result<String> {
             display_result_table(results)
         }
     })
+}
+
+/// Return our version number
+///
+#[inline]
+pub fn version() -> String {
+    USER_AGENT.to_string()
+}
+
+/// Display banner
+///
+fn banner() {
+    eprintln!(
+        r##"
+{} by {}
+{}
+"##,
+        USER_AGENT,
+        crate_authors!(),
+        crate_description!()
+    )
 }

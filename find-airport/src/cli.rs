@@ -1,8 +1,12 @@
-use clap::Parser;
+use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use strum::EnumString;
 
 /// Command-line options for the airport lookup application.
 ///
 #[derive(Debug, Parser)]
+#[command(disable_version_flag = true)]
+#[clap(name = crate_name!(), about = crate_description!())]
+#[clap(version = crate_version!(), author = crate_authors!())]
 pub struct Opts {
     /// Directory holding the parquet files for the datalake.
     pub datalake: Option<String>,
@@ -12,6 +16,12 @@ pub struct Opts {
     /// This parameter enables logging to a file in that location.
     #[clap(short = 'F', long)]
     pub use_file: Option<String>,
+    /// We do not want anything more than the data.
+    #[clap(short = 'q', long)]
+    pub quiet: bool,
+    /// Display version.
+    #[clap(short = 'V', long)]
+    pub version: bool,
     /// Dry run
     #[clap(short = 'n', long)]
     pub dry_run: bool,
