@@ -18,6 +18,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 [badges]
 maintenance = { status = "actively-developed" }
 
+[[bench]]
+name = "bycountry"
+harness = false
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -41,4 +45,5 @@ pluscodes = "0.5"
 polars-utils = "0.53"
 
 [dev-dependencies]
+divan = "0.1"
 rstest.workspace = true
