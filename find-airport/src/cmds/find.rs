@@ -34,8 +34,9 @@ use itertools::izip;
 use pluscodes::Coordinate;
 use polars::prelude::*;
 use serde::Deserialize;
+use std::time::Instant;
 use tabled::Tabled;
-use tracing::info;
+use tracing::{info, trace};
 
 use crate::cli::FindOpts;
 use crate::runtime::Context;
@@ -123,10 +124,19 @@ pub fn cmd_find(ctx: &Context, opts: &FindOpts) -> Result<Vec<Airport>> {
         SearchBy::Iata
     };
 
+    let tm = Instant::now();
     let lf = find_into_parquet(name, &fname, criteria)?;
+    let tm = tm.elapsed().as_millis();
+    trace!("find={tm}ms, nrows={}", lf.height());
 
     // let airports: Vec<Airport> = lf.deserialize()?;
+    // This is the slowest part of the processing
+    //
+    let tm = Instant::now();
     let airports = airports_from_df(&lf)?;
+    let tm = tm.elapsed().as_millis();
+    trace!("deserialize={tm}ms, nrows={}", airports.len());
+
     Ok(airports)
 }
 
