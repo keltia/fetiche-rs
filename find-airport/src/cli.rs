@@ -2,7 +2,6 @@ use clap::Parser;
 
 /// Command-line options for the airport lookup application.
 ///
-/// Contains the search parameter for finding airports by IATA code or name.
 #[derive(Debug, Parser)]
 pub struct Opts {
     /// Directory holding the parquet files for the datalake.
@@ -20,25 +19,22 @@ pub struct Opts {
     pub cmd: SubCommand,
 }
 
-/// This enum is for specifying the output format of a query with `find`, not
-/// for the actual fetching of the database.
+/// List of all sub-commands.
 ///
 #[derive(Debug, Parser)]
-pub enum Format {
-    /// Output as CSV.
-    Csv,
-    /// Output as JSON.
-    Json,
-}
-
-#[derive(Debug, Parser)]
 pub enum SubCommand {
+    /// Remove the current parquet files from the datalake.
     Clean,
+    /// Fetch or refresh the latest parquet files from the datalake.
     Fetch,
+    /// Find airports by IATA code, ICAO code, name, or country.
     Find(FindOpts),
+    /// Show the current parquet files in the datalake.
     Show,
 }
 
+/// Only `find` tales options
+///
 #[derive(Clone, Debug, Parser)]
 pub struct FindOpts {
     /// Display by country code
@@ -53,6 +49,33 @@ pub struct FindOpts {
     /// Find by searching in the name
     #[clap(short = 'N', long)]
     pub name: bool,
+    // -----
+    /// Output as CSV.
+    #[clap(short = 'c', long)]
+    pub csv: bool,
+    /// Output as JSON.
+    #[clap(short = 'J', long)]
+    pub json: bool,
+    /// Output as NDJSON.
+    #[clap(short = 'L', long)]
+    pub ndjson: bool,
+    // ------
     /// Search text
     pub text: String,
+}
+
+/// This enum is for specifying the output format of a query with `find`, not
+/// for the actual fetching of the database.
+///
+#[derive(Clone, Debug, Default)]
+pub enum Format {
+    /// Output as CSV.
+    Csv,
+    /// Output as JSON.
+    Json,
+    /// Output as NDJSON.
+    Ndjson,
+    /// Table (default)
+    #[default]
+    Plain,
 }

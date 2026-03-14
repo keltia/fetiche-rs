@@ -8,17 +8,20 @@
 //! ```
 //!
 
-use clap::Parser;
-use eyre::Result;
 use std::fmt::Debug;
+
+use clap::Parser;
+use csv::Writer;
+use eyre::Result;
+use serde_json::json;
 use tabled::settings::object::Columns;
 use tabled::settings::{Alignment, Style};
 use tabled::{Table, Tabled};
 use tokio::task::spawn_blocking;
 use tracing::debug;
 
-use crate::cli::{Opts, SubCommand};
-use crate::cmds::{cmd_clean, cmd_fetch, cmd_find, cmd_show};
+use crate::cli::{Format, Opts, SubCommand};
+use crate::cmds::{cmd_clean, cmd_fetch, cmd_find, cmd_show, Airport};
 use crate::runtime::{finish_runtime, init_runtime, Context};
 
 mod cli;
@@ -98,8 +101,17 @@ async fn main() -> Result<()> {
                 }
             };
 
-            let table = display_result_table(results);
-            println!("\nFound by IATA/ICAO/Name/Country:\n{table}");
+            let fmt = if fopts.json {
+                Format::Json
+            } else if fopts.csv {
+                Format::Csv
+            } else if fopts.ndjson {
+                Format::Ndjson
+            } else {
+                Format::Plain
+            };
+            let result = format_result_as(results, fmt)?;
+            println!("{}", result);
         }
         SubCommand::Show => {
             let files = cmd_show(&ctx).await?;
@@ -130,4 +142,30 @@ where
 fn repo_path(ctx: &Context) -> String {
     let repo_path = ctx.cfg["datalake"].clone();
     format!("{}/files", repo_path)
+}
+
+#[tracing::instrument]
+fn format_result_as(results: Vec<Airport>, fmt: Format) -> Result<String> {
+    Ok(match fmt {
+        Format::Json => json!(results).to_string(),
+        Format::Csv => {
+            let mut wtr = Writer::from_writer(vec![]);
+
+            for airport in results {
+                wtr.serialize(airport)?;
+            }
+
+            let bytes = wtr.into_inner()?;
+            String::from_utf8(bytes)?
+        }
+        Format::Ndjson => results
+            .iter()
+            .map(|airport| json!(airport).to_string())
+            .collect::<Vec<String>>()
+            .join("\n"),
+        _ => {
+            println!("\nFound by IATA/ICAO/Name/Country:\n");
+            display_result_table(results)
+        }
+    })
 }

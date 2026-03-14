@@ -31,7 +31,7 @@ use eyre::Result;
 use pluscodes::Coordinate;
 use polars::prelude::*;
 use rayon::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::time::Instant;
 use tabled::Tabled;
@@ -46,7 +46,7 @@ use fetiche_common::find_tz;
 /// This structure contains all relevant data for an airport including its location,
 /// elevation, identification codes, and timezone information.
 ///
-#[derive(Deserialize, Debug, Tabled)]
+#[derive(Deserialize, Debug, Serialize, Tabled)]
 pub struct Airport {
     /// Airport identifier (ICAO code)
     pub ident: String,
