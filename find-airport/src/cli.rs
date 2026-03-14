@@ -60,15 +60,9 @@ pub struct FindOpts {
     #[clap(short = 'N', long)]
     pub name: bool,
     // -----
-    /// Output as CSV.
-    #[clap(short = 'c', long)]
-    pub csv: bool,
-    /// Output as JSON.
-    #[clap(short = 'J', long)]
-    pub json: bool,
-    /// Output as NDJSON.
-    #[clap(short = 'L', long)]
-    pub ndjson: bool,
+    /// Output as CSV/JSON/NDJSON/Plain.
+    #[clap(short = 'F', long, value_parser, default_value = "plain")]
+    pub fmt: Option<Format>,
     // ------
     /// Search text
     pub text: String,
@@ -77,7 +71,8 @@ pub struct FindOpts {
 /// This enum is for specifying the output format of a query with `find`, not
 /// for the actual fetching of the database.
 ///
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, strum::Display, EnumString, Parser)]
+#[strum(serialize_all = "lowercase", ascii_case_insensitive)]
 pub enum Format {
     /// Output as CSV.
     Csv,

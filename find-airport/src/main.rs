@@ -109,16 +109,7 @@ async fn main() -> Result<()> {
                 }
             };
 
-            let fmt = if fopts.json {
-                Format::Json
-            } else if fopts.csv {
-                Format::Csv
-            } else if fopts.ndjson {
-                Format::Ndjson
-            } else {
-                Format::Plain
-            };
-            let result = format_result_as(results, fmt)?;
+            let result = format_result_as(results, fopts.fmt.unwrap_or(Format::Plain))?;
             println!("{}", result);
         }
         SubCommand::Show => {
