@@ -7,7 +7,7 @@
 //! Timer precision: 100 ns
 //! deserialize     fastest       │ slowest       │ median        │ mean          │ samples │ iters
 //! ├─ bench_izip   1.523 s       │ 1.893 s       │ 1.594 s       │ 1.615 s       │ 100     │ 100
-//! ╰─ bench_rayon  497 ms        │ 807 ms        │ 670 ms        │ 671.8 ms      │ 100     │ 100//!
+//! ╰─ bench_rayon  497 ms        │ 807 ms        │ 670 ms        │ 671.8 ms      │ 100     │ 100
 //! ```
 //!
 
