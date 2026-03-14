@@ -27,13 +27,12 @@
 //! 6. Return structured Airport objects with complete information
 //!
 
-use std::path::Path;
-
 use eyre::Result;
-use itertools::izip;
 use pluscodes::Coordinate;
 use polars::prelude::*;
+use rayon::prelude::*;
 use serde::Deserialize;
+use std::path::Path;
 use std::time::Instant;
 use tabled::Tabled;
 use tracing::{info, trace};
@@ -114,6 +113,8 @@ pub fn cmd_find(ctx: &Context, opts: &FindOpts) -> Result<Vec<Airport>> {
     let fname = fname.to_string_lossy().to_string();
     info!("find={} airports={}", name, fname);
 
+    // Default is IATA code, but can be overriden by --icao / --name / --country
+    //
     let criteria = if opts.country {
         SearchBy::Country
     } else if opts.icao {
@@ -220,32 +221,26 @@ fn airports_from_df(df: &DataFrame) -> PolarsResult<Vec<Airport>> {
     let elev = df.column("elevation_ft")?.i64()?;
     let iata = df.column("iata_code")?.str()?;
 
-    let airports = izip!(
-        ident.into_iter(),
-        name.into_iter(),
-        lat.into_iter(),
-        lon.into_iter(),
-        elev.into_iter(),
-        iata.into_iter(),
-    )
-    .map(|(ident, name, lat, lon, elev, iata)| {
-        // Calculate some more data for the struct
-        //
-        let tzd = find_tz(lat.unwrap(), lon.unwrap()).unwrap();
-        let pluscode = compute_pluscode(lat.unwrap(), lon.unwrap()).unwrap();
-        Airport {
-            ident: ident.unwrap().to_string(),
-            name: name.unwrap().to_string(),
-            latitude_deg: lat.unwrap(),
-            longitude_deg: lon.unwrap(),
-            elevation_m: (elev.unwrap_or(0) as f64 * 0.3048) as i32,
-            iata_code: iata.unwrap().to_string(),
-            timezone: tzd.tzname,
-            offset: tzd.offset / 3600,
-            pluscode,
-        }
-    })
-    .collect();
+    let airports = (0..df.height())
+        .into_par_iter()
+        .map(|i| {
+            let lat_val = lat.get(i).unwrap();
+            let lon_val = lon.get(i).unwrap();
+            let tzd = find_tz(lat_val, lon_val).unwrap();
+
+            Airport {
+                ident: ident.get(i).unwrap().to_string(),
+                name: name.get(i).unwrap().to_string(),
+                latitude_deg: lat_val,
+                longitude_deg: lon_val,
+                elevation_m: (elev.get(i).unwrap_or(0) as f64 * 0.3048) as i32,
+                iata_code: iata.get(i).unwrap().to_string(),
+                timezone: tzd.tzname,
+                offset: tzd.offset / 3600,
+                pluscode: compute_pluscode(lat_val, lon_val).unwrap(),
+            }
+        })
+        .collect();
 
     Ok(airports)
 }
@@ -317,7 +312,7 @@ mod tests {
         #[case] iata: &str,
         #[case] expected_name_part: &str,
     ) -> Result<()> {
-        let result = find_into_parquet(iata, "../data/airports.parquet");
+        let result = find_into_parquet(iata, "../data/airports.parquet", SearchBy::Iata);
         assert!(result.is_ok());
         let result = result.unwrap();
         let airports = airports_from_df(&result)?;
