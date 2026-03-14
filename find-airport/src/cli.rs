@@ -8,7 +8,8 @@ use strum::EnumString;
 #[clap(name = crate_name!(), about = crate_description!())]
 #[clap(version = crate_version!(), author = crate_authors!())]
 pub struct Opts {
-    /// Directory holding the parquet files for the datalake.
+    /// Directory holding the parquet files.
+    #[clap(short = 'D', long)]
     pub datalake: Option<String>,
     /// Enable logging in a hierarchical manner (aka tree)
     #[clap(short = 'L', long)]
