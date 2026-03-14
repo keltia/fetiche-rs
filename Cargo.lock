@@ -2861,6 +2861,7 @@ name = "find-airport"
 version = "0.2.0"
 dependencies = [
  "clap 4.5.60",
+ "divan",
  "eyre",
  "fetiche-common",
  "fetiche-macros",
@@ -2870,6 +2871,7 @@ dependencies = [
  "pluscodes",
  "polars",
  "polars-utils",
+ "rayon",
  "reqwest 0.13.2",
  "rstest",
  "serde",

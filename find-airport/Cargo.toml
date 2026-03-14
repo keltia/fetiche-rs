@@ -22,6 +22,10 @@ maintenance = { status = "actively-developed" }
 name = "bycountry"
 harness = false
 
+[[bench]]
+name = "deserialize"
+harness = false
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -30,7 +34,6 @@ eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-macros.workspace = true
 futures.workspace = true
-itertools.workspace = true
 jiff.workspace = true
 polars.workspace = true
 reqwest.workspace = true
@@ -43,7 +46,9 @@ tracing.workspace = true
 
 pluscodes = "0.5"
 polars-utils = "0.53"
+rayon = "1.11"
 
 [dev-dependencies]
 divan = "0.1"
+itertools.workspace = true
 rstest.workspace = true
