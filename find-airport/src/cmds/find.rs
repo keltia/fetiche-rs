@@ -49,8 +49,10 @@ use fetiche_common::find_tz;
 #[derive(Deserialize, Debug, Serialize, Tabled)]
 pub struct Airport {
     /// Airport identifier (ICAO code)
+    #[tabled(rename = "ICAO")]
     pub ident: String,
     /// Full name of the airport
+    #[tabled(rename = "Name")]
     pub name: String,
     /// Latitude in decimal degrees
     #[tabled(rename = "Latitude", format("{:.6}"))]
@@ -59,14 +61,19 @@ pub struct Airport {
     #[tabled(rename = "Longitude", format("{:.6}"))]
     pub longitude_deg: f64,
     /// Elevation in meters above sea level
+    #[tabled(rename = "Elevation (m)")]
     pub elevation_m: i32,
     /// IATA airport code
+    #[tabled(rename = "IATA")]
     pub iata_code: String,
     /// Timezone name (e.g., "Europe/Paris")
+    #[tabled(rename = "Timezone")]
     pub timezone: String,
     /// UTC offset in hours
+    #[tabled(rename = "UTC Offset")]
     pub offset: i32,
     /// Pluscode for the given coordinates
+    #[tabled(rename = "Pluscode")]
     pub pluscode: String,
 }
 

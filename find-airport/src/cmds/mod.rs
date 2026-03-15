@@ -40,10 +40,14 @@ pub enum WorkStatus {
 /// `Work` describe a file that was present, fetched, or refreshed
 #[derive(Clone, Debug, Tabled)]
 pub struct Work {
+    #[tabled(rename = "Status")]
     status: WorkStatus,
+    #[tabled(rename = "Filename")]
     name: String,
     mtime: Timestamp,
+    #[tabled(rename = "Size")]
     size: u64,
+    #[tabled(rename = "# Rows")]
     rows: usize,
 }
 
