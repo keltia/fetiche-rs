@@ -49,11 +49,19 @@ pub struct Work {
     status: WorkStatus,
     #[tabled(rename = "Filename")]
     name: String,
+    #[tabled(rename = "Last Modification Time", display("format_time"))]
     mtime: Timestamp,
     #[tabled(rename = "Size")]
     size: u64,
     #[tabled(rename = "# Rows")]
     rows: usize,
+}
+
+/// Short helper to format the time hjow we want it
+///
+#[inline]
+fn format_time(tm: &Timestamp) -> String {
+    tm.strftime("%Y-%m-%d %H:%M:%S").to_string()
 }
 
 impl Display for Work {
