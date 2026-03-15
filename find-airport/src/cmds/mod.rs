@@ -18,6 +18,8 @@ use polars::prelude::{ParquetReader, SerReader};
 use strum::VariantNames;
 use tabled::Tabled;
 
+/// Helper function to read the number of rows inside a parquet file.
+///
 #[tracing::instrument]
 pub async fn read_parquet_size<P>(fname: P) -> eyre::Result<usize>
 where
@@ -28,6 +30,8 @@ where
     Ok(rdr.num_rows()?)
 }
 
+/// Define the status of a given file
+///
 #[derive(Clone, Debug, Default, strum::Display, VariantNames)]
 pub enum WorkStatus {
     Present,
@@ -38,6 +42,7 @@ pub enum WorkStatus {
 }
 
 /// `Work` describe a file that was present, fetched, or refreshed
+///
 #[derive(Clone, Debug, Tabled)]
 pub struct Work {
     #[tabled(rename = "Status")]
