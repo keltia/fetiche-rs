@@ -68,6 +68,10 @@ pub enum DateOpts {
 pub enum ErrDateOpts {
     #[error("bad date: {0}")]
     BadDate(String),
+    #[error("bad week number: must be 1 <= {0} <= 53.")]
+    BadWeekNumber(i64),
+    #[error("cannot get date from system")]
+    CannotGetDate,
 }
 
 impl From<Report> for ErrDateOpts {
@@ -184,7 +188,7 @@ impl DateOpts {
             DateOpts::Week { num } => {
                 trace!("Got week {}", num);
                 if num > 53 {
-                    return Err(ErrDateOpts::BadDate(num.to_string()));
+                    return Err(ErrDateOpts::BadWeekNumber(num).into());
                 }
                 let week = Utc::now();
                 let begin: DateTime<Utc> =
@@ -351,10 +355,10 @@ mod test {
         let result = DateOpts::parse(opt);
 
         assert!(result.is_err());
-        if let Err(ErrDateOpts::BadDate(week)) = result {
-            assert_eq!(week, "54");
+        if let Err(ErrDateOpts::BadWeekNumber(week)) = result {
+            assert_eq!(week, 54_i64);
         } else {
-            panic!("Expected ErrDateOpts::BadDate error");
+            panic!("Expected ErrDateOpts::BadWeekNumber error");
         }
     }
 
