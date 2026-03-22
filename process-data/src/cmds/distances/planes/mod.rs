@@ -449,7 +449,7 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                         let pb = pb.clone();
                         async move { calculate_one_day_on_site(&ctx, &work, &pb).await.unwrap() }
                     })
-                        .await
+                    .await
                     {
                         Ok(res) => res,
                         Err(e) => {
@@ -653,6 +653,58 @@ fn parse_date_interval(date_opts: DateOpts) -> Result<(DateTime<Utc>, DateTime<U
     }
 }
 
+/// Converts a `jiff::Timestamp` into a `chrono::DateTime<Utc>`.
+///
+/// This function bridges between the `jiff` timestamp library and `chrono`'s
+/// date-time representation. It extracts the Unix epoch seconds from the
+/// `jiff::Timestamp` and constructs a corresponding UTC `DateTime`.
+///
+/// # Arguments
+///
+/// * `ts` - A `jiff::Timestamp` representing a point in time to be converted.
+///
+/// # Returns
+///
+/// Returns a `Result` containing:
+/// - `Ok(DateTime<Utc>)` if the timestamp is successfully converted and falls
+///   within the valid range for `chrono::DateTime`.
+/// - `Err` if the timestamp is out of range for `chrono` (e.g., too far in
+///   the past or future).
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The timestamp value exceeds the representable range of `chrono::DateTime<Utc>`.
+/// - The conversion from Unix epoch seconds fails.
+///
+/// # Examples
+///
+/// Valid timestamp conversion:
+/// ```rust
+/// use jiff::Timestamp;
+/// use chrono::{DateTime, Utc};
+///
+/// let jiff_ts = Timestamp::from_second(1609459200).unwrap(); // 2021-01-01 00:00:00 UTC
+/// let chrono_dt = timestamp_to_chrono(jiff_ts).unwrap();
+/// assert_eq!(chrono_dt.timestamp(), 1609459200);
+/// ```
+///
+/// Out-of-range timestamp:
+/// ```rust
+/// use jiff::Timestamp;
+///
+/// let invalid_ts = Timestamp::from_second(i64::MAX).unwrap();
+/// let result = timestamp_to_chrono(invalid_ts);
+/// assert!(result.is_err());
+/// ```
+///
+/// # Notes
+///
+/// - This function only uses the second precision from the `jiff::Timestamp`,
+///   setting nanoseconds to 0 in the resulting `DateTime`.
+/// - The conversion is timezone-aware and always produces UTC timestamps.
+///
+#[tracing::instrument]
 fn timestamp_to_chrono(ts: jiff::Timestamp) -> Result<DateTime<Utc>> {
     DateTime::<Utc>::from_timestamp(ts.as_second(), 0)
         .ok_or_else(|| eyre!("timestamp out of range: {ts}"))
