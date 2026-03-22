@@ -1,16 +1,12 @@
-use std::error::Error;
-use std::ops::{Add, Sub};
 use std::time::Duration;
 
 use clap::Parser;
 use eyre::Report;
 use jiff::civil::{date, Date, ISOWeekDate, Weekday};
 use jiff::tz::TimeZone;
-use jiff::{RoundMode, Span, Timestamp, ToSpan, Unit, Zoned, ZonedRound};
+use jiff::{RoundMode, Timestamp, ToSpan, Unit, Zoned, ZonedRound};
 use thiserror::Error;
 use tracing::{error, trace};
-
-use crate::normalise_day;
 
 /// Enum `DateOpts` provides various options for specifying date ranges or formats.
 ///

@@ -120,8 +120,6 @@ pub fn normalise_day(date: DateTime<Utc>) -> Result<DateTime<Utc>> {
     Ok(date)
 }
 
-#[inline]
-#[tracing::instrument]
 /// Normalises a given `jiff::Zoned` instance to the beginning of the same day (00:00:00 in its timezone).
 ///
 /// This function rounds down the provided zoned datetime to the start of the day (midnight)
@@ -192,7 +190,6 @@ mod tests {
     #[case("2024-04-01 08:34:56-00", "2024-04-01T00:00:00+00:00[UTC]")]
     fn test_normalise_day_jiff(#[case] date: &str, #[case] res: &str) {
         let d: Timestamp = date.parse().unwrap();
-        dbg!(&d);
         let r = normalise_day_jiff(d.in_tz("UTC").unwrap());
         assert!(r.is_ok());
         let r = r.unwrap();
