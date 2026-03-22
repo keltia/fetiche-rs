@@ -11,6 +11,7 @@ use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use rand::{rng, RngExt};
+use serde::Serialize;
 use std::env;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -65,6 +66,34 @@ pub struct PlanesOpts {
     pub factor: u32,
 }
 
+// ----- These are the default names for different bases
+
+/// DB name for airplane data.
+const AIRPLANE_DB: &str = "acute";
+/// DB name for drone data
+const DRONE_DB: &str = "acute";
+/// DB name for working tables & views
+const WORK_DB: &str = "acute";
+
+#[derive(Clone, Debug, Serialize)]
+pub struct DBVars {
+    pub planedb: String,
+    pub dronedb: String,
+    pub workdb: String,
+    pub tag: String,
+}
+
+impl Default for DBVars {
+    fn default() -> Self {
+        Self {
+            planedb: AIRPLANE_DB.into(),
+            dronedb: DRONE_DB.into(),
+            workdb: WORK_DB.into(),
+            tag: String::new(),
+        }
+    }
+}
+
 // -----
 
 /// Represents the context for calculating the distance between a drone and planes.
@@ -117,8 +146,9 @@ pub struct PlaneDistance {
     /// Lon of antenna
     #[builder]
     pub lon: f64,
-    #[builder(default = "PlaneDistance::default_db()")]
-    pub workdb: String,
+    /// Database variables
+    #[builder(default = "DBVars::default()")]
+    pub dbvars: DBVars,
     /// List of temporary tables created along the way, for cleanup.
     #[builder(default = "vec![]")]
     state: Vec<TempTables>,
@@ -493,6 +523,23 @@ async fn calculate_one_day_on_site(
 
     let day = normalise_day(work.day)?;
 
+    // Get our parameters for queries.
+    //
+    let planedb = ctx.config["planedb"].clone();
+    let dronedb = ctx.config["dronedb"].clone();
+    let workdb = ctx.config["workdb"].clone();
+
+    let name = work.site.name.clone();
+    let day_name = day.format("%Y%m%d").to_string();
+    let tag = format!("_{name}_{day_name}");
+
+    let dbvars = DBVars {
+        planedb,
+        dronedb,
+        workdb,
+        tag,
+    };
+
     let pbm = format!("Processing site {} on day {}", work.site.name, day);
     pbar.set_message(pbm);
     let mut work = PlaneDistanceBuilder::default()
@@ -504,6 +551,7 @@ async fn calculate_one_day_on_site(
         .threshold(work.threshold)
         .factor(work.factor)
         .wait(ctx.wait)
+        .dbvars(dbvars)
         .progress(Some(pbar.clone()))
         .build()?;
 
@@ -518,6 +566,22 @@ async fn calculate_one_day_on_site(
         Stats::Planes(PlanesStats::default())
     };
     Ok(stats)
+}
+
+use tinytemplate::TinyTemplate;
+
+/// This function instantiates a TinyTemplate with a query template and renders it with variables
+/// extracted from the current context.  We usually need the tablespace name for the planes, drones
+/// and work databases.
+///
+/// snprintf(3) for dummies.
+///
+#[tracing::instrument]
+pub fn load_query(q: &str, dbvars: &DBVars) -> Result<String> {
+    let mut tt = TinyTemplate::new();
+    tt.add_template("query", q)?;
+    let res = tt.render("query", &dbvars)?;
+    Ok(res)
 }
 
 /// Parses the provided `DateOpts` into a start and end date range.
@@ -661,7 +725,6 @@ mod tests {
         //
         let opts = Opts {
             config: None,
-            database: Some("acute".into()),
             datalake: Some("/Users/acute".into()),
             wait: 0,
             pool_size: 1,
@@ -684,5 +747,116 @@ mod tests {
         dbg!(&work_list);
         assert_eq!(work_list.len(), 6);
         Ok(())
+    }
+
+    #[test]
+    fn test_load_query_with_default_dbvars() {
+        let query = "SELECT * FROM {planedb}.flights WHERE id = 1";
+        let dbvars = DBVars::default();
+
+        let result = load_query(query, &dbvars).unwrap();
+        assert_eq!(result, "SELECT * FROM acute.flights WHERE id = 1");
+    }
+
+    #[test]
+    fn test_load_query_with_custom_dbvars() {
+        let query = "SELECT * FROM {planedb}.flights JOIN {dronedb}.positions ON id = drone_id";
+        let dbvars = DBVars {
+            planedb: "planes_prod".to_string(),
+            dronedb: "drones_prod".to_string(),
+            workdb: "work_prod".to_string(),
+            tag: String::new(),
+        };
+
+        let result = load_query(query, &dbvars).unwrap();
+        assert_eq!(
+            result,
+            "SELECT * FROM planes_prod.flights JOIN drones_prod.positions ON id = drone_id"
+        );
+    }
+
+    #[test]
+    fn test_load_query_with_tag() {
+        let query = "CREATE TEMPORARY TABLE temp{tag} AS SELECT * FROM {workdb}.data";
+        let dbvars = DBVars {
+            planedb: "acute".to_string(),
+            dronedb: "acute".to_string(),
+            workdb: "acute_work".to_string(),
+            tag: "_LFPG_20231001".to_string(),
+        };
+
+        let result = load_query(query, &dbvars).unwrap();
+        assert_eq!(
+            result,
+            "CREATE TEMPORARY TABLE temp_LFPG_20231001 AS SELECT * FROM acute_work.data"
+        );
+    }
+
+    #[test]
+    fn test_load_query_invalid_template() {
+        let query = "SELECT * FROM {planedb WHERE id = 1";
+        let dbvars = DBVars::default();
+
+        let result = load_query(query, &dbvars);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_timestamp_to_chrono_valid_conversion() {
+        // Test valid timestamp: 2021-01-01 00:00:00 UTC
+        //
+        let jiff_ts = jiff::Timestamp::from_second(1609459200).unwrap();
+        let chrono_dt = timestamp_to_chrono(jiff_ts).unwrap();
+        assert_eq!(chrono_dt.timestamp(), 1609459200);
+        assert_eq!(
+            chrono_dt,
+            Utc.with_ymd_and_hms(2021, 1, 1, 0, 0, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_timestamp_to_chrono_epoch() {
+        // Test Unix epoch: 1970-01-01 00:00:00 UTC
+        //
+        let jiff_ts = jiff::Timestamp::from_second(0).unwrap();
+        let chrono_dt = timestamp_to_chrono(jiff_ts).unwrap();
+        assert_eq!(chrono_dt.timestamp(), 0);
+        assert_eq!(
+            chrono_dt,
+            Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_timestamp_to_chrono_max_valid() {
+        // Test maximum valid timestamp for chrono (near i64::MAX seconds but within chrono's range)
+        // chrono can represent up to about year 262,000
+        //
+        let jiff_ts = jiff::Timestamp::from_second(253402300799).unwrap(); // 9999-12-31 23:59:59 UTC
+        let chrono_dt = timestamp_to_chrono(jiff_ts).unwrap();
+        assert_eq!(chrono_dt.timestamp(), 253402300799);
+    }
+
+    #[test]
+    fn test_timestamp_to_chrono_min_valid() {
+        // Test minimum valid timestamp for chrono (negative seconds for dates before epoch)
+        //
+        let jiff_ts = jiff::Timestamp::from_second(-2208988800).unwrap(); // 1900-01-01 00:00:00 UTC
+        let chrono_dt = timestamp_to_chrono(jiff_ts).unwrap();
+        assert_eq!(chrono_dt.timestamp(), -2208988800);
+        assert_eq!(
+            chrono_dt,
+            Utc.with_ymd_and_hms(1900, 1, 1, 0, 0, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_timestamp_to_chrono_out_of_range() {
+        // Test out-of-range timestamp (i64::MAX exceeds chrono's representable range)
+        //
+        let jiff_ts = jiff::Timestamp::from_second(i64::MAX).unwrap();
+        let result = timestamp_to_chrono(jiff_ts);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("out of range"));
     }
 }
