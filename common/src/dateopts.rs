@@ -232,6 +232,57 @@ impl DateOpts {
     }
 }
 
+/// Parses a date string and converts it to a `Zoned` datetime in UTC timezone.
+///
+/// This function takes a date string in various formats and parses it into a `jiff::civil::Date`,
+/// then converts it to a `jiff::Zoned` datetime at midnight (00:00:00) in the UTC timezone.
+///
+/// # Arguments
+///
+/// * `date` - A string slice representing the date to parse. Supported formats include:
+///   - ISO 8601 format: "YYYY-MM-DD" (e.g., "2023-10-15")
+///   - Other formats supported by `jiff::civil::Date`'s parser
+///
+/// # Returns
+///
+/// * `Ok(Zoned)` - A `Zoned` datetime representing the parsed date at midnight UTC
+/// * `Err(ErrDateOpts)` - An error if the date string is invalid or cannot be converted to UTC
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// * The date string cannot be parsed as a valid date (e.g., "invalid-date", "2023-13-01")
+/// * The parsed date cannot be converted to a UTC `Zoned` datetime
+/// * The date contains out-of-range values (e.g., day 32, month 13)
+///
+/// # Examples
+///
+/// ```rust
+/// use fetiche_common::dateopts::parse_date;
+/// use jiff::tz::TimeZone;
+///
+/// // Parse a valid ISO date
+/// //
+/// let date = parse_date("2023-10-15").unwrap();
+/// assert_eq!(date.date().to_string(), "2023-10-15");
+/// assert_eq!(date.time_zone(), &TimeZone::UTC);
+///
+/// // Invalid date returns an error
+/// //
+/// assert!(parse_date("invalid-date").is_err());
+/// assert!(parse_date("2023-13-01").is_err());
+/// ```
+#[inline]
+fn parse_date(date: &str) -> Result<Zoned, ErrDateOpts> {
+    date.parse::<Date>()
+        .map_err(|e| {
+            error!("bad parsing: {e}");
+            ErrDateOpts::BadDate(e.to_string())
+        })?
+        .to_zoned(TimeZone::UTC)
+        .map_err(|e| ErrDateOpts::BadDate(e.to_string()))
+}
+
 #[inline]
 fn to_timestamp(dt: DateTime<Utc>) -> Result<Timestamp, ErrDateOpts> {
     Timestamp::from_second(dt.timestamp()).map_err(|e| ErrDateOpts::BadDate(e.to_string()))
@@ -410,6 +461,171 @@ mod test {
             to_ts(dateparser::parse("2023-02-28 00:00:00 UTC").unwrap()),
             e
         );
+    // Tests for parse_date function
+
+    #[test]
+    fn test_parse_date_valid_iso_format() -> eyre::Result<()> {
+        let result = parse_date("2023-10-15");
+        assert!(result.is_ok());
+
+        let zoned = result?;
+        assert_eq!(zoned.date().to_string(), "2023-10-15");
+        assert_eq!(zoned.time_zone(), &TimeZone::UTC);
+        assert_eq!(zoned.hour(), 0);
+        assert_eq!(zoned.minute(), 0);
+        assert_eq!(zoned.second(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_date_valid_various_dates() -> eyre::Result<()> {
+        let test_dates = vec![
+            "2023-01-01",
+            "2023-12-31",
+            "2024-02-29", // Leap year
+            "2000-01-01",
+            "1999-12-31",
+        ];
+
+        for date_str in test_dates {
+            let result = parse_date(date_str);
+            assert!(result.is_ok(), "Failed to parse valid date: {}", date_str);
+
+            let zoned = result?;
+            assert_eq!(zoned.time_zone(), &TimeZone::UTC);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_date_invalid_format() {
+        let invalid_dates = vec![
+            "invalid-date",
+            "2023/10/15",
+            "15-10-2023",
+            "10-15-2023",
+            "",
+            "not a date",
+            "2023-1-1",
+        ];
+
+        for date_str in invalid_dates {
+            let result = parse_date(date_str);
+            assert!(
+                result.is_err(),
+                "Should fail for invalid date: {}",
+                date_str
+            );
+
+            if let Err(ErrDateOpts::BadDate(_)) = result {
+                // Expected error type
+            } else {
+                panic!("Expected ErrDateOpts::BadDate for: {}", date_str);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_date_out_of_range() {
+        let out_of_range_dates = vec![
+            "2023-13-01", // Invalid month
+            "2023-00-01", // Invalid month
+            "2023-01-32", // Invalid day
+            "2023-01-00", // Invalid day
+            "2023-02-30", // Invalid day for February
+            "2023-04-31", // Invalid day for April
+        ];
+
+        for date_str in out_of_range_dates {
+            let result = parse_date(date_str);
+            assert!(
+                result.is_err(),
+                "Should fail for out of range date: {}",
+                date_str
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_date_leap_year() -> eyre::Result<()> {
+        // Valid leap year date
+        let result = parse_date("2024-02-29");
+        assert!(result.is_ok());
+
+        let zoned = result?;
+        assert_eq!(zoned.date().to_string(), "2024-02-29");
+
+        // Invalid non-leap year date
+        let result = parse_date("2023-02-29");
+        assert!(result.is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_date_timezone_conversion() -> eyre::Result<()> {
+        let result = parse_date("2023-10-15");
+        assert!(result.is_ok());
+
+        let zoned = result?;
+        assert_eq!(zoned.time_zone(), &TimeZone::UTC);
+
+        // Verify it's midnight UTC
+        let timestamp: Timestamp = zoned.into();
+        let expected: Timestamp = "2023-10-15T00:00:00Z".parse().unwrap();
+        assert_eq!(timestamp, expected);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_date_edge_cases() -> eyre::Result<()> {
+        // First day of year
+        let result = parse_date("2023-01-01");
+        assert!(result.is_ok());
+
+        // Last day of year
+        let result = parse_date("2023-12-31");
+        assert!(result.is_ok());
+
+        // Year 2000 (century leap year)
+        let result = parse_date("2000-02-29");
+        assert!(result.is_ok());
+
+        // Year 1900 (not a leap year despite being divisible by 4)
+        let result = parse_date("1900-02-29");
+        assert!(result.is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_date_empty_string() {
+        let result = parse_date("");
+        assert!(result.is_err());
+
+        if let Err(ErrDateOpts::BadDate(_)) = result {
+            // Expected error type
+        } else {
+            panic!("Expected ErrDateOpts::BadDate for empty string");
+        }
+    }
+
+    #[test]
+    fn test_parse_date_consistency() -> eyre::Result<()> {
+        let date_str = "2023-06-15";
+
+        // Parse the same date multiple times
+        let result1 = parse_date(date_str)?;
+        let result2 = parse_date(date_str)?;
+
+        // Results should be identical
+        let ts1: Timestamp = result1.into();
+        let ts2: Timestamp = result2.into();
+        assert_eq!(ts1, ts2);
+
         Ok(())
     }
 }
