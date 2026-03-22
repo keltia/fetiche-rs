@@ -157,12 +157,6 @@ pub struct PlaneDistance {
     pub progress: Option<ProgressBar>,
 }
 
-impl PlaneDistance {
-    fn default_db() -> String {
-        String::from("acute")
-    }
-}
-
 /// Temporary tables created during the processing of distance calculations.
 ///
 /// These tables are used as intermediate storage at various stages of the computation.
