@@ -321,9 +321,22 @@ mod test {
 
         assert!(result.is_ok());
         let (begin, end) = result?;
+
         let now = Utc::now();
-        let year_begin = Utc.with_ymd_and_hms(now.year(), 1, 1, 0, 0, 0).unwrap();
-        let expected_begin = year_begin + chrono::Duration::weeks(4); // Week 5 starts at the 5th week
+        // Find the Monday of ISO week 5 using chrono
+        //
+        let jan1 = Utc.with_ymd_and_hms(now.year(), 1, 1, 0, 0, 0).unwrap();
+        let jan1_weekday = jan1.weekday().num_days_from_monday();
+
+        // ISO week 1 is the week with the first Thursday (i.e., the week containing Jan 4)
+        //
+        let week1_monday = jan1 - chrono::Duration::days(jan1_weekday as i64)
+            + if jan1_weekday <= 3 {
+                chrono::Duration::days(0)
+            } else {
+                chrono::Duration::days(7)
+            };
+        let expected_begin = week1_monday + chrono::Duration::weeks(4);
         let expected_end = expected_begin + chrono::Duration::days(7);
 
         assert_eq!(begin, to_ts(expected_begin));
