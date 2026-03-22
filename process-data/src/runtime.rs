@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use klickhouse::bb8::Pool;
 use klickhouse::{bb8, Client, ClientOptions, ConnectionManager};
-use tracing::{error, info, trace};
+use tracing::{debug, error, info, trace};
 
 use crate::cli::Opts;
 use crate::config::ProcessConfig;
@@ -233,8 +233,8 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
     //
     // Allow database names to be overridden on command line
     //
-    let name = std::env::var("CLICKHOUSE_DB")
-        .unwrap_or(cfg.db.work_db.clone().unwrap_or("acute".into()));
+    let name =
+        std::env::var("CLICKHOUSE_DB").unwrap_or(cfg.db.work_db.clone().unwrap_or("acute".into()));
     let user = std::env::var("CLICKHOUSE_USER").unwrap_or(cfg.db.user.clone().unwrap());
     let pass = std::env::var("CLICKHOUSE_PASSWD").unwrap_or(cfg.db.password.clone().unwrap());
     let endpoint = std::env::var("KLICKHOUSE_URL").unwrap_or(cfg.db.url.clone());
@@ -258,7 +258,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ..Default::default()
         },
     )
-        .await?;
+    .await?;
 
     let pool_size = opts.pool_size;
     let pool = bb8::Pool::builder()
@@ -266,6 +266,10 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
         .max_size(pool_size as u32)
         .build(manager)
         .await?;
+
+    let planedb = cfg.db.plane_db.as_ref().unwrap();
+    let dronedb = cfg.db.drone_db.as_ref().unwrap();
+    let workdb = cfg.db.work_db.as_ref().unwrap();
 
     // Extract the threshold parameter, which define the minimal safety
     // distance.
@@ -284,13 +288,17 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ("threshold".to_string(), threshold.to_string()),
             ("factor".to_string(), factor.to_string()),
             ("distance".to_string(), plane.to_string()),
+            ("planedb".into(), planedb.clone()),
+            ("dronedb".into(), dronedb.clone()),
+            ("workdb".into(), workdb.clone()),
         ])
-            .into(),
+        .into(),
         dbh: pool.clone(),
         pool_size,
         wait: opts.wait,
         dry_run: opts.dry_run,
     };
+    debug!("{:?}", &ctx.config);
     Ok(ctx)
 }
 
