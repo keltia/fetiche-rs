@@ -494,8 +494,6 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     ///
     #[tracing::instrument(skip(dbh))]
     async fn insert_ids(&mut self, dbh: &Client, day_name: &str, site: &str) -> Result<usize> {
-        let tag = format!("_{site}_{day_name}");
-
         let r = load_query("SELECT count() FROM today_close{tag}", &self.dbvars)?;
         trace!("q={r}");
 
@@ -696,47 +694,37 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     ///
     #[tracing::instrument(skip(dbh))]
     async fn cleanup_temp_tables(&self, dbh: &Client) -> Result<()> {
-        let site = self.site.clone();
-        let name = site.name.clone();
-        let day_name = self.date.format("%Y%m%d").to_string();
-        let tag = format!("_{name}_{day_name}");
+        debug!("dbvars={:?}", self.dbvars);
 
+        // Prepare the queries
+        //
+        let r1 = load_query("DROP TABLE IF EXISTS {workdb}.today{tag}", &self.dbvars)?;
+        let r2 = load_query(
+            "DROP TABLE IF EXISTS {workdb}.candidates{tag}",
+            &self.dbvars,
+        )?;
+        let r3 = load_query(
+            "DROP TABLE IF EXISTS {workdb}.today_close{tag}",
+            &self.dbvars,
+        )?;
+        let r4 = load_query("DROP TABLE IF EXISTS {workdb}.ids{tag}", &self.dbvars)?;
+
+        // Now run them
+        //
         let list = self.state.clone();
         let res = list
             .into_iter()
             .map(|t| {
-                let tag = tag.clone();
-
+                let r1 = r1.clone();
+                let r2 = r2.clone();
+                let r3 = r3.clone();
+                let r4 = r4.clone();
                 async move {
                     match t {
-                        TempTables::Today => {
-                            dbh.execute(&load_query(
-                                "DROP TABLE IF EXISTS {workdb}.today{tag}",
-                                &self.dbvars,
-                            )?)
-                            .await
-                        }
-                        TempTables::Candidates => {
-                            dbh.execute(&load_query(
-                                "DROP TABLE IF EXISTS {workdb}.candidates{tag}",
-                                &self.dbvars,
-                            )?)
-                            .await
-                        }
-                        TempTables::TodayClose => {
-                            dbh.execute(&load_query(
-                                "DROP TABLE IF EXISTS {workdb}.today_close{tag}",
-                                &self.dbvars,
-                            )?)
-                            .await
-                        }
-                        TempTables::Ids => {
-                            dbh.execute(&load_query(
-                                "DROP TABLE IF EXISTS {workdb}.ids{tag}",
-                                &self.dbvars,
-                            )?)
-                            .await
-                        }
+                        TempTables::Today => dbh.execute(&r1).await,
+                        TempTables::Candidates => dbh.execute(&r2).await,
+                        TempTables::TodayClose => dbh.execute(&r3).await,
+                        TempTables::Ids => dbh.execute(&r4).await,
                     }
                 }
             })
