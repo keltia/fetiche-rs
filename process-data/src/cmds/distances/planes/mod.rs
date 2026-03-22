@@ -155,6 +155,8 @@ pub struct PlaneDistance {
     /// Progress bar for tracking progress
     #[builder(default = "None")]
     pub progress: Option<ProgressBar>,
+    #[builder(default = "false")]
+    pub dry_run: bool,
 }
 
 /// Temporary tables created during the processing of distance calculations.
