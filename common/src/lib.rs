@@ -20,7 +20,7 @@ mod tz;
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::{crate_name, crate_version};
 use eyre::Result;
-use jiff::{RoundMode, Unit, ZonedRound};
+use jiff::{RoundMode, Unit, Zoned, ZonedRound};
 
 const NAME: &str = crate_name!();
 const VERSION: &str = crate_version!();
@@ -120,10 +120,47 @@ pub fn normalise_day(date: DateTime<Utc>) -> Result<DateTime<Utc>> {
     Ok(date)
 }
 
+#[inline]
 #[tracing::instrument]
-pub fn normalise_day_jiff(date: jiff::Zoned) -> Result<jiff::Zoned> {
-    let date = date.round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Trunc))?;
-    Ok(date)
+/// Normalises a given `jiff::Zoned` instance to the beginning of the same day (00:00:00 in its timezone).
+///
+/// This function rounds down the provided zoned datetime to the start of the day (midnight)
+/// in the same timezone, effectively setting the time component to 00:00:00.
+///
+/// # Arguments
+///
+/// * `date` - A `jiff::Zoned` instance representing the input date and time in a specific timezone.
+///
+/// # Returns
+///
+/// This function returns a `Result` containing a `jiff::Zoned` instance set to the start of the day
+/// corresponding to the input date in the same timezone. If an error occurs during the rounding process,
+/// an `Err` is returned.
+///
+/// # Examples
+///
+/// ```rust
+/// use jiff::Timestamp;
+/// use fetiche_common::normalise_day_jiff;
+///
+/// let date: Timestamp = "2024-01-01 12:34:56-00".parse().unwrap();
+/// let zoned = date.in_tz("UTC").unwrap();
+/// let result = normalise_day_jiff(zoned);
+///
+/// assert!(result.is_ok());
+/// let normalised_date = result.unwrap();
+/// assert_eq!(normalised_date.to_string(), "2024-01-01T00:00:00+00:00[UTC]");
+/// ```
+///
+/// # Errors
+///
+/// This function will return an `Err` if the rounding operation fails, which may occur with
+/// invalid datetime values or edge cases in the jiff library.
+///
+#[inline]
+#[tracing::instrument]
+pub fn normalise_day_jiff(date: Zoned) -> Result<Zoned> {
+    Ok(date.round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Floor))?)
 }
 
 #[cfg(test)]
