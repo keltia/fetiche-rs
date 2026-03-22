@@ -46,7 +46,7 @@
 //! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
 //!
 
-use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
+use crate::cmds::{load_query, Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
 use eyre::Result;
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -778,16 +778,12 @@ impl Calculate for PlaneDistance {
     #[tracing::instrument(skip(self, dbh))]
     async fn run(&mut self, dbh: &Client) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
-        let bar = self
-            .progress
-            .clone()
-            .unwrap_or_else(|| ProgressBar::new(4));
+        let bar = self.progress.clone().unwrap_or_else(|| ProgressBar::new(4));
         bar.set_length(4);
         let style = ProgressStyle::with_template(
             "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>2}/{len:2} {msg}",
-        )
-            .unwrap()
-            .progress_chars("##-");
+        )?
+        .progress_chars("##-");
         bar.set_style(style);
         bar.enable_steady_tick(Duration::from_millis(100));
 
