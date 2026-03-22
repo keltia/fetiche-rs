@@ -2707,7 +2707,7 @@ dependencies = [
 
 [[package]]
 name = "fetiche-common"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "chrono",
  "clap 4.5.60",
@@ -5929,6 +5929,7 @@ dependencies = [
  "tabled",
  "tempfile",
  "thiserror 2.0.18",
+ "tinytemplate",
  "tokio",
  "tracing",
 ]
