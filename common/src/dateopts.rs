@@ -225,7 +225,7 @@ impl DateOpts {
             DateOpts::Week { num } => {
                 trace!("Got week {}", num);
                 if num > 53 {
-                    return Err(ErrDateOpts::BadWeekNumber(num).into());
+                    return Err(ErrDateOpts::BadWeekNumber(num));
                 }
                 let year = Zoned::now().year();
                 let weekdate = ISOWeekDate::new(year, num as i8, Weekday::Monday).unwrap();
@@ -263,7 +263,7 @@ impl DateOpts {
                 (begin.into(), end.into())
             }
             DateOpts::Month { num } => {
-                if num < 1 || num > 12 {
+                if !(1..=12).contains(&num) {
                     return Err(ErrDateOpts::BadDate(num.to_string()));
                 }
                 let year = Zoned::now().year();

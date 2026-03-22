@@ -186,14 +186,9 @@ where
 
         // Check if None was passed to get the default file from the default location:
         //
-        let fname = if fname.is_none() {
-            let def = PathBuf::from(cfg.default_file()).canonicalize()?;
-            debug!("{:?}", def);
-            def
-        } else {
+        let fname = if let Some(fname) = fname {
             // Do we have a bare filename?
             //
-            let fname = fname.unwrap();
             let p = PathBuf::from(fname);
 
             if p.file_name().unwrap() == p {
@@ -203,6 +198,10 @@ where
                 //
                 PathBuf::from(fname).canonicalize()?
             }
+        } else {
+            let def = PathBuf::from(cfg.default_file()).canonicalize()?;
+            debug!("{:?}", def);
+            def
         };
         assert!(fname.is_absolute());
 
