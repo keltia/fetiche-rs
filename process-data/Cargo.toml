@@ -59,6 +59,7 @@ kml = "0.13"
 rand = "0.10"
 rust-3d = "0.34"
 regex = "1.12"
+tinytemplate = "1.2"
 
 [dev-dependencies]
 criterion.workspace = true
