@@ -530,14 +530,15 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
       callsign,
     FROM {workdb}.today_close{tag}
     WHERE
-      dist_drone_plane < {separation}
+      dist_drone_plane < $1
     GROUP BY ALL
             "##,
             &self.dbvars,
-        );
+        )?;
         trace!("q={r1}");
         trace!("Fetch close encounters out of {total} from today_close.");
-        let all = dbh.query_collect::<Tc>(&r1).await?;
+        let q = QueryBuilder::new(&r1).arg(separation);
+        let all = dbh.query_collect::<Tc>(q).await?;
 
         // No close encounters.
         //
@@ -604,7 +605,6 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
         let site = self.site.clone();
         let name = site.name.clone();
         let day_name = self.date.format("%Y%m%d").to_string();
-        let tag = format!("_{name}_{day_name}");
 
         // Insert data into table `encounters`
         //
@@ -649,13 +649,14 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     FROM {workdb}.today_close{tag} AS tc JOIN {workdb}.ids{tag} AS id
       ON id.journey = tc.journey AND id.callsign = tc.callsign
     WHERE
-      dist_drone_plane < {threshold}
+      dist_drone_plane < $1
     GROUP BY ALL
 "##,
             &self.dbvars,
         )?;
         trace!("q={r}");
-        dbh.execute(&r).await?;
+        let q = QueryBuilder::new(&r).arg(threshold);
+        dbh.execute(q).await?;
 
         self.state.push(TempTables::Ids);
 
