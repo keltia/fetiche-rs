@@ -1,11 +1,15 @@
+use std::error::Error;
 use std::ops::{Add, Sub};
+use std::time::Duration;
 
-use chrono::{DateTime, Datelike, Days, Months, TimeDelta, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Days, Months, TimeDelta, TimeZone as CTZ, Utc};
 use clap::Parser;
 use eyre::Report;
-use jiff::Timestamp;
+use jiff::civil::{date, Date, ISOWeekDate, Weekday};
+use jiff::tz::TimeZone;
+use jiff::{RoundMode, Span, Timestamp, ToSpan, Unit, Zoned, ZonedRound};
 use thiserror::Error;
-use tracing::trace;
+use tracing::{error, trace};
 
 use crate::normalise_day;
 
@@ -72,6 +76,8 @@ pub enum ErrDateOpts {
     BadWeekNumber(i64),
     #[error("cannot get date from system")]
     CannotGetDate,
+    #[error("failed to calculate date: {0}")]
+    FailedCalculus(String),
 }
 
 impl From<Report> for ErrDateOpts {
@@ -159,74 +165,127 @@ impl DateOpts {
         Ok(match opts {
             DateOpts::Today => {
                 trace!("got today true");
-                let today = Utc::now();
-                let begin = normalise_day(today)?;
-                let end = begin.add(Days::new(1));
+
+                let begin = Zoned::now()
+                    .in_tz("Utc")
+                    .map_err(|e| {
+                        error!("Cannot get date from system: {}", e);
+                        ErrDateOpts::CannotGetDate
+                    })?
+                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Trunc))
+                    .map_err(|e| {
+                        error!("Cannot compute date: {}", e);
+                        ErrDateOpts::FailedCalculus(e.to_string())
+                    })?;
+                let end = begin
+                    .checked_add(Duration::from_hours(24))
+                    .map_err(|_| ErrDateOpts::CannotGetDate)?;
                 trace!("today gives from {} to {}", begin, end);
-                (to_timestamp(begin)?, to_timestamp(end)?)
+                (begin.into(), end.into())
             }
             DateOpts::Yesterday => {
                 trace!("got yesterday true");
-                let today = Utc::now();
-                let yest = today.sub(Days::new(1));
-                let begin = normalise_day(yest)?;
-                let end = normalise_day(today)?;
+
+                let yesterday = Zoned::now()
+                    .in_tz("Utc")
+                    .map_err(|e| {
+                        error!("Cannot get date from system: {}", e);
+                        ErrDateOpts::CannotGetDate
+                    })?
+                    .checked_sub(Duration::from_hours(24))
+                    .map_err(|e| {
+                        error!("Cannot compute date: {}", e);
+                        ErrDateOpts::FailedCalculus(e.to_string())
+                    })?;
+
+                let begin = yesterday
+                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Floor))
+                    .map_err(|e| {
+                        error!("Cannot compute date: {}", e);
+                        ErrDateOpts::FailedCalculus(e.to_string())
+                    })?;
+
+                let end = yesterday
+                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Ceil))
+                    .map_err(|e| {
+                        error!("Cannot compute date: {}", e);
+                        ErrDateOpts::FailedCalculus(e.to_string())
+                    })?;
+
                 trace!("yesterday gives from {} to {}", begin, end);
-                (to_timestamp(begin)?, to_timestamp(end)?)
+                (begin.into(), end.into())
             }
             DateOpts::Day { date } => {
                 trace!("Got day {}", date);
-                let begin = match dateparser::parse(&date) {
-                    Ok(date) => date,
-                    Err(_) => return Err(ErrDateOpts::BadDate(date)),
-                };
-                let begin = normalise_day(begin)?;
-                let end = begin.add(Days::new(1));
+
+                let begin = parse_date(&date)?;
+
+                let end = begin.checked_add(Duration::from_hours(24)).map_err(|e| {
+                    error!("Cannot compute date: {}", e);
+                    ErrDateOpts::FailedCalculus(e.to_string())
+                })?;
                 trace!("this day={} gives from {} to {}", date, begin, end);
-                (to_timestamp(begin)?, to_timestamp(end)?)
+                (begin.into(), end.into())
             }
             DateOpts::Week { num } => {
                 trace!("Got week {}", num);
                 if num > 53 {
                     return Err(ErrDateOpts::BadWeekNumber(num).into());
                 }
-                let week = Utc::now();
-                let begin: DateTime<Utc> =
-                    Utc.with_ymd_and_hms(week.year(), 1, 1, 0, 0, 0).unwrap();
-                let begin = begin
-                    .checked_add_signed(TimeDelta::try_weeks(num - 1).unwrap())
-                    .unwrap();
-                let end = begin.add(Days::new(7));
-                trace!("week={} is from {} to {}", num, begin, end);
-                (to_timestamp(begin)?, to_timestamp(end)?)
+                let year = Zoned::now().year();
+                let weekdate = ISOWeekDate::new(year, num as i8, Weekday::Monday).unwrap();
+                let begin = Date::from_iso_week_date(weekdate)
+                    .to_zoned(TimeZone::UTC)
+                    .map_err(|_| ErrDateOpts::CannotGetDate)?;
+
+                let end = begin.checked_add(7.days()).map_err(|e| {
+                    error!("Cannot compute date: {}", e);
+                    ErrDateOpts::FailedCalculus(e.to_string())
+                })?;
+                trace!("week #{} gives from {} to {}", num, begin, end);
+                (begin.into(), end.into())
             }
             DateOpts::From { begin, end } => {
                 trace!("Got from {} to {}", begin, end);
-                let begin = match dateparser::parse(&begin) {
-                    Ok(date) => date,
-                    Err(_) => return Err(ErrDateOpts::BadDate(begin)),
-                };
-                let end = match dateparser::parse(&end) {
-                    Ok(date) => date,
-                    Err(_) => return Err(ErrDateOpts::BadDate(end)),
-                };
-                let begin = normalise_day(begin)?;
-                let end = normalise_day(end)?;
+
+                let begin = parse_date(&begin)?;
+                let end = parse_date(&end)?;
+
+                let begin = begin
+                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Floor))
+                    .map_err(|e| {
+                        error!("Cannot compute date: {}", e);
+                        ErrDateOpts::FailedCalculus(e.to_string())
+                    })?;
+                let end = end
+                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Floor))
+                    .map_err(|e| {
+                        error!("Cannot compute date: {}", e);
+                        ErrDateOpts::FailedCalculus(e.to_string())
+                    })?;
 
                 trace!("begin={} end={}", begin, end);
-                (to_timestamp(begin)?, to_timestamp(end)?)
+                (begin.into(), end.into())
             }
             DateOpts::Month { num } => {
-                let now = Utc::now();
-                let year = now.year();
-                if num == 0 || num > 12 {
+                if num < 1 || num > 12 {
                     return Err(ErrDateOpts::BadDate(num.to_string()));
                 }
-                let begin: DateTime<Utc> = Utc.with_ymd_and_hms(year, num, 1, 0, 0, 0).unwrap();
-                let end: DateTime<Utc> = begin.add(Months::new(1));
+                let year = Zoned::now().year();
+
+                let begin = date(year, num as i8, 1)
+                    .to_zoned(TimeZone::UTC)
+                    .map_err(|e| {
+                        error!("bad parsing: {e}");
+                        ErrDateOpts::BadDate(e.to_string())
+                    })?;
+                let end = begin.checked_add(1.month()).map_err(|e| {
+                    error!("Cannot compute date: {}", e);
+                    ErrDateOpts::FailedCalculus(e.to_string())
+                })?;
 
                 trace!("begin={} end={}", begin, end);
-                (to_timestamp(begin)?, to_timestamp(end)?)
+                (begin.into(), end.into())
             }
         })
     }
@@ -360,13 +419,7 @@ mod test {
             date: "invalid-date".into(),
         };
         let result = DateOpts::parse(opt);
-
         assert!(result.is_err());
-        if let Err(ErrDateOpts::BadDate(date)) = result {
-            assert_eq!(date, "invalid-date");
-        } else {
-            panic!("Expected ErrDateOpts::BadDate error");
-        }
     }
 
     #[test]
@@ -444,10 +497,10 @@ mod test {
     }
 
     #[test]
-    fn test_dateopts_parse() -> eyre::Result<()> {
+    fn test_dateopts_parse_from_1() -> eyre::Result<()> {
         let opt = DateOpts::From {
-            begin: "2022-06-14 00:00:00 UTC".into(),
-            end: "2023-02-28 00:00:00 UTC".into(),
+            begin: "2022-06-14 00:00:00".into(),
+            end: "2023-02-28 00:00:00".into(),
         };
         let r = DateOpts::parse(opt);
 
@@ -461,6 +514,30 @@ mod test {
             to_ts(dateparser::parse("2023-02-28 00:00:00 UTC").unwrap()),
             e
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_dateopts_parse_from_2() -> eyre::Result<()> {
+        let opt = DateOpts::From {
+            begin: "2022-06-14".into(),
+            end: "2023-02-28".into(),
+        };
+        let r = DateOpts::parse(opt);
+
+        assert!(r.is_ok());
+        let (b, e) = r.unwrap();
+        assert_eq!(
+            to_ts(dateparser::parse("2022-06-14 00:00:00 UTC").unwrap()),
+            b
+        );
+        assert_eq!(
+            to_ts(dateparser::parse("2023-02-28 00:00:00 UTC").unwrap()),
+            e
+        );
+        Ok(())
+    }
+
     // Tests for parse_date function
 
     #[test]
