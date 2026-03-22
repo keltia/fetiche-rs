@@ -184,7 +184,7 @@ where
         //
         let mut cfg = ConfigFile::<T>::new(TAG);
 
-        // Check is None was passed to get the default file from the default location:
+        // Check if None was passed to get the default file from the default location:
         //
         let fname = if fname.is_none() {
             let def = PathBuf::from(cfg.default_file()).canonicalize()?;
