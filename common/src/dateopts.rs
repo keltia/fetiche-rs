@@ -316,7 +316,7 @@ impl DateOpts {
 /// # Examples
 ///
 /// ```rust
-/// use fetiche_common::dateopts::parse_date;
+/// use fetiche_common::parse_date;
 /// use jiff::tz::TimeZone;
 ///
 /// // Parse a valid ISO date
@@ -331,7 +331,7 @@ impl DateOpts {
 /// assert!(parse_date("2023-13-01").is_err());
 /// ```
 #[inline]
-fn parse_date(date: &str) -> Result<Zoned, ErrDateOpts> {
+pub fn parse_date(date: &str) -> Result<Zoned, ErrDateOpts> {
     date.parse::<Date>()
         .map_err(|e| {
             error!("bad parsing: {e}");

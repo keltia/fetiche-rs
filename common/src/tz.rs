@@ -49,9 +49,14 @@ pub struct TzEntry {
 /// # Examples
 ///
 /// ```rust
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// // Find timezone for New York City
+/// # use fetiche_common::find_tz;
+///
 /// let tz = find_tz(40.7128, -74.0060)?;
 /// println!("Timezone: {}, Offset: {}s", tz.tzname, tz.offset);
+/// # Ok(())
+/// # }
 /// ```
 ///
 #[tracing::instrument]
