@@ -55,7 +55,6 @@ use serde::{Deserialize, Serialize};
 use std::ops::Add;
 use tokio::time::{sleep, Duration, Instant};
 use tracing::{debug, error, info, trace};
-
 // -----
 
 /// Timings during the calculation process.
@@ -172,6 +171,7 @@ ORDER BY time
 "##,
             &self.dbvars,
         )?;
+        trace!("q={r1}");
 
         // Given lat/lon and dist, we define the "ellipse" aka circle
         // cf. https://clickhouse.com/docs/en/sql-reference/functions/geo/coordinates#pointinellipses
@@ -193,13 +193,9 @@ ORDER BY time
         // If there were no planes, then the query succeeds, but the table was not created. Counting
         // WILL fail.  We need to handle that.
         //
-        let mut count = match dbh
-            .query_one::<RawRow>(&load_query(
-                "SELECT count() FROM {workdb}.today{tag}",
-                &self.dbvars,
-            )?)
-            .await
-        {
+        let r2 = load_query("SELECT count() FROM {workdb}.today{tag}", &self.dbvars)?;
+        trace!("r2={r2}");
+        let mut count = match dbh.query_one::<RawRow>(&r2).await {
             Ok(count) => count,
             Err(_) => {
                 trace!("Table today{tag} was not created, assume 0");
@@ -262,7 +258,6 @@ ORDER BY time
         debug!("{} nm as deg: {}", self.distance, dist);
 
         let time_from = self.date.format("%Y-%m-%d 00:00:00").to_string();
-
         let day_name = self.date.format("%Y%m%d").to_string();
         let tag = format!("_{name}_{day_name}");
 
@@ -271,7 +266,7 @@ ORDER BY time
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
-        let r2 = load_query(
+        let r1 = load_query(
             r##"
 CREATE OR REPLACE TABLE {workdb}.candidates{tag}
 ENGINE = MergeTree
@@ -301,7 +296,8 @@ WHERE
     "##,
             &self.dbvars,
         )?;
-        let q = QueryBuilder::new(&r2)
+        trace!("q={r1}");
+        let q = QueryBuilder::new(&r1)
             .arg(time_from)
             .arg(lon)
             .arg(lat)
@@ -311,13 +307,9 @@ WHERE
 
         // Check how many
         //
-        let mut count = match dbh
-            .query_one::<RawRow>(&load_query(
-                "SELECT COUNT() FROM {workdb}.candidates{tag}",
-                &self.dbvars,
-            )?)
-            .await
-        {
+        let r2 = load_query("SELECT COUNT() FROM {workdb}.candidates{tag}", &self.dbvars)?;
+        trace!("q={r2}");
+        let mut count = match dbh.query_one::<RawRow>(&r2).await {
             Ok(count) => count,
             Err(_) => {
                 trace!("Table candidates{tag} was not created, assume 0");
@@ -414,6 +406,7 @@ WHERE
     "##,
             &self.dbvars,
         )?;
+        trace!("q={r}");
 
         let separation = self.threshold * self.factor;
         let q = QueryBuilder::new(&r).arg(separation);
@@ -421,13 +414,13 @@ WHERE
 
         // Check how many
         //
-        let mut count = match dbh
-            .query_one::<RawRow>(&load_query(
-                "SELECT COUNT() FROM {workdb}.today_close{tag}",
-                &self.dbvars,
-            )?)
-            .await
-        {
+        let r1 = load_query(
+            "SELECT COUNT() FROM {workdb}.today_close{tag}",
+            &self.dbvars,
+        )?;
+        trace!("q={r1}");
+
+        let mut count = match dbh.query_one::<RawRow>(&r1).await {
             Ok(count) => count,
             Err(_) => {
                 error!("today_close{tag} was not created, assume 0.");
@@ -478,6 +471,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
 "##,
             &self.dbvars,
         )?;
+        trace!("q={r}");
         self.state.push(TempTables::Ids);
 
         Ok(dbh.execute(&r).await?)
@@ -502,7 +496,9 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     async fn insert_ids(&mut self, dbh: &Client, day_name: &str, site: &str) -> Result<usize> {
         let tag = format!("_{site}_{day_name}");
 
-        let r = format!("SELECT count() FROM today_close{tag}");
+        let r = load_query("SELECT count() FROM today_close{tag}", &self.dbvars)?;
+        trace!("q={r}");
+
         let mut total = dbh.query_one::<RawRow>(&r).await?;
         let total: u64 = total.get(0);
 
@@ -526,7 +522,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
 
         let separation = self.threshold * self.factor;
 
-        let r = load_query(
+        let r1 = load_query(
             r##"
     SELECT
       journey,
@@ -539,9 +535,9 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
             "##,
             &self.dbvars,
         );
-
+        trace!("q={r1}");
         trace!("Fetch close encounters out of {total} from today_close.");
-        let all = dbh.query_collect::<Tc>(&r).await?;
+        let all = dbh.query_collect::<Tc>(&r1).await?;
 
         // No close encounters.
         //
@@ -570,18 +566,16 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
         trace!("Insert updated records.");
         // Insert the records
         //
-        dbh.insert_native_block(
-            &load_query("INSERT INTO {workdb}.ids{tag} FORMAT native", &self.dbvars),
-            all,
-        )
-        .await?;
+        let r2 = load_query("INSERT INTO {workdb}.ids{tag} FORMAT native", &self.dbvars)?;
+        trace!("q={r2}");
+        dbh.insert_native_block(&r2, all).await?;
 
-        let mut count = dbh
-            .query_one::<RawRow>(&load_query(
-                "SELECT count() FROM {workdb}.today_close{tag}",
-                &self.dbvars,
-            )?)
-            .await?;
+        let r3 = load_query(
+            "SELECT count() FROM {workdb}.today_close{tag}",
+            &self.dbvars,
+        )?;
+        trace!("q={r3}");
+        let mut count = dbh.query_one::<RawRow>(&r3).await?;
         let count: u64 = count.get(0);
         trace!("Got {count} IDs");
         Ok(count as usize)
@@ -660,19 +654,20 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
 "##,
             &self.dbvars,
         )?;
-        trace!("Save encounters.");
+        trace!("q={r}");
         dbh.execute(&r).await?;
 
         self.state.push(TempTables::Ids);
 
         // Now check how many
         //
-        let pattern = format!("%{day_name}%");
-        let q = QueryBuilder::new(&load_query(
+        let r1 = load_query(
             "SELECT COUNT(en_id) FROM {workdb}.airplane_prox WHERE en_id LIKE $1",
             &self.dbvars,
-        )?)
-        .arg(pattern);
+        )?;
+        trace!("q={r1}");
+        let pattern = format!("%{day_name}%");
+        let q = QueryBuilder::new(&r1).arg(pattern);
         let mut count = dbh.query_one::<RawRow>(q).await?;
 
         let count: u64 = count.get(0);
