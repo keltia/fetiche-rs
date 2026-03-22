@@ -2,7 +2,6 @@ use std::error::Error;
 use std::ops::{Add, Sub};
 use std::time::Duration;
 
-use chrono::{DateTime, Datelike, Days, Months, TimeDelta, TimeZone as CTZ, Utc};
 use clap::Parser;
 use eyre::Report;
 use jiff::civil::{date, Date, ISOWeekDate, Weekday};
@@ -342,16 +341,13 @@ fn parse_date(date: &str) -> Result<Zoned, ErrDateOpts> {
         .map_err(|e| ErrDateOpts::BadDate(e.to_string()))
 }
 
-#[inline]
-fn to_timestamp(dt: DateTime<Utc>) -> Result<Timestamp, ErrDateOpts> {
-    Timestamp::from_second(dt.timestamp()).map_err(|e| ErrDateOpts::BadDate(e.to_string()))
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
+    use chrono::{DateTime, Datelike, TimeZone as CTZ, Utc};
     use test_pretty_log::test;
 
+    #[inline]
     fn to_ts(dt: DateTime<Utc>) -> Timestamp {
         Timestamp::from_second(dt.timestamp()).unwrap()
     }
