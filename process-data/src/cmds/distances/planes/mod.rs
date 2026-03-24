@@ -3,6 +3,7 @@
 //! XXX be extra careful when dealing with degrees, meters and nautical miles.
 //!
 use std::env;
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, Datelike, TimeZone, Utc};
@@ -18,7 +19,9 @@ use tracing::{debug, error, info, trace};
 
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
-use crate::cmds::{enumerate_sites, find_site, Calculate, CmdError, DBVars, PlanesStats, Site, Stats};
+use crate::cmds::{
+    enumerate_sites, find_site, Calculate, CmdError, DBVars, PlanesStats, Site, Stats,
+};
 use crate::runtime::Context;
 
 mod compute;
@@ -119,7 +122,7 @@ pub struct PlaneDistance {
     pub lon: f64,
     /// Database variables
     #[builder]
-    pub dbvars: DBVars,
+    pub dbvars: Arc<DBVars>,
     /// List of temporary tables created along the way, for cleanup.
     #[builder(default = "vec![]")]
     state: Vec<TempTables>,
@@ -416,7 +419,7 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                         let pb = pb.clone();
                         async move { calculate_one_day_on_site(&ctx, &work, &pb).await.unwrap() }
                     })
-                        .await
+                    .await
                     {
                         Ok(res) => res,
                         Err(e) => {
@@ -518,7 +521,7 @@ async fn calculate_one_day_on_site(
         .threshold(work.threshold)
         .factor(work.factor)
         .wait(ctx.wait)
-        .dbvars(dbvars)
+        .dbvars(dbvars.into())
         .progress(Some(pbar.clone()))
         .build()?;
 
@@ -751,7 +754,6 @@ mod tests {
         assert_eq!(work_list.len(), 6);
         Ok(())
     }
-
 
     #[test]
     fn test_timestamp_to_chrono_valid_conversion() {
