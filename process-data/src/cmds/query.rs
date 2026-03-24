@@ -1,0 +1,143 @@
+//! This module provides a struct for database variables, and instantiate a query according to these.
+//!
+use crate::runtime::Context;
+use serde::Serialize;
+use tinytemplate::TinyTemplate;
+
+#[derive(Clone, Debug, Serialize)]
+pub struct DBVars {
+    pub planedb: String,
+    pub dronedb: String,
+    pub workdb: String,
+    pub tag: String,
+}
+
+/// This function instantiates a TinyTemplate with a query template and renders it with variables
+/// extracted from the current context.  We usually need the tablespace name for the planes, drones
+/// and work databases.
+///
+/// snprintf(3) for dummies.
+///
+#[tracing::instrument]
+pub fn load_query(q: &str, dbvars: &DBVars) -> eyre::Result<String> {
+    let mut tt = TinyTemplate::new();
+    tt.add_template("query", q)?;
+    let res = tt.render("query", &dbvars)?;
+    Ok(res)
+}
+
+impl DBVars {
+    /// Fill in the tag part of `DBVars`.
+    ///
+    pub fn tag(&self, tag: &str) -> Self {
+        Self {
+            planedb: self.planedb.clone(),
+            dronedb: self.dronedb.clone(),
+            workdb: self.workdb.clone(),
+            tag: tag.to_owned(),
+        }
+    }
+
+    /// Creates a new `DBVars` instance from the application context.
+    ///
+    /// This function extracts database configuration values from the provided context,
+    /// specifically the plane database, drone database, and work database names. These
+    /// values are expected to be present in the context's configuration map.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - A reference to the application `Context` containing configuration parameters.
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `DBVars` instance with the extracted database names and an empty tag.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if any of the required configuration keys (`plane_db`,
+    /// `drone_db`, or `work_db`) are not present in the context configuration.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use process_data::runtime::Context;
+    /// use process_data::cmds::query::DBVars;
+    ///
+    /// let ctx = Context {
+    ///     config: HashMap::from([
+    ///         ("plane_db".to_string(), "planes_tablespace".to_string()),
+    ///         ("drone_db".to_string(), "drones_tablespace".to_string()),
+    ///         ("work_db".to_string(), "work_tablespace".to_string()),
+    ///     ]).into(),
+    ///     dry_run: false,
+    /// };
+    ///
+    /// let dbvars = DBVars::from_ctx(&ctx);
+    /// assert_eq!(dbvars.planedb, "planes_tablespace");
+    /// ```
+    ///
+    pub fn from_ctx(ctx: &Context) -> Self {
+        let planedb = ctx.config.get("plane_db").unwrap();
+        let dronedb = ctx.config.get("drone_db").unwrap();
+        let workdb = ctx.config.get("work_db").unwrap();
+        Self {
+            planedb: planedb.to_owned(),
+            dronedb: dronedb.to_owned(),
+            workdb: workdb.to_owned(),
+            tag: String::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_query_with_custom_dbvars() {
+        let query = "SELECT * FROM {planedb}.flights JOIN {dronedb}.positions ON id = drone_id";
+        let dbvars = DBVars {
+            planedb: "planes_prod".to_string(),
+            dronedb: "drones_prod".to_string(),
+            workdb: "work_prod".to_string(),
+            tag: String::new(),
+        };
+
+        let result = load_query(query, &dbvars).unwrap();
+        assert_eq!(
+            result,
+            "SELECT * FROM planes_prod.flights JOIN drones_prod.positions ON id = drone_id"
+        );
+    }
+
+    #[test]
+    fn test_load_query_with_tag() {
+        let query = "CREATE TEMPORARY TABLE temp{tag} AS SELECT * FROM {workdb}.data";
+        let dbvars = DBVars {
+            planedb: "acute".to_string(),
+            dronedb: "acute".to_string(),
+            workdb: "acute_work".to_string(),
+            tag: "_LFPG_20231001".to_string(),
+        };
+
+        let result = load_query(query, &dbvars).unwrap();
+        assert_eq!(
+            result,
+            "CREATE TEMPORARY TABLE temp_LFPG_20231001 AS SELECT * FROM acute_work.data"
+        );
+    }
+
+    #[test]
+    fn test_load_query_invalid_template() {
+        let query = "SELECT * FROM {planedb WHERE id = 1";
+        let dbvars = DBVars {
+            planedb: "acute".to_string(),
+            dronedb: "acute".to_string(),
+            workdb: "acute_work".to_string(),
+            tag: "_LFPG_20231001".to_string(),
+        };
+
+        let result = load_query(query, &dbvars);
+        assert!(result.is_err());
+    }
+}
