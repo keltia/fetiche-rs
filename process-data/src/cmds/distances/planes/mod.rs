@@ -2,6 +2,8 @@
 //!
 //! XXX be extra careful when dealing with degrees, meters and nautical miles.
 //!
+use std::env;
+use std::time::Duration;
 
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
@@ -11,15 +13,12 @@ use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use rand::{rng, RngExt};
-use serde::Serialize;
-use std::env;
-use std::time::Duration;
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
 use fetiche_common::{expand_interval, normalise_day, DateOpts};
 
-use crate::cmds::{enumerate_sites, find_site, Calculate, CmdError, PlanesStats, Site, Stats};
+use crate::cmds::{enumerate_sites, find_site, Calculate, CmdError, DBVars, PlanesStats, Site, Stats};
 use crate::runtime::Context;
 
 mod compute;
