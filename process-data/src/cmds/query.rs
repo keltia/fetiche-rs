@@ -1,4 +1,31 @@
-//! This module provides a struct for database variables, and instantiate a query according to these.
+//! Query template rendering and database configuration management.
+//!
+//! This module provides functionality for managing database variables and rendering SQL query
+//! templates. It defines the `DBVars` struct which holds database configuration (plane, drone,
+//! and work database names, plus an optional tag) and provides utilities for template-based
+//! query generation using the TinyTemplate engine.
+//!
+//! The main components are:
+//! - `DBVars`: A serializable struct containing database names and an optional tag
+//! - `load_query()`: Template rendering function that substitutes variables into SQL queries
+//! - Context integration methods for extracting database configuration from the application context
+//!
+//! # Examples
+//!
+//! ```rust
+//! use process_data::cmds::{DBVars, load_query};
+//!
+//! let dbvars = DBVars {
+//!     planedb: "planes_prod".to_string(),
+//!     dronedb: "drones_prod".to_string(),
+//!     workdb: "work_prod".to_string(),
+//!     tag: String::new(),
+//! };
+//!
+//! let query = "SELECT * FROM {planedb}.flights";
+//! let rendered = load_query(query, &dbvars).unwrap();
+//! assert_eq!(rendered, "SELECT * FROM planes_prod.flights");
+//! ```
 //!
 use crate::runtime::Context;
 use serde::Serialize;
