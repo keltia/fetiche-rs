@@ -148,6 +148,81 @@ impl DBVars {
     }
 }
 
+/// A convenience macro for rendering SQL query templates with database variables.
+///
+/// This macro provides a shorthand for calling `load_query()` with a query template
+/// and a `DBVars` instance. It automatically handles the reference to the `DBVars`
+/// and propagates any errors using the `?` operator.
+///
+/// # Arguments
+///
+/// * `$q` - A string literal containing the SQL query template with placeholders
+///   (e.g., `{planedb}`, `{dronedb}`, `{workdb}`, `{tag}`)
+/// * `$val` - An expression that evaluates to a `DBVars` instance containing the
+///   database configuration values to substitute into the template
+///
+/// # Returns
+///
+/// Returns a `Result<String, eyre::Error>` containing the rendered query on success,
+/// or an error if template rendering fails.
+///
+/// # Errors
+///
+/// This macro will propagate errors from `load_query()` if:
+/// * The template syntax is invalid
+/// * Required placeholders in the template don't match fields in `DBVars`
+///
+/// # Examples
+///
+/// ```rust
+/// # use process_data::cmds::query::DBVars;
+/// # use process_data::make_query;
+/// # fn main() -> eyre::Result<()> {
+/// let dbvars = DBVars {
+///     planedb: "planes_prod".to_string(),
+///     dronedb: "drones_prod".to_string(),
+///     workdb: "work_prod".to_string(),
+///     tag: String::new(),
+/// };
+///
+/// let query = make_query!(
+///     "SELECT * FROM {planedb}.flights WHERE id > 100",
+///     dbvars
+/// );
+/// assert_eq!(query?, "SELECT * FROM planes_prod.flights WHERE id > 100");
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Using with tagged queries:
+///
+/// ```rust
+/// # use process_data::cmds::query::DBVars;
+/// # use process_data::make_query;
+/// # fn main() -> eyre::Result<()> {
+/// let dbvars = DBVars {
+///     planedb: "planes".to_string(),
+///     dronedb: "drones".to_string(),
+///     workdb: "work".to_string(),
+///     tag: "_temp".to_string(),
+/// };
+///
+/// let query = make_query!(
+///     "CREATE TABLE {workdb}.analysis{tag} AS SELECT * FROM {planedb}.data",
+///     dbvars
+/// );
+/// assert_eq!(query?, "CREATE TABLE work.analysis_temp AS SELECT * FROM planes.data");
+/// # Ok(())
+/// # }
+/// ```
+///
+#[macro_export]
+macro_rules! make_query {
+    ($q:literal, $val:expr) => {
+        load_query($q, &$val)?
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -241,5 +316,91 @@ mod tests {
         let tagged = dbvars.tag("");
         assert_eq!(tagged.tag, "");
         assert_eq!(tagged.planedb, "planes_prod");
+    }
+
+    #[test]
+    fn test_make_query_basic() {
+        let dbvars = DBVars {
+            planedb: "planes_prod".to_string(),
+            dronedb: "drones_prod".to_string(),
+            workdb: "work_prod".to_string(),
+            tag: String::new(),
+        };
+
+        let result: eyre::Result<String> = (|| {
+            let query = make_query!("SELECT * FROM {planedb}.flights WHERE id > 100", dbvars);
+            Ok(query)
+        })();
+
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            "SELECT * FROM planes_prod.flights WHERE id > 100"
+        );
+    }
+
+    #[test]
+    fn test_make_query_with_tag() {
+        let dbvars = DBVars {
+            planedb: "planes".to_string(),
+            dronedb: "drones".to_string(),
+            workdb: "work".to_string(),
+            tag: "_temp".to_string(),
+        };
+
+        let result: eyre::Result<String> = (|| {
+            let query = make_query!(
+                "CREATE TABLE {workdb}.analysis{tag} AS SELECT * FROM {planedb}.data",
+                dbvars
+            );
+            Ok(query)
+        })();
+
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            "CREATE TABLE work.analysis_temp AS SELECT * FROM planes.data"
+        );
+    }
+
+    #[test]
+    fn test_make_query_with_all_variables() {
+        let dbvars = DBVars {
+            planedb: "planes_prod".to_string(),
+            dronedb: "drones_prod".to_string(),
+            workdb: "work_prod".to_string(),
+            tag: "_v2".to_string(),
+        };
+
+        let result: eyre::Result<String> = (|| {
+            let query = make_query!(
+                "INSERT INTO {workdb}.results{tag} SELECT p.*, d.* FROM {planedb}.data p JOIN {dronedb}.info d",
+                dbvars
+            );
+            Ok(query)
+        })();
+
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            "INSERT INTO work_prod.results_v2 SELECT p.*, d.* FROM planes_prod.data p JOIN drones_prod.info d"
+        );
+    }
+
+    #[test]
+    fn test_make_query_error_propagation() {
+        let dbvars = DBVars {
+            planedb: "planes".to_string(),
+            dronedb: "drones".to_string(),
+            workdb: "work".to_string(),
+            tag: String::new(),
+        };
+
+        let result: eyre::Result<String> = (|| {
+            let query = make_query!("SELECT * FROM {planedb WHERE id = 1", dbvars);
+            Ok(query)
+        })();
+
+        assert!(result.is_err());
     }
 }
