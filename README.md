@@ -121,8 +121,8 @@ This is intentionally *not* a run-time option but a compile-time one.
 
 ## MSRV
 
-The Minimum Supported Rust Version is *1.85* due to the `async traits` used through `fetiche-engine` and for
-Clickhouse connections in `process-data`. We are now using Edition 2024.
+The Minimum Supported Rust Version is *1.85* due to the `async traits` used throughout `fetiche-engine` and for
+Clickhouse connections in `process-data`. We are now using Edition 2024 as well.
 
 ## Supported platforms
 
@@ -130,7 +130,6 @@ Clickhouse connections in `process-data`. We are now using Edition 2024.
 * Windows
     - Powershell (preferred)
     - cmd.exe
-    - [Nushell]
 
 ## TODO
 
@@ -139,6 +138,7 @@ Here are some of the things I've been working on. Some of these are registered a
 - Add more tests and benchmarks.
 - convert the opensky code to use [actors](https://en.wikipedia.org/wiki/Actor_model).
 - add a feeder that dispatches different events in the Avionix flow into separate AMQP queues.
+- ~~Convert the datetime & timezone code to jiff instead of chrono.~~
 
 Upcoming refactors:
 
@@ -147,9 +147,9 @@ Upcoming refactors:
 
 Uncertain:
 
-- build `fetiched` as the core daemon and making all other talk to it through gRPC.
 - link to HashiCorp Vault for storing credentials and tokens
 - support for Safesky for ADS-B data
+- ~~build `fetiched` as the core daemon and making all other talk to it through gRPC.~~
 
 See [the issues](https://github.com/keltia/fetiche-rs/issues/) for more details.
 
@@ -191,8 +191,6 @@ I use Git Flow for this package so please use something similar or the usual Git
 [GRPC]: https://en.wikipedia.org/wiki/GRPC
 
 [pyopensky]: https://pypi.org/project/pyopensky/
-
-[Nushell]: https://nushell.sh/
 
 [DuckDB]: https://duckdb.org/
 
