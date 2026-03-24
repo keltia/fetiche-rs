@@ -3,6 +3,7 @@
 use crate::runtime::Context;
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
+use tracing::debug;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct DBVars {
@@ -23,6 +24,7 @@ pub fn load_query(q: &str, dbvars: &DBVars) -> eyre::Result<String> {
     let mut tt = TinyTemplate::new();
     tt.add_template("query", q)?;
     let res = tt.render("query", &dbvars)?;
+    debug!("q={res}");
     Ok(res)
 }
 
