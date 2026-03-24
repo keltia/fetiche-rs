@@ -47,6 +47,7 @@
 //!
 
 use crate::cmds::{load_query, Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
+
 use eyre::Result;
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -354,10 +355,7 @@ WHERE
     async fn find_close(&mut self, dbh: &Client) -> Result<usize> {
         trace!("Find close encounters.");
 
-        let site = self.site.clone();
-        let name = site.name.clone();
-        let day_name = self.date.format("%Y%m%d").to_string();
-        let tag = format!("_{name}_{day_name}");
+        let tag = self.dbvars.tag.clone();
 
         trace!("Removing old table today_close{tag}.");
 
@@ -767,7 +765,7 @@ impl Calculate for PlaneDistance {
         let style = ProgressStyle::with_template(
             "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>2}/{len:2} {msg}",
         )?
-        .progress_chars("##-");
+            .progress_chars("##-");
         bar.set_style(style);
         bar.enable_steady_tick(Duration::from_millis(100));
 
