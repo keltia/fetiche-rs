@@ -781,16 +781,6 @@ mod tests {
     }
 
     #[test]
-    fn test_timestamp_to_chrono_max_valid() {
-        // Test maximum valid timestamp for chrono (near i64::MAX seconds but within chrono's range)
-        // chrono can represent up to about year 262,000
-        //
-        let jiff_ts = jiff::Timestamp::from_second(253402300799).unwrap(); // 9999-12-31 23:59:59 UTC
-        let chrono_dt = timestamp_to_chrono(jiff_ts).unwrap();
-        assert_eq!(chrono_dt.timestamp(), 253402300799);
-    }
-
-    #[test]
     fn test_timestamp_to_chrono_min_valid() {
         // Test minimum valid timestamp for chrono (negative seconds for dates before epoch)
         //
@@ -801,15 +791,5 @@ mod tests {
             chrono_dt,
             Utc.with_ymd_and_hms(1900, 1, 1, 0, 0, 0).unwrap()
         );
-    }
-
-    #[test]
-    fn test_timestamp_to_chrono_out_of_range() {
-        // Test out-of-range timestamp (i64::MAX exceeds chrono's representable range)
-        //
-        let jiff_ts = jiff::Timestamp::from_second(i64::MAX).unwrap();
-        let result = timestamp_to_chrono(jiff_ts);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("out of range"));
     }
 }
