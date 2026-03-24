@@ -16,11 +16,14 @@ pub struct Opts {
     /// Datalake location to use
     #[clap(short = 'l', long)]
     pub datalake: Option<String>,
+    /// Database profile to use, default is "default".
+    #[clap(short = 'P', long)]
+    pub profile: Option<String>,
     /// Delay between task in ms
     #[clap(short = 'w', long, default_value = "100")]
     pub wait: u64,
     /// Database pool size
-    #[clap(short = 'P', long, default_value = "32")]
+    #[clap(long, default_value = "32")]
     pub pool_size: usize,
     /// Enable telemetry with OTLP.
     #[clap(short = 'T', long)]

@@ -10,6 +10,7 @@ use crate::cli::Opts;
 use crate::config::ProcessConfig;
 use crate::error::Status;
 use crate::NAME;
+
 use fetiche_common::{close_logging, init_logging, ConfigFile, Versioned};
 
 /// Config filename
@@ -210,17 +211,31 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
         }
     };
 
-    // We must operate on a database.
+    // We must operate on a database, so we need a profile.
     //
-    if cfg.db.plane_db.is_none() {
-        return Err(Status::MissingConfigParameter("plane_db".into()).into());
+    if cfg.profiles.is_empty() {
+        return Err(Status::MissingConfigParameter("profiles".into()).into());
     }
-    if cfg.db.drone_db.is_none() {
-        return Err(Status::MissingConfigParameter("drone_db".into()).into());
-    }
-    if cfg.db.work_db.is_none() {
-        return Err(Status::MissingConfigParameter("work_db".into()).into());
-    }
+
+    // Check what profiles are available
+    // At this point, it is either $CLICKHOUSE_PROFILE or "default"
+    //
+    // Priority:
+    // - CLI option, if present,
+    // - Environment variable, if present, defaults to "default"
+    //
+    let profile_name = opts.profile.clone().unwrap_or_else(|| {
+        std::env::var("CLICKHOUSE_PROFILE").unwrap_or("default".into())
+    });
+
+    let profile = match cfg.profiles.get(&profile_name) {
+        Some(p) => p,
+        None => {
+            return Err(Status::MissingProfile(profile_name.into()).into());
+        }
+    };
+
+    trace!("Using profile {} = {}", profile_name, profile);
 
     // We need the airports parquet file
     //
@@ -233,8 +248,6 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
     //
     // Allow database names to be overridden on command line
     //
-    let name =
-        std::env::var("CLICKHOUSE_DB").unwrap_or(cfg.db.work_db.clone().unwrap_or("acute".into()));
     let user = std::env::var("CLICKHOUSE_USER").unwrap_or(cfg.db.user.clone().unwrap());
     let pass = std::env::var("CLICKHOUSE_PASSWD").unwrap_or(cfg.db.password.clone().unwrap());
     let endpoint = std::env::var("KLICKHOUSE_URL").unwrap_or(cfg.db.url.clone());
@@ -246,7 +259,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
         return Err(Status::NoUrl(def).into());
     }
 
-    info!("Connecting to {} @ {}", name, endpoint);
+    info!("Connecting to {} @ {}", profile.work_db, endpoint);
     trace!("Creating connection pool");
 
     let manager = ConnectionManager::new(
@@ -254,11 +267,11 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
         ClientOptions {
             username: user.clone(),
             password: pass.clone(),
-            default_database: name.clone(),
+            default_database: profile.work_db.clone(),
             ..Default::default()
         },
     )
-    .await?;
+        .await?;
 
     let pool_size = opts.pool_size;
     let pool = bb8::Pool::builder()
@@ -266,10 +279,6 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
         .max_size(pool_size as u32)
         .build(manager)
         .await?;
-
-    let planedb = cfg.db.plane_db.as_ref().unwrap();
-    let dronedb = cfg.db.drone_db.as_ref().unwrap();
-    let workdb = cfg.db.work_db.as_ref().unwrap();
 
     // Extract the threshold parameter, which define the minimal safety
     // distance.
@@ -281,18 +290,17 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
     let ctx = Context {
         config: HashMap::from([
             ("url".to_string(), endpoint.clone()),
-            ("database".to_string(), name.clone()),
             ("datalake".to_string(), datalake.clone()),
             ("airports".to_string(), cfg.airports.clone().unwrap()),
             ("username".to_string(), user.clone()),
             ("threshold".to_string(), threshold.to_string()),
             ("factor".to_string(), factor.to_string()),
             ("distance".to_string(), plane.to_string()),
-            ("planedb".into(), planedb.clone()),
-            ("dronedb".into(), dronedb.clone()),
-            ("workdb".into(), workdb.clone()),
+            ("planedb".into(), profile.plane_db.clone()),
+            ("dronedb".into(), profile.drone_db.clone()),
+            ("workdb".into(), profile.work_db.clone()),
         ])
-        .into(),
+            .into(),
         dbh: pool.clone(),
         pool_size,
         wait: opts.wait,

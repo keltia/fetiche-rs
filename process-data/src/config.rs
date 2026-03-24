@@ -10,9 +10,11 @@
 //! - v3 has different sections for parameters
 //! - v4 added the plane parameter into the distances section
 //! - v5 splits database into plane_db, drone_db a,d work_db.
+//! - v6 added the profiles section.
 //!
 
-use std::fmt::Debug;
+use std::collections::HashMap;
+use std::fmt::{Debug, Display};
 
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +22,7 @@ use fetiche_common::{IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
 
 /// Current version
-pub const CVERSION: usize = 5;
+pub const CVERSION: usize = 6;
 
 /// This module provides the configuration structures and functionalities
 /// necessary for initializing the application. It includes definitions for
@@ -43,22 +45,32 @@ pub const CVERSION: usize = 5;
 ///
 /// # Example Configuration
 /// ```hcl
-/// version = 5
+/// version = 6
 ///
 /// datalake = "/path/to/datalake"
 /// airports = "/path/to/airports.parquet"
 ///
 /// db {
-///     plane_db = "allplanes_db"
-///     drone_db = "alldrones_db"
-///     work_db  = "working"
-///     // relative to datalake
-///     airports = "/files/airports.parquet"
-///     url = "http://localhost"
+///     url = "https://localhost:8443"
 ///     user = "admin"
 ///     password = "password123"
 /// }
 ///
+/// profiles {
+///   "prod" = {
+///     // fetch plane data from this namespace
+///     "plane_db" = "prod_planes"
+///     // fetch drone data from this namespace
+///     "drone_db" = "prod_drones"
+///     // working tables will be in this namespace
+///     "work_db" = "prod_work"
+///   }
+///   "dev" = {
+///     "plane_db" = "dev_planes"
+///     "drone_db" = "dev_drones"
+///     "work_db"  = "dev_work"
+///   }
+/// }
 /// distances {
 ///     threshold = 1852
 ///     factor = 3
@@ -66,7 +78,7 @@ pub const CVERSION: usize = 5;
 /// }
 /// ```
 ///
-#[into_configfile(version = 5, filename = "proces-data.hcl")]
+#[into_configfile(version = 6, filename = "proces-data.hcl")]
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ProcessConfig {
     /// Path to the datalake.
@@ -77,22 +89,36 @@ pub struct ProcessConfig {
     pub db: Database,
     /// Section for calculations on distances.
     pub distances: Distances,
+    /// Section for profiles.
+    pub profiles: HashMap<String, Profile>,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Database {
-    /// Database holding the plane data.
-    pub plane_db: Option<String>,
-    /// Database holding the drone data.
-    pub drone_db: Option<String>,
-    /// Database holding the working tables.
-    pub work_db: Option<String>,
     /// URL
     pub url: String,
     /// User to connect with
     pub user: Option<String>,
     /// Corresponding password
     pub password: Option<String>,
+}
+
+/// A "profile" is a triplet containing the different namespaces used for the database.
+///
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Profile {
+    /// Database holding the plane data.
+    pub plane_db: String,
+    /// Database holding the drone data.
+    pub drone_db: String,
+    /// Database holding the working tables.
+    pub work_db: String,
+}
+
+impl Display for Profile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{ plane_db={}, drone_db={}, work_db={} }}", self.plane_db, self.drone_db, self.work_db)
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
