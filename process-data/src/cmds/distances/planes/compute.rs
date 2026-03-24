@@ -48,6 +48,7 @@
 
 use crate::cmds::{load_query, Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
 
+use crate::make_query;
 use eyre::Result;
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -109,6 +110,8 @@ impl PlaneDistance {
     ///
     #[tracing::instrument(skip(dbh))]
     async fn select_planes(&mut self, dbh: &Client) -> Result<usize> {
+        let dbvars = self.dbvars.clone();
+
         let site = self.site.clone();
         let name = site.name.clone();
         let lat = self.lat;
@@ -145,7 +148,7 @@ impl PlaneDistance {
         let day_name = self.date.format("%Y%m%d").to_string();
         let tag = format!("_{name}_{day_name}");
 
-        let r1 = load_query(
+        let r1 = make_query!(
             r##"
 CREATE OR REPLACE TABLE {workdb}.today{tag}
 ENGINE = MergeTree
@@ -170,8 +173,8 @@ WHERE
   pointInEllipses(plon, plat, $3, $4, $5, $6)
 ORDER BY time
 "##,
-            &self.dbvars,
-        )?;
+            dbvars
+        );
         trace!("q={r1}");
 
         // Given lat/lon and dist, we define the "ellipse" aka circle
@@ -194,7 +197,7 @@ ORDER BY time
         // If there were no planes, then the query succeeds, but the table was not created. Counting
         // WILL fail.  We need to handle that.
         //
-        let r2 = load_query("SELECT count() FROM {workdb}.today{tag}", &self.dbvars)?;
+        let r2 = make_query!("SELECT count() FROM {workdb}.today{tag}", dbvars);
         trace!("r2={r2}");
         let mut count = match dbh.query_one::<RawRow>(&r2).await {
             Ok(count) => count,
@@ -243,6 +246,8 @@ ORDER BY time
     ///
     #[tracing::instrument(skip(dbh))]
     async fn select_drones(&mut self, dbh: &Client) -> Result<usize> {
+        let dbvars = self.dbvars.clone();
+
         // All drone points for the same day
         //
         // $1 = date+1
@@ -267,7 +272,7 @@ ORDER BY time
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
-        let r1 = load_query(
+        let r1 = make_query!(
             r##"
 CREATE OR REPLACE TABLE {workdb}.candidates{tag}
 ENGINE = MergeTree
@@ -295,8 +300,8 @@ WHERE
   longitude IS NOT NULL AND
   pointInEllipses(longitude,latitude, $2, $3, $4, $5)
     "##,
-            &self.dbvars,
-        )?;
+            dbvars
+        );
         trace!("q={r1}");
         let q = QueryBuilder::new(&r1)
             .arg(time_from)
@@ -308,7 +313,7 @@ WHERE
 
         // Check how many
         //
-        let r2 = load_query("SELECT COUNT() FROM {workdb}.candidates{tag}", &self.dbvars)?;
+        let r2 = make_query!("SELECT COUNT() FROM {workdb}.candidates{tag}", dbvars);
         trace!("q={r2}");
         let mut count = match dbh.query_one::<RawRow>(&r2).await {
             Ok(count) => count,
@@ -355,7 +360,8 @@ WHERE
     async fn find_close(&mut self, dbh: &Client) -> Result<usize> {
         trace!("Find close encounters.");
 
-        let tag = self.dbvars.tag.clone();
+        let dbvars = self.dbvars.clone();
+        let tag = dbvars.tag.clone();
 
         trace!("Removing old table today_close{tag}.");
 
@@ -364,7 +370,7 @@ WHERE
         //
         // $1,$2 = distance we consider as significant, 3nm for now approx 5,500 m.
         //
-        let r = load_query(
+        let r = make_query!(
             r##"
 CREATE OR REPLACE TABLE {workdb}.today_close{tag}
 ENGINE = MergeTree
@@ -402,8 +408,8 @@ WHERE
   dist2d <= $1 AND
   diff_alt < $1
     "##,
-            &self.dbvars,
-        )?;
+            dbvars
+        );
         trace!("q={r}");
 
         let separation = self.threshold * self.factor;
@@ -412,10 +418,7 @@ WHERE
 
         // Check how many
         //
-        let r1 = load_query(
-            "SELECT COUNT() FROM {workdb}.today_close{tag}",
-            &self.dbvars,
-        )?;
+        let r1 = make_query!("SELECT COUNT() FROM {workdb}.today_close{tag}", dbvars);
         trace!("q={r1}");
 
         let mut count = match dbh.query_one::<RawRow>(&r1).await {
@@ -454,10 +457,11 @@ WHERE
     ///
     #[tracing::instrument(skip(dbh))]
     async fn create_table_ids(&mut self, dbh: &Client, day_name: &str, site: &str) -> Result<()> {
-        let tag = format!("_{site}_{day_name}");
+        let dbvars = self.dbvars.clone();
+        let tag = dbvars.tag.clone();
 
         trace!("Create table ids{tag}.");
-        let r = load_query(
+        let r = make_query!(
             r##"
 CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     drone_id VARCHAR,
@@ -467,8 +471,8 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     sitename VARCHAR,
 ) ENGINE = Memory
 "##,
-            &self.dbvars,
-        )?;
+            dbvars
+        );
         trace!("q={r}");
         self.state.push(TempTables::Ids);
 
@@ -492,7 +496,9 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     ///
     #[tracing::instrument(skip(dbh))]
     async fn insert_ids(&mut self, dbh: &Client, day_name: &str, site: &str) -> Result<usize> {
-        let r = load_query("SELECT count() FROM today_close{tag}", &self.dbvars)?;
+        let dbvars = self.dbvars.clone();
+
+        let r = make_query!("SELECT count() FROM {workdb}.today_close{tag}", dbvars);
         trace!("q={r}");
 
         let mut total = dbh.query_one::<RawRow>(&r).await?;
@@ -518,7 +524,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
 
         let separation = self.threshold * self.factor;
 
-        let r1 = load_query(
+        let r1 = make_query!(
             r##"
     SELECT
       journey,
@@ -529,8 +535,8 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
       dist_drone_plane < $1
     GROUP BY ALL
             "##,
-            &self.dbvars,
-        )?;
+            dbvars
+        );
         trace!("q={r1}");
         trace!("Fetch close encounters out of {total} from today_close.");
         let q = QueryBuilder::new(&r1).arg(separation);
@@ -563,14 +569,11 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
         trace!("Insert updated records.");
         // Insert the records
         //
-        let r2 = load_query("INSERT INTO {workdb}.ids{tag} FORMAT native", &self.dbvars)?;
+        let r2 = make_query!("INSERT INTO {workdb}.ids{tag} FORMAT native", dbvars);
         trace!("q={r2}");
         dbh.insert_native_block(&r2, all).await?;
 
-        let r3 = load_query(
-            "SELECT count() FROM {workdb}.today_close{tag}",
-            &self.dbvars,
-        )?;
+        let r3 = make_query!("SELECT count() FROM {workdb}.today_close{tag}", dbvars);
         trace!("q={r3}");
         let mut count = dbh.query_one::<RawRow>(&r3).await?;
         let count: u64 = count.get(0);
@@ -591,6 +594,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     ///
     #[tracing::instrument(skip(dbh))]
     async fn select_encounters(&mut self, dbh: &Client) -> Result<usize> {
+        let dbvars = self.dbvars.clone();
         trace!("select and record close points. ");
 
         // We use a GROUP BY() clause to get the point where the distance between this drone and any surrounding planes
@@ -616,7 +620,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
 
         let threshold = self.threshold;
 
-        let r = load_query(
+        let r = make_query!(
             r##"INSERT INTO {workdb}.airplane_prox
      SELECT
       any_value(tc.site) AS site,
@@ -648,8 +652,8 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
       dist_drone_plane < $1
     GROUP BY ALL
 "##,
-            &self.dbvars,
-        )?;
+            dbvars
+        );
         trace!("q={r}");
         let q = QueryBuilder::new(&r).arg(threshold);
         dbh.execute(q).await?;
@@ -658,10 +662,10 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
 
         // Now check how many
         //
-        let r1 = load_query(
+        let r1 = make_query!(
             "SELECT COUNT(en_id) FROM {workdb}.airplane_prox WHERE en_id LIKE $1",
-            &self.dbvars,
-        )?;
+            dbvars
+        );
         trace!("q={r1}");
         let pattern = format!("%{day_name}%");
         let q = QueryBuilder::new(&r1).arg(pattern);
@@ -692,20 +696,15 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     ///
     #[tracing::instrument(skip(dbh))]
     async fn cleanup_temp_tables(&self, dbh: &Client) -> Result<()> {
-        debug!("dbvars={:?}", self.dbvars);
+        let dbvars = self.dbvars.clone();
+        debug!("dbvars={:?}", dbvars);
 
         // Prepare the queries
         //
-        let r1 = load_query("DROP TABLE IF EXISTS {workdb}.today{tag}", &self.dbvars)?;
-        let r2 = load_query(
-            "DROP TABLE IF EXISTS {workdb}.candidates{tag}",
-            &self.dbvars,
-        )?;
-        let r3 = load_query(
-            "DROP TABLE IF EXISTS {workdb}.today_close{tag}",
-            &self.dbvars,
-        )?;
-        let r4 = load_query("DROP TABLE IF EXISTS {workdb}.ids{tag}", &self.dbvars)?;
+        let r1 = make_query!("DROP TABLE IF EXISTS {workdb}.today{tag}", dbvars);
+        let r2 = make_query!("DROP TABLE IF EXISTS {workdb}.candidates{tag}", dbvars);
+        let r3 = make_query!("DROP TABLE IF EXISTS {workdb}.today_close{tag}", dbvars);
+        let r4 = make_query!("DROP TABLE IF EXISTS {workdb}.ids{tag}", dbvars);
 
         // Now run them
         //
@@ -765,7 +764,7 @@ impl Calculate for PlaneDistance {
         let style = ProgressStyle::with_template(
             "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>2}/{len:2} {msg}",
         )?
-            .progress_chars("##-");
+        .progress_chars("##-");
         bar.set_style(style);
         bar.enable_steady_tick(Duration::from_millis(100));
 
