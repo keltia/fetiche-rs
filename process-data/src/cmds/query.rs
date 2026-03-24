@@ -29,7 +29,37 @@ pub fn load_query(q: &str, dbvars: &DBVars) -> eyre::Result<String> {
 }
 
 impl DBVars {
-    /// Fill in the tag part of `DBVars`.
+    /// Creates a new `DBVars` instance with an updated tag value.
+    ///
+    /// This method clones the current `DBVars` instance and replaces the tag field
+    /// with the provided value, while preserving all other database configuration
+    /// fields (planedb, dronedb, workdb).
+    ///
+    /// # Arguments
+    ///
+    /// * `tag` - A string slice containing the tag value to set. This is typically
+    ///   used to distinguish between different query contexts or temporary tables.
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `DBVars` instance with the updated tag.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use process_data::cmds::query::DBVars;
+    ///
+    /// let dbvars = DBVars {
+    ///     planedb: "planes_prod".to_string(),
+    ///     dronedb: "drones_prod".to_string(),
+    ///     workdb: "work_prod".to_string(),
+    ///     tag: String::new(),
+    /// };
+    ///
+    /// let tagged = dbvars.tag("_LFPG_20231001");
+    /// assert_eq!(tagged.tag, "_LFPG_20231001");
+    /// assert_eq!(tagged.planedb, "planes_prod");
+    /// ```
     ///
     pub fn tag(&self, tag: &str) -> Self {
         Self {
@@ -141,5 +171,48 @@ mod tests {
 
         let result = load_query(query, &dbvars);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_tag_creates_new_instance_with_updated_tag() {
+        let dbvars = DBVars {
+            planedb: "planes_prod".to_string(),
+            dronedb: "drones_prod".to_string(),
+            workdb: "work_prod".to_string(),
+            tag: String::new(),
+        };
+
+        let tagged = dbvars.tag("_LFPG_20231001");
+        assert_eq!(tagged.tag, "_LFPG_20231001");
+    }
+
+    #[test]
+    fn test_tag_preserves_other_fields() {
+        let dbvars = DBVars {
+            planedb: "planes_prod".to_string(),
+            dronedb: "drones_prod".to_string(),
+            workdb: "work_prod".to_string(),
+            tag: "_old_tag".to_string(),
+        };
+
+        let tagged = dbvars.tag("_new_tag");
+        assert_eq!(tagged.planedb, "planes_prod");
+        assert_eq!(tagged.dronedb, "drones_prod");
+        assert_eq!(tagged.workdb, "work_prod");
+        assert_eq!(tagged.tag, "_new_tag");
+    }
+
+    #[test]
+    fn test_tag_with_empty_string() {
+        let dbvars = DBVars {
+            planedb: "planes_prod".to_string(),
+            dronedb: "drones_prod".to_string(),
+            workdb: "work_prod".to_string(),
+            tag: "_LFPG_20231001".to_string(),
+        };
+
+        let tagged = dbvars.tag("");
+        assert_eq!(tagged.tag, "");
+        assert_eq!(tagged.planedb, "planes_prod");
     }
 }
