@@ -665,16 +665,15 @@ fn timestamp_to_chrono(ts: jiff::Timestamp) -> Result<DateTime<Utc>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{TimeZone, Utc};
-
     use crate::cli::{Opts, SubCommand};
     use crate::cmds::{DistOpts, DistSubcommand};
     use crate::runtime::init_runtime;
+    use chrono::{TimeZone, Utc};
 
     #[test]
     fn test_parse_date_interval_valid_range() {
-        let start_date = "2023-10-01T00:00:00Z";
-        let end_date = "2023-10-10T00:00:00Z";
+        let start_date = "2023-10-01";
+        let end_date = "2023-10-10";
         let date_opts = DateOpts::From {
             begin: start_date.to_string(),
             end: end_date.to_string(),
@@ -730,6 +729,7 @@ mod tests {
         let opts = Opts {
             config: None,
             datalake: Some("/Users/acute".into()),
+            profile: None,
             wait: 0,
             pool_size: 1,
             use_telemetry: false,
