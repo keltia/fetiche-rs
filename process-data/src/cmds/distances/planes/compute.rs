@@ -175,7 +175,6 @@ ORDER BY time
 "##,
             dbvars
         );
-        trace!("q={r1}");
 
         // Given lat/lon and dist, we define the "ellipse" aka circle
         // cf. https://clickhouse.com/docs/en/sql-reference/functions/geo/coordinates#pointinellipses
@@ -198,7 +197,6 @@ ORDER BY time
         // WILL fail.  We need to handle that.
         //
         let r2 = make_query!("SELECT count() FROM {workdb}.today{tag}", dbvars);
-        trace!("r2={r2}");
         let mut count = match dbh.query_one::<RawRow>(&r2).await {
             Ok(count) => count,
             Err(_) => {
@@ -302,7 +300,6 @@ WHERE
     "##,
             dbvars
         );
-        trace!("q={r1}");
         let q = QueryBuilder::new(&r1)
             .arg(time_from)
             .arg(lon)
@@ -314,7 +311,6 @@ WHERE
         // Check how many
         //
         let r2 = make_query!("SELECT COUNT() FROM {workdb}.candidates{tag}", dbvars);
-        trace!("q={r2}");
         let mut count = match dbh.query_one::<RawRow>(&r2).await {
             Ok(count) => count,
             Err(_) => {
@@ -358,8 +354,6 @@ WHERE
     ///
     #[tracing::instrument(skip(dbh))]
     async fn find_close(&mut self, dbh: &Client) -> Result<usize> {
-        trace!("Find close encounters.");
-
         let dbvars = self.dbvars.clone();
         let tag = dbvars.tag.clone();
 
@@ -410,7 +404,6 @@ WHERE
     "##,
             dbvars
         );
-        trace!("q={r}");
 
         let separation = self.threshold * self.factor;
         let q = QueryBuilder::new(&r).arg(separation);
@@ -419,7 +412,6 @@ WHERE
         // Check how many
         //
         let r1 = make_query!("SELECT COUNT() FROM {workdb}.today_close{tag}", dbvars);
-        trace!("q={r1}");
 
         let mut count = match dbh.query_one::<RawRow>(&r1).await {
             Ok(count) => count,
@@ -473,7 +465,6 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
 "##,
             dbvars
         );
-        trace!("q={r}");
         self.state.push(TempTables::Ids);
 
         Ok(dbh.execute(&r).await?)
@@ -499,7 +490,6 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
         let dbvars = self.dbvars.clone();
 
         let r = make_query!("SELECT count() FROM {workdb}.today_close{tag}", dbvars);
-        trace!("q={r}");
 
         let mut total = dbh.query_one::<RawRow>(&r).await?;
         let total: u64 = total.get(0);
@@ -537,7 +527,6 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
             "##,
             dbvars
         );
-        trace!("q={r1}");
         trace!("Fetch close encounters out of {total} from today_close.");
         let q = QueryBuilder::new(&r1).arg(separation);
         let all = dbh.query_collect::<Tc>(q).await?;
@@ -570,11 +559,9 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
         // Insert the records
         //
         let r2 = make_query!("INSERT INTO {workdb}.ids{tag} FORMAT native", dbvars);
-        trace!("q={r2}");
         dbh.insert_native_block(&r2, all).await?;
 
         let r3 = make_query!("SELECT count() FROM {workdb}.today_close{tag}", dbvars);
-        trace!("q={r3}");
         let mut count = dbh.query_one::<RawRow>(&r3).await?;
         let count: u64 = count.get(0);
         trace!("Got {count} IDs");
@@ -654,7 +641,6 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
 "##,
             dbvars
         );
-        trace!("q={r}");
         let q = QueryBuilder::new(&r).arg(threshold);
         dbh.execute(q).await?;
 
@@ -666,7 +652,6 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
             "SELECT COUNT(en_id) FROM {workdb}.airplane_prox WHERE en_id LIKE $1",
             dbvars
         );
-        trace!("q={r1}");
         let pattern = format!("%{day_name}%");
         let q = QueryBuilder::new(&r1).arg(pattern);
         let mut count = dbh.query_one::<RawRow>(q).await?;
