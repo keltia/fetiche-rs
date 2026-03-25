@@ -48,15 +48,16 @@
 
 use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
 use crate::make_query;
+
+use std::ops::Add;
+
 use eyre::Result;
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
 use klickhouse::{Client, QueryBuilder, RawRow, Row};
 use serde::{Deserialize, Serialize};
-use std::ops::Add;
 use tokio::time::{sleep, Duration, Instant};
 use tracing::{debug, error, info, trace};
-// -----
 
 /// Timings during the calculation process.
 #[derive(Debug, Default, Deserialize)]
