@@ -135,10 +135,11 @@ impl DBVars {
     /// assert_eq!(dbvars.planedb, "planes_tablespace");
     /// ```
     ///
+    #[tracing::instrument(sip(ctx))]
     pub fn from_ctx(ctx: &Context) -> Self {
-        let planedb = ctx.config.get("plane_db").unwrap();
-        let dronedb = ctx.config.get("drone_db").unwrap();
-        let workdb = ctx.config.get("work_db").unwrap();
+        let planedb = ctx.config.get("planedb").unwrap();
+        let dronedb = ctx.config.get("dronedb").unwrap();
+        let workdb = ctx.config.get("workdb").unwrap();
         Self {
             planedb: planedb.to_owned(),
             dronedb: dronedb.to_owned(),
