@@ -46,8 +46,7 @@
 //! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
 //!
 
-use crate::cmds::{load_query, Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
-
+use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
 use crate::make_query;
 use eyre::Result;
 use futures::future::try_join_all;
