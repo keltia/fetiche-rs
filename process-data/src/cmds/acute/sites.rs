@@ -1,6 +1,16 @@
 use clap::Parser;
 use eyre::Result;
-use polars::prelude::*;
+use geo::coord;
+use klickhouse::{QueryBuilder, Row};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use tabled::settings::Style;
+use tabled::{Table, Tabled};
+use tracing::debug;
+
+use crate::cmds::DBVars;
+use crate::make_query;
+use crate::runtime::Context;
 
 /// "acute sites"
 ///
@@ -14,17 +24,26 @@ pub(crate) struct SiteOpts {
     pub subcmd: SitesSubCommand,
 }
 
-#[derive(Debug, Default, Parser)]
+#[derive(Debug, Parser)]
 pub enum SitesSubCommand {
-    /// Add a something
+    /// Add something
     Add(AddSiteOpts),
-    /// Modify a something
+    /// Modify something
     Modify,
-    /// Remove a something
+    /// Remove something
     Remove,
     /// Default is listing everything
-    #[default]
-    List,
+    List(SitesListOpts),
+}
+
+#[derive(Debug, Parser)]
+pub(crate) struct SitesListOpts {
+    #[clap(short = 'C', long)]
+    pub csv: bool,
+    #[clap(short = 'J', long)]
+    pub json: bool,
+    #[clap(short = 'T', long, default_value = "true")]
+    pub table: bool,
 }
 
 #[derive(Debug, Parser)]
@@ -41,6 +60,80 @@ pub struct AddSiteOpts {
     basename: String,
 }
 
-fn insert_new_site(opts: &AddSiteOpts) -> Result<()> {
+#[derive(Debug, Deserialize, Row, Serialize, Tabled)]
+struct Site {
+    pub id: i32,
+    pub name: String,
+    pub code: String,
+    pub basename: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub ref_altitude: i32,
+    pub timezone: String,
+    pub offset_h: i32,
+    pub distance_km: f64,
+}
+
+#[allow(dead_code)]
+fn insert_new_site(_opts: &AddSiteOpts) -> Result<()> {
+    Ok(())
+}
+
+///  acute site subcommand handling.
+///
+#[tracing::instrument(skip(ctx))]
+pub(crate) async fn sites_list(ctx: &Context, opts: &SitesListOpts) -> Result<()> {
+    // Brétigny for you.
+    //
+    let home = coord! {x: 48.600052, y:2.347038};
+
+    // Prepare DB environment.
+    //
+    let planedb = ctx.config["planedb"].clone();
+    let dronedb = ctx.config["dronedb"].clone();
+    let workdb = ctx.config["workdb"].clone();
+
+    let dbvars = DBVars {
+        planedb,
+        dronedb,
+        workdb,
+        tag: "".into(),
+    };
+    let dbh = ctx.db().await;
+
+    let r = make_query!(
+        r##"
+SELECT
+  id,
+  name,
+  code,
+  basename,
+  latitude,
+  longitude,
+  ref_altitude,
+  timezone,
+  offset AS offset_h,
+  floor(dist_2d($1, $2, longitude, latitude) / 1000.) AS distance_km
+FROM
+  {workdb}.sites
+ORDER BY
+  id
+    "##,
+        dbvars
+    );
+    debug!("q={r}");
+    let q = QueryBuilder::new(&r).arg(home.y).arg(home.x);
+    let res = dbh.query_collect::<Site>(q).await?;
+
+    println!("Listing all sites:");
+    let res = if opts.table {
+        let mut table = Table::new(res.as_slice());
+        table.with(Style::sharp());
+        table.to_string()
+    } else {
+        json!(res).to_string()
+    };
+
+    println!("{res}");
     Ok(())
 }
