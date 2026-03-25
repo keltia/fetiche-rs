@@ -27,4 +27,6 @@ pub enum CmdError {
     NotADirectory(String),
     #[error("Unknown output format, aborting.")]
     UnknownFormat(String),
+    #[error("Timestamp out of range {0}")]
+    BadTimestamp(String),
 }

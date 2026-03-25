@@ -9,7 +9,7 @@ use std::time::Duration;
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::Parser;
 use derive_builder::Builder;
-use eyre::{eyre, Result};
+use eyre::Result;
 use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
@@ -661,7 +661,7 @@ fn parse_date_interval(date_opts: DateOpts) -> Result<(DateTime<Utc>, DateTime<U
 #[tracing::instrument]
 fn timestamp_to_chrono(ts: jiff::Timestamp) -> Result<DateTime<Utc>> {
     DateTime::<Utc>::from_timestamp(ts.as_second(), 0)
-        .ok_or_else(|| eyre!("timestamp out of range: {ts}"))
+        .ok_or_else(|| CmdError::BadTimestamp(ts.to_string()).into())
 }
 
 #[cfg(test)]
