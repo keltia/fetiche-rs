@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tabled::settings::Style;
 use tabled::{Table, Tabled};
-use tracing::debug;
 
 use crate::cmds::DBVars;
 use crate::make_query;
@@ -89,16 +88,7 @@ pub(crate) async fn sites_list(ctx: &Context, opts: &SitesListOpts) -> Result<()
 
     // Prepare DB environment.
     //
-    let planedb = ctx.config["planedb"].clone();
-    let dronedb = ctx.config["dronedb"].clone();
-    let workdb = ctx.config["workdb"].clone();
-
-    let dbvars = DBVars {
-        planedb,
-        dronedb,
-        workdb,
-        tag: "".into(),
-    };
+    let dbvars = DBVars::from_ctx(ctx);
     let dbh = ctx.db().await;
 
     let r = make_query!(
@@ -121,7 +111,6 @@ ORDER BY
     "##,
         dbvars
     );
-    debug!("q={r}");
     let q = QueryBuilder::new(&r).arg(home.y).arg(home.x);
     let res = dbh.query_collect::<Site>(q).await?;
 

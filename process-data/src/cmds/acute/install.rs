@@ -41,16 +41,7 @@ struct Install {
 pub(crate) async fn install_list(ctx: &Context, opts: &InstOpts) -> Result<()> {
     // Prepare DB environment.
     //
-    let planedb = ctx.config["planedb"].clone();
-    let dronedb = ctx.config["dronedb"].clone();
-    let workdb = ctx.config["workdb"].clone();
-
-    let dbvars = DBVars {
-        planedb,
-        dronedb,
-        workdb,
-        tag: "".into(),
-    };
+    let dbvars = DBVars::from_ctx(ctx);
     let dbh = ctx.db().await;
 
     // Find all installations with sites' name and antenna's ID

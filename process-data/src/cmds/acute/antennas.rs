@@ -35,16 +35,7 @@ struct Antenna {
 pub(crate) async fn antennas_list(ctx: &Context, opts: &AntennasOpts) -> Result<()> {
     // Prepare DB environment.
     //
-    let planedb = ctx.config["planedb"].clone();
-    let dronedb = ctx.config["dronedb"].clone();
-    let workdb = ctx.config["workdb"].clone();
-
-    let dbvars = DBVars {
-        planedb,
-        dronedb,
-        workdb,
-        tag: "".into(),
-    };
+    let dbvars = DBVars::from_ctx(ctx);
     let dbh = ctx.db().await;
 
     // Fetch antennas as Arrow
