@@ -19,7 +19,7 @@
 //!     planedb: "planes_prod".to_string(),
 //!     dronedb: "drones_prod".to_string(),
 //!     workdb: "work_prod".to_string(),
-//!     tag: String::new(),
+//!     ..Default::default()
 //! };
 //!
 //! let query = "SELECT * FROM {planedb}.flights";
@@ -28,11 +28,13 @@
 //! ```
 //!
 use crate::runtime::Context;
+
+use eyre::Result;
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 use tracing::debug;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct DBVars {
     pub planedb: String,
     pub dronedb: String,
@@ -47,7 +49,7 @@ pub struct DBVars {
 /// snprintf(3) for dummies.
 ///
 #[tracing::instrument]
-pub fn load_query(q: &str, dbvars: &DBVars) -> eyre::Result<String> {
+pub fn load_query(q: &str, dbvars: &DBVars) -> Result<String> {
     let mut tt = TinyTemplate::new();
     tt.add_template("query", q)?;
     let res = tt.render("query", &dbvars)?;
@@ -176,9 +178,10 @@ impl DBVars {
 /// # Examples
 ///
 /// ```rust
+/// # use eyre::Result;
 /// # use process_data::cmds::query::DBVars;
 /// # use process_data::make_query;
-/// # fn main() -> eyre::Result<()> {
+/// # fn main() -> Result<()> {
 /// let dbvars = DBVars {
 ///     planedb: "planes_prod".to_string(),
 ///     dronedb: "drones_prod".to_string(),
@@ -198,9 +201,10 @@ impl DBVars {
 /// Using with tagged queries:
 ///
 /// ```rust
+/// # use eyre::Result;
 /// # use process_data::cmds::query::DBVars;
 /// # use process_data::make_query;
-/// # fn main() -> eyre::Result<()> {
+/// # fn main() -> Result<()> {
 /// let dbvars = DBVars {
 ///     planedb: "planes".to_string(),
 ///     dronedb: "drones".to_string(),
@@ -328,7 +332,7 @@ mod tests {
             tag: String::new(),
         };
 
-        let result: eyre::Result<String> = (|| {
+        let result: Result<String> = (|| {
             let query = make_query!("SELECT * FROM {planedb}.flights WHERE id > 100", dbvars);
             Ok(query)
         })();
@@ -349,7 +353,7 @@ mod tests {
             tag: "_temp".to_string(),
         };
 
-        let result: eyre::Result<String> = (|| {
+        let result: Result<String> = (|| {
             let query = make_query!(
                 "CREATE TABLE {workdb}.analysis{tag} AS SELECT * FROM {planedb}.data",
                 dbvars
@@ -373,7 +377,7 @@ mod tests {
             tag: "_v2".to_string(),
         };
 
-        let result: eyre::Result<String> = (|| {
+        let result: Result<String> = (|| {
             let query = make_query!(
                 "INSERT INTO {workdb}.results{tag} SELECT p.*, d.* FROM {planedb}.data p JOIN {dronedb}.info d",
                 dbvars
@@ -397,7 +401,7 @@ mod tests {
             tag: String::new(),
         };
 
-        let result: eyre::Result<String> = (|| {
+        let result: Result<String> = (|| {
             let query = make_query!("SELECT * FROM {planedb WHERE id = 1", dbvars);
             Ok(query)
         })();
