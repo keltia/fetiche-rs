@@ -5,16 +5,18 @@ use std::fmt::Debug;
 use std::fs;
 
 use clap::Parser;
-use csv::WriterBuilder;
 use eyre::Result;
-use klickhouse::{Client, DateTime, Row};
+use klickhouse::{DateTime, Row};
 use polars::io::SerReader;
 use polars::prelude::{CsvParseOptions, ParquetWriter};
 use serde::{Deserialize, Serialize};
 use tempfile::Builder;
 use tracing::{debug, info, trace};
 
-use crate::cmds::{CmdError, Format};
+use fetiche_formats::prepare_csv;
+
+use crate::cmds::{CmdError, DBVars, Format};
+use crate::make_query;
 use crate::runtime::Context;
 
 #[derive(Debug, Parser)]
@@ -91,8 +93,7 @@ struct Encounter {
 /// a vector of `Encounter` structs.
 ///
 /// # Arguments
-///
-/// * `client` - A reference to the database client used to execute the query.
+/// * `ctx` - Application context providing access to the database and other resources.
 ///
 /// # Returns
 ///
@@ -130,11 +131,12 @@ struct Encounter {
 /// }
 /// ```
 ///
-#[tracing::instrument(skip(client))]
-async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
-    trace!("retrieving records from airplane_prox");
+#[tracing::instrument(skip(ctx))]
+async fn retrieve_all_encounters(ctx: &Context) -> Result<Vec<Encounter>> {
+    let client = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
 
-    let r = r##"
+    let r = make_query!(r##"
   SELECT
     site_id,
     sitename,
@@ -157,11 +159,11 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
     distance_hor_m,
     distance_vert_m,
     distance_home_m
-  FROM airplane_prox
+  FROM {workdb}.airplane_prox
   ORDER BY time
-        "##;
+        "##, dbvars);
 
-    let res = client.query_collect::<Encounter>(r).await?;
+    let res = client.query_collect::<Encounter>(&r).await?;
     debug!("retrieved encounters: {:?}", res);
 
     Ok(res)
@@ -172,7 +174,7 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
 /// on specific matching criteria. The resulting records are ordered by the encounter time before being returned.
 ///
 /// # Arguments
-/// * `client` - A reference to the database client used to execute the query.
+/// * `ctx` - Application context providing access to the database and other resources.
 ///
 /// # Returns
 /// * `Result<Vec<Encounter>>` - Returns a vector of `Encounter` structs containing the summary data
@@ -188,13 +190,14 @@ async fn retrieve_all_encounters(client: &Client) -> Result<Vec<Encounter>> {
 /// * Database query errors while fetching records.
 /// * Deserialization errors during mapping query results into the `Encounter` struct.
 ///
-#[tracing::instrument(skip(client))]
-async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> {
-    trace!("retrieving summary records from airplane_prox");
+#[tracing::instrument(skip(ctx))]
+async fn retrieve_summary_encounters(ctx: &Context) -> Result<Vec<Encounter>> {
+    let client = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
 
     // Match with airprox_summary for export
     //
-    let r1 = r##"
+    let r1 = make_query!(r##"
   SELECT
     site_id,
     sitename,
@@ -218,7 +221,7 @@ async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> 
     distance_vert_m,
     distance_home_m
   FROM
-    airplane_prox AS a JOIN airprox_summary AS s
+    {workdb}.airplane_prox AS a JOIN {workdb}.airprox_summary AS s
     ON
         s.en_id = a.en_id AND
         s.journey = a.journey AND
@@ -226,8 +229,9 @@ async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> 
   WHERE
     a.distance_slant_m = s.distance_slant_m
   ORDER BY time
-    "##;
-    let summ = client.query_collect::<Encounter>(r1).await?;
+    "##, dbvars);
+
+    let summ = client.query_collect::<Encounter>(&r1).await?;
     trace!("Summary encounters: {:?}", summ);
     Ok(summ)
 }
@@ -238,7 +242,7 @@ async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> 
 /// function and serializes them into a CSV file specified by the `fname` argument.
 ///
 /// # Arguments
-/// * `client` - A reference to the database client used to query the data.
+/// * `ctx` - Application context providing access to the database and other resources.
 /// * `fname` - The output file path where the CSV data will be written.
 ///
 /// # Returns
@@ -262,27 +266,14 @@ async fn retrieve_summary_encounters(client: &Client) -> Result<Vec<Encounter>> 
 /// let csv_path = "encounters.csv";
 /// export_all_encounters_csv(&client, csv_path).await?;
 /// ```
-#[tracing::instrument(skip(client))]
-async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()> {
-    trace!("Exporting all encounters from airplane_prox");
-
-    let data = retrieve_all_encounters(client).await?;
+///
+#[tracing::instrument(skip(ctx))]
+async fn export_all_encounters_csv(ctx: &Context, fname: &str) -> Result<()> {
+    let data = retrieve_all_encounters(ctx).await?;
     let len = data.len();
 
-    // Prepare the writer
-    //
-    let mut wtr = WriterBuilder::new().has_headers(true).from_writer(vec![]);
+    let data = prepare_csv(data, true)?;
 
-    // Insert data
-    //
-    data.into_iter().for_each(|rec| {
-        assert!(rec.distance_slant_m >= rec.distance_hor_m);
-        wtr.serialize(rec).unwrap();
-    });
-
-    // Output final csv
-    //
-    let data = String::from_utf8(wtr.into_inner()?)?;
     fs::write(fname, data)?;
     trace!("Exported {} encounters", len);
 
@@ -296,7 +287,7 @@ async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()> {
 /// writes the DataFrame to a Parquet file in the specified location.
 ///
 /// # Arguments
-/// * `client` - A reference to the database client used to query data.
+/// * `ctx` - Application context providing access to the database and other resources.
 /// * `fname` - The output filename where the Parquet file will be saved.
 ///
 /// # Returns
@@ -322,15 +313,14 @@ async fn export_all_encounters_csv(client: &Client, fname: &str) -> Result<()> {
 /// export_all_encounters_parquet(&client, fname).await?;
 /// ```
 ///
-#[tracing::instrument(skip(client))]
-async fn export_all_encounters_parquet(client: &Client, fname: &str) -> Result<()> {
+#[tracing::instrument(skip(ctx))]
+async fn export_all_encounters_parquet(ctx: &Context, fname: &str) -> Result<()> {
     let csv = Builder::new().suffix(".csv").tempfile()?;
     let tmpname = csv.path().to_string_lossy().to_string();
-    trace!("Creating and saving CSV into {tmpname}");
 
     // Generate the csv file as `tmpname`
     //
-    export_all_encounters_csv(client, &tmpname).await?;
+    export_all_encounters_csv(ctx, &tmpname).await?;
 
     trace!("Writing {fname} as parquet.");
 
@@ -359,7 +349,7 @@ async fn export_all_encounters_parquet(client: &Client, fname: &str) -> Result<(
 /// formats it as a CSV file, and writes it to a specified output filename.
 ///
 /// # Arguments
-/// * `dbh` - A reference to the database client used to query data.
+/// * `ctx` - Application context providing access to the database and other resources.
 /// * `fname` - The output filename where the CSV file will be saved.
 ///
 /// # Returns
@@ -370,26 +360,15 @@ async fn export_all_encounters_parquet(client: &Client, fname: &str) -> Result<(
 /// * Failure to retrieve summary data from the database.
 /// * Issues with writing the data to the specified CSV file.
 ///
-#[tracing::instrument(skip(dbh))]
-async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::Result<()> {
+#[tracing::instrument(skip(ctx))]
+async fn export_all_encounters_summary_csv(ctx: &Context, fname: &str) -> eyre::Result<()> {
     // Create a temp file with all min distances
     //
-    let data = retrieve_summary_encounters(dbh).await?;
+    let data = retrieve_summary_encounters(ctx).await?;
     let len = data.len();
 
-    // Prepare the writer
-    //
-    let mut wtr = WriterBuilder::new().has_headers(true).from_writer(vec![]);
+    let data = prepare_csv(data, true)?;
 
-    // Insert data
-    //
-    data.into_iter().for_each(|rec| {
-        wtr.serialize(rec).unwrap();
-    });
-
-    // Output final csv
-    //
-    let data = String::from_utf8(wtr.into_inner()?)?;
     fs::write(fname, data)?;
     trace!("Exported {} encounters", len);
 
@@ -426,20 +405,20 @@ async fn export_all_encounters_summary_csv(dbh: &Client, fname: &str) -> eyre::R
 /// * Ensure the database connection is available before invoking this function.
 /// * The output file name and format should be specified in the options.
 ///
+/// TODO: Fix output format handling for more formats.
+///
 #[tracing::instrument(skip(ctx))]
 pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<()> {
-    let client = ctx.db().await;
-
     // Do we export as a csv the "encounters of the day"?
     //
     match &opts.output {
         Some(fname) => {
             if opts.summary {
-                export_all_encounters_summary_csv(&client, fname).await?
+                export_all_encounters_summary_csv(ctx, fname).await?
             } else {
                 match opts.format {
-                    Format::Csv => export_all_encounters_csv(&client, fname).await?,
-                    Format::Parquet => export_all_encounters_parquet(&client, fname).await?,
+                    Format::Csv => export_all_encounters_csv(ctx, fname).await?,
+                    Format::Parquet => export_all_encounters_parquet(ctx, fname).await?,
                     _ => {
                         return {
                             eprintln!("Unknown format specified.");
@@ -454,7 +433,6 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
             return Err(CmdError::NoOutputDestination.into());
         }
     }
-    drop(client);
     info!("Done.");
     Ok(())
 }
