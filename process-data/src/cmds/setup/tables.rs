@@ -1,7 +1,8 @@
 //! Setup needed tables in ClickHouse.
 //!
 
-use crate::cmds::{load_query, DBVars};
+use crate::cmds::DBVars;
+use crate::make_query;
 use crate::runtime::Context;
 
 /// Create the `encounters` table to store short air-prox points
@@ -53,7 +54,7 @@ pub async fn add_encounters_table(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let sq = load_query(r##"
+    let sq = make_query!(r##"
 CREATE TABLE IF NOT EXISTS {workdb}.airplane_prox (
   site_id          INT,
   sitename         VARCHAR,
@@ -81,9 +82,9 @@ CREATE TABLE IF NOT EXISTS {workdb}.airplane_prox (
 )
     ENGINE = ReplacingMergeTree PRIMARY KEY (time, journey)
     COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
-    "##, &dbvars)?;
+    "##, dbvars);
 
-    Ok(dbh.execute(sq).await?)
+    Ok(dbh.execute(&sq).await?)
 }
 
 /// Remove the `encounters` table to store short air-prox points
@@ -93,11 +94,9 @@ pub async fn drop_encounters_table(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let sq = load_query(r##"
-DROP TABLE IF EXISTS {workdb}.airplane_prox;
-    "##, &dbvars)?;
+    let sq = make_query!(r##"DROP TABLE IF EXISTS {workdb}.airplane_prox"##, dbvars);
 
-    Ok(dbh.execute(sq).await?)
+    Ok(dbh.execute(&sq).await?)
 }
 
 // ----- Record-related table
@@ -107,7 +106,7 @@ pub async fn add_daily_stats_table(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let crt = load_query(r##"
+    let crt = make_query!(r##"
 CREATE TABLE IF NOT EXISTS {workdb}.daily_stats (
   day DATE,
   site_id INT,
@@ -118,9 +117,9 @@ CREATE TABLE IF NOT EXISTS {workdb}.daily_stats (
 )
 ENGINE = ReplacingMergeTree PRIMARY KEY (day, site_name)
 COMMENT 'Records the run history for all sites every day.';
-    "##, &dbvars)?;
+    "##, dbvars);
 
-    Ok(dbh.execute(crt).await?)
+    Ok(dbh.execute(&crt).await?)
 }
 
 #[tracing::instrument(skip(ctx))]
@@ -128,10 +127,8 @@ pub async fn drop_daily_stats_table(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let crt = load_query(r##"
-DROP TABLE {workdb}.daily_stats IF EXISTS {workdb}.daily_stats
-    "##, &dbvars)?;
+    let crt = make_query!(r##"DROP TABLE {workdb}.daily_stats IF EXISTS {workdb}.daily_stats"##, dbvars);
 
-    Ok(dbh.execute(crt).await?)
+    Ok(dbh.execute(&crt).await?)
 }
 
