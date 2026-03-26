@@ -6,11 +6,13 @@
 //! and encounter records based on specific criteria.
 //!
 //! ## Key Features
+//!
 //! - Fetch drone data points for specific journeys and drone identifiers.
 //! - Fetch proximate aircraft data points within specified time ranges.
 //! - Retrieve detailed encounter records between drones and proximate aircraft.
 //!
 //! ## Dependencies
+//!
 //! This module utilizes the following crates:
 //! - `chrono`: For handling datetime operations.
 //! - `eyre`: For error handling and propagation.
@@ -32,7 +34,6 @@ use tracing::{debug, trace};
 /// This struct represents a single data point with positional and temporal information.
 ///
 /// # Fields
-///
 /// * `timestamp` - The timestamp of the data point in UTC.
 /// * `latitude` - Latitude position (in degrees) of the data point.
 /// * `longitude` - Longitude position (in degrees) of the data point.
@@ -56,7 +57,6 @@ pub(crate) struct DataPoint {
 /// Represents an encounter between a drone and a proximate aircraft.
 ///
 /// # Fields
-///
 /// * `en_id` - Unique identifier for the encounter.
 /// * `journey` - Identifier for the journey during which the encounter occurred.
 /// * `timestamp` - The timestamp of the encounter in UTC.
@@ -95,20 +95,12 @@ pub(crate) struct Encounter {
 /// * `drone_id` - The drone identifier to middle drone data.
 ///
 /// # Returns
-///
 /// A `Result` containing a vector of `DataPoint` structs if successful, or an error if one occurs.
 ///
 /// # Database Query
-///
 /// This function executes a SQL query to fetch timestamp, latitude, longitude, and altitude
 /// data for drones matching the given journey and drone ID. The altitude is converted to a floating-point
 /// number (f64), and the results are ordered by timestamp.
-///
-/// # Examples
-///
-/// ```rust
-/// let drones = fetch_drones(&client, 123, "drone_001").await?;
-/// ```
 ///
 #[tracing::instrument(skip(ctx))]
 pub(crate) async fn fetch_drones(
@@ -152,20 +144,12 @@ ORDER BY timestamp
 /// * `last` - The end of the time range used to middle data (inclusive).
 ///
 /// # Returns
-///
 /// A `Result` containing a vector of `DataPoint` structs if successful, or an error if one occurs.
 ///
 /// # Database Query
-///
 /// This function executes a SQL query to fetch timestamp, latitude, longitude, and altitude
 /// data for proximate aircraft matching the given ID and time range. The altitude is already
 /// provided in meters and appropriately mapped.
-///
-/// # Examples
-///
-/// ```rust
-/// let planes = fetch_planes(&client, "prox_001", chrono::Utc::now() - chrono::Duration::hours(1), chrono::Utc::now()).await?;
-/// ```
 ///
 #[tracing::instrument(skip(ctx))]
 pub(crate) async fn fetch_planes(
@@ -210,11 +194,9 @@ ORDER BY time
 /// * `id` - The unique identifier of the encounter to fetch.
 ///
 /// # Returns
-///
 /// A `Result` containing an `Encounter` struct if the record is found, or an error otherwise.
 ///
 /// # Database Query
-///
 /// This function executes a SQL query to fetch the encounter record from the `airplane_prox`
 /// table that matches the given `en_id`. The fields include information about the encounter,
 /// such as the journey ID, drone and proximate aircraft details (e.g., latitude, longitude,
@@ -246,11 +228,9 @@ WHERE en_id = $1
 /// * `ctx` - Application context providing access to the database and other resources.
 ///
 /// # Returns
-///
 /// A `Result` containing a vector of encounter IDs (`String`) if successful, or an error otherwise.
 ///
 /// # Database Query
-///
 /// This function executes a SQL query to fetch all encounter IDs (`en_id`) from the
 /// `airprox_summary` table and orders them by `en_id`.
 ///
@@ -284,11 +264,9 @@ ORDER BY
 /// * `date` - A `DateOpts` struct specifying the target date or date range.
 ///
 /// # Returns
-///
 /// A `Result` containing a vector of encounter IDs (`String`) if successful, or an error otherwise.
 ///
 /// # Database Query
-///
 /// This function constructs a SQL query to fetch all encounter IDs from the `airprox_summary` table
 /// matching a date pattern derived from the input `DateOpts`. The results are ordered by `en_id`.
 ///
