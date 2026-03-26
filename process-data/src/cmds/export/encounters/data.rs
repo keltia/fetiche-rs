@@ -18,11 +18,14 @@
 //! - `serde`: For serialization support.
 //! - `tracing`: For logging and instrumentation.
 //!
+use crate::cmds::DBVars;
+use crate::make_query;
+use crate::runtime::Context;
 use chrono::{DateTime, Utc};
 use eyre::Result;
 use fetiche_common::DateOpts;
 use jiff::tz::TimeZone;
-use klickhouse::{Client, QueryBuilder, RawRow, Row};
+use klickhouse::{QueryBuilder, RawRow, Row};
 use serde::Serialize;
 use tracing::{debug, trace};
 
@@ -87,8 +90,7 @@ pub(crate) struct Encounter {
 /// Fetch data points for a specific drone ID and journey from the database.
 ///
 /// # Arguments
-///
-/// * `client` - A reference to the ClickHouse client used for database interaction.
+/// * `ctx` - Application context providing access to the database and other resources.
 /// * `journey` - The journey identifier to middle drone data.
 /// * `drone_id` - The drone identifier to middle drone data.
 ///
@@ -108,28 +110,31 @@ pub(crate) struct Encounter {
 /// let drones = fetch_drones(&client, 123, "drone_001").await?;
 /// ```
 ///
-#[tracing::instrument(skip(client))]
+#[tracing::instrument(skip(ctx))]
 pub(crate) async fn fetch_drones(
-    client: &Client,
+    ctx: &Context,
     journey: i32,
     drone_id: &str,
 ) -> Result<Vec<DataPoint>> {
+    let client = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
     // Fetch drone points
     //
-    let rpp = r##"
+    let rpp = make_query!(r##"
 SELECT
   toDateTime(timestamp) as timestamp,
   latitude,
   longitude,
   toFloat64(altitude) AS altitude
-FROM drones
+FROM {dronedb}.drones
 WHERE
 journey = $1 AND
 ident = $2
 ORDER BY timestamp
-    "##;
+    "##, dbvars);
 
-    let q = QueryBuilder::new(rpp).arg(journey).arg(drone_id);
+    let q = QueryBuilder::new(&rpp).arg(journey).arg(drone_id);
     let drones = client.query_collect::<DataPoint>(q).await?;
     trace!("Found {} drone points for en_id {}", drones.len(), drone_id);
 
@@ -141,8 +146,7 @@ ORDER BY timestamp
 /// Fetch data points for a specific proximate aircraft (plane) ID within a time range.
 ///
 /// # Arguments
-///
-/// * `client` - A reference to the ClickHouse client used for database interaction.
+/// * `ctx` - Application context providing access to the database and other resources.
 /// * `prox_id` - The proximate aircraft identifier to middle plane data.
 /// * `first` - The start of the time range used to middle data (inclusive).
 /// * `last` - The end of the time range used to middle data (inclusive).
@@ -163,31 +167,34 @@ ORDER BY timestamp
 /// let planes = fetch_planes(&client, "prox_001", chrono::Utc::now() - chrono::Duration::hours(1), chrono::Utc::now()).await?;
 /// ```
 ///
-#[tracing::instrument(skip(client))]
+#[tracing::instrument(skip(ctx))]
 pub(crate) async fn fetch_planes(
-    client: &Client,
+    ctx: &Context,
     prox_id: &str,
     first: DateTime<Utc>,
     last: DateTime<Utc>,
 ) -> Result<Vec<DataPoint>> {
+    let client = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
     // Fetch plane points
     //
     // We need to convert altitude into meters.
     //
-    let rdp = r##"
+    let rdp = make_query!(r##"
 SELECT
   time,
   prox_lat AS latitude,
   prox_lon AS longitude,
   prox_alt_m AS altitude
-FROM airplanes
+FROM {planedb}.airplanes
 WHERE
   prox_id = $1 AND
   time BETWEEN $2 AND $3
 ORDER BY time
-    "##;
+    "##, dbvars);
 
-    let q = QueryBuilder::new(rdp).arg(prox_id).arg(first).arg(last);
+    let q = QueryBuilder::new(&rdp).arg(prox_id).arg(first).arg(last);
     let planes = client.query_collect::<DataPoint>(q).await?;
     trace!("Found {} plane points for id {}", planes.len(), prox_id);
 
@@ -199,8 +206,7 @@ ORDER BY time
 /// Fetch a specific encounter record from the database based on its unique identifier.
 ///
 /// # Arguments
-///
-/// * `client` - A reference to the ClickHouse client used for database interaction.
+/// * `ctx` - Application context providing access to the database and other resources.
 /// * `id` - The unique identifier of the encounter to fetch.
 ///
 /// # Returns
@@ -214,17 +220,21 @@ ORDER BY time
 /// such as the journey ID, drone and proximate aircraft details (e.g., latitude, longitude,
 /// altitude, and callsign).
 ///
-#[tracing::instrument(skip(client))]
-pub(crate) async fn fetch_one_encounter(client: &Client, id: &str) -> Result<Encounter> {
+#[tracing::instrument(skip(ctx))]
+pub(crate) async fn fetch_one_encounter(ctx: &Context, id: &str) -> Result<Encounter> {
+    let client = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
     // Fetch the drone & airplane IDs
     //
-    let rp = r##"
+    let rp = make_query!(r##"
 SELECT
   en_id, journey, time, drone_id, drone_lat, drone_lon, drone_alt_m, prox_id, prox_callsign, prox_lat, prox_lon, truncate(prox_alt_m) AS prox_alt_m,station_name
-FROM airplane_prox
+FROM {workdb}.airplane_prox
 WHERE en_id = $1
-    "##;
-    let q = QueryBuilder::new(rp).arg(id);
+    "##, dbvars);
+
+    let q = QueryBuilder::new(&rp).arg(id);
     let res = client.query_one::<Encounter>(q).await?;
 
     Ok(res)
@@ -233,8 +243,7 @@ WHERE en_id = $1
 /// Fetch all encounter IDs from the database, ordered by their unique identifier.
 ///
 /// # Arguments
-///
-/// * `client` - A reference to the ClickHouse client used for database interaction.
+/// * `ctx` - Application context providing access to the database and other resources.
 ///
 /// # Returns
 ///
@@ -245,18 +254,22 @@ WHERE en_id = $1
 /// This function executes a SQL query to fetch all encounter IDs (`en_id`) from the
 /// `airprox_summary` table and orders them by `en_id`.
 ///
-#[tracing::instrument(skip(client))]
-pub(crate) async fn fetch_all_en_id(client: &Client) -> Result<Vec<String>> {
-    let r = r##"
+#[tracing::instrument(skip(ctx))]
+pub(crate) async fn fetch_all_en_id(ctx: &Context) -> Result<Vec<String>> {
+    let client = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
+    let r = make_query!(r##"
 SELECT
   en_id
 FROM
-  airprox_summary
+  {workdb}.airprox_summary
 ORDER BY
   en_id
-    "##;
+    "##, dbvars);
+
     let list = client
-        .query_collect::<RawRow>(r)
+        .query_collect::<RawRow>(&r)
         .await?
         .iter_mut()
         .map(|e| e.get(0))
@@ -267,8 +280,7 @@ ORDER BY
 /// Fetch encounter IDs for a specific date or date range.
 ///
 /// # Arguments
-///
-/// * `client` - A reference to the ClickHouse client used for database interaction.
+/// * `ctx` - Application context providing access to the database and other resources.
 /// * `date` - A `DateOpts` struct specifying the target date or date range.
 ///
 /// # Returns
@@ -280,29 +292,31 @@ ORDER BY
 /// This function constructs a SQL query to fetch all encounter IDs from the `airprox_summary` table
 /// matching a date pattern derived from the input `DateOpts`. The results are ordered by `en_id`.
 ///
-#[tracing::instrument(skip(client))]
-pub(crate) async fn fetch_encounters_on(client: &Client, date: DateOpts) -> Result<Vec<String>> {
+#[tracing::instrument(skip(ctx))]
+pub(crate) async fn fetch_encounters_on(ctx: &Context, date: DateOpts) -> Result<Vec<String>> {
+    let client = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
     let (begin, _) = DateOpts::parse(date)?;
     let begin = begin.to_zoned(TimeZone::UTC);
     let date = begin.date();
-    let en_id_pat = format!("{:4}{:02}{:02}", date.year(), date.month(), date.day());
+    let en_id_pat = format!("%{:4}{:02}{:02}%", date.year(), date.month(), date.day());
 
     debug!("en_id_pat={}", en_id_pat);
-    let r = format!(
+    let r = make_query!(
         r##"
 SELECT
   en_id
 FROM
-  airprox_summary
+  {workdb}.airprox_summary
 WHERE
-  en_id LIKE '%{en_id_pat}%'
+  en_id LIKE $1
 ORDER BY
   en_id
-        "##
-    );
-
+        "##, dbvars);
+    let q = QueryBuilder::new(&r).arg(en_id_pat);
     let list = client
-        .query_collect::<RawRow>(r)
+        .query_collect::<RawRow>(q)
         .await?
         .iter_mut()
         .map(|e| e.get(0))

@@ -81,8 +81,6 @@ pub struct ExpEncounterOpts {
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result<()> {
-    let client = ctx.db().await;
-
     // Check arguments
     //
     let all = opts.all;
@@ -106,14 +104,14 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
     let list = if all {
         trace!("Exporting all encounters.");
 
-        fetch_all_en_id(&client).await?
+        fetch_all_en_id(ctx).await?
     } else {
         trace!("Exporting some encounters.");
 
         match date {
             Some(date) => {
                 trace!("Exporting all encounters for {date:?}...");
-                fetch_encounters_on(&client, date).await?
+                fetch_encounters_on(ctx, date).await?
             }
             None => {
                 // A single en_id is requested
@@ -192,7 +190,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     };
     debug!("name: {}, date: {}, journey: {}", name, date, journey);
 
-    let res = fetch_one_encounter(&client, id).await?;
+    let res = fetch_one_encounter(ctx, id).await?;
 
     assert_eq!(res.en_id, id);
     assert_eq!(res.journey, journey);
@@ -200,7 +198,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     let encounter_timestamp = res.timestamp;
     let drone_id = res.drone_id.clone();
 
-    let drones = fetch_drones(&client, journey, &drone_id).await?;
+    let drones = fetch_drones(ctx, journey, &drone_id).await?;
     if drones.len() <= 1 {
         return Err(CmdError::NotEnoughData("drones".to_string()).into());
     }
@@ -215,7 +213,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     let prox_id = res.prox_id.clone();
     let prox_callsign = res.prox_callsign.clone();
 
-    let planes = fetch_planes(&client, &prox_id, first, last).await?;
+    let planes = fetch_planes(ctx, &prox_id, first, last).await?;
     if planes.len() <= 1 {
         return Err(CmdError::NotEnoughData("planes".to_string()).into());
     }
