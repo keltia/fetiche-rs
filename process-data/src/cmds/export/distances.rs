@@ -25,7 +25,7 @@ pub struct ExpDistOpts {
     #[clap(short = 'S', long)]
     pub summary: bool,
     /// Output format
-    #[clap(short = 'F', long, default_value = "csv")]
+    #[clap(short = 'F', long, default_value = "csv", value_parser)]
     pub format: Format,
     /// Output file
     #[clap(short = 'o', long)]
