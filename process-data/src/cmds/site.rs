@@ -3,12 +3,14 @@
 
 use cached::proc_macro::cached;
 use chrono::{DateTime, Datelike, Utc};
-use klickhouse::{Client, QueryBuilder, Row};
+use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use tracing::debug;
 
-use crate::cmds::CmdError;
+use crate::cmds::{CmdError, DBVars};
+use crate::make_query;
+use crate::runtime::Context;
 
 /// Represents a site entity stored in the database within the `sites` table.
 ///
@@ -71,7 +73,7 @@ impl Display for Site {
 /// - The query runs against the ClickHouse database using `QueryBuilder`.
 ///
 /// ### Example
-/// ```rust
+/// ```rust,no_run
 /// # use chrono::Utc;
 /// # use your_crate_name::{Context, find_site};
 /// let ctx = Context::new(); // Assume context is properly initialized
@@ -87,13 +89,14 @@ impl Display for Site {
 /// ### Instrumentation
 /// - Tracing instrumentation is added to provide detailed logs of the function execution.
 ///
-#[tracing::instrument(skip(dbh))]
+#[tracing::instrument(skip(ctx))]
 #[cached(key = "String", result = true, convert = r#"{format!("{}", site)}"#)]
-pub async fn find_site(dbh: &Client, site: &str) -> eyre::Result<Site> {
-    let r = r##"
-    SELECT * from sites WHERE name = $1
-    "##;
-    let q = QueryBuilder::new(r).arg(site);
+pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
+    let dbh = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
+    let r = make_query!(r##"SELECT * from sites WHERE name = $1"##, dbvars);
+    let q = QueryBuilder::new(&r).arg(site);
     let site = match dbh.query_one::<Site>(q).await {
         Ok(site) => site,
         Err(_) => return Err(CmdError::UnknownSite(site.to_string()).into()),
@@ -136,13 +139,14 @@ pub async fn find_site(dbh: &Client, site: &str) -> eyre::Result<Site> {
 /// ### Instrumentation
 /// - Tracing instrumentation is added to provide detailed logs of the function execution.
 ///
-#[tracing::instrument(skip(dbh))]
+#[tracing::instrument(skip(ctx))]
 #[cached(key = "String", result = true, convert = r#"{format!("{}", id)}"#)]
-pub async fn find_site_by_id(dbh: &Client, id: u32) -> eyre::Result<Site> {
-    let r = r##"
-    SELECT * from sites WHERE id = $1
-    "##;
-    let q = QueryBuilder::new(r).arg(id);
+pub async fn find_site_by_id(ctx: &Context, id: u32) -> eyre::Result<Site> {
+    let dbh = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
+    let r = make_query!(r##"SELECT * from sites WHERE id = $1"##, dbvars);
+    let q = QueryBuilder::new(&r).arg(id);
     let site = match dbh.query_one::<Site>(q).await {
         Ok(site) => site,
         Err(_) => return Err(CmdError::UnknownSiteId(id).into()),
@@ -183,10 +187,13 @@ pub async fn find_site_by_id(dbh: &Client, id: u32) -> eyre::Result<Site> {
 /// ### Instrumentation
 /// - This function is instrumented with tracing for debugging purposes.
 ///
-#[tracing::instrument(skip(dbh))]
-pub async fn enumerate_sites(dbh: &Client, day: DateTime<Utc>) -> eyre::Result<Vec<Site>> {
+#[tracing::instrument(skip(ctx))]
+pub async fn enumerate_sites(ctx: &Context, day: DateTime<Utc>) -> eyre::Result<Vec<Site>> {
+    let dbh = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
     let day_tag = format!("{:4}-{:02}-{:02}", day.year(), day.month(), day.day());
-    let r = r##"
+    let r = make_query!(r##"
 SELECT
     DISTINCT(s.id),
     s.name,
@@ -197,12 +204,12 @@ SELECT
     s.ref_altitude,
     s.timezone,
 FROM
-    sites AS s, installations
-WHERE (s.id = installations.site_id) AND
-    (toDateTime($1) BETWEEN installations.start_at AND
-    installations.end_at)
-    "##;
-    let q = QueryBuilder::new(r).arg(day_tag);
+    {workdb}.sites AS s, {workdb}.installations
+WHERE
+    (s.id = installations.site_id) AND
+    (toDateTime($1) BETWEEN installations.start_at AND installations.end_at)
+"##, dbvars);
+    let q = QueryBuilder::new(&r).arg(day_tag);
 
     // Fetch all site IDs for this specific day
     //
@@ -238,20 +245,23 @@ WHERE (s.id = installations.site_id) AND
     convert = r#"{ format!("{}{}", day,antenna.to_string()) }"#,
     result = true
 )]
-#[tracing::instrument(skip(dbh))]
-pub async fn match_site(dbh: &Client, day: DateTime<Utc>, antenna: &str) -> eyre::Result<String> {
+#[tracing::instrument(skip(ctx))]
+pub async fn match_site(ctx: &Context, day: DateTime<Utc>, antenna: &str) -> eyre::Result<String> {
+    let dbh = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
     #[derive(Deserialize, Row, Serialize)]
     struct Depl {
         pub site_name: String,
     }
 
-    let q = r##"
+    let q = make_query!(r##"
 SELECT site_name
 FROM deployments AS d
 WHERE d.antenna_name = $1 AND $2 BETWEEN d.start_at AND d.end_at
-    "##;
+    "##, dbvars);
 
-    let qb = QueryBuilder::new(q)
+    let qb = QueryBuilder::new(&q)
         .arg(antenna)
         .arg(day);
 
