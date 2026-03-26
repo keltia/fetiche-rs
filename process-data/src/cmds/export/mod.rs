@@ -17,10 +17,16 @@ mod encounters;
 pub(crate) enum Format {
     /// Classic CSV.
     Csv,
+    /// Classic JSON
+    Json,
     /// KML for trajectories
     Kml,
+    /// NL-delimited JSON
+    Ndjson,
     /// Parquet compressed format.
     Parquet,
+    /// text through Tabled
+    Table,
     /// Text for stdout
     Text,
 }
