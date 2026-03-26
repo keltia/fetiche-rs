@@ -296,17 +296,14 @@ async fn prepare_work_list(
         None => 70.,
     };
 
-    let dbh = ctx.db().await;
     let work_list: Vec<_> = dates
         .iter()
         .map(|&day| {
-            let dbh = dbh.clone();
-
             async move {
                 // We have a specific site
                 //
                 if !name.is_empty() {
-                    let site = find_site(&dbh, name).await.unwrap();
+                    let site = find_site(ctx, name).await.unwrap();
                     let w = WorkItemBuilder::default()
                         .site(site)
                         .day(day)
@@ -319,7 +316,7 @@ async fn prepare_work_list(
                 } else {
                     // Process all sites
                     //
-                    let list = enumerate_sites(&dbh, day).await.unwrap();
+                    let list = enumerate_sites(ctx, day).await.unwrap();
                     let list: Vec<_> = list
                         .iter()
                         .map(|site| {
@@ -419,7 +416,7 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                         let pb = pb.clone();
                         async move { calculate_one_day_on_site(&ctx, &work, &pb).await.unwrap() }
                     })
-                    .await
+                        .await
                     {
                         Ok(res) => res,
                         Err(e) => {
@@ -495,20 +492,11 @@ async fn calculate_one_day_on_site(
 
     // Get our parameters for queries.
     //
-    let planedb = ctx.config["planedb"].clone();
-    let dronedb = ctx.config["dronedb"].clone();
-    let workdb = ctx.config["workdb"].clone();
-
     let name = work.site.name.clone();
     let day_name = day.format("%Y%m%d").to_string();
     let tag = format!("_{name}_{day_name}");
 
-    let dbvars = DBVars {
-        planedb,
-        dronedb,
-        workdb,
-        tag,
-    };
+    let dbvars = DBVars::from_ctx(ctx).tag(&tag);
 
     let pbm = format!("Processing site {} on day {}", work.site.name, day);
     pbar.set_message(pbm);
