@@ -4,6 +4,7 @@ use crate::runtime::Context;
 
 use clap::Parser;
 use eyre::Result;
+use fetiche_formats::prepare_csv;
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -14,12 +15,14 @@ use tabled::{Table, Tabled};
 ///
 #[derive(Debug, Parser)]
 pub(crate) struct AntennasOpts {
+    #[clap(short = 'C', long)]
+    pub csv: bool,
+    #[clap(short = 'J', long)]
+    pub json: bool,
+    #[clap(short = 'T', long)]
+    pub table: bool,
     #[clap(subcommand)]
     pub subcmd: Option<CrudSubCommand>,
-    #[clap(short = 'c', long)]
-    pub csv: bool,
-    #[clap(short = 'T', long, default_value = "true")]
-    pub table: bool,
 }
 
 #[derive(Debug, Deserialize, Row, Serialize, Tabled)]
@@ -46,12 +49,14 @@ pub(crate) async fn antennas_list(ctx: &Context, opts: &AntennasOpts) -> Result<
 
     eprintln!("Listing all antennas:");
 
-    let res = if opts.table {
+    let res = if opts.json {
+        json!(&res).to_string()
+    } else if opts.csv {
+        prepare_csv(res, true)?
+    } else {
         let mut table = Table::new(res.as_slice());
         table.with(Style::sharp());
         table.to_string()
-    } else {
-        json!(res).to_string()
     };
     eprintln!("{res}");
     Ok(())

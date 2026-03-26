@@ -5909,6 +5909,7 @@ dependencies = [
  "derive_builder",
  "eyre",
  "fetiche-common",
+ "fetiche-formats",
  "fetiche-macros",
  "futures",
  "geo",

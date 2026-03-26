@@ -63,17 +63,17 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
     match &opts.subcmd {
         // List all antennas
         //
-        AcuteSubCommand::Antennas(opts) => {
+        AcuteSubCommand::Antennas(aopts) => {
             // No other command for now.
             //
-            antennas_list(&ctx, &opts).await?;
+            antennas_list(&ctx, &aopts).await?;
         }
         // List all installations
         //
-        AcuteSubCommand::Install(opts) => {
+        AcuteSubCommand::Install(iopts) => {
             // No other command for now.
             //
-            install_list(ctx, opts).await?;
+            install_list(ctx, iopts).await?;
         }
         AcuteSubCommand::Sites(sopts) => match &sopts.subcmd {
             SitesSubCommand::Add(_opts) => todo!(),
