@@ -96,26 +96,22 @@ struct Encounter {
 /// * `ctx` - Application context providing access to the database and other resources.
 ///
 /// # Returns
-///
 /// * `Result<Vec<Encounter>>` - Returns a vector of `Encounter` structs with the
 ///   data fetched from the table upon successful execution. If an error occurs
 ///   (e.g., query execution or deserialization failure), it returns an error type.
 ///
 /// # Process
-///
 /// 1. Executes a SQL query to retrieve all encounter records in the `airplane_prox` table.
 /// 2. Orders the records by time.
 /// 3. Collects and deserializes the records into the `Encounter` struct format.
 ///
 /// # Errors
-///
 /// This function may return errors in the following scenarios:
 ///
 /// * Database connection or query errors while fetching the records.
 /// * Data deserialization issues while converting query rows into the `Encounter` struct format.
 ///
 /// # Examples
-///
 /// ```rust
 /// use klickhouse::Client;
 /// use eyre::Result;
