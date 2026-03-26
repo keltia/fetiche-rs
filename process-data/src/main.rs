@@ -33,7 +33,6 @@ mod cli;
 mod cmds;
 mod config;
 mod error;
-mod record;
 mod runtime;
 
 /// Binary name, using a different binary name

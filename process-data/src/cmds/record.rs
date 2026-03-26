@@ -9,13 +9,14 @@
 //! The module interfaces with a database to persist this information for analysis
 //! and auditing purposes.
 //!
-use std::fmt::{Debug, Formatter};
-
 use chrono::{DateTime, Utc};
 use eyre::Result;
 use klickhouse::{Client, QueryBuilder, Row};
+use std::fmt::{Debug, Formatter};
+use std::sync::Arc;
 
-use crate::cmds::find_site_by_id;
+use crate::cmds::{find_site_by_id, DBVars};
+use crate::make_query;
 
 /// Represents the completion status of a data processing run.
 ///
@@ -47,15 +48,15 @@ pub enum RecordStatus {
 pub struct History {
     /// database handle.
     pub dbh: Client,
-    /// database name.
-    pub dbname: String,
+    /// DB environment
+    pub dbvars: Arc<DBVars>,
 }
 
 impl Debug for History {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Context")
+        f.debug_struct("History")
             .field("dbh", &String::from("Clickhouse client"))
-            .field("dbname", &self.dbname)
+            .field("dbvars", &self.dbvars)
             .finish()
     }
 }
@@ -72,7 +73,11 @@ impl History {
     #[allow(dead_code)]
     #[tracing::instrument(skip(dbh))]
     pub async fn new(dbh: &Client, dbname: String) -> Self {
-        Self { dbh: dbh.clone(), dbname: dbname.clone() }
+        let dbvars = DBVars {
+            workdb: dbname.clone(),
+            ..Default::default()
+        };
+        Self { dbh: dbh.clone(), dbvars: dbvars.into() }
     }
 }
 
@@ -112,14 +117,15 @@ impl History {
     #[tracing::instrument(skip(self))]
     pub async fn insert(&mut self, day: DateTime<Utc>, site_id: u32, status: RecordStatus, stats: String, comment: String) -> Result<()> {
         let dbh = self.dbh.clone();
-
-        let rq = format!(r##"
-INSERT INTO {}.daily_stats (day, site_id, site_name, status, stats, comment) (?, ?, ?, ?, ?, ?)
-    "##, self.dbname);
+        let dbvars = self.dbvars.clone();
 
         let site = find_site_by_id(&dbh, site_id).await?;
         let site_name = site.name.clone();
         let status = status as u8;
+
+        let rq = make_query!(r##"
+INSERT INTO {workdb}.daily_stats (day, site_id, site_name, status, stats, comment) ($1, $2, $3, $4, $5, $6)
+    "##, dbvars);
 
         let q = QueryBuilder::new(&rq).arg(day).arg(site_id).arg(site_name).arg(status).arg(stats).arg(comment);
         Ok(dbh.execute(q).await?)
@@ -137,10 +143,9 @@ INSERT INTO {}.daily_stats (day, site_id, site_name, status, stats, comment) (?,
     #[tracing::instrument(skip(self))]
     pub async fn get_by_day(&mut self, day: DateTime<Utc>) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
+        let dbvars = self.dbvars.clone();
 
-        let qr = format!(r##"
-SELECT * FROM {}.daily_stats WHERE day = ?
-    "##, self.dbname);
+        let qr = make_query!(r##"SELECT * FROM {workdb}.daily_stats WHERE day = $1"##, dbvars);
 
         let q = QueryBuilder::new(&qr).arg(day);
         let daily_stats = dbh.query_collect::<Record>(q).await?;
@@ -159,10 +164,9 @@ SELECT * FROM {}.daily_stats WHERE day = ?
     #[tracing::instrument(skip(self))]
     pub async fn get_by_site(&mut self, site: &str) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
+        let dbvars = self.dbvars.clone();
 
-        let qr = format!(r##"
-SELECT * FROM {}.daily_stats WHERE site_name = ?
-    "##, self.dbname);
+        let qr = make_query!(r##"SELECT * FROM {workdb}.daily_stats WHERE site_name = $1"##, dbvars);
 
         let q = QueryBuilder::new(&qr).arg(site);
         let daily_stats = dbh.query_collect::<Record>(q).await?;
@@ -183,10 +187,9 @@ SELECT * FROM {}.daily_stats WHERE site_name = ?
     #[tracing::instrument(skip(self))]
     pub async fn get_incomplete(&mut self) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
+        let dbvars = self.dbvars.clone();
 
-        let qr = format!(r##"
-SELECT * FROM {}.daily_stats WHERE status != 0
-        "##, self.dbname);
+        let qr = make_query!(r##"SELECT * FROM {workdb}.daily_stats WHERE status != 0"##, dbvars);
 
         let daily_stats = dbh.query_collect::<Record>(qr).await?;
         Ok(daily_stats)
@@ -207,10 +210,9 @@ SELECT * FROM {}.daily_stats WHERE status != 0
     #[tracing::instrument(skip(self))]
     pub async fn get_incomplete_by_day(&mut self, day: DateTime<Utc>) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
+        let dbvars = self.dbvars.clone();
 
-        let qr = format!(r##"
-SELECT * FROM {}.daily_stats WHERE status != 0 AND day = ?
-        "##, self.dbname);
+        let qr = make_query!(r##"SELECT * FROM {}.daily_stats WHERE status != 0 AND day = $1"##, dbvars);
 
         let q = QueryBuilder::new(&qr).arg(day);
         let daily_stats = dbh.query_collect::<Record>(q).await?;
@@ -232,10 +234,9 @@ SELECT * FROM {}.daily_stats WHERE status != 0 AND day = ?
     #[tracing::instrument(skip(self))]
     pub async fn get_incomplete_by_site(&mut self, site: &str) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
+        let dbvars = self.dbvars.clone();
 
-        let qr = format!(r##"
-SELECT * FROM {}.daily_stats WHERE status != 0 AND site_name = ?
-        "##, self.dbname);
+        let qr = make_query!(r##"SELECT * FROM {workdb}.daily_stats WHERE status != 0 AND site_name = $1"##, dbvars);
 
         let q = QueryBuilder::new(&qr).arg(site);
         let daily_stats = dbh.query_collect::<Record>(q).await?;
@@ -251,12 +252,11 @@ SELECT * FROM {}.daily_stats WHERE status != 0 AND site_name = ?
     #[tracing::instrument(skip(self))]
     pub async fn get_missing_adsb(&mut self) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
+        let dbvars = self.dbvars.clone();
 
-        let qr = format!(r##"
-SELECT * FROM {}.daily_stats WHERE status = 1
-        "##, self.dbname);
+        let qr = make_query!(r##"SELECT * FROM {workdb}.daily_stats WHERE status = 1"##, dbvars);
 
-        let daily_stats = dbh.query_collect::<Record>(qr).await?;
+        let daily_stats = dbh.query_collect::<Record>(&qr).await?;
         Ok(daily_stats)
     }
 
@@ -269,12 +269,11 @@ SELECT * FROM {}.daily_stats WHERE status = 1
     #[tracing::instrument(skip(self))]
     pub async fn get_missing_drones(&mut self) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
+        let dbvars = self.dbvars.clone();
 
-        let qr = format!(r##"
-SELECT * FROM {}.daily_stats WHERE status = 2
-        "##, self.dbname);
+        let qr = make_query!(r##"SELECT * FROM {workdb}.daily_stats WHERE status = 2"##, dbvars);
 
-        let daily_stats = dbh.query_collect::<Record>(qr).await?;
+        let daily_stats = dbh.query_collect::<Record>(&qr).await?;
         Ok(daily_stats)
     }
 }
