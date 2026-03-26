@@ -167,8 +167,6 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
 ///
 #[tracing::instrument(skip(ctx))]
 async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
-    let client = ctx.db().await;
-
     // Sanity check on the encounter ID.
     //
     let re = Regex::new(r##"^(?<name>[A-Z0-9]{3})-(?<date>\d{8})-(?<journey>\d+)-(\d+)$"##)?;
