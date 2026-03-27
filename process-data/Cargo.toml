@@ -34,7 +34,6 @@ csv.workspace = true
 dateparser.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
-fetiche-formats.workspace = true
 fetiche-macros.workspace = true
 futures.workspace = true
 itertools.workspace = true

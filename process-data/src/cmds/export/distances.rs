@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use tempfile::Builder;
 use tracing::{debug, info, trace};
 
-use fetiche_formats::prepare_csv;
+use fetiche_common::Delim;
 
 use crate::cmds::{CmdError, DBVars, Format};
 use crate::make_query;
@@ -132,7 +132,8 @@ async fn retrieve_all_encounters(ctx: &Context) -> Result<Vec<Encounter>> {
     let client = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let r = make_query!(r##"
+    let r = make_query!(
+        r##"
   SELECT
     site_id,
     sitename,
@@ -157,7 +158,9 @@ async fn retrieve_all_encounters(ctx: &Context) -> Result<Vec<Encounter>> {
     distance_home_m
   FROM {workdb}.airplane_prox
   ORDER BY time
-        "##, dbvars);
+        "##,
+        dbvars
+    );
 
     let res = client.query_collect::<Encounter>(&r).await?;
     debug!("retrieved encounters: {:?}", res);
@@ -193,7 +196,8 @@ async fn retrieve_summary_encounters(ctx: &Context) -> Result<Vec<Encounter>> {
 
     // Match with airprox_summary for export
     //
-    let r1 = make_query!(r##"
+    let r1 = make_query!(
+        r##"
   SELECT
     site_id,
     sitename,
@@ -225,7 +229,9 @@ async fn retrieve_summary_encounters(ctx: &Context) -> Result<Vec<Encounter>> {
   WHERE
     a.distance_slant_m = s.distance_slant_m
   ORDER BY time
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     let summ = client.query_collect::<Encounter>(&r1).await?;
     trace!("Summary encounters: {:?}", summ);
@@ -268,7 +274,7 @@ async fn export_all_encounters_csv(ctx: &Context, fname: &str) -> Result<()> {
     let data = retrieve_all_encounters(ctx).await?;
     let len = data.len();
 
-    let data = prepare_csv(data, true)?;
+    let data = Delim::Colon.prepare_csv(&data, true)?;
 
     fs::write(fname, data)?;
     trace!("Exported {} encounters", len);
@@ -363,7 +369,7 @@ async fn export_all_encounters_summary_csv(ctx: &Context, fname: &str) -> eyre::
     let data = retrieve_summary_encounters(ctx).await?;
     let len = data.len();
 
-    let data = prepare_csv(data, true)?;
+    let data = Delim::Colon.prepare_csv(&data, true)?;
 
     fs::write(fname, data)?;
     trace!("Exported {} encounters", len);
