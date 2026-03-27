@@ -101,7 +101,7 @@ pub async fn cmd_fetch(ctx: &Context) -> Result<Vec<Work>> {
 ///
 #[tracing::instrument(skip(base_url))]
 pub async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
-    let status: WorkStatus;
+    let mut status: WorkStatus;
     let mut bytes: u64;
 
     // Get our filename
@@ -124,7 +124,7 @@ pub async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
         mtime
     } else {
         warn!("no_file fetching=true");
-        status = WorkStatus::Refreshed;
+        status = WorkStatus::Fetched;
         Timestamp::try_from(UNIX_EPOCH)?
     };
 
@@ -149,6 +149,7 @@ pub async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
 
         info!("to_parquet file={:?}", output);
         let _ = convert_into_parquet(&input, &output).await?;
+        status = WorkStatus::Refreshed;
     }
 
     let current_st = fs::metadata(&current).await?;

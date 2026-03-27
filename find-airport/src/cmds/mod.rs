@@ -34,6 +34,7 @@ where
 ///
 #[derive(Clone, Debug, Default, strum::Display, VariantNames)]
 pub enum WorkStatus {
+    Fetched,
     Present,
     Refreshed,
     Removed,
