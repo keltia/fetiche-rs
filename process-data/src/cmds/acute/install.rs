@@ -5,12 +5,13 @@ use crate::runtime::Context;
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use eyre::Result;
-use fetiche_formats::prepare_csv;
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tabled::settings::Style;
 use tabled::{Table, Tabled};
+
+use fetiche_common::Delim;
 
 /// "acute installations"
 ///
@@ -63,7 +64,7 @@ ORDER BY start_at ASC
     let res = if opts.json {
         json!(&res).to_string()
     } else if opts.csv {
-        prepare_csv(res, true)?
+        Delim::Colon.prepare_csv(&res, true)?
     } else {
         let mut table = Table::new(res.as_slice());
         table.with(Style::sharp());

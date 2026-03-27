@@ -1,15 +1,17 @@
-use crate::cmds::DBVars;
-use crate::make_query;
-use crate::runtime::Context;
 use clap::Parser;
 use eyre::Result;
-use fetiche_formats::prepare_csv;
 use geo::coord;
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tabled::settings::Style;
 use tabled::{Table, Tabled};
+
+use fetiche_common::Delim;
+
+use crate::cmds::DBVars;
+use crate::make_query;
+use crate::runtime::Context;
 
 /// "acute sites"
 ///
@@ -118,7 +120,7 @@ ORDER BY
     let res = if opts.json {
         json!(&res).to_string()
     } else if opts.csv {
-        prepare_csv(res, true)?
+        Delim::Colon.prepare_csv(&res, true)?
     } else {
         let mut table = Table::new(res.as_slice());
         table.with(Style::sharp());
