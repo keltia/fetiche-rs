@@ -2,6 +2,7 @@
 //!
 pub use config::*;
 pub use container::*;
+pub use csv::*;
 pub use dateopts::*;
 pub use daterange::*;
 pub use location::*;
@@ -10,6 +11,7 @@ pub use tz::*;
 
 mod config;
 mod container;
+mod csv;
 mod dateopts;
 mod daterange;
 mod location;
