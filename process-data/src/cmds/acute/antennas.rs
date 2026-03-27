@@ -53,7 +53,7 @@ pub(crate) async fn antennas_list(ctx: &Context, opts: &AntennasOpts) -> Result<
     let res = if opts.json {
         json!(&res).to_string()
     } else if opts.csv {
-        Delim::Colon.prepare_csv(&res, true)?
+        Delim::Comma.prepare_csv(&res, true)?
     } else {
         let mut table = Table::new(res.as_slice());
         table.with(Style::sharp());

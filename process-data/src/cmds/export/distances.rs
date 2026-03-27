@@ -274,7 +274,7 @@ async fn export_all_encounters_csv(ctx: &Context, fname: &str) -> Result<()> {
     let data = retrieve_all_encounters(ctx).await?;
     let len = data.len();
 
-    let data = Delim::Colon.prepare_csv(&data, true)?;
+    let data = Delim::Comma.prepare_csv(&data, true)?;
 
     fs::write(fname, data)?;
     trace!("Exported {} encounters", len);
@@ -369,7 +369,7 @@ async fn export_all_encounters_summary_csv(ctx: &Context, fname: &str) -> eyre::
     let data = retrieve_summary_encounters(ctx).await?;
     let len = data.len();
 
-    let data = Delim::Colon.prepare_csv(&data, true)?;
+    let data = Delim::Comma.prepare_csv(&data, true)?;
 
     fs::write(fname, data)?;
     trace!("Exported {} encounters", len);
