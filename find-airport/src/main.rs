@@ -163,7 +163,7 @@ fn format_result_as(results: Vec<Airport>, fmt: Format) -> Result<String> {
             .collect::<Vec<String>>()
             .join("\n"),
         _ => {
-            println!("\nFound by IATA/ICAO/Name/Country:\n");
+            println!("\nFound by IATA/ICAO/Name/Country:");
             display_result_table(results)
         }
     })
