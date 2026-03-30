@@ -96,14 +96,6 @@ WHERE s.name = d.sitename
     COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI.';
     */
 
-/*
-
-
-
-
-
-*/
-
 /// Drop the `pbi_encounters` table to store short air-prox points
 ///
 #[tracing::instrument(skip(ctx))]
