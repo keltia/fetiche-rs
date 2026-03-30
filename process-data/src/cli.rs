@@ -23,7 +23,7 @@ pub struct Opts {
     #[clap(short = 'w', long, default_value = "100")]
     pub wait: u64,
     /// Database pool size
-    #[clap(long, default_value = "32")]
+    #[clap(long, default_value = "16")]
     pub pool_size: usize,
     /// Enable telemetry with OTLP.
     #[clap(short = 'T', long)]
