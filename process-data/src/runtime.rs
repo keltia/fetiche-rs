@@ -224,9 +224,10 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
     // - CLI option, if present,
     // - Environment variable, if present, defaults to "default"
     //
-    let profile_name = opts.profile.clone().unwrap_or_else(|| {
-        std::env::var("CLICKHOUSE_PROFILE").unwrap_or("default".into())
-    });
+    let profile_name = opts
+        .profile
+        .clone()
+        .unwrap_or_else(|| std::env::var("CLICKHOUSE_PROFILE").unwrap_or("default".into()));
 
     let profile = match cfg.profiles.get(&profile_name) {
         Some(p) => p,
@@ -271,7 +272,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ..Default::default()
         },
     )
-        .await?;
+    .await?;
 
     let pool_size = opts.pool_size;
     let pool = bb8::Pool::builder()
@@ -296,11 +297,12 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ("threshold".to_string(), threshold.to_string()),
             ("factor".to_string(), factor.to_string()),
             ("distance".to_string(), plane.to_string()),
+            ("profile".into(), profile_name.clone()),
             ("planedb".into(), profile.plane_db.clone()),
             ("dronedb".into(), profile.drone_db.clone()),
             ("workdb".into(), profile.work_db.clone()),
         ])
-            .into(),
+        .into(),
         dbh: pool.clone(),
         pool_size,
         wait: opts.wait,
