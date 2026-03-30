@@ -84,6 +84,7 @@ struct Encounter {
     distance_hor_m: i32,
     distance_vert_m: i32,
     distance_home_m: i32,
+    prox_ecat: i32,
 }
 
 /// Retrieves all the encounter records from the `airplane_prox` table in the database.
@@ -155,7 +156,8 @@ async fn retrieve_all_encounters(ctx: &Context) -> Result<Vec<Encounter>> {
     distance_slant_m,
     distance_hor_m,
     distance_vert_m,
-    distance_home_m
+    distance_home_m,
+    prox_ecat
   FROM {workdb}.airplane_prox
   ORDER BY time
         "##,
@@ -219,7 +221,8 @@ async fn retrieve_summary_encounters(ctx: &Context) -> Result<Vec<Encounter>> {
     distance_slant_m,
     distance_hor_m,
     distance_vert_m,
-    distance_home_m
+    distance_home_m,
+    prox_ecat
   FROM
     {workdb}.airplane_prox AS a JOIN {workdb}.airprox_summary AS s
     ON
