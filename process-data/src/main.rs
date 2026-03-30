@@ -27,7 +27,7 @@ use tracing::trace;
 
 use crate::cli::{Opts, SubCommand};
 use crate::cmds::handle_cmds;
-use crate::runtime::{finish_runtime, init_runtime};
+use crate::runtime::{finish_runtime, init_runtime, Context};
 
 mod cli;
 mod cmds;
@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
     //
     let ctx = init_runtime(&opts).await?;
 
-    eprintln!("{}", banner()?);
+    eprintln!("{}", banner(&ctx)?);
 
     trace!("Execute commands.");
     match &opts.subcmd {
@@ -76,8 +76,14 @@ async fn main() -> Result<()> {
 
 /// Display banner
 ///
-fn banner() -> Result<String> {
-    let ver = format!("{} v{}+clickhouse", NAME, VERSION);
+fn banner(ctx: &Context) -> Result<String> {
+    let profile_name = ctx
+        .config
+        .get("profile")
+        .unwrap_or(&String::from("default"))
+        .to_string();
+    let ver = format!("{} v{}+clickhouse ({profile_name})", NAME, VERSION);
+
     Ok(format!(
         r##"
 {ver} by {AUTHORS}
