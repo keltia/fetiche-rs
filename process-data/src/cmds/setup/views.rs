@@ -21,6 +21,51 @@ SELECT
   ap.site_id AS site_id,
   d.sitename AS sitename,
   d.antenna_name AS station_name,
+  ap.time AS time,
+  date_trunc('day', ap.time) AS `date`,
+  formatDateTime(ap.time, '%T', 'UTC') AS `utc_time`,
+  compute_localdate(toUnixTimestamp(ap.time), d.tzname) AS local_date,
+  compute_localtime(toUnixTimestamp(ap.time), d.tzname) AS local_time,
+  journey,
+  drone_id,
+  model,
+  drone_lat,
+  drone_lon,
+  drone_alt_m,
+  drone_height_m,
+  prox_callsign,
+  prox_id,
+  prox_lat,
+  prox_lon,
+  prox_alt_m,
+  prox_mode_a,
+  prox_ecat,
+  distance_slant_m,
+  distance_hor_m,
+  distance_vert_m,
+  distance_home_m
+FROM {workdb}.airplane_prox AS ap, {workdb}.pbi_deployments AS d
+LEFT OUTER JOIN sites AS s
+ON ap.site_id = s.id
+WHERE s.name = d.sitename
+)
+    COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI.';
+    "##, dbvars);
+
+    Ok(dbh.execute(&sq).await?)
+}
+
+/*
+CREATE MATERIALIZED VIEW {workdb}.pbi_encounters
+ENGINE = ReplacingMergeTree
+PRIMARY KEY (time, journey) POPULATE
+AS (
+SELECT
+  en_id,
+  installation_id,
+  ap.site_id AS site_id,
+  d.sitename AS sitename,
+  d.antenna_name AS station_name,
   `time`,
   date_trunc('day', ap.time) AS `date`,
   formatDateTime(ap.time, '%T', 'UTC') AS `utc_time`,
@@ -49,51 +94,13 @@ ON ap.site_id = s.id
 WHERE s.name = d.sitename
 )
     COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI.';
-    "##, dbvars);
-
-    Ok(dbh.execute(&sq).await?)
-}
+    */
 
 /*
-CREATE MATERIALIZED VIEW pbi_encounters
-ENGINE = ReplacingMergeTree
-PRIMARY KEY (time, journey) POPULATE
-AS (
-SELECT
-  en_id,
-  installation_id,
-  ap.site_id AS site_id,
-  d.sitename AS sitename,
-  d.antenna_name AS station_name,
-  ap.time AS time,
-  date_trunc('day', ap.time) AS `date`,
-  formatDateTime(ap.time, '%T', 'UTC') AS `utc_time`,
-  compute_localdate(toUnixTimestamp(ap.time), d.tzname) AS local_date,
-  compute_localtime(toUnixTimestamp(ap.time), d.tzname) AS local_time,
-  journey,
-  drone_id,
-  model,
-  drone_lat,
-  drone_lon,
-  drone_alt_m,
-  drone_height_m,
-  prox_callsign,
-  prox_id,
-  prox_lat,
-  prox_lon,
-  prox_alt_m,
-  prox_mode_a,
-  prox_ecat,
-  distance_slant_m,
-  distance_hor_m,
-  distance_vert_m,
-  distance_home_m
-FROM airplane_prox AS ap, pbi_deployments AS d
-LEFT OUTER JOIN sites AS s
-ON ap.site_id = s.id
-WHERE s.name = d.sitename
-)
-    COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI.';
+
+
+
+
 
 */
 
