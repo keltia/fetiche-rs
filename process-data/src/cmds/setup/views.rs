@@ -207,7 +207,7 @@ AS
        GeometricVerticalRate          AS geo_vert_rate,
        GroundSpeed                    AS ground_speed,
        TrackAngle,
-       replaceRegexpOne(prox_callsign, '\'([0-9A-Z]+)\\s*\'', '\\1') AS prox_callsign,
+       replaceRegexpOne(Callsign, '\'([0-9A-Z]+)\\s*\'', '\\1') AS prox_callsign,
        (AircraftStopped == '1')       AS stopped,
        (GroundTrackValid == '1')      AS GroundTrackValid,
        (GroundHeadingProvided == '1') AS GroundHeadingProvided,
