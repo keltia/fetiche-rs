@@ -744,12 +744,13 @@ impl Calculate for PlaneDistance {
     #[tracing::instrument(skip(self, dbh))]
     async fn run(&mut self, dbh: &Client) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
+        let date_str = self.date.format("%Y%m%d").to_string();
         let bar = self.progress.clone().unwrap_or_else(|| ProgressBar::new(4));
         bar.set_length(4);
         let style = ProgressStyle::with_template(
             "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>2}/{len:2} {msg}",
         )?
-            .progress_chars("##-");
+        .progress_chars("##-");
         bar.set_style(style);
         bar.enable_steady_tick(Duration::from_millis(100));
 
@@ -761,7 +762,7 @@ impl Calculate for PlaneDistance {
 
         // Create table `today` with all identified plane points with the specified range
         //
-        bar.set_message("Select planes.");
+        bar.set_message(format!("{date_str} - Select planes."));
         let start = Instant::now();
         let c_planes = self.select_planes(dbh).await?;
         timings.select_planes = (Instant::now() - start).as_millis();
@@ -770,18 +771,18 @@ impl Calculate for PlaneDistance {
 
         if c_planes == 0 {
             stats.time = (Instant::now() - start).as_millis();
-            bar.set_message("No planes found.");
+            bar.set_message(format!("{date_str} - No planes found."));
             bar.finish_and_clear();
             self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.planes = c_planes;
-        bar.set_message(format!("{} planes.", c_planes));
+        bar.set_message(format!("{date_str} - {} planes.", c_planes));
         sleep(Duration::from_millis(self.wait)).await;
 
         // Create table `candidates` with all designated drone points
         //
-        bar.set_message("Select drones.");
+        bar.set_message(format!("{date_str} - Select drones."));
         let start = Instant::now();
         let c_drones = self.select_drones(dbh).await?;
         timings.select_drones = (Instant::now() - start).as_millis();
@@ -789,18 +790,18 @@ impl Calculate for PlaneDistance {
 
         if c_drones == 0 {
             stats.time = (Instant::now() - start).as_millis();
-            bar.set_message("No drones found.");
+            bar.set_message(format!("{date_str} - No drones found."));
             bar.finish_and_clear();
             self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
-        stats.drones = c_drones as usize;
-        bar.set_message(format!("{} drones.", c_drones));
+        stats.drones = c_drones;
+        bar.set_message(format!("{date_str} - {} drones.", c_drones));
         sleep(Duration::from_millis(self.wait)).await;
 
         // Create table `today_close` with all designated drone points and airplanes in proximity
         //
-        bar.set_message("Find close planes.");
+        bar.set_message(format!("{date_str} - Find close planes."));
         let start = Instant::now();
         let c_potential = self.find_close(dbh).await?;
         timings.find_close = (Instant::now() - start).as_millis();
@@ -808,18 +809,18 @@ impl Calculate for PlaneDistance {
 
         if c_potential == 0 {
             stats.time = (Instant::now() - start).as_millis();
-            bar.set_message("No potential airprox found.");
+            bar.set_message(format!("{date_str} - No potential airprox found."));
             bar.finish_and_clear();
             self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.potential = c_potential;
-        bar.set_message(format!("{} potentials.", c_potential));
+        bar.set_message(format!("{date_str} - {} potentials.", c_potential));
         sleep(Duration::from_millis(self.wait)).await;
 
         // Now we have the distance calculated.
         //
-        bar.set_message("Find encounters.");
+        bar.set_message(format!("{date_str} - Find encounters."));
         let start = Instant::now();
         let c_encounters = self.select_encounters(dbh).await?;
         timings.select_encounters = (Instant::now() - start).as_millis();
@@ -827,17 +828,19 @@ impl Calculate for PlaneDistance {
 
         stats.time = (Instant::now() - start).as_millis();
         if c_encounters == 0 {
-            bar.set_message("No close encounters of any kind found.");
+            bar.set_message(format!(
+                "{date_str} - No close encounters of any kind found."
+            ));
             bar.finish_and_clear();
             self.cleanup_temp_tables(dbh).await?;
             return Ok(Stats::Planes(stats.clone()));
         }
         stats.encounters = c_encounters;
-        bar.set_message(format!("{} encounters.", c_encounters));
+        bar.set_message(format!("{date_str} - {} encounters.", c_encounters));
         sleep(Duration::from_millis(self.wait)).await;
 
         info!("Stats for {}\n{}", self.date, stats);
-        bar.set_message("Done.");
+        bar.set_message(format!("{date_str} - Done."));
         bar.finish_and_clear();
 
         self.cleanup_temp_tables(dbh).await?;
