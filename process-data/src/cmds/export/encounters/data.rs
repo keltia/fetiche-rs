@@ -84,8 +84,8 @@ pub(crate) struct Encounter {
     pub prox_lat: f32,
     pub prox_lon: f32,
     pub prox_alt_m: f32,
+    pub prox_ecat: i32,
     pub station_name: String,
-    pub prox_ecat: u32,
 }
 
 /// Fetch data points for a specific drone ID and journey from the database.
@@ -212,7 +212,7 @@ pub(crate) async fn fetch_one_encounter(ctx: &Context, id: &str) -> Result<Encou
     //
     let rp = make_query!(r##"
 SELECT
-  en_id, journey, time, drone_id, drone_lat, drone_lon, drone_alt_m, prox_id, prox_callsign, prox_lat, prox_lon, truncate(prox_alt_m) AS prox_alt_m,station_name, prox_ecat
+  en_id, journey, time, drone_id, drone_lat, drone_lon, drone_alt_m, prox_id, prox_callsign, prox_lat, prox_lon, truncate(prox_alt_m) AS prox_alt_m,prox_ecat,station_name
 FROM {workdb}.airplane_prox
 WHERE en_id = $1
     "##, dbvars);
