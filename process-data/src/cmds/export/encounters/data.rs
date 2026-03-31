@@ -226,8 +226,8 @@ SELECT
    any_value(prox_lat),
    any_value(prox_lon),
    truncate(any_value(prox_alt_m)) AS prox_alt_m,
-   any_value(station_name),
    any_value(prox_ecat),
+   any_value(station_name),
    min(distance_slant_m)
 FROM {workdb}.airplane_prox
 WHERE en_id = $1 group by (en_id, journey)
