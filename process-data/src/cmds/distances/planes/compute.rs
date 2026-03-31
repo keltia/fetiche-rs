@@ -732,8 +732,6 @@ impl Calculate for PlaneDistance {
     /// visibility during execution. Temporary tables are created during the process
     /// and are cleaned up afterwards.
     ///
-    /// FIXME: parallel processing and progress bar is messed up
-    ///
     /// # Parameters
     /// - `dbh`: A reference to the database client used for query execution.
     ///
