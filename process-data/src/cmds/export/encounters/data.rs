@@ -86,6 +86,7 @@ pub(crate) struct Encounter {
     pub prox_alt_m: f32,
     pub prox_ecat: i32,
     pub station_name: String,
+    pub distance_slant_m: i32,
 }
 
 /// Fetch data points for a specific drone ID and journey from the database.
@@ -208,13 +209,28 @@ pub(crate) async fn fetch_one_encounter(ctx: &Context, id: &str) -> Result<Encou
     let client = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    // Fetch the drone & airplane IDs
+    // Fetch the drone & airplane IDs using the closest distance as we may have multiple
+    // encounters behind the same id.
     //
     let rp = make_query!(r##"
 SELECT
-  en_id, journey, time, drone_id, drone_lat, drone_lon, drone_alt_m, prox_id, prox_callsign, prox_lat, prox_lon, truncate(prox_alt_m) AS prox_alt_m,prox_ecat,station_name
+   en_id,
+   journey,
+   any_value(time),
+   any_value(drone_id),
+   any_value(drone_lat),
+   any_value(drone_lon),
+   any_value(drone_alt_m),
+   any_value(prox_id),
+   any_value(prox_callsign),
+   any_value(prox_lat),
+   any_value(prox_lon),
+   truncate(any_value(prox_alt_m)) AS prox_alt_m,
+   any_value(station_name),
+   any_value(prox_ecat),
+   min(distance_slant_m)
 FROM {workdb}.airplane_prox
-WHERE en_id = $1
+WHERE en_id = $1 group by (en_id, journey)
     "##, dbvars);
 
     let q = QueryBuilder::new(&rp).arg(id);
