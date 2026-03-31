@@ -31,10 +31,11 @@ use futures::future::join_all;
 use itertools::Itertools;
 use kml::Kml::Document;
 use kml::{Kml, KmlDocument, KmlVersion};
+use polars::prelude::mkdir::mkdir_recursive;
 use regex::Regex;
 use std::path::PathBuf;
 use tokio::fs;
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 
 #[derive(Debug, Parser)]
 pub struct ExpEncounterOpts {
@@ -291,7 +292,8 @@ async fn export_encounter_list(
     assert!(output.is_dir(), "output must be a directory!");
 
     let n = list.len();
-    trace!("Found {n} encounters to export.");
+    let output = fs::canonicalize(output).await?;
+    trace!("Found {n} encounters to export in {output:?}.");
 
     // No new encounters to export is fine.
     //
@@ -301,37 +303,50 @@ async fn export_encounter_list(
 
     // Run the big batch in chunk to limit CPU usage and number of threads.
     //
+    let dir = output.clone();
     for batch in &list.iter().chunks(ctx.pool_size) {
         // Generate KML data for each `en_id`
         //
         let kmls: Vec<_> = batch
             .into_iter()
-            .map(|en_id| async move {
-                trace!("Generating KML for {en_id}");
-                let ctx = ctx.clone();
-                let id = en_id.clone();
-                let output = output.clone();
+            .map(|en_id| {
+                let dir = dir.clone();
 
-                tokio::spawn(async move {
-                    let fname = output.join(&id);
-                    match export_one_encounter(&ctx, &id).await {
-                        Ok(res) => {
-                            eprint!("{} ", fname.file_stem().unwrap().to_string_lossy());
-                            let fname = fname.with_extension("kml");
-                            let _ = fs::write(&fname, &res).await;
-                        }
-                        Err(e) => {
-                            eprintln!("({e}");
-                        }
-                    };
-                })
-                    .await
-                    .unwrap();
+                async move {
+                    trace!("Generating KML for {en_id}");
+                    let ctx = ctx.clone();
+                    let id = en_id.clone();
+                    let site = id.split('-').collect::<Vec<_>>().get(0).unwrap().to_string();
+                    let output = dir.join(site);
+
+                    // We export into <site>/encounter_id.kml, so we create the directory first.
+                    //
+                    fs::create_dir(&output).await.unwrap_or_else(|_| error!("Can not create {output:?}"));
+
+                    // Now we can do it
+                    //
+                    tokio::spawn(async move {
+                        let fname = output.join(&id);
+                        match export_one_encounter(&ctx, &id).await {
+                            Ok(res) => {
+                                eprint!("{} ", fname.file_stem().unwrap().to_string_lossy());
+                                let fname = fname.with_extension("kml");
+                                dbg!(&fname);
+                                let _ = fs::write(&fname, &res).await;
+                            }
+                            Err(e) => {
+                                eprintln!("({e}");
+                            }
+                        };
+                    })
+                        .await
+                        .unwrap();
+                }
             })
             .collect();
         let _ = join_all(kmls).await;
     }
 
-    eprintln!("Exporting {n} encounters in {output:?}... ");
+    eprintln!("Exporting {n} encounters in {output:?}/<site>/... ");
     Ok(n)
 }
