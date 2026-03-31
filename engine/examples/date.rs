@@ -27,7 +27,7 @@ fn main() -> Result<()> {
         .finish()?;
 
     let r = df.apply("timestamp", into_timestamp_jiff)?;
-    dbg!(&r.select_columns(["timestamp"])?);
+    dbg!(&r.select(["timestamp"])?);
 
     Ok(())
 }
@@ -36,9 +36,16 @@ fn into_timestamp_jiff(col: &Column) -> Column {
     col.str()
         .unwrap()
         .into_iter()
-        .map(|d: Option<&str>| d.map(|d: &str| {
-            d.parse::<DateTime>().unwrap().to_zoned(TimeZone::UTC).unwrap().timestamp().as_second()
-        }))
+        .map(|d: Option<&str>| {
+            d.map(|d: &str| {
+                d.parse::<DateTime>()
+                    .unwrap()
+                    .to_zoned(TimeZone::UTC)
+                    .unwrap()
+                    .timestamp()
+                    .as_second()
+            })
+        })
         .collect::<Int64Chunked>()
         .into_column()
 }
