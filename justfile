@@ -10,8 +10,12 @@ push-github:
 push-gitlab:
     jj git push --tracked --remote gitlab
 
+# Push to codeberg
+push-codeberg:
+    jj git push --tracked --remote codeberg
+
 # Push to both github and gitlab
-push: push-github
+push: push-github push-codeberg
 
 # Move changes to develop
 move:
