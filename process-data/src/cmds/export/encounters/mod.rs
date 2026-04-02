@@ -331,7 +331,7 @@ async fn export_encounter_list(
                             Ok(res) => {
                                 eprint!("{} ", fname.file_stem().unwrap().to_string_lossy());
                                 let fname = fname.with_extension("kml");
-                                dbg!(&fname);
+                                trace!("encounter={:?}", fname);
                                 let _ = fs::write(&fname, &res).await;
                             }
                             Err(e) => {
