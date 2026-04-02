@@ -20,7 +20,7 @@
 //! - `serde`: For serialization support.
 //! - `tracing`: For logging and instrumentation.
 //!
-use crate::cmds::DBVars;
+use crate::cmds::{find_site, DBVars};
 use crate::make_query;
 use crate::runtime::Context;
 use chrono::{DateTime, Utc};
@@ -157,12 +157,17 @@ ORDER BY timestamp
 #[tracing::instrument(skip(ctx))]
 pub(crate) async fn fetch_planes(
     ctx: &Context,
+    sitename: &str,
+    enc_coord: &(f64, f64),
     prox_id: &str,
     first: DateTime<Utc>,
     last: DateTime<Utc>,
 ) -> Result<Vec<DataPoint>> {
     let client = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
+
+    let site = find_site(ctx, sitename).await?;
+    debug!("site={} id={}", sitename, site.id);
 
     // Fetch plane points
     //
@@ -177,11 +182,13 @@ SELECT
 FROM {planedb}.airplanes
 WHERE
   prox_id = $1 AND
-  time BETWEEN $2 AND $3
+  time BETWEEN $2 AND $3 AND
+  site = $4 AND
+  geoDistance(prox_lon, prox_lat, $5, $6) <= 5500
 ORDER BY time
     "##, dbvars);
 
-    let q = QueryBuilder::new(&rdp).arg(prox_id).arg(first).arg(last);
+    let q = QueryBuilder::new(&rdp).arg(prox_id).arg(first).arg(last).arg(site.id).arg(enc_coord.0).arg(enc_coord.1);
     let planes = client.query_collect::<DataPoint>(q).await?;
     trace!("Found {} plane points for id {}", planes.len(), prox_id);
 

@@ -171,7 +171,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     //
     let re = Regex::new(r##"^(?<name>[A-Z0-9]{3})-(?<date>\d{8})-(?<journey>\d+)-(\d+)$"##)?;
 
-    let (name, date, journey) = if let Some(caps) = re.captures(id) {
+    let (sitename, date, journey) = if let Some(caps) = re.captures(id) {
         let date = &caps["date"];
 
         let re = Regex::new(r##"^(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})$"##)?;
@@ -186,7 +186,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     } else {
         return Err(CmdError::BadEncounterID(id.to_string()).into());
     };
-    debug!("name: {}, date: {}, journey: {}", name, date, journey);
+    debug!("name: {}, date: {}, journey: {}", sitename, date, journey);
 
     let res = fetch_one_encounter(ctx, id).await?;
 
@@ -201,6 +201,10 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
         return Err(CmdError::NotEnoughData("drones".to_string()).into());
     }
 
+    // Our encounter was there, no need to fetch plane points farther than 3 nm / 5.5 km
+    //
+    let enc_coord = (res.prox_lon as f64, res.prox_lat as f64);
+
     // Extract first and last timestamp to have a suitable interval for plane points.
     //
     let first = drones.first().unwrap().timestamp;
@@ -211,7 +215,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     let prox_id = res.prox_id.clone();
     let prox_callsign = res.prox_callsign.clone();
 
-    let planes = fetch_planes(ctx, &prox_id, first, last).await?;
+    let planes = fetch_planes(ctx, &sitename, &enc_coord, &prox_id, first, last).await?;
     if planes.len() <= 1 {
         return Err(CmdError::NotEnoughData("planes".to_string()).into());
     }
@@ -226,8 +230,8 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
 
     // Create `Placemark` for each trajectory
     //
-    let drone = from_traj_to_placemark(&drone_id, &drones, "#msn_ylw-pushpin0")?;
-    let plane = from_traj_to_placemark(&prox_callsign, &planes, "#default")?;
+    let drone = from_traj_to_placemark(&drone_id, "", &drones, "#msn_ylw-pushpin0")?;
+    let plane = from_traj_to_placemark(&prox_callsign, &prox_id, &planes, "#default")?;
 
     let mut elements = def_styles.clone();
     elements.push(drone);
