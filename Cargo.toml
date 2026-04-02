@@ -1,7 +1,7 @@
 [workspace]
-members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "process-data", "convert-from-json", "find-airport", "db-utils"]
+members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "process-data", "convert-from-json", "find-airport", "db-utils", "opensky-history"]
 default-members = ["acutectl", "process-data", "convert-from-json", "find-airport", "db-utils"]
-exclude = ["opensky-history"]
+
 resolver = "2"
 
 [workspace.dependencies]

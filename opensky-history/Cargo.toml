@@ -24,20 +24,20 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = { version = "0.4.42", features = ["serde"] }
-dateparser = "0.2"
-clap = { version = "4", features = ["cargo", "derive"] }
-eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
-fetiche-common = { version = "0", path = "../common" }
-polars = { version = "0.52", features = ["async", "serde", "lazy", "strings", "parquet", "json"] }
-strum = { version = "0.27", features = ["derive"] }
-tokio = { version = "1", features = ["sync", "macros", "io-util", "rt", "time", "tracing"] }
-tracing = "0.1"
+chrono.workspace = true
+dateparser.workspace = true
+clap.workspace = true
+eyre.workspace = true
+fetiche-common.workspace = true
+polars.workspace = true
+strum.workspace = true
+tokio.workspace = true
+tracing.workspace = true
 
 inline-python = "0.14"
 
 [dev-dependencies]
-rstest = "0.26"
+rstest.workspace = true
 
 [dependencies.pyo3]
 version = "0.25"
