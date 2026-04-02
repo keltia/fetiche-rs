@@ -73,6 +73,7 @@ pub(crate) struct DataPoint {
 #[derive(Clone, Debug, Row, Serialize)]
 pub(crate) struct Encounter {
     pub en_id: String,
+    pub sitename: String,
     pub journey: i32,
     pub timestamp: DateTime<Utc>,
     pub drone_id: String,
@@ -215,6 +216,7 @@ pub(crate) async fn fetch_one_encounter(ctx: &Context, id: &str) -> Result<Encou
     let rp = make_query!(r##"
 SELECT
    en_id,
+   any_value(sitename),
    journey,
    any_value(time),
    any_value(drone_id),

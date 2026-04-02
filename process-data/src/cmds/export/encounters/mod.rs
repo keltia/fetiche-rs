@@ -31,7 +31,6 @@ use futures::future::join_all;
 use itertools::Itertools;
 use kml::Kml::Document;
 use kml::{Kml, KmlDocument, KmlVersion};
-use polars::prelude::mkdir::mkdir_recursive;
 use regex::Regex;
 use std::path::PathBuf;
 use tokio::fs;
@@ -311,13 +310,14 @@ async fn export_encounter_list(
             .into_iter()
             .map(|en_id| {
                 let dir = dir.clone();
+                let site = en_id.split('-').collect::<Vec<_>>().get(0).unwrap().to_string();
 
                 async move {
                     trace!("Generating KML for {en_id}");
                     let ctx = ctx.clone();
                     let id = en_id.clone();
-                    let site = id.split('-').collect::<Vec<_>>().get(0).unwrap().to_string();
                     let output = dir.join(site);
+                    debug!("output path: {:?}", output);
 
                     // We export into <site>/encounter_id.kml, so we create the directory first.
                     //
