@@ -232,6 +232,7 @@ pub(crate) fn default_styles() -> Vec<Kml<f64>> {
 #[tracing::instrument(skip(points, style))]
 pub(crate) fn from_traj_to_placemark(
     name: &str,
+    icao: &str,
     points: &Vec<DataPoint>,
     style: &str,
 ) -> eyre::Result<Kml> {
@@ -240,7 +241,7 @@ pub(crate) fn from_traj_to_placemark(
         name: Some(name.into()),
         geometry: Some(Geometry::LineString(ls)),
         style_url: Some(style.into()),
-        attrs: HashMap::from([("styleUrl".into(), style.into())]),
+        attrs: HashMap::from([("styleUrl".into(), style.into()), ("icao".into(), icao.into())]),
         ..Default::default()
     }))
 }
