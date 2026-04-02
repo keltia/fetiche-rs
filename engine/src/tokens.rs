@@ -119,7 +119,7 @@ impl TokenStorage {
         };
 
         // Create the full path for the token file
-        let file_path = self.base_path.child(key);
+        let file_path = self.base_path.clone().join(key);
 
         // Store in the object store
         self.store.put(&file_path, serialized.into()).await?;
@@ -140,7 +140,7 @@ impl TokenStorage {
 
         // If not in cache, try to load from object store
         //
-        let file_path = self.base_path.child(key);
+        let file_path = self.base_path.clone().join(key);
 
         match self.store.get(&file_path).await {
             Ok(data) => {

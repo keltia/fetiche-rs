@@ -168,8 +168,8 @@ mod tests {
     fn test_filter_from_opts_with_dates() {
         let opts = FetchOpts {
             dates: Some(DateOpts::From {
-                begin: "2024-01-02 00:00:00 UTC".into(),
-                end: "2024-01-03 00:00:00 UTC".into(),
+                begin: "2024-01-02".into(),
+                end: "2024-01-03".into(),
             }),
             keyword: None,
             since: None,
