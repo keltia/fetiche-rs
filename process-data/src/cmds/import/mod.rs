@@ -2,13 +2,7 @@ pub use adsb::*;
 
 mod adsb;
 
-use clap::{Parser, Subcommand};
-use klickhouse::Row;
-use serde::Deserialize;
-
-use crate::cmds::import::adsb::AdsbOpts;
-
-pub struct ImportCommand;
+use clap::Parser;
 
 #[derive(Debug, Parser)]
 pub struct ImportOpts {
