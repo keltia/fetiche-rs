@@ -55,7 +55,7 @@ struct AdsbRaw {
     #[klickhouse(rename = "ModeA")]
     mode_a: Option<String>,
     #[klickhouse(rename = "TimeRecPosition")]
-    time_rec_position: Option<DateTime<Utc>>,
+    time_rec_position: Option<String>,
     #[klickhouse(rename = "AircraftAddress")]
     aircraft_address: Option<String>,
     #[klickhouse(rename = "Latitude")]
@@ -226,7 +226,7 @@ async fn insert_batch(ctx: &Context, table: &str, df: &DataFrame) -> Result<()> 
     let c_emitter = s_emitter.and_then(|s| s.i64().ok()); // Int64 → cast to i32
     let c_gbs = s_gbs.and_then(|s| s.i64().ok()); // Int64 → cast to i32
     let c_mode_a = s_mode_a.and_then(|s| s.i64().ok()); // Int64 → to_string
-    let c_time_rec = s_time_rec.and_then(|s| s.datetime().ok()); // Datetime('μs')
+    let c_time_rec = s_time_rec.and_then(|s| s.str().ok());
     let c_addr = s_addr.and_then(|s| s.str().ok());
     let c_lat = s_lat.and_then(|s| s.f64().ok());
     let c_lon = s_lon.and_then(|s| s.f64().ok());
@@ -251,17 +251,7 @@ async fn insert_batch(ctx: &Context, table: &str, df: &DataFrame) -> Result<()> 
             emitter_category: c_emitter.and_then(|c| c.get(i)).map(|v| v as i32),
             gbs: c_gbs.and_then(|c| c.get(i)).map(|v| v as i32),
             mode_a: c_mode_a.and_then(|c| c.get(i)).map(|v| v.to_string()),
-            time_rec_position: c_time_rec.and_then(|c| {
-                c.phys.get(i).and_then(|ts| {
-                    use polars::prelude::TimeUnit;
-                    let us = match c.time_unit() {
-                        TimeUnit::Milliseconds => ts * 1_000,
-                        TimeUnit::Microseconds => ts,
-                        TimeUnit::Nanoseconds => ts / 1_000,
-                    };
-                    DateTime::from_timestamp_micros(us)
-                })
-            }),
+            time_rec_position: c_time_rec.and_then(|c| c.get(i)).map(String::from),
             aircraft_address: c_addr.and_then(|c| c.get(i)).map(String::from),
             latitude: c_lat.and_then(|c| c.get(i)),
             longitude: c_lon.and_then(|c| c.get(i)),
