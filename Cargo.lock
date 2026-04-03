@@ -3794,6 +3794,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8a5a9a0ff0086c7a148acb942baaabeadf9504d10400b5a05645853729b9cd2"
 
 [[package]]
+name = "import-data"
+version = "0.2.0"
+dependencies = [
+ "chrono",
+ "clap 4.6.0",
+ "csv",
+ "divan",
+ "eyre",
+ "fetiche-common",
+ "fetiche-macros",
+ "futures",
+ "itertools 0.14.0",
+ "jiff",
+ "klickhouse",
+ "polars",
+ "regex",
+ "rstest",
+ "serde",
+ "serde_json",
+ "strum 0.28.0",
+ "tabled",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "indenter"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
