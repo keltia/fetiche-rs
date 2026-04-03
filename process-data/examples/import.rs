@@ -89,7 +89,7 @@ struct AdsbRaw {
     #[klickhouse(rename = "ModeA")]
     mode_a: Option<String>,
     #[klickhouse(rename = "TimeRecPosition")]
-    time_rec_position: Option<DateTime<Utc>>,
+    time_rec_position: Option<String>,
     #[klickhouse(rename = "AircraftAddress")]
     aircraft_address: Option<String>,
     #[klickhouse(rename = "Latitude")]
@@ -183,7 +183,6 @@ pub async fn import_adsb(opts: &AdsbOpts) -> Result<()> {
     let path = std::path::PathBuf::from(&fname);
     let df = spawn_blocking(move || -> Result<_> {
         let df = CsvReadOptions::default()
-            .with_parse_options(CsvParseOptions::default().with_try_parse_dates(true))
             .try_into_reader_with_file_path(Some(path))?
             .finish()?;
         Ok(df)
@@ -258,27 +257,27 @@ async fn insert_batch(table: &str, df: &DataFrame) -> Result<()> {
     // Types match what polars infers from the CSV (all bare integers → Int64,
     // all decimals → Float64; Boolean/u8 are NOT inferred from 0/1 integers).
     //
-    let c_emitter  = s_emitter.and_then(|s| s.i64().ok()); // Int64 → cast to u8
-    let c_gbs      = s_gbs.and_then(|s| s.i64().ok());     // Int64 → cast to u8
-    let c_mode_a   = s_mode_a.and_then(|s| s.i64().ok());  // Int64 → to_string
-    let c_time_rec = s_time_rec.and_then(|s| s.datetime().ok()); // Datetime('μs')
-    let c_addr     = s_addr.and_then(|s| s.str().ok());
-    let c_lat      = s_lat.and_then(|s| s.f64().ok());
-    let c_lon      = s_lon.and_then(|s| s.f64().ok());
-    let c_geo_alt  = s_geo_alt.and_then(|s| s.f64().ok());
-    let c_fl       = s_fl.and_then(|s| s.f64().ok());
-    let c_baro_vr  = s_baro_vr.and_then(|s| s.f64().ok()); // Float64 → to_string
-    let c_geo_vre  = s_geo_vre.and_then(|s| s.str().ok());
-    let c_geo_vr   = s_geo_vr.and_then(|s| s.str().ok());
-    let c_gs       = s_gs.and_then(|s| s.f64().ok());
-    let c_ta       = s_ta.and_then(|s| s.f64().ok());
-    let c_cs       = s_cs.and_then(|s| s.str().ok());
-    let c_stopped  = s_stopped.and_then(|s| s.i64().ok()); // Int64 → to_string
-    let c_gtv      = s_gtv.and_then(|s| s.i64().ok());     // Int64 → to_string
-    let c_ghp      = s_ghp.and_then(|s| s.i64().ok());     // Int64 → to_string
-    let c_mn       = s_mn.and_then(|s| s.i64().ok());      // Int64 → to_string
-    let c_sgs      = s_sgs.and_then(|s| s.f64().ok());     // Float64 → cast to f32
-    let c_sgt      = s_sgt.and_then(|s| s.f64().ok());     // Float64 → cast to f32
+    let c_emitter = s_emitter.and_then(|s| s.i64().ok()); // Int64 → cast to u8
+    let c_gbs = s_gbs.and_then(|s| s.i64().ok()); // Int64 → cast to u8
+    let c_mode_a = s_mode_a.and_then(|s| s.i64().ok()); // Int64 → to_string
+    let c_time_rec = s_time_rec.and_then(|s| s.str().ok()); // Datetime('μs')
+    let c_addr = s_addr.and_then(|s| s.str().ok());
+    let c_lat = s_lat.and_then(|s| s.f64().ok());
+    let c_lon = s_lon.and_then(|s| s.f64().ok());
+    let c_geo_alt = s_geo_alt.and_then(|s| s.f64().ok());
+    let c_fl = s_fl.and_then(|s| s.f64().ok());
+    let c_baro_vr = s_baro_vr.and_then(|s| s.f64().ok()); // Float64 → to_string
+    let c_geo_vre = s_geo_vre.and_then(|s| s.str().ok());
+    let c_geo_vr = s_geo_vr.and_then(|s| s.str().ok());
+    let c_gs = s_gs.and_then(|s| s.f64().ok());
+    let c_ta = s_ta.and_then(|s| s.f64().ok());
+    let c_cs = s_cs.and_then(|s| s.str().ok());
+    let c_stopped = s_stopped.and_then(|s| s.i64().ok()); // Int64 → to_string
+    let c_gtv = s_gtv.and_then(|s| s.i64().ok()); // Int64 → to_string
+    let c_ghp = s_ghp.and_then(|s| s.i64().ok()); // Int64 → to_string
+    let c_mn = s_mn.and_then(|s| s.i64().ok()); // Int64 → to_string
+    let c_sgs = s_sgs.and_then(|s| s.f64().ok()); // Float64 → cast to f32
+    let c_sgt = s_sgt.and_then(|s| s.f64().ok()); // Float64 → cast to f32
 
     let rows: Vec<AdsbRaw> = (0..n)
         .map(|i| AdsbRaw {
@@ -286,17 +285,7 @@ async fn insert_batch(table: &str, df: &DataFrame) -> Result<()> {
             emitter_category: c_emitter.and_then(|c| c.get(i)).map(|v| v as u8),
             gbs: c_gbs.and_then(|c| c.get(i)).map(|v| v as u8),
             mode_a: c_mode_a.and_then(|c| c.get(i)).map(|v| v.to_string()),
-            time_rec_position: c_time_rec.and_then(|c| {
-                c.phys.get(i).and_then(|ts| {
-                    use polars::prelude::TimeUnit;
-                    let us = match c.time_unit() {
-                        TimeUnit::Milliseconds => ts * 1_000,
-                        TimeUnit::Microseconds => ts,
-                        TimeUnit::Nanoseconds  => ts / 1_000,
-                    };
-                    DateTime::from_timestamp_micros(us)
-                })
-            }),
+            time_rec_position: c_time_rec.and_then(|c| c.get(i)).map(String::from),
             aircraft_address: c_addr.and_then(|c| c.get(i)).map(String::from),
             latitude: c_lat.and_then(|c| c.get(i)),
             longitude: c_lon.and_then(|c| c.get(i)),

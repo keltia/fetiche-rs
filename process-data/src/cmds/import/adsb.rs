@@ -146,7 +146,6 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
     let path = std::path::PathBuf::from(&fname);
     let df = spawn_blocking(move || -> Result<_> {
         let df = CsvReadOptions::default()
-            .with_parse_options(CsvParseOptions::default().with_try_parse_dates(true))
             .try_into_reader_with_file_path(Some(path))?
             .finish()?;
         Ok(df)
