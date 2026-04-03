@@ -48,17 +48,18 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
         .unwrap()
         .to_str()
         .unwrap();
+    debug!("sname={}", sname);
 
     // Filename should be formatted like this
-    // `<basename>_YYYY-MM-DD.csv`
+    // `<basename>_YYYY-MM-DD`
     //
     let re = Regex::new(r##"^(?<basename>)_(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$"##)?;
     let (basename, year, month, day) = if let Some(caps) = re.captures(sname) {
         (
-            caps["basename"].to_string(),
-            caps["year"].parse::<u32>()?,
-            caps["month"].parse::<u32>()?,
-            caps["day"].parse::<u32>()?,
+            &caps[1].to_string(),
+            &caps[2].parse::<u32>()?,
+            &caps[3].parse::<u32>()?,
+            &caps[4].parse::<u32>()?,
         )
     } else {
         return Err(eyre!("Bad filename {fname}"));
