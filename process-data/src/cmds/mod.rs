@@ -64,9 +64,9 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
                 eprintln!("Stats:\n{:?}", stats);
             }
         },
-        SubCommand::Import(iopts) => match iopts.subcmd {
+        SubCommand::Import(iopts) => match &iopts.subcmd {
             ImportSubcommand::Adsb(aopts) => {
-                import_adsb(ctx, &aopts).await?;
+                import_adsb(ctx, aopts).await?;
             }
         },
         SubCommand::Export(eopts) => match &eopts.subcmd {
