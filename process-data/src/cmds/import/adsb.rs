@@ -1,8 +1,10 @@
 //! This is the Rust equivalent of [import-adsb.py] with batching capabilities
 //!
+
 use crate::cmds::DBVars;
 use crate::make_query;
 use crate::runtime::Context;
+use std::path::Path;
 
 use clap::Parser;
 use eyre::{eyre, Result};
@@ -41,11 +43,17 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
     let table = opts.table.clone();
     let fname = opts.fname.clone();
 
+    let sname = Path::new(fname.as_str())
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap();
+
     // Filename should be formatted like this
     // `<basename>_YYYY-MM-DD.csv`
     //
     let re = Regex::new(r##"^(?<basename>)_(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$"##)?;
-    let (basename, year, month, day) = if let Some(caps) = re.captures(&fname) {
+    let (basename, year, month, day) = if let Some(caps) = re.captures(sname) {
         (
             caps["basename"].to_string(),
             caps["year"].parse::<u32>()?,
