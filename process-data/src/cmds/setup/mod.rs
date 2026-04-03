@@ -8,10 +8,12 @@ use std::env;
 use std::path::Path;
 
 mod macros;
+mod meta;
 mod tables;
 mod views;
 
 pub use macros::*;
+pub use meta::*;
 pub use tables::*;
 pub use views::*;
 
