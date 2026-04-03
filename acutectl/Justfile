@@ -1,0 +1,9 @@
+# For testing
+
+yesterday: yesterday-csv yesterday-parquet
+
+yesterday-csv:
+    cargo run -- fetch -o yes.csv lux-me yesterday
+
+yesterday-parquet:
+    cargo run -- fetch -o yes.parquet lux-me yesterday
