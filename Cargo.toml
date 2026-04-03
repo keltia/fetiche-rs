@@ -25,7 +25,7 @@ itertools = "0.14.0"
 jiff = { version = "0.2", features = ["serde"] }
 nom = "8"
 object_store = "0.13"
-polars = { version = "0.53", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-categorical"] }
+polars = { version = "0.53", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-categorical", "temporal"] }
 proptest = "1.11"
 ractor = { version = "0.15", features = ["async-trait", "serde"] }
 reqwest = { version = "0.13", features = ["blocking", "gzip", "json", "socks", "deflate"] }
