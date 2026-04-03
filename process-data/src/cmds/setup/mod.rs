@@ -33,6 +33,7 @@ use crate::runtime::Context;
 /// - `macros`: If enabled (`-M` or `--macros`), add mathematical macros to the database.
 /// - `encounters`: If enabled (`-E` or `--encounters`), create the encounters table to store air-prox points.
 /// - `views`: If enabled (`-V` or `--views`), create persistent database views for querying drone and airplane data.
+/// - `metadata`: If enabled (`-M` or `--metadata`), create metadata tables for sites, antennas, and installations.
 /// - `all`: If enabled (`-a` or `--all`), perform all setup tasks (including macros, encounters, and views).
 ///
 /// ### Example
@@ -63,6 +64,9 @@ pub struct SetupOpts {
     /// Create encounters (aka calculation) table
     #[clap(short = 'E', long)]
     pub encounters: bool,
+    /// Create metadata tables (sites, antennas, installations).
+    #[clap(short = 'M', long)]
+    pub metadata: bool,
     /// Create records table
     #[clap(short = 'R', long)]
     pub records: bool,
@@ -121,6 +125,9 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
     if opts.all {
         trace!("Creating all ACUTE tables and views.");
         add_macros(&ctx).await?;
+        add_sites_table(&ctx).await?;
+        add_antennas_table(&ctx).await?;
+        add_installations_table(&ctx).await?;
         add_airplanes_view(&ctx).await?;
         add_drones_view(&ctx).await?;
         create_work_views(&ctx).await?;
@@ -130,6 +137,12 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
         if opts.macros {
             trace!("Creating ACUTE macros.");
             add_macros(&ctx).await?;
+        }
+        if opts.metadata {
+            trace!("Creating ACUTE metadata tables.");
+            add_sites_table(&ctx).await?;
+            add_antennas_table(&ctx).await?;
+            add_installations_table(&ctx).await?;
         }
         if opts.airplanes {
             trace!("Creating ACUTE airplanes table.");
@@ -194,6 +207,9 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
         drop_encounters_table(ctx).await?;
         drop_drones_view(ctx).await?;
         drop_airplanes_view(ctx).await?;
+        drop_sites_table(ctx).await?;
+        drop_antennas_table(ctx).await?;
+        drop_installations_table(ctx).await?;
         remove_macros(ctx).await?;
     } else {
         if opts.views {
@@ -210,6 +226,11 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
         }
         if opts.airplanes {
             drop_airplanes_view(&ctx).await?;
+        }
+        if opts.metadata {
+            drop_sites_table(&ctx).await?;
+            drop_antennas_table(&ctx).await?;
+            drop_installations_table(&ctx).await?;
         }
         if opts.macros {
             remove_macros(&ctx).await?;
