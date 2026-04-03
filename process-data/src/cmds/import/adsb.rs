@@ -13,7 +13,7 @@ use eyre::Result;
 use klickhouse::{QueryBuilder, Row};
 use polars::prelude::{CsvParseOptions, CsvReadOptions, DataFrame, NamedFrom, SerReader, Series};
 use regex::Regex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
 use tracing::{debug, trace};
 
@@ -45,8 +45,10 @@ struct Site {
 /// All CSV-sourced columns are `Option<T>` to handle sparse data;
 /// `site` is always set by us before insertion.
 ///
-#[derive(Debug, Row)]
+#[derive(Debug, Deserialize, Row, Serialize)]
+#[serde(rename_all = "PascalCase")]
 struct AdsbRaw {
+    #[klickhouse(rename = "Site")]
     site: i32,
     #[klickhouse(rename = "EmitterCategory")]
     emitter_category: Option<i32>,
@@ -87,9 +89,9 @@ struct AdsbRaw {
     #[klickhouse(rename = "MagneticNorth")]
     magnetic_north: Option<String>,
     #[klickhouse(rename = "SurfaceGroundSpeed")]
-    surface_ground_speed: Option<f32>,
+    surface_ground_speed: Option<f64>,
     #[klickhouse(rename = "SurfaceGroundTrack")]
-    surface_ground_track: Option<f32>,
+    surface_ground_track: Option<f64>,
 }
 
 /// Import a single large CSV file into a given table in Clickhouse.
@@ -222,10 +224,10 @@ async fn insert_batch(ctx: &Context, table: &str, df: &DataFrame) -> Result<()> 
     // Types match what polars infers from the CSV (all bare integers → Int64,
     // all decimals → Float64; Boolean/u8 are NOT inferred from 0/1 integers).
     //
-    let c_emitter = s_emitter.and_then(|s| s.i64().ok()); // Int64 → cast to i32
-    let c_gbs = s_gbs.and_then(|s| s.i64().ok()); // Int64 → cast to i32
+    let c_emitter = s_emitter.and_then(|s| s.i64().ok());
+    let c_gbs = s_gbs.and_then(|s| s.i64().ok());
     let c_mode_a = s_mode_a.and_then(|s| s.i64().ok()); // Int64 → to_string
-    let c_time_rec = s_time_rec.and_then(|s| s.str().ok());
+    let c_time_rec = s_time_rec.and_then(|s| s.str().ok()); // Datetime('μs')
     let c_addr = s_addr.and_then(|s| s.str().ok());
     let c_lat = s_lat.and_then(|s| s.f64().ok());
     let c_lon = s_lon.and_then(|s| s.f64().ok());
@@ -266,8 +268,8 @@ async fn insert_batch(ctx: &Context, table: &str, df: &DataFrame) -> Result<()> 
             ground_track_valid: c_gtv.and_then(|c| c.get(i)).map(|v| v.to_string()),
             ground_heading_provided: c_ghp.and_then(|c| c.get(i)).map(|v| v.to_string()),
             magnetic_north: c_mn.and_then(|c| c.get(i)).map(|v| v.to_string()),
-            surface_ground_speed: c_sgs.and_then(|c| c.get(i)).map(|v| v as f32),
-            surface_ground_track: c_sgt.and_then(|c| c.get(i)).map(|v| v as f32),
+            surface_ground_speed: c_sgs.and_then(|c| c.get(i)),
+            surface_ground_track: c_sgt.and_then(|c| c.get(i)),
         })
         .collect();
 
