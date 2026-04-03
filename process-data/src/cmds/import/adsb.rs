@@ -30,7 +30,9 @@ pub struct AdsbOpts {
 
 #[derive(Debug, Deserialize, Row)]
 struct Site {
-    id: u32,
+    /// Site ID
+    id: i32,
+    /// Site name
     name: String,
 }
 
@@ -66,7 +68,7 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
     } else {
         return Err(eyre!("Bad filename {fname}"));
     };
-    trace!("handling {basename} from={year}-{month}-{day}");
+    trace!("handling basename={basename} from={year}-{month}-{day}");
 
     // Retrieve site ID
     //
