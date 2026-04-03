@@ -53,7 +53,9 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
     // Filename should be formatted like this
     // `<basename>_YYYY-MM-DD`
     //
-    let re = Regex::new(r##"^(?<basename>)_(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$"##)?;
+    let re = Regex::new(
+        r##"^(?<basename>[[:alnum:]])_(?<year>[[:digit:]]{4})-(?<month>[[:digit:]]{2})-(?<day>[[:digit:]]{2})$"##,
+    )?;
     let (basename, year, month, day) = if let Some(caps) = re.captures(sname) {
         (
             &caps[1].to_string(),
