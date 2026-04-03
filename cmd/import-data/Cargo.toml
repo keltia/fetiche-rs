@@ -40,6 +40,7 @@ tracing.workspace = true
 
 klickhouse = { version = "0.14", features = ["derive", "geo-types", "serde", "bb8"] }
 regex = "1.12"
+tinytemplate = "1.2"
 
 [dev-dependencies]
 divan = "0.1"
