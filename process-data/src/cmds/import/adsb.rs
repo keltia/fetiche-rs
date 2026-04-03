@@ -11,7 +11,7 @@ use chrono::{DateTime, Utc};
 use clap::Parser;
 use eyre::Result;
 use klickhouse::{QueryBuilder, Row};
-use polars::prelude::{CsvParseOptions, CsvReadOptions, NamedFrom, Series, SerReader};
+use polars::prelude::{CsvParseOptions, CsvReadOptions, DataFrame, NamedFrom, SerReader, Series};
 use regex::Regex;
 use serde::Deserialize;
 use tokio::task::spawn_blocking;
@@ -144,7 +144,7 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
     // does not stall the tokio executor.
     //
     let path = std::path::PathBuf::from(&fname);
-    let df = spawn_blocking(move || -> eyre::Result<_> {
+    let df = spawn_blocking(move || -> Result<_> {
         let df = CsvReadOptions::default()
             .with_parse_options(CsvParseOptions::default().with_try_parse_dates(true))
             .try_into_reader_with_file_path(Some(path))?
@@ -186,7 +186,7 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
 /// Convert one DataFrame batch into `AdsbRaw` rows and bulk-insert into ClickHouse.
 ///
 #[tracing::instrument(skip(ctx, df))]
-async fn insert_batch(ctx: &Context, table: &str, df: &polars::prelude::DataFrame) -> Result<()> {
+async fn insert_batch(ctx: &Context, table: &str, df: &DataFrame) -> Result<()> {
     let db = ctx.db().await;
     let n = df.height();
 
@@ -219,44 +219,45 @@ async fn insert_batch(ctx: &Context, table: &str, df: &polars::prelude::DataFram
     let s_sgs = df.column("SurfaceGroundSpeed").ok();
     let s_sgt = df.column("SurfaceGroundTrack").ok();
 
-    // Extract typed views upfront — one HashMap lookup per column, not per row
+    // Extract typed views upfront — one HashMap lookup per column, not per row.
+    // Types match what polars infers from the CSV (all bare integers → Int64,
+    // all decimals → Float64; Boolean/u8 are NOT inferred from 0/1 integers).
     //
-    let c_emitter = s_emitter.and_then(|s| s.u8().ok());
-    let c_gbs = s_gbs.and_then(|s| s.u8().ok());
-    let c_mode_a = s_mode_a.and_then(|s| s.str().ok());
-    let c_time_rec = s_time_rec.and_then(|s| s.datetime().ok()); // &DatetimeChunked
-    let c_addr = s_addr.and_then(|s| s.str().ok());
-    let c_lat = s_lat.and_then(|s| s.f64().ok());
-    let c_lon = s_lon.and_then(|s| s.f64().ok());
-    let c_geo_alt = s_geo_alt.and_then(|s| s.f64().ok()); // Option<f64>
-    let c_fl = s_fl.and_then(|s| s.f64().ok()); // Option<f64>
-    let c_baro_vr = s_baro_vr.and_then(|s| s.str().ok()); // Option<String>
-    let c_geo_vre = s_geo_vre.and_then(|s| s.str().ok());
-    let c_geo_vr = s_geo_vr.and_then(|s| s.str().ok()); // Option<String>
-    let c_gs = s_gs.and_then(|s| s.f64().ok()); // Option<f64>
-    let c_ta = s_ta.and_then(|s| s.f64().ok()); // Option<f64>
-    let c_cs = s_cs.and_then(|s| s.str().ok());
-    let c_stopped = s_stopped.and_then(|s| s.str().ok());
-    let c_gtv = s_gtv.and_then(|s| s.str().ok());
-    let c_ghp = s_ghp.and_then(|s| s.str().ok());
-    let c_mn = s_mn.and_then(|s| s.str().ok());
-    let c_sgs = s_sgs.and_then(|s| s.f32().ok());
-    let c_sgt = s_sgt.and_then(|s| s.f32().ok());
+    let c_emitter  = s_emitter.and_then(|s| s.i64().ok()); // Int64 → cast to u8
+    let c_gbs      = s_gbs.and_then(|s| s.i64().ok());     // Int64 → cast to u8
+    let c_mode_a   = s_mode_a.and_then(|s| s.i64().ok());  // Int64 → to_string
+    let c_time_rec = s_time_rec.and_then(|s| s.datetime().ok()); // Datetime('μs')
+    let c_addr     = s_addr.and_then(|s| s.str().ok());
+    let c_lat      = s_lat.and_then(|s| s.f64().ok());
+    let c_lon      = s_lon.and_then(|s| s.f64().ok());
+    let c_geo_alt  = s_geo_alt.and_then(|s| s.f64().ok());
+    let c_fl       = s_fl.and_then(|s| s.f64().ok());
+    let c_baro_vr  = s_baro_vr.and_then(|s| s.f64().ok()); // Float64 → to_string
+    let c_geo_vre  = s_geo_vre.and_then(|s| s.str().ok());
+    let c_geo_vr   = s_geo_vr.and_then(|s| s.str().ok());
+    let c_gs       = s_gs.and_then(|s| s.f64().ok());
+    let c_ta       = s_ta.and_then(|s| s.f64().ok());
+    let c_cs       = s_cs.and_then(|s| s.str().ok());
+    let c_stopped  = s_stopped.and_then(|s| s.i64().ok()); // Int64 → to_string
+    let c_gtv      = s_gtv.and_then(|s| s.i64().ok());     // Int64 → to_string
+    let c_ghp      = s_ghp.and_then(|s| s.i64().ok());     // Int64 → to_string
+    let c_mn       = s_mn.and_then(|s| s.i64().ok());      // Int64 → to_string
+    let c_sgs      = s_sgs.and_then(|s| s.f64().ok());     // Float64 → cast to f32
+    let c_sgt      = s_sgt.and_then(|s| s.f64().ok());     // Float64 → cast to f32
 
     let rows: Vec<AdsbRaw> = (0..n)
         .map(|i| AdsbRaw {
             site: site.get(i).unwrap_or_default(),
-            emitter_category: c_emitter.and_then(|c| c.get(i)),
-            gbs: c_gbs.and_then(|c| c.get(i)),
-            mode_a: c_mode_a.and_then(|c| c.get(i)).map(String::from),
+            emitter_category: c_emitter.and_then(|c| c.get(i)).map(|v| v as u8),
+            gbs: c_gbs.and_then(|c| c.get(i)).map(|v| v as u8),
+            mode_a: c_mode_a.and_then(|c| c.get(i)).map(|v| v.to_string()),
             time_rec_position: c_time_rec.and_then(|c| {
-                // DatetimeChunked = Logical<DatetimeType, Int64Type>; .phys is Int64Chunked
                 c.phys.get(i).and_then(|ts| {
                     use polars::prelude::TimeUnit;
                     let us = match c.time_unit() {
                         TimeUnit::Milliseconds => ts * 1_000,
                         TimeUnit::Microseconds => ts,
-                        TimeUnit::Nanoseconds => ts / 1_000,
+                        TimeUnit::Nanoseconds  => ts / 1_000,
                     };
                     DateTime::from_timestamp_micros(us)
                 })
@@ -266,21 +267,22 @@ async fn insert_batch(ctx: &Context, table: &str, df: &polars::prelude::DataFram
             longitude: c_lon.and_then(|c| c.get(i)),
             geometric_altitude: c_geo_alt.and_then(|c| c.get(i)),
             flight_level: c_fl.and_then(|c| c.get(i)),
-            barometric_vertical_rate: c_baro_vr.and_then(|c| c.get(i)).map(String::from),
+            barometric_vertical_rate: c_baro_vr.and_then(|c| c.get(i)).map(|v| v.to_string()),
             geo_vert_rate_exceeded: c_geo_vre.and_then(|c| c.get(i)).map(String::from),
             geometric_vertical_rate: c_geo_vr.and_then(|c| c.get(i)).map(String::from),
             ground_speed: c_gs.and_then(|c| c.get(i)),
             track_angle: c_ta.and_then(|c| c.get(i)),
             callsign: c_cs.and_then(|c| c.get(i)).map(String::from),
-            aircraft_stopped: c_stopped.and_then(|c| c.get(i)).map(String::from),
-            ground_track_valid: c_gtv.and_then(|c| c.get(i)).map(String::from),
-            ground_heading_provided: c_ghp.and_then(|c| c.get(i)).map(String::from),
-            magnetic_north: c_mn.and_then(|c| c.get(i)).map(String::from),
-            surface_ground_speed: c_sgs.and_then(|c| c.get(i)),
-            surface_ground_track: c_sgt.and_then(|c| c.get(i)),
+            aircraft_stopped: c_stopped.and_then(|c| c.get(i)).map(|v| v.to_string()),
+            ground_track_valid: c_gtv.and_then(|c| c.get(i)).map(|v| v.to_string()),
+            ground_heading_provided: c_ghp.and_then(|c| c.get(i)).map(|v| v.to_string()),
+            magnetic_north: c_mn.and_then(|c| c.get(i)).map(|v| v.to_string()),
+            surface_ground_speed: c_sgs.and_then(|c| c.get(i)).map(|v| v as f32),
+            surface_ground_track: c_sgt.and_then(|c| c.get(i)).map(|v| v as f32),
         })
         .collect();
 
+    dbg!(&rows[0]);
     db.insert_native_block(format!("INSERT INTO {table} FORMAT native"), rows)
         .await?;
 
