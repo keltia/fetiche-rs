@@ -1,9 +1,12 @@
 //! This is the Rust equivalent of [import-adsb.py] with batching capabilities
 //!
 
+use std::path::Path;
+
 use crate::cmds::{CmdError, DBVars};
 use crate::make_query;
 use crate::runtime::Context;
+
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use eyre::Result;
@@ -11,7 +14,7 @@ use klickhouse::{QueryBuilder, Row};
 use polars::prelude::{LazyCsvReader, LazyFileListReader, NamedFrom, Series};
 use regex::Regex;
 use serde::Deserialize;
-use std::path::Path;
+use tokio::task::spawn_blocking;
 use tracing::{debug, trace};
 
 /// `import adsb` options
@@ -163,7 +166,9 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
 
         debug!("batch={batch_num} rows={batch_size} offset={offset},");
 
-        insert_batch(ctx, &table, &batch).await?;
+        let table = table.clone();
+        let ctx = ctx.clone();
+        spawn_blocking(async move || insert_batch(&ctx, &table, &batch).await);
 
         offset += batch_size;
         batch_num += 1;
