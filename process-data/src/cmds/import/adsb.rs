@@ -11,7 +11,7 @@ use chrono::{DateTime, Utc};
 use clap::Parser;
 use eyre::Result;
 use klickhouse::{QueryBuilder, Row};
-use polars::prelude::{LazyCsvReader, LazyFileListReader, NamedFrom, Series};
+use polars::prelude::{CsvParseOptions, CsvReadOptions, NamedFrom, Series, SerReader};
 use regex::Regex;
 use serde::Deserialize;
 use tokio::task::spawn_blocking;
@@ -140,11 +140,18 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
     debug!("site_name={} site_id={}", site.name, site.id);
 
     // Read the full CSV into a DataFrame.
+    // CsvReadOptions is synchronous; run it on the blocking thread pool so it
+    // does not stall the tokio executor.
     //
-    let df = LazyCsvReader::new(fname.as_str().into())
-        .map_parse_options(|opts| opts.with_try_parse_dates(true))
-        .finish()?
-        .collect()?;
+    let path = std::path::PathBuf::from(&fname);
+    let df = spawn_blocking(move || -> eyre::Result<_> {
+        let df = CsvReadOptions::default()
+            .with_parse_options(CsvParseOptions::default().with_try_parse_dates(true))
+            .try_into_reader_with_file_path(Some(path))?
+            .finish()?;
+        Ok(df)
+    })
+    .await??;
 
     let total_rows = df.height();
     let threshold = opts.threshold;
@@ -164,11 +171,9 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
         let site_col = Series::new("site".into(), vec![site.id; batch_size]);
         batch.insert_column(0, site_col.into())?;
 
-        debug!("batch={batch_num} rows={batch_size} offset={offset},");
+        debug!("batch={batch_num} rows={batch_size} offset={offset}");
 
-        let table = table.clone();
-        let ctx = ctx.clone();
-        spawn_blocking(async move || insert_batch(&ctx, &table, &batch).await);
+        insert_batch(ctx, &table, &batch).await?;
 
         offset += batch_size;
         batch_num += 1;
