@@ -1,15 +1,15 @@
 //! This is the Rust equivalent of [import-adsb.py] with batching capabilities
 //!
 
-use crate::cmds::DBVars;
+use crate::cmds::{CmdError, DBVars};
 use crate::make_query;
 use crate::runtime::Context;
 use std::path::Path;
 
 use clap::Parser;
-use eyre::{eyre, Result};
+use eyre::Result;
 use klickhouse::{QueryBuilder, Row};
-use polars::prelude::{CsvReadOptions, NamedFrom, SerReader, Series};
+use polars::prelude::{CsvParseOptions, CsvReadOptions, NamedFrom, SerReader, Series};
 use regex::Regex;
 use serde::Deserialize;
 use tracing::{debug, trace};
@@ -52,6 +52,17 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
         .unwrap();
     debug!("sname={}", sname);
 
+    // Check input file
+    //
+    let ext = if let Some(ext) = Path::new(fname.as_str()).extension().unwrap().to_str() {
+        ext
+    } else {
+        return Err(CmdError::NeedCsvFile("No file extension".into()).into());
+    };
+    if ext != "csv" {
+        return Err(CmdError::NeedCsvFile(ext.into()).into());
+    }
+
     // Filename should be formatted like this
     // `<basename>_YYYY-MM-DD`
     //
@@ -66,7 +77,7 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
             caps[4].parse::<u32>()?,
         )
     } else {
-        return Err(eyre!("Bad filename {fname}"));
+        return Err(CmdError::BadFilenamePattern(sname.into()).into());
     };
     trace!("handling basename={basename} from={year}-{month}-{day}");
 
@@ -77,6 +88,7 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
 
     let mut df = CsvReadOptions::default()
         .with_chunk_size(opts.threshold)
+        .with_parse_options(CsvParseOptions::default().with_try_parse_dates(true))
         .try_into_reader_with_file_path(Some(fname.into()))?
         .finish()?;
 

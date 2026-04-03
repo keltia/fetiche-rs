@@ -29,4 +29,8 @@ pub enum CmdError {
     UnknownFormat(String),
     #[error("Timestamp out of range {0}")]
     BadTimestamp(String),
+    #[error("Bad filename pattern {0}")]
+    BadFilenamePattern(String),
+    #[error("Need a file in CSV format {0}")]
+    NeedCsvFile(String),
 }
