@@ -1,31 +1,26 @@
 //! This is the Rust equivalent of [import-adsb.py] with batching capabilities
 //!
-
-use std::collections::HashMap;
-
 use crate::cmds::DBVars;
 use crate::make_query;
 use crate::runtime::Context;
 
 use clap::Parser;
-use eyre::Result;
-use klickhouse::{QueryBuilder, RawRow, Row};
-use polars::frame::column::ScalarColumn;
+use eyre::{eyre, Result};
+use klickhouse::{QueryBuilder, Row};
 use polars::prelude::{CsvReadOptions, NamedFrom, SerReader, Series};
+use regex::Regex;
 use serde::Deserialize;
-use tracing::debug;
+use tracing::{debug, trace};
 
 /// `import adsb` options
 ///
 #[derive(Debug, Parser)]
 pub struct AdsbOpts {
-    #[clap(short = 's', long)]
-    pub site: String,
     /// Table name
     #[clap(short = 'T', long)]
     pub table: String,
     /// Batch import by this number of lines
-    #[clap(short = 't', long, default_value = "500_000")]
+    #[clap(short = 't', long, default_value = "500000")]
     pub threshold: usize,
     /// Filename
     pub fname: String,
@@ -49,10 +44,22 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
     // Filename should be formatted like this
     // `<basename>_YYYY-MM-DD.csv`
     //
+    let re = Regex::new(r##"^(?<basename>)_(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$"##)?;
+    let (basename, year, month, day) = if let Some(caps) = re.captures(&fname) {
+        (
+            caps["basename"].to_string(),
+            caps["year"].parse::<u32>()?,
+            caps["month"].parse::<u32>()?,
+            caps["day"].parse::<u32>()?,
+        )
+    } else {
+        return Err(eyre!("Bad filename {fname}"));
+    };
+    trace!("handling {basename} from={year}-{month}-{day}");
+
     // Retrieve site ID
     //
-    let name = opts.site.clone();
-    let site = fetch_site_id(ctx, &name).await?;
+    let site = fetch_site_id(ctx, &basename).await?;
     debug!("site_name={} site_id={}", site.name, site.id);
 
     let mut df = CsvReadOptions::default()
