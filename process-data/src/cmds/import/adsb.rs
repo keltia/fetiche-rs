@@ -54,14 +54,14 @@ pub async fn import_adsb(ctx: &Context, opts: &AdsbOpts) -> Result<()> {
     // `<basename>_YYYY-MM-DD`
     //
     let re = Regex::new(
-        r##"^(?<basename>[[:alnum:]])_(?<year>[[:digit:]]{4})-(?<month>[[:digit:]]{2})-(?<day>[[:digit:]]{2})$"##,
+        r##"^(?<basename>[[:alnum:]]+)_(?<year>[[:digit:]]{4})-(?<month>[[:digit:]]{2})-(?<day>[[:digit:]]{2})$"##,
     )?;
     let (basename, year, month, day) = if let Some(caps) = re.captures(sname) {
         (
-            &caps[1].to_string(),
-            &caps[2].parse::<u32>()?,
-            &caps[3].parse::<u32>()?,
-            &caps[4].parse::<u32>()?,
+            caps[1].to_string(),
+            caps[2].parse::<u32>()?,
+            caps[3].parse::<u32>()?,
+            caps[4].parse::<u32>()?,
         )
     } else {
         return Err(eyre!("Bad filename {fname}"));
