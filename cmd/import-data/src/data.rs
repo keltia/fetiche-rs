@@ -1,5 +1,6 @@
-use crate::{CmdError, Context, DBVars, Opts};
-use klickhouse::Row;
+use crate::{make_query, CmdError, Context, DBVars, Opts};
+
+use klickhouse::{QueryBuilder, Row};
 use polars::frame::DataFrame;
 use polars::prelude::{CsvReadOptions, NamedFrom, SerReader, Series};
 use regex::Regex;
@@ -7,14 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tokio::task::spawn_blocking;
 use tracing::{debug, trace};
-
-#[derive(Debug, Deserialize, Row)]
-struct Site {
-    /// Site ID
-    id: i32,
-    /// Site name
-    name: String,
-}
 
 /// One row of the `airplanes_raw` ClickHouse table.
 ///
@@ -72,6 +65,7 @@ pub struct AdsbRaw {
 
 /// Import a single large CSV file into a given table in Clickhouse.
 ///
+#[tracing::instrument(skip(ctx))]
 pub async fn import_adsb(ctx: &Context, opts: &Opts) -> eyre::Result<Vec<AdsbRaw>> {
     let dbh = ctx.dbh.clone();
     let dbvars = DBVars::from_ctx(ctx);
@@ -116,10 +110,7 @@ pub async fn import_adsb(ctx: &Context, opts: &Opts) -> eyre::Result<Vec<AdsbRaw
 
     // Retrieve site ID
     //
-    let site = Site {
-        id: 20,
-        name: "KEF".into(),
-    };
+    let site = fetch_site_id(ctx, &basename).await?;
 
     debug!("site_name={} site_id={}", site.name, site.id);
 
@@ -170,6 +161,7 @@ pub async fn import_adsb(ctx: &Context, opts: &Opts) -> eyre::Result<Vec<AdsbRaw
 
 /// Convert one DataFrame batch into `AdsbRaw` rows and bulk-insert into ClickHouse.
 ///
+#[tracing::instrument(skip(df))]
 async fn insert_batch(table: &str, df: &DataFrame) -> eyre::Result<Vec<AdsbRaw>> {
     let n = df.height();
 
@@ -258,4 +250,36 @@ async fn insert_batch(table: &str, df: &DataFrame) -> eyre::Result<Vec<AdsbRaw>>
     dbg!(&rows);
     trace!("inserted {n} rows into {table}");
     Ok(rows)
+}
+
+/// Query result.
+///
+#[derive(Debug, Deserialize, Row)]
+struct Site {
+    /// Site ID
+    id: i32,
+    /// Site name
+    name: String,
+}
+
+/// Fetch the site ID from the databases with the specified basename
+///
+#[tracing::instrument(skip(ctx))]
+async fn fetch_site_id(ctx: &Context, name: &str) -> eyre::Result<Site> {
+    let db = ctx.db().await;
+    let dbvars = DBVars::from_ctx(&ctx);
+
+    let r = make_query!(
+        r##"
+SELECT id, name
+FROM {workdb}.sites
+WHERE basename = $1
+    "##,
+        dbvars
+    );
+    let q = QueryBuilder::new(&r).arg(name);
+    let site = db.query_one::<Site>(q).await?;
+    debug!("basename={name} id={} name={}", site.id, site.name);
+
+    Ok(site)
 }

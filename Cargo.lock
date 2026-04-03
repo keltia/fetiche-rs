@@ -3816,6 +3816,7 @@ dependencies = [
  "strum 0.28.0",
  "tabled",
  "thiserror 2.0.18",
+ "tinytemplate",
  "tokio",
  "tracing",
 ]
