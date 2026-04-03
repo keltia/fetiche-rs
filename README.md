@@ -87,7 +87,7 @@ The former is used to fetch data into their native format (csv, json). It uses `
 to accessing, authenticating and fetching data in various ways.
 
 All the commands are described in more detail in the [acutectl README.md](acutectl/README.md),
-[opensky-history README.md](opensky-history/README.md) and [process-data](process-data/README.md) files.
+[opensky-history README.md](cmd/opensky-history/README.md) and [process-data](process-data/README.md) files.
 
 ## `fetiched` (managed in the `fetiched` crate)
 
@@ -98,7 +98,7 @@ specific terminal with the `serve` command.
 In the near future, `fetiched` is evolving into an Actor-based subsystem (using [ractor]) to manage
 orchestration between the internal modules. We do have an engine actor, a configuration actor, etc.
 
-More details in the specific [Fetiched README.md](fetiched/README.md) and [Engine README](engine/README.md).
+More details in the specific [Fetiched README.md](cmd/fetiched/README.md) and [Engine README](engine/README.md).
 
 > NOTE: This is still WIP and most of it is already in `fetiche-engine`.  [ractor] is used right now.
 

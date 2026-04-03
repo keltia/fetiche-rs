@@ -1,6 +1,6 @@
 [workspace]
-members = ["common", "client", "engine", "fetiched", "formats", "acutectl", "process-data", "convert-from-json", "find-airport", "db-utils", "opensky-history"]
-default-members = ["acutectl", "process-data", "convert-from-json", "find-airport", "db-utils"]
+members = ["common", "client", "engine", "cmd/fetiched", "formats", "acutectl", "process-data", "cmd/convert-from-json", "cmd/find-airport", "db-utils", "cmd/opensky-history"]
+default-members = ["acutectl", "process-data", "cmd/convert-from-json", "cmd/find-airport", "cmd/opensky-history", "db-utils"]
 
 resolver = "2"
 
