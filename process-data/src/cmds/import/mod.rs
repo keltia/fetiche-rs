@@ -6,8 +6,6 @@ use clap::Parser;
 
 #[derive(Debug, Parser)]
 pub struct ImportOpts {
-    /// DB to import into
-    pub name: String,
     /// Sub-command
     #[clap(subcommand)]
     pub subcmd: ImportSubcommand,
