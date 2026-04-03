@@ -2,16 +2,20 @@
 //!
 
 use std::env;
+use std::fs::File;
 use std::path::Path;
 
 use chrono::{DateTime, Utc};
 use clap::Parser;
+use csv::Writer;
 use eyre::Result;
 use klickhouse::{QueryBuilder, Row};
 use polars::prelude::{CsvParseOptions, CsvReadOptions, DataFrame, NamedFrom, SerReader, Series};
 use regex::Regex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use tokio::task::spawn_blocking;
+
 use tracing::{debug, trace};
 
 /// `import adsb` options
@@ -35,8 +39,6 @@ struct Site {
     /// Site name
     name: String,
 }
-
-use thiserror::Error;
 
 #[allow(dead_code)]
 #[derive(Debug, Error)]
@@ -79,7 +81,8 @@ pub enum CmdError {
 /// All CSV-sourced columns are `Option<T>` to handle sparse data;
 /// `site` is always set by us before insertion.
 ///
-#[derive(Debug, Row)]
+#[derive(Debug, Deserialize, Row, Serialize)]
+#[serde(rename_all = "PascalCase")]
 struct AdsbRaw {
     site: i32,
     #[klickhouse(rename = "EmitterCategory")]
@@ -128,7 +131,7 @@ struct AdsbRaw {
 
 /// Import a single large CSV file into a given table in Clickhouse.
 ///
-pub async fn import_adsb(opts: &AdsbOpts) -> Result<()> {
+pub async fn import_adsb(opts: &AdsbOpts) -> Result<Vec<AdsbRaw>> {
     let table = opts.table.clone();
     let fname = opts.fname.clone();
 
@@ -196,6 +199,7 @@ pub async fn import_adsb(opts: &AdsbOpts) -> Result<()> {
     let mut batch_num = 0usize;
     let mut offset = 0usize;
 
+    let mut result = Vec::with_capacity(total_rows);
     // Proceed by batch
     //
     while offset < total_rows {
@@ -209,19 +213,20 @@ pub async fn import_adsb(opts: &AdsbOpts) -> Result<()> {
 
         debug!("batch={batch_num} rows={batch_size} offset={offset}");
 
-        insert_batch(&table, &batch).await?;
+        let mut rows = insert_batch(&table, &batch).await?;
+        result.append(&mut rows);
 
         offset += batch_size;
         batch_num += 1;
     }
 
     debug!("import batches={batch_num} rows={total_rows}");
-    Ok(())
+    Ok(result)
 }
 
 /// Convert one DataFrame batch into `AdsbRaw` rows and bulk-insert into ClickHouse.
 ///
-async fn insert_batch(table: &str, df: &DataFrame) -> Result<()> {
+async fn insert_batch(table: &str, df: &DataFrame) -> Result<Vec<AdsbRaw>> {
     let n = df.height();
 
     // Required column — added by us, always present
@@ -307,11 +312,8 @@ async fn insert_batch(table: &str, df: &DataFrame) -> Result<()> {
         .collect();
 
     dbg!(&rows);
-    //db.insert_native_block(format!("INSERT INTO {table} FORMAT native"), rows)
-    //    .await?;
-
-    trace!("inserted {} rows into {table}", n);
-    Ok(())
+    trace!("inserted {n} rows into {table}");
+    Ok(rows)
 }
 
 #[tokio::main]
@@ -323,7 +325,17 @@ async fn main() -> Result<()> {
         threshold: 2,
         fname: name.clone(),
     };
-    import_adsb(&args).await?;
+    let rows = import_adsb(&args).await?;
+
+    //db.insert_native_block(format!("INSERT INTO {table} FORMAT native"), rows)
+    //    .await?;
+
+    let fhout = File::create("output.csv")?;
+    let mut wtr = csv::Writer::from_writer(fhout);
+    for row in rows.into_iter() {
+        wtr.serialize(row)?;
+    }
+    wtr.flush()?;
 
     Ok(())
 }
