@@ -1370,7 +1370,7 @@ checksum = "801927ee168e17809ab8901d9f01f700cd7d8d6a6527997fee44e4b0327a253c"
 dependencies = [
  "ahash 0.8.12",
  "async-trait",
- "cached_proc_macro",
+ "cached_proc_macro 0.25.0",
  "cached_proc_macro_types",
  "futures",
  "hashbrown 0.15.5",
@@ -1381,10 +1381,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "cached"
+version = "0.59.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53b6f5d101f0f6322c8646a45b7c581a673e476329040d97565815c2461dd0c4"
+dependencies = [
+ "ahash 0.8.12",
+ "async-trait",
+ "cached_proc_macro 0.27.0",
+ "cached_proc_macro_types",
+ "futures",
+ "hashbrown 0.16.1",
+ "once_cell",
+ "parking_lot",
+ "thiserror 2.0.18",
+ "tokio",
+ "web-time",
+]
+
+[[package]]
 name = "cached_proc_macro"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9225bdcf4e4a9a4c08bf16607908eb2fbf746828d5e0b5e019726dbf6571f201"
+dependencies = [
+ "darling 0.20.11",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "cached_proc_macro"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ebcf9c75f17a17d55d11afc98e46167d4790a263f428891b8705ab2f793eca3"
 dependencies = [
  "darling 0.20.11",
  "proc-macro2",
@@ -3797,7 +3828,7 @@ checksum = "e8a5a9a0ff0086c7a148acb942baaabeadf9504d10400b5a05645853729b9cd2"
 name = "import-data"
 version = "0.2.0"
 dependencies = [
- "cached",
+ "cached 0.59.0",
  "chrono",
  "clap 4.6.0",
  "csv",
@@ -3809,7 +3840,6 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "klickhouse",
- "log",
  "polars",
  "regex",
  "rstest",
@@ -6006,7 +6036,7 @@ dependencies = [
 name = "process-data"
 version = "0.7.99"
 dependencies = [
- "cached",
+ "cached 0.56.0",
  "chrono",
  "clap 4.6.0",
  "clap_complete",
