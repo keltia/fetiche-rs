@@ -1,16 +1,16 @@
-use klickhouse::{bb8::Pool, Client, ClientOptions, ConnectionManager};
+use klickhouse::{Client, ClientOptions, ConnectionManager, bb8::Pool};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use std::thread::available_parallelism;
 use tracing::{debug, error, info, trace};
 
+use crate::NAME;
 use crate::cli::Opts;
 use crate::config::ProcessConfig;
 use crate::error::Status;
-use crate::NAME;
 
-use fetiche_common::{close_logging, init_logging, ConfigFile, Versioned};
+use fetiche_common::{ConfigFile, Versioned, close_logging, init_logging};
 
 /// Config filename
 pub const CONFIG: &str = "process-data.hcl";
@@ -55,7 +55,7 @@ pub struct Context {
     /// Current DB pool size.
     pub pool_size: usize,
     /// Threshold for batching.
-    pub threshold: usize,
+    pub batch_size: usize,
     /// Dry run
     pub dry_run: bool,
 }
@@ -264,7 +264,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ..Default::default()
         },
     )
-        .await?;
+    .await?;
 
     let pool_size = available_parallelism()?.get();
     trace!("Pool size: {}", pool_size);
@@ -286,10 +286,10 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ("dronedb".into(), profile.drone_db.clone()),
             ("workdb".into(), profile.work_db.clone()),
         ])
-            .into(),
+        .into(),
         dbh: pool.clone(),
         pool_size,
-        threshold,
+        batch_size: threshold,
         dry_run: opts.dry_run,
     };
     debug!("{:?}", &ctx.config);
