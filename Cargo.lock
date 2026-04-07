@@ -3797,6 +3797,7 @@ checksum = "e8a5a9a0ff0086c7a148acb942baaabeadf9504d10400b5a05645853729b9cd2"
 name = "import-data"
 version = "0.2.0"
 dependencies = [
+ "cached",
  "chrono",
  "clap 4.6.0",
  "csv",
@@ -3808,6 +3809,7 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "klickhouse",
+ "log",
  "polars",
  "regex",
  "rstest",
