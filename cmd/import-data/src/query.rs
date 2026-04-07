@@ -224,7 +224,7 @@ impl DBVars {
 #[macro_export]
 macro_rules! make_query {
     ($q:literal, $val:expr) => {
-        crate::cmds::load_query($q, &$val)?
+        crate::load_query($q, &$val)?
     };
 }
 

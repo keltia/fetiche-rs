@@ -1,9 +1,8 @@
+use klickhouse::{bb8::Pool, Client, ClientOptions, ConnectionManager};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
-
-use klickhouse::bb8::Pool;
-use klickhouse::{bb8, Client, ClientOptions, ConnectionManager};
+use std::thread::available_parallelism;
 use tracing::{debug, error, info, trace};
 
 use crate::cli::Opts;
@@ -55,6 +54,8 @@ pub struct Context {
     pub dbh: Pool<ConnectionManager>,
     /// Current DB pool size.
     pub pool_size: usize,
+    /// Threshold for batching.
+    pub threshold: usize,
     /// Dry run
     pub dry_run: bool,
 }
@@ -263,36 +264,32 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ..Default::default()
         },
     )
-    .await?;
+        .await?;
 
-    let pool_size = cfg.db.pool_size;
+    let pool_size = available_parallelism()?.get();
+    trace!("Pool size: {}", pool_size);
     let pool = Pool::builder()
         .retry_connection(true)
         .max_size(pool_size as u32)
         .build(manager)
         .await?;
 
-    // Extract the threshold parameter, which define the minimal safety
-    // distance.
+    // Extract the threshold parameter, which define the size of batches
     //
-    let threshold = cfg.distances.threshold;
-    let factor = cfg.distances.factor;
-    let plane = cfg.distances.plane;
+    let threshold = opts.batch_size;
 
     let ctx = Context {
         config: HashMap::from([
-            ("url".to_string(), endpoint.clone()),
             ("datalake".to_string(), datalake.clone()),
-            ("username".to_string(), user.clone()),
-            ("threshold".to_string(), threshold.to_string()),
             ("profile".into(), profile_name.clone()),
             ("planedb".into(), profile.plane_db.clone()),
             ("dronedb".into(), profile.drone_db.clone()),
             ("workdb".into(), profile.work_db.clone()),
         ])
-        .into(),
+            .into(),
         dbh: pool.clone(),
         pool_size,
+        threshold,
         dry_run: opts.dry_run,
     };
     debug!("{:?}", &ctx.config);

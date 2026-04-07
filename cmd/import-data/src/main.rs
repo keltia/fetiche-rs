@@ -1,48 +1,92 @@
 //! This is the Rust equivalent of [import-adsb.py] with batching capabilities
 //!
 
-use std::fs::File;
+use std::fs;
 
+mod adsb;
 mod cli;
 mod config;
-mod data;
 mod error;
 mod query;
 mod runtime;
 
+pub use adsb::*;
 pub use cli::*;
 pub use error::*;
 pub use query::*;
 pub use runtime::*;
 
-use crate::data::import_adsb;
 use clap::Parser;
 use eyre::Result;
-use klickhouse::Row;
-use polars::prelude::{NamedFrom, SerReader};
-use serde::{Deserialize, Serialize};
+use tracing::{debug, trace};
 
 pub const NAME: &str = "import-data";
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
-
     let ctx = init_runtime(&opts).await?;
 
-    let name = opts.fname.clone();
+    let files = get_list(&opts)?;
 
-    let rows = import_adsb(&ctx, &opts).await?;
-
-    //db.insert_native_block(format!("INSERT INTO {table} FORMAT native"), rows)
-    //    .await?;
-
-    let fhout = File::create("output.csv")?;
-    let mut wtr = csv::Writer::from_writer(fhout);
-    for row in rows.into_iter() {
-        wtr.serialize(row)?;
+    // We have a list of at least one file
+    //
+    for file in files {
+        let n = match process_one(&ctx, &file, &opts.table).await {
+            Ok(n) => n,
+            Err(e) => {
+                debug!("ignored={}, error={}", file, e.to_string());
+                continue;
+            }
+        };
+        trace!("loaded rows={} fname={}", n, file);
     }
-    wtr.flush()?;
 
     Ok(())
 }
+
+// -----
+
+#[tracing::instrument]
+pub fn get_list(opts: &Opts) -> Result<Vec<String>> {
+    // Do we have a directory?
+    //
+    let name = opts.fname.clone();
+    let st = fs::metadata(&name)?;
+    let files = if st.is_dir() {
+        let files = fs::read_dir(&name)?;
+
+        let list = files.fold(vec![], |mut acc, f| {
+            let file = match f {
+                Ok(f) => f.file_name().to_string_lossy().to_string(),
+                Err(e) => {
+                    debug!("ignored file due to error: {}", e);
+                    return acc;
+                }
+            };
+            acc.push(file);
+            acc
+        });
+        list
+    } else {
+        vec![name.clone()]
+    };
+    Ok(files)
+}
+
+#[tracing::instrument(skip(ctx))]
+pub async fn process_one(ctx: &Context, fname: &str, table: &str) -> Result<usize> {
+    // First analyse the filename, existence, etc.
+    //
+    if !fs::exists(fname)? {
+        return Err(CmdError::UnknownFile(fname.into()).into());
+    }
+
+    // Read File
+    //
+    let rows = import_one_adsb(&ctx, fname, table).await?;
+    trace!("loaded rows={} fname={}", rows, fname);
+
+    Ok(rows)
+}
+

@@ -31,8 +31,10 @@ pub enum CmdError {
     BadTimestamp(String),
     #[error("Bad filename pattern {0}")]
     BadFilenamePattern(String),
-    #[error("Need a file in CSV format {0}")]
-    NeedCsvFile(String),
+    #[error("Need a file in CSV/Parquet format {0}")]
+    NeedsCsvOrParquet(String),
+    #[error("Can't open {0}")]
+    UnknownFile(String),
 }
 
 #[allow(dead_code)]

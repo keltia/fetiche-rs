@@ -1,12 +1,16 @@
-use crate::{make_query, CmdError, Context, DBVars, Opts};
+use std::fmt::{Display, Formatter};
+use std::fs::File;
 
+use crate::{make_query, CmdError, Context, DBVars};
+
+use cached::proc_macro::cached;
+use eyre::Result;
 use klickhouse::{QueryBuilder, Row};
 use polars::frame::DataFrame;
-use polars::prelude::{CsvReadOptions, NamedFrom, SerReader, Series};
+use polars::prelude::{CsvReadOptions, NamedFrom, ParquetReader, SerReader, Series};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-use tokio::task::spawn_blocking;
+use std::path::{Path, PathBuf};
 use tracing::{debug, trace};
 
 /// One row of the `airplanes_raw` ClickHouse table.
@@ -18,11 +22,12 @@ use tracing::{debug, trace};
 #[derive(Debug, Deserialize, Row, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AdsbRaw {
-    site: i32,
+    #[klickhouse(rename = "Site")]
+    site: Option<i32>,
     #[klickhouse(rename = "EmitterCategory")]
-    emitter_category: Option<u8>,
+    emitter_category: Option<i32>,
     #[klickhouse(rename = "GBS")]
-    gbs: Option<u8>,
+    gbs: Option<i32>,
     #[klickhouse(rename = "ModeA")]
     mode_a: Option<String>,
     #[klickhouse(rename = "TimeRecPosition")]
@@ -58,38 +63,97 @@ pub struct AdsbRaw {
     #[klickhouse(rename = "MagneticNorth")]
     magnetic_north: Option<String>,
     #[klickhouse(rename = "SurfaceGroundSpeed")]
-    surface_ground_speed: Option<f32>,
+    surface_ground_speed: Option<f64>,
     #[klickhouse(rename = "SurfaceGroundTrack")]
-    surface_ground_track: Option<f32>,
+    surface_ground_track: Option<f64>,
 }
 
 /// Import a single large CSV file into a given table in Clickhouse.
 ///
 #[tracing::instrument(skip(ctx))]
-pub async fn import_adsb(ctx: &Context, opts: &Opts) -> eyre::Result<Vec<AdsbRaw>> {
-    let dbh = ctx.dbh.clone();
-    let dbvars = DBVars::from_ctx(ctx);
+pub async fn import_one_adsb(ctx: &Context, fname: &str, table: &str) -> Result<usize> {
+    // Check extension, both csv & parquet are valid
+    //
+    let basename = check_basename(fname)?;
+    let ext = check_extension(fname)?;
 
-    let table = opts.table.clone();
-    let fname = opts.fname.clone();
+    // Retrieve site ID
+    //
+    let site = fetch_site_id(ctx, &basename).await?;
 
-    let sname = Path::new(fname.as_str())
+    debug!("site_name={} site_id={}", site.name, site.id);
+
+    // Read the file into a DataFrame.
+    //
+    let df = match ext.as_str() {
+        "csv" => read_one_csv(fname)?,
+        "parquet" => read_one_parquet(fname).await?,
+        _ => unreachable!(),
+    };
+
+    let total_rows = df.height();
+    debug!("fname={fname} rows={total_rows} threshold={}", ctx.threshold);
+
+    let mut batch_num = 0usize;
+    let mut offset = 0usize;
+
+    //    let mut result = Vec::with_capacity(total_rows);
+    // Proceed by batch
+    //
+    while offset < total_rows {
+        let batch_size = ctx.threshold.min(total_rows - offset);
+        let mut batch = df.slice(offset as i64, batch_size);
+
+        // Prepend the site_id column so it is the first column
+        //
+        let site_col = Series::new("Site".into(), vec![Some(site.id); batch_size]);
+        batch.insert_column(0, site_col.into())?;
+
+        debug!("batch={batch_num} rows={batch_size} offset={offset}");
+
+        let rows = insert_batch(ctx, &table, &batch).await?;
+        assert_eq!(rows, batch_size);
+
+        offset += batch_size;
+        batch_num += 1;
+    }
+
+    debug!("import batches={batch_num} rows={total_rows}");
+    Ok(total_rows)
+}
+
+/// Read the full CSV into a DataFrame.
+///
+#[tracing::instrument]
+pub fn read_one_csv(fname: &str) -> Result<DataFrame> {
+    let path = PathBuf::from(&fname);
+    let df = CsvReadOptions::default()
+        .try_into_reader_with_file_path(Some(path))?
+        .finish()?;
+    Ok(df)
+}
+
+/// Read the full Parquet into a DataFrame.
+///
+#[tracing::instrument]
+pub async fn read_one_parquet(fname: &str) -> Result<DataFrame> {
+    let fh = File::open(fname)?;
+    let df = ParquetReader::new(fh).finish()?;
+    Ok(df)
+}
+
+/// Check basename for a specific, site-based pattern
+///
+#[tracing::instrument]
+fn check_basename(fname: &str) -> Result<String> {
+    // Check basename
+    //
+    let sname = Path::new(fname)
         .file_stem()
         .unwrap()
         .to_str()
         .unwrap();
     debug!("sname={}", sname);
-
-    // Check input file
-    //
-    let ext = if let Some(ext) = Path::new(fname.as_str()).extension().unwrap().to_str() {
-        ext
-    } else {
-        return Err(CmdError::NeedCsvFile("No file extension".into()).into());
-    };
-    if ext != "csv" {
-        return Err(CmdError::NeedCsvFile(ext.into()).into());
-    }
 
     // Filename should be formatted like this: `<basename>_YYYY-MM-DD`
     //
@@ -107,71 +171,35 @@ pub async fn import_adsb(ctx: &Context, opts: &Opts) -> eyre::Result<Vec<AdsbRaw
         return Err(CmdError::BadFilenamePattern(sname.into()).into());
     };
     trace!("handling basename={basename} from={year}-{month}-{day}");
+    Ok(basename)
+}
 
-    // Retrieve site ID
-    //
-    let site = fetch_site_id(ctx, &basename).await?;
-
-    debug!("site_name={} site_id={}", site.name, site.id);
-
-    // Read the full CSV into a DataFrame.
-    // CsvReadOptions is synchronous; run it on the blocking thread pool so it
-    // does not stall the tokio executor.
-    //
-    let path = std::path::PathBuf::from(&fname);
-    let df = spawn_blocking(move || -> eyre::Result<_> {
-        let df = CsvReadOptions::default()
-            .try_into_reader_with_file_path(Some(path))?
-            .finish()?;
-        Ok(df)
-    })
-    .await??;
-
-    let total_rows = df.height();
-    let threshold = opts.threshold;
-    debug!("loaded {total_rows} rows from {fname}");
-
-    let mut batch_num = 0usize;
-    let mut offset = 0usize;
-
-    let mut result = Vec::with_capacity(total_rows);
-    // Proceed by batch
-    //
-    while offset < total_rows {
-        let batch_size = threshold.min(total_rows - offset);
-        let mut batch = df.slice(offset as i64, batch_size);
-
-        // Prepend the site_id column so it is the first column
-        //
-        let site_col = Series::new("site".into(), vec![site.id; batch_size]);
-        batch.insert_column(0, site_col.into())?;
-
-        debug!("batch={batch_num} rows={batch_size} offset={offset}");
-
-        let mut rows = insert_batch(&table, &batch).await?;
-        result.append(&mut rows);
-
-        offset += batch_size;
-        batch_num += 1;
+/// Check extension, we accept CSV and Parquet
+///
+#[tracing::instrument]
+fn check_extension(fname: &str) -> Result<String> {
+    let ext = if let Some(ext) = Path::new(fname).extension().unwrap().to_str() {
+        ext
+    } else {
+        return Err(CmdError::BadFilenamePattern("No file extension".into()).into());
+    };
+    if ext != "csv" && ext != "parquet" {
+        return Err(CmdError::NeedsCsvOrParquet(ext.into()).into());
     }
-
-    debug!("import batches={batch_num} rows={total_rows}");
-    Ok(result)
+    Ok(ext.to_string())
 }
 
 /// Convert one DataFrame batch into `AdsbRaw` rows and bulk-insert into ClickHouse.
 ///
 #[tracing::instrument(skip(df))]
-async fn insert_batch(table: &str, df: &DataFrame) -> eyre::Result<Vec<AdsbRaw>> {
+async fn insert_batch(ctx: &Context, table: &str, df: &DataFrame) -> Result<usize> {
+    let db = ctx.db().await;
+
     let n = df.height();
 
     // Required column — added by us, always present
     //
-    let site = df.column("site")?.i32()?;
-
-    // Optional columns — use `.ok()` so a missing column in the CSV just
-    // produces `None` values rather than an error
-    //
+    let s_site = df.column("Site").ok();
     let s_emitter = df.column("EmitterCategory").ok();
     let s_gbs = df.column("GBS").ok();
     let s_mode_a = df.column("ModeA").ok();
@@ -198,8 +226,9 @@ async fn insert_batch(table: &str, df: &DataFrame) -> eyre::Result<Vec<AdsbRaw>>
     // Types match what polars infers from the CSV (all bare integers → Int64,
     // all decimals → Float64; Boolean/u8 are NOT inferred from 0/1 integers).
     //
-    let c_emitter = s_emitter.and_then(|s| s.i64().ok()); // Int64 → cast to u8
-    let c_gbs = s_gbs.and_then(|s| s.i64().ok()); // Int64 → cast to u8
+    let c_site = s_site.and_then(|s| s.i32().ok());
+    let c_emitter = s_emitter.and_then(|s| s.i32().ok());
+    let c_gbs = s_gbs.and_then(|s| s.i32().ok());
     let c_mode_a = s_mode_a.and_then(|s| s.i64().ok()); // Int64 → to_string
     let c_time_rec = s_time_rec.and_then(|s| s.str().ok()); // Datetime('μs')
     let c_addr = s_addr.and_then(|s| s.str().ok());
@@ -222,9 +251,9 @@ async fn insert_batch(table: &str, df: &DataFrame) -> eyre::Result<Vec<AdsbRaw>>
 
     let rows: Vec<AdsbRaw> = (0..n)
         .map(|i| AdsbRaw {
-            site: site.get(i).unwrap_or_default(),
-            emitter_category: c_emitter.and_then(|c| c.get(i)).map(|v| v as u8),
-            gbs: c_gbs.and_then(|c| c.get(i)).map(|v| v as u8),
+            site: c_site.and_then(|c| c.get(i)).map(|v| v as i32),
+            emitter_category: c_emitter.and_then(|c| c.get(i)).map(|v| v as i32),
+            gbs: c_gbs.and_then(|c| c.get(i)).map(|v| v as i32),
             mode_a: c_mode_a.and_then(|c| c.get(i)).map(|v| v.to_string()),
             time_rec_position: c_time_rec.and_then(|c| c.get(i)).map(String::from),
             aircraft_address: c_addr.and_then(|c| c.get(i)).map(String::from),
@@ -242,19 +271,28 @@ async fn insert_batch(table: &str, df: &DataFrame) -> eyre::Result<Vec<AdsbRaw>>
             ground_track_valid: c_gtv.and_then(|c| c.get(i)).map(|v| v.to_string()),
             ground_heading_provided: c_ghp.and_then(|c| c.get(i)).map(|v| v.to_string()),
             magnetic_north: c_mn.and_then(|c| c.get(i)).map(|v| v.to_string()),
-            surface_ground_speed: c_sgs.and_then(|c| c.get(i)).map(|v| v as f32),
-            surface_ground_track: c_sgt.and_then(|c| c.get(i)).map(|v| v as f32),
+            surface_ground_speed: c_sgs.and_then(|c| c.get(i)),
+            surface_ground_track: c_sgt.and_then(|c| c.get(i)),
         })
         .collect();
 
-    dbg!(&rows);
-    trace!("inserted {n} rows into {table}");
-    Ok(rows)
+    debug!("{:?}", &rows);
+
+    if !ctx.dry_run {
+        let _ = db.insert_native_block(format!("INSERT INTO {table} FORMAT native"), rows)
+            .await?;
+        trace!("inserted: rows={n}table={table}");
+    } else {
+        eprintln!("I almost imported the data.");
+        trace!("dry-run: rows={n} table={table}");
+    }
+
+    Ok(n)
 }
 
 /// Query result.
 ///
-#[derive(Debug, Deserialize, Row)]
+#[derive(Clone, Debug, Deserialize, Row)]
 struct Site {
     /// Site ID
     id: i32,
@@ -262,10 +300,18 @@ struct Site {
     name: String,
 }
 
+impl Display for Site {
+    /// Implement `Display`.  Just return the name for now.
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
 /// Fetch the site ID from the databases with the specified basename
 ///
 #[tracing::instrument(skip(ctx))]
-async fn fetch_site_id(ctx: &Context, name: &str) -> eyre::Result<Site> {
+#[cached(key = "String", result = true, convert = r#"{format!("{}", name)}"#)]
+async fn fetch_site_id(ctx: &Context, name: &str) -> Result<Site> {
     let db = ctx.db().await;
     let dbvars = DBVars::from_ctx(&ctx);
 

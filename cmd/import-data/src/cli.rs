@@ -7,12 +7,16 @@ pub struct Opts {
     /// Datalake path.
     #[clap(short = 'd', long)]
     pub datalake: Option<String>,
+    // -----
+    /// Specify the site to import into, if not deductable from the filename.
+    #[clap(short = 's', long)]
+    pub site: Option<u32>,
     /// Table name to import into.
-    #[clap(short = 'T', long)]
+    #[clap(short = 't', long)]
     pub table: String,
     /// Batch import by this number of lines.
-    #[clap(short = 't', long, default_value = "100000")]
-    pub threshold: usize,
+    #[clap(short = 'b', long, default_value = "100000")]
+    pub batch_size: usize,
     /// DB Profile to use.
     #[clap(short = 'P', long)]
     pub profile: Option<String>,
