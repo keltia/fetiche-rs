@@ -1,16 +1,16 @@
-use klickhouse::{Client, ClientOptions, ConnectionManager, bb8::Pool};
+use klickhouse::{bb8::Pool, Client, ClientOptions, ConnectionManager};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use std::thread::available_parallelism;
 use tracing::{debug, error, info, trace};
 
-use crate::NAME;
 use crate::cli::Opts;
 use crate::config::ProcessConfig;
 use crate::error::Status;
+use crate::NAME;
 
-use fetiche_common::{ConfigFile, Versioned, close_logging, init_logging};
+use fetiche_common::{close_logging, init_logging, ConfigFile, Versioned};
 
 /// Config filename
 pub const CONFIG: &str = "process-data.hcl";
@@ -26,8 +26,7 @@ pub const CONFIG: &str = "process-data.hcl";
 ///
 /// * `config` - A reference-counted `HashMap` containing configuration parameters.
 /// * `dbh` - A connection pool to the ClickHouse database.
-/// * `pool_size` - Maximum number of connections allowed in the database pool.
-/// * `wait` - Delay between parallel tasks in milliseconds.
+7/// * `wait` - Delay between parallel tasks in milliseconds.
 /// * `dry_run` - A boolean flag indicating whether the application is running
 ///               in dry-run mode (no side effects).
 ///
@@ -51,9 +50,7 @@ pub struct Context {
     /// All configuration parameters
     pub config: Arc<HashMap<String, String>>,
     /// Database Client.
-    pub dbh: Pool<ConnectionManager>,
-    /// Current DB pool size.
-    pub pool_size: usize,
+    pub dbh: Arc<Client>,
     /// Threshold for batching.
     pub batch_size: usize,
     /// Dry run
@@ -88,12 +85,8 @@ impl Context {
     #[tracing::instrument(skip(self))]
     pub async fn db(&self) -> Client {
         let client = self
-            .dbh
-            .get()
-            .await
-            .map_err(|e| Status::ConnectionUnavailable(e.to_string()))
-            .unwrap();
-        client.clone()
+            .dbh.into();
+        client
     }
 
     /// Finalize the runtime environment and ensure cleanup.
@@ -255,7 +248,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
     info!("Connecting to {} @ {}", profile.work_db, endpoint);
     trace!("Creating connection pool");
 
-    let manager = ConnectionManager::new(
+    let client = Client::connect(
         endpoint.clone(),
         ClientOptions {
             username: user.clone(),
@@ -265,14 +258,6 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
         },
     )
     .await?;
-
-    let pool_size = available_parallelism()?.get();
-    trace!("Pool size: {}", pool_size);
-    let pool = Pool::builder()
-        .retry_connection(true)
-        .max_size(pool_size as u32)
-        .build(manager)
-        .await?;
 
     // Extract the threshold parameter, which define the size of batches
     //
@@ -287,8 +272,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ("workdb".into(), profile.work_db.clone()),
         ])
         .into(),
-        dbh: pool.clone(),
-        pool_size,
+        dbh: Arc::new(client),
         batch_size: threshold,
         dry_run: opts.dry_run,
     };
