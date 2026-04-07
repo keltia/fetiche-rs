@@ -1,9 +1,6 @@
-use klickhouse::{bb8::Pool, Client, ClientOptions, ConnectionManager};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
-use std::thread::available_parallelism;
-use tracing::{debug, error, info, trace};
 
 use crate::cli::Opts;
 use crate::config::ProcessConfig;
@@ -11,6 +8,9 @@ use crate::error::Status;
 use crate::NAME;
 
 use fetiche_common::{close_logging, init_logging, ConfigFile, Versioned};
+
+use klickhouse::{bb8::Pool, Client, ClientOptions, ConnectionManager};
+use tracing::{debug, error, info, trace};
 
 /// Config filename
 pub const CONFIG: &str = "process-data.hcl";
@@ -26,7 +26,7 @@ pub const CONFIG: &str = "process-data.hcl";
 ///
 /// * `config` - A reference-counted `HashMap` containing configuration parameters.
 /// * `dbh` - A connection pool to the ClickHouse database.
-7/// * `wait` - Delay between parallel tasks in milliseconds.
+/// * `wait` - Delay between parallel tasks in milliseconds.
 /// * `dry_run` - A boolean flag indicating whether the application is running
 ///               in dry-run mode (no side effects).
 ///
@@ -83,9 +83,8 @@ impl Context {
     /// ```
     ///
     #[tracing::instrument(skip(self))]
-    pub async fn db(&self) -> Client {
-        let client = self
-            .dbh.into();
+    pub async fn db(&self) -> Arc<Client> {
+        let client = self.dbh.clone();
         client
     }
 
