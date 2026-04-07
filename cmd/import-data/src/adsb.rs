@@ -16,56 +16,56 @@ use tracing::{debug, trace};
 /// One row of the `airplanes_raw` ClickHouse table.
 ///
 /// Field names and types must match the table schema exactly.
-/// All CSV-sourced columns are `Option<T>` to handle sparse data;
+/// All fields use default values (0, "", etc.) for missing data.
 /// `site` is always set by us before insertion.
 ///
 #[derive(Debug, Deserialize, Row, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AdsbRaw {
     #[klickhouse(rename = "Site")]
-    site: Option<i32>,
+    site: i32,
     #[klickhouse(rename = "EmitterCategory")]
-    emitter_category: Option<i32>,
+    emitter_category: i32,
     #[klickhouse(rename = "GBS")]
-    gbs: Option<i32>,
+    gbs: i32,
     #[klickhouse(rename = "ModeA")]
-    mode_a: Option<String>,
+    mode_a: String,
     #[klickhouse(rename = "TimeRecPosition")]
-    time_rec_position: Option<String>,
+    time_rec_position: String,
     #[klickhouse(rename = "AircraftAddress")]
-    aircraft_address: Option<String>,
+    aircraft_address: String,
     #[klickhouse(rename = "Latitude")]
-    latitude: Option<f64>,
+    latitude: f64,
     #[klickhouse(rename = "Longitude")]
-    longitude: Option<f64>,
+    longitude: f64,
     #[klickhouse(rename = "GeometricAltitude")]
-    geometric_altitude: Option<f64>,
+    geometric_altitude: f64,
     #[klickhouse(rename = "FlightLevel")]
-    flight_level: Option<f64>,
+    flight_level: f64,
     #[klickhouse(rename = "BarometricVerticalRate")]
-    barometric_vertical_rate: Option<String>,
+    barometric_vertical_rate: String,
     #[klickhouse(rename = "GeoVertRateExceeded")]
-    geo_vert_rate_exceeded: Option<String>,
+    geo_vert_rate_exceeded: String,
     #[klickhouse(rename = "GeometricVerticalRate")]
-    geometric_vertical_rate: Option<String>,
+    geometric_vertical_rate: String,
     #[klickhouse(rename = "GroundSpeed")]
-    ground_speed: Option<f64>,
+    ground_speed: f64,
     #[klickhouse(rename = "TrackAngle")]
-    track_angle: Option<f64>,
+    track_angle: f64,
     #[klickhouse(rename = "Callsign")]
-    callsign: Option<String>,
+    callsign: String,
     #[klickhouse(rename = "AircraftStopped")]
-    aircraft_stopped: Option<String>,
+    aircraft_stopped: String,
     #[klickhouse(rename = "GroundTrackValid")]
-    ground_track_valid: Option<String>,
+    ground_track_valid: String,
     #[klickhouse(rename = "GroundHeadingProvided")]
-    ground_heading_provided: Option<String>,
+    ground_heading_provided: String,
     #[klickhouse(rename = "MagneticNorth")]
-    magnetic_north: Option<String>,
+    magnetic_north: String,
     #[klickhouse(rename = "SurfaceGroundSpeed")]
-    surface_ground_speed: Option<f64>,
+    surface_ground_speed: f64,
     #[klickhouse(rename = "SurfaceGroundTrack")]
-    surface_ground_track: Option<f64>,
+    surface_ground_track: f64,
 }
 
 /// Import a single large CSV file into a given table in Clickhouse.
@@ -251,28 +251,28 @@ async fn insert_batch(ctx: &Context, table: &str, df: &DataFrame) -> Result<usiz
 
     let rows: Vec<AdsbRaw> = (0..n)
         .map(|i| AdsbRaw {
-            site: c_site.and_then(|c| c.get(i)).map(|v| v as i32),
-            emitter_category: c_emitter.and_then(|c| c.get(i)).map(|v| v as i32),
-            gbs: c_gbs.and_then(|c| c.get(i)).map(|v| v as i32),
-            mode_a: c_mode_a.and_then(|c| c.get(i)).map(|v| v.to_string()),
-            time_rec_position: c_time_rec.and_then(|c| c.get(i)).map(String::from),
-            aircraft_address: c_addr.and_then(|c| c.get(i)).map(String::from),
-            latitude: c_lat.and_then(|c| c.get(i)),
-            longitude: c_lon.and_then(|c| c.get(i)),
-            geometric_altitude: c_geo_alt.and_then(|c| c.get(i)),
-            flight_level: c_fl.and_then(|c| c.get(i)),
-            barometric_vertical_rate: c_baro_vr.and_then(|c| c.get(i)).map(|v| v.to_string()),
-            geo_vert_rate_exceeded: c_geo_vre.and_then(|c| c.get(i)).map(String::from),
-            geometric_vertical_rate: c_geo_vr.and_then(|c| c.get(i)).map(String::from),
-            ground_speed: c_gs.and_then(|c| c.get(i)),
-            track_angle: c_ta.and_then(|c| c.get(i)),
-            callsign: c_cs.and_then(|c| c.get(i)).map(String::from),
-            aircraft_stopped: c_stopped.and_then(|c| c.get(i)).map(|v| v.to_string()),
-            ground_track_valid: c_gtv.and_then(|c| c.get(i)).map(|v| v.to_string()),
-            ground_heading_provided: c_ghp.and_then(|c| c.get(i)).map(|v| v.to_string()),
-            magnetic_north: c_mn.and_then(|c| c.get(i)).map(|v| v.to_string()),
-            surface_ground_speed: c_sgs.and_then(|c| c.get(i)),
-            surface_ground_track: c_sgt.and_then(|c| c.get(i)),
+            site: c_site.and_then(|c| c.get(i)).map(|v| v as i32).unwrap_or(0),
+            emitter_category: c_emitter.and_then(|c| c.get(i)).map(|v| v as i32).unwrap_or(0),
+            gbs: c_gbs.and_then(|c| c.get(i)).map(|v| v as i32).unwrap_or(0),
+            mode_a: c_mode_a.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
+            time_rec_position: c_time_rec.and_then(|c| c.get(i)).map(String::from).unwrap_or_default(),
+            aircraft_address: c_addr.and_then(|c| c.get(i)).map(String::from).unwrap_or_default(),
+            latitude: c_lat.and_then(|c| c.get(i)).unwrap_or(0.0),
+            longitude: c_lon.and_then(|c| c.get(i)).unwrap_or(0.0),
+            geometric_altitude: c_geo_alt.and_then(|c| c.get(i)).unwrap_or(0.0),
+            flight_level: c_fl.and_then(|c| c.get(i)).unwrap_or(0.0),
+            barometric_vertical_rate: c_baro_vr.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
+            geo_vert_rate_exceeded: c_geo_vre.and_then(|c| c.get(i)).map(String::from).unwrap_or_default(),
+            geometric_vertical_rate: c_geo_vr.and_then(|c| c.get(i)).map(String::from).unwrap_or_default(),
+            ground_speed: c_gs.and_then(|c| c.get(i)).unwrap_or(0.0),
+            track_angle: c_ta.and_then(|c| c.get(i)).unwrap_or(0.0),
+            callsign: c_cs.and_then(|c| c.get(i)).map(String::from).unwrap_or_default(),
+            aircraft_stopped: c_stopped.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
+            ground_track_valid: c_gtv.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
+            ground_heading_provided: c_ghp.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
+            magnetic_north: c_mn.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
+            surface_ground_speed: c_sgs.and_then(|c| c.get(i)).unwrap_or(0.0),
+            surface_ground_track: c_sgt.and_then(|c| c.get(i)).unwrap_or(0.0),
         })
         .collect();
 
