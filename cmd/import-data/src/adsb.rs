@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 
-use crate::{make_query, CmdError, Context, DBVars};
+use crate::{CmdError, Context, DBVars, make_query};
 
 use cached::proc_macro::cached;
 use eyre::Result;
@@ -92,7 +92,10 @@ pub async fn import_one_adsb(ctx: &Context, fname: &str, table: &str) -> Result<
     };
 
     let total_rows = df.height();
-    debug!("fname={fname} rows={total_rows} threshold={}", ctx.threshold);
+    debug!(
+        "fname={fname} rows={total_rows} threshold={}",
+        ctx.batch_size
+    );
 
     let mut batch_num = 0usize;
     let mut offset = 0usize;
@@ -101,7 +104,7 @@ pub async fn import_one_adsb(ctx: &Context, fname: &str, table: &str) -> Result<
     // Proceed by batch
     //
     while offset < total_rows {
-        let batch_size = ctx.threshold.min(total_rows - offset);
+        let batch_size = ctx.batch_size.min(total_rows - offset);
         let mut batch = df.slice(offset as i64, batch_size);
 
         // Prepend the site_id column so it is the first column
@@ -148,11 +151,7 @@ pub async fn read_one_parquet(fname: &str) -> Result<DataFrame> {
 fn check_basename(fname: &str) -> Result<String> {
     // Check basename
     //
-    let sname = Path::new(fname)
-        .file_stem()
-        .unwrap()
-        .to_str()
-        .unwrap();
+    let sname = Path::new(fname).file_stem().unwrap().to_str().unwrap();
     debug!("sname={}", sname);
 
     // Filename should be formatted like this: `<basename>_YYYY-MM-DD`
@@ -252,25 +251,61 @@ async fn insert_batch(ctx: &Context, table: &str, df: &DataFrame) -> Result<usiz
     let rows: Vec<AdsbRaw> = (0..n)
         .map(|i| AdsbRaw {
             site: c_site.and_then(|c| c.get(i)).map(|v| v as i32).unwrap_or(0),
-            emitter_category: c_emitter.and_then(|c| c.get(i)).map(|v| v as i32).unwrap_or(0),
+            emitter_category: c_emitter
+                .and_then(|c| c.get(i))
+                .map(|v| v as i32)
+                .unwrap_or(0),
             gbs: c_gbs.and_then(|c| c.get(i)).map(|v| v as i32).unwrap_or(0),
-            mode_a: c_mode_a.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
-            time_rec_position: c_time_rec.and_then(|c| c.get(i)).map(String::from).unwrap_or_default(),
-            aircraft_address: c_addr.and_then(|c| c.get(i)).map(String::from).unwrap_or_default(),
+            mode_a: c_mode_a
+                .and_then(|c| c.get(i))
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            time_rec_position: c_time_rec
+                .and_then(|c| c.get(i))
+                .map(String::from)
+                .unwrap_or_default(),
+            aircraft_address: c_addr
+                .and_then(|c| c.get(i))
+                .map(String::from)
+                .unwrap_or_default(),
             latitude: c_lat.and_then(|c| c.get(i)).unwrap_or(0.0),
             longitude: c_lon.and_then(|c| c.get(i)).unwrap_or(0.0),
             geometric_altitude: c_geo_alt.and_then(|c| c.get(i)).unwrap_or(0.0),
             flight_level: c_fl.and_then(|c| c.get(i)).unwrap_or(0.0),
-            barometric_vertical_rate: c_baro_vr.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
-            geo_vert_rate_exceeded: c_geo_vre.and_then(|c| c.get(i)).map(String::from).unwrap_or_default(),
-            geometric_vertical_rate: c_geo_vr.and_then(|c| c.get(i)).map(String::from).unwrap_or_default(),
+            barometric_vertical_rate: c_baro_vr
+                .and_then(|c| c.get(i))
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            geo_vert_rate_exceeded: c_geo_vre
+                .and_then(|c| c.get(i))
+                .map(String::from)
+                .unwrap_or_default(),
+            geometric_vertical_rate: c_geo_vr
+                .and_then(|c| c.get(i))
+                .map(String::from)
+                .unwrap_or_default(),
             ground_speed: c_gs.and_then(|c| c.get(i)).unwrap_or(0.0),
             track_angle: c_ta.and_then(|c| c.get(i)).unwrap_or(0.0),
-            callsign: c_cs.and_then(|c| c.get(i)).map(String::from).unwrap_or_default(),
-            aircraft_stopped: c_stopped.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
-            ground_track_valid: c_gtv.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
-            ground_heading_provided: c_ghp.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
-            magnetic_north: c_mn.and_then(|c| c.get(i)).map(|v| v.to_string()).unwrap_or_default(),
+            callsign: c_cs
+                .and_then(|c| c.get(i))
+                .map(String::from)
+                .unwrap_or_default(),
+            aircraft_stopped: c_stopped
+                .and_then(|c| c.get(i))
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            ground_track_valid: c_gtv
+                .and_then(|c| c.get(i))
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            ground_heading_provided: c_ghp
+                .and_then(|c| c.get(i))
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            magnetic_north: c_mn
+                .and_then(|c| c.get(i))
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
             surface_ground_speed: c_sgs.and_then(|c| c.get(i)).unwrap_or(0.0),
             surface_ground_track: c_sgt.and_then(|c| c.get(i)).unwrap_or(0.0),
         })
@@ -279,7 +314,8 @@ async fn insert_batch(ctx: &Context, table: &str, df: &DataFrame) -> Result<usiz
     debug!("{:?}", &rows);
 
     if !ctx.dry_run {
-        let _ = db.insert_native_block(format!("INSERT INTO {table} FORMAT native"), rows)
+        let _ = db
+            .insert_native_block(format!("INSERT INTO {table} FORMAT native"), rows)
             .await?;
         trace!("inserted: rows={n}table={table}");
     } else {
