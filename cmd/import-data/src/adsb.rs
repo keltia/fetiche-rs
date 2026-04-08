@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 
-use crate::{CmdError, Context, DBVars, make_query};
+use crate::{make_query, CmdError, Context, DBVars};
 
 use cached::proc_macro::cached;
 use eyre::Result;
@@ -30,6 +30,7 @@ pub struct AdsbRaw {
     gbs: i32,
     #[klickhouse(rename = "ModeA")]
     mode_a: String,
+    #[serde(with = "parse_str_date")]
     #[klickhouse(rename = "TimeRecPosition")]
     time_rec_position: String,
     #[klickhouse(rename = "AircraftAddress")]
@@ -364,4 +365,32 @@ WHERE basename = $1
     debug!("basename={name} id={} name={}", site.id, site.name);
 
     Ok(site)
+}
+
+/// Custom serde module for properly parse UTC dates from the CSV
+///
+/// Ref: <https://serde.rs/custom-date-format.html>
+///
+mod parse_str_date {
+    use chrono::{DateTime, NaiveDateTime, Utc};
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    const FORMAT: &str = "%Y-%m-%d %H:%M:%S%.f";
+
+    pub fn serialize<S>(date: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = format!("{}", date.format(FORMAT));
+        serializer.serialize_str(&s)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let dt = NaiveDateTime::parse_from_str(&s, FORMAT).map_err(serde::de::Error::custom)?;
+        Ok(DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc))
+    }
 }
