@@ -113,13 +113,13 @@ def move_one_adsb(fn, action):
         if not Path(ourdir).exists():
             os.makedirs(ourdir)
         final = Path(ourdir) / fname
+        logging.info(f"Moving {fn} into {final}")
+        if action:
+            print(f"Moving {fn} into {final}")
+            Path(fn).rename(final)
     else:
+        logging.info(f"Ignore {fn}, bad filename format")
         print(f"Ignoring {fn}")
-
-    logging.info(f"Moving {fn} into {final}")
-    if action:
-        print(f"Moving {fn} into {final}")
-        Path(fn).rename(final)
 
 
 def move_one_drone(fn, action):
