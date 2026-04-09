@@ -29,6 +29,7 @@ from typing import Any
 #
 datalake = "/acute"
 db = 'acute'
+table = f"{db}.airplanes_raw"
 chunk = 500_000
 convert_cmd = 'bdt'
 delete = False
@@ -129,84 +130,13 @@ def process_one(dir_path, fname, action):
                 print(f"Running {cmd}")
             fname = new
 
-    # Split file into chunks
-    #
-    tmpdir = Path(fname).stem
+    # Now, we have a csv file, we need to add the new column based on the site id
+    # and import.
 
-    logging.info(f"Creating {tmpdir} and splitting {fname} into it")
-    cmd = f"qsvlite split -s {chunk} {tmpdir} {fname}"
-    ret = run(cmd, shell=True, capture_output=True)
-    if ret.returncode != 0:
-        logging.error("error", "(", fname, "): ", ret.stderr)
-        print("error: ", ret.stderr, file=sys.stderr)
-        return fname
+    logging.info(f"Adding column Site with {site} and importing from {fname}…")
+    ch_cmd = f"{clickhouse} -h {host} -u {user} --password {pwd} -q \"INSERT INTO {table} FORMAT CsvWithNames\""
+    cmd = f"qsvlite enum -c Site --constant {site} {fname} | {ch_cmd}"
 
-    # All files in tmpdir are CSV split from main
-    #
-    # Import data in chunk.
-    #
-    for root, dirs, files in os.walk(tmpdir, topdown=True):
-        logging.info(f"into {root} for split files")
-
-        # Now do stuff, look at parquet/csv only
-        #
-        for f in files:
-            if Path(f).suffix != '.csv':
-                logging.warning(f"{f} ignored.")
-                continue
-            logging.info(f"Processing {f} from {root}")
-            import_one_chunk(root, f)
-            time.sleep(2)
-
-    logging.info(f"insert from {tmpdir} done.")
-
-    # Cleanup
-    #
-    cmd = f"/bin/rm -rf {tmpdir}"
-    ret = run(cmd, shell=True, capture_output=True)
-    if ret.returncode != 0:
-        logging.error("error", "(", fname, "): ", ret.stderr)
-        print("error: ", ret.stderr, file=sys.stderr)
-        return fname
-    logging.info(f"Removing {tmpdir}.")
-
-    # Now we need to fix the `site` column.
-    #
-    q = f"ALTER TABLE acute.airplanes_raw UPDATE site = '{site}' WHERE site = 0"
-    cmd = f"{clickhouse} -h {host} -u {user} -d {db} --password {pwd} -q '{q}'"
-    logging.info(cmd)
-    if action:
-        ret = run(cmd, shell=True, capture_output=True)
-        if ret.returncode != 0:
-            logging.error("error", "(", fname, "): ", ret.stderr)
-            print("error: ", ret.stderr, file=sys.stderr)
-            return fname
-        else:
-            logging.info(f"update for site {site} done.")
-            # Now delete if requested
-            #
-            if delete:
-                logging.info("delete done.")
-                os.remove(fname)
-
-    else:
-        print(f"cmd={cmd}")
-
-    return fname
-
-
-def import_one_chunk(dir_path, fname):
-    """
-    Import one chunk of at most "chunk" lines into CH.
-
-    :param dir_path:
-    :param fname:
-    :return:
-    """
-    logging.info(f"Processing {fname}")
-
-    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {dbn} --password {pwd} -q \"INSERT INTO airplanes_raw FORMAT Csv\""
-    cmd = f"/bin/cat {os.path.join(dir_path, fname)} | {ch_cmd}"
     logging.info(f"cmd={cmd}")
     if action:
         ret = run(cmd, shell=True, capture_output=True)
@@ -216,7 +146,16 @@ def import_one_chunk(dir_path, fname):
             return fname
     else:
         print(f"Running {cmd}")
-    logging.info("insert done.")
+    logging.info(f"insert from {fname} into {table} done.")
+
+    # Cleanup
+    #
+    if delete:
+        if action:
+            os.remove(fname)
+        logging.info("delete done.")
+
+    return fname
 
 
 def find_site(fname):
@@ -260,6 +199,7 @@ parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what
 parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
 parser.add_argument('--interval', '-i', type=int, help='Interval between imports.')
 parser.add_argument('--no-delay', '-N', action='store_true', help='Do not add delay between imports.')
+parser.add_argument('--table', '-T', help="Name of the table to import into.")
 parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
 
@@ -287,6 +227,10 @@ else:
 
 if args.delete:
     delete = True
+
+if args.table is not None:
+    logging.info(f"Ipporting into {table}.")
+    table = args.table
 
 if args.chunk_size is not None:
     chunk = args.chunk_size
