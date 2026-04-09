@@ -32,10 +32,13 @@ db = 'acute'
 table = f"{db}.airplanes_raw"
 chunk = 500_000
 convert_cmd = 'bdt'
+csv_cmd = 'qsvlite'
 delete = False
+
 clickhouse = 'clickhouse-client'
 if sys.platform.startswith('darwin'):
     clickhouse = 'clickhouse client'
+    csv_cmd = 'qsv'
 
 
 # Import sites.csv
@@ -135,7 +138,7 @@ def process_one(dir_path, fname, action):
 
     logging.info(f"Adding column Site with {site} and importing from {fname}…")
     ch_cmd = f"{clickhouse} -h {host} -u {user} --password {pwd} -q \"INSERT INTO {table} FORMAT CsvWithNames\""
-    cmd = f"qsvlite enum -c Site --constant {site} {fname} | {ch_cmd}"
+    cmd = f"{csv_cmd} enum -c Site --constant {site} {fname} | {ch_cmd}"
 
     logging.info(f"cmd={cmd}")
     if action:
