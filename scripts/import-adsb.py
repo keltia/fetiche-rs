@@ -34,6 +34,7 @@ chunk = 500_000
 convert_cmd = 'bdt'
 csv_cmd = 'qsvlite'
 delete = False
+site_id = 0
 
 clickhouse = 'clickhouse-client'
 if sys.platform.startswith('darwin'):
@@ -172,6 +173,11 @@ def find_site(fname):
     fc = re.search(r'^(?P<site>.*?)([0-9]*)_(?P<year>\d+)-(?P<month>\d+)-(\d+).', name)
     if fc is None:
         return fc
+
+    # If we have defined a site id, use it.
+    #
+    if site_id > 0:
+        return site_id
     site: str | Any = fc.group('site')
     return sites[site]
 
@@ -202,6 +208,7 @@ parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what
 parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
 parser.add_argument('--interval', '-i', type=int, help='Interval between imports.')
 parser.add_argument('--no-delay', '-N', action='store_true', help='Do not add delay between imports.')
+parser.add_argument('--site', '-s', help='Override site id.')
 parser.add_argument('--table', '-T', help="Name of the table to import into.")
 parser.add_argument('files', nargs='*', help='List of files or directories.')
 args = parser.parse_args()
@@ -230,6 +237,10 @@ else:
 
 if args.delete:
     delete = True
+
+if args.site is not None:
+    site_id = int(args.site)
+    logging.info(f"Force site id {site_id}")
 
 if args.table is not None:
     logging.info(f"Ipporting into {table}.")
