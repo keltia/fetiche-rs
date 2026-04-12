@@ -31,7 +31,6 @@ import time
 datalake = "/acute"
 db = 'acute'
 table = f"{db}.airplanes_raw"
-chunk = 500_000
 convert_cmd = 'bdt'
 csv_cmd = 'qsvlite'
 delete = False
@@ -92,7 +91,7 @@ def process_one(dir_path, fname, action):
     #
     site = find_site(fname)
     if site is None or site == 0:
-        logging.error(f"{site} not found from {fname}, skipping.")
+        logging.error(f"site extracted from {fname} does not exist, skipping.")
         return ''
     logging.info(f"site={site}")
 
@@ -122,7 +121,9 @@ def process_one(dir_path, fname, action):
             fname = csv
         else:
             full = os.path.join(dir_path, fname)
-            new = tempfile.NamedTemporaryFile(suffix='.csv').name
+            with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as tmp:
+                new = tmp.name
+
             cmd = f"{convert_cmd} convert -s {full} {new}"
             logging.info(f"{cmd}")
             if action:
@@ -203,7 +204,6 @@ parser = argparse.ArgumentParser(
     prog='import-adsb',
     description='Import ADS-B data into CH.')
 
-parser.add_argument('--chunk-size', '-S', type=int, help='Import by batch of that many lines.')
 parser.add_argument('--datalake', '-D', help='Datalake is here.')
 parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
 parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
@@ -244,12 +244,8 @@ if args.site is not None:
     logging.info(f"Force site id {site_id}")
 
 if args.table is not None:
-    logging.info(f"Ipporting into {table}.")
     table = args.table
-
-if args.chunk_size is not None:
-    chunk = args.chunk_size
-    logging.info(f"Chunk size is {chunk} lines.")
+    logging.info(f"Importing into {table}.")
 
 # Default interval between imports is 5s
 #
@@ -258,7 +254,7 @@ if args.interval is None:
 else:
     interval = args.interval
 
-if args.no_delay is None:
+if not args.no_delay:
     logging.info(f"Delay is {interval}s")
 
 files = args.files
@@ -268,12 +264,12 @@ for file in files:
     if os.path.isdir(file):
         print(f"Exploring {file}")
         logging.info(f"Inside {file}")
-        for root, dirs, files in os.walk(file, topdown=True):
+        for root, dirs, file_list in os.walk(file, topdown=True):
             logging.info(f"into {root}")
 
             # Now do stuff, look at parquet/csv only
             #
-            for f in files:
+            for f in file_list:
                 if Path(f).suffix != '.parquet' and Path(f).suffix != '.csv':
                     logging.warning(f"{f} ignored.")
                     continue
@@ -289,11 +285,11 @@ for file in files:
                 if r is None:
                     logging.warning(f"{f} skipped.")
 
-                if args.no_delay is None:
+                if not args.no_delay:
                     time.sleep(interval)
     else:
         logging.info(f"file={file}")
-        root = Path(file).root
+        root = Path(file).parent
         r = process_one(root, file, action)
         if r is None:
             logging.warning(f"{file} skipped.")
