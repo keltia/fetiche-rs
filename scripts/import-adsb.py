@@ -17,13 +17,14 @@ import csv
 import logging
 import os
 import re
-import sys
 import tempfile
-import time
 from datetime import datetime
 from pathlib import Path
 from subprocess import run
 from typing import Any
+
+import sys
+import time
 
 # CONFIG CHANGE HERE or use -D
 #
@@ -90,8 +91,8 @@ def process_one(dir_path, fname, action):
     # Deduct site name
     #
     site = find_site(fname)
-    if site is None:
-        logging.error(f"{site} not found.")
+    if site is None or site == 0:
+        logging.error(f"{site} not found from {fname}, skipping.")
         return ''
     logging.info(f"site={site}")
 
