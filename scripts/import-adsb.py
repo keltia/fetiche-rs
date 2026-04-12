@@ -72,7 +72,6 @@ def load_sites(path):
 #
 host = os.getenv('CLICKHOUSE_HOST')
 user = os.getenv('CLICKHOUSE_USER')
-pwd = os.getenv('CLICKHOUSE_PASSWD')
 dbn = os.getenv('CLICKHOUSE_DB') or db
 
 
@@ -140,7 +139,7 @@ def process_one(dir_path, fname, action):
     # and import.
 
     logging.info(f"Adding column Site with {site} and importing from {fname}…")
-    ch_cmd = f"{clickhouse} -h {host} -u {user} --password {pwd} -q \"INSERT INTO {table} FORMAT CsvWithNames\""
+    ch_cmd = f"{clickhouse} -h {host} -u {user} --password $CLICKHOUSE_PASSWD -q \"INSERT INTO {table} FORMAT CsvWithNames\""
     cmd = f"{csv_cmd} enum -c Site --constant {site} {fname} | {ch_cmd}"
 
     logging.info(f"cmd={cmd}")
