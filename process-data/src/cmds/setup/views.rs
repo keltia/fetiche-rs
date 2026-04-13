@@ -193,7 +193,9 @@ pub async fn add_airplanes_view(ctx: &Context) -> eyre::Result<()> {
 CREATE VIEW IF NOT EXISTS {planedb}.airplanes
 AS
 (
-    SELECT EmitterCategory,
+    SELECT
+       site,
+       EmitterCategory,
        (GBS == 1)                     AS GBS,
        ModeA,
        TimeRecPosition                AS time,
@@ -213,9 +215,9 @@ AS
        (GroundHeadingProvided == '1') AS GroundHeadingProvided,
        (MagneticNorth == '1')         AS MagneticNorth,
        SurfaceGroundSpeed,
-       SurfaceGroundTrack,
-       site
+       SurfaceGroundTrack
     FROM {planedb}.airplanes_raw AS f
+    WHERE prox_lat != 0 AND prox_lon != '0'
 )
     COMMENT 'View for airplanes data.'
 "##, dbvars);
