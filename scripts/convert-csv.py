@@ -19,10 +19,13 @@ options:
 import argparse
 import logging
 import os
+import subprocess
 
 from datetime import datetime
 from pathlib import Path
 
+cmd_bdt = "bdt"
+cmd_gunzip = "gunzip"
 datalake = os.getenv('ACUTE_DATALAKE') or '/acute'
 
 
@@ -44,7 +47,7 @@ def convert_one(fn, action, delete):
         print(f"{fname}{ext} -> {fname}")
         logging.info(f"{fname}{ext} -> {fname}")
         if action:
-            os.system(f"gunzip {fn}")
+            subprocess.run([cmd_gunzip, fn], check=True)
         ext = Path(fname).suffix
 
     # Now we should have a csv, whether it has just been uncompressed or is a plain csv file should not matter
@@ -57,61 +60,58 @@ def convert_one(fn, action, delete):
         print(f"{fname}{ext} -> {outp}")
         logging.info(f"{fname}{ext} -> {outp}")
         if action:
-            os.system(f"bdt convert  -s -z {fname}{ext} {outp}")
+            subprocess.run([cmd_bdt, "convert", "-s", "-z", f"{fname}{ext}", outp], check=True)
             if delete:
                 os.remove(f"{fname}{ext}")
     else:
-        print(fn, "ignored")
+        print(fn, f"{fname} ignored")
 
 
-# Setup arguments
-#
-parser = argparse.ArgumentParser(
-    prog='convert-csv',
-    description='Uncompress and convert every csv file into parquet.')
-
-parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
-parser.add_argument('--delete', '-d', action='store_true', help="Remove csv after conversion.")
-parser.add_argument('files', nargs='*', help='List of files or directories.')
-args = parser.parse_args()
-
-if args.datalake is not None:
-    datalake = args.datalake
-
-importdir = f"{datalake}/import"
-datadir = f"{datalake}/data/adsb"
-bindir = f"{datalake}/bin"
-logdir = f"{datalake}/var/log"
-
-date = datetime.now().strftime('%Y%m%d')
-logfile = f"{logdir}/convert-csv-{date}.log"
-logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
-                    format='%(asctime)s - %(levelname)s: %(message)s')
-logging.info("Starting")
-
-if args.dry_run:
-    action = False
-else:
-    action = True
-
-if args.delete:
-    delete = True
-else:
-    delete = False
-
-files = args.files
-for file in files:
-    # We have a directory
+if __name__ == "__main__":
+    # Setup arguments
     #
-    if os.path.isdir(file):
-        print(f"Exploring {file}")
-        logging.info(f"Exploring {file}")
-        with os.scandir(file) as base:
-            for fn in base:
-                if fn.name.endswith(".csv") or fn.name.endswith(".csv.gz"):
-                    convert_one(fn.name, action, delete)
-    else:
-        print(f"Just {file}")
-        logging.info(f"Just {file}")
-        convert_one(file, action, delete)
+    parser = argparse.ArgumentParser(
+        prog='convert-csv',
+        description='Uncompress and convert every csv file into parquet.')
+
+    parser.add_argument('--datalake', '-D', help='Datalake is here.')
+    parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
+    parser.add_argument('--delete', '-d', action='store_true', help="Remove csv after conversion.")
+    parser.add_argument('files', nargs='*', help='List of files or directories.')
+    args = parser.parse_args()
+
+    if args.datalake is not None:
+        datalake = args.datalake
+
+    importdir = f"{datalake}/import"
+    datadir = f"{datalake}/data/adsb"
+    bindir = f"{datalake}/bin"
+    logdir = f"{datalake}/var/log"
+
+    date = datetime.now().strftime('%Y%m%d')
+    logfile = f"{logdir}/convert-csv-{date}.log"
+    Path(logdir).mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                        format='%(asctime)s - %(levelname)s: %(message)s')
+    logging.info("Starting")
+
+    # All default to False
+    #
+    action = not args.dry_run
+    delete = args.delete
+
+    files = args.files
+    for file in files:
+        # We have a directory
+        #
+        if os.path.isdir(file):
+            print(f"Exploring {file}")
+            logging.info(f"Exploring {file}")
+            with os.scandir(file) as base:
+                for fn in base:
+                    if fn.name.endswith(".csv") or fn.name.endswith(".csv.gz"):
+                        convert_one(fn.path, action, delete)
+        else:
+            print(f"Just {file}")
+            logging.info(f"Just {file}")
+            convert_one(file, action, delete)
