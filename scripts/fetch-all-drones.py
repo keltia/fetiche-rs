@@ -72,20 +72,20 @@ def fetch_one_month(year_id: int, month_id: int):
         os.makedirs(basedir, 0o755, exist_ok=True)
 
     print(f"Processing in {basedir}")
-    os.chdir(basedir)
     monthdays = years[year_id]
     days = monthdays[month_id - 1]
-    for day in range(1, days):
-        fetch_one_day(year_id, month_id, day)
+    for day in range(1, days + 1):
+        fetch_one_day(year_id, month_id, day, basedir)
 
 
-def fetch_one_day(year_id: int, month_id: int, day_id: int):
+def fetch_one_day(year_id: int, month_id: int, day_id: int, basedir: str):
     """
     Fetch one day of drone data for the given year and month.
 
     :param year_id:
     :param month_id:
     :param day_id:
+    :param basedir: directory where output file should be written
     :return:
     """
     today = datetime.now()
@@ -97,7 +97,7 @@ def fetch_one_day(year_id: int, month_id: int, day_id: int):
     print(f"Processing {current}")
     cmd = ["acutectl", "fetch", "-o", f"drones-{current}.parquet", "lux-me", "day", f"{current} 00:00:00 UTC"]
     print(f"Running {cmd}")
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, cwd=basedir, check=True)
 
 
 if __name__ == "__main__":
