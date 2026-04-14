@@ -34,6 +34,10 @@ it, no need for deploying a server and complex infrastructure. This was ideal fo
 Main inconvenient is that as an embedded DB, you can not share it and any process which opened the DB owns it for the
 session. No concurrent access whatsoever.
 
+The DuckDB prototype validated the Parquet‑based data‑lake approach and query model. However, as an embedded,
+single‑process engine, DuckDB could not support shared, concurrent access, nor long‑running services consuming the same
+dataset, which became a hard requirement.
+
 ## Databend
 
 My first choice as an online database (with a server or a set of replicated servers), as opposed as an embedded one was
