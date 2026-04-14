@@ -20,7 +20,7 @@ pub use check::*;
 pub use distances::*;
 pub use error::*;
 pub use export::*;
-pub use import::*;
+//pub use import::*;
 pub use query::*;
 //pub use record::*;
 pub use setup::*;
@@ -35,7 +35,7 @@ mod check;
 mod distances;
 mod error;
 mod export;
-mod import;
+//mod import;
 mod query;
 //mod record;
 mod setup;
@@ -64,11 +64,13 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
                 eprintln!("Stats:\n{:?}", stats);
             }
         },
+        /*
         SubCommand::Import(iopts) => match &iopts.subcmd {
             ImportSubcommand::Adsb(aopts) => {
                 import_adsb(ctx, aopts).await?;
             }
         },
+         */
         SubCommand::Export(eopts) => match &eopts.subcmd {
             ExportSubCommand::Distances(opts) => {
                 eprintln!("Exporting calculated distances.\n");
