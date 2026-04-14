@@ -153,54 +153,52 @@ def move_one_drone(fn, action):
 
 # Setup arguments
 #
-parser = argparse.ArgumentParser(
-    prog='dispatch-drops',
-    description='Move each file in the right Hive directory for the given day.')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog='dispatch-drops',
+        description='Move each file in the right Hive directory for the given day.')
 
-parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--drones', action='store_true', help='This is drone data.')
-parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
-parser.add_argument('files', nargs='*', help='List of files or directories.')
-args = parser.parse_args()
+    parser.add_argument('--datalake', '-D', help='Datalake is here.')
+    parser.add_argument('--drones', action='store_true', help='This is drone data.')
+    parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
+    parser.add_argument('files', nargs='*', help='List of files or directories.')
+    args = parser.parse_args()
 
-if args.datalake:
-    datalake = args.datalake
+    if args.datalake is not None:
+        datalake = args.datalake
 
-if args.drones:
-    ftype = "drones"
-else:
-    ftype = "adsb"
-
-if args.dry_run:
-    action = False
-else:
-    action = True
-
-importdir = f"{datalake}/import"
-datadir = f"{datalake}/data"
-bindir = f"{datalake}/bin"
-filesdir = f"{datalake}/files"
-logdir = f"{datalake}/var/log"
-
-date = datetime.now().strftime('%Y%m%d')
-logfile = f"{logdir}/dispatch-drops-{date}.log"
-logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
-                    format='%(asctime)s - %(levelname)s: %(message)s')
-logging.info("Starting")
-
-sites = load_sites(filesdir)
-
-files = args.files
-for file in files:
-    # We have a directory
-    #
-    if os.path.isdir(file):
-        print(f"Exploring {file}")
-        with os.scandir(file) as base:
-            for fn in base:
-                if fn.name.endswith(".parquet"):
-                    print(f"Looking at {fn.name}")
-                    move_one(fn.path, ftype, action)
+    if args.drones:
+        ftype = "drones"
     else:
-        print(f"Just {file}")
-        move_one(file, ftype, action)
+        ftype = "adsb"
+
+    action = not args.dry_run
+
+    importdir = f"{datalake}/import"
+    datadir = f"{datalake}/data"
+    bindir = f"{datalake}/bin"
+    filesdir = f"{datalake}/files"
+    logdir = f"{datalake}/var/log"
+
+    date = datetime.now().strftime('%Y%m%d')
+    logfile = f"{logdir}/dispatch-drops-{date}.log"
+    logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                        format='%(asctime)s - %(levelname)s: %(message)s')
+    logging.info("Starting")
+
+    sites = load_sites(filesdir)
+
+    files = args.files
+    for file in files:
+        # We have a directory
+        #
+        if os.path.isdir(file):
+            print(f"Exploring {file}")
+            with os.scandir(file) as base:
+                for fn in base:
+                    if fn.name.endswith(".parquet"):
+                        print(f"Looking at {fn.name}")
+                        move_one(fn.path, ftype, action)
+        else:
+            print(f"Just {file}")
+            move_one(file, ftype, action)

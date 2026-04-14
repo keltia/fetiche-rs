@@ -17,7 +17,9 @@ NOTE: you must have a bookmark defined for ftps.eurocontrol.fr, we do not store 
 """
 
 import argparse
+import glob
 import os
+import subprocess
 
 # CONFIG CHANGE HERE or use -D
 #
@@ -28,28 +30,29 @@ datalake = "/Users/acute"
 site = "ftp_avt"
 
 
-def fetch_files(list):
-    os.system(f'lftp -f {bindir}/fetch-all-adsb.txt')
-    os.system(f'/bin/ls -lF {list}')
+def fetch_files(pattern):
+    subprocess.run(["lftp", "-f", f"{bindir}/fetch-all-adsb.txt"], check=True)
+    subprocess.run(["/bin/ls", "-lF"] + glob.glob(pattern), check=True)
 
 
-# Setup arguments
-#
-parser = argparse.ArgumentParser(
-    prog='fetch-ftp-adsb',
-    description='Fetch the last files from the incoming directory on ftps.')
+if __name__ == "__main__":
+    # Setup arguments
+    #
+    parser = argparse.ArgumentParser(
+        prog='fetch-ftp-adsb',
+        description='Fetch the last files from the incoming directory on ftps.')
 
-parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--keep', '-K', action='store_true', help="Do not delete files after download.")
-args = parser.parse_args()
+    parser.add_argument('--datalake', '-D', help='Datalake is here.')
+    parser.add_argument('--keep', '-K', action='store_true', help="Do not delete files after download.")
+    args = parser.parse_args()
 
-if args.datalake:
-    datalake = args.datalake
+    if args.datalake:
+        datalake = args.datalake
 
-importdir = f"{datalake}/import"
-datadir = f"{datalake}/data"
-bindir = f"{datalake}/bin"
+    importdir = f"{datalake}/import"
+    datadir = f"{datalake}/data"
+    bindir = f"{datalake}/bin"
 
-os.chdir(importdir)
+    os.chdir(importdir)
 
-fetch_files('*.gz')
+    fetch_files('*.gz')

@@ -17,14 +17,13 @@ import csv
 import logging
 import os
 import re
+import sys
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 from subprocess import run
 from typing import Any
-
-import sys
-import time
 
 # CONFIG CHANGE HERE or use -D
 #
@@ -199,96 +198,92 @@ def test_find_site():
     assert find_site("Vienna2_2023-12-01.parquet") == 10
 
 
-parser = argparse.ArgumentParser(
-    prog='import-adsb',
-    description='Import ADS-B data into CH.')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog='import-adsb',
+        description='Import ADS-B data into CH.')
 
-parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
-parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
-parser.add_argument('--interval', '-i', type=int, help='Interval between imports.')
-parser.add_argument('--no-delay', '-N', action='store_true', help='Do not add delay between imports.')
-parser.add_argument('--site', '-s', help='Override site id.')
-parser.add_argument('--table', '-T', help="Name of the table to import into.")
-parser.add_argument('files', nargs='*', help='List of files or directories.')
-args = parser.parse_args()
+    parser.add_argument('--datalake', '-D', help='Datalake is here.')
+    parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
+    parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
+    parser.add_argument('--interval', '-i', type=int, help='Interval between imports.')
+    parser.add_argument('--no-delay', '-N', action='store_true', help='Do not add delay between imports.')
+    parser.add_argument('--site', '-s', help='Override site id.')
+    parser.add_argument('--table', '-T', help="Name of the table to import into.")
+    parser.add_argument('files', nargs='*', help='List of files or directories.')
+    args = parser.parse_args()
 
-if args.datalake is not None:
-    datalake = args.datalake
+    if args.datalake is not None:
+        datalake = args.datalake
 
-importdir = f"{datalake}/import"
-datadir = f"{datalake}/data/adsb"
-bindir = f"{datalake}/bin"
-logdir = f"{datalake}/var/log"
-filesdir = f"{datalake}/files"
+    importdir = f"{datalake}/import"
+    datadir = f"{datalake}/data/adsb"
+    bindir = f"{datalake}/bin"
+    logdir = f"{datalake}/var/log"
+    filesdir = f"{datalake}/files"
 
-sites = load_sites(filesdir)
+    sites = load_sites(filesdir)
 
-date = datetime.now().strftime('%Y%m%d')
-logfile = f"{logdir}/import-adsb-{date}.log"
-logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
-                    format='%(asctime)s - %(levelname)s: %(message)s')
-logging.info("Starting")
+    date = datetime.now().strftime('%Y%m%d')
+    logfile = f"{logdir}/import-adsb-{date}.log"
+    logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                        format='%(asctime)s - %(levelname)s: %(message)s')
+    logging.info("Starting")
 
-if args.dry_run:
-    action = False
-else:
-    action = True
+    action = not args.dry_run
+    delete = args.delete
 
-if args.delete:
-    delete = True
+    if args.site is not None:
+        site_id = int(args.site)
+        logging.info(f"Force site id {site_id}")
 
-if args.site is not None:
-    site_id = int(args.site)
-    logging.info(f"Force site id {site_id}")
+    if args.table is not None:
+        table = args.table
+        logging.info(f"Importing into {table}.")
 
-if args.table is not None:
-    table = args.table
-    logging.info(f"Importing into {table}.")
-
-# Default interval between imports is 5s
-#
-if args.interval is None:
-    interval = 5
-else:
-    interval = args.interval
-
-if not args.no_delay:
-    logging.info(f"Delay is {interval}s")
-
-files = args.files
-for file in files:
-    # We have a directory
+    # Default interval between imports is 5s
     #
-    if os.path.isdir(file):
-        print(f"Exploring {file}")
-        logging.info(f"Inside {file}")
-        for root, dirs, file_list in os.walk(file, topdown=True):
-            logging.info(f"into {root}")
-
-            # Now do stuff, look at parquet/csv only
-            #
-            for f in file_list:
-                if Path(f).suffix != '.parquet' and Path(f).suffix != '.csv':
-                    logging.warning(f"{f} ignored.")
-                    continue
-
-                # Ignore non drones-related files
-                #
-                name = Path(f).stem
-                if name.startswith('drones-'):
-                    logging.warning(f"{f} ignored.")
-                    continue
-
-                r = process_one(root, f, action)
-                if r is None:
-                    logging.warning(f"{f} skipped.")
-
-                if not args.no_delay:
-                    time.sleep(interval)
+    if args.interval is None:
+        interval = 5
     else:
-        logging.info(f"file={file}")
-        root = Path(file).parent
-        r = process_one(root, file, action)
-        if r is None:
-            logging.warning(f"{file} skipped.")
+        interval = args.interval
+
+    if not args.no_delay:
+        logging.info(f"Delay is {interval}s")
+
+    files = args.files
+    for file in files:
+        # We have a directory
+        #
+        if os.path.isdir(file):
+            print(f"Exploring {file}")
+            logging.info(f"Inside {file}")
+            for root, dirs, file_list in os.walk(file, topdown=True):
+                logging.info(f"into {root}")
+
+                # Now do stuff, look at parquet/csv only
+                #
+                for f in file_list:
+                    if Path(f).suffix != '.parquet' and Path(f).suffix != '.csv':
+                        logging.warning(f"{f} ignored.")
+                        continue
+
+                    # Ignore non drones-related files
+                    #
+                    name = Path(f).stem
+                    if name.startswith('drones-'):
+                        logging.warning(f"{f} ignored.")
+                        continue
+
+                    r = process_one(root, f, action)
+                    if r is None:
+                        logging.warning(f"{f} skipped.")
+
+                    if not args.no_delay:
+                        time.sleep(interval)
+        else:
+            logging.info(f"file={file}")
+            root = Path(file).parent
+            r = process_one(root, file, action)
+            if r is None:
+                logging.warning(f"{file} skipped.")

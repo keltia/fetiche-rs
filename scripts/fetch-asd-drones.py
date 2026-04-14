@@ -43,39 +43,40 @@ def fetch_files(site, output):
         print("info: ", ret.stdout)
 
 
-# Setup arguments
-#
-parser = argparse.ArgumentParser(
-    prog='fetch-asd-drones',
-    description='Fetch the last dataset for drones from ASD API.')
+if __name__ == "__main__":
+    # Setup arguments
+    #
+    parser = argparse.ArgumentParser(
+        prog='fetch-asd-drones',
+        description='Fetch the last dataset for drones from ASD API.')
 
-parser.add_argument('--site', '-S', help='Use this site.')
-parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--keep', '-K', action='store_true', help="Do not delete files after download.")
-args = parser.parse_args()
+    parser.add_argument('--site', '-S', help='Use this site.')
+    parser.add_argument('--datalake', '-D', help='Datalake is here.')
+    parser.add_argument('--keep', '-K', action='store_true', help="Do not delete files after download.")
+    args = parser.parse_args()
 
-site = ''
-if args.datalake:
-    datalake = args.datalake
+    site = ''
+    if args.datalake:
+        datalake = args.datalake
 
-if args.site is None:
-    print("You must specify a site.")
-    exit(1)
+    if args.site is None:
+        print("You must specify a site.")
+        exit(1)
 
-importdir = f"{datalake}/import"
-datadir = f"{datalake}/data"
-bindir = f"{datalake}/bin"
-logdir = f"{datalake}/var/log"
+    importdir = f"{datalake}/import"
+    datadir = f"{datalake}/data"
+    bindir = f"{datalake}/bin"
+    logdir = f"{datalake}/var/log"
 
-date = datetime.now().strftime('%Y%m%d')
-logfile = f"{logdir}/fetch-asd-drones-{date}.log"
-logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
-                    format='%(asctime)s - %(levelname)s: %(message)s')
-logging.info("Starting")
+    date = datetime.now().strftime('%Y%m%d')
+    logfile = f"{logdir}/fetch-asd-drones-{date}.log"
+    logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                        format='%(asctime)s - %(levelname)s: %(message)s')
+    logging.info("Starting")
 
-os.chdir(importdir)
+    os.chdir(importdir)
 
-day = datetime.now(timezone.utc) - timedelta(days=1)
-output = f"drones-{day.year}-{day.month:02}-{day.day:02}.parquet"
+    day = datetime.now(timezone.utc) - timedelta(days=1)
+    output = f"drones-{day.year}-{day.month:02}-{day.day:02}.parquet"
 
-fetch_files(args.site, output)
+    fetch_files(args.site, output)

@@ -165,89 +165,85 @@ def import_one_chunk(dir_path, fname):
     logging.info("insert done.")
 
 
-parser = argparse.ArgumentParser(
-    prog='import-avionix',
-    description='Import Avionix data into CH.')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog='import-avionix',
+        description='Import Avionix data into CH.')
 
-parser.add_argument('--chunk-size', '-S', type=int, help='Import by batch of that many lines.')
-parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
-parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
-parser.add_argument('--interval', '-i', type=int, help='Interval between imports.')
-parser.add_argument('--no-delay', '-N', action='store_true', help='Do not add delay between imports.')
-parser.add_argument('files', nargs='*', help='List of files or directories.')
-args = parser.parse_args()
+    parser.add_argument('--chunk-size', '-S', type=int, help='Import by batch of that many lines.')
+    parser.add_argument('--datalake', '-D', help='Datalake is here.')
+    parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
+    parser.add_argument('--delete', '-d', action='store_true', help="Delete final file.")
+    parser.add_argument('--interval', '-i', type=int, help='Interval between imports.')
+    parser.add_argument('--no-delay', '-N', action='store_true', help='Do not add delay between imports.')
+    parser.add_argument('files', nargs='*', help='List of files or directories.')
+    args = parser.parse_args()
 
-if args.datalake is not None:
-    datalake = args.datalake
+    if args.datalake is not None:
+        datalake = args.datalake
 
-importdir = f"{datalake}/import"
-datadir = f"{datalake}/data/adsb"
-bindir = f"{datalake}/bin"
-logdir = f"{datalake}/var/log"
-filesdir = f"{datalake}/files"
+    importdir = f"{datalake}/import"
+    datadir = f"{datalake}/data/adsb"
+    bindir = f"{datalake}/bin"
+    logdir = f"{datalake}/var/log"
+    filesdir = f"{datalake}/files"
 
-date = datetime.now().strftime('%Y%m%d')
-logfile = f"{logdir}/import-vionix-{date}.log"
-logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
-                    format='%(asctime)s - %(levelname)s: %(message)s')
-logging.info("Starting")
+    date = datetime.now().strftime('%Y%m%d')
+    logfile = f"{logdir}/import-vionix-{date}.log"
+    logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                        format='%(asctime)s - %(levelname)s: %(message)s')
+    logging.info("Starting")
 
-if args.dry_run:
-    action = False
-else:
-    action = True
+    action = not args.dry_run
+    delete = args.delete
 
-if args.delete:
-    delete = True
+    if args.chunk_size is not None:
+        chunk = args.chunk_size
+        logging.info(f"Chunk size is {chunk} lines.")
 
-if args.chunk_size is not None:
-    chunk = args.chunk_size
-    logging.info(f"Chunk size is {chunk} lines.")
-
-# Default interval between imports is 5s
-#
-if args.interval is None:
-    interval = 5
-else:
-    interval = args.interval
-
-if args.no_delay is None:
-    logging.info(f"Delay is {interval}s")
-
-files = args.files
-for file in files:
-    # We have a directory
+    # Default interval between imports is 5s
     #
-    if os.path.isdir(file):
-        print(f"Exploring {file}")
-        logging.info(f"Inside {file}")
-        for root, dirs, files in os.walk(file, topdown=True):
-            logging.info(f"into {root}")
-
-            # Now do stuff, look at parquet/csv only
-            #
-            for f in files:
-                if Path(f).suffix != '.parquet' and Path(f).suffix != '.csv':
-                    logging.warning(f"{f} ignored.")
-                    continue
-
-                # Ignore non drones-related files
-                #
-                name = Path(f).stem
-                if not name.startswith('avionix-'):
-                    logging.warning(f"{f} ignored.")
-                    continue
-
-                r = process_one(root, f, action)
-                if r is None:
-                    logging.warning(f"{f} skipped.")
-
-                if args.no_delay is None:
-                    time.sleep(interval)
+    if args.interval is None:
+        interval = 5
     else:
-        logging.info(f"file={file}")
-        root = Path(file).root
-        r = process_one(root, file, action)
-        if r is None:
-            logging.warning(f"{file} skipped.")
+        interval = args.interval
+    
+    if args.no_delay is False:
+        logging.info(f"Delay is {interval}s")
+
+    files = args.files
+    for file in files:
+        # We have a directory
+        #
+        if os.path.isdir(file):
+            print(f"Exploring {file}")
+            logging.info(f"Inside {file}")
+            for root, dirs, files in os.walk(file, topdown=True):
+                logging.info(f"into {root}")
+
+                # Now do stuff, look at parquet/csv only
+                #
+                for f in files:
+                    if Path(f).suffix != '.parquet' and Path(f).suffix != '.csv':
+                        logging.warning(f"{f} ignored.")
+                        continue
+
+                    # Ignore non drones-related files
+                    #
+                    name = Path(f).stem
+                    if not name.startswith('avionix-'):
+                        logging.warning(f"{f} ignored.")
+                        continue
+
+                    r = process_one(root, f, action)
+                    if r is None:
+                        logging.warning(f"{f} skipped.")
+
+                    if args.no_delay is None:
+                        time.sleep(interval)
+        else:
+            logging.info(f"file={file}")
+            root = Path(file).root
+            r = process_one(root, file, action)
+            if r is None:
+                logging.warning(f"{file} skipped.")

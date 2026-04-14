@@ -46,36 +46,35 @@ def export_one(tag, action):
             logging.error("error: ", ret.stderr)
             print("error: ", ret.stderr, file=sys.stderr)
     else:
-	    print(f"{cmd}")
+        print(f"{cmd}")
     print(f"Exported {tag} to {filesdir}/{tag}.csv")
 
-parser = argparse.ArgumentParser(
-    prog='export-metadata',
-    description='Export ACUTE metadata as CSV files.')
 
-parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
-args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog='export-metadata',
+        description='Export ACUTE metadata as CSV files.')
 
-if args.datalake is not None:
-    datalake = args.datalake
+    parser.add_argument('--datalake', '-D', help='Datalake is here.')
+    parser.add_argument('--dry-run', '-n', action='store_true', help="Just show what would happen.")
+    args = parser.parse_args()
 
-importdir = f"{datalake}/import"
-filesdir = f"{datalake}/files"
-bindir = f"{datalake}/bin"
-logdir = f"{datalake}/var/log"
+    if args.datalake is not None:
+        datalake = args.datalake
 
-date = datetime.now().strftime('%Y%m%d')
-logfile = f"{logdir}/export-metadata-{date}.log"
-logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
-                    format='%(asctime)s - %(levelname)s: %(message)s')
-logging.info("Starting")
-os.chdir(importdir)
+    importdir = f"{datalake}/import"
+    filesdir = f"{datalake}/files"
+    bindir = f"{datalake}/bin"
+    logdir = f"{datalake}/var/log"
 
-if args.dry_run:
-    action = False
-else:
-    action = True
+    date = datetime.now().strftime('%Y%m%d')
+    logfile = f"{logdir}/export-metadata-{date}.log"
+    logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                        format='%(asctime)s - %(levelname)s: %(message)s')
+    logging.info("Starting")
+    os.chdir(importdir)
 
-for table in reqs.keys():
-    export_one(table, action)
+    action = not args.dry_run
+
+    for table in reqs.keys():
+        export_one(table, action)

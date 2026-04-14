@@ -15,6 +15,7 @@ options:
 
 import argparse
 import os
+import subprocess
 from datetime import datetime
 
 years = {
@@ -94,31 +95,32 @@ def fetch_one_day(year_id: int, month_id: int, day_id: int):
     print(f"Fetching day {day_id}")
     current = f"{year_id}-{month_id:02d}-{day_id:02d}"
     print(f"Processing {current}")
-    cmd = f"acutectl fetch -o drones-{current}.parquet lux-me day '{current} 00:00:00 UTC'"
+    cmd = ["acutectl", "fetch", "-o", f"drones-{current}.parquet", "lux-me", "day", f"{current} 00:00:00 UTC"]
     print(f"Running {cmd}")
-    os.system(cmd)
+    subprocess.run(cmd, check=True)
 
 
-# Setup arguments
-#
-parser = argparse.ArgumentParser(
-    prog='fetch-all-drones',
-    description='Fetch all drone data from ASD in one go, creating the entire Hive-based directory tree.')
+if __name__ == "__main__":
+    # Setup arguments
+    #
+    parser = argparse.ArgumentParser(
+        prog='fetch-all-drones',
+        description='Fetch all drone data from ASD in one go, creating the entire Hive-based directory tree.')
 
-parser.add_argument('--site', '-S', help='Use this site.')
-parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--year', '-Y', type=int, help='Fetch a specific year and not everything.')
-args = parser.parse_args()
+    parser.add_argument('--site', '-S', help='Use this site.')
+    parser.add_argument('--datalake', '-D', help='Datalake is here.')
+    parser.add_argument('--year', '-Y', type=int, help='Fetch a specific year and not everything.')
+    args = parser.parse_args()
 
-site = ''
-if args.datalake:
-    datalake = args.datalake
+    site = ''
+    if args.datalake:
+        datalake = args.datalake
 
-if args.site is not None:
-    site = args.site
+    if args.site is not None:
+        site = args.site
 
-if args.year is not None:
-    fetch_one_year(args.year)
-else:
-    for year in years.keys():
-        fetch_one_year(year)
+    if args.year is not None:
+        fetch_one_year(args.year)
+    else:
+        for year in years.keys():
+            fetch_one_year(year)

@@ -81,64 +81,62 @@ def process_one(dir, fname, action):
     return fname
 
 
-parser = argparse.ArgumentParser(
-    prog='import-drones',
-    description='Import drone data into CH.')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog='import-drones',
+        description='Import drone data into CH.')
 
-parser.add_argument('--datalake', '-D', help='Datalake is here.')
-parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
-parser.add_argument('files', nargs='*', help='List of files or directories.')
-args = parser.parse_args()
+    parser.add_argument('--datalake', '-D', help='Datalake is here.')
+    parser.add_argument('--dry-run', '-n', action='store_true', help="Do not actually move the file.")
+    parser.add_argument('files', nargs='*', help='List of files or directories.')
+    args = parser.parse_args()
 
-if args.datalake is not None:
-    datalake = args.datalake
+    if args.datalake is not None:
+        datalake = args.datalake
 
-importdir = f"{datalake}/import"
-datadir = f"{datalake}/data/drones"
-bindir = f"{datalake}/bin"
-logdir = f"{datalake}/var/log"
+    importdir = f"{datalake}/import"
+    datadir = f"{datalake}/data/drones"
+    bindir = f"{datalake}/bin"
+    logdir = f"{datalake}/var/log"
 
-date = datetime.now().strftime('%Y%m%d')
-logfile = f"{logdir}/import-drones-{date}.log"
-logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
-                    format='%(asctime)s - %(levelname)s: %(message)s')
-logging.info("Starting")
+    date = datetime.now().strftime('%Y%m%d')
+    logfile = f"{logdir}/import-drones-{date}.log"
+    logging.basicConfig(filemode='a', filename=logfile, level=logging.INFO, datefmt="%H:%M:%S",
+                        format='%(asctime)s - %(levelname)s: %(message)s')
+    logging.info("Starting")
 
-if args.dry_run:
-    action = False
-else:
-    action = True
+    action = not args.dry_run
 
-files = args.files
-for file in files:
-    # We have a directory
-    #
-    if os.path.isdir(file):
-        print(f"Exploring {file}")
-        logging.info(f"Inside {file}")
-        for root, dirs, files in os.walk(file, topdown=True):
-            logging.info(f"into {root}")
+    files = args.files
+    for file in files:
+        # We have a directory
+        #
+        if os.path.isdir(file):
+            print(f"Exploring {file}")
+            logging.info(f"Inside {file}")
+            for root, dirs, files in os.walk(file, topdown=True):
+                logging.info(f"into {root}")
 
-            # Now do stuff, look at parquet/csv only
-            #
-            for f in files:
-                if Path(f).suffix != '.parquet' and Path(f).suffix != '.csv':
-                    logging.warning(f"{f} ignored.")
-                    continue
-
-                # Ignore non drones-related files
+                # Now do stuff, look at parquet/csv only
                 #
-                name = Path(f).stem
-                if not name.startswith('drones-'):
-                    logging.warning(f"{f} ignored.")
-                    continue
+                for f in files:
+                    if Path(f).suffix != '.parquet' and Path(f).suffix != '.csv':
+                        logging.warning(f"{f} ignored.")
+                        continue
 
-                r = process_one(root, f, action)
-                if r is None:
-                    logging.warning(f"{f} skipped.")
-    else:
-        logging.info(f"Just {file}")
-        root = Path(file).root
-        r = process_one(root, file, action)
-        if r is None:
-            logging.warning(f"{file} skipped.")
+                    # Ignore non drones-related files
+                    #
+                    name = Path(f).stem
+                    if not name.startswith('drones-'):
+                        logging.warning(f"{f} ignored.")
+                        continue
+
+                    r = process_one(root, f, action)
+                    if r is None:
+                        logging.warning(f"{f} skipped.")
+        else:
+            logging.info(f"Just {file}")
+            root = Path(file).root
+            r = process_one(root, file, action)
+            if r is None:
+                logging.warning(f"{file} skipped.")
