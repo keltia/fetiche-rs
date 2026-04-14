@@ -15,6 +15,7 @@ options:
 
 import argparse
 import os
+import subprocess
 from datetime import datetime
 
 years = {
@@ -94,9 +95,9 @@ def fetch_one_day(year_id: int, month_id: int, day_id: int):
     print(f"Fetching day {day_id}")
     current = f"{year_id}-{month_id:02d}-{day_id:02d}"
     print(f"Processing {current}")
-    cmd = f"acutectl fetch -o drones-{current}.parquet lux-me day '{current} 00:00:00 UTC'"
+    cmd = ["acutectl", "fetch", "-o", f"drones-{current}.parquet", "lux-me", "day", f"{current} 00:00:00 UTC"]
     print(f"Running {cmd}")
-    os.system(cmd)
+    subprocess.run(cmd, check=True)
 
 
 # Setup arguments

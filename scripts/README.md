@@ -123,11 +123,16 @@ into the `avionix_raw` table. The Parquet file is archived in a separate directo
 
 - `import-adsb.py`
 
-Import a file or a tree of files in parquet or csv format into a [Clickhouse] instance. This version is specific
-to the `airplanes_raw` ADS-B table. You *must* have [qsvlite] somewhere in your PATH.
+Import a file or a tree of files in parquet or csv format into a [Clickhouse] instance. You *must* have [qsvlite]
+and [bdt] somewhere in your PATH. This version does allow you to specify a different table name, and to override the
+site ID as well, which is useful when you just replicate all the data. The main code uses the basename of the file to
+find which site is in use. This works fine on a daily basis, but for real bulk import, some sites have several different
+basename, like London & Gatwick.
 
 ```text
-usage: import-adsb [-h] [--datalake DATALAKE] [--dry-run] [--delete] [files ...]
+usage: import-adsb [-h] [--chunk-size CHUNK_SIZE] [--datalake DATALAKE] [--dry-run] [--delete] [--interval INTERVAL] [--no-delay] [--site SITE]
+                   [--table TABLE]
+                   [files ...]
 
 Import ADS-B data into CH.
 
@@ -136,10 +141,31 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  --datalake DATALAKE, -D DATALAKE
+  --chunk-size, -S CHUNK_SIZE
+                        Import by batch of that many lines.
+  --datalake, -D DATALAKE
                         Datalake is here.
   --dry-run, -n         Just show what would happen.
   --delete, -d          Delete final file.
+  --interval, -i INTERVAL
+                        Interval between imports.
+  --no-delay, -N        Do not add delay between imports.
+  --site, -s SITE       Override site id.
+  --table, -T TABLE     Name of the table to import into.
+```
+
+Examples:
+
+Daily import:
+
+```cron
+cd /acute/import && direnv exec . /acute/bin/import-adsb.py -D /acute -d .
+```
+
+Bulk import:
+
+```shell
+$ fd -C /acute/data/adsb/site=TIV -a -e parquet -x /acute/bin/import-adsb.py -D /acute -s 18 -d -T acute_dev.airplanes_raw
 ```
 
 - `import-avionix.py`

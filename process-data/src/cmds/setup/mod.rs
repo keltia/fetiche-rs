@@ -30,13 +30,18 @@ use crate::runtime::Context;
 ///
 /// ### Options
 ///
-/// - `macros`: If enabled (`-M` or `--macros`), add mathematical macros to the database.
-/// - `encounters`: If enabled (`-E` or `--encounters`), create the encounters table to store air-prox points.
-/// - `views`: If enabled (`-V` or `--views`), create persistent database views for querying drone and airplane data.
-/// - `metadata`: If enabled (`-M` or `--metadata`), create metadata tables for sites, antennas, and installations.
-/// - `all`: If enabled (`-a` or `--all`), perform all setup tasks (including macros, encounters, and views).
+/// - `core`: If enabled (`--core`), creates or removes core raw data tables (airplanes_raw, drones_raw). Requires `--force` flag.
+/// - `macros`: If enabled (`-M` or `--macros`), add mathematical macros to the database for distance calculations.
+/// - `airplanes`: If enabled (`-P` or `--airplanes`), create the airplanes view for querying airplane data.
+/// - `drones`: If enabled (`-D` or `--drones`), create the drones view for querying drone data.
+/// - `encounters`: If enabled (`-E` or `--encounters`), create the encounters table to store air-proximity calculation results.
+/// - `metadata`: If enabled (`--metadata`), create metadata tables for sites, antennas, and installations.
+/// - `records`: If enabled (`-R` or `--records`), create the daily stats table for recording run history.
+/// - `views`: If enabled (`-V` or `--views`), create work views for data analysis.
+/// - `all`: If enabled (`-a` or `--all`), perform all setup tasks (macros, views, tables, and metadata).
+/// - `force`: If enabled (`-F` or `--force`), required safety flag for destructive operations like `--core`.
 ///
-/// ### Example
+/// ### Examples
 ///
 /// Run the setup command to add database macros:
 /// ```sh
@@ -48,17 +53,25 @@ use crate::runtime::Context;
 /// cargo run -- setup --all
 /// ```
 ///
-/// See also: The `add_macros`, `add_encounters_table`, and `create_views` functions for implementation details.
+/// Create core tables (requires force flag):
+/// ```sh
+/// cargo run -- setup --core --force
+/// ```
+///
+/// See also: The `setup_acute_environment` and `cleanup_environment` functions for implementation details.
 ///
 #[derive(Debug, Default, Parser)]
 pub struct SetupOpts {
+    /// Add / remove core tables.
+    #[clap(long)]
+    pub core: bool,
     /// Add only macros.
     #[clap(short = 'M', long)]
     pub macros: bool,
-    /// Create airplanes stuff.
+    /// Create airplanes views.
     #[clap(short = 'P', long)]
     pub airplanes: bool,
-    /// Create drones stuff.
+    /// Create drones views.
     #[clap(short = 'D', long)]
     pub drones: bool,
     /// Create encounters (aka calculation) table
@@ -76,6 +89,9 @@ pub struct SetupOpts {
     /// Everything.
     #[clap(short = 'a', long)]
     pub all: bool,
+    /// You will need this to use `--core` or `--clean`
+    #[clap(short = 'F', long)]
+    pub force: bool,
 }
 
 // -----
@@ -134,6 +150,16 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
         let _ = add_encounters_table(&ctx).await;
         let _ = add_daily_stats_table(&ctx).await;
     } else {
+        if opts.core {
+            trace!("Core tables creation requested.");
+            if !opts.force {
+                return Err(eyre::eyre!(
+                    "You must use --force to create the core tables"
+                ));
+            }
+            create_airplanes_raw_table(ctx).await?;
+            create_drones_raw_table(ctx).await?;
+        }
         if opts.macros {
             trace!("Creating ACUTE macros.");
             add_macros(&ctx).await?;
@@ -234,6 +260,16 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
         }
         if opts.macros {
             remove_macros(&ctx).await?;
+        }
+        if opts.core {
+            trace!("Core tables removal requested.");
+            if !opts.force {
+                return Err(eyre::eyre!(
+                    "You must use --force to remove the core tables"
+                ));
+            }
+            drop_drones_raw_table(ctx).await?;
+            drop_airplanes_raw_table(ctx).await?;
         }
     }
 

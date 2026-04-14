@@ -17,7 +17,9 @@ NOTE: you must have a bookmark defined for ftps.eurocontrol.fr, we do not store 
 """
 
 import argparse
+import glob
 import os
+import subprocess
 
 # CONFIG CHANGE HERE or use -D
 #
@@ -28,9 +30,9 @@ datalake = "/Users/acute"
 site = "ftp_avt"
 
 
-def fetch_files(list):
-    os.system(f'lftp -f {bindir}/fetch-all-adsb.txt')
-    os.system(f'/bin/ls -lF {list}')
+def fetch_files(pattern):
+    subprocess.run(["lftp", "-f", f"{bindir}/fetch-all-adsb.txt"], check=True)
+    subprocess.run(["/bin/ls", "-lF"] + glob.glob(pattern), check=True)
 
 
 # Setup arguments

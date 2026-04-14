@@ -5,6 +5,208 @@ use crate::cmds::DBVars;
 use crate::make_query;
 use crate::runtime::Context;
 
+// ----- Core tables
+
+/// Create the raw ADS-B positions table, part of the core.
+///
+/// This is the UTC-only version.
+///
+/// ### Details
+/// This function creates the `airplanes_raw` table in the ClickHouse database.
+/// The table is designed to store raw ADS-B (Automatic Dependent Surveillance-Broadcast)
+/// position data received from aircraft transponders.
+///
+/// The table includes the following fields:
+/// - `Site`: Site identifier where the data was received (INT)
+/// - `EmitterCategory`: Category of the emitting aircraft (INT, default: 3)
+/// - `GBS`: Ground-Based Station indicator (INT)
+/// - `ModeA`: Transponder Mode A code (VARCHAR)
+/// - `TimeRecPosition`: Timestamp when the position was recorded (DATETIME64 with millisecond precision in UTC)
+/// - `AircraftAddress`: Unique ICAO 24-bit aircraft address (VARCHAR)
+/// - `Latitude`: Aircraft latitude in decimal degrees (DOUBLE)
+/// - `Longitude`: Aircraft longitude in decimal degrees (DOUBLE)
+/// - `GeometricAltitude`: Geometric altitude above WGS84 ellipsoid (DOUBLE)
+/// - `FlightLevel`: Barometric altitude/flight level (DOUBLE)
+/// - `BarometricVerticalRate`: Rate of climb/descent from barometric altitude (VARCHAR)
+/// - `GeoVertRateExceeded`: Flag indicating if geometric vertical rate exceeded limits (VARCHAR)
+/// - `GeometricVerticalRate`: Rate of climb/descent from geometric altitude (VARCHAR)
+/// - `GroundSpeed`: Speed over ground (DOUBLE)
+/// - `TrackAngle`: Ground track angle in degrees (DOUBLE)
+/// - `Callsign`: Aircraft callsign/flight number (VARCHAR)
+/// - `AircraftStopped`: Flag indicating if aircraft is stopped on ground (VARCHAR)
+/// - `GroundTrackValid`: Flag indicating validity of ground track data (VARCHAR)
+/// - `GroundHeadingProvided`: Flag indicating if ground heading is provided (VARCHAR)
+/// - `MagneticNorth`: Flag indicating if heading is relative to magnetic north (VARCHAR)
+/// - `SurfaceGroundSpeed`: Ground speed when on surface (DOUBLE)
+/// - `SurfaceGroundTrack`: Ground track when on surface (DOUBLE)
+///
+/// The table uses the MergeTree engine with a primary key on `(TimeRecPosition, AircraftAddress)`
+/// to optimize queries filtering by time and aircraft address.
+///
+/// ### Errors
+/// Returns an error if the table cannot be created. Possible causes include:
+/// - Database connection issues
+/// - Insufficient privileges to create tables in the database
+/// - SQL syntax or schema errors
+/// - Database name variables not properly configured in the context
+///
+/// ### References
+/// - ClickHouse MergeTree engine documentation
+/// - ADS-B message format specifications
+///
+#[tracing::instrument(skip(ctx))]
+pub async fn create_airplanes_raw_table(ctx: &Context) -> eyre::Result<()> {
+    let dbh = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
+    let r = make_query!(
+        r##"
+CREATE TABLE IF NOT EXISTS {planedb}.airplanes_raw (
+    Site                   INT,
+    EmitterCategory        INT DEFAULT 3,
+    GBS                    INT,
+    ModeA                  VARCHAR,
+    TimeRecPosition        DATETIME64(3, 'UTC'),
+    AircraftAddress        VARCHAR,
+    Latitude               DOUBLE,
+    Longitude              DOUBLE,
+    GeometricAltitude      DOUBLE,
+    FlightLevel            DOUBLE,
+    BarometricVerticalRate VARCHAR,
+    GeoVertRateExceeded    VARCHAR,
+    GeometricVerticalRate  VARCHAR,
+    GroundSpeed            DOUBLE,
+    TrackAngle             DOUBLE,
+    Callsign               VARCHAR,
+    AircraftStopped        VARCHAR,
+    GroundTrackValid       VARCHAR,
+    GroundHeadingProvided  VARCHAR,
+    MagneticNorth          VARCHAR,
+    SurfaceGroundSpeed     DOUBLE,
+    SurfaceGroundTrack     DOUBLE
+)
+ENGINE = MergeTree
+PRIMARY KEY (TimeRecPosition, AircraftAddress)
+COMMENT 'Table for raw ADS-B positions.'
+    "##,
+        dbvars
+    );
+
+    Ok(dbh.execute(&r).await?)
+}
+
+#[tracing::instrument(skip(ctx))]
+pub async fn drop_airplanes_raw_table(ctx: &Context) -> eyre::Result<()> {
+    let dbh = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
+    let r = make_query!(r##"DROP TABLE IF EXISTS {planedb}.airplanes_raw"##, dbvars);
+
+    Ok(dbh.execute(&r).await?)
+}
+
+// -----
+
+/// Create the raw drones positions table, part of the core.
+///
+/// This is the UTC-only version.
+///
+/// ### Details
+/// This function creates the `drones_raw` table in the ClickHouse database.
+/// The table is designed to store raw position data received from drone tracking systems
+/// across multiple sites and journeys.
+///
+/// The table includes the following fields:
+/// - `journey`: Journey identifier for the drone flight (INT)
+/// - `ident`: Unique identifier for the drone (VARCHAR)
+/// - `model`: Drone model information (VARCHAR)
+/// - `source`: Source of the tracking data (VARCHAR)
+/// - `location`: Location identifier (INT)
+/// - `timestamp`: Timestamp when the position was recorded (DATETIME in UTC)
+/// - `latitude`: Drone latitude in decimal degrees (DOUBLE)
+/// - `longitude`: Drone longitude in decimal degrees (DOUBLE)
+/// - `altitude`: Drone altitude (INT)
+/// - `elevation`: Elevation above ground level (INT)
+/// - `gps`: GPS signal quality indicator (INT)
+/// - `rssi`: Received Signal Strength Indication (INT)
+/// - `home_lat`: Home location latitude in decimal degrees (DOUBLE)
+/// - `home_lon`: Home location longitude in decimal degrees (DOUBLE)
+/// - `home_height`: Home location height (INT)
+/// - `speed`: Drone speed (INT)
+/// - `heading`: Drone heading in degrees (INT)
+/// - `station_name`: Name of the receiving station (VARCHAR)
+/// - `station_latitude`: Station latitude in decimal degrees (DOUBLE)
+/// - `station_longitude`: Station longitude in decimal degrees (DOUBLE)
+///
+/// The table uses the MergeTree engine with a primary key on `(journey, timestamp)`
+/// and is ordered by the same fields with an index granularity of 8192 to optimize
+/// queries filtering by journey and time.
+///
+/// ### Errors
+/// Returns an error if the table cannot be created. Possible causes include:
+/// - Database connection issues
+/// - Insufficient privileges to create tables in the database
+/// - SQL syntax or schema errors
+/// - Database name variables not properly configured in the context
+///
+/// ### References
+/// - ClickHouse MergeTree engine documentation
+/// - Drone tracking data format specifications
+///
+#[tracing::instrument(skip(ctx))]
+pub async fn create_drones_raw_table(ctx: &Context) -> eyre::Result<()> {
+    let dbh = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
+    let r = make_query!(
+        r##"
+CREATE TABLE IF NOT EXISTS {drobedb}.drones_raw               
+(                                               
+    journey INT,                            
+    ident VARCHAR,                             
+    model VARCHAR,                             
+    source VARCHAR,                            
+    location INT,                           
+    timestamp DateTime('UTC'),                       
+    latitude DOUBLE,                         
+    longitude DOUBLE,                        
+    altitude INT,                           
+    elevation INT,                          
+    gps INT,                                
+    rssi INT,                               
+    home_lat DOUBLE,                         
+    home_lon DOUBLE,                         
+    home_height INT,                        
+    speed INT,                              
+    heading INT,                            
+    station_name VARCHAR,                      
+    station_latitude DOUBLE,                 
+    station_longitude DOUBLE                 
+)                                               
+ENGINE = MergeTree                              
+PRIMARY KEY (journey, timestamp)                
+ORDER BY (journey, timestamp)                   
+SETTINGS index_granularity = 8192               
+COMMENT 'Raw positions for drones on all sites.'
+        "##,
+        dbvars
+    );
+
+    Ok(dbh.execute(&r).await?)
+}
+
+#[tracing::instrument(skip(ctx))]
+pub async fn drop_drones_raw_table(ctx: &Context) -> eyre::Result<()> {
+    let dbh = ctx.db().await;
+    let dbvars = DBVars::from_ctx(ctx);
+
+    let r = make_query!(r##"DROP TABLE IF EXISTS {drobedb}.drones_raw"##, dbvars);
+
+    Ok(dbh.execute(&r).await?)
+}
+
+// -----
+
 /// Create the `encounters` table to store short air-prox points
 ///
 /// ### Details
@@ -54,7 +256,8 @@ pub async fn add_encounters_table(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let sq = make_query!(r##"
+    let sq = make_query!(
+        r##"
 CREATE TABLE IF NOT EXISTS {workdb}.airplane_prox (
   site_id          INT,
   sitename         VARCHAR,
@@ -82,7 +285,9 @@ CREATE TABLE IF NOT EXISTS {workdb}.airplane_prox (
 )
     ENGINE = ReplacingMergeTree PRIMARY KEY (time, journey)
     COMMENT 'Store all plane-drone encounters with less then 1nm distance.';
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     Ok(dbh.execute(&sq).await?)
 }
@@ -106,7 +311,8 @@ pub async fn add_daily_stats_table(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let crt = make_query!(r##"
+    let crt = make_query!(
+        r##"
 CREATE TABLE IF NOT EXISTS {workdb}.daily_stats (
   day DATE,
   site_id INT,
@@ -117,7 +323,9 @@ CREATE TABLE IF NOT EXISTS {workdb}.daily_stats (
 )
 ENGINE = ReplacingMergeTree PRIMARY KEY (day, site_name)
 COMMENT 'Records the run history for all sites every day.';
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     Ok(dbh.execute(&crt).await?)
 }
@@ -127,8 +335,10 @@ pub async fn drop_daily_stats_table(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let crt = make_query!(r##"DROP TABLE {workdb}.daily_stats IF EXISTS {workdb}.daily_stats"##, dbvars);
+    let crt = make_query!(
+        r##"DROP TABLE {workdb}.daily_stats IF EXISTS {workdb}.daily_stats"##,
+        dbvars
+    );
 
     Ok(dbh.execute(&crt).await?)
 }
-
