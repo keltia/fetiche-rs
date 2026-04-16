@@ -66,7 +66,7 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
         AcuteSubCommand::Antennas(aopts) => {
             // No other command for now.
             //
-            antennas_list(&ctx, &aopts).await?;
+            antennas_list(ctx, aopts).await?;
         }
         // List all installations
         //

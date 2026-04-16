@@ -140,15 +140,15 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
 
     if opts.all {
         trace!("Creating all ACUTE tables and views.");
-        add_macros(&ctx).await?;
-        add_sites_table(&ctx).await?;
-        add_antennas_table(&ctx).await?;
-        add_installations_table(&ctx).await?;
-        add_airplanes_view(&ctx).await?;
-        add_drones_view(&ctx).await?;
-        create_work_views(&ctx).await?;
-        let _ = add_encounters_table(&ctx).await;
-        let _ = add_daily_stats_table(&ctx).await;
+        add_macros(ctx).await?;
+        add_sites_table(ctx).await?;
+        add_antennas_table(ctx).await?;
+        add_installations_table(ctx).await?;
+        add_airplanes_view(ctx).await?;
+        add_drones_view(ctx).await?;
+        create_work_views(ctx).await?;
+        let _ = add_encounters_table(ctx).await;
+        let _ = add_daily_stats_table(ctx).await;
     } else {
         if opts.core {
             trace!("Core tables creation requested.");
@@ -162,33 +162,33 @@ pub async fn setup_acute_environment(ctx: &Context, opts: &SetupOpts) -> Result<
         }
         if opts.macros {
             trace!("Creating ACUTE macros.");
-            add_macros(&ctx).await?;
+            add_macros(ctx).await?;
         }
         if opts.metadata {
             trace!("Creating ACUTE metadata tables.");
-            add_sites_table(&ctx).await?;
-            add_antennas_table(&ctx).await?;
-            add_installations_table(&ctx).await?;
+            add_sites_table(ctx).await?;
+            add_antennas_table(ctx).await?;
+            add_installations_table(ctx).await?;
         }
         if opts.airplanes {
             trace!("Creating ACUTE airplanes table.");
-            add_airplanes_view(&ctx).await?;
+            add_airplanes_view(ctx).await?;
         }
         if opts.drones {
             trace!("Creating ACUTE drones table.");
-            add_drones_view(&ctx).await?;
+            add_drones_view(ctx).await?;
         }
         if opts.encounters {
             trace!("Creating ACUTE encounters table.");
-            add_encounters_table(&ctx).await?;
+            add_encounters_table(ctx).await?;
         }
         if opts.records {
             trace!("Creating ACUTE daily stats table.");
-            add_daily_stats_table(&ctx).await?;
+            add_daily_stats_table(ctx).await?;
         }
         if opts.views {
             trace!("Creating ACUTE views.");
-            create_work_views(&ctx).await?;
+            create_work_views(ctx).await?;
         }
     }
     Ok(())
@@ -239,27 +239,27 @@ pub async fn cleanup_environment(ctx: &Context, opts: &SetupOpts) -> Result<()> 
         remove_macros(ctx).await?;
     } else {
         if opts.views {
-            drop_work_views(&ctx).await?;
+            drop_work_views(ctx).await?;
         }
         if opts.records {
-            drop_daily_stats_table(&ctx).await?;
+            drop_daily_stats_table(ctx).await?;
         }
         if opts.encounters {
-            drop_encounters_table(&ctx).await?;
+            drop_encounters_table(ctx).await?;
         }
         if opts.drones {
-            drop_drones_view(&ctx).await?;
+            drop_drones_view(ctx).await?;
         }
         if opts.airplanes {
-            drop_airplanes_view(&ctx).await?;
+            drop_airplanes_view(ctx).await?;
         }
         if opts.metadata {
-            drop_sites_table(&ctx).await?;
-            drop_antennas_table(&ctx).await?;
-            drop_installations_table(&ctx).await?;
+            drop_sites_table(ctx).await?;
+            drop_antennas_table(ctx).await?;
+            drop_installations_table(ctx).await?;
         }
         if opts.macros {
-            remove_macros(&ctx).await?;
+            remove_macros(ctx).await?;
         }
         if opts.core {
             trace!("Core tables removal requested.");
