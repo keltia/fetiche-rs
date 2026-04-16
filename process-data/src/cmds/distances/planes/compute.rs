@@ -152,7 +152,7 @@ impl PlaneDistance {
             r##"
 CREATE OR REPLACE TABLE {workdb}.today{tag}
 ENGINE = MergeTree
-ORDER BY (site, time)
+ORDER BY (t2, site)
 AS (
     WITH
       prox_id AS addr,
@@ -176,11 +176,10 @@ AS (
       t2
     FROM
       {planedb}.airplanes
-    PREWHERE
+    WHERE
       site = $1 AND
       prox_alt_m  IS NOT NULL AND
-      NOT(prox_alt_m = 0 AND flight_level != 0)
-    WHERE
+      NOT(prox_alt_m = 0 AND flight_level != 0) AND
       time >= toDateTime($2) AND
       time < toDateTime($3) AND
       pointInEllipses(plon, plat, $4, $5, $6, $7)
@@ -293,7 +292,7 @@ AS (
             r##"
 CREATE OR REPLACE TABLE {workdb}.candidates{tag}
 ENGINE = MergeTree
-ORDER BY (time,journey)
+ORDER BY (t2,journey)
 AS (
     WITH
         toStartOfInterval(timestamp, toIntervalSecond(2)) AS t2
