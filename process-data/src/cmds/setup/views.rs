@@ -202,7 +202,7 @@ AS
        AircraftAddress                AS prox_id,
        Latitude                       AS prox_lat,
        Longitude                      AS prox_lon,
-       GeometricAltitude              AS prox_alt,
+       GeometricAltitude              AS prox_alt_m,
        FlightLevel                    AS flight_level,
        BarometricVerticalRate         AS baro_vert_rate,
        (GeoVertRateExceeded == '1')   AS geo_vert_exceeded,
@@ -218,6 +218,7 @@ AS
        SurfaceGroundTrack
     FROM {planedb}.airplanes_raw AS f
     WHERE prox_lat != 0 AND prox_lon != '0'
+    ORDER BY time
 )
     COMMENT 'View for airplanes data.'
 "##, dbvars);
