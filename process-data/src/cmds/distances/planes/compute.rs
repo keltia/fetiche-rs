@@ -626,7 +626,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
       any_value(prox_ecat) AS prox_ecat,
       CEIL(dist_drone_plane) AS distance_slant_m,
       any_value(CEIL(dist2d)) AS distance_hor_m,
-      any_value(CEIL(ABS(palt - dalt))) AS distance_vert_m,
+      any_value(diff_alt) AS distance_vert_m,
       any_value(CEIL(hdist2d)) as distance_home_m,
       tc.station_name AS station_name
     FROM {workdb}.today_close{tag} AS tc JOIN {workdb}.ids{tag} AS id
