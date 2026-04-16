@@ -460,7 +460,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     callsign VARCHAR,
     journey INT,
     en_id VARCHAR DEFAULT '',
-    sitename VARCHAR,
+    sitename VARCHAR
 ) ENGINE = Memory
 "##,
             dbvars
@@ -519,7 +519,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     SELECT
       journey,
       drone_id,
-      callsign,
+      callsign
     FROM {workdb}.today_close{tag}
     WHERE
       dist_drone_plane < $1
