@@ -644,8 +644,6 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
         let q = QueryBuilder::new(&r).arg(threshold);
         dbh.execute(q).await?;
 
-        self.state.push(TempTables::Ids);
-
         // Now check how many
         //
         let r1 = make_query!(
