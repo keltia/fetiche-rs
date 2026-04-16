@@ -8,7 +8,7 @@ async fn add_macro_dist2d(ctx: &Context) -> eyre::Result<()> {
 
     let r1 = r##"
 CREATE FUNCTION dist_2d AS (dx, dy, px, py) ->
-  ceil(geoDistance(dx,dy,px,py));
+  geoDistance(dx,dy,px,py);
     "##;
 
     Ok(dbh.execute(r1).await?)
@@ -20,10 +20,22 @@ async fn add_macro_dist3d(ctx: &Context) -> eyre::Result<()> {
 
     let r2 = r##"
 CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
-  ceil(sqrt(pow(dist_2d(dx,dy,px,py), 2) + pow((dz-pz), 2)));
+  sqrt(pow(geoDistance(dx,dy,px,py), 2) + pow((dz - pz), 2));
     "##;
 
     Ok(dbh.execute(r2).await?)
+}
+
+#[tracing::instrument(skip(ctx))]
+async fn add_macro_dist3d_sq(ctx: &Context) -> eyre::Result<()> {
+    let dbh = ctx.db().await;
+
+    let r3 = r##"
+CREATE OR REPLACE FUNCTION dist_3d_sq AS (dx, dy, dz, px, py, pz) ->
+  pow(geoDistance(dx, dy, px, py), 2) + pow(dz - pz, 2);
+    "##,
+
+    Ok(dbh.execute(r3).await?)
 }
 
 #[tracing::instrument(skip(ctx))]
@@ -46,6 +58,7 @@ async fn add_which_timezone(ctx: &Context) -> eyre::Result<()> {
 /// This function creates two user-defined functions in the ClickHouse database:
 /// - `dist_2d`: Calculates horizontal geodesic distance between two points
 /// - `dist_3d`: Calculates three-dimensional distance between two points
+/// - `dist_3d_sq`: Without the sqrt() which is expensive
 ///
 /// ### Errors
 ///
@@ -63,6 +76,7 @@ async fn add_which_timezone(ctx: &Context) -> eyre::Result<()> {
 pub async fn add_macros(ctx: &Context) -> eyre::Result<()> {
     add_macro_dist2d(ctx).await?;
     add_macro_dist3d(ctx).await?;
+    add_macro_dist3d_sq(ctx).await?;
     add_which_timezone(ctx).await?;
     Ok(())
 }
@@ -92,6 +106,17 @@ DROP FUNCTION IF EXISTS dist_3d;
 }
 
 #[tracing::instrument(skip(ctx))]
+async fn remove_macro_dist3d_sq(ctx: &Context) -> eyre::Result<()> {
+    let dbh = ctx.db().await;
+
+    let r2 = r##"
+DROP FUNCTION IF EXISTS dist_3d_sq;
+    "##;
+
+    Ok(dbh.execute(r2).await?)
+}
+
+#[tracing::instrument(skip(ctx))]
 async fn remove_which_timezone(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
 
@@ -112,6 +137,7 @@ DROP FUNCTION IF EXISTS which_timezone;
 /// Removes the following functions:
 /// - `dist_2d`: Function for calculating horizontal geodesic distance
 /// - `dist_3d`: Function for calculating three-dimensional distance
+/// - `dist_3d_sq`: Without the sqrt() which is expensive
 ///
 /// ### Errors
 ///
@@ -127,6 +153,7 @@ DROP FUNCTION IF EXISTS which_timezone;
 #[tracing::instrument(skip(ctx))]
 pub async fn remove_macros(ctx: &Context) -> eyre::Result<()> {
     remove_which_timezone(ctx).await?;
+    remove_macro_dist3d_sq(ctx).await?;
     remove_macro_dist3d(ctx).await?;
     remove_macro_dist2d(ctx).await?;
     Ok(())
