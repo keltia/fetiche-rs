@@ -519,8 +519,8 @@ async fn calculate_one_day_on_site(
         work.run(&dbh).await?
     } else {
         trace!("dry run!");
-        let mut rng = rng();
-        let _ = sleep(Duration::from_secs(rng.random_range(1..=5)));
+        let wait = Duration::from_secs(1);
+        let _ = sleep(wait).await;
         Stats::Planes(PlanesStats::default())
     };
     Ok(stats)
