@@ -245,6 +245,7 @@ ORDER BY time
     #[tracing::instrument(skip(dbh))]
     async fn select_drones(&mut self, dbh: &Client) -> Result<usize> {
         let dbvars = self.dbvars.clone();
+        let tag = dbvars.tag.clone();
 
         // All drone points for the same day
         //
@@ -262,8 +263,6 @@ ORDER BY time
         debug!("{} nm as deg: {}", self.distance, dist);
 
         let time_from = self.date.format("%Y-%m-%d 00:00:00").to_string();
-        let day_name = self.date.format("%Y%m%d").to_string();
-        let tag = format!("_{name}_{day_name}");
 
         // Our distance in nm converted into degrees
         //
