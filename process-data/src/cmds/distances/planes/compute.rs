@@ -396,46 +396,46 @@ CREATE OR REPLACE TABLE {workdb}.today_close{tag}
 ENGINE = MergeTree
 ORDER BY (journey, time)
 AS (
-WITH
-  $1 AS R,
-  pow(R, 2) AS R2,
-  arrayJoin([c.t2, addSeconds(c.t2, 2)]) AS t2_match,
-  dist_2d(c.longitude, c.latitude, t.plon, t.plat) AS d2,
-  dist_3d_sq(c.longitude, c.latitude, c.altitude_geo, t.plon, t.plat, t.palt) AS d3sq,
-  ceil(abs(t.palt - c.altitude_geo)) AS diff_alt
-SELECT
-  c.journey AS journey,
-  c.ident AS drone_id,
-  c.model,
-  c.timestamp AS time,
-  c.longitude AS dlon,
-  c.latitude AS dlat,
-  c.altitude_geo AS dalt,
-  c.elevation AS dh,
-  c.home_distance_2d AS hdist2d,
-  c.home_distance_3d AS hdist3d,
-  c.station_name,
-  t.site,
-  t.addr AS addr,
-  t.callsign,
-  t.time AS pt,
-  t.plon AS plon,
-  t.plat AS plat,
-  t.palt AS palt,
-  t.prox_mode_a,
-  t.prox_ecat,
-  d2 AS dist2d,
-  sqrt(d3sq) AS dist_drone_plane,
-  diff_alt
-FROM
-  {workdb}.candidates{tag} AS c
-  INNER JOIN {workdb}.today{tag} AS t
-ON
-  t.t2 = t2_match
-WHERE
-  d2 <= R AND
-  d3sq <= R2
-ORDER BY (journey, time)
+    WITH
+        $1 AS R,
+        $2 AS R_DEG,
+        pow(R, 2) AS R2,
+        dist_2d(c.longitude, c.latitude, t.plon, t.plat) AS d2,
+        dist_3d_sq(c.longitude, c.latitude, c.altitude_geo, t.plon, t.plat, t.palt) AS d3sq,
+        ceil(abs(t.palt - c.altitude_geo)) AS diff_alt
+    SELECT
+        c.journey AS journey,
+        c.ident AS drone_id,
+        c.model,
+        c.timestamp AS time,
+        c.longitude AS dlon,
+        c.latitude AS dlat,
+        c.altitude_geo AS dalt,
+        c.elevation AS dh,
+        c.home_distance_2d AS hdist2d,
+        c.home_distance_3d AS hdist3d,
+        c.station_name,
+        t.site,
+        t.addr AS addr,
+        t.callsign,
+        t.time AS pt,
+        t.plon AS plon,
+        t.plat AS plat,
+        t.palt AS palt,
+        t.prox_mode_a,
+        t.prox_ecat,
+        d2 AS dist2d,
+        sqrt(d3sq) AS dist_drone_plane,
+        diff_alt
+    FROM
+        {workdb}.candidates{tag} AS c
+        INNER JOIN {workdb}.today{tag} AS t
+        ON (t.t2 = c.t2) OR (t.t2 = addSeconds(c.t2, 2))
+    WHERE
+        d2 <= R AND
+        d3sq <= R2
+    ORDER BY (journey, time)
+)
     "##,
             dbvars
         );
