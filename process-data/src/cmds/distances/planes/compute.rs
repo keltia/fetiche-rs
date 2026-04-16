@@ -642,9 +642,9 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
 
         let threshold = self.threshold;
 
-        let r = make_query!(
-            r##"INSERT INTO {workdb}.airplane_prox
-     SELECT
+        let r = make_query!(r##"
+    INSERT INTO {workdb}.airplane_prox
+    SELECT
       any_value(tc.site) AS site,
       id.sitename AS sitename,
       id.en_id AS en_id,
