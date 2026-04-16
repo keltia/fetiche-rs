@@ -152,26 +152,40 @@ impl PlaneDistance {
             r##"
 CREATE OR REPLACE TABLE {workdb}.today{tag}
 ENGINE = MergeTree
-PRIMARY KEY (site, time)
-AS SELECT
-  site,
-  time,
-  prox_id AS addr,
-  prox_callsign AS callsign,
-  prox_lon AS plon,
-  prox_lat AS plat,
-  prox_alt_m AS palt,
-  ModeA AS prox_mode_a,
-  EmitterCategory AS prox_ecat
-FROM
-  {planedb}.airplanes
-WHERE
-  site = $1 AND
-  toStartOfInterval(time, toIntervalDay(1)) = toDateTime($2) AND
-  palt IS NOT NULL AND
-  NOT(palt = 0 AND flight_level != 0) AND
-  pointInEllipses(plon, plat, $3, $4, $5, $6)
-ORDER BY time
+ORDER BY (site, time)
+AS (
+    WITH
+      prox_id AS addr,
+      prox_callsign AS callsign,
+      prox_lon AS plon,
+      prox_lat AS plat,
+      prox_alt_m AS palt,
+      ModeA AS prox_mode_a,
+      EmitterCategory AS prox_ecat,
+      toStartOfInterval(time, toIntervalSecond(2)) AS t2
+    SELECT
+      site,
+      time,
+      addr,
+      callsign,
+      plon,
+      plat,
+      palt,
+      prox_mode_a,
+      prox_ecat,
+      t2
+    FROM
+      {planedb}.airplanes
+    PREWHERE
+      site = $1 AND
+      prox_alt_m  IS NOT NULL AND
+      NOT(prox_alt_m = 0 AND flight_level != 0)
+    WHERE
+      time >= toDateTime($2) AND
+      time < toDateTime($3) AND
+      pointInEllipses(plon, plat, $4, $5, $6, $7)
+    ORDER BY (site, time)
+)
 "##,
             dbvars
         );
@@ -185,6 +199,7 @@ ORDER BY time
         let q = QueryBuilder::new(&r1)
             .arg(site.id)
             .arg(time_from)
+            .arg(time_to)
             .arg(lon)
             .arg(lat)
             .arg(dist)
@@ -260,7 +275,15 @@ ORDER BY time
         let site = self.site.clone();
 
         let time_from = self.date.format("%Y-%m-%d 00:00:00").to_string();
-
+        let time_to = self
+            .date
+            .add(chrono::Duration::try_days(1).unwrap())
+            .format("%Y-%m-%d 00:00:00")
+            .to_string();
+        info!(
+            "From {} to {} on {}/{}.",
+            time_from, time_to, site.name, site.id
+        );
         // Our distance in nm converted into degrees
         //
         let dist = self.distance * 1.852 / ONE_DEG;
@@ -271,33 +294,41 @@ ORDER BY time
 CREATE OR REPLACE TABLE {workdb}.candidates{tag}
 ENGINE = MergeTree
 ORDER BY (time,journey)
-AS SELECT
-    time,
-    journey,
-    ident,
-    model,
-    timestamp,
-    latitude,
-    longitude,
-    altitude_geo,
-    elevation,
-    home_lat,
-    home_lon,
-    home_distance_2d,
-    home_distance_3d,
-    station_name
-FROM {dronedb}.drones
-WHERE
-  toStartOfInterval(timestamp, toIntervalDay(1)) = toDateTime($1) AND
-  altitude_geo IS NOT NULL AND
-  latitude IS NOT NULL AND
-  longitude IS NOT NULL AND
-  pointInEllipses(longitude,latitude, $2, $3, $4, $5)
+AS (
+    WITH
+        toStartOfInterval(timestamp, toIntervalSecond(2)) AS t2
+    SELECT
+        time,
+        journey,
+        ident,
+        model,
+        timestamp,
+        latitude,
+        longitude,
+        altitude_geo,
+        elevation,
+        home_lat,
+        home_lon,
+        home_distance_2d,
+        home_distance_3d,
+        station_name,
+        t2
+    FROM {dronedb}.drones
+    PREWHERE
+      altitude_geo IS NOT NULL AND
+      latitude IS NOT NULL AND
+      longitude IS NOT NULL
+    WHERE
+      timestamp >= toDateTime($1) AND timestamp < toDateTime($2) AND
+      pointInEllipses(longitude,latitude, $3, $4, $5, $6)
+    ORDER BY (time, journey)
+)
     "##,
             dbvars
         );
         let q = QueryBuilder::new(&r1)
             .arg(time_from)
+            .arg(time_to)
             .arg(lon)
             .arg(lat)
             .arg(dist)
@@ -365,7 +396,15 @@ WHERE
 CREATE OR REPLACE TABLE {workdb}.today_close{tag}
 ENGINE = MergeTree
 ORDER BY (journey, time)
-AS SELECT
+AS (
+WITH
+  $1 AS R,
+  pow(R, 2) AS R2,
+  arrayJoin([c.t2, addSeconds(c.t2, 2)]) AS t2_match,
+  dist_2d(c.longitude, c.latitude, t.plon, t.plat) AS d2,
+  dist_3d_sq(c.longitude, c.latitude, c.altitude_geo, t.plon, t.plat, t.palt) AS d3sq,
+  ceil(abs(t.palt - c.altitude_geo)) AS diff_alt
+SELECT
   c.journey AS journey,
   c.ident AS drone_id,
   c.model,
@@ -386,17 +425,18 @@ AS SELECT
   t.palt AS palt,
   t.prox_mode_a,
   t.prox_ecat,
-  dist_2d(dlon, dlat, plon, plat) AS dist2d,
-  dist_3d(dlon, dlat, dalt, plon, plat, palt) AS dist_drone_plane,
-  ceil(abs(palt - dalt)) AS diff_alt
+  d2 AS dist2d,
+  sqrt(d3sq) AS dist_drone_plane,
+  diff_alt
 FROM
-  {workdb}.candidates{tag} AS c JOIN {workdb}.today{tag} AS t
+  {workdb}.candidates{tag} AS c
+  INNER JOIN {workdb}.today{tag} AS t
 ON
-  toStartOfInterval(pt, toIntervalSecond(2)) = toStartOfInterval(c.timestamp, toIntervalSecond(2)) OR
-  toStartOfInterval(pt, toIntervalSecond(2)) = toStartOfInterval(addSeconds(c.timestamp, 2), toIntervalSecond(2))
+  t.t2 = t2_match
 WHERE
-  dist2d <= $1 AND
-  diff_alt < $1
+  d2 <= R AND
+  d3sq <= R2
+ORDER BY (journey, time)
     "##,
             dbvars
         );
