@@ -561,7 +561,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
         let r2 = make_query!("INSERT INTO {workdb}.ids{tag} FORMAT native", dbvars);
         dbh.insert_native_block(&r2, all).await?;
 
-        let r3 = make_query!("SELECT count() FROM {workdb}.today_close{tag}", dbvars);
+        let r3 = make_query!("SELECT count() FROM {workdb}.ids{tag}", dbvars);
         let mut count = dbh.query_one::<RawRow>(&r3).await?;
         let count: u64 = count.get(0);
         trace!("Got {count} IDs");
