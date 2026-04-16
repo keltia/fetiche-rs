@@ -7,7 +7,7 @@ async fn add_macro_dist2d(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
 
     let r1 = r##"
-CREATE FUNCTION dist_2d AS (dx, dy, px, py) ->
+CREATE OR REPLACE FUNCTION dist_2d AS (dx, dy, px, py) ->
   geoDistance(dx,dy,px,py);
     "##;
 
@@ -19,7 +19,7 @@ async fn add_macro_dist3d(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
 
     let r2 = r##"
-CREATE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
+CREATE OR REPLACE FUNCTION dist_3d AS (dx, dy, dz, px, py, pz) ->
   sqrt(pow(geoDistance(dx,dy,px,py), 2) + pow((dz - pz), 2));
     "##;
 
@@ -33,7 +33,7 @@ async fn add_macro_dist3d_sq(ctx: &Context) -> eyre::Result<()> {
     let r3 = r##"
 CREATE OR REPLACE FUNCTION dist_3d_sq AS (dx, dy, dz, px, py, pz) ->
   pow(geoDistance(dx, dy, px, py), 2) + pow(dz - pz, 2);
-    "##,
+    "##;
 
     Ok(dbh.execute(r3).await?)
 }
