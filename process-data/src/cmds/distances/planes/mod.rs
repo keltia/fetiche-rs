@@ -13,7 +13,6 @@ use eyre::Result;
 use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
-use rand::{rng, RngExt};
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
@@ -401,12 +400,9 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                 let pb = m.add(ProgressBar::new_spinner());
                 pb.set_style(sty.clone());
                 pb.enable_steady_tick(Duration::from_millis(100));
+                trace!("Calculate for site {} on day {}", work_item.site, work_item.day);
 
                 async move {
-                    trace!(
-                        "Calculate for site {} on day {}",
-                        work_item.site, work_item.day
-                    );
                     let ctx = ctx.clone();
                     let work = work_item.clone();
                     let pb = pb.clone();
@@ -502,8 +498,8 @@ async fn calculate_one_day_on_site(
     pbar.set_message(pbm);
     let mut work = PlaneDistanceBuilder::default()
         .site(work.site.clone())
-        .lat(work.site.latitude as f64)
-        .lon(work.site.longitude as f64)
+        .lat(work.site.latitude)
+        .lon(work.site.longitude)
         .distance(work.distance)
         .date(work.day)
         .threshold(work.threshold)

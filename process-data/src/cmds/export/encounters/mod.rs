@@ -215,7 +215,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     let prox_id = res.prox_id.clone();
     let prox_callsign = res.prox_callsign.clone();
 
-    let planes = fetch_planes(ctx, &sitename, &enc_coord, &prox_id, first, last).await?;
+    let planes = fetch_planes(ctx, sitename, &enc_coord, &prox_id, first, last).await?;
     if planes.len() <= 1 {
         return Err(CmdError::NotEnoughData("planes".to_string()).into());
     }
@@ -314,7 +314,7 @@ async fn export_encounter_list(
             .into_iter()
             .map(|en_id| {
                 let dir = dir.clone();
-                let site = en_id.split('-').collect::<Vec<_>>().get(0).unwrap().to_string();
+                let site = en_id.split('-').collect::<Vec<_>>().first().unwrap().to_string();
 
                 async move {
                     trace!("Generating KML for {en_id}");

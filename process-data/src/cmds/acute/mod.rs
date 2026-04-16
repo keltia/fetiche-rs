@@ -79,7 +79,7 @@ pub async fn run_acute_cmd(ctx: &Context, opts: &AcuteOpts) -> Result<()> {
             SitesSubCommand::Add(_opts) => todo!(),
             SitesSubCommand::Modify => todo!(),
             SitesSubCommand::Remove => todo!(),
-            SitesSubCommand::List(sopts) => sites_list(ctx, &sopts).await?,
+            SitesSubCommand::List(sopts) => sites_list(ctx, sopts).await?,
         },
     }
 

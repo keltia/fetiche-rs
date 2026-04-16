@@ -30,7 +30,7 @@ pub const CONFIG: &str = "process-data.hcl";
 /// * `pool_size` - Maximum number of connections allowed in the database pool.
 /// * `wait` - Delay between parallel tasks in milliseconds.
 /// * `dry_run` - A boolean flag indicating whether the application is running
-///               in dry-run mode (no side effects).
+///   in dry-run mode (no side effects).
 ///
 /// # Examples
 ///
@@ -232,7 +232,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
     let profile = match cfg.profiles.get(&profile_name) {
         Some(p) => p,
         None => {
-            return Err(Status::MissingProfile(profile_name.into()).into());
+            return Err(Status::MissingProfile(profile_name).into());
         }
     };
 
@@ -272,7 +272,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ..Default::default()
         },
     )
-    .await?;
+        .await?;
 
     let pool_size = opts.pool_size;
     let pool = bb8::Pool::builder()
@@ -302,7 +302,7 @@ pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
             ("dronedb".into(), profile.drone_db.clone()),
             ("workdb".into(), profile.work_db.clone()),
         ])
-        .into(),
+            .into(),
         dbh: pool.clone(),
         pool_size,
         wait: opts.wait,
