@@ -258,9 +258,6 @@ ORDER BY time
         let lon = self.lon;
 
         let site = self.site.clone();
-        let name = site.name.clone();
-        let dist = self.distance * 1.852 / ONE_DEG;
-        debug!("{} nm as deg: {}", self.distance, dist);
 
         let time_from = self.date.format("%Y-%m-%d 00:00:00").to_string();
 
