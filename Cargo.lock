@@ -2706,6 +2706,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
+name = "farben"
+version = "0.17.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7709102e05e07158fdd59aa49362a386c88cb63a9a42b91d22a3fcf381168bc4"
+dependencies = [
+ "farben-core",
+]
+
+[[package]]
+name = "farben-core"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b67b762bc44930fbf82382cbb263b091ff48d461f9a62597bad154efc508635f"
+
+[[package]]
 name = "fast-float2"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2892,6 +2907,7 @@ dependencies = [
  "csv",
  "divan",
  "eyre",
+ "farben",
  "fetiche-common",
  "fetiche-macros",
  "futures",

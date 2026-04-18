@@ -13,6 +13,7 @@ use std::fmt::Debug;
 use clap::{crate_authors, crate_description, Parser};
 use csv::Writer;
 use eyre::Result;
+use farben::ceprintln;
 use serde_json::json;
 use tabled::settings::object::Columns;
 use tabled::settings::{Alignment, Style};
@@ -38,8 +39,10 @@ async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
     if opts.version {
+        if !opts.quiet {
+            banner();
+        }
         eprintln!("{} {}", NAME, env!("CARGO_PKG_VERSION"));
-        banner();
         return Ok(());
     }
 
@@ -50,72 +53,75 @@ async fn main() -> Result<()> {
     let ctx = init_runtime(&opts).await?;
 
     println!("Repository: {}", repo_path(&ctx));
-    match &opts.cmd {
-        SubCommand::Clean => {
-            if !ctx.dry_run {
-                let files = cmd_clean(&ctx).await?;
-                debug!(
-                    "files={}",
-                    files
-                        .iter()
-                        .map(|f| f.to_string())
-                        .collect::<Vec<_>>()
-                        .join(",")
-                );
+    if opts.cmd.is_some() {
+        let cmd = opts.cmd.as_ref().unwrap();
+        match cmd {
+            SubCommand::Clean => {
+                if !ctx.dry_run {
+                    let files = cmd_clean(&ctx).await?;
+                    debug!(
+                        "files={}",
+                        files
+                            .iter()
+                            .map(|f| f.to_string())
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    );
 
-                let table = display_result_table(files);
-                println!("\nRemoved Files:\n{table}");
-            } else {
-                println!("Dry run, not removing anything.");
+                    let table = display_result_table(files);
+                    println!("\nRemoved Files:\n{table}");
+                } else {
+                    println!("Dry run, not removing anything.");
+                }
             }
-        }
-        SubCommand::Fetch => {
-            if !ctx.dry_run {
-                let files = cmd_fetch(&ctx).await?;
-                debug!(
-                    "files={}",
-                    files
-                        .iter()
-                        .map(|f| f.to_string())
-                        .collect::<Vec<_>>()
-                        .join(",")
-                );
+            SubCommand::Fetch => {
+                if !ctx.dry_run {
+                    let files = cmd_fetch(&ctx).await?;
+                    debug!(
+                        "files={}",
+                        files
+                            .iter()
+                            .map(|f| f.to_string())
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    );
 
+                    let table = display_result_table(files);
+                    println!("\nFiles:\n{table}");
+                } else {
+                    println!("Dry run, not fetching anything.");
+                }
+            }
+            SubCommand::Find(fopts) => {
+                println!("Looking for airport: {}", &fopts.text);
+
+                // polars is not async-friendly, when using lazy frames
+                // cf.https://stackoverflow.com/questions/77294105/how-do-i-call-the-polars-rust-api-from-an-async-function#77312986
+                //
+                let ctx1 = ctx.clone();
+                let opts1 = fopts.clone();
+                let airport_iata = spawn_blocking(move || cmd_find(&ctx1, &opts1)).await?;
+
+                let results = match airport_iata {
+                    Ok(airport_iata) => {
+                        debug!("res={:?}", airport_iata);
+
+                        airport_iata
+                    }
+                    Err(e) => {
+                        eprintln!("Error finding airport: {}", e.to_string());
+                        return Err(e);
+                    }
+                };
+
+                let result = format_result_as(results, fopts.fmt.unwrap_or(Format::Plain))?;
+                println!("{}", result);
+            }
+            SubCommand::Show => {
+                let files = cmd_show(&ctx).await?;
                 let table = display_result_table(files);
                 println!("\nFiles:\n{table}");
-            } else {
-                println!("Dry run, not fetching anything.");
             }
-        }
-        SubCommand::Find(fopts) => {
-            println!("Looking for airport: {}", &fopts.text);
-
-            // polars is not async-friendly, when using lazy frames
-            // cf.https://stackoverflow.com/questions/77294105/how-do-i-call-the-polars-rust-api-from-an-async-function#77312986
-            //
-            let ctx1 = ctx.clone();
-            let opts1 = fopts.clone();
-            let airport_iata = spawn_blocking(move || cmd_find(&ctx1, &opts1)).await?;
-
-            let results = match airport_iata {
-                Ok(airport_iata) => {
-                    debug!("res={:?}", airport_iata);
-
-                    airport_iata
-                }
-                Err(e) => {
-                    eprintln!("Error finding airport: {}", e.to_string());
-                    return Err(e);
-                }
-            };
-
-            let result = format_result_as(results, fopts.fmt.unwrap_or(Format::Plain))?;
-            println!("{}", result);
-        }
-        SubCommand::Show => {
-            let files = cmd_show(&ctx).await?;
-            let table = display_result_table(files);
-            println!("\nFiles:\n{table}");
         }
     }
     Ok(finish_runtime(&ctx)?)
@@ -179,9 +185,9 @@ pub fn version() -> String {
 /// Display banner
 ///
 fn banner() {
-    eprintln!(
+    ceprintln!(
         r##"
-{} by {}
+[green]{}[/] by {}
 {}
 "##,
         USER_AGENT,

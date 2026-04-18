@@ -27,7 +27,7 @@ pub struct Opts {
     #[clap(short = 'n', long)]
     pub dry_run: bool,
     #[clap(subcommand)]
-    pub cmd: SubCommand,
+    pub cmd: Option<SubCommand>,
 }
 
 /// List of all sub-commands.

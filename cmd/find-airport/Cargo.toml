@@ -46,6 +46,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
+farben = "0.17"
 pluscodes = "0.5"
 polars-utils = "0.53"
 rayon = "1.11"
