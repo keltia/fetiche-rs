@@ -48,13 +48,6 @@ pub const AUTHORS: &str = crate_authors!();
 async fn main() -> Result<()> {
     let opts = Opts::parse();
 
-    // Initialise our context including logging.
-    //
-    let ctx = init_runtime(&opts).await?;
-
-    eprintln!("{}", banner(&ctx)?);
-
-    trace!("Execute commands.");
     match &opts.subcmd {
         SubCommand::Completion(copts) => {
             let generator = copts.shell;
@@ -66,12 +59,23 @@ async fn main() -> Result<()> {
         SubCommand::Version => {
             eprintln!("{} v{}+clickhouse", NAME, VERSION);
         }
-        _ => handle_cmds(&ctx, &opts).await?,
-    }
+        // All other commands are handled here.
+        //
+        _ => {
+            // Initialise our context including logging.
+            //
+            let ctx = init_runtime(&opts).await?;
 
-    // Finish
-    //
-    finish_runtime(&ctx)
+            eprintln!("{}", banner(&ctx)?);
+
+            trace!("Execute commands.");
+            handle_cmds(&ctx, &opts).await?;
+            // Finish
+            //
+            return finish_runtime(&ctx);
+        }
+    }
+    Ok(())
 }
 
 /// Display banner
