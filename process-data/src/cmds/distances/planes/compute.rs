@@ -434,7 +434,6 @@ AS (
     WHERE
         d2 <= R AND
         d3sq <= R2
-    ORDER BY (journey, time)
 )
     "##,
             dbvars
