@@ -83,7 +83,7 @@ impl Delim {
     /// ```
     ///
     #[tracing::instrument(skip(self, data))]
-    pub fn prepare_csv<T>(&self, data: &Vec<T>, header: bool) -> Result<String>
+    pub fn prepare_csv<T>(&self, data: &[T], header: bool) -> Result<String>
     where
         T: Serialize + Debug,
     {
