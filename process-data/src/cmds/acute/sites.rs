@@ -16,7 +16,7 @@ use crate::runtime::Context;
 /// "acute sites"
 ///
 #[derive(Debug, Parser)]
-pub(crate) struct SiteOpts {
+pub struct SiteOpts {
     #[clap(short = 'c', long)]
     pub csv: bool,
     #[clap(short = 'T', long, default_value = "true")]
@@ -38,7 +38,7 @@ pub enum SitesSubCommand {
 }
 
 #[derive(Debug, Parser)]
-pub(crate) struct SitesListOpts {
+pub struct SitesListOpts {
     #[clap(short = 'C', long)]
     pub csv: bool,
     #[clap(short = 'J', long)]
@@ -83,7 +83,7 @@ fn insert_new_site(_opts: &AddSiteOpts) -> Result<()> {
 ///  acute site subcommand handling.
 ///
 #[tracing::instrument(skip(ctx))]
-pub(crate) async fn sites_list(ctx: &Context, opts: &SitesListOpts) -> Result<()> {
+pub async fn sites_list(ctx: &Context, opts: &SitesListOpts) -> Result<()> {
     // Brétigny for you.
     //
     let home = coord! {x: 48.600052, y:2.347038};

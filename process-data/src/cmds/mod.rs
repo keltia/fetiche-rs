@@ -43,6 +43,7 @@ mod stats;
 /// One degree in *kilometers*
 const ONE_DEG: f64 = 40_000. / 360.;
 
+#[allow(async_fn_in_trait)]
 /// This trait defines an object that can be calculated
 ///
 pub trait Calculate: Debug {

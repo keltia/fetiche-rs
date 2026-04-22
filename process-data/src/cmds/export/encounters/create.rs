@@ -74,7 +74,7 @@ fn from_points_to_ls(points: &Vec<DataPoint>) -> eyre::Result<LineString> {
 ///
 #[allow(dead_code)]
 #[tracing::instrument]
-pub(crate) fn make_style(name: &str, colour: &str, size: f64) -> Kml {
+pub fn make_style(name: &str, colour: &str, size: f64) -> Kml {
     Kml::Style(Style {
         id: Some(name.into()),
         line: LineStyle {
@@ -82,7 +82,7 @@ pub(crate) fn make_style(name: &str, colour: &str, size: f64) -> Kml {
             width: size,
             ..Default::default()
         }
-            .into(),
+        .into(),
         ..Default::default()
     })
 }
@@ -102,7 +102,7 @@ pub(crate) fn make_style(name: &str, colour: &str, size: f64) -> Kml {
 /// parsed into a valid `Kml` object.
 ///
 #[tracing::instrument]
-pub(crate) fn default_styles() -> Vec<Kml<f64>> {
+pub fn default_styles() -> Vec<Kml<f64>> {
     let str = r##"
    	<StyleMap id="default">
 		<Pair>
@@ -230,7 +230,7 @@ pub(crate) fn default_styles() -> Vec<Kml<f64>> {
 /// ```
 ///
 #[tracing::instrument(skip(points, style))]
-pub(crate) fn from_traj_to_placemark(
+pub fn from_traj_to_placemark(
     name: &str,
     icao: &str,
     points: &Vec<DataPoint>,
@@ -241,16 +241,19 @@ pub(crate) fn from_traj_to_placemark(
         name: Some(name.into()),
         geometry: Some(Geometry::LineString(ls)),
         style_url: Some(style.into()),
-        attrs: HashMap::from([("styleUrl".into(), style.into()), ("icao".into(), icao.into())]),
+        attrs: HashMap::from([
+            ("styleUrl".into(), style.into()),
+            ("icao".into(), icao.into()),
+        ]),
         ..Default::default()
     }))
 }
 
 /// Converts a specific `Encounter` point into a KML `Placemark`.
 ///
-/// This function creates a KML `Placemark` object to represent the closest point of the encounter 
-/// between two entities, taking their respective coordinates and altitudes into consideration. 
-/// The created placemark uses a `LineString` geometry to visually connect the two points, 
+/// This function creates a KML `Placemark` object to represent the closest point of the encounter
+/// between two entities, taking their respective coordinates and altitudes into consideration.
+/// The created placemark uses a `LineString` geometry to visually connect the two points,
 /// and applies the specified style to it.
 ///
 /// # Arguments
@@ -286,11 +289,7 @@ pub(crate) fn from_traj_to_placemark(
 /// ```
 ///
 #[tracing::instrument]
-pub(crate) fn from_point_to_placemark(
-    name: &str,
-    res: &Encounter,
-    style_url: &str,
-) -> eyre::Result<Kml> {
+pub fn from_point_to_placemark(name: &str, res: &Encounter, style_url: &str) -> eyre::Result<Kml> {
     let points = [
         DataPoint {
             latitude: res.drone_lat as f64,

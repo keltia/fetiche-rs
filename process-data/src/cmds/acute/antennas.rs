@@ -15,7 +15,7 @@ use fetiche_common::Delim;
 /// "acute antennas"
 ///
 #[derive(Debug, Parser)]
-pub(crate) struct AntennasOpts {
+pub struct AntennasOpts {
     #[clap(short = 'C', long)]
     pub csv: bool,
     #[clap(short = 'J', long)]
@@ -36,7 +36,7 @@ struct Antenna {
     pub description: String,
 }
 
-pub(crate) async fn antennas_list(ctx: &Context, opts: &AntennasOpts) -> Result<()> {
+pub async fn antennas_list(ctx: &Context, opts: &AntennasOpts) -> Result<()> {
     // Prepare DB environment.
     //
     let dbvars = DBVars::from_ctx(ctx);

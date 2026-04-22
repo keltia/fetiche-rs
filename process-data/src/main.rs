@@ -25,15 +25,7 @@ use clap_complete::generate;
 use eyre::Result;
 use tracing::trace;
 
-use crate::cli::{Opts, SubCommand};
-use crate::cmds::handle_cmds;
-use crate::runtime::{finish_runtime, init_runtime, Context};
-
-mod cli;
-mod cmds;
-mod config;
-mod error;
-mod runtime;
+use process_data::{finish_runtime, handle_cmds, init_runtime, Context, Opts, SubCommand};
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -64,7 +56,7 @@ async fn main() -> Result<()> {
         _ => {
             // Initialise our context including logging.
             //
-            let ctx = init_runtime(&opts).await?;
+            let ctx = init_runtime(NAME, &opts).await?;
 
             eprintln!("{}", banner(&ctx)?);
 

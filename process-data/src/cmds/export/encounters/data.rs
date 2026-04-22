@@ -43,7 +43,7 @@ use tracing::{debug, trace};
 /// a proximate aircraft (plane) at a specific moment in time.
 ///
 #[derive(Clone, Debug, Row, Serialize)]
-pub(crate) struct DataPoint {
+pub struct DataPoint {
     /// The timestamp of the data point in UTC.
     pub timestamp: DateTime<Utc>,
     /// Latitude position (in degrees) of the data point.
@@ -71,7 +71,7 @@ pub(crate) struct DataPoint {
 /// * `prox_alt_m` - The altitude of the proximate aircraft in meters.
 ///
 #[derive(Clone, Debug, Row, Serialize)]
-pub(crate) struct Encounter {
+pub struct Encounter {
     pub en_id: String,
     pub sitename: String,
     pub journey: i32,
@@ -106,17 +106,14 @@ pub(crate) struct Encounter {
 /// number (f64), and the results are ordered by timestamp.
 ///
 #[tracing::instrument(skip(ctx))]
-pub(crate) async fn fetch_drones(
-    ctx: &Context,
-    journey: i32,
-    drone_id: &str,
-) -> Result<Vec<DataPoint>> {
+pub async fn fetch_drones(ctx: &Context, journey: i32, drone_id: &str) -> Result<Vec<DataPoint>> {
     let client = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
     // Fetch drone points
     //
-    let rpp = make_query!(r##"
+    let rpp = make_query!(
+        r##"
 SELECT
   toDateTime(timestamp) as timestamp,
   latitude,
@@ -127,7 +124,9 @@ WHERE
 journey = $1 AND
 ident = $2
 ORDER BY timestamp
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     let q = QueryBuilder::new(&rpp).arg(journey).arg(drone_id);
     let drones = client.query_collect::<DataPoint>(q).await?;
@@ -155,7 +154,7 @@ ORDER BY timestamp
 /// provided in meters and appropriately mapped.
 ///
 #[tracing::instrument(skip(ctx))]
-pub(crate) async fn fetch_planes(
+pub async fn fetch_planes(
     ctx: &Context,
     sitename: &str,
     enc_coord: &(f64, f64),
@@ -173,7 +172,8 @@ pub(crate) async fn fetch_planes(
     //
     // We need to convert altitude into meters.
     //
-    let rdp = make_query!(r##"
+    let rdp = make_query!(
+        r##"
 SELECT
   time,
   prox_lat AS latitude,
@@ -186,9 +186,17 @@ WHERE
   site = $4 AND
   geoDistance(prox_lon, prox_lat, $5, $6) <= 5500
 ORDER BY time
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
-    let q = QueryBuilder::new(&rdp).arg(prox_id).arg(first).arg(last).arg(site.id).arg(enc_coord.0).arg(enc_coord.1);
+    let q = QueryBuilder::new(&rdp)
+        .arg(prox_id)
+        .arg(first)
+        .arg(last)
+        .arg(site.id)
+        .arg(enc_coord.0)
+        .arg(enc_coord.1);
     let planes = client.query_collect::<DataPoint>(q).await?;
     trace!("Found {} plane points for id {}", planes.len(), prox_id);
 
@@ -213,14 +221,15 @@ ORDER BY time
 /// altitude, and callsign).
 ///
 #[tracing::instrument(skip(ctx))]
-pub(crate) async fn fetch_one_encounter(ctx: &Context, id: &str) -> Result<Encounter> {
+pub async fn fetch_one_encounter(ctx: &Context, id: &str) -> Result<Encounter> {
     let client = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
     // Fetch the drone & airplane IDs using the closest distance as we may have multiple
     // encounters behind the same id.
     //
-    let rp = make_query!(r##"
+    let rp = make_query!(
+        r##"
 SELECT
    en_id,
    any_value(sitename),
@@ -240,7 +249,9 @@ SELECT
    min(distance_slant_m)
 FROM {workdb}.airplane_prox
 WHERE en_id = $1 group by (en_id, journey)
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     let q = QueryBuilder::new(&rp).arg(id);
     let res = client.query_one::<Encounter>(q).await?;
@@ -261,18 +272,21 @@ WHERE en_id = $1 group by (en_id, journey)
 /// `airprox_summary` table and orders them by `en_id`.
 ///
 #[tracing::instrument(skip(ctx))]
-pub(crate) async fn fetch_all_en_id(ctx: &Context) -> Result<Vec<String>> {
+pub async fn fetch_all_en_id(ctx: &Context) -> Result<Vec<String>> {
     let client = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let r = make_query!(r##"
+    let r = make_query!(
+        r##"
 SELECT
   en_id
 FROM
   {workdb}.airprox_summary
 ORDER BY
   en_id
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     let list = client
         .query_collect::<RawRow>(&r)
@@ -297,7 +311,7 @@ ORDER BY
 /// matching a date pattern derived from the input `DateOpts`. The results are ordered by `en_id`.
 ///
 #[tracing::instrument(skip(ctx))]
-pub(crate) async fn fetch_encounters_on(ctx: &Context, date: DateOpts) -> Result<Vec<String>> {
+pub async fn fetch_encounters_on(ctx: &Context, date: DateOpts) -> Result<Vec<String>> {
     let client = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
@@ -317,7 +331,9 @@ WHERE
   en_id LIKE $1
 ORDER BY
   en_id
-        "##, dbvars);
+        "##,
+        dbvars
+    );
     let q = QueryBuilder::new(&r).arg(en_id_pat);
     let list = client
         .query_collect::<RawRow>(q)

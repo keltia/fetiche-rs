@@ -9,7 +9,6 @@ use tracing::{debug, error, info, trace};
 use crate::cli::Opts;
 use crate::config::ProcessConfig;
 use crate::error::Status;
-use crate::NAME;
 
 use fetiche_common::{close_logging, init_logging, ConfigFile, Versioned};
 
@@ -180,11 +179,11 @@ impl Debug for Context {
 /// ```
 ///
 #[tracing::instrument]
-pub async fn init_runtime(opts: &Opts) -> eyre::Result<Context> {
+pub async fn init_runtime(name: &'static str, opts: &Opts) -> eyre::Result<Context> {
     // Initialise logging early
     //
     init_logging(
-        NAME,
+        name,
         opts.use_telemetry,
         opts.use_tree,
         opts.use_file.clone(),

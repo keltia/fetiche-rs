@@ -3,9 +3,9 @@
 //! This provides a CRUD-like interface with subcommands like `add` & `delete`.
 //!
 
-pub(crate) use antennas::*;
-pub(crate) use install::*;
-pub(crate) use sites::*;
+pub use antennas::*;
+pub use install::*;
+pub use sites::*;
 
 mod antennas;
 mod install;

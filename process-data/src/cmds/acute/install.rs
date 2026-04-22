@@ -16,7 +16,7 @@ use fetiche_common::Delim;
 /// "acute installations"
 ///
 #[derive(Debug, Parser)]
-pub(crate) struct InstOpts {
+pub struct InstOpts {
     #[clap(short = 'C', long)]
     pub csv: bool,
     #[clap(short = 'J', long)]
@@ -40,7 +40,7 @@ struct Install {
     pub timezone: String,
 }
 
-pub(crate) async fn install_list(ctx: &Context, opts: &InstOpts) -> Result<()> {
+pub async fn install_list(ctx: &Context, opts: &InstOpts) -> Result<()> {
     // Prepare DB environment.
     //
     let dbvars = DBVars::from_ctx(ctx);

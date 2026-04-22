@@ -7,7 +7,7 @@ pub use planes::*;
 mod planes;
 
 #[derive(Debug, Parser)]
-pub(crate) struct DistOpts {
+pub struct DistOpts {
     /// Output file (default is stdout).
     #[clap(short = 'o', long)]
     pub output: Option<String>,
@@ -17,10 +17,9 @@ pub(crate) struct DistOpts {
 }
 
 #[derive(Clone, Debug, Parser)]
-pub(crate) enum DistSubcommand {
+pub enum DistSubcommand {
     /// drone to planes distance
     Planes(PlanesOpts),
 }
 
 // -----
-

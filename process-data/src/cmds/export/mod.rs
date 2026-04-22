@@ -14,7 +14,7 @@ mod encounters;
 
 #[derive(Clone, Copy, Debug, EnumString, VariantNames, strum::Display)]
 #[strum(serialize_all = "lowercase")]
-pub(crate) enum Format {
+pub enum Format {
     /// Classic CSV.
     Csv,
     /// Classic JSON
