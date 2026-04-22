@@ -400,7 +400,10 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                 let pb = m.add(ProgressBar::new_spinner());
                 pb.set_style(sty.clone());
                 pb.enable_steady_tick(Duration::from_millis(100));
-                trace!("Calculate for site {} on day {}", work_item.site, work_item.day);
+                trace!(
+                    "Calculate for site {} on day {}",
+                    work_item.site, work_item.day
+                );
 
                 async move {
                     let ctx = ctx.clone();
@@ -412,7 +415,7 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                         let pb = pb.clone();
                         async move { calculate_one_day_on_site(&ctx, &work, &pb).await.unwrap() }
                     })
-                        .await
+                    .await
                     {
                         Ok(res) => res,
                         Err(e) => {
