@@ -727,7 +727,7 @@ mod tests {
 
         // Just to establish the context and database connection.
         //
-        let ctx = init_runtime(&opts).await?;
+        let ctx = init_runtime("test-prepare-worklist", &opts).await?;
 
         let b = dateparser::parse("2023-10-01T00:00:00Z").unwrap();
         let e = dateparser::parse("2023-10-02T00:00:00Z").unwrap();
