@@ -179,7 +179,7 @@ impl DBVars {
 ///
 /// ```rust
 /// # use eyre::Result;
-/// # use process_data::cmds::query::DBVars;
+/// # use process_data::cmds::DBVars;
 /// # use process_data::make_query;
 /// # fn main() -> Result<()> {
 /// let dbvars = DBVars {
