@@ -166,7 +166,7 @@ impl Debug for Context {
 ///     dry_run: false,
 /// };
 ///
-/// let context = init_runtime(&opts).await?;
+/// let context = init_runtime("FOO", &opts).await?;
 /// ```
 ///
 #[tracing::instrument]
