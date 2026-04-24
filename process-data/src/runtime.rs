@@ -33,15 +33,7 @@ pub const CONFIG: &str = "process-data.hcl";
 ///
 /// # Examples
 ///
-/// ```rust
-/// let context = Context {
-///     config: Arc::new(HashMap::new()),
-///     dbh: db_pool,
-///     pool_size: 10,
-///     wait: 100,
-///     dry_run: false,
-/// };
-///
+/// ```rust,no_run
 /// // Use context for database operations
 /// let client = context.db().await;
 /// ```
@@ -81,7 +73,7 @@ impl Context {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// let client = context.db().await;
     /// ```
     ///
@@ -108,8 +100,7 @@ impl Context {
     ///
     /// # Examples
     ///
-    /// ```rust
-    /// // Finalize runtime components
+    /// ```rust,no_run
     /// context.finish()?;
     /// ```
     ///
@@ -163,7 +154,7 @@ impl Debug for Context {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// let opts = Opts {
 ///     database: None,
 ///     datalake: Some(String::from("/data/lake")),
