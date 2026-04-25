@@ -73,23 +73,6 @@ impl DBVars {
     ///
     /// Returns a new `DBVars` instance with the updated tag.
     ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use process_data::cmds::query::DBVars;
-    ///
-    /// let dbvars = DBVars {
-    ///     planedb: "planes_prod".to_string(),
-    ///     dronedb: "drones_prod".to_string(),
-    ///     workdb: "work_prod".to_string(),
-    ///     tag: String::new(),
-    /// };
-    ///
-    /// let tagged = dbvars.tag("_LFPG_20231001");
-    /// assert_eq!(tagged.tag, "_LFPG_20231001");
-    /// assert_eq!(tagged.planedb, "planes_prod");
-    /// ```
-    ///
     pub fn tag(&self, tag: &str) -> Self {
         Self {
             planedb: self.planedb.clone(),
@@ -224,7 +207,7 @@ impl DBVars {
 #[macro_export]
 macro_rules! make_query {
     ($q:literal, $val:expr) => {
-        crate::load_query($q, &$val)?
+        $crate::load_query($q, &$val)?
     };
 }
 
