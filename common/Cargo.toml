@@ -33,6 +33,10 @@ harness = false
 name = "date_parsing"
 harness = false
 
+[[bench]]
+name = "ser"
+harness = false
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
@@ -80,7 +84,9 @@ ractor.workspace = true
 rstest.workspace = true
 tokio.workspace = true
 
+datafusion = "54"
 divan = "0.1"
+polars-io = "0.54"
 rand = "0.10"
 test-pretty-log = "0.6"
 uuid = { version = "1.23", features = ["serde", "v7"] }
