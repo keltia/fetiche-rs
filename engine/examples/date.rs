@@ -35,7 +35,7 @@ fn main() -> Result<()> {
 fn into_timestamp_jiff(col: &Column) -> Column {
     col.str()
         .unwrap()
-        .into_iter()
+        .iter()
         .map(|d: Option<&str>| {
             d.map(|d: &str| {
                 d.parse::<DateTime>()

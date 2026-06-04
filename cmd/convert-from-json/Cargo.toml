@@ -24,5 +24,6 @@ maintenance = { status = "actively-developed" }
 clap.workspace = true
 eyre.workspace = true
 
-polars-io = { version = "0.53", features = ["csv", "json", "parquet", "zstd"] }
-polars-utils = "0.53"
+chrono = { version = "0.4", features = ["serde", "std"] }
+polars-io = { version = "0.54", features = ["csv", "json", "parquet", "zstd"] }
+polars-utils = "0.54"

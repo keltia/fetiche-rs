@@ -258,7 +258,7 @@ struct Payload {
 fn into_timestamp(col: &Column) -> Column {
     col.str()
         .unwrap()
-        .into_iter()
+        .iter()
         .map(|d: Option<&str>| d.map(|d: &str| humantime::parse_rfc3339_weak(d).unwrap().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64))
         .collect::<Int64Chunked>()
         .into_column()

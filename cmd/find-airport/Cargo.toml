@@ -36,7 +36,6 @@ fetiche-common.workspace = true
 fetiche-macros.workspace = true
 futures.workspace = true
 jiff.workspace = true
-polars.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -46,8 +45,10 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
+chrono = { version = "0.4", features = ["serde", "std"] }
 farben = "0.20"
 pluscodes = "0.5"
+polars = { version = "0.54", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-categorical", "temporal"] }
 polars-utils = "0.54"
 rayon = "1.12"
 
