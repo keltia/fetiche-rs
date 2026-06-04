@@ -1,7 +1,6 @@
 //! Anything related to ACUTE site management
 //!
-
-use cached::proc_macro::cached;
+use cached::cached;
 use chrono::{DateTime, Datelike, Utc};
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
