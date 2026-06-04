@@ -21,10 +21,10 @@ fetiche-formats = { version = "0", path = "formats" }
 fetiche-macros = { version = "0", path = "macros" }
 futures = "0.3"
 hcl-rs = "0.19"
-itertools = "0.14.0"
+itertools = "0.15.0"
 jiff = { version = "0.2", features = ["serde"] }
 nom = "8"
-object_store = "0.13"
+object_store = "0.14"
 polars = { version = "0.53", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-categorical", "temporal"] }
 proptest = "1.11"
 ractor = { version = "0.15", features = ["async-trait", "serde"] }
@@ -35,7 +35,7 @@ serde_json = "1.0"
 serde_repr = "0.1"
 serde_with = { version = "3", features = ["base64", "chrono_0_4", "json", "hex"] }
 strum = { version = "0.28", features = ["derive"] }
-tabled = "0.20"
+tabled = "0.21"
 tempfile = "3"
 thiserror = "2.0"
 tokio = { version = "1", features = ["parking_lot", "sync", "macros", "io-util", "rt", "rt-multi-thread", "time", "tracing"] }

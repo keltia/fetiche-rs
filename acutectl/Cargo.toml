@@ -36,12 +36,12 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
-clap_complete = "4.5"
+clap_complete = "4.6"
 ctrlc = { version = "3.5", features = ["termination"] }
 indicatif = "0.18"
 
 [dev-dependencies]
-assert_cmd = "2.1"
+assert_cmd = "2.2"
 proptest.workspace = true
 
 [target.'cfg(unix)'.dependencies]

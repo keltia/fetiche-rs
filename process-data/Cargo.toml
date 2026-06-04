@@ -48,7 +48,7 @@ tempfile.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
-cached = { version = "1.1", features = ["async", "async_tokio_rt_multi_thread"] }
+cached = { version = "1", features = ["async", "async_tokio_rt_multi_thread"] }
 clap_complete = "4.5"
 colorsys = "0.7"
 derive_builder = "0.20"

@@ -50,14 +50,11 @@ eyre.workspace = true
 fetiche-macros.workspace = true
 hcl-rs.workspace = true
 jiff.workspace = true
-polars.workspace = true
-ractor.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
 tabled.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
 tracing.workspace = true
 
 ctrlc = { version = "3.4", features = ["termination"] }
@@ -77,8 +74,11 @@ tracing-opentelemetry = { version = "0.33", optional = true }
 
 [dev-dependencies]
 criterion.workspace = true
+polars.workspace = true
 proptest.workspace = true
+ractor.workspace = true
 rstest.workspace = true
+tokio.workspace = true
 
 divan = "0.1"
 rand = "0.10"
