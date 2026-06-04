@@ -21,6 +21,7 @@ flightaware = []
 opensky = []
 safesky = []
 senhive = []
+rkyv = []
 
 [[bench]]
 name = "dronepoint"
