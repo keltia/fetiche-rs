@@ -44,8 +44,8 @@ impl Feed {
 
         let data = data_ch
             .basic_consume(
-                name,
-                tag,
+                name.into(),
+                tag.into(),
                 BasicConsumeOptions::default(),
                 FieldTable::default(),
             )
