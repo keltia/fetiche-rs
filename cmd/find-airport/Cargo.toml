@@ -46,10 +46,10 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
-farben = "0.17"
+farben = "0.20"
 pluscodes = "0.5"
-polars-utils = "0.53"
-rayon = "1.11"
+polars-utils = "0.54"
+rayon = "1.12"
 
 [dev-dependencies]
 divan = "0.1"
