@@ -319,9 +319,9 @@ mod tests {
         #[case] iata: &str,
         #[case] expected_name_part: &str,
     ) -> Result<()> {
-        let result = find_into_parquet(iata, "../data/airports.parquet", SearchBy::Iata);
+        let result = find_into_parquet(iata, "../../data/airports.parquet", SearchBy::Iata);
         assert!(result.is_ok());
-        let result = result.unwrap();
+        let result = result?;
         let airports = airports_from_df(&result)?;
 
         let airport = airports.first().unwrap();
