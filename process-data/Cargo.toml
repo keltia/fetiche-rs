@@ -14,6 +14,9 @@ keywords = ["parquet", "drones", "aeronautical-data", "ads-b"]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[lints.rust]
+linker_messages = "allow"
+
 [badges]
 maintenance = { status = "actively-developed" }
 
