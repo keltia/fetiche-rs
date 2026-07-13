@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use klickhouse::bb8::Pool;
 use klickhouse::{bb8, Client, ClientOptions, ConnectionManager};
+use serde_json::json;
 use tracing::{debug, error, info, trace};
 
 use crate::cli::Opts;
@@ -225,8 +226,11 @@ pub async fn init_runtime(name: &'static str, opts: &Opts) -> eyre::Result<Conte
             return Err(Status::MissingProfile(profile_name).into());
         }
     };
-
     trace!("Using profile {} = {}", profile_name, profile);
+
+    // Store all possible profiles
+    //
+    let allp = json!(cfg.profiles).to_string();
 
     // We need the airports parquet file
     //
@@ -262,7 +266,7 @@ pub async fn init_runtime(name: &'static str, opts: &Opts) -> eyre::Result<Conte
             ..Default::default()
         },
     )
-    .await?;
+        .await?;
 
     let pool_size = opts.pool_size;
     let pool = bb8::Pool::builder()
@@ -288,11 +292,12 @@ pub async fn init_runtime(name: &'static str, opts: &Opts) -> eyre::Result<Conte
             ("factor".to_string(), factor.to_string()),
             ("distance".to_string(), plane.to_string()),
             ("profile".into(), profile_name.clone()),
+            ("allp".into(), allp.clone()),
             ("planedb".into(), profile.plane_db.clone()),
             ("dronedb".into(), profile.drone_db.clone()),
             ("workdb".into(), profile.work_db.clone()),
         ])
-        .into(),
+            .into(),
         dbh: pool.clone(),
         pool_size,
         wait: opts.wait,
