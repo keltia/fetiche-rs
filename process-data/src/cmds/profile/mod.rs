@@ -37,7 +37,6 @@ pub fn cmd_profile(ctx: &Context, opts: &ProfileOpts) -> Result<()> {
     let allp: Profiles = serde_json::from_str(allp)?;
     match opts.subcmd {
         ProfCmd::List => {
-            println!("Listing profiles...");
             println!("Current profile: {}", currp);
             println!("All profiles:\n");
             allp.into_iter().sorted().for_each(|(name, p)| println!("  {:>10}: {}", name, p));
