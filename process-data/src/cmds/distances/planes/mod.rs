@@ -415,7 +415,7 @@ async fn process_batches(ctx: &Context, work_list: Vec<WorkItem>) -> Vec<Stats> 
                         let pb = pb.clone();
                         async move { calculate_one_day_on_site(&ctx, &work, &pb).await.unwrap() }
                     })
-                    .await
+                        .await
                     {
                         Ok(res) => res,
                         Err(e) => {
@@ -718,7 +718,7 @@ mod tests {
         let opts = Opts {
             config: None,
             datalake: Some("/Users/acute".into()),
-            profile: None,
+            profile: Some("production".into()),
             wait: 0,
             pool_size: 1,
             use_telemetry: false,
