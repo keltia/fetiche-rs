@@ -10,6 +10,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Parser)]
 pub enum ProfCmd {
+    /// List all possible profiles.
     List,
 }
 
