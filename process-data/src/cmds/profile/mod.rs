@@ -4,6 +4,7 @@ use crate::{Context, Profile};
 
 use clap::Parser;
 use eyre::Result;
+use farben::ceprintln;
 use itertools::Itertools;
 
 use std::collections::HashMap;
@@ -37,9 +38,15 @@ pub fn cmd_profile(ctx: &Context, opts: &ProfileOpts) -> Result<()> {
     let allp: Profiles = serde_json::from_str(allp)?;
     match opts.subcmd {
         ProfCmd::List => {
-            println!("Current profile: {}", currp);
-            println!("All profiles:\n");
-            allp.into_iter().sorted().for_each(|(name, p)| println!("  {:>10}: {}", name, p));
+            ceprintln!("Current profile: [green]{}[/]", currp);
+            eprintln!("All profiles:\n");
+            allp.into_iter().sorted().for_each(|(name, p)| {
+                if name == *currp {
+                    ceprintln!("  [green]{:>10}: {}[/]", name, p)
+                } else {
+                    eprintln!("  {:>10}: {}", name, p)
+                }
+            });
         }
     }
     Ok(())

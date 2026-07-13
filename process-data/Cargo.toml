@@ -52,6 +52,7 @@ cached = { version = "1", features = ["async", "async_tokio_rt_multi_thread"] }
 clap_complete = "4.5"
 colorsys = "0.7"
 derive_builder = "0.20"
+farben = "0.20"
 geo = "0.33"
 indicatif = "0.18"
 klickhouse = { version = "0.15", features = ["derive", "geo-types", "serde", "bb8"] }

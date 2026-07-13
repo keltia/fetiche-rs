@@ -7038,6 +7038,7 @@ dependencies = [
  "dateparser",
  "derive_builder",
  "eyre",
+ "farben",
  "fetiche-common",
  "fetiche-macros",
  "futures",
