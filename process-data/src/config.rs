@@ -105,7 +105,7 @@ pub struct Database {
 
 /// A "profile" is a triplet containing the different namespaces used for the database.
 ///
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Eq, Ord, PartialOrd, PartialEq)]
 pub struct Profile {
     /// Database holding the plane data.
     pub plane_db: String,
@@ -117,7 +117,7 @@ pub struct Profile {
 
 impl Display for Profile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{ plane_db={}, drone_db={}, work_db={} }}", self.plane_db, self.drone_db, self.work_db)
+        write!(f, "{{ plane_db: {:>10}, drone_db: {:>10}, work_db: {:>10} }}", self.plane_db, self.drone_db, self.work_db)
     }
 }
 

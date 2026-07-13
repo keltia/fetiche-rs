@@ -2,6 +2,7 @@ use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use clap_complete::Shell;
 
 use crate::cmds::{AcuteOpts, CheckOpts, DistOpts, ExportOpts, SetupOpts};
+use crate::ProfileOpts;
 
 /// Global (aka non-command-related) options.
 ///
@@ -65,6 +66,8 @@ pub enum SubCommand {
     Setup(SetupOpts),
     /// Generation completion stuff for shells.
     Completion(CompOpts),
+    /// Profile-related commands
+    Profile(ProfileOpts),
     /// List all package versions.
     Version,
 }

@@ -20,6 +20,7 @@ pub use check::*;
 pub use distances::*;
 pub use error::*;
 pub use export::*;
+pub use profile::*;
 pub use query::*;
 //pub use record::*;
 pub use setup::*;
@@ -34,6 +35,7 @@ mod check;
 mod distances;
 mod error;
 mod export;
+mod profile;
 mod query;
 //mod record;
 mod setup;
@@ -91,6 +93,10 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
         SubCommand::Cleanup(copts) => {
             eprintln!("Remove ACUTE environement in {}.\n", ctx.config["datalake"]);
             cleanup_environment(ctx, copts).await?;
+        }
+        SubCommand::Profile(ptopts) => {
+            eprintln!("Profile ACUTE environment.");
+            let _ = cmd_profile(ctx, ptopts)?;
         }
         SubCommand::Acute(aopts) => {
             eprintln!("ACUTE specific commands.\n");
