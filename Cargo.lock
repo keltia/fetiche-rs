@@ -3577,6 +3577,7 @@ dependencies = [
  "criterion 0.8.2",
  "csv",
  "eyre",
+ "fetiche-macros",
  "hcl-rs",
  "nom 8.0.0",
  "rkyv",
@@ -3592,9 +3593,9 @@ dependencies = [
 
 [[package]]
 name = "fetiche-macros"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
- "darling 0.20.11",
+ "darling 0.23.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
