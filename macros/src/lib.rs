@@ -342,7 +342,8 @@ pub fn rkyv_clone(input: TokenStream) -> TokenStream {
     }
 
     let output = quote! {
-        #[derive(::rkyv::Archive, ::rkyv::Serialize, ::rkyv::Deserialize, Debug, PartialEq)]
+        #[derive(::rkyv::Archive, ::rkyv::Serialize, ::rkyv::Deserialize, Clone, Debug, PartialEq)]
+        #[rkyv(attr(doc = "rkyv-generated archived version"))]
         pub struct #rkyv_name {
             #(#rkyv_fields),*
         }
@@ -392,14 +393,15 @@ fn is_custom_type(ty: &Type) -> bool {
         if let Some(segment) = type_path.path.segments.first() {
             let ident_str = segment.ident.to_string();
             // Check if it's not a primitive or std type
-            // Only convert types ending in "Data", "State", "System", "Identification", etc.
-            // This avoids converting enums like Severity, Category, etc.
+            // Only convert types ending in specific patterns to avoid enums
             return !matches!(
                 ident_str.as_str(),
-                "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64"
+                "u8" | "u16" | "u32" | "u64" | "u64" | "usize"
+                | "i8" | "i16" | "i32" | "i64" | "i64" | "isize"
                 | "f32" | "f64" | "bool" | "String" | "str"
-                | "Vec" | "Option" | "HashMap" | "BTreeMap"
-            ) && ident_str.chars().next().unwrap().is_uppercase()
+                | "Vec" | "Option" | "HashMap" | "BTreeMap" | "HashSet"
+                | "DateTime" | "NaiveDateTime"
+            ) && ident_str.chars().next().map(|c| c.is_uppercase()).unwrap_or(false)
             && (ident_str.ends_with("Data")
                 || ident_str.ends_with("State")
                 || ident_str.ends_with("System")
@@ -408,7 +410,11 @@ fn is_custom_type(ty: &Type) -> bool {
                 || ident_str.ends_with("Altitudes")
                 || ident_str.ends_with("Location")
                 || ident_str.ends_with("Coordinates")
-                || ident_str.ends_with("Log"));
+                || ident_str.ends_with("Log")
+                || ident_str.ends_with("Vector")
+                || ident_str.ends_with("Point")
+                || ident_str.ends_with("Info")
+                || ident_str.ends_with("Config"));
         }
     }
     false
