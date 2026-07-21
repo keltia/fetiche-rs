@@ -11,7 +11,7 @@ categories = ["aerospace::drones"]
 keywords = ["asterix", "drones", "aeronautical-data", "ads-b"]
 
 [features]
-default = ["privacy", "avionix", "asd", "senhive", "flightaware", "opensky"]
+default = ["privacy", "avionix", "asd", "senhive", "flightaware", "opensky", "rkyv"]
 privacy = []
 aeroscope = []
 asd = []
@@ -21,11 +21,21 @@ flightaware = []
 opensky = []
 safesky = []
 senhive = []
-rkyv = []
+rkyv = ["dep:rkyv"]
 
 [[bench]]
 name = "dronepoint"
 harness = false
+
+[[bench]]
+name = "alert"
+harness = false
+required-features = ["rkyv"]
+
+[[bench]]
+name = "cube"
+harness = false
+required-features = ["rkyv", "avionix"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -50,7 +60,8 @@ strum.workspace = true
 tabled.workspace = true
 tracing.workspace = true
 
-rkyv = "0.8"
+fetiche-macros = { path = "../macros", version = "0.5.0" }
+rkyv = { version = "0.8", optional = true }
 
 [dev-dependencies]
 rstest.workspace = true
