@@ -1,7 +1,7 @@
 use darling::ast::NestedMeta;
 use darling::FromMeta;
 use proc_macro::TokenStream;
-use quote::{quote, format_ident};
+use quote::{format_ident, quote};
 use syn::parse::Parser;
 use syn::{parse_macro_input, Data, DeriveInput, Fields, Ident, LitInt, Type};
 
@@ -396,13 +396,13 @@ fn is_custom_type(ty: &Type) -> bool {
             // Only convert types ending in specific patterns to avoid enums
             return !matches!(
                 ident_str.as_str(),
-                "u8" | "u16" | "u32" | "u64" | "u64" | "usize"
-                | "i8" | "i16" | "i32" | "i64" | "i64" | "isize"
+                "u8" | "u16" | "u32" | "u64" | "usize"
+                | "i8" | "i16" | "i32" | "i64" | "isize"
                 | "f32" | "f64" | "bool" | "String" | "str"
                 | "Vec" | "Option" | "HashMap" | "BTreeMap" | "HashSet"
                 | "DateTime" | "NaiveDateTime"
             ) && ident_str.chars().next().map(|c| c.is_uppercase()).unwrap_or(false)
-            && (ident_str.ends_with("Data")
+                && (ident_str.ends_with("Data")
                 || ident_str.ends_with("State")
                 || ident_str.ends_with("System")
                 || ident_str.ends_with("Identification")
@@ -422,11 +422,11 @@ fn is_custom_type(ty: &Type) -> bool {
 
 fn needs_conversion(ty: &Type) -> bool {
     is_custom_type(ty) ||
-    (if let Type::Path(tp) = ty {
-        tp.path.segments.iter().any(|s| s.ident == "DateTime")
-    } else {
-        false
-    })
+        (if let Type::Path(tp) = ty {
+            tp.path.segments.iter().any(|s| s.ident == "DateTime")
+        } else {
+            false
+        })
 }
 
 fn extract_vec_inner(ty: &Type) -> Type {
