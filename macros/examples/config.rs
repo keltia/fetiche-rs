@@ -1,15 +1,15 @@
 //use fetiche_macros::into_configfile;
 
+#[allow(dead_code)]
 trait Versioned {
     fn version(&self) -> usize;
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromDeriveInput)]
 #[darling(attributes(into_configfile))]
 struct ConfigArgs {
-    #[darling(default)]
     version: usize,
-    #[darling(default)]
     filename: String,
 }
 
@@ -22,7 +22,8 @@ fn main() {
     let input = ConfigArgs::from_derive_input(&parse_quote! {
         #[into_configfile(version = 1, filename = "foo.hcl")]
         struct Foo;
-    }).unwrap();
+    })
+    .unwrap();
 
     println!("{:#?}", input);
 }
