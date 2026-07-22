@@ -371,51 +371,48 @@ pub fn rkyv_clone(input: TokenStream) -> TokenStream {
 // Helper functions for type detection and conversion
 
 fn is_vec_type(ty: &Type) -> bool {
-    if let Type::Path(type_path) = ty {
-        if let Some(segment) = type_path.path.segments.last() {
-            return segment.ident == "Vec";
-        }
+    if let Type::Path(type_path) = ty &&
+        let Some(segment) = type_path.path.segments.last() {
+        return segment.ident == "Vec";
     }
     false
 }
 
 fn is_option_type(ty: &Type) -> bool {
-    if let Type::Path(type_path) = ty {
-        if let Some(segment) = type_path.path.segments.last() {
+    if let Type::Path(type_path) = ty
+        && let Some(segment) = type_path.path.segments.last() {
             return segment.ident == "Option";
         }
-    }
     false
 }
 
 fn is_custom_type(ty: &Type) -> bool {
-    if let Type::Path(type_path) = ty {
-        if let Some(segment) = type_path.path.segments.first() {
-            let ident_str = segment.ident.to_string();
-            // Check if it's not a primitive or std type
-            // Only convert types ending in specific patterns to avoid enums
-            return !matches!(
-                ident_str.as_str(),
-                "u8" | "u16" | "u32" | "u64" | "usize"
-                | "i8" | "i16" | "i32" | "i64" | "isize"
-                | "f32" | "f64" | "bool" | "String" | "str"
-                | "Vec" | "Option" | "HashMap" | "BTreeMap" | "HashSet"
-                | "DateTime" | "NaiveDateTime"
-            ) && ident_str.chars().next().map(|c| c.is_uppercase()).unwrap_or(false)
-                && (ident_str.ends_with("Data")
-                || ident_str.ends_with("State")
-                || ident_str.ends_with("System")
-                || ident_str.ends_with("Identification")
-                || ident_str.ends_with("Value")
-                || ident_str.ends_with("Altitudes")
-                || ident_str.ends_with("Location")
-                || ident_str.ends_with("Coordinates")
-                || ident_str.ends_with("Log")
-                || ident_str.ends_with("Vector")
-                || ident_str.ends_with("Point")
-                || ident_str.ends_with("Info")
-                || ident_str.ends_with("Config"));
-        }
+    if let Type::Path(type_path) = ty
+        && let Some(segment) = type_path.path.segments.first() {
+        let ident_str = segment.ident.to_string();
+        // Check if it's not a primitive or std type
+        // Only convert types ending in specific patterns to avoid enums
+        return !matches!(
+            ident_str.as_str(),
+            "u8" | "u16" | "u32" | "u64" | "usize"
+            | "i8" | "i16" | "i32" | "i64" | "isize"
+            | "f32" | "f64" | "bool" | "String" | "str"
+            | "Vec" | "Option" | "HashMap" | "BTreeMap" | "HashSet"
+            | "DateTime" | "NaiveDateTime"
+        ) && ident_str.chars().next().map(|c| c.is_uppercase()).unwrap_or(false)
+            && (ident_str.ends_with("Data")
+            || ident_str.ends_with("State")
+            || ident_str.ends_with("System")
+            || ident_str.ends_with("Identification")
+            || ident_str.ends_with("Value")
+            || ident_str.ends_with("Altitudes")
+            || ident_str.ends_with("Location")
+            || ident_str.ends_with("Coordinates")
+            || ident_str.ends_with("Log")
+            || ident_str.ends_with("Vector")
+            || ident_str.ends_with("Point")
+            || ident_str.ends_with("Info")
+            || ident_str.ends_with("Config"));
     }
     false
 }
@@ -430,27 +427,21 @@ fn needs_conversion(ty: &Type) -> bool {
 }
 
 fn extract_vec_inner(ty: &Type) -> Type {
-    if let Type::Path(type_path) = ty {
-        if let Some(segment) = type_path.path.segments.last() {
-            if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
-                if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
-                    return inner.clone();
-                }
-            }
-        }
+    if let Type::Path(type_path) = ty
+        && let Some(segment) = type_path.path.segments.last()
+        && let syn::PathArguments::AngleBracketed(args) = &segment.arguments
+        && let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
+        return inner.clone();
     }
     panic!("Cannot extract Vec inner type");
 }
 
 fn extract_option_inner(ty: &Type) -> Type {
-    if let Type::Path(type_path) = ty {
-        if let Some(segment) = type_path.path.segments.last() {
-            if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
-                if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
-                    return inner.clone();
-                }
-            }
-        }
+    if let Type::Path(type_path) = ty
+        && let Some(segment) = type_path.path.segments.last()
+        && let syn::PathArguments::AngleBracketed(args) = &segment.arguments
+        && let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
+        return inner.clone();
     }
     panic!("Cannot extract Option inner type");
 }
