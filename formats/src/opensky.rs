@@ -16,13 +16,9 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use tracing::trace;
 
-#[cfg(feature = "rkyv")]
-use fetiche_macros::RkyvClone;
-
 /// Origin of state's position
 ///
 #[derive(Clone, Copy, Debug, Deserialize_repr, Default, PartialEq, Serialize_repr)]
-#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
 #[serde(rename_all = "lowercase")]
 #[repr(u8)]
 pub enum Source {
@@ -186,7 +182,6 @@ impl StateList {
 /// - Some fields are optional as they may not always be available from the data source.
 /// - This struct is used to represent live data from tracking systems.
 ///
-#[cfg_attr(feature = "rkyv", derive(RkyvClone))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct StateVector {
     /// ICAO ID

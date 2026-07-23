@@ -10,9 +10,6 @@ use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, PickFirst, serde_as};
 
-#[cfg(feature = "rkyv")]
-use fetiche_macros::RkyvClone;
-
 #[cfg(feature = "asterix")]
 use crate::{Cat21, TodCalculated, convert_to, get_drone_id, to_feet, to_knots};
 use crate::{DataSource, DronePoint};
@@ -36,7 +33,6 @@ use crate::{DataSource, DronePoint};
 /// which is provided in a non-standard string format. The corrected `time`
 /// is represented using `DateTime<Utc>` from the `chrono` crate.
 ///
-#[cfg_attr(feature = "rkyv", derive(RkyvClone))]
 #[serde_as]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Asd {

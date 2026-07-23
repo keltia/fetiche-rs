@@ -3,14 +3,11 @@
 //! URL: http://www.avionix.pl
 //!
 
-use crate::{to_meters, DataSource, DronePoint, UAVType};
+use crate::{DataSource, DronePoint, UAVType, to_meters};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, serde_conv};
 use strum::EnumString;
-
-#[cfg(feature = "rkyv")]
-use fetiche_macros::RkyvClone;
 
 // Enable deserialization from either i32/f64 into the final i32.  Value is rounded up or down as
 // needed.
@@ -76,7 +73,6 @@ serde_conv!(
 ///
 /// Payload is in JSONL.
 ///
-#[cfg_attr(feature = "rkyv", derive(RkyvClone))]
 #[serde_as]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct CubeData {
@@ -380,64 +376,5 @@ mod tests {
         assert_eq!(gda_to_state("G"), 1);
         assert_eq!(gda_to_state("A"), 2);
         assert_eq!(gda_to_state("UNKNOWN"), 15); // Default case
-    }
-
-    #[cfg(feature = "rkyv")]
-    #[test]
-    fn test_rkyv_cubedata_roundtrip() {
-        let cube = CubeData {
-            time: 1_696_123_456,
-            dat: "2024-02-24T12:34:56.789".into(),
-            hex: "ABCDEF".into(),
-            tim: "12:34:56.789".into(),
-            fli: "TEST123".into(),
-            lat: 51.5074,
-            lon: -0.1278,
-            gda: "A".into(),
-            src: "A".into(),
-            alt: 10000,
-            altg: 9500,
-            hgt: Some(500),
-            spd: 450,
-            cat: "A2".into(),
-            squ: "7700".into(),
-            vrt: -1200,
-            trk: 270,
-            mop: 2,
-            lla: 1,
-            tru: 543,
-            dbm: -85,
-            shd: Some(270),
-            org: Some("KJFK".into()),
-            dst: Some("KLAX".into()),
-            opr: Some("AAL".into()),
-            typ: Some("B738".into()),
-            reg: Some("N12345".into()),
-            cou: Some("USA".into()),
-        };
-
-        // Convert to rkyv version
-        let rkyv_cube: RCubeData = (&cube).into();
-
-        // Verify fields
-        assert_eq!(rkyv_cube.time, 1_696_123_456);
-        assert_eq!(rkyv_cube.lat, 51.5074);
-        assert_eq!(rkyv_cube.lon, -0.1278);
-        assert_eq!(rkyv_cube.alt, 10000);
-
-        // Serialize with rkyv
-        let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&rkyv_cube).unwrap();
-
-        // Deserialize
-        let decoded = rkyv::from_bytes::<RCubeData, rkyv::rancor::Error>(&bytes).unwrap();
-
-        assert_eq!(decoded, rkyv_cube);
-
-        // Convert back
-        let recovered: CubeData = (&decoded).into();
-        assert_eq!(recovered.time, cube.time);
-        assert_eq!(recovered.fli, cube.fli);
-        assert_eq!(recovered.lat, cube.lat);
-        assert_eq!(recovered.typ, cube.typ);
     }
 }

@@ -7,11 +7,6 @@
 //!   6 (6.00%) high mild
 //!   2 (2.00%) high severe
 //!
-//! rkyv_deserialize        time:   [305.29 ns 305.93 ns 306.67 ns]
-//! Found 11 outliers among 100 measurements (11.00%)
-//!   4 (4.00%) high mild
-//!   7 (7.00%) high severe
-//!
 //! convert                 time:   [138.38 ns 138.86 ns 139.40 ns]
 //! Found 7 outliers among 100 measurements (7.00%)
 //!   1 (1.00%) low mild
@@ -45,7 +40,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use csv::{QuoteStyle, WriterBuilder};
 use fetiche_formats::senhive::FusedData;
-use fetiche_formats::senhive::RFusedData;
 use fetiche_formats::DronePoint;
 use serde::Serialize;
 use std::fmt::Debug;
@@ -86,20 +80,6 @@ fn do_deserialize(c: &mut Criterion) {
     });
 }
 
-fn do_rkyv_de(criterion: &mut Criterion) {
-    let cur = Cursor::new(DATA);
-    let data: FusedData = serde_json::from_reader(cur).unwrap();
-    let data: RFusedData = (&data).into();
-    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&data).unwrap();
-
-    criterion.bench_function("rkyv_deserialize", move |b| {
-        b.iter(|| {
-            let _: RFusedData =
-                black_box(rkyv::from_bytes::<RFusedData, rkyv::rancor::Error>(&bytes).unwrap());
-        })
-    });
-}
-
 fn do_convert(c: &mut Criterion) {
     let cur = Cursor::new(DATA);
     let data: FusedData = serde_json::from_reader(cur).unwrap();
@@ -124,6 +104,6 @@ fn do_prepare(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, do_deserialize, do_rkyv_de, do_convert, do_prepare);
+criterion_group!(benches, do_deserialize, do_convert, do_prepare);
 
 criterion_main!(benches);

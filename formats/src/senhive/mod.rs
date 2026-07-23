@@ -5,14 +5,10 @@ use serde::{Deserialize, Serialize};
 
 pub use alert::*;
 pub use fused::*;
-#[cfg(feature = "rkyv")]
-pub use rkyv::*;
 pub use state::*;
 
 mod alert;
 mod fused;
-#[cfg(feature = "rkyv")]
-mod rkyv;
 mod state;
 
 /// Represents geographical coordinates with longitude and latitude.
