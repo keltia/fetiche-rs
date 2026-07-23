@@ -17,7 +17,6 @@ It has many fundamental changes under the hood:
 Main dependencies:
 
 - polars 0.54 (it has replaced datafusion & arrow/parquet)
-- rkyv for faster deserialisation
 
 Current crates versions:
 
