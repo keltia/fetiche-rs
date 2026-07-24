@@ -15,10 +15,10 @@ use reqwest::redirect::Policy;
 use tokio::fs;
 use tracing::{debug, info, trace, warn};
 
-use crate::cmds::{read_parquet_size, Work, WorkStatus};
+use crate::USER_AGENT;
+use crate::cmds::{Work, WorkStatus, read_parquet_size};
 use crate::error::Status;
 use crate::runtime::Context;
-use crate::USER_AGENT;
 
 const ONE_DAY: SignedDuration = SignedDuration::from_hours(24);
 
@@ -58,7 +58,7 @@ pub async fn cmd_fetch(ctx: &Context) -> Result<Vec<Work>> {
             let base_url = base_url.clone();
 
             async move {
-                let current = match fetch_one(&base_url, fname).await {
+                let current = match fetch_one(&base_url, fname, ctx.no_clean).await {
                     Ok(work) => work,
                     Err(e) => {
                         warn!("error={}", e.to_string());
@@ -100,7 +100,7 @@ pub async fn cmd_fetch(ctx: &Context) -> Result<Vec<Work>> {
 /// Fetch one file into the configured directory, checking mtime, etc.
 ///
 #[tracing::instrument(skip(base_url))]
-pub async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
+pub async fn fetch_one(base_url: &str, fname: &str, no_cleanup: bool) -> Result<Work> {
     let mut status: WorkStatus;
     let mut bytes: u64;
 
@@ -149,6 +149,15 @@ pub async fn fetch_one(base_url: &str, fname: &str) -> Result<Work> {
 
         info!("to_parquet file={:?}", output);
         let _ = convert_into_parquet(&input, &output).await?;
+
+        // Remove temporary CSV file.
+        //
+        if !no_cleanup {
+            info!("removed file={:?}", input);
+            fs::remove_file(&input).await?;
+        }
+
+        debug!("refreshed");
         status = WorkStatus::Refreshed;
     }
 

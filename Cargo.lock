@@ -3609,7 +3609,7 @@ dependencies = [
 
 [[package]]
 name = "find-airport"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "chrono",
  "clap 4.6.4",

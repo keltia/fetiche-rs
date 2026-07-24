@@ -4,12 +4,12 @@ use std::sync::Arc;
 use eyre::Result;
 use tracing::trace;
 
+use crate::NAME;
 use crate::cli::Opts;
 use crate::config::FindConfig;
 use crate::error::Status;
-use crate::NAME;
 
-use fetiche_common::{close_logging, init_logging, ConfigFile, Versioned};
+use fetiche_common::{ConfigFile, Versioned, close_logging, init_logging};
 
 /// Config filename
 pub const CONFIG: &str = "airports.hcl";
@@ -42,6 +42,8 @@ pub struct Context {
     pub cfg: Arc<HashMap<String, String>>,
     /// Dry run.
     pub dry_run: bool,
+    // Do not remove temp files
+    pub no_clean: bool,
 }
 
 /// Initializes the runtime environment for the application.
@@ -130,6 +132,7 @@ pub async fn init_runtime(opts: &Opts) -> Result<Context> {
         ])
         .into(),
         dry_run: opts.dry_run,
+        no_clean: opts.no_clean,
     };
     Ok(ctx)
 }

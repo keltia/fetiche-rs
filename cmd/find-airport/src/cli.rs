@@ -1,4 +1,4 @@
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use clap::{Parser, crate_authors, crate_description, crate_name, crate_version};
 use strum::EnumString;
 
 /// Command-line options for the airport lookup application.
@@ -26,6 +26,9 @@ pub struct Opts {
     /// Dry run
     #[clap(short = 'n', long)]
     pub dry_run: bool,
+    /// No Clean up
+    #[clap(short = 'N', long)]
+    pub no_clean: bool,
     #[clap(subcommand)]
     pub cmd: Option<SubCommand>,
 }
