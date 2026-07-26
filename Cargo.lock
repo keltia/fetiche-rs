@@ -6998,6 +6998,7 @@ dependencies = [
  "csv",
  "dateparser",
  "derive_builder",
+ "divan",
  "eyre",
  "farben",
  "fetiche-common",

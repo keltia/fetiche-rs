@@ -28,6 +28,10 @@ clickhouse = []
 name = "distances"
 harness = false
 
+[[bench]]
+name = "format"
+harness = false
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -67,6 +71,8 @@ tinytemplate = "1.2"
 
 [dev-dependencies]
 criterion.workspace = true
+
+divan = "0.1"
 rstest = "0.26"
 
 [target.'cfg(unix)'.dependencies]
