@@ -2,23 +2,27 @@
 //!
 //! Benchmarking dateparser (which we know as very slow) versus jiff.
 //!
+//! Mac Studio 2022, 64 GB, 4 TB, macOS 26.5
 //! ```text
-//! dateparser              time:   [5.4219 µs 5.4536 µs 5.4864 µs]
-//!                         change: [-3.3857% -2.9426% -2.4739%] (p = 0.00 < 0.05)
-//!                         Performance has improved.
+//! Gnuplot not found, using plotters backend
+//! dateparser              time:   [4.9951 µs 5.0242 µs 5.0537 µs]
+//!                         change: [−0.2916% +0.3098% +0.9034%] (p = 0.31 > 0.05)
 //!
-//! jiff                    time:   [695.33 ns 697.27 ns 699.25 ns]
-//!                         change: [-1.7639% -1.3243% -0.8776%] (p = 0.00 < 0.05)
-//!                         Change within noise threshold.
-//! Found 6 outliers among 100 measurements (6.00%)
-//!   6 (6.00%) low mild
+//! jiff_zoned              time:   [309.03 ns 309.68 ns 310.38 ns]
+//!                         change: [+0.2035% +0.4903% +0.7676%] (p = 0.00 < 0.05)
+//!
+//! jiff_datetime           time:   [326.47 ns 327.18 ns 327.89 ns]
+//!                         change: [−0.6159% −0.2920% −0.0046%] (p = 0.06 > 0.05)
+//!
+//! humantime               time:   [230.27 ns 231.00 ns 231.79 ns]
+//!                         change: [+0.2193% +0.5983% +0.9186%] (p = 0.00 < 0.05)
 //! ```
 
 use std::hint::black_box;
 use std::io::Cursor;
 use std::time::UNIX_EPOCH;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use jiff::civil::DateTime;
 use jiff::tz::TimeZone;
 use polars::datatypes::Int64Chunked;
@@ -27,7 +31,7 @@ use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, IntoColumn, SerRe
 fn into_timestamp(col: &Column) -> Column {
     col.str()
         .unwrap()
-        .into_iter()
+        .iter()
         .map(|d: Option<&str>| d.map(|d: &str| dateparser::parse(d).unwrap().timestamp()))
         .collect::<Int64Chunked>()
         .into_column()
@@ -36,7 +40,7 @@ fn into_timestamp(col: &Column) -> Column {
 fn into_humantime_secs(col: &Column) -> Column {
     col.str()
         .unwrap()
-        .into_iter()
+        .iter()
         .map(|d: Option<&str>| {
             d.map(|d: &str| {
                 humantime::parse_rfc3339_weak(d)
@@ -50,10 +54,10 @@ fn into_humantime_secs(col: &Column) -> Column {
         .into_column()
 }
 
-fn into_timestamp_jiff(col: &Column) -> Column {
+fn into_zoned_jiff(col: &Column) -> Column {
     col.str()
         .unwrap()
-        .into_iter()
+        .iter()
         .map(|d: Option<&str>| {
             d.map(|d: &str| {
                 d.parse::<DateTime>()
@@ -62,6 +66,22 @@ fn into_timestamp_jiff(col: &Column) -> Column {
                     .unwrap()
                     .timestamp()
                     .as_second()
+            })
+        })
+        .collect::<Int64Chunked>()
+        .into_column()
+}
+
+fn into_timestamp_jiff(col: &Column) -> Column {
+    col.str()
+        .unwrap()
+        .iter()
+        .map(|d: Option<&str>| {
+            d.map(|d: &str| {
+                d.parse::<DateTime>()
+                    .unwrap()
+                    .duration_since(DateTime::MIN)
+                    .as_secs()
             })
         })
         .collect::<Int64Chunked>()
@@ -102,13 +122,25 @@ fn dateparser(c: &mut Criterion) {
     });
 }
 
-fn jiff(c: &mut Criterion) {
+fn jiff_datetime(c: &mut Criterion) {
     let vl = setup();
-    c.bench_function("jiff", |b| {
+    c.bench_function("jiff_datetime", |b| {
         b.iter({
             let v = vl.clone();
             move || {
                 black_box(into_timestamp_jiff(&v));
+            }
+        })
+    });
+}
+
+fn jiff_zoned(c: &mut Criterion) {
+    let vl = setup();
+    c.bench_function("jiff_zoned", |b| {
+        b.iter({
+            let v = vl.clone();
+            move || {
+                black_box(into_zoned_jiff(&v));
             }
         })
     });
@@ -126,5 +158,5 @@ fn humantime(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, dateparser, jiff, humantime);
+criterion_group!(benches, dateparser, jiff_zoned, jiff_datetime, humantime);
 criterion_main!(benches);
