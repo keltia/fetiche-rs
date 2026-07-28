@@ -34,7 +34,7 @@ use std::time::Duration;
 use crate::df::parquet_through_df;
 use crate::prs::parquet_through_polars;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use tokio::runtime::Runtime;
 
 fn use_df(c: &mut Criterion) {
@@ -94,6 +94,7 @@ mod df {
 }
 
 mod prs {
+    use polars::polars_utils::compression::ZstdLevel;
     use polars_io::prelude::*;
 
     pub fn parquet_through_polars() -> eyre::Result<()> {
