@@ -18,8 +18,8 @@ use std::hint::black_box;
 
 use chrono::{Duration, Utc};
 use criterion::{Criterion, criterion_group, criterion_main};
-use jiff::Span;
 use jiff::civil::DateTime;
+use jiff::{Span, ToSpan};
 
 pub fn expand_interval(
     begin: chrono::DateTime<Utc>,
@@ -56,10 +56,6 @@ pub fn expand_interval_jiff(begin: DateTime, end: DateTime) -> eyre::Result<Vec<
 }
 
 pub fn expand_interval_jiff_iter(begin: DateTime, end: DateTime) -> eyre::Result<Vec<DateTime>> {
-    // Pre-calculate capacity: days between begin and end
-    let days_span = end.since(begin)?;
-    let days_count = days_span.get_days();
-
     // Use successors to chain single-day additions (only creates one Span)
     let day = Span::new().days(1);
     let dates: Vec<_> = std::iter::successors(Some(begin), |&d| {
@@ -71,6 +67,24 @@ pub fn expand_interval_jiff_iter(begin: DateTime, end: DateTime) -> eyre::Result
     Ok(dates)
 }
 
+fn expand_interval_series_jiff(begin: DateTime, end: DateTime) -> eyre::Result<Vec<DateTime>> {
+    // Pre-calculate capacity to hint collect()
+    let days_span = end.since(begin)?;
+    let days_count = days_span.get_days() as usize;
+
+    // series() is slower because:
+    // 1. It's a generic iterator for any period (days/months/years/etc)
+    // 2. More validation per step (overflow checks, calendar math)
+    // 3. Cannot be optimized as aggressively by LLVM
+    // 4. Iterator state machine overhead
+    let mut intv = Vec::with_capacity(days_count);
+    intv.extend(begin.series(1.days()).take(days_count));
+
+    Ok(intv)
+}
+
+// -----
+
 fn test_jiff(c: &mut Criterion) {
     let mut r = vec![];
 
@@ -78,12 +92,27 @@ fn test_jiff(c: &mut Criterion) {
     let begin = "2024-01-01".parse().unwrap();
     let end = "2025-01-01".parse().unwrap();
 
-    c.bench_function("jiff", |b| {
+    c.bench_function("jiff_loop", |b| {
         b.iter(|| {
             r = black_box(expand_interval_jiff(begin, end).unwrap());
         })
     });
-    eprintln!("vec(jiff) = {}", r.len())
+    assert_eq!(r.len(), 366);
+}
+
+fn test_jiff_series(c: &mut Criterion) {
+    let mut r = vec![];
+
+    // 2024 has 366 days
+    let begin = "2024-01-01".parse().unwrap();
+    let end = "2025-01-01".parse().unwrap();
+
+    c.bench_function("jiff_series", |b| {
+        b.iter(|| {
+            r = black_box(expand_interval_series_jiff(begin, end).unwrap());
+        })
+    });
+    assert_eq!(r.len(), 366);
 }
 
 fn test_jiff_iter(c: &mut Criterion) {
@@ -98,7 +127,7 @@ fn test_jiff_iter(c: &mut Criterion) {
             r = black_box(expand_interval_jiff_iter(begin, end).unwrap());
         })
     });
-    eprintln!("vec(jiff_iter) = {}", r.len())
+    assert_eq!(r.len(), 366);
 }
 
 fn test_chrono(c: &mut Criterion) {
@@ -113,8 +142,8 @@ fn test_chrono(c: &mut Criterion) {
             r = black_box(expand_interval(begin, end).unwrap());
         })
     });
-    eprintln!("vec(chrono) = {}", r.len())
+    assert_eq!(r.len(), 366);
 }
 
-criterion_group!(benches, test_chrono, test_jiff, test_jiff_iter);
+criterion_group!(benches, test_chrono, test_jiff, test_jiff_iter, test_jiff_series);
 criterion_main!(benches);
