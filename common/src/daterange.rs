@@ -3,7 +3,7 @@
 
 use chrono::{DateTime, Duration, Utc};
 use eyre::Result;
-use jiff::{civil::Date, ToSpan};
+use jiff::{Span, civil::Date};
 
 /// This function takes a start and end `DateTime<Utc>` and generates a vector of all days
 /// between (inclusive of start, exclusive of end). It increments the date by one day
@@ -75,10 +75,23 @@ pub fn expand_interval_jiff(begin: Date, end: Date) -> Result<Vec<Date>> {
         return Ok(vec![begin]);
     }
 
-    let mut intv = begin
-        .series(1.days())
-        .take_while(|&ts| ts < end)
-        .collect::<Vec<_>>();
+    if begin > end {
+        return Ok(vec![]);
+    }
+    // Pre-calculate capacity: days between begin and end
+    let days_span = end.since(begin)?;
+    let days_count = days_span.get_days();
+
+    // Pre-allocate with exact capacity
+    let mut intv = Vec::with_capacity(days_count as usize);
+
+    let day = Span::new().days(1);
+    let mut d = begin;
+
+    while d < end {
+        intv.push(d);
+        d = d.checked_add(day).expect("overflow");
+    }
 
     if intv.is_empty() && begin < end {
         intv.push(begin);
@@ -92,8 +105,8 @@ pub fn expand_interval_jiff(begin: Date, end: Date) -> Result<Vec<Date>> {
 mod tests {
     use super::*;
     use chrono::{TimeZone, Utc};
-    use jiff::civil::date;
     use jiff::Timestamp;
+    use jiff::civil::date;
     use rstest::rstest;
 
     #[test]
