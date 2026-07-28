@@ -49,15 +49,21 @@
 use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
 use crate::make_query;
 
-use std::ops::Add;
-
+use chrono::{DateTime, Utc};
 use eyre::Result;
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
+use jiff::{Span, Timestamp};
 use klickhouse::{Client, QueryBuilder, RawRow, Row};
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration, Instant};
 use tracing::{debug, error, info, trace};
+
+/// Helper: Convert jiff Timestamp to chrono DateTime for database formatting only
+fn jiff_to_chrono(ts: Timestamp) -> DateTime<Utc> {
+    DateTime::<Utc>::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32)
+        .expect("Valid timestamp")
+}
 
 /// Timings during the calculation process.
 #[derive(Debug, Default, Deserialize)]
@@ -122,12 +128,15 @@ impl PlaneDistance {
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
-        let time_from = self.date.format("%Y-%m-%d 00:00:00").to_string();
-        let time_to = self
-            .date
-            .add(chrono::Duration::try_days(1).unwrap())
-            .format("%Y-%m-%d 00:00:00")
-            .to_string();
+        // Convert jiff Timestamp to chrono only for database formatting
+        let date_chrono = jiff_to_chrono(self.date);
+        let time_from = date_chrono.format("%Y-%m-%d 00:00:00").to_string();
+
+        // Add 1 day using jiff, then convert to chrono for formatting
+        let next_day = self.date.checked_add(Span::new().days(1)).expect("date overflow");
+        let next_day_chrono = jiff_to_chrono(next_day);
+        let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
+
         info!(
             "From {} to {} on {}/{}.",
             time_from, time_to, site.name, site.id
@@ -145,7 +154,7 @@ impl PlaneDistance {
         // $8 = distance in degrees (== dist(nm) /  60)   1 deg ~ 60 nm ~111.1 km
         //
         //
-        let day_name = self.date.format("%Y%m%d").to_string();
+        let day_name = date_chrono.format("%Y%m%d").to_string();
         let tag = format!("_{name}_{day_name}");
 
         let r1 = make_query!(
@@ -273,12 +282,15 @@ AS (
 
         let site = self.site.clone();
 
-        let time_from = self.date.format("%Y-%m-%d 00:00:00").to_string();
-        let time_to = self
-            .date
-            .add(chrono::Duration::try_days(1).unwrap())
-            .format("%Y-%m-%d 00:00:00")
-            .to_string();
+        // Convert jiff Timestamp to chrono only for database formatting
+        let date_chrono = jiff_to_chrono(self.date);
+        let time_from = date_chrono.format("%Y-%m-%d 00:00:00").to_string();
+
+        // Add 1 day using jiff, then convert to chrono for formatting
+        let next_day = self.date.checked_add(Span::new().days(1)).expect("date overflow");
+        let next_day_chrono = jiff_to_chrono(next_day);
+        let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
+
         info!(
             "From {} to {} on {}/{}.",
             time_from, time_to, site.name, site.id
@@ -625,7 +637,10 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
 
         let site = self.site.clone();
         let name = site.name.clone();
-        let day_name = self.date.format("%Y%m%d").to_string();
+
+        // Convert jiff Timestamp to chrono only for formatting
+        let date_chrono = jiff_to_chrono(self.date);
+        let day_name = date_chrono.format("%Y%m%d").to_string();
 
         // Insert data into table `encounters`
         //
@@ -774,7 +789,11 @@ impl Calculate for PlaneDistance {
     #[tracing::instrument(skip(self, dbh))]
     async fn run(&mut self, dbh: &Client) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
-        let date_str = self.date.format("%Y%m%d").to_string();
+
+        // Convert jiff Timestamp to chrono only for formatting
+        let date_chrono = jiff_to_chrono(self.date);
+        let date_str = date_chrono.format("%Y%m%d").to_string();
+
         let bar = self.progress.clone().unwrap_or_else(|| ProgressBar::new(4));
         bar.set_length(4);
         let style = ProgressStyle::with_template(
@@ -784,10 +803,10 @@ impl Calculate for PlaneDistance {
         bar.set_style(style);
         bar.enable_steady_tick(Duration::from_millis(100));
 
-        // Create our stat struct
+        // Create our stat struct (PlanesStats still uses chrono for storage)
         //
         let separation = self.threshold * self.factor;
-        let stats = &mut PlanesStats::new(self.date, self.distance, separation);
+        let stats = &mut PlanesStats::new(date_chrono, self.distance, separation);
         let mut timings = Timings::default();
 
         // Create table `today` with all identified plane points with the specified range

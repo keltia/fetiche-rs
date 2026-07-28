@@ -6,17 +6,18 @@ use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::{DateTime, Datelike, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 use clap::Parser;
 use derive_builder::Builder;
 use eyre::Result;
 use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
+use jiff::{Span, Timestamp};
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
-use fetiche_common::{expand_interval, normalise_day, DateOpts};
+use fetiche_common::DateOpts;
 
 use crate::cmds::{
     enumerate_sites, find_site, Calculate, CmdError, DBVars, PlanesStats, Site, Stats,
@@ -100,8 +101,8 @@ pub struct PlanesOpts {
 pub struct PlaneDistance {
     /// Name of site
     pub site: Site,
-    /// Specific day
-    pub date: DateTime<Utc>,
+    /// Specific day (stored as jiff Timestamp, converted to chrono only for DB queries)
+    pub date: Timestamp,
     /// Optional delay between tasks
     pub wait: u64,
     /// Max distance we want to consider
@@ -157,6 +158,38 @@ pub enum TempTables {
 
 // -----
 
+/// Helper functions for jiff/chrono interop
+
+/// Expands a date interval using jiff (faster than chrono version)
+fn expand_interval_jiff(begin: Timestamp, end: Timestamp) -> Result<Vec<Timestamp>> {
+    let days_span = end.since(begin)?;
+    let days_count = days_span.get_days();
+    let mut intv = Vec::with_capacity(days_count as usize);
+
+    let day = Span::new().days(1);
+    let mut d = begin;
+    while d < end {
+        intv.push(d);
+        d = d.checked_add(day)?;
+    }
+    Ok(intv)
+}
+
+/// Converts jiff::Timestamp to chrono::DateTime<Utc> for database queries
+fn jiff_to_chrono(ts: Timestamp) -> Result<DateTime<Utc>> {
+    DateTime::<Utc>::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32)
+        .ok_or_else(|| CmdError::BadTimestamp(ts.to_string()).into())
+}
+
+/// Normalizes a jiff timestamp to start of day (00:00:00)
+fn normalise_day_jiff(ts: Timestamp) -> Result<Timestamp> {
+    let dt = ts.to_zoned(jiff::tz::TimeZone::UTC);
+    let date = dt.date();
+    Ok(date.at(0, 0, 0, 0).to_zoned(jiff::tz::TimeZone::UTC)?.timestamp())
+}
+
+// -----
+
 const ALL_SITES: &str = "ALL"; // Introduced constant for clarity
 
 /// Performs the calculation of distances between drones and planes for a specified set of
@@ -195,10 +228,10 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     info!("Datalake: {}", datalake);
     env::set_current_dir(datalake)?;
 
-    // Step 2: Parse dates
+    // Step 2: Parse dates (using jiff internally)
     //
     let (begin, end) = parse_date_interval(opts.date.clone())?;
-    let dates = expand_interval(begin, end)?;
+    let dates = expand_interval_jiff(begin, end)?;
     eprintln!("{} days to process: from {begin} to {end}", dates.len());
 
     // Step 3: Create work list (combination of dates and sites)
@@ -219,7 +252,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
 
 #[derive(Clone, Debug, Builder)]
 struct WorkItem {
-    day: DateTime<Utc>,
+    day: Timestamp,
     site: Site,
     distance: f64,
     threshold: f64,
@@ -258,7 +291,7 @@ struct WorkItem {
 #[tracing::instrument(skip(ctx))]
 async fn prepare_work_list(
     ctx: &Context,
-    dates: Vec<DateTime<Utc>>,
+    dates: Vec<Timestamp>,
     site_filter: &str,
 ) -> Result<Vec<WorkItem>> {
     // Let us generate the list we want:
@@ -296,8 +329,8 @@ async fn prepare_work_list(
     };
 
     let work_list: Vec<_> = dates
-        .iter()
-        .map(|&day| {
+        .into_iter()
+        .map(|day| {
             async move {
                 // We have a specific site
                 //
@@ -313,9 +346,10 @@ async fn prepare_work_list(
                         .unwrap();
                     vec![w]
                 } else {
-                    // Process all sites
+                    // Process all sites (enumerate_sites still uses chrono)
                     //
-                    let list = enumerate_sites(ctx, day).await.unwrap();
+                    let day_chrono = jiff_to_chrono(day).expect("valid timestamp");
+                    let list = enumerate_sites(ctx, day_chrono).await.unwrap();
                     let list: Vec<_> = list
                         .iter()
                         .map(|site| {
@@ -487,24 +521,28 @@ async fn calculate_one_day_on_site(
         .await
         .map_err(|e| CmdError::ConnectionUnavailable(e.to_string()))?;
 
-    let day = normalise_day(work.day)?;
+    // Normalize day using jiff
+    let day_jiff = normalise_day_jiff(work.day)?;
+
+    // Convert to chrono only for database formatting
+    let day_chrono = jiff_to_chrono(day_jiff)?;
 
     // Get our parameters for queries.
     //
     let name = work.site.name.clone();
-    let day_name = day.format("%Y%m%d").to_string();
+    let day_name = day_chrono.format("%Y%m%d").to_string();
     let tag = format!("_{name}_{day_name}");
 
     let dbvars = DBVars::from_ctx(ctx).tag(&tag);
 
-    let pbm = format!("Processing site {} on day {}", work.site.name, day);
+    let pbm = format!("Processing site {} on day {}", work.site.name, day_jiff);
     pbar.set_message(pbm);
     let mut work = PlaneDistanceBuilder::default()
         .site(work.site.clone())
         .lat(work.site.latitude)
         .lon(work.site.longitude)
         .distance(work.distance)
-        .date(work.day)
+        .date(day_jiff)  // Store as jiff Timestamp
         .threshold(work.threshold)
         .factor(work.factor)
         .wait(ctx.wait)
@@ -512,7 +550,7 @@ async fn calculate_one_day_on_site(
         .progress(Some(pbar.clone()))
         .build()?;
 
-    trace!("worklist for {:?} on {}: {:?}", work.site.name, day, work);
+    trace!("worklist for {:?} on {}: {:?}", work.site.name, day_jiff, work);
 
     let stats = if !ctx.dry_run {
         work.run(&dbh).await?
@@ -575,81 +613,23 @@ async fn calculate_one_day_on_site(
 /// ```
 ///
 #[tracing::instrument]
-fn parse_date_interval(date_opts: DateOpts) -> Result<(DateTime<Utc>, DateTime<Utc>)> {
+fn parse_date_interval(date_opts: DateOpts) -> Result<(Timestamp, Timestamp)> {
     match DateOpts::parse(date_opts) {
         Ok((start, stop)) => {
-            let start = timestamp_to_chrono(start)?;
-            let stop = timestamp_to_chrono(stop)?;
+            // DateOpts::parse returns jiff::Timestamp already
             info!("Interval: from {} to {}", start, stop);
             Ok((start, stop))
         }
         Err(_) => {
-            let tm = Utc::now();
-            let day = Utc
-                .with_ymd_and_hms(tm.year(), tm.month(), tm.day(), 0, 0, 0)
-                .unwrap();
+            // Default to current day using jiff
+            let now = Timestamp::now();
+            let day = normalise_day_jiff(now)?;
             info!("Defaulting to current day: {}", day);
-            Ok((tm, tm))
+            Ok((day, day))
         }
     }
 }
 
-/// Converts a `jiff::Timestamp` into a `chrono::DateTime<Utc>`.
-///
-/// This function bridges between the `jiff` timestamp library and `chrono`'s
-/// date-time representation. It extracts the Unix epoch seconds from the
-/// `jiff::Timestamp` and constructs a corresponding UTC `DateTime`.
-///
-/// # Arguments
-///
-/// * `ts` - A `jiff::Timestamp` representing a point in time to be converted.
-///
-/// # Returns
-///
-/// Returns a `Result` containing:
-/// - `Ok(DateTime<Utc>)` if the timestamp is successfully converted and falls
-///   within the valid range for `chrono::DateTime`.
-/// - `Err` if the timestamp is out of range for `chrono` (e.g., too far in
-///   the past or future).
-///
-/// # Errors
-///
-/// This function will return an error if:
-/// - The timestamp value exceeds the representable range of `chrono::DateTime<Utc>`.
-/// - The conversion from Unix epoch seconds fails.
-///
-/// # Examples
-///
-/// Valid timestamp conversion:
-/// ```rust
-/// use jiff::Timestamp;
-/// use chrono::{DateTime, Utc};
-///
-/// let jiff_ts = Timestamp::from_second(1609459200).unwrap(); // 2021-01-01 00:00:00 UTC
-/// let chrono_dt = timestamp_to_chrono(jiff_ts).unwrap();
-/// assert_eq!(chrono_dt.timestamp(), 1609459200);
-/// ```
-///
-/// Out-of-range timestamp:
-/// ```rust
-/// use jiff::Timestamp;
-///
-/// let invalid_ts = Timestamp::from_second(i64::MAX).unwrap();
-/// let result = timestamp_to_chrono(invalid_ts);
-/// assert!(result.is_err());
-/// ```
-///
-/// # Notes
-///
-/// - This function only uses the second precision from the `jiff::Timestamp`,
-///   setting nanoseconds to 0 in the resulting `DateTime`.
-/// - The conversion is timezone-aware and always produces UTC timestamps.
-///
-#[tracing::instrument]
-fn timestamp_to_chrono(ts: jiff::Timestamp) -> Result<DateTime<Utc>> {
-    DateTime::<Utc>::from_timestamp(ts.as_second(), 0)
-        .ok_or_else(|| CmdError::BadTimestamp(ts.to_string()).into())
-}
 
 #[cfg(test)]
 mod tests {
@@ -657,7 +637,6 @@ mod tests {
     use crate::cli::{Opts, SubCommand};
     use crate::cmds::{DistOpts, DistSubcommand};
     use crate::runtime::init_runtime;
-    use chrono::{TimeZone, Utc};
 
     #[test]
     fn test_parse_date_interval_valid_range() {
@@ -669,27 +648,23 @@ mod tests {
         };
 
         let result = parse_date_interval(date_opts).unwrap();
-        assert_eq!(
-            result.0,
-            Utc.with_ymd_and_hms(2023, 10, 1, 0, 0, 0).unwrap()
-        );
-        assert_eq!(
-            result.1,
-            Utc.with_ymd_and_hms(2023, 10, 10, 0, 0, 0).unwrap()
-        );
+        // Results are jiff Timestamps now
+        let expected_start = "2023-10-01T00:00:00Z".parse::<Timestamp>().unwrap();
+        let expected_end = "2023-10-10T00:00:00Z".parse::<Timestamp>().unwrap();
+        assert_eq!(result.0, expected_start);
+        assert_eq!(result.1, expected_end);
     }
 
     #[test]
     fn test_parse_date_interval_invalid_range_defaults_to_now() {
         let invalid_date_opts = DateOpts::Week { num: 66 };
-        let now = Utc::now();
-        let expected_day = Utc
-            .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
-            .unwrap();
+        let now = Timestamp::now();
+        let expected_day = normalise_day_jiff(now).unwrap();
 
         let result = parse_date_interval(invalid_date_opts).unwrap();
-        assert_eq!(result.0.date_naive(), expected_day.date_naive());
-        assert_eq!(result.1.date_naive(), expected_day.date_naive());
+        // Both should be the same day (start of day)
+        assert_eq!(result.0, expected_day);
+        assert_eq!(result.1, expected_day);
     }
 
     // This test *requires* an configured account (various Clickhouse related environment variables, etc.)
@@ -732,8 +707,8 @@ mod tests {
         //
         let ctx = init_runtime("test-prepare-worklist", &opts).await?;
 
-        let b = dateparser::parse("2023-10-01T00:00:00Z").unwrap();
-        let e = dateparser::parse("2023-10-02T00:00:00Z").unwrap();
+        let b = "2023-10-01T00:00:00Z".parse::<Timestamp>().unwrap();
+        let e = "2023-10-02T00:00:00Z".parse::<Timestamp>().unwrap();
         let dates = vec![b, e];
 
         let work_list = prepare_work_list(&ctx, dates, site).await?;
@@ -743,41 +718,29 @@ mod tests {
     }
 
     #[test]
-    fn test_timestamp_to_chrono_valid_conversion() {
+    fn test_jiff_to_chrono_valid_conversion() {
         // Test valid timestamp: 2021-01-01 00:00:00 UTC
         //
-        let jiff_ts = jiff::Timestamp::from_second(1609459200).unwrap();
-        let chrono_dt = timestamp_to_chrono(jiff_ts).unwrap();
+        let jiff_ts = Timestamp::from_second(1609459200).unwrap();
+        let chrono_dt = jiff_to_chrono(jiff_ts).unwrap();
         assert_eq!(chrono_dt.timestamp(), 1609459200);
-        assert_eq!(
-            chrono_dt,
-            Utc.with_ymd_and_hms(2021, 1, 1, 0, 0, 0).unwrap()
-        );
     }
 
     #[test]
-    fn test_timestamp_to_chrono_epoch() {
+    fn test_jiff_to_chrono_epoch() {
         // Test Unix epoch: 1970-01-01 00:00:00 UTC
         //
-        let jiff_ts = jiff::Timestamp::from_second(0).unwrap();
-        let chrono_dt = timestamp_to_chrono(jiff_ts).unwrap();
+        let jiff_ts = Timestamp::from_second(0).unwrap();
+        let chrono_dt = jiff_to_chrono(jiff_ts).unwrap();
         assert_eq!(chrono_dt.timestamp(), 0);
-        assert_eq!(
-            chrono_dt,
-            Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap()
-        );
     }
 
     #[test]
-    fn test_timestamp_to_chrono_min_valid() {
-        // Test minimum valid timestamp for chrono (negative seconds for dates before epoch)
-        //
-        let jiff_ts = jiff::Timestamp::from_second(-2208988800).unwrap(); // 1900-01-01 00:00:00 UTC
-        let chrono_dt = timestamp_to_chrono(jiff_ts).unwrap();
-        assert_eq!(chrono_dt.timestamp(), -2208988800);
-        assert_eq!(
-            chrono_dt,
-            Utc.with_ymd_and_hms(1900, 1, 1, 0, 0, 0).unwrap()
-        );
+    fn test_normalise_day_jiff() {
+        // Test that normalization sets time to 00:00:00
+        let ts = "2023-10-15T14:30:45Z".parse::<Timestamp>().unwrap();
+        let normalized = normalise_day_jiff(ts).unwrap();
+        let expected = "2023-10-15T00:00:00Z".parse::<Timestamp>().unwrap();
+        assert_eq!(normalized, expected);
     }
 }
