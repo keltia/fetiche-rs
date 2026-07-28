@@ -13,14 +13,14 @@ use eyre::Result;
 use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
-use jiff::{Span, Timestamp};
+use jiff::{RoundMode, Span, Timestamp, Unit, ZonedRound, tz::TimeZone};
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
 use fetiche_common::DateOpts;
 
-use crate::cmds::{
-    enumerate_sites, find_site, Calculate, CmdError, DBVars, PlanesStats, Site, Stats,
+use crate::cmds::{Calculate, CmdError, DBVars, PlanesStats, Site, Stats,
+                  enumerate_sites, find_site,
 };
 use crate::runtime::Context;
 
@@ -160,7 +160,8 @@ pub enum TempTables {
 
 /// Helper functions for jiff/chrono interop
 
-/// Expands a date interval using jiff (faster than chrono version)
+/// Expands a date interval
+///
 fn expand_interval_jiff(begin: Timestamp, end: Timestamp) -> Result<Vec<Timestamp>> {
     let days_span = end.since(begin)?;
     let days_count = days_span.get_days();
@@ -176,16 +177,17 @@ fn expand_interval_jiff(begin: Timestamp, end: Timestamp) -> Result<Vec<Timestam
 }
 
 /// Converts jiff::Timestamp to chrono::DateTime<Utc> for database queries
+///
 fn jiff_to_chrono(ts: Timestamp) -> Result<DateTime<Utc>> {
     DateTime::<Utc>::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32)
         .ok_or_else(|| CmdError::BadTimestamp(ts.to_string()).into())
 }
 
 /// Normalizes a jiff timestamp to start of day (00:00:00)
+///
 fn normalise_day_jiff(ts: Timestamp) -> Result<Timestamp> {
-    let dt = ts.to_zoned(jiff::tz::TimeZone::UTC);
-    let date = dt.date();
-    Ok(date.at(0, 0, 0, 0).to_zoned(jiff::tz::TimeZone::UTC)?.timestamp())
+    let mode = ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Floor);
+    Ok(ts.to_zoned(TimeZone::UTC).round(mode)?.timestamp())
 }
 
 // -----
