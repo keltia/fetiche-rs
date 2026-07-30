@@ -22,7 +22,7 @@ mod tz;
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use clap::{crate_name, crate_version};
 use eyre::Result;
-use jiff::{RoundMode, Unit, Zoned, ZonedRound};
+use jiff::{RoundMode, Timestamp, Unit, Zoned, ZonedRound};
 
 const NAME: &str = crate_name!();
 const VERSION: &str = crate_version!();
@@ -163,6 +163,79 @@ pub fn normalise_day_jiff(date: Zoned) -> Result<Zoned> {
     Ok(date.round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Floor))?)
 }
 
+// -----
+// Conversion helpers for Strategy 3: Internal-Only Migration
+// These allow using jiff internally while keeping chrono at API boundaries
+// -----
+
+/// Converts a `chrono::DateTime<Utc>` to a `jiff::Timestamp`.
+///
+/// This is a zero-cost conversion that preserves nanosecond precision.
+/// Used when receiving chrono timestamps from external APIs (like fetiche-formats)
+/// and converting to jiff for internal computation.
+///
+/// # Arguments
+///
+/// * `dt` - A `DateTime<Utc>` from chrono
+///
+/// # Returns
+///
+/// A `jiff::Timestamp` representing the same instant in time.
+///
+/// # Examples
+///
+/// ```rust
+/// use chrono::{Utc, TimeZone};
+/// use fetiche_common::chrono_to_jiff;
+///
+/// let chrono_dt = Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap();
+/// let jiff_ts = chrono_to_jiff(chrono_dt);
+/// assert_eq!(jiff_ts.as_second(), chrono_dt.timestamp());
+/// ```
+#[inline]
+pub fn chrono_to_jiff(dt: DateTime<Utc>) -> Timestamp {
+    Timestamp::from_second(dt.timestamp())
+        .expect("valid chrono timestamp")
+        .checked_add(jiff::Span::new().nanoseconds(dt.timestamp_subsec_nanos() as i64))
+        .expect("nanosecond addition")
+}
+
+/// Converts a `jiff::Timestamp` to a `chrono::DateTime<Utc>`.
+///
+/// This is a zero-cost conversion that preserves nanosecond precision.
+/// Used when returning to chrono timestamps for external APIs (like database writes,
+/// CSV output, or fetiche-formats types).
+///
+/// # Arguments
+///
+/// * `ts` - A `jiff::Timestamp`
+///
+/// # Returns
+///
+/// A `Result` containing a `DateTime<Utc>`, or an error if the timestamp is out of
+/// chrono's supported range.
+///
+/// # Examples
+///
+/// ```rust
+/// use jiff::Timestamp;
+/// use fetiche_common::jiff_to_chrono;
+///
+/// let jiff_ts: Timestamp = "2024-01-01T12:00:00Z".parse().unwrap();
+/// let chrono_dt = jiff_to_chrono(jiff_ts).unwrap();
+/// assert_eq!(chrono_dt.timestamp(), jiff_ts.as_second());
+/// ```
+///
+/// # Errors
+///
+/// Returns an error if the jiff timestamp is outside chrono's representable range
+/// (roughly year 262000 BCE to 262000 CE).
+#[inline]
+pub fn jiff_to_chrono(ts: Timestamp) -> Result<DateTime<Utc>> {
+    DateTime::<Utc>::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32)
+        .ok_or_else(|| eyre::eyre!("Timestamp out of chrono range: {}", ts))
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::prelude::*;
@@ -196,5 +269,51 @@ mod tests {
         assert!(r.is_ok());
         let r = r.unwrap();
         assert_eq!(res, r.to_string());
+    }
+
+    // Test conversion helpers
+    #[test]
+    fn test_chrono_to_jiff_roundtrip() {
+        let chrono_dt = Utc.with_ymd_and_hms(2024, 7, 30, 12, 34, 56).unwrap();
+        let jiff_ts = chrono_to_jiff(chrono_dt);
+        let chrono_dt2 = jiff_to_chrono(jiff_ts).unwrap();
+
+        assert_eq!(chrono_dt.timestamp(), chrono_dt2.timestamp());
+        assert_eq!(chrono_dt, chrono_dt2);
+    }
+
+    #[test]
+    fn test_jiff_to_chrono_roundtrip() {
+        let jiff_ts: Timestamp = "2024-07-30T12:34:56Z".parse().unwrap();
+        let chrono_dt = jiff_to_chrono(jiff_ts).unwrap();
+        let jiff_ts2 = chrono_to_jiff(chrono_dt);
+
+        assert_eq!(jiff_ts.as_second(), jiff_ts2.as_second());
+    }
+
+    #[test]
+    fn test_chrono_to_jiff_epoch() {
+        let chrono_dt = Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap();
+        let jiff_ts = chrono_to_jiff(chrono_dt);
+
+        assert_eq!(jiff_ts.as_second(), 0);
+    }
+
+    #[test]
+    fn test_jiff_to_chrono_epoch() {
+        let jiff_ts = Timestamp::from_second(0).unwrap();
+        let chrono_dt = jiff_to_chrono(jiff_ts).unwrap();
+
+        assert_eq!(chrono_dt.timestamp(), 0);
+        assert_eq!(chrono_dt, Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap());
+    }
+
+    #[test]
+    fn test_conversion_preserves_nanoseconds() {
+        let chrono_dt = Utc.timestamp_nanos(1609459200_123456789);
+        let jiff_ts = chrono_to_jiff(chrono_dt);
+        let chrono_dt2 = jiff_to_chrono(jiff_ts).unwrap();
+
+        assert_eq!(chrono_dt.timestamp_nanos_opt(), chrono_dt2.timestamp_nanos_opt());
     }
 }
