@@ -10,6 +10,7 @@ chrono = { version = "0.4.42", features = ["serde", "std"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 criterion = { version = "0.8", features = ["async", "async_tokio", "async_futures"] }
 csv = "1.4"
+ctrlc = { version = "3.5", features = ["termination"] }
 dateparser = "0.3.1"
 directories = "6"
 env_logger = "0.11"
@@ -21,6 +22,7 @@ fetiche-formats = { version = "0", path = "formats" }
 fetiche-macros = { version = "0", path = "macros" }
 futures = "0.3"
 hcl-rs = "0.19"
+indicatif = "0.18"
 itertools = "0.15.0"
 jiff = { version = "0.2", features = ["serde"] }
 nom = "8"

@@ -4333,9 +4333,9 @@ checksum = "15cdd26707701c53297e2fa6afb323d55fbc1d0810c3aec078ae3ef0424c3c15"
 
 [[package]]
 name = "hybrid-array"
-version = "0.4.13"
+version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "818356c5132c1fede50f837ca96afbe78ff42413047f4abb886217845e1b6c8c"
+checksum = "707114b52a152fa7bdb290cd7cd5912d9467273b6d74e21b8d81aca1f8533f6b"
 dependencies = [
  "typenum",
 ]
@@ -6967,7 +6967,6 @@ dependencies = [
  "colorsys",
  "criterion 0.8.2",
  "csv",
- "dateparser",
  "divan",
  "eyre",
  "farben",
@@ -7264,9 +7263,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "ractor"
-version = "0.16.1"
+version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da710d352878a582c462052dc276dd84b344b67708ac785f02c07f83b6cd8500"
+checksum = "83ee8d79e5f2a18e941aee4cae10d27c9442d9f48c7a84b1318fe3627bd6b151"
 dependencies = [
  "async-trait",
  "bon",
@@ -7287,9 +7286,9 @@ dependencies = [
 
 [[package]]
 name = "ractor_macros"
-version = "0.16.1"
+version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41030b41deff0ec6cbaeaa5256e425b3c388be541f2f8a7e10a737bff07e90b0"
+checksum = "836403307068b47a7636f8c3fd344a92a202f809f7831c4e5a8b5588df1b07ae"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",

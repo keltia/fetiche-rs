@@ -29,19 +29,19 @@ flightaware = []
 [dependencies]
 eyre.workspace = true
 clap.workspace = true
+ctrlc.workspace = true
 fetiche-client.workspace = true
 fetiche-common.workspace = true
 fetiche-formats.workspace = true
 fetiche-macros.workspace = true
 hcl-rs.workspace = true
+indicatif.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
 clap_complete = "4.6"
-ctrlc = { version = "3.5", features = ["termination"] }
-indicatif = "0.18"
 
 [dev-dependencies]
 assert_cmd = "2.2"
