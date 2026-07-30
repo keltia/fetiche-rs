@@ -12,7 +12,7 @@ use eyre::Result;
 use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
-use jiff::{RoundMode, Span, Timestamp, Unit, ZonedRound, tz::TimeZone};
+use jiff::{RoundMode, Timestamp, Unit, ZonedRound, tz::TimeZone};
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
