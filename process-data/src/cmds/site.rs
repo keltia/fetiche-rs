@@ -89,7 +89,7 @@ impl Display for Site {
 /// - Tracing instrumentation is added to provide detailed logs of the function execution.
 ///
 #[tracing::instrument(skip(ctx))]
-#[cached(key = "String", result = true, convert = r#"{format!("{}", site)}"#)]
+#[cached(key = "String", convert = r#"{format!("{}", site)}"#)]
 pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
@@ -139,7 +139,7 @@ pub async fn find_site(ctx: &Context, site: &str) -> eyre::Result<Site> {
 /// - Tracing instrumentation is added to provide detailed logs of the function execution.
 ///
 #[tracing::instrument(skip(ctx))]
-#[cached(key = "String", result = true, convert = r#"{format!("{}", id)}"#)]
+#[cached(key = "String", convert = r#"{format!("{}", id)}"#)]
 pub async fn find_site_by_id(ctx: &Context, id: u32) -> eyre::Result<Site> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
@@ -241,8 +241,7 @@ WHERE
 ///
 #[cached(
     key = "String",
-    convert = r#"{ format!("{}{}", day,antenna.to_string()) }"#,
-    result = true
+    convert = r#"{ format!("{}{}", day,antenna.to_string()) }"#
 )]
 #[tracing::instrument(skip(ctx))]
 pub async fn match_site(ctx: &Context, day: DateTime<Utc>, antenna: &str) -> eyre::Result<String> {
