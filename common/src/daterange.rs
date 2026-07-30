@@ -3,7 +3,7 @@
 
 use chrono::{DateTime, Duration, Utc};
 use eyre::Result;
-use jiff::{Span, civil::Date};
+use jiff::{Span, Timestamp, civil::Date};
 
 /// This function takes a start and end `DateTime<Utc>` and generates a vector of all days
 /// between (inclusive of start, exclusive of end). It increments the date by one day
@@ -97,6 +97,54 @@ pub fn expand_interval_jiff(begin: Date, end: Date) -> Result<Vec<Date>> {
         intv.push(begin);
     }
 
+    Ok(intv)
+}
+
+/// This function takes a start and end `jiff::Timestamp` and generates a vector of all days
+/// between (inclusive of start, exclusive of end). It increments by one day at each step,
+/// returning all timestamps as `jiff::Timestamp`.
+///
+/// This is the preferred function for internal processing as it works with full timestamps
+/// and is ~3.5x faster than the chrono equivalent.
+///
+/// # Arguments
+///
+/// * `begin` - The starting `jiff::Timestamp` of the interval.
+/// * `end` - The ending `jiff::Timestamp` of the interval.
+///
+/// # Returns
+///
+/// A `Result` containing a vector of `jiff::Timestamp` representing all the dates within the interval.
+/// If an error occurs, it will be inside the `Err` variant.
+///
+/// # Example
+///
+/// ```
+/// use jiff::Timestamp;
+/// use fetiche_common::expand_interval_timestamp;
+///
+/// let start: Timestamp = "2024-02-01T00:00:00Z".parse().unwrap();
+/// let end: Timestamp = "2024-02-04T00:00:00Z".parse().unwrap();
+/// let interval = expand_interval_timestamp(start, end).unwrap();
+///
+/// assert_eq!(interval.len(), 3);
+/// ```
+///
+/// # Errors
+///
+/// Returns an `Err` if there are issues with date arithmetic (overflow).
+///
+pub fn expand_interval_timestamp(begin: Timestamp, end: Timestamp) -> Result<Vec<Timestamp>> {
+    let days_span = end.since(begin)?;
+    let days_count = days_span.get_days();
+    let mut intv = Vec::with_capacity(days_count as usize);
+
+    let day = Span::new().days(1);
+    let mut d = begin;
+    while d < end {
+        intv.push(d);
+        d = d.checked_add(day)?;
+    }
     Ok(intv)
 }
 

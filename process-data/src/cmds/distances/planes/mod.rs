@@ -16,7 +16,7 @@ use jiff::{RoundMode, Span, Timestamp, Unit, ZonedRound, tz::TimeZone};
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
-use fetiche_common::{DateOpts, jiff_to_chrono};
+use fetiche_common::{expand_interval_timestamp, jiff_to_chrono, DateOpts};
 
 use crate::cmds::{Calculate, CmdError, DBVars, PlanesStats, Site, Stats,
                   enumerate_sites, find_site,
@@ -157,22 +157,6 @@ pub enum TempTables {
 
 // -----
 
-/// Expands a date interval
-///
-fn expand_interval_jiff(begin: Timestamp, end: Timestamp) -> Result<Vec<Timestamp>> {
-    let days_span = end.since(begin)?;
-    let days_count = days_span.get_days();
-    let mut intv = Vec::with_capacity(days_count as usize);
-
-    let day = Span::new().days(1);
-    let mut d = begin;
-    while d < end {
-        intv.push(d);
-        d = d.checked_add(day)?;
-    }
-    Ok(intv)
-}
-
 /// Normalizes a jiff timestamp to start of day (00:00:00)
 ///
 fn normalise_day_jiff(ts: Timestamp) -> Result<Timestamp> {
@@ -223,7 +207,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     // Step 2: Parse dates (using jiff internally)
     //
     let (begin, end) = parse_date_interval(opts.date.clone())?;
-    let dates = expand_interval_jiff(begin, end)?;
+    let dates = expand_interval_timestamp(begin, end)?;
     eprintln!("{} days to process: from {begin} to {end}", dates.len());
 
     // Step 3: Create work list (combination of dates and sites)
