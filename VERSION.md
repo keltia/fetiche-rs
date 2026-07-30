@@ -25,5 +25,5 @@ Current crates versions:
 - fetiche-client/0.3.0
 - fetiche-engine/0.26.0
 - fetiche-formats/0.19.0
-- fetiche-common/0.4.4
+- fetiche-common/0.5.0
 - fetiche-macros/0.5.0
