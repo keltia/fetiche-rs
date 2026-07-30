@@ -40,7 +40,6 @@ chrono.workspace = true
 clap.workspace = true
 csv.workspace = true
 dateparser.workspace = true
-derive_builder.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-macros.workspace = true
