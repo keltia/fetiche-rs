@@ -39,7 +39,6 @@ bon.workspace = true
 chrono.workspace = true
 clap.workspace = true
 csv.workspace = true
-dateparser.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-macros.workspace = true
@@ -58,7 +57,7 @@ tokio.workspace = true
 tracing.workspace = true
 
 cached = { version = "2", features = ["async", "async_tokio_rt_multi_thread"] }
-clap_complete = "4.5"
+clap_complete = "4.6"
 colorsys = "0.7"
 farben = "0.20"
 geo = "0.33"
@@ -66,7 +65,7 @@ klickhouse = { version = "0.15", features = ["derive", "geo-types", "serde", "bb
 kml = "0.14"
 rand = "0.10"
 rust-3d = "0.34"
-regex = "1.12"
+regex = "1.13"
 tinytemplate = "1.2"
 
 [dev-dependencies]

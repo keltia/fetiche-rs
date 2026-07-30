@@ -75,14 +75,14 @@ tracing.workspace = true
 
 base64_light = "0.1"
 enum_dispatch = "0.3"
-humantime = "2.3"
+humantime = "2.4"
 lapin = { version = "4.10", features = ["native-tls"] }
 mini-moka = "0.10"
 native-tls = "0.2"
 percent-encoding = "2.3"
 futures-util = "0.3"
 tokio-native-tls = "0.3"
-regex = "1.12"
+regex = "1.13"
 
 [dev-dependencies]
 criterion.workspace = true
