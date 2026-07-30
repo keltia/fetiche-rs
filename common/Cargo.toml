@@ -1,6 +1,6 @@
 [package]
 name = "fetiche-common"
-version = "0.4.4"
+version = "0.5.0"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Common library for fetiche modules."
