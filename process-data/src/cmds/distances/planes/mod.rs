@@ -6,8 +6,8 @@ use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 
+use bon::Builder;
 use clap::Parser;
-use derive_builder::Builder;
 use eyre::Result;
 use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -16,7 +16,7 @@ use jiff::{RoundMode, Timestamp, Unit, ZonedRound, tz::TimeZone};
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
-use fetiche_common::{expand_interval_timestamp, jiff_to_chrono, DateOpts};
+use fetiche_common::{DateOpts, expand_interval_timestamp, jiff_to_chrono};
 
 use crate::cmds::{Calculate, CmdError, DBVars, PlanesStats, Site, Stats,
                   enumerate_sites, find_site,
@@ -96,7 +96,7 @@ pub struct PlanesOpts {
 /// specifying these values. The `state` field is particularly useful for tracking intermediate
 /// computation data, which needs to be properly cleaned up to maintain system integrity.
 ///
-#[derive(Builder, Debug)]
+#[derive(Debug, Builder)]
 pub struct PlaneDistance {
     /// Name of site
     pub site: Site,
@@ -105,30 +105,26 @@ pub struct PlaneDistance {
     /// Optional delay between tasks
     pub wait: u64,
     /// Max distance we want to consider
-    #[builder(default = "70.")]
+    #[builder(default = 70.)]
     pub distance: f64,
     /// Separation step.
-    #[builder(default = "1852.")]
+    #[builder(default = 1852.)]
     pub threshold: f64,
     /// Separation factor
-    #[builder(default = "3.")]
+    #[builder(default = 3.)]
     pub factor: f64,
     /// Lat of antenna
-    #[builder]
     pub lat: f64,
     /// Lon of antenna
-    #[builder]
     pub lon: f64,
     /// Database variables
-    #[builder]
     pub dbvars: Arc<DBVars>,
     /// List of temporary tables created along the way, for cleanup.
-    #[builder(default = "vec![]")]
+    #[builder(default = vec![])]
     state: Vec<TempTables>,
     /// Progress bar for tracking progress
-    #[builder(default = "None")]
     pub progress: Option<ProgressBar>,
-    #[builder(default = "false")]
+    #[builder(default = false)]
     pub dry_run: bool,
 }
 
@@ -312,14 +308,13 @@ async fn prepare_work_list(
                 //
                 if !name.is_empty() {
                     let site = find_site(ctx, name).await.unwrap();
-                    let w = WorkItemBuilder::default()
+                    let w = WorkItem::builder()
                         .site(site)
                         .day(day)
                         .distance(distance)
                         .threshold(threshold)
                         .factor(factor)
-                        .build()
-                        .unwrap();
+                        .build();
                     vec![w]
                 } else {
                     // Process all sites (enumerate_sites still uses chrono)
@@ -329,14 +324,13 @@ async fn prepare_work_list(
                     let list: Vec<_> = list
                         .iter()
                         .map(|site| {
-                            WorkItemBuilder::default()
+                            WorkItem::builder()
                                 .site(site.clone())
                                 .day(day)
                                 .distance(distance)
                                 .threshold(threshold)
                                 .factor(factor)
                                 .build()
-                                .unwrap()
                         })
                         .collect();
                     list
@@ -513,7 +507,7 @@ async fn calculate_one_day_on_site(
 
     let pbm = format!("Processing site {} on day {}", work.site.name, day_jiff);
     pbar.set_message(pbm);
-    let mut work = PlaneDistanceBuilder::default()
+    let mut work = PlaneDistance::builder()
         .site(work.site.clone())
         .lat(work.site.latitude)
         .lon(work.site.longitude)
@@ -523,8 +517,8 @@ async fn calculate_one_day_on_site(
         .factor(work.factor)
         .wait(ctx.wait)
         .dbvars(dbvars.into())
-        .progress(Some(pbar.clone()))
-        .build()?;
+        .progress(pbar.clone())
+        .build();
 
     trace!("worklist for {:?} on {}: {:?}", work.site.name, day_jiff, work);
 

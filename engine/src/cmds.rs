@@ -23,7 +23,7 @@ use ractor::{call, call_t, cast, pg};
 use tracing::{info, trace};
 
 use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
-use crate::{Engine, EngineMode, EngineStatus, Job, JobBuilder, JobState, Stats, WaitGroup, ENGINE_PG};
+use crate::{Engine, EngineMode, EngineStatus, Job, JobState, Stats, WaitGroup, ENGINE_PG};
 
 /// Basically, this is the exposed API to the Engine.
 ///
@@ -86,7 +86,7 @@ impl Engine {
 
         // Initialise the job, list of tasks is empty
         //
-        let job = JobBuilder::default().name(s.into()).id(nextid).build()?;
+        let job = Job::builder().name(s.into()).id(nextid).build();
 
         // Update state
         //

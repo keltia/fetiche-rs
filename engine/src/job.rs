@@ -11,7 +11,7 @@
 use std::collections::VecDeque;
 use std::sync::mpsc::{Receiver, Sender};
 
-use derive_builder::Builder;
+use bon::Builder;
 use ractor::ActorRef;
 
 use crate::actors::StatsMsg;
@@ -111,22 +111,21 @@ pub struct Job {
     /// Job ID
     pub id: usize,
     /// Name of the job
-    #[builder(default = "String::from(\"Default Name\")")]
+    #[builder(default = String::from("Default Name"))]
     pub name: String,
     /// Job State
-    #[builder(default = "JobState::Created")]
+    #[builder(default = JobState::Created)]
     pub state: JobState,
     /// Producer.
-    #[builder(default = "Producer::Invalid")]
+    #[builder(default = Producer::Invalid)]
     pub producer: Producer,
     /// FIFO list of middle tasks
-    #[builder(default = "VecDeque::new()")]
+    #[builder(default = VecDeque::new())]
     pub middle: VecDeque<Middle>,
     /// The end of the pipeline.
-    #[builder(default = "Consumer::Invalid")]
+    #[builder(default = Consumer::Invalid)]
     pub consumer: Consumer,
     /// actor for statistics
-    #[builder(default)]
     pub stats: Option<ActorRef<StatsMsg>>,
 }
 
@@ -233,7 +232,7 @@ mod tests {
 
     #[test]
     fn test_job_new() {
-        let job = JobBuilder::default()
+        let job = Job::builder()
             .name("Test Job".into())
             .id(1)
             .build()
@@ -246,7 +245,7 @@ mod tests {
 
     #[test]
     fn test_new_job_with_id_empty_name() {
-        let job = JobBuilder::default()
+        let job = Job::builder()
             .name("empty".into())
             .id(1)
             .build()
@@ -258,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_job_state_transitions() {
-        let mut job = JobBuilder::default().id(1).build().unwrap();
+        let mut job = Job::builder().id(1).build();
         assert_eq!(job.state(), JobState::Created);
 
         job.set(JobState::Ready);
@@ -273,7 +272,7 @@ mod tests {
 
     #[test]
     fn test_job_add_filters() {
-        let mut job = JobBuilder::default().id(1).build().unwrap();
+        let mut job = Job::builder().id(1).build();
         assert!(job.middle.is_empty());
 
         job.add(Middle::Invalid);
@@ -285,7 +284,7 @@ mod tests {
 
     #[test]
     fn test_default_job() {
-        let job = JobBuilder::default().id(1).build().unwrap();
+        let job = Job::builder().id(1).build();
         assert_eq!(job.name, "Default Name");
         assert_eq!(job.state, JobState::Created);
         assert_eq!(job.producer, Producer::Invalid);

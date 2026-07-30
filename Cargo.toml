@@ -5,6 +5,7 @@ default-members = ["acutectl", "process-data", "cmd/convert-from-json", "cmd/fin
 resolver = "2"
 
 [workspace.dependencies]
+bon = "3.9"
 chrono = { version = "0.4.42", features = ["serde", "std"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 criterion = { version = "0.8", features = ["async", "async_tokio", "async_futures"] }

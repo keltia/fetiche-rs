@@ -17,18 +17,17 @@
 //! # Example
 //!
 //! ```rust
-//! use fetiche_client::{ConsumerText, JobTextBuilder, ProducerText};
+//! use fetiche_client::{ConsumerText, JobText, ProducerText};
 //!
-//! let job = JobTextBuilder::default()
+//! let job = JobText::builder()
 //!     .name("example_job")
 //!     .producer(ProducerText::Read("input.txt".to_string()))
 //!     .output(ConsumerText::Save("output.txt".to_string()))
-//!     .build()
-//!     .unwrap();
+//!     .build();
 //! ```
 //!
 
-use derive_builder::Builder;
+use bon::Builder;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
@@ -41,16 +40,15 @@ pub use fetiche_engine::Freq;
 #[derive(Builder, Debug, Deserialize, Serialize)]
 pub struct JobText {
     /// Job name.
-    #[builder(setter(into), default = "String::new()")]
+    #[builder(into, default = String::new())]
     pub name: String,
     /// Data generator
-    #[builder(default = "ProducerText::default()")]
+    #[builder(default = ProducerText::default())]
     pub producer: ProducerText,
     /// Optional list of filters like `Tee` or `Save`.
-    #[builder(default = "Some(Vec::new())")]
     pub middle: Option<Vec<MiddleText>>,
     /// Output file name.
-    #[builder(default = "ConsumerText::default()")]
+    #[builder(default = ConsumerText::default())]
     pub output: ConsumerText,
 }
 
@@ -263,12 +261,12 @@ impl JobBuilder {
             _ => return Err(ParserError::InvalidJobType.into()),
         };
 
-        Ok(JobTextBuilder::default()
+        Ok(JobText::builder()
             .name(self.name.clone())
             .producer(producer)
-            .middle(Some(self.middle.clone()))
+            .maybe_middle(Some(self.middle.clone()))
             .output(self.output.clone().unwrap())
-            .build()?)
+            .build())
     }
 }
 
@@ -350,11 +348,10 @@ mod tests {
 
     #[test]
     fn test_job_text_builder() {
-        let job = JobTextBuilder::default()
+        let job = JobText::builder()
             .name("test_job")
             .producer(ProducerText::Read("input.txt".to_string()))
-            .build()
-            .unwrap();
+            .build();
 
         assert_eq!(job.name, "test_job");
         assert!(matches!(job.producer, ProducerText::Read(_)));
@@ -402,13 +399,12 @@ mod tests {
     proptest! {
         #[test]
         fn test_job_text_builder_prop(name: String) {
-            let job = JobTextBuilder::default()
+            let job = JobText::builder()
                 .name(&name)
                 .producer(ProducerText::Read("input.txt".to_string()))
                 .build();
 
-            prop_assert!(job.is_ok());
-            prop_assert_eq!(job.unwrap().name, name);
+            prop_assert_eq!(job.name, name);
         }
 
         #[test]

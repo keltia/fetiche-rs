@@ -3443,7 +3443,7 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 name = "fetiche-client"
 version = "0.3.0"
 dependencies = [
- "derive_builder",
+ "bon",
  "eyre",
  "fetiche-engine",
  "fetiche-formats",
@@ -3505,12 +3505,12 @@ name = "fetiche-engine"
 version = "0.26.0"
 dependencies = [
  "base64_light",
+ "bon",
  "clap 4.6.4",
  "criterion 0.8.2",
  "csv",
  "ctrlc",
  "dateparser",
- "derive_builder",
  "directories",
  "divan",
  "enum_dispatch",
@@ -6990,6 +6990,7 @@ dependencies = [
 name = "process-data"
 version = "0.7.99"
 dependencies = [
+ "bon",
  "cached",
  "chrono",
  "clap 4.6.4",

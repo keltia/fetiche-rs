@@ -20,6 +20,7 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bon.workspace = true
 eyre.workspace = true
 fetiche-engine.workspace = true
 fetiche-formats.workspace = true
@@ -28,8 +29,6 @@ serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
 tracing.workspace = true
-
-derive_builder.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
