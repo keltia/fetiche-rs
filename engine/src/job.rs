@@ -235,8 +235,7 @@ mod tests {
         let job = Job::builder()
             .name("Test Job".into())
             .id(1)
-            .build()
-            .unwrap();
+            .build();
 
         assert_eq!(job.name, "Test Job");
         assert_eq!(job.id, 1);
@@ -248,8 +247,7 @@ mod tests {
         let job = Job::builder()
             .name("empty".into())
             .id(1)
-            .build()
-            .unwrap();
+            .build();
 
         assert_eq!(job.name, "empty");
         assert!(job.middle.is_empty());
