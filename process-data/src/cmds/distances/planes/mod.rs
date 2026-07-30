@@ -6,7 +6,6 @@ use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use clap::Parser;
 use derive_builder::Builder;
 use eyre::Result;
@@ -17,7 +16,7 @@ use jiff::{RoundMode, Span, Timestamp, Unit, ZonedRound, tz::TimeZone};
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
-use fetiche_common::DateOpts;
+use fetiche_common::{jiff_to_chrono, DateOpts};
 
 use crate::cmds::{Calculate, CmdError, DBVars, PlanesStats, Site, Stats,
                   enumerate_sites, find_site,
@@ -174,13 +173,6 @@ fn expand_interval_jiff(begin: Timestamp, end: Timestamp) -> Result<Vec<Timestam
         d = d.checked_add(day)?;
     }
     Ok(intv)
-}
-
-/// Converts jiff::Timestamp to chrono::DateTime<Utc> for database queries
-///
-fn jiff_to_chrono(ts: Timestamp) -> Result<DateTime<Utc>> {
-    DateTime::<Utc>::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32)
-        .ok_or_else(|| CmdError::BadTimestamp(ts.to_string()).into())
 }
 
 /// Normalizes a jiff timestamp to start of day (00:00:00)

@@ -49,21 +49,15 @@
 use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
 use crate::make_query;
 
-use chrono::{DateTime, Utc};
 use eyre::Result;
+use fetiche_common::jiff_to_chrono;
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
-use jiff::{Span, Timestamp};
+use jiff::Span;
 use klickhouse::{Client, QueryBuilder, RawRow, Row};
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration, Instant};
 use tracing::{debug, error, info, trace};
-
-/// Helper: Convert jiff Timestamp to chrono DateTime for database formatting only
-fn jiff_to_chrono(ts: Timestamp) -> DateTime<Utc> {
-    DateTime::<Utc>::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32)
-        .expect("Valid timestamp")
-}
 
 /// Timings during the calculation process.
 #[derive(Debug, Default, Deserialize)]
@@ -129,12 +123,12 @@ impl PlaneDistance {
         debug!("{} nm as deg: {}", self.distance, dist);
 
         // Convert jiff Timestamp to chrono only for database formatting
-        let date_chrono = jiff_to_chrono(self.date);
+        let date_chrono = jiff_to_chrono(self.date)?;
         let time_from = date_chrono.format("%Y-%m-%d 00:00:00").to_string();
 
         // Add 1 day using jiff, then convert to chrono for formatting
         let next_day = self.date.checked_add(Span::new().days(1)).expect("date overflow");
-        let next_day_chrono = jiff_to_chrono(next_day);
+        let next_day_chrono = jiff_to_chrono(next_day)?;
         let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
 
         info!(
@@ -283,12 +277,12 @@ AS (
         let site = self.site.clone();
 
         // Convert jiff Timestamp to chrono only for database formatting
-        let date_chrono = jiff_to_chrono(self.date);
+        let date_chrono = jiff_to_chrono(self.date)?;
         let time_from = date_chrono.format("%Y-%m-%d 00:00:00").to_string();
 
         // Add 1 day using jiff, then convert to chrono for formatting
         let next_day = self.date.checked_add(Span::new().days(1)).expect("date overflow");
-        let next_day_chrono = jiff_to_chrono(next_day);
+        let next_day_chrono = jiff_to_chrono(next_day)?;
         let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
 
         info!(
@@ -639,7 +633,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
         let name = site.name.clone();
 
         // Convert jiff Timestamp to chrono only for formatting
-        let date_chrono = jiff_to_chrono(self.date);
+        let date_chrono = jiff_to_chrono(self.date)?;
         let day_name = date_chrono.format("%Y%m%d").to_string();
 
         // Insert data into table `encounters`
@@ -791,7 +785,7 @@ impl Calculate for PlaneDistance {
         info!("Running calculations for {}:", self.date);
 
         // Convert jiff Timestamp to chrono only for formatting
-        let date_chrono = jiff_to_chrono(self.date);
+        let date_chrono = jiff_to_chrono(self.date)?;
         let date_str = date_chrono.format("%Y%m%d").to_string();
 
         let bar = self.progress.clone().unwrap_or_else(|| ProgressBar::new(4));
