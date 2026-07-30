@@ -27,7 +27,7 @@ nom = "8"
 object_store = "0.14"
 polars = { version = "0.54", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-datetime", "dtype-categorical", "temporal"] }
 proptest = "1.11"
-ractor = { version = "0.15", features = ["async-trait", "serde"] }
+ractor = { version = "0.16", features = ["async-trait", "serde"] }
 reqwest = { version = "0.13", features = ["blocking", "gzip", "json", "socks", "deflate"] }
 rstest = "0.26"
 serde = { version = "1.0", features = ["derive"] }
