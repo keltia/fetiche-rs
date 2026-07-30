@@ -63,7 +63,7 @@ farben = "0.20"
 geo = "0.33"
 indicatif = "0.18"
 klickhouse = { version = "0.15", features = ["derive", "geo-types", "serde", "bb8"] }
-kml = "0.13"
+kml = "0.14"
 rand = "0.10"
 rust-3d = "0.34"
 regex = "1.12"
