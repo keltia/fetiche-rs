@@ -51,6 +51,7 @@ harness = false
 [dependencies]
 clap.workspace = true
 csv.workspace = true
+derive_builder.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
 fetiche-formats.workspace = true
@@ -73,7 +74,6 @@ tokio.workspace = true
 tracing.workspace = true
 
 base64_light = "0.1"
-derive_builder = "0.20"
 enum_dispatch = "0.3"
 humantime = "2.3"
 lapin = { version = "4.10", features = ["native-tls"] }
