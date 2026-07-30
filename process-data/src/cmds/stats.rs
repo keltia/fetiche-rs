@@ -228,7 +228,7 @@ impl Day {
     }
 
     pub fn header(&self) -> String {
-        format!("{}-{}", &self.site, &self.day.format("%Y-%m-%d"))
+        format!("{}-{}", self.site, self.day.format("%Y-%m-%d"))
     }
 }
 

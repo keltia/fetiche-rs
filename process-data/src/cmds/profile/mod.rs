@@ -24,7 +24,7 @@ pub struct ProfileOpts {
 type Profiles = HashMap<String, Profile>;
 
 #[tracing::instrument(skip(ctx))]
-pub fn cmd_profile(ctx: &Context, opts: &ProfileOpts) -> Result<()> {
+pub fn run_profile_cmd(ctx: &Context, opts: &ProfileOpts) -> Result<()> {
     // Check what profiles are available
     // At this point, it is either $CLICKHOUSE_PROFILE or "default"
     //

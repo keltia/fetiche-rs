@@ -16,7 +16,7 @@ use jiff::{RoundMode, Span, Timestamp, Unit, ZonedRound, tz::TimeZone};
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
-use fetiche_common::{jiff_to_chrono, DateOpts};
+use fetiche_common::{DateOpts, jiff_to_chrono};
 
 use crate::cmds::{Calculate, CmdError, DBVars, PlanesStats, Site, Stats,
                   enumerate_sites, find_site,
@@ -156,8 +156,6 @@ pub enum TempTables {
 }
 
 // -----
-
-/// Helper functions for jiff/chrono interop
 
 /// Expands a date interval
 ///

@@ -95,7 +95,7 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
             cleanup_environment(ctx, copts).await?;
         }
         SubCommand::Profile(ptopts) => {
-            let _ = cmd_profile(ctx, ptopts)?;
+            run_profile_cmd(ctx, ptopts)?;
         }
         SubCommand::Acute(aopts) => {
             eprintln!("ACUTE specific commands.\n");
