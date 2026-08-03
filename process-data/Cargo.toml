@@ -58,7 +58,6 @@ tracing.workspace = true
 
 cached = { version = "2", features = ["async", "async_tokio_rt_multi_thread"] }
 clap_complete = "4.6"
-colorsys = "0.7"
 farben = "0.20"
 geo = "0.33"
 klickhouse = { version = "0.15", features = ["derive", "geo-types", "serde", "bb8"] }
@@ -71,8 +70,9 @@ tinytemplate = "1.2"
 [dev-dependencies]
 criterion.workspace = true
 
+colorsys = "0.7"
 divan = "0.1"
-rstest = "0.26"
+mockall = "0.13"
 
 [target.'cfg(unix)'.dependencies]
 pprof = { version = "0.15", features = ["criterion", "flamegraph"] }

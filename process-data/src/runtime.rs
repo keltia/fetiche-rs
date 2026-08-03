@@ -309,8 +309,69 @@ pub async fn init_runtime(name: &'static str, opts: &Opts) -> eyre::Result<Conte
 
 /// Finish everything.
 ///
-#[tracing::instrument]
+#[tracing::instrument(skip(_ctx))]
 pub fn finish_runtime(_ctx: &Context) -> eyre::Result<()> {
     close_logging();
     Ok(())
+}
+
+/// Creates a test Context without requiring a database connection.
+///
+/// This is a test helper that creates a minimal Context with the provided
+/// configuration. The database pool uses a fake address that will fail
+/// if actually accessed. Tests should use mock functions that never call
+/// `ctx.db()`.
+///
+/// # Arguments
+///
+/// * `config` - Configuration parameters (threshold, factor, distance, etc.)
+///
+/// # Returns
+///
+/// A Context suitable for testing with mock database functions
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use std::collections::HashMap;
+/// use process_data::runtime::init_test_context;
+///
+/// let mut config = HashMap::new();
+/// config.insert("threshold".to_string(), "1852.0".to_string());
+/// config.insert("factor".to_string(), "3.0".to_string());
+/// config.insert("distance".to_string(), "70.0".to_string());
+///
+/// let ctx = init_test_context(config);
+/// // Use ctx with mock functions that don't touch ctx.db()
+/// ```
+///
+#[cfg(test)]
+pub async fn init_test_context(config: HashMap<String, String>) -> eyre::Result<Context> {
+    use klickhouse::{bb8, ClientOptions, ConnectionManager};
+
+    // Use localhost:1 which will fail fast if accidentally accessed
+    // Port 1 is tcpmux and won't have ClickHouse running
+    let manager = ConnectionManager::new(
+        "127.0.0.1:1".to_string(),
+        ClientOptions {
+            username: "test".to_string(),
+            password: "test".to_string(),
+            default_database: "test".to_string(),
+            ..Default::default()
+        },
+    )
+    .await?;
+
+    // Build the pool without checking connections
+    let pool = bb8::Pool::builder()
+        .max_size(1)
+        .build_unchecked(manager);
+
+    Ok(Context {
+        config: Arc::new(config),
+        dbh: pool,
+        pool_size: 1,
+        wait: 0,
+        dry_run: true,
+    })
 }

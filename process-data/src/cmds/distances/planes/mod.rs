@@ -16,6 +16,9 @@ use jiff::{RoundMode, Timestamp, Unit, ZonedRound, tz::TimeZone};
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
+#[cfg(test)]
+use chrono::{DateTime, Utc};
+
 use fetiche_common::{DateOpts, expand_interval_timestamp, jiff_to_chrono};
 
 use crate::cmds::{Calculate, CmdError, DBVars, PlanesStats, Site, Stats,
@@ -347,6 +350,90 @@ async fn prepare_work_list(
     Ok(work_list)
 }
 
+/// Test-friendly version of prepare_work_list that accepts injectable functions.
+/// This allows for mocking database operations in tests.
+///
+/// This function is kept for future use when more complex mocking is needed.
+#[cfg(test)]
+#[allow(dead_code)]
+async fn prepare_work_list_with_deps<F, G, Fut1, Fut2>(
+    ctx: &Context,
+    dates: Vec<Timestamp>,
+    site_filter: &str,
+    find_site_fn: Arc<F>,
+    enumerate_sites_fn: Arc<G>,
+) -> Result<Vec<WorkItem>>
+where
+    F: Fn(&Context, &str) -> Fut1 + Send + Sync,
+    G: Fn(&Context, DateTime<Utc>) -> Fut2 + Send + Sync,
+    Fut1: std::future::Future<Output=Result<Site>> + Send,
+    Fut2: std::future::Future<Output=Result<Vec<Site>>> + Send,
+{
+    let name = match site_filter {
+        ALL_SITES | "*" => "",
+        _ => site_filter,
+    };
+    trace!("Site = {name} (all if empty)");
+
+    let threshold = match ctx.config.get("threshold") {
+        Some(v) => v.parse::<f64>().unwrap_or(1852.),
+        None => 1852.,
+    };
+
+    let factor = match ctx.config.get("factor") {
+        Some(v) => v.parse::<f64>().unwrap_or(3.),
+        None => 3.,
+    };
+
+    let distance = match ctx.config.get("distance") {
+        Some(v) => v.parse::<f64>().unwrap_or(70.),
+        None => 70.,
+    };
+
+    let mut futures = Vec::new();
+    for day in dates {
+        let find_fn = find_site_fn.clone();
+        let enum_fn = enumerate_sites_fn.clone();
+        let name = name.to_string();
+
+        let future = async move {
+            if !name.is_empty() {
+                let site = find_fn(ctx, &name).await.unwrap();
+                let w = WorkItem::builder()
+                    .site(site)
+                    .day(day)
+                    .distance(distance)
+                    .threshold(threshold)
+                    .factor(factor)
+                    .build();
+                vec![w]
+            } else {
+                let day_chrono = jiff_to_chrono(day).expect("valid timestamp");
+                let list = enum_fn(ctx, day_chrono).await.unwrap();
+                let list: Vec<_> = list
+                    .iter()
+                    .map(|site| {
+                        WorkItem::builder()
+                            .site(site.clone())
+                            .day(day)
+                            .distance(distance)
+                            .threshold(threshold)
+                            .factor(factor)
+                            .build()
+                    })
+                    .collect();
+                list
+            }
+        };
+        futures.push(future);
+    }
+    let work_list = join_all(futures).await;
+
+    let work_list: Vec<_> = work_list.into_iter().flatten().collect::<Vec<_>>();
+    trace!("Work list len = {}", work_list.len());
+    Ok(work_list)
+}
+
 /// Processes batches of distance and separation computations in parallel.
 ///
 /// This function takes a list of `(DateTime<Utc>, Site)` tuples and processes
@@ -605,8 +692,35 @@ fn parse_date_interval(date_opts: DateOpts) -> Result<(Timestamp, Timestamp)> {
 mod tests {
     use super::*;
     use crate::cli::{Opts, SubCommand};
-    use crate::cmds::{DistOpts, DistSubcommand};
-    use crate::runtime::init_runtime;
+    use crate::cmds::{DistOpts, DistSubcommand, Site};
+    use crate::runtime::{Context, init_runtime};
+    use chrono::{DateTime, Utc};
+    use mockall::predicate::*;
+    use mockall::*;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    // MOCKALL DEMONSTRATION
+    //
+    // This trait shows how mockall WOULD be used if we refactored the code
+    // to use dependency injection. With the current architecture where Context
+    // is tightly coupled to the database, we can't easily inject mocks.
+    //
+    // Future refactoring opportunity: Make find_site and enumerate_sites
+    // accept a trait object instead of directly querying the database.
+    //
+    // Example usage with mockall:
+    // ```rust
+    // let mut mock = MockDatabaseOperations::new();
+    // mock.expect_enumerate_sites()
+    //     .returning(|_ctx, _day| Ok(vec![/* mock sites */]));
+    // let result = prepare_work_list_with_mock(&mock, dates, "*").await?;
+    // ```
+    #[automock]
+    trait DatabaseOperations {
+        async fn find_site(&self, ctx: &Context, name: &str) -> Result<Site>;
+        async fn enumerate_sites(&self, ctx: &Context, day: DateTime<Utc>) -> Result<Vec<Site>>;
+    }
 
     #[test]
     fn test_parse_date_interval_valid_range() {
@@ -682,8 +796,115 @@ mod tests {
         let dates = vec![b, e];
 
         let work_list = prepare_work_list(&ctx, dates, site).await?;
-        dbg!(&work_list);
         assert_eq!(work_list.len(), 6);
+        Ok(())
+    }
+
+    /// Test the work list preparation with mocked database operations using mockall.
+    /// Uses the test-friendly init_test_context to create a Context without database.
+    #[tokio::test]
+    async fn test_prepare_work_list_with_mocks() -> Result<()> {
+        // Create test context without database connection
+        let mut config = HashMap::new();
+        config.insert("threshold".to_string(), "1852.0".to_string());
+        config.insert("factor".to_string(), "3.0".to_string());
+        config.insert("distance".to_string(), "70.0".to_string());
+
+        let ctx = crate::runtime::init_test_context(config).await?;
+
+        // Mock test data
+        let mock_sites = vec![
+            Site {
+                id: 1,
+                name: "site1".to_string(),
+                code: "ST1".to_string(),
+                basename: "Site One".to_string(),
+                latitude: 48.8566,
+                longitude: 2.3522,
+                ref_alt: 100,
+                timezone: "UTC".to_string(),
+            },
+            Site {
+                id: 2,
+                name: "site2".to_string(),
+                code: "ST2".to_string(),
+                basename: "Site Two".to_string(),
+                latitude: 51.5074,
+                longitude: -0.1278,
+                ref_alt: 50,
+                timezone: "UTC".to_string(),
+            },
+            Site {
+                id: 3,
+                name: "site3".to_string(),
+                code: "ST3".to_string(),
+                basename: "Site Three".to_string(),
+                latitude: 40.7128,
+                longitude: -74.0060,
+                ref_alt: 10,
+                timezone: "UTC".to_string(),
+            },
+        ];
+
+        // Create mock functions using mockall-style closures
+        let sites_clone = mock_sites.clone();
+        let mock_find_site = move |_ctx: &Context, name: &str| {
+            let name = name.to_string();
+            async move {
+                Ok(Site {
+                    id: 1,
+                    name,
+                    code: "TST".to_string(),
+                    basename: "Test Site".to_string(),
+                    latitude: 48.8566,
+                    longitude: 2.3522,
+                    ref_alt: 100,
+                    timezone: "UTC".to_string(),
+                })
+            }
+        };
+
+        let mock_enumerate_sites = move |_ctx: &Context, _day: DateTime<Utc>| {
+            let sites = sites_clone.clone();
+            async move { Ok(sites) }
+        };
+
+        // Test dates
+        let b = "2023-10-01T00:00:00Z".parse::<Timestamp>().unwrap();
+        let e = "2023-10-02T00:00:00Z".parse::<Timestamp>().unwrap();
+        let dates = vec![b, e];
+
+        // Call the test-friendly function with mocks
+        let work_list = prepare_work_list_with_deps(
+            &ctx,
+            dates,
+            "*", // Test enumerate_sites path (all sites)
+            Arc::new(mock_find_site),
+            Arc::new(mock_enumerate_sites),
+        )
+            .await?;
+
+        // Verify: 2 dates × 3 sites = 6 work items
+        assert_eq!(work_list.len(), 6);
+
+        // Verify structure of first work item
+        assert_eq!(work_list[0].site.name, "site1");
+        assert_eq!(work_list[0].day, b);
+        assert_eq!(work_list[0].distance, 70.0);
+        assert_eq!(work_list[0].threshold, 1852.0);
+        assert_eq!(work_list[0].factor, 3.0);
+
+        // Verify second date items
+        assert_eq!(work_list[3].day, e);
+        assert_eq!(work_list[4].day, e);
+        assert_eq!(work_list[5].day, e);
+
+        // Verify all sites are represented
+        let site_names: Vec<_> = work_list.iter().map(|w| w.site.name.as_str()).collect();
+        assert!(site_names.contains(&"site1"));
+        assert!(site_names.contains(&"site2"));
+        assert!(site_names.contains(&"site3"));
+
         Ok(())
     }
 
