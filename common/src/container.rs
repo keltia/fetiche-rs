@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use strum::VariantNames;
-use tabled::{builder::Builder, settings::Style};
+use tabled::{Table, Tabled, settings::Style};
 
 /// Represents different supported container formats.
 ///
@@ -122,16 +122,20 @@ const CVERSION: usize = 2;
 /// * `url` - URL pointing to the definition site or further information about the data format.
 ///
 /// This is primarily used to map detailed metadata about different container formats.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Tabled)]
 pub struct ContainerDescr {
     /// Type of data each format refers to
+    #[tabled(rename = "Type")]
     #[serde(rename = "type")]
     pub dtype: String,
     /// Free text description
+    #[tabled(rename = "Description")]
     pub description: String,
     /// Source
+    #[tabled(skip)]
     pub source: String,
     /// URL to the site where this is defined
+    #[tabled(rename = "URL")]
     pub url: String,
 }
 
@@ -177,29 +181,8 @@ impl Container {
         //
         assert_eq!(fstr.version, CVERSION);
 
-        let header = vec!["Name", "Type", "Description"];
-
-        let mut builder = Builder::default();
-        builder.push_record(header);
-
-        fstr.format.iter().for_each(|(name, entry)| {
-            let mut row = vec![];
-
-            let name = name.clone();
-            let dtype = entry.dtype.clone();
-            let description = entry.description.clone();
-            let source = entry.source.clone();
-            let url = entry.url.clone();
-
-            let row_text = format!("{description}\nSource: {source} -- URL: {url}");
-            let dtype = dtype.to_string();
-            row.push(&name);
-            row.push(&dtype);
-            row.push(&row_text);
-            builder.push_record(row);
-        });
-        let allf = builder.build().with(Style::sharp()).to_string();
-        let str = format!("List all formats:\n{allf}");
+        let mut table = Table::new(fstr.format);
+        let str = table.with(Style::sharp()).to_string();
         Ok(str)
     }
 }
