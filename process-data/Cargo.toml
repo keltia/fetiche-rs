@@ -72,7 +72,7 @@ criterion.workspace = true
 
 colorsys = "0.7"
 divan = "0.1"
-mockall = "0.13"
+mockall = "0.15"
 
 [target.'cfg(unix)'.dependencies]
 pprof = { version = "0.15", features = ["criterion", "flamegraph"] }
