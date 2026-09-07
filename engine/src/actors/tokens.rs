@@ -11,8 +11,8 @@
 
 use std::path::Path;
 
-use crate::{TokenStorage, TokenType, ENGINE_PG};
-use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use crate::{ENGINE_PG, TokenStorage, TokenType};
+use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, pg};
 use tracing::{info, trace};
 
 /// Actor implementation for managing token storage and operations
@@ -36,6 +36,7 @@ pub enum TokenMsg {
 }
 
 /// Arguments for initializing a TokenActor
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct TokenArgs {
     /// Base path for token storage
