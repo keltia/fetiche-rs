@@ -5,7 +5,7 @@ default-members = ["acutectl", "process-data", "cmd/convert-from-json", "cmd/fin
 resolver = "2"
 
 [workspace.dependencies]
-bon = "3.9"
+bon = "3.10"
 chrono = { version = "0.4.42", features = ["serde", "std"] }
 clap = { version = "4", features = ["cargo", "derive"] }
 criterion = { version = "0.8", features = ["async", "async_tokio", "async_futures"] }
@@ -31,13 +31,13 @@ polars = { version = "0.55", features = ["async", "serde", "lazy", "sql", "strin
 proptest = "1.11"
 ractor = { version = "0.16", features = ["async-trait", "serde"] }
 reqwest = { version = "0.13", features = ["blocking", "gzip", "json", "socks", "deflate"] }
-rstest = "0.26"
+rstest = "0.27"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_repr = "0.1"
 serde_with = { version = "3", features = ["base64", "chrono_0_4", "json", "hex"] }
 strum = { version = "0.28", features = ["derive"] }
-tabled = "0.21"
+tabled = "0.22"
 tempfile = "3"
 thiserror = "2.0"
 tokio = { version = "1", features = ["parking_lot", "sync", "macros", "io-util", "rt", "rt-multi-thread", "time", "tracing"] }
