@@ -1,5 +1,5 @@
 use crate::{AUTHORS, NAME, VERSION};
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use clap::{Parser, crate_authors, crate_description, crate_name, crate_version};
 use strum::EnumString;
 
 #[derive(Parser)]
@@ -18,9 +18,6 @@ pub struct Opts {
     /// Location file path
     #[clap(short = 'C', long)]
     pub config: Option<String>,
-    /// ICAO code for searches
-    #[clap(short = 'I', long)]
-    pub icao: Option<String>,
     /// Output file (mandatory)
     #[clap(short = 'o', long = "output", default_value = "output.parquet")]
     pub output: String,
@@ -57,7 +54,7 @@ pub fn version() -> String {
 /// Display banner
 ///
 pub fn banner() -> eyre::Result<()> {
-    Ok(eprintln!(
+    eprintln!(
         r##"
 {}/{} by {}
 {}
@@ -66,5 +63,6 @@ pub fn banner() -> eyre::Result<()> {
         VERSION,
         AUTHORS,
         crate_description!()
-    ))
+    );
+    Ok(())
 }

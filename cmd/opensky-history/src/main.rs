@@ -17,16 +17,16 @@ use std::fs;
 use std::io::Cursor;
 
 use chrono::prelude::*;
-use clap::{crate_authors, crate_version, Parser};
-use eyre::{eyre, Result};
-use inline_python::{python, Context};
+use clap::{Parser, crate_authors, crate_version};
+use eyre::{Result, eyre};
+use inline_python::{Context, python};
 use polars::io::SerReader;
 use polars::prelude::{CsvParseOptions, CsvReadOptions, ParquetWriter};
 use tracing::{info, trace};
 
-use fetiche_common::{init_logging, list_locations, load_locations, Location, BB};
+use fetiche_common::{BB, Location, init_logging, list_locations, load_locations};
 
-use crate::cli::{banner, version, Opts, Otype};
+use crate::cli::{Opts, Otype, banner, version};
 use crate::segment::extract_segments;
 
 mod cli;
@@ -82,14 +82,14 @@ async fn main() -> Result<()> {
         Some(start) => dateparser::parse(&start),
         None => Ok(Utc::now()),
     }
-    .unwrap();
+        .unwrap();
     trace!("start={}", start);
 
     let end = match opts.end {
         Some(end) => dateparser::parse(&end),
         None => Ok(Utc::now()),
     }
-    .unwrap();
+        .unwrap();
     trace!("end={}", end);
 
     // Convert into UNIX timestamps
@@ -111,14 +111,6 @@ async fn main() -> Result<()> {
     let bb = match loc.get(&site) {
         Some(loc) => loc,
         None => return Err(eyre!("You must specify a location")),
-    };
-
-    // If the --icao option is specified, add the parameter to the query string.
-    //
-    let _icao = if opts.icao.is_some() {
-        format!(" AND CALLSIGN = '{}'", opts.icao.unwrap())
-    } else {
-        String::new()
     };
 
     // Default range is 25 nm
