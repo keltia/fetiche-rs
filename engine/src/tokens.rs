@@ -76,7 +76,7 @@ impl TokenStorage {
     #[tracing::instrument]
     pub async fn register(path: &PathBuf) -> Result<Self> {
         debug!("Registering token storage at {:?}", path);
-        let store = LocalFileSystem::new_with_prefix(&path)?;
+        let store = LocalFileSystem::new_with_prefix(path)?;
         let mut db = BTreeMap::<String, TokenType>::new();
 
         // List all objects in the directory
@@ -257,7 +257,7 @@ mod tests {
     use super::*;
     use rstest::*;
     use std::path::PathBuf;
-    use tempfile::{tempdir, TempDir};
+    use tempfile::{TempDir, tempdir};
 
     #[fixture]
     fn temp_dir() -> TempDir {

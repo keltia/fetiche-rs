@@ -5,9 +5,9 @@ use std::path::PathBuf;
 use crate::StorageError;
 use eyre::Result;
 use nom::{
-    character::complete::{i8, one_of}, combinator::map_res,
     IResult,
     Parser,
+    character::complete::{i8, one_of}, combinator::map_res,
 };
 use serde::Deserialize;
 use strum::EnumString;
@@ -22,16 +22,16 @@ use tracing::{debug, trace};
 /// # Variants
 ///
 /// - `Cache`
-///     Defines an in-memory key-value store configuration, typically connected to a service
-///     like DragonflyDB or REDIS. Requires a `url` to connect.
+///   Defines an in-memory key-value store configuration, typically connected to a service
+///   like DragonflyDB or REDIS. Requires a `url` to connect.
 ///
 /// - `Directory`
-///     Represents storage based on the local filesystem. Includes a `path` to the directory
-///     and a `rotation` mechanism for maintaining storage consistency or archival.
+///   Represents storage based on the local filesystem. Includes a `path` to the directory
+///   and a `rotation` mechanism for maintaining storage consistency or archival.
 ///
 /// - `Hive`
-///     Adds support for Hive-based sharding. Designed for scalable and distributed storage.
-///     Includes a `path` for file-based Hive shards.
+///   Adds support for Hive-based sharding. Designed for scalable and distributed storage.
+///   Includes a `path` for file-based Hive shards.
 ///
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
@@ -136,16 +136,14 @@ impl Storage {
 
         let mut b = BTreeMap::<String, StoreArea>::new();
 
-        for (name, area) in cfg.into_iter() {
+        for (name, area) in cfg.iter() {
             match area {
                 // Local directory
                 //
                 StorageConfig::Directory { path, rotation } => {
-                    if !path.exists() {
-                        if let Err(_) = std::fs::create_dir_all(path) {
-                            let path = path.to_string_lossy().to_string();
-                            return Err(StorageError::CannotCreateTree(path).into());
-                        }
+                    if !path.exists() && std::fs::create_dir_all(path).is_err() {
+                        let path = path.to_string_lossy().to_string();
+                        return Err(StorageError::CannotCreateTree(path).into());
                     }
                     let rotation = match Self::parse_rotation(rotation.as_str()) {
                         Ok((_, v)) => v,
@@ -171,11 +169,9 @@ impl Storage {
                 // Future HIVE support
                 //
                 StorageConfig::Hive { path } => {
-                    if !path.exists() {
-                        if let Err(_) = std::fs::create_dir_all(path) {
-                            let path = path.to_string_lossy().to_string();
-                            return Err(StorageError::CannotCreateTree(path).into());
-                        }
+                    if !path.exists() && std::fs::create_dir_all(path).is_err() {
+                        let path = path.to_string_lossy().to_string();
+                        return Err(StorageError::CannotCreateTree(path).into());
                     }
                     b.insert(name.to_string(), StoreArea::Hive { path: path.clone() });
                 }

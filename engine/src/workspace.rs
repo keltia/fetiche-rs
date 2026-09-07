@@ -50,13 +50,13 @@ use std::sync::Arc;
 use std::{fs, vec};
 
 use eyre::Result;
+use object_store::ObjectStoreExt;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path;
-use object_store::ObjectStoreExt;
 use regex::Regex;
 use tracing::{error, trace};
 
-use crate::{WsError, CANARY_FILE};
+use crate::{CANARY_FILE, WsError};
 
 // -----
 
@@ -134,7 +134,7 @@ impl WsItem {
 
 impl Display for WsItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ({})", self.path.to_string_lossy(), format!("{:?}", self.state()))
+        write!(f, "{} ({:?})", self.path.to_string_lossy(), self.state())
     }
 }
 
@@ -196,15 +196,13 @@ impl Workspace {
                 return Ok(dirs);
             }
         };
-        for entry in base {
-            if let Ok(entry) = entry {
-                let entry_str = entry.path().to_string_lossy().to_string();
-                trace!(entry={&entry_str});
 
-                if entry.path().is_dir() && dir_re.is_match(&entry_str) {
-                    let item = WsItem::new_from_path(&entry.path())?;
-                    dirs.push(item);
-                }
+        for entry in base.flatten() {
+            let entry_str = entry.path().to_string_lossy().to_string();
+            trace!(entry={&entry_str});
+            if entry.path().is_dir() && dir_re.is_match(&entry_str) {
+                let item = WsItem::new_from_path(&entry.path())?;
+                dirs.push(item);
             }
         }
         Ok(dirs)
