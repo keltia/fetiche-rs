@@ -4,15 +4,16 @@
 //!
 
 use jiff::Timestamp;
-use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, pg};
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use tracing::{info, trace};
 
-use crate::{Stats, ENGINE_PG};
+use crate::{ENGINE_PG, Stats};
 
 pub struct StatsActor;
 
+/// All possible actions.
 ///
 #[derive(Debug)]
 pub enum StatsMsg {

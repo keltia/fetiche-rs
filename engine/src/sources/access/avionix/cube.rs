@@ -16,14 +16,14 @@ use std::sync::mpsc::Sender;
 use std::time::Duration;
 
 use ractor::pg::join;
-use ractor::{call, pg, Actor, ActorRef};
+use ractor::{Actor, ActorRef, call, pg};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info, trace, warn};
 
 use crate::actors::{StatsMsg, Supervisor};
-use crate::{Auth, AuthError, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, Worker, WorkerArgs, WorkerMode, WorkerMsg, AVIONIX_PG};
+use crate::{AVIONIX_PG, Auth, AuthError, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, Worker, WorkerArgs, WorkerMode, WorkerMsg};
 use fetiche_formats::Format;
 
 /// TCP streaming port
@@ -193,7 +193,7 @@ Duration {}s
 
         // Get the ball rolling.
         //
-        let _ = worker.cast(WorkerMsg::Consume(filter))?;
+        worker.cast(WorkerMsg::Consume(filter))?;
 
         // Set the clock ticking unless duration is 0
         //

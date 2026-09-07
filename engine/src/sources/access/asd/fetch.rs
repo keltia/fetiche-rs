@@ -26,7 +26,7 @@ use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
 
-use crate::sources::access::asd::{Credentials, Param, Source, DEF_TOKEN};
+use crate::sources::access::asd::{Credentials, DEF_TOKEN, Param, Source};
 use crate::token::AsdToken;
 use crate::{Asd, AuthError, Expirable, Fetchable, Filter, Stats};
 
@@ -226,7 +226,7 @@ impl Fetchable for Asd {
         };
 
         let data = String::from_utf8(data)?;
-        let _ = out.send(data)?;
+        out.send(data)?;
         Ok(stats)
     }
 

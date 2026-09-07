@@ -23,7 +23,7 @@ use ractor::{call, call_t, cast, pg};
 use tracing::{info, trace};
 
 use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
-use crate::{Engine, EngineMode, EngineStatus, Job, JobState, Stats, WaitGroup, ENGINE_PG};
+use crate::{ENGINE_PG, Engine, EngineMode, EngineStatus, Job, JobState, Stats, WaitGroup};
 
 /// Basically, this is the exposed API to the Engine.
 ///
@@ -210,7 +210,7 @@ impl Engine {
         //
         let workdir = self.workdir.clone();
         let olddir = env::current_dir()?;
-        let _ = env::set_current_dir(&workdir)?;
+        env::set_current_dir(&workdir)?;
         info!("Relocating to {workdir:?}");
 
         trace!("submit job {}", job.id);
@@ -229,7 +229,7 @@ impl Engine {
 
         // Go back
         //
-        let _ = env::set_current_dir(&olddir)?;
+        env::set_current_dir(&olddir)?;
 
         Ok(stats)
     }

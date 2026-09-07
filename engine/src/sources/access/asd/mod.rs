@@ -102,6 +102,12 @@ pub struct Asd {
     pub get: String,
 }
 
+impl Default for Asd {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Asd {
     #[tracing::instrument]
     pub fn new() -> Self {

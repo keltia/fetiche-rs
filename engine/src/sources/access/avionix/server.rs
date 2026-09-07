@@ -19,7 +19,7 @@ use std::sync::mpsc::Sender;
 use std::time::Duration;
 
 use ractor::pg::join;
-use ractor::{call, pg, Actor, ActorRef};
+use ractor::{Actor, ActorRef, call, pg};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info, trace, warn};
@@ -195,7 +195,7 @@ impl Streamable for AvionixServer {
 
         // Get the ball rolling.
         //
-        let _ = worker.cast(WorkerMsg::Consume(filter))?;
+        worker.cast(WorkerMsg::Consume(filter))?;
 
         // Set the clock ticking unless duration is 0
         //

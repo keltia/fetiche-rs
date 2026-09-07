@@ -13,7 +13,7 @@ use tracing::trace;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{EngineStatus, Producer, Runnable, Stats, IO};
+use crate::{EngineStatus, IO, Producer, Runnable, Stats};
 
 /// The Read task
 ///
@@ -79,7 +79,7 @@ impl Read {
 
             // Now send each line down the pipe (while counting)
             //
-            let _ = stdout.send(lines)?;
+            stdout.send(lines)?;
             Ok(Stats {
                 tm: Timestamp::now().as_second() as u64,
                 bytes: size as u64,

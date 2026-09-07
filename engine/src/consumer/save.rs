@@ -16,7 +16,7 @@ use fetiche_common::Container;
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
-use crate::{Consumer, Runnable, IO};
+use crate::{Consumer, IO, Runnable};
 
 /// The Save task
 ///
@@ -74,13 +74,8 @@ impl Save {
     ///
     #[tracing::instrument(skip(self, data))]
     pub async fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
-        if self.path.is_none() {
-            trace!("...into stdout");
-
-            println!("{}", data);
-        } else {
-            let p = self.path.as_ref().unwrap();
-            trace!("Writing into {}", p);
+        if let Some(path) = &self.path {
+            trace!("Writing into {}", path);
 
             match self.out {
                 // There we handle the combination of input & output formats
@@ -96,16 +91,20 @@ impl Save {
                         .into_reader_with_file_handle(cur)
                         .finish()?;
 
-                    info!("writing {}", p);
-                    let mut file = std::fs::File::create(p)?;
+                    info!("writing {}", path);
+                    let mut file = std::fs::File::create(path)?;
 
                     ParquetWriter::new(&mut file).finish(&mut df)?;
                 }
                 _ => {
                     trace!("raw data");
-                    fs::write(PathBuf::from(p), &data).await?;
+                    fs::write(PathBuf::from(path), &data).await?;
                 }
             }
+        } else {
+            trace!("...into stdout");
+
+            println!("{}", data);
         }
         Ok(())
     }

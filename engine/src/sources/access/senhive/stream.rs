@@ -18,11 +18,11 @@
 //! The module interfaces with AMQP queues to receive both stored and current data from
 //! the Senhive data source.
 //!
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{Sender, channel};
 use std::time::Duration;
 
 use eyre::Result;
-use ractor::{call, pg, Actor, ActorRef};
+use ractor::{Actor, ActorRef, call, pg};
 use tracing::{info, trace};
 
 use fetiche_formats::Format;
@@ -105,7 +105,7 @@ impl Streamable for Senhive {
 
         // Start the processing.
         //
-        let _ = worker.cast(WorkerMsg::Consume("fused_data".into(), "data".into()))?;
+        worker.cast(WorkerMsg::Consume("fused_data".into(), "data".into()))?;
 
         // Set the clock ticking unless duration is 0
         //

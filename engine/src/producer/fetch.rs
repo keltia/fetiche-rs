@@ -10,8 +10,8 @@ use fetiche_macros::RunnableDerive;
 
 use crate::sources::Fetchable;
 use crate::{
-    EngineStatus, FetchableSource, Filter, Producer, Runnable, Site,
-    Stats, IO,
+    EngineStatus, FetchableSource, Filter, IO, Producer, Runnable, Site,
+    Stats,
 };
 
 /// The Fetch task
@@ -78,8 +78,7 @@ impl Fetch {
 
                 trace!("execute:args={}", self.args);
                 let args = self.args.clone();
-                let res = src.fetch(stdout, &token, &args).await?;
-                res
+                src.fetch(stdout, &token, &args).await?
             }
             _ => return Err(EngineStatus::NoSiteDefined.into()),
         };

@@ -26,7 +26,7 @@
 //!
 use std::{fs, fs::File, io::BufReader, num::NonZeroUsize, path::Path};
 
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use clap::{Parser, crate_authors, crate_description, crate_name, crate_version};
 use eyre::Result;
 use polars_io::prelude::*;
 use polars_utils::compression::ZstdLevel;
@@ -77,10 +77,10 @@ fn main() -> Result<()> {
             .with_statistics(StatisticsOptions::default())
             .finish(&mut df)?;
     } else {
-        let _ = CsvWriter::new(&mut out)
+        CsvWriter::new(&mut out)
             .include_header(true)
             .with_quote_style(QuoteStyle::Necessary)
-            .finish(&mut df)?;
+            .finish(&mut df)?
     }
     eprintln!("\n{input} converted to {output:?}.");
     Ok(())

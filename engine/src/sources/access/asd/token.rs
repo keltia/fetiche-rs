@@ -100,7 +100,7 @@ impl AsdToken {
         } else {
             "INVALID".into()
         };
-        Ok(AsdToken::from_json(&str)?)
+        AsdToken::from_json(&str)
     }
 
     /// Store (overwrite) named token

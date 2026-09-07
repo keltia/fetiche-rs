@@ -197,7 +197,7 @@ impl Fetchable for Aeroscope {
             ..Default::default()
         };
 
-        let _ = out.send(resp)?;
+        out.send(resp)?;
         Ok(stats)
     }
 

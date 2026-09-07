@@ -12,14 +12,14 @@ use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
 use eyre::Result;
-use jiff::{tz::TimeZone, Timestamp};
+use jiff::{Timestamp, tz::TimeZone};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use tracing::{error, trace};
 
 use fetiche_macros::RunnableDerive;
 
-use crate::{Consumer, EngineStatus, Freq, Runnable, IO};
+use crate::{Consumer, EngineStatus, Freq, IO, Runnable};
 
 /// Struct describing the data for the `Store` task.
 ///
@@ -91,13 +91,11 @@ impl Store {
         let curr = base.join("current");
 
         #[cfg(unix)]
-        if curr.exists() {
-            if let Err(e) = fs::remove_file(&curr).await {
-                let curr = curr.to_string_lossy().to_string();
+        if curr.exists() && let Err(e) = fs::remove_file(&curr).await {
+            let curr = curr.to_string_lossy().to_string();
 
-                error!("Store: can not remove symlink {}: {}", curr, e.to_string());
-                return Err(EngineStatus::RemoveLink(curr).into());
-            }
+            error!("Store: can not remove symlink {}: {}", curr, e.to_string());
+            return Err(EngineStatus::RemoveLink(curr).into());
         }
 
         // #[cfg(windows)]
