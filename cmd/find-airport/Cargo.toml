@@ -51,8 +51,8 @@ tracing.workspace = true
 chrono = { version = "0.4", features = ["serde", "std"] }
 farben = "0.20"
 pluscodes = "0.5"
-polars = { version = "0.54", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-categorical", "temporal"] }
-polars-utils = "0.54"
+polars = { version = "0.55", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-categorical", "temporal"] }
+polars-utils = "0.55"
 rayon = "1.12"
 
 [dev-dependencies]
