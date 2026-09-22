@@ -157,7 +157,8 @@ AS (
     ON
         s.en_id = p.en_id AND
         s.journey = p.journey AND
-        s.drone_id = p.drone_id
+        s.drone_id = p.drone_id AND
+        s.station_name = p.station_name
   WHERE
     p.distance_slant_m = s.distance_slant_m
   ORDER BY time
@@ -497,11 +498,12 @@ CREATE OR REPLACE VIEW  IF NOT EXISTS {workdb}.airprox_summary AS
         en_id,
         journey,
         drone_id,
+        station_name,
         min(distance_slant_m) as distance_slant_m
     FROM
         {workdb}.airplane_prox
     GROUP BY
-        en_id, journey, drone_id
+        en_id, journey, drone_id, station_name
     ORDER BY journey)
     COMMENT 'List all encounters ID with the minimum distance.'
     "##, dbvars);
