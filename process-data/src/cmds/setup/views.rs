@@ -309,9 +309,7 @@ async fn add_pbi_drones_view(ctx: &Context) -> eyre::Result<()> {
     let dbvars = DBVars::from_ctx(ctx);
 
     let r2b = make_query!(r##"
-CREATE MATERIALIZED VIEW  IF NOT EXISTS {workdb}.pbi_drones
-ENGINE = ReplacingMergeTree
-PRIMARY KEY (time, journey) POPULATE
+CREATE VIEW IF NOT EXISTS {workdb}.pbi_drones
 AS (SELECT `journey`,
       `ident`,
       `model`,
