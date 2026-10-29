@@ -33,6 +33,7 @@ clap.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
 polars.workspace = true
+#pyo3 = { version = "0.30", features = ["auto-initialize"] }
 strum.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -41,8 +42,3 @@ inline-python = "0.14"
 
 [dev-dependencies]
 rstest.workspace = true
-
-[dependencies.pyo3]
-version = "0.25"
-features = ["auto-initialize"]
-
