@@ -21,6 +21,7 @@ pub use distances::*;
 pub use error::*;
 pub use export::*;
 pub use profile::*;
+pub use prune::*;
 pub use query::*;
 //pub use record::*;
 pub use setup::*;
@@ -36,6 +37,7 @@ mod distances;
 mod error;
 mod export;
 mod profile;
+mod prune;
 mod query;
 //mod record;
 mod setup;
@@ -96,6 +98,9 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
         }
         SubCommand::Profile(ptopts) => {
             run_profile_cmd(ctx, ptopts)?;
+        }
+        SubCommand::Prune(popts) => {
+            run_prune_cmd(ctx, popts);
         }
         SubCommand::Acute(aopts) => {
             eprintln!("ACUTE specific commands.\n");

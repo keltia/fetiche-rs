@@ -1,8 +1,8 @@
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
+use clap::{Parser, crate_authors, crate_description, crate_name, crate_version};
 use clap_complete::Shell;
 
 use crate::cmds::{AcuteOpts, CheckOpts, DistOpts, ExportOpts, SetupOpts};
-use crate::ProfileOpts;
+use crate::{ProfileOpts, PruneOpts};
 
 /// Global (aka non-command-related) options.
 ///
@@ -68,6 +68,8 @@ pub enum SubCommand {
     Completion(CompOpts),
     /// Profile-related commands
     Profile(ProfileOpts),
+    /// Prune-related commands
+    Prune(PruneOpts),
     /// List all package versions.
     Version,
 }
