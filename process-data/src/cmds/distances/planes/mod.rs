@@ -648,25 +648,23 @@ async fn calculate_one_day_on_site(
 ///
 /// Valid date range:
 /// ```rust
+/// use fetiche_common::DateOpts;
+///
 /// let date_opts = DateOpts::From {
-///     begin: "2023-10-01T00:00:00Z".to_string(),
-///     end: "2023-10-10T00:00:00Z".to_string()
+///     begin: "2023-10-01".to_string(),
+///     end: "2023-10-10".to_string(),
 /// };
-/// let result = parse_date_interval(date_opts).unwrap();
-/// assert_eq!(result.0, Utc.with_ymd_and_hms(2023, 10, 1, 0, 0, 0).unwrap());
-/// assert_eq!(result.1, Utc.with_ymd_and_hms(2023, 10, 10, 0, 0, 0).unwrap());
+/// let result = DateOpts::parse(date_opts).unwrap();
+/// assert_eq!(result.0, "2023-10-01T00:00:00Z".parse().unwrap());
+/// assert_eq!(result.1, "2023-10-10T00:00:00Z".parse().unwrap());
 /// ```
 ///
 /// Invalid date fallback:
 /// ```rust
+/// use fetiche_common::DateOpts;
+///
 /// let date_opts = DateOpts::Week { num: 66 };
-/// let result = parse_date_interval(date_opts).unwrap();
-/// let now = Utc::now();
-/// let expected_day = Utc
-///     .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
-///     .unwrap();
-/// assert_eq!(result.0.date_naive(), expected_day.date_naive());
-/// assert_eq!(result.1.date_naive(), expected_day.date_naive());
+/// assert!(DateOpts::parse(date_opts).is_err());
 /// ```
 ///
 #[tracing::instrument]
@@ -691,9 +689,8 @@ fn parse_date_interval(date_opts: DateOpts) -> Result<(Timestamp, Timestamp)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::{Opts, SubCommand};
-    use crate::cmds::{DistOpts, DistSubcommand, Site};
-    use crate::runtime::{Context, init_runtime};
+    use crate::cmds::Site;
+    use crate::runtime::{Context, MockSiteLookup, init_test_context};
     use chrono::{DateTime, Utc};
     use mockall::predicate::*;
     use mockall::*;
@@ -751,52 +748,89 @@ mod tests {
         assert_eq!(result.1, expected_day);
     }
 
-    // This test *requires* an configured account (various Clickhouse related environment variables, etc.)
-    // and an active database, etc.
-    //
     #[tokio::test]
     async fn test_prepare_work_list() -> Result<()> {
-        let site = "*";
-
-        // This is present but not really used.
-        //
-        let dopts = DistOpts {
-            output: None,
-            subcmd: DistSubcommand::Planes(PlanesOpts {
-                date: DateOpts::Week { num: 1 },
-                name: Some(site.to_string()),
-                distance: 70.0,
-                threshold: 1852,
-                factor: 3,
-            }),
-        };
-        let cmd = SubCommand::Distances(dopts);
-
-        // Minimal "configuration"
-        //
-        let opts = Opts {
-            config: None,
-            datalake: Some("/Users/acute".into()),
-            profile: Some("production".into()),
-            wait: 0,
-            pool_size: 1,
-            use_telemetry: false,
-            use_tree: true,
-            dry_run: true,
-            use_file: None,
-            subcmd: cmd,
-        };
-
-        // Just to establish the context and database connection.
-        //
-        let ctx = init_runtime("test-prepare-worklist", &opts).await?;
+        let mut config = HashMap::new();
+        config.insert("threshold".to_string(), "1852.0".to_string());
+        config.insert("factor".to_string(), "3.0".to_string());
+        config.insert("distance".to_string(), "70.0".to_string());
+        let mut ctx = init_test_context(config).await?;
 
         let b = "2023-10-01T00:00:00Z".parse::<Timestamp>().unwrap();
         let e = "2023-10-02T00:00:00Z".parse::<Timestamp>().unwrap();
         let dates = vec![b, e];
+        let expected_days = Arc::new([jiff_to_chrono(b)?, jiff_to_chrono(e)?]);
+        let observed_days = Arc::new(std::sync::Mutex::new(HashMap::new()));
+        let mock_sites = Arc::new(vec![
+            Site {
+                id: 1,
+                name: "site1".to_string(),
+                code: "ST1".to_string(),
+                basename: "Site One".to_string(),
+                latitude: 48.8566,
+                longitude: 2.3522,
+                ref_alt: 100,
+                timezone: "UTC".to_string(),
+            },
+            Site {
+                id: 2,
+                name: "site2".to_string(),
+                code: "ST2".to_string(),
+                basename: "Site Two".to_string(),
+                latitude: 51.5074,
+                longitude: -0.1278,
+                ref_alt: 50,
+                timezone: "UTC".to_string(),
+            },
+            Site {
+                id: 3,
+                name: "site3".to_string(),
+                code: "ST3".to_string(),
+                basename: "Site Three".to_string(),
+                latitude: 40.7128,
+                longitude: -74.0060,
+                ref_alt: 10,
+                timezone: "UTC".to_string(),
+            },
+        ]);
+        let mut lookup = MockSiteLookup::new();
+        let expected_days_for_lookup = Arc::clone(&expected_days);
+        let observed_days_for_lookup = Arc::clone(&observed_days);
+        let sites_for_lookup = Arc::clone(&mock_sites);
+        lookup
+            .expect_enumerate_sites()
+            .times(2)
+            .returning(move |day| {
+                assert!(expected_days_for_lookup.contains(&day));
+                *observed_days_for_lookup
+                    .lock()
+                    .unwrap()
+                    .entry(day)
+                    .or_insert(0) += 1;
+                let sites = Arc::clone(&sites_for_lookup);
+                Box::pin(async move { Ok(sites.as_ref().clone()) })
+            });
+        ctx.site_lookup = Some(Arc::new(lookup));
 
-        let work_list = prepare_work_list(&ctx, dates, site).await?;
+        let work_list = prepare_work_list(&ctx, dates, "*").await?;
         assert_eq!(work_list.len(), 6);
+
+        let site_names = ["site1", "site2", "site3"];
+        for (day_index, expected_day) in [b, e].into_iter().enumerate() {
+            for (site_index, expected_site) in site_names.iter().enumerate() {
+                let work_item = &work_list[day_index * site_names.len() + site_index];
+                assert_eq!(work_item.day, expected_day);
+                assert_eq!(work_item.site.name, *expected_site);
+                assert_eq!(work_item.distance, 70.0);
+                assert_eq!(work_item.threshold, 1852.0);
+                assert_eq!(work_item.factor, 3.0);
+            }
+        }
+        assert_eq!(
+            *observed_days.lock().unwrap(),
+            expected_days.iter().copied().map(|day| (day, 1)).collect()
+        );
+
         Ok(())
     }
 

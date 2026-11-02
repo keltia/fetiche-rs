@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
+#[cfg(test)]
+use std::pin::Pin;
 use std::sync::Arc;
 
 use klickhouse::bb8::Pool;
-use klickhouse::{bb8, Client, ClientOptions, ConnectionManager};
+use klickhouse::{Client, ClientOptions, ConnectionManager, bb8};
 use serde_json::json;
 use tracing::{debug, error, info, trace};
 
@@ -11,7 +13,7 @@ use crate::cli::Opts;
 use crate::config::ProcessConfig;
 use crate::error::Status;
 
-use fetiche_common::{close_logging, init_logging, ConfigFile, Versioned};
+use fetiche_common::{ConfigFile, Versioned, close_logging, init_logging};
 
 /// Config filename
 pub const CONFIG: &str = "process-data.hcl";
@@ -35,8 +37,10 @@ pub const CONFIG: &str = "process-data.hcl";
 /// # Examples
 ///
 /// ```rust,no_run
-/// // Use context for database operations
-/// let client = context.db().await;
+/// # use process_data::Context;
+/// async fn example(context: &Context) {
+///     let _client = context.db().await;
+/// }
 /// ```
 ///
 #[derive(Clone)]
@@ -51,6 +55,8 @@ pub struct Context {
     pub wait: u64,
     /// Dry run
     pub dry_run: bool,
+    #[cfg(test)]
+    pub(crate) site_lookup: Option<Arc<dyn SiteLookup>>,
 }
 
 impl Context {
@@ -75,7 +81,10 @@ impl Context {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// let client = context.db().await;
+    /// # use process_data::Context;
+    /// async fn example(context: &Context) {
+    ///     let _client = context.db().await;
+    /// }
     /// ```
     ///
     #[tracing::instrument(skip(self))]
@@ -102,7 +111,10 @@ impl Context {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// context.finish()?;
+    /// # use process_data::Context;
+    /// fn example(context: &Context) {
+    ///     let _ = context.finish();
+    /// }
     /// ```
     ///
     /// # Errors
@@ -156,18 +168,11 @@ impl Debug for Context {
 /// # Examples
 ///
 /// ```rust,no_run
-/// let opts = Opts {
-///     database: None,
-///     datalake: Some(String::from("/data/lake")),
-///     use_telemetry: false,
-///     use_tree: false,
-///     use_file: None,
-///     pool_size: 10,
-///     wait: 100,
-///     dry_run: false,
-/// };
-///
-/// let context = init_runtime("FOO", &opts).await?;
+/// # use process_data::{init_runtime, Opts};
+/// async fn example(opts: &Opts) -> eyre::Result<()> {
+///     let _context = init_runtime("FOO", opts).await?;
+///     Ok(())
+/// }
 /// ```
 ///
 #[tracing::instrument]
@@ -266,7 +271,7 @@ pub async fn init_runtime(name: &'static str, opts: &Opts) -> eyre::Result<Conte
             ..Default::default()
         },
     )
-        .await?;
+    .await?;
 
     let pool_size = opts.pool_size;
     let pool = bb8::Pool::builder()
@@ -297,11 +302,13 @@ pub async fn init_runtime(name: &'static str, opts: &Opts) -> eyre::Result<Conte
             ("dronedb".into(), profile.drone_db.clone()),
             ("workdb".into(), profile.work_db.clone()),
         ])
-            .into(),
+        .into(),
         dbh: pool.clone(),
         pool_size,
         wait: opts.wait,
         dry_run: opts.dry_run,
+        #[cfg(test)]
+        site_lookup: None,
     };
     debug!("{:?}", &ctx.config);
     Ok(ctx)
@@ -346,32 +353,60 @@ pub fn finish_runtime(_ctx: &Context) -> eyre::Result<()> {
 /// ```
 ///
 #[cfg(test)]
-pub async fn init_test_context(config: HashMap<String, String>) -> eyre::Result<Context> {
-    use klickhouse::{bb8, ClientOptions, ConnectionManager};
+pub(crate) type SiteLookupFuture<T> =
+    Pin<Box<dyn Future<Output = eyre::Result<T>> + Send + 'static>>;
 
-    // Use localhost:1 which will fail fast if accidentally accessed
-    // Port 1 is tcpmux and won't have ClickHouse running
-    let manager = ConnectionManager::new(
-        "127.0.0.1:1".to_string(),
-        ClientOptions {
-            username: "test".to_string(),
-            password: "test".to_string(),
-            default_database: "test".to_string(),
-            ..Default::default()
-        },
-    )
-    .await?;
-
-    // Build the pool without checking connections
-    let pool = bb8::Pool::builder()
-        .max_size(1)
-        .build_unchecked(manager);
-
-    Ok(Context {
-        config: Arc::new(config),
-        dbh: pool,
-        pool_size: 1,
-        wait: 0,
-        dry_run: true,
-    })
+#[cfg(test)]
+#[mockall::automock]
+pub(crate) trait SiteLookup: Send + Sync {
+    fn find_site_by_name(&self, site: String) -> SiteLookupFuture<crate::cmds::Site>;
+    fn find_site_by_id(&self, id: u32) -> SiteLookupFuture<crate::cmds::Site>;
+    fn enumerate_sites(
+        &self,
+        day: chrono::DateTime<chrono::Utc>,
+    ) -> SiteLookupFuture<Vec<crate::cmds::Site>>;
+    fn match_site(
+        &self,
+        day: chrono::DateTime<chrono::Utc>,
+        antenna: String,
+    ) -> SiteLookupFuture<String>;
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::Context;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    pub async fn init_test_context(config: HashMap<String, String>) -> eyre::Result<Context> {
+        use klickhouse::{ClientOptions, ConnectionManager, bb8};
+
+        // Use localhost:1 which will fail fast if accidentally accessed
+        // Port 1 is tcpmux and won't have ClickHouse running
+        let manager = ConnectionManager::new(
+            "127.0.0.1:1".to_string(),
+            ClientOptions {
+                username: "test".to_string(),
+                password: "test".to_string(),
+                default_database: "test".to_string(),
+                ..Default::default()
+            },
+        )
+        .await?;
+
+        // Build the pool without checking connections
+        let pool = bb8::Pool::builder().max_size(1).build_unchecked(manager);
+
+        Ok(Context {
+            config: Arc::new(config),
+            dbh: pool,
+            pool_size: 1,
+            wait: 0,
+            dry_run: true,
+            site_lookup: None,
+        })
+    }
+}
+
+#[cfg(test)]
+pub(crate) use tests::init_test_context;
