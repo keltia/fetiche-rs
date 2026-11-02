@@ -15,6 +15,9 @@ All tables and macros configuration [here](DUCKDB.md)
 For the complete ASCII diagram and relationships between all tables and views,
 see [SCHEMA_DIAGRAM.md](SCHEMA_DIAGRAM.md).
 
+For schema optimization recommendations and zero-downtime migration strategies,
+see [SCHEMA_IMPROVEMENTS.md](SCHEMA_IMPROVEMENTS.md).
+
 ### Database
 
 ```sql
