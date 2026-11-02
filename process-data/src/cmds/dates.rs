@@ -78,8 +78,8 @@ pub fn normalise_day_jiff(ts: Timestamp) -> eyre::Result<Timestamp> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse_date_interval;
-    use fetiche_common::{DateOpts, normalise_day_jiff};
+    use crate::{normalise_day_jiff, parse_date_interval};
+    use fetiche_common::DateOpts;
     use jiff::Timestamp;
 
     #[test]
