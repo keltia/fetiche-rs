@@ -60,7 +60,7 @@ cached = { version = "4", features = ["async"] }
 clap_complete = "4.6"
 farben = "0.20"
 geo = "0.33"
-klickhouse = { version = "0.16", features = ["derive", "geo-types", "serde", "bb8"] }
+klickhouse = { version = "0.16", features = ["derive", "geo-types", "serde", "bb8", "jiff"], path = "../../vendor/klickhouse/klickhouse" }
 kml = "0.15"
 rand = "0.10"
 rust-3d = "0.34"
