@@ -46,18 +46,19 @@
 //! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
 //!
 
-use crate::cmds::{Calculate, ONE_DEG, PlaneDistance, PlanesStats, Stats, TempTables};
-use crate::make_query;
-
 use eyre::Result;
-use fetiche_common::jiff_to_chrono;
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
-use jiff::Span;
+use jiff::SignedDuration;
 use klickhouse::{Client, QueryBuilder, RawRow, Row};
 use serde::{Deserialize, Serialize};
 use tokio::time::{Duration, Instant, sleep};
 use tracing::{debug, error, info, trace};
+
+use crate::cmds::{Calculate, ONE_DEG, PlaneDistance, PlanesStats, Stats, TempTables};
+use crate::make_query;
+
+use fetiche_common::jiff_to_chrono;
 
 /// Timings during the calculation process.
 #[derive(Debug, Default, Deserialize)]
@@ -129,7 +130,7 @@ impl PlaneDistance {
         // Add 1 day using jiff, then convert to chrono for formatting
         let next_day = self
             .date
-            .checked_add(Span::new().hours(24))
+            .checked_add(SignedDuration::from_hours(24))
             .expect("date overflow");
         let next_day_chrono = jiff_to_chrono(next_day)?;
         let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
@@ -286,7 +287,7 @@ AS (
         // Add 1 day using jiff, then convert to chrono for formatting
         let next_day = self
             .date
-            .checked_add(Span::new().hours(24))
+            .checked_add(SignedDuration::from_hours(24))
             .expect("date overflow");
         let next_day_chrono = jiff_to_chrono(next_day)?;
         let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
