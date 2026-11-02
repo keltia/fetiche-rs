@@ -46,7 +46,7 @@
 //! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
 //!
 
-use crate::cmds::{Calculate, PlaneDistance, PlanesStats, Stats, TempTables, ONE_DEG};
+use crate::cmds::{Calculate, ONE_DEG, PlaneDistance, PlanesStats, Stats, TempTables};
 use crate::make_query;
 
 use eyre::Result;
@@ -56,7 +56,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use jiff::Span;
 use klickhouse::{Client, QueryBuilder, RawRow, Row};
 use serde::{Deserialize, Serialize};
-use tokio::time::{sleep, Duration, Instant};
+use tokio::time::{Duration, Instant, sleep};
 use tracing::{debug, error, info, trace};
 
 /// Timings during the calculation process.
@@ -127,7 +127,10 @@ impl PlaneDistance {
         let time_from = date_chrono.format("%Y-%m-%d 00:00:00").to_string();
 
         // Add 1 day using jiff, then convert to chrono for formatting
-        let next_day = self.date.checked_add(Span::new().days(1)).expect("date overflow");
+        let next_day = self
+            .date
+            .checked_add(Span::new().days(1))
+            .expect("date overflow");
         let next_day_chrono = jiff_to_chrono(next_day)?;
         let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
 
@@ -281,7 +284,10 @@ AS (
         let time_from = date_chrono.format("%Y-%m-%d 00:00:00").to_string();
 
         // Add 1 day using jiff, then convert to chrono for formatting
-        let next_day = self.date.checked_add(Span::new().days(1)).expect("date overflow");
+        let next_day = self
+            .date
+            .checked_add(Span::new().days(1))
+            .expect("date overflow");
         let next_day_chrono = jiff_to_chrono(next_day)?;
         let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
 
@@ -650,7 +656,8 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
 
         let threshold = self.threshold;
 
-        let r = make_query!(r##"
+        let r = make_query!(
+            r##"
     INSERT INTO {workdb}.airplane_prox
     SELECT
       any_value(tc.site) AS site,
@@ -793,7 +800,7 @@ impl Calculate for PlaneDistance {
         let style = ProgressStyle::with_template(
             "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>2}/{len:2} {msg}",
         )?
-            .progress_chars("##-");
+        .progress_chars("##-");
         bar.set_style(style);
         bar.enable_steady_tick(Duration::from_millis(100));
 
