@@ -17,6 +17,7 @@ use tracing::info;
 
 pub use acute::*;
 pub use check::*;
+pub use dates::*;
 pub use distances::*;
 pub use error::*;
 pub use export::*;
@@ -33,6 +34,7 @@ use crate::runtime::Context;
 
 mod acute;
 mod check;
+mod dates;
 mod distances;
 mod error;
 mod export;
