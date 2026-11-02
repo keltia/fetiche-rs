@@ -20,16 +20,18 @@
 //! - `serde`: For serialization support.
 //! - `tracing`: For logging and instrumentation.
 //!
-use crate::cmds::{find_site, DBVars};
-use crate::make_query;
-use crate::runtime::Context;
 use chrono::{DateTime, Utc};
 use eyre::Result;
-use fetiche_common::DateOpts;
 use jiff::tz::TimeZone;
 use klickhouse::{QueryBuilder, RawRow, Row};
 use serde::Serialize;
 use tracing::{debug, trace};
+
+use crate::cmds::{DBVars, find_site};
+use crate::make_query;
+use crate::runtime::Context;
+
+use fetiche_common::DateOpts;
 
 /// This struct represents a single data point with positional and temporal information.
 ///
@@ -315,31 +317,35 @@ pub async fn fetch_encounters_on(ctx: &Context, date: DateOpts) -> Result<Vec<St
     let client = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let (begin, _) = DateOpts::parse(date)?;
-    let begin = begin.to_zoned(TimeZone::UTC);
-    let date = begin.date();
-    let en_id_pat = format!("%{:4}{:02}{:02}%", date.year(), date.month(), date.day());
+    let (begin, end) = DateOpts::parse(date)?;
+    let begin = begin.to_zoned(TimeZone::UTC).date();
+    let end = end.to_zoned(TimeZone::UTC).date();
 
-    debug!("en_id_pat={}", en_id_pat);
+    // Now loop through all days
+    //
+    debug!("from={} to {}", begin, end);
     let r = make_query!(
         r##"
 SELECT
-  en_id
+    en_id,
+    min(distance_slant_m) as distance_slant_m
 FROM
-  {workdb}.airprox_summary
+    {workdb}.airplane_prox
 WHERE
-  en_id LIKE $1
-ORDER BY
-  en_id
+    time BETWEEN $1 AND $2
+GROUP BY
+    en_id, journey
+ORDER BY en_id
         "##,
         dbvars
     );
-    let q = QueryBuilder::new(&r).arg(en_id_pat);
+    let q = QueryBuilder::new(&r).arg(begin).arg(end);
     let list = client
         .query_collect::<RawRow>(q)
         .await?
         .iter_mut()
         .map(|e| e.get(0))
         .collect::<Vec<String>>();
+    debug!("list={:?}", list);
     Ok(list)
 }
