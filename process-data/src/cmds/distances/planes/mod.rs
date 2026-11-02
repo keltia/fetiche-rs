@@ -366,8 +366,8 @@ async fn prepare_work_list_with_deps<F, G, Fut1, Fut2>(
 where
     F: Fn(&Context, &str) -> Fut1 + Send + Sync,
     G: Fn(&Context, DateTime<Utc>) -> Fut2 + Send + Sync,
-    Fut1: std::future::Future<Output=Result<Site>> + Send,
-    Fut2: std::future::Future<Output=Result<Vec<Site>>> + Send,
+    Fut1: Future<Output=Result<Site>> + Send,
+    Fut2: Future<Output=Result<Vec<Site>>> + Send,
 {
     let name = match site_filter {
         ALL_SITES | "*" => "",
@@ -713,6 +713,7 @@ mod tests {
     //     .returning(|_ctx, _day| Ok(vec![/* mock sites */]));
     // let result = prepare_work_list_with_mock(&mock, dates, "*").await?;
     // ```
+    #[allow(dead_code)]
     #[automock]
     trait DatabaseOperations {
         async fn find_site(&self, ctx: &Context, name: &str) -> Result<Site>;
