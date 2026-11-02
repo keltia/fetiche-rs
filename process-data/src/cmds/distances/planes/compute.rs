@@ -129,7 +129,7 @@ impl PlaneDistance {
         // Add 1 day using jiff, then convert to chrono for formatting
         let next_day = self
             .date
-            .checked_add(Span::new().days(1))
+            .checked_add(Span::new().hours(24))
             .expect("date overflow");
         let next_day_chrono = jiff_to_chrono(next_day)?;
         let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
@@ -286,7 +286,7 @@ AS (
         // Add 1 day using jiff, then convert to chrono for formatting
         let next_day = self
             .date
-            .checked_add(Span::new().days(1))
+            .checked_add(Span::new().hours(24))
             .expect("date overflow");
         let next_day_chrono = jiff_to_chrono(next_day)?;
         let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
@@ -800,7 +800,7 @@ impl Calculate for PlaneDistance {
         let style = ProgressStyle::with_template(
             "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>2}/{len:2} {msg}",
         )?
-        .progress_chars("##-");
+            .progress_chars("##-");
         bar.set_style(style);
         bar.enable_steady_tick(Duration::from_millis(100));
 
