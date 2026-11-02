@@ -3,7 +3,7 @@
 
 use chrono::{DateTime, Duration, Utc};
 use eyre::Result;
-use jiff::{Span, Timestamp, civil::Date};
+use jiff::{civil::Date, SignedDuration, Span, Timestamp};
 
 /// This function takes a start and end `DateTime<Utc>` and generates a vector of all days
 /// between (inclusive of start, exclusive of end). It increments the date by one day
@@ -139,7 +139,7 @@ pub fn expand_interval_timestamp(begin: Timestamp, end: Timestamp) -> Result<Vec
     let days_count = days_span.get_days();
     let mut intv = Vec::with_capacity(days_count as usize);
 
-    let day = Span::new().days(1);
+    let day = SignedDuration::from_hours(24);
     let mut d = begin;
     while d < end {
         intv.push(d);
