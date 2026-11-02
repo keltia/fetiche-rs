@@ -51,7 +51,6 @@ console = ["dep:console-subscriber"]
 chrono.workspace = true
 clap.workspace = true
 csv.workspace = true
-dateparser.workspace = true
 directories.workspace = true
 eyre.workspace = true
 fetiche-macros.workspace = true
@@ -81,6 +80,7 @@ tracing-opentelemetry = { version = "0.33", optional = true }
 
 [dev-dependencies]
 criterion.workspace = true
+dateparser.workspace = true
 polars.workspace = true
 proptest.workspace = true
 ractor.workspace = true
