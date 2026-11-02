@@ -19,7 +19,7 @@ pub struct PruneOpts {
     pub date: DateOpts,
 }
 
-#[tracing::instrument(skip(ctx))]
-pub fn run_prune_cmd(ctx: &Context, opts: &PruneOpts) {
+#[tracing::instrument(skip(_ctx))]
+pub fn run_prune_cmd(_ctx: &Context, _opts: &PruneOpts) {
     todo!()
 }
