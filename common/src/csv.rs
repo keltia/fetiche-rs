@@ -5,8 +5,8 @@
 //!
 //! # Examples
 //! ```
-//! # fn main() -> Result<(), Box<dyn std::error::Error>> {}
-//! use fetiche_common::csv::Delim;
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! use fetiche_common::Delim;
 //! use serde::Serialize;
 //!
 //! #[derive(Debug, Serialize)]
@@ -63,7 +63,7 @@ impl Delim {
     ///
     /// # Examples
     /// ```
-    /// use fetiche_common::csv::Delim;
+    /// use fetiche_common::Delim;
     /// use serde::Serialize;
     ///
     /// #[derive(Debug, Serialize)]
