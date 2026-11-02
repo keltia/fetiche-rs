@@ -102,7 +102,8 @@ pub async fn handle_cmds(ctx: &Context, opts: &Opts) -> eyre::Result<()> {
             run_profile_cmd(ctx, ptopts)?;
         }
         SubCommand::Prune(popts) => {
-            run_prune_cmd(ctx, popts);
+            eprintln!("Purging some results from encounters.\n");
+            let _ = run_prune_cmd(ctx, popts).await?;
         }
         SubCommand::Acute(aopts) => {
             eprintln!("ACUTE specific commands.\n");

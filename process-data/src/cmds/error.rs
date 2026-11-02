@@ -33,4 +33,6 @@ pub enum CmdError {
     BadFilenamePattern(String),
     #[error("Need a file in CSV format {0}")]
     NeedCsvFile(String),
+    #[error("Force needed with \"-f\" or \"--force\".")]
+    ForceNeeded,
 }
