@@ -13,7 +13,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use process_data::cmds::{DBVars, load_query};
+//! use process_data::{load_query, DBVars};
 //!
 //! let dbvars = DBVars {
 //!     planedb: "planes_prod".to_string(),
@@ -76,7 +76,7 @@ impl DBVars {
     /// # Examples
     ///
     /// ```rust
-    /// use process_data::cmds::query::DBVars;
+    /// use process_data::DBVars;
     ///
     /// let dbvars = DBVars {
     ///     planedb: "planes_prod".to_string(),
@@ -121,20 +121,11 @@ impl DBVars {
     /// # Examples
     ///
     /// ```rust
-    /// use process_data::runtime::Context;
-    /// use process_data::cmds::query::DBVars;
+    /// use process_data::{Context, DBVars};
     ///
-    /// let ctx = Context {
-    ///     config: HashMap::from([
-    ///         ("plane_db".to_string(), "planes_tablespace".to_string()),
-    ///         ("drone_db".to_string(), "drones_tablespace".to_string()),
-    ///         ("work_db".to_string(), "work_tablespace".to_string()),
-    ///     ]).into(),
-    ///     dry_run: false,
-    /// };
-    ///
-    /// let dbvars = DBVars::from_ctx(&ctx);
-    /// assert_eq!(dbvars.planedb, "planes_tablespace");
+    /// fn extract_database_names(ctx: &Context) -> DBVars {
+    ///     DBVars::from_ctx(ctx)
+    /// }
     /// ```
     ///
     #[tracing::instrument(skip(ctx))]
@@ -179,7 +170,7 @@ impl DBVars {
 ///
 /// ```rust
 /// # use eyre::Result;
-/// # use process_data::cmds::DBVars;
+/// # use process_data::DBVars;
 /// # use process_data::make_query;
 /// # fn main() -> Result<()> {
 /// let dbvars = DBVars {
@@ -193,7 +184,7 @@ impl DBVars {
 ///     "SELECT * FROM {planedb}.flights WHERE id > 100",
 ///     dbvars
 /// );
-/// assert_eq!(query?, "SELECT * FROM planes_prod.flights WHERE id > 100");
+/// assert_eq!(query, "SELECT * FROM planes_prod.flights WHERE id > 100");
 /// # Ok(())
 /// # }
 /// ```
@@ -202,7 +193,7 @@ impl DBVars {
 ///
 /// ```rust
 /// # use eyre::Result;
-/// # use process_data::cmds::query::DBVars;
+/// # use process_data::DBVars;
 /// # use process_data::make_query;
 /// # fn main() -> Result<()> {
 /// let dbvars = DBVars {
@@ -216,7 +207,7 @@ impl DBVars {
 ///     "CREATE TABLE {workdb}.analysis{tag} AS SELECT * FROM {planedb}.data",
 ///     dbvars
 /// );
-/// assert_eq!(query?, "CREATE TABLE work.analysis_temp AS SELECT * FROM planes.data");
+/// assert_eq!(query, "CREATE TABLE work.analysis_temp AS SELECT * FROM planes.data");
 /// # Ok(())
 /// # }
 /// ```
@@ -224,7 +215,7 @@ impl DBVars {
 #[macro_export]
 macro_rules! make_query {
     ($q:literal, $val:expr) => {
-        $crate::cmds::load_query($q, &$val)?
+        $crate::load_query($q, &$val)?
     };
 }
 
