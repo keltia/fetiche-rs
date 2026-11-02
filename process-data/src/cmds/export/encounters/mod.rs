@@ -18,6 +18,9 @@
 mod create;
 mod data;
 
+pub use create::{from_point_to_placemark, from_traj_to_placemark, make_style};
+pub use data::{DataPoint, Encounter};
+
 use crate::cmds::{CmdError, Format};
 use crate::runtime::Context;
 

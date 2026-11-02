@@ -113,18 +113,15 @@ struct Encounter {
 /// * Data deserialization issues while converting query rows into the `Encounter` struct format.
 ///
 /// # Examples
-/// ```rust
-/// use klickhouse::Client;
-/// use eyre::Result;
-///
-/// #[tokio::main]
-/// async fn main() -> Result<()> {
-///     let client = Client::default();
-///
-///     let encounters = retrieve_all_encounters(&client).await?;
-///     println!("Retrieved {} encounters", encounters.len());
-///
-///     Ok(())
+/// ```rust,no_run
+/// # use process_data::{Context, ExpDistOpts, Format, export_results};
+/// async fn example(ctx: &Context) -> eyre::Result<()> {
+///     let opts = ExpDistOpts {
+///         summary: false,
+///         format: Format::Csv,
+///         output: Some("encounters.csv".to_string()),
+///     };
+///     export_results(ctx, &opts).await
 /// }
 /// ```
 ///
@@ -265,11 +262,16 @@ async fn retrieve_summary_encounters(ctx: &Context) -> Result<Vec<Encounter>> {
 /// * Data serialization errors while converting records into CSV format.
 ///
 /// # Examples
-/// ```rust
-/// // Assuming you have an active `Client` instance
-/// let client = get_database_client().await?;
-/// let csv_path = "encounters.csv";
-/// export_all_encounters_csv(&client, csv_path).await?;
+/// ```rust,no_run
+/// # use process_data::{Context, ExpDistOpts, Format, export_results};
+/// async fn example(ctx: &Context) -> eyre::Result<()> {
+///     let opts = ExpDistOpts {
+///         summary: false,
+///         format: Format::Csv,
+///         output: Some("encounters.csv".to_string()),
+///     };
+///     export_results(ctx, &opts).await
+/// }
 /// ```
 ///
 #[tracing::instrument(skip(ctx))]
@@ -311,11 +313,16 @@ async fn export_all_encounters_csv(ctx: &Context, fname: &str) -> Result<()> {
 /// * Database query errors while retrieving the encounters data.
 ///
 /// # Examples
-/// ```rust
-/// // Assuming you have a valid `Client` instance
-/// let client = get_client().await?;
-/// let fname = "output.parquet";
-/// export_all_encounters_parquet(&client, fname).await?;
+/// ```rust,no_run
+/// # use process_data::{Context, ExpDistOpts, Format, export_results};
+/// async fn example(ctx: &Context) -> eyre::Result<()> {
+///     let opts = ExpDistOpts {
+///         summary: false,
+///         format: Format::Parquet,
+///         output: Some("output.parquet".to_string()),
+///     };
+///     export_results(ctx, &opts).await
+/// }
 /// ```
 ///
 #[tracing::instrument(skip(ctx))]

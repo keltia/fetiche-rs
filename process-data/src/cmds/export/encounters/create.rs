@@ -63,6 +63,7 @@ fn from_points_to_ls(points: &Vec<DataPoint>) -> eyre::Result<LineString> {
 ///
 /// ```
 /// use kml::Kml;
+/// use process_data::make_style;
 ///
 /// let style = make_style("highlight", "ff0000ff", 2.0);
 /// assert!(matches!(style, Kml::Style(..)));
@@ -221,11 +222,14 @@ pub fn default_styles() -> Vec<Kml<f64>> {
 /// # Examples
 ///
 /// ```rust
+/// use chrono::Utc;
+/// use process_data::{from_traj_to_placemark, DataPoint};
+///
 /// let points = vec![
-///     DataPoint { latitude: 12.34, longitude: 56.78, altitude: 100.0, timestamp: 123456 },
-///     DataPoint { latitude: 13.34, longitude: 57.78, altitude: 150.0, timestamp: 123457 },
+///     DataPoint { latitude: 12.34, longitude: 56.78, altitude: 100.0, timestamp: Utc::now() },
+///     DataPoint { latitude: 13.34, longitude: 57.78, altitude: 150.0, timestamp: Utc::now() },
 /// ];
-/// let result = from_traj_to_placemark("My Drone", &points, "#style-id");
+/// let result = from_traj_to_placemark("My Drone", "ICAO", &points, "#style-id");
 /// assert!(result.is_ok());
 /// ```
 ///
@@ -275,14 +279,26 @@ pub fn from_traj_to_placemark(
 /// # Examples
 ///
 /// ```rust
+/// use chrono::Utc;
+/// use process_data::{from_point_to_placemark, Encounter};
+///
 /// let encounter = Encounter {
+///     en_id: "encounter-1".to_string(),
+///     sitename: "test-site".to_string(),
+///     journey: 1,
+///     timestamp: Utc::now(),
+///     drone_id: "drone-1".to_string(),
 ///     drone_lat: 12.34,
 ///     drone_lon: 56.78,
 ///     drone_alt_m: 100.0,
+///     prox_id: "plane-1".to_string(),
+///     prox_callsign: "TEST".to_string(),
 ///     prox_lat: 13.34,
 ///     prox_lon: 57.78,
 ///     prox_alt_m: 150.0,
-///     timestamp: 123456,
+///     prox_ecat: 0,
+///     station_name: "test-site".to_string(),
+///     distance_slant_m: 100,
 /// };
 /// let result = from_point_to_placemark("Encounter Point", &encounter, "#style-url");
 /// assert!(result.is_ok());
