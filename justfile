@@ -1,5 +1,5 @@
 [windows]
-set shell := ["C:\\Program Files\\Git\\bin\\sh.exe","-c"]
+set shell := ["C:\\Program Files\\Git\\bin\\sh.exe", "-c"]
 
 # Fetch from remote origin using jj
 pull:
@@ -22,8 +22,15 @@ push: push-github push-codeberg
 
 # Move changes to develop
 move:
-    jj b move --to @- develop
+    jj b move --to '@-' develop
 
 # Remove objects from older versions
 tidy:
     cargo sweep --installed
+
+# Install all binaries
+install:
+    cargo install --path cmd/convert-from-json
+    cargo install --path cmd/find-airport
+    cargo install --path acutectl
+    cargo install --path process-data
