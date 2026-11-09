@@ -334,8 +334,9 @@ FROM
 WHERE
     time BETWEEN $1 AND $2
 GROUP BY
-    en_id, journey
-ORDER BY en_id
+    en_id
+ORDER BY
+    en_id
         "##,
         dbvars
     );
