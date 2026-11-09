@@ -20,12 +20,12 @@
 
 use std::io;
 
-use clap::{crate_authors, crate_description, crate_version, CommandFactory, Parser};
+use clap::{CommandFactory, Parser, crate_authors, crate_description, crate_version};
 use clap_complete::generate;
 use eyre::Result;
 use tracing::trace;
 
-use process_data::{finish_runtime, handle_cmds, init_runtime, Context, Opts, SubCommand};
+use process_data::{Context, Opts, SubCommand, finish_runtime, handle_cmds, init_runtime};
 
 /// Binary name, using a different binary name
 pub const NAME: &str = env!("CARGO_BIN_NAME");
@@ -78,7 +78,7 @@ fn banner(ctx: &Context) -> Result<String> {
         .get("profile")
         .unwrap_or(&String::from("default"))
         .to_string();
-    let ver = format!("{} v{}+clickhouse ({profile_name})", NAME, VERSION);
+    let ver = format!("{} v{}+clickhouse+jiff-kml ({profile_name})", NAME, VERSION);
 
     Ok(format!(
         r##"
