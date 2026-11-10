@@ -12,7 +12,7 @@ mod distances;
 mod drones;
 mod encounters;
 
-#[derive(Clone, Copy, Debug, EnumString, VariantNames, strum::Display)]
+#[derive(Clone, Copy, Debug, Default, EnumString, PartialEq, Eq, VariantNames, strum::Display)]
 #[strum(serialize_all = "lowercase")]
 pub enum Format {
     /// Classic CSV.
@@ -26,6 +26,7 @@ pub enum Format {
     /// Parquet compressed format.
     Parquet,
     /// text through Tabled
+    #[default]
     Table,
     /// Text for stdout
     Text,
