@@ -224,11 +224,14 @@ impl DateOpts {
             }
             DateOpts::Week { num } => {
                 trace!("Got week {}", num);
-                if num > 53 {
+                if !(1..=53).contains(&num) {
                     return Err(ErrDateOpts::BadWeekNumber(num));
                 }
                 let year = Zoned::now().year();
-                let weekdate = ISOWeekDate::new(year, num as i8, Weekday::Monday).unwrap();
+                let weekdate = ISOWeekDate::new(year, num as i8, Weekday::Monday).map_err(|e| {
+                    error!("Cannot compute ISO week date: {e}");
+                    ErrDateOpts::FailedCalculus(e.to_string())
+                })?;
                 let begin = Date::from_iso_week_date(weekdate)
                     .to_zoned(TimeZone::UTC)
                     .map_err(|_| ErrDateOpts::CannotGetDate)?;
@@ -447,14 +450,16 @@ mod test {
 
     #[test]
     fn test_dateopts_parse_invalid_week() {
-        let opt = DateOpts::Week { num: 54 };
-        let result = DateOpts::parse(opt);
+        for invalid_week in [0, -1, -50, 54, 100] {
+            let opt = DateOpts::Week { num: invalid_week };
+            let result = DateOpts::parse(opt);
 
-        assert!(result.is_err());
-        if let Err(ErrDateOpts::BadWeekNumber(week)) = result {
-            assert_eq!(week, 54_i64);
-        } else {
-            panic!("Expected ErrDateOpts::BadWeekNumber error");
+            assert!(result.is_err(), "Expected error for week {invalid_week}");
+            if let Err(ErrDateOpts::BadWeekNumber(week)) = result {
+                assert_eq!(week, invalid_week);
+            } else {
+                panic!("Expected ErrDateOpts::BadWeekNumber error for week {invalid_week}");
+            }
         }
     }
 
