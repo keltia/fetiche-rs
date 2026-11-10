@@ -512,6 +512,100 @@ mod tests {
         assert!(result.day.contains(&day2));
     }
 
+    #[test]
+    fn test_planes_stats_sum() {
+        let day1 = Utc::now();
+        let stats1 = PlanesStats {
+            day: vec![day1],
+            distance: 50.0,
+            proximity: 10.0,
+            planes: 5,
+            drones: 7,
+            potential: 3,
+            encounters: 2,
+            time: 100,
+        };
+
+        let day2 = Utc::now();
+        let stats2 = PlanesStats {
+            day: vec![day2],
+            distance: 50.0,
+            proximity: 10.0,
+            planes: 10,
+            drones: 8,
+            potential: 4,
+            encounters: 3,
+            time: 150,
+        };
+
+        let list = vec![stats1.clone(), stats2.clone()];
+        // Sum by value
+        let sum_val: PlanesStats = list.clone().into_iter().sum();
+        assert_eq!(sum_val.planes, 15);
+        assert_eq!(sum_val.drones, 15);
+        assert_eq!(sum_val.potential, 7);
+        assert_eq!(sum_val.encounters, 5);
+        assert_eq!(sum_val.time, 250);
+        assert_eq!(sum_val.day.len(), 2);
+
+        // Sum by reference
+        let sum_ref: PlanesStats = list.iter().sum();
+        assert_eq!(sum_ref.planes, 15);
+        assert_eq!(sum_ref.drones, 15);
+        assert_eq!(sum_ref.day.len(), 2);
+
+        // Sum empty
+        let empty_list: Vec<PlanesStats> = vec![];
+        let sum_empty: PlanesStats = empty_list.into_iter().sum();
+        assert_eq!(sum_empty.planes, 0);
+        assert_eq!(sum_empty.drones, 0);
+    }
+
+    #[allow(irrefutable_let_patterns)]
+    #[test]
+    fn test_stats_sum() {
+        let now = Utc::now();
+        let stats1 = Stats::Planes(PlanesStats::new(now, 50.0, 10.0));
+        let stats2 = Stats::Planes(PlanesStats {
+            day: vec![now],
+            distance: 50.0,
+            proximity: 10.0,
+            planes: 10,
+            drones: 8,
+            potential: 4,
+            encounters: 3,
+            time: 150,
+        });
+
+        let list = vec![stats1.clone(), stats2.clone()];
+        // Sum by value
+        let sum_val: Stats = list.clone().into_iter().sum();
+        if let Stats::Planes(planes_stats) = sum_val {
+            assert_eq!(planes_stats.planes, 10);
+            assert_eq!(planes_stats.drones, 8);
+            assert_eq!(planes_stats.potential, 4);
+            assert_eq!(planes_stats.encounters, 3);
+            assert_eq!(planes_stats.time, 150);
+            assert!(planes_stats.day.len() >= 2);
+        }
+
+        // Sum by reference
+        let sum_ref: Stats = list.iter().sum();
+        if let Stats::Planes(planes_stats) = sum_ref {
+            assert_eq!(planes_stats.planes, 10);
+            assert_eq!(planes_stats.drones, 8);
+        }
+
+        // Sum empty
+        let empty_list: Vec<Stats> = vec![];
+        let sum_empty: Stats = empty_list.into_iter().sum();
+        if let Stats::Planes(planes_stats) = sum_empty {
+            assert_eq!(planes_stats.planes, 0);
+            assert_eq!(planes_stats.drones, 0);
+            assert_eq!(planes_stats.day.len(), 1);
+        }
+    }
+
     #[allow(irrefutable_let_patterns)]
     #[test]
     fn test_stats_summarise_empty() {
