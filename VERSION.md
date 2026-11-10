@@ -21,7 +21,7 @@ Main dependencies:
 Current crates versions:
 
 - acutectl/0.25.0
-- process-data/0.7.99+clickhouse
+- process-data/0.8.0+clickhouse
 - fetiche-client/0.3.0
 - fetiche-engine/0.26.0
 - fetiche-formats/0.19.0

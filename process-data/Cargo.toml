@@ -1,6 +1,6 @@
 [package]
 name = "process-data"
-version = "0.7.99"
+version = "0.8.0"
 edition = "2024"
 authors = ["Ollivier Robert <ollivier.robert@eurocontrol.int>"]
 description = "Implement different processing of data."
