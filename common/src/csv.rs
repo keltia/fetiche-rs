@@ -97,9 +97,10 @@ impl Delim {
             .has_headers(header)
             .from_writer(vec![]);
 
-        data.iter().for_each(|rec| {
-            wtr.serialize(rec).unwrap();
-        });
+        for rec in data {
+            wtr.serialize(rec)?;
+        }
+        wtr.flush()?;
 
         let data = String::from_utf8(wtr.into_inner()?)?;
         Ok(data)
@@ -249,5 +250,27 @@ mod tests {
         let delim = Delim::Comma;
         let debug_str = format!("{:?}", delim);
         assert_eq!(debug_str, "Comma");
+    }
+
+    #[test]
+    fn test_serialization_error_propagation() {
+        struct FailingRecord;
+        impl Serialize for FailingRecord {
+            fn serialize<S>(&self, _serializer: S) -> std::result::Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                Err(serde::ser::Error::custom("forced serialization failure"))
+            }
+        }
+        impl std::fmt::Debug for FailingRecord {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "FailingRecord")
+            }
+        }
+
+        let data = vec![FailingRecord];
+        let result = Delim::Comma.prepare_csv(&data, true);
+        assert!(result.is_err());
     }
 }
