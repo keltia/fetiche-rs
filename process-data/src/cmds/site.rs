@@ -5,6 +5,7 @@ use chrono::{DateTime, Datelike, Utc};
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+use tabled::Tabled;
 use tracing::debug;
 
 use crate::cmds::{CmdError, DBVars};
@@ -23,9 +24,11 @@ use crate::runtime::Context;
 /// - `basename`: The base name or descriptive name of the site (e.g., "Bucharest").
 /// - `latitude`: The latitude coordinate of the site's location.
 /// - `longitude`: The longitude coordinate of the site's location.
-/// - `ref_alt`: The reference altitude for the site's location.
+/// - `ref_altitude`: The reference altitude for the site's location.
+/// - `timezone`: The timezone identifier of the site.
+/// - `offset`: The timezone offset in hours.
 ///
-#[derive(Clone, Debug, Deserialize, Row, Serialize)]
+#[derive(Clone, Debug, Deserialize, Row, Serialize, Tabled)]
 pub struct Site {
     /// auto-increment ID
     pub id: i32,
@@ -40,9 +43,12 @@ pub struct Site {
     /// Site coordinates longitude
     pub longitude: f64,
     /// Reference altitude
-    pub ref_alt: i32,
+    pub ref_altitude: i32,
     /// timezone name
     pub timezone: String,
+    /// timezone offset in hours
+    #[serde(default)]
+    pub offset: i32,
 }
 
 impl Display for Site {
@@ -341,6 +347,7 @@ SELECT
     s.longitude,
     s.ref_altitude,
     s.timezone,
+    s.offset
 FROM
     {workdb}.sites AS s, {workdb}.installations
 WHERE
@@ -444,8 +451,9 @@ mod tests {
             basename: name.to_owned(),
             latitude: 0.0,
             longitude: 0.0,
-            ref_alt: 0,
+            ref_altitude: 0,
             timezone: "UTC".to_owned(),
+            offset: 0,
         }
     }
 

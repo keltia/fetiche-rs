@@ -667,8 +667,9 @@ mod tests {
                 basename: "Site One".to_string(),
                 latitude: 48.8566,
                 longitude: 2.3522,
-                ref_alt: 100,
+                ref_altitude: 100,
                 timezone: "UTC".to_string(),
+                offset: 0,
             },
             Site {
                 id: 2,
@@ -677,8 +678,9 @@ mod tests {
                 basename: "Site Two".to_string(),
                 latitude: 51.5074,
                 longitude: -0.1278,
-                ref_alt: 50,
+                ref_altitude: 50,
                 timezone: "UTC".to_string(),
+                offset: 0,
             },
             Site {
                 id: 3,
@@ -687,8 +689,9 @@ mod tests {
                 basename: "Site Three".to_string(),
                 latitude: 40.7128,
                 longitude: -74.0060,
-                ref_alt: 10,
+                ref_altitude: 10,
                 timezone: "UTC".to_string(),
+                offset: 0,
             },
         ]);
         let mut lookup = MockSiteLookup::new();
@@ -753,8 +756,9 @@ mod tests {
                 basename: "Site One".to_string(),
                 latitude: 48.8566,
                 longitude: 2.3522,
-                ref_alt: 100,
+                ref_altitude: 100,
                 timezone: "UTC".to_string(),
+                offset: 0,
             },
             Site {
                 id: 2,
@@ -763,8 +767,9 @@ mod tests {
                 basename: "Site Two".to_string(),
                 latitude: 51.5074,
                 longitude: -0.1278,
-                ref_alt: 50,
+                ref_altitude: 50,
                 timezone: "UTC".to_string(),
+                offset: 0,
             },
             Site {
                 id: 3,
@@ -773,8 +778,9 @@ mod tests {
                 basename: "Site Three".to_string(),
                 latitude: 40.7128,
                 longitude: -74.0060,
-                ref_alt: 10,
+                ref_altitude: 10,
                 timezone: "UTC".to_string(),
+                offset: 0,
             },
         ];
 
@@ -790,8 +796,9 @@ mod tests {
                     basename: "Test Site".to_string(),
                     latitude: 48.8566,
                     longitude: 2.3522,
-                    ref_alt: 100,
+                    ref_altitude: 100,
                     timezone: "UTC".to_string(),
+                    offset: 0,
                 })
             }
         };

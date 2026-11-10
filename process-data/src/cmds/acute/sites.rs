@@ -73,7 +73,7 @@ fn insert_new_site(_opts: &AddSiteOpts) -> Result<()> {
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn sites_list(ctx: &Context, opts: &SitesListOpts) -> Result<()> {
-    // Brétigny for you.
+    // Reference coordinates for Brétigny / EIH site.
     //
     let home = coord! {x: 48.600052, y:2.347038};
 
