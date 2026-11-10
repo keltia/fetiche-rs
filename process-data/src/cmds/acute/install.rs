@@ -1,4 +1,4 @@
-use crate::cmds::{CrudSubCommand, DBVars};
+use crate::cmds::{CrudSubCommand, DBVars, Format, render_output};
 use crate::make_query;
 use crate::runtime::Context;
 
@@ -7,22 +7,15 @@ use clap::Parser;
 use eyre::Result;
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use tabled::settings::Style;
-use tabled::{Table, Tabled};
-
-use fetiche_common::Delim;
+use tabled::Tabled;
 
 /// "acute installations"
 ///
 #[derive(Debug, Parser)]
 pub struct InstOpts {
-    #[clap(short = 'C', long)]
-    pub csv: bool,
-    #[clap(short = 'J', long)]
-    pub json: bool,
-    #[clap(short = 'T', long)]
-    pub table: bool,
+    /// Output format
+    #[clap(short = 'F', long, default_value = "table")]
+    pub format: Format,
     #[clap(subcommand)]
     pub subcmd: Option<CrudSubCommand>,
 }
@@ -61,15 +54,7 @@ ORDER BY start_at ASC
     let q = QueryBuilder::new(&r);
     let res = dbh.query_collect::<Install>(q).await?;
 
-    let res = if opts.json {
-        json!(&res).to_string()
-    } else if opts.csv {
-        Delim::Comma.prepare_csv(&res, true)?
-    } else {
-        let mut table = Table::new(res.as_slice());
-        table.with(Style::sharp());
-        table.to_string()
-    };
+    let res = render_output(&res, opts.format)?;
     eprintln!("{res}");
     Ok(())
 }
