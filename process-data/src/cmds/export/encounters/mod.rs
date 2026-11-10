@@ -327,8 +327,11 @@ async fn export_encounter_list(
                     debug!("output path: {:?}", output);
 
                     // We export into <site>/encounter_id.kml, so we create the directory first.
+                    // Check before to avoid polluting the logs
                     //
-                    fs::create_dir(&output).await.unwrap_or_else(|_| error!("Can not create {output:?}"));
+                    if !output.exists() {
+                        fs::create_dir(&output).await.unwrap_or_else(|_| error!("Can not create directory {output:?}"));
+                    }
 
                     // Now we can do it
                     //
