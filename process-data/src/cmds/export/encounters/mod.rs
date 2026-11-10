@@ -344,7 +344,7 @@ async fn export_encounter_list(
                     // Check before to avoid polluting the logs
                     //
                     if !output.exists() {
-                        fs::create_dir(&output).await.unwrap_or_else(|_| error!("Can not create directory {output:?}"));
+                        fs::create_dir_all(&output).await.unwrap_or_else(|_| error!("Can not create directory {output:?}"));
                     }
 
                     // Now we can do it
