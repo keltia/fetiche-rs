@@ -193,8 +193,20 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
 
     let res = fetch_one_encounter(ctx, id).await?;
 
-    assert_eq!(res.en_id, id);
-    assert_eq!(res.journey, journey);
+    if res.en_id != id {
+        return Err(CmdError::EncounterMismatch {
+            expected: id.to_string(),
+            found: res.en_id,
+        }
+        .into());
+    }
+    if res.journey != journey {
+        return Err(CmdError::JourneyMismatch {
+            expected: journey,
+            found: res.journey,
+        }
+        .into());
+    }
 
     let encounter_timestamp = res.timestamp;
     let drone_id = res.drone_id.clone();
@@ -295,7 +307,9 @@ async fn export_encounter_list(
     list: &[String],
     output: &Path,
 ) -> Result<usize> {
-    assert!(output.is_dir(), "output must be a directory!");
+    if !output.is_dir() {
+        return Err(CmdError::NotADirectory(output.to_string_lossy().to_string()).into());
+    }
 
     let n = list.len();
     let output = fs::canonicalize(output).await?;
@@ -359,4 +373,30 @@ async fn export_encounter_list(
 
     eprintln!("Exporting {n} encounters in {output:?}/<site>/... ");
     Ok(n)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    #[tokio::test]
+    async fn test_export_encounter_list_non_directory() {
+        let ctx = crate::runtime::init_test_context(HashMap::new()).await.unwrap();
+        let invalid_path = PathBuf::from("non_existent_file.txt");
+        let result = export_encounter_list(&ctx, &[], &invalid_path).await;
+        assert!(result.is_err());
+        let err_str = result.unwrap_err().to_string();
+        assert!(err_str.contains("Not a directory"));
+    }
+
+    #[tokio::test]
+    async fn test_export_encounter_list_empty() {
+        let ctx = crate::runtime::init_test_context(HashMap::new()).await.unwrap();
+        let temp_dir = std::env::temp_dir();
+        let result = export_encounter_list(&ctx, &[], &temp_dir).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
 }
