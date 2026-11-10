@@ -338,7 +338,7 @@ async fn export_encounter_list(
             .into_iter()
             .map(|en_id| {
                 let dir = dir.clone();
-                let site = en_id.split('-').collect::<Vec<_>>().first().unwrap().to_string();
+                let site = en_id.split('-').next().unwrap_or_default().to_string();
 
                 async move {
                     trace!("Generating KML for {en_id}");
@@ -356,22 +356,18 @@ async fn export_encounter_list(
 
                     // Now we can do it
                     //
-                    tokio::spawn(async move {
-                        let fname = output.join(&id);
-                        match export_one_encounter(&ctx, &id).await {
-                            Ok(res) => {
-                                eprint!("{} ", fname.file_stem().unwrap().to_string_lossy());
-                                let fname = fname.with_extension("kml");
-                                trace!("encounter={:?}", fname);
-                                let _ = fs::write(&fname, &res).await;
-                            }
-                            Err(e) => {
-                                eprintln!("({e})");
-                            }
-                        };
-                    })
-                        .await
-                        .unwrap();
+                    let fname = output.join(&id);
+                    match export_one_encounter(&ctx, &id).await {
+                        Ok(res) => {
+                            eprint!("{} ", fname.file_stem().unwrap().to_string_lossy());
+                            let fname = fname.with_extension("kml");
+                            trace!("encounter={:?}", fname);
+                            let _ = fs::write(&fname, &res).await;
+                        }
+                        Err(e) => {
+                            eprintln!("({e})");
+                        }
+                    };
                 }
             })
             .collect();
