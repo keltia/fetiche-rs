@@ -10,7 +10,7 @@ use serde_json::json;
 use tracing::{debug, error, info, trace};
 
 use crate::cli::Opts;
-use crate::config::ProcessConfig;
+use crate::config::{Home, ProcessConfig};
 use crate::error::Status;
 
 use fetiche_common::{ConfigFile, Versioned, close_logging, init_logging};
@@ -57,9 +57,17 @@ pub struct Context {
     pub dry_run: bool,
     /// Optional site lookup provider
     pub site_lookup: Option<Arc<dyn SiteLookup>>,
+    /// Reference / home location for relative coordinate calculations.
+    pub home: Home,
 }
 
 impl Context {
+    /// Sets or replaces the custom home location.
+    pub fn with_home(mut self, home: Home) -> Self {
+        self.home = home;
+        self
+    }
+
     /// Sets or replaces the custom site lookup provider.
     pub fn with_site_lookup(mut self, lookup: Arc<dyn SiteLookup>) -> Self {
         self.site_lookup = Some(lookup);
@@ -313,6 +321,7 @@ pub async fn init_runtime(name: &'static str, opts: &Opts) -> eyre::Result<Conte
         wait: opts.wait,
         dry_run: opts.dry_run,
         site_lookup: None,
+        home: cfg.home,
     };
     debug!("{:?}", &ctx.config);
     Ok(ctx)
@@ -391,5 +400,6 @@ pub async fn init_test_context(config: HashMap<String, String>) -> eyre::Result<
         wait: 0,
         dry_run: true,
         site_lookup: None,
+        home: Home::default(),
     })
 }

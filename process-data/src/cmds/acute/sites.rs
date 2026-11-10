@@ -1,6 +1,5 @@
 use clap::Parser;
 use eyre::Result;
-use geo::coord;
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
@@ -73,9 +72,7 @@ fn insert_new_site(_opts: &AddSiteOpts) -> Result<()> {
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn sites_list(ctx: &Context, opts: &SitesListOpts) -> Result<()> {
-    // Reference coordinates for Brétigny / EIH site.
-    //
-    let home = coord! {x: 48.600052, y:2.347038};
+    let home = ctx.home;
 
     // Prepare DB environment.
     //
@@ -102,7 +99,7 @@ ORDER BY
     "##,
         dbvars
     );
-    let q = QueryBuilder::new(&r).arg(home.y).arg(home.x);
+    let q = QueryBuilder::new(&r).arg(home.longitude).arg(home.latitude);
     let res = dbh.query_collect::<Site>(q).await?;
 
     println!("Listing all sites:");

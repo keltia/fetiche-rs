@@ -91,6 +91,9 @@ pub struct ProcessConfig {
     pub distances: Distances,
     /// Section for profiles.
     pub profiles: HashMap<String, Profile>,
+    /// Section for reference / home location coordinates.
+    #[serde(default)]
+    pub home: Home,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -138,5 +141,52 @@ impl Default for Distances {
             factor: 3,
             plane: 70,
         }
+    }
+}
+
+/// Reference / home coordinates for relative distance calculations.
+///
+/// Defaults to Brétigny-sur-Orge (EIH / Eurocontrol Innovation Hub):
+/// Latitude: 48.600052, Longitude: 2.347038.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Home {
+    /// Latitude in decimal degrees
+    pub latitude: f64,
+    /// Longitude in decimal degrees
+    pub longitude: f64,
+}
+
+impl Home {
+    /// Create a new `Home` location.
+    pub fn new(latitude: f64, longitude: f64) -> Self {
+        Self { latitude, longitude }
+    }
+}
+
+impl Default for Home {
+    fn default() -> Self {
+        Self {
+            latitude: 48.600052,
+            longitude: 2.347038,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_home_default() {
+        let home = Home::default();
+        assert_eq!(home.latitude, 48.600052);
+        assert_eq!(home.longitude, 2.347038);
+    }
+
+    #[test]
+    fn test_home_custom() {
+        let home = Home::new(50.8503, 4.3517);
+        assert_eq!(home.latitude, 50.8503);
+        assert_eq!(home.longitude, 4.3517);
     }
 }
