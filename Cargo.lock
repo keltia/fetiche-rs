@@ -3646,6 +3646,7 @@ dependencies = [
  "serde_json",
  "strum",
  "tabled",
+ "tempfile",
  "test-pretty-log",
  "thiserror 2.0.21",
  "tokio",
