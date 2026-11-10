@@ -1,9 +1,11 @@
 use thiserror::Error;
 
+use crate::cmds::CmdError;
+
 #[allow(dead_code)]
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum Status {
-    #[error("No database specified anywhere (config: {0}")]
+    #[error("No database specified anywhere (config: {0})")]
     NoDatabase(String),
     #[error("No datalake specified in {0}")]
     NoDatalake(String),
@@ -23,4 +25,37 @@ pub enum Status {
     MissingProfile(String),
     #[error("Missing airports path in {0}")]
     MissingAirportsFile(String),
+    #[error(transparent)]
+    Cmd(#[from] CmdError),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_status_display() {
+        let err = Status::NoDatabase("config.hcl".into());
+        assert_eq!(
+            err.to_string(),
+            "No database specified anywhere (config: config.hcl)"
+        );
+
+        let err = Status::BadFileVersion(2);
+        assert_eq!(err.to_string(), "Bad file version 2");
+
+        let err = Status::MissingProfile("dev".into());
+        assert_eq!(err.to_string(), "Missing profile dev");
+    }
+
+    #[test]
+    fn test_status_from_cmderror() {
+        let cmd_err = CmdError::BadDateFormat("invalid-date".into());
+        let status: Status = cmd_err.into();
+        assert_eq!(
+            status,
+            Status::Cmd(CmdError::BadDateFormat("invalid-date".into()))
+        );
+        assert_eq!(status.to_string(), "Unknown date format invalid-date.");
+    }
 }

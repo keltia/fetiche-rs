@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[allow(dead_code)]
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum CmdError {
     #[error("Unknown date format {0}.")]
     BadDateFormat(String),
