@@ -187,21 +187,21 @@ impl DateOpts {
                         error!("Cannot get date from system: {}", e);
                         ErrDateOpts::CannotGetDate
                     })?
-                    .checked_sub(Duration::from_hours(24))
+                    .checked_sub(1.days())
                     .map_err(|e| {
                         error!("Cannot compute date: {}", e);
                         ErrDateOpts::FailedCalculus(e.to_string())
                     })?;
 
                 let begin = yesterday
-                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Floor))
+                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Trunc))
                     .map_err(|e| {
                         error!("Cannot compute date: {}", e);
                         ErrDateOpts::FailedCalculus(e.to_string())
                     })?;
 
-                let end = yesterday
-                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Ceil))
+                let end = begin
+                    .checked_add(1.days())
                     .map_err(|e| {
                         error!("Cannot compute date: {}", e);
                         ErrDateOpts::FailedCalculus(e.to_string())
