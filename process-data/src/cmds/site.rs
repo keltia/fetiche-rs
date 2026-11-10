@@ -195,7 +195,6 @@ pub async fn find_site_by_id(ctx: &Context, id: u32) -> eyre::Result<Site> {
 ///
 #[tracing::instrument(skip(ctx))]
 async fn query_site_by_name(ctx: &Context, site: &str) -> eyre::Result<Site> {
-    #[cfg(test)]
     if let Some(lookup) = &ctx.site_lookup {
         return lookup.find_site_by_name(site.to_owned()).await;
     }
@@ -273,7 +272,6 @@ async fn query_site_by_name(ctx: &Context, site: &str) -> eyre::Result<Site> {
 ///
 #[tracing::instrument(skip(ctx))]
 async fn query_site_by_id(ctx: &Context, id: u32) -> eyre::Result<Site> {
-    #[cfg(test)]
     if let Some(lookup) = &ctx.site_lookup {
         return lookup.find_site_by_id(id).await;
     }
@@ -324,7 +322,6 @@ async fn query_site_by_id(ctx: &Context, id: u32) -> eyre::Result<Site> {
 ///
 #[tracing::instrument(skip(ctx))]
 pub async fn enumerate_sites(ctx: &Context, day: DateTime<Utc>) -> eyre::Result<Vec<Site>> {
-    #[cfg(test)]
     if let Some(lookup) = &ctx.site_lookup {
         return lookup.enumerate_sites(day).await;
     }
@@ -388,7 +385,6 @@ async fn query_match_site(
     day: DateTime<Utc>,
     antenna: &str,
 ) -> eyre::Result<String> {
-    #[cfg(test)]
     if let Some(lookup) = &ctx.site_lookup {
         return lookup.match_site(day, antenna.to_owned()).await;
     }

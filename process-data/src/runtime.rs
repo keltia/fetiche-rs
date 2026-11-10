@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-#[cfg(test)]
+use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -55,11 +55,16 @@ pub struct Context {
     pub wait: u64,
     /// Dry run
     pub dry_run: bool,
-    #[cfg(test)]
-    pub(crate) site_lookup: Option<Arc<dyn SiteLookup>>,
+    /// Optional site lookup provider
+    pub site_lookup: Option<Arc<dyn SiteLookup>>,
 }
 
 impl Context {
+    /// Sets or replaces the custom site lookup provider.
+    pub fn with_site_lookup(mut self, lookup: Arc<dyn SiteLookup>) -> Self {
+        self.site_lookup = Some(lookup);
+        self
+    }
     /// Returns a `Client` from the database connection pool.
     ///
     /// This method retrieves an available ClickHouse client from the connection pool.
@@ -307,7 +312,6 @@ pub async fn init_runtime(name: &'static str, opts: &Opts) -> eyre::Result<Conte
         pool_size,
         wait: opts.wait,
         dry_run: opts.dry_run,
-        #[cfg(test)]
         site_lookup: None,
     };
     debug!("{:?}", &ctx.config);
@@ -320,6 +324,30 @@ pub async fn init_runtime(name: &'static str, opts: &Opts) -> eyre::Result<Conte
 pub fn finish_runtime(_ctx: &Context) -> eyre::Result<()> {
     close_logging();
     Ok(())
+}
+
+/// Type alias for the pinned future returned by `SiteLookup` methods.
+pub type SiteLookupFuture<T> =
+    Pin<Box<dyn Future<Output = eyre::Result<T>> + Send + 'static>>;
+
+/// Trait defining asynchronous lookup and query methods for `Site` entries.
+#[cfg_attr(test, mockall::automock)]
+pub trait SiteLookup: Send + Sync {
+    /// Lookup a site by name.
+    fn find_site_by_name(&self, site: String) -> SiteLookupFuture<crate::cmds::Site>;
+    /// Lookup a site by ID.
+    fn find_site_by_id(&self, id: u32) -> SiteLookupFuture<crate::cmds::Site>;
+    /// Enumerate all active sites for a given day.
+    fn enumerate_sites(
+        &self,
+        day: chrono::DateTime<chrono::Utc>,
+    ) -> SiteLookupFuture<Vec<crate::cmds::Site>>;
+    /// Match an antenna name to a site name for a given day.
+    fn match_site(
+        &self,
+        day: chrono::DateTime<chrono::Utc>,
+        antenna: String,
+    ) -> SiteLookupFuture<String>;
 }
 
 /// Creates a test Context without requiring a database connection.
@@ -336,77 +364,32 @@ pub fn finish_runtime(_ctx: &Context) -> eyre::Result<()> {
 /// # Returns
 ///
 /// A Context suitable for testing with mock database functions
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use std::collections::HashMap;
-/// use process_data::runtime::init_test_context;
-///
-/// let mut config = HashMap::new();
-/// config.insert("threshold".to_string(), "1852.0".to_string());
-/// config.insert("factor".to_string(), "3.0".to_string());
-/// config.insert("distance".to_string(), "70.0".to_string());
-///
-/// let ctx = init_test_context(config);
-/// // Use ctx with mock functions that don't touch ctx.db()
-/// ```
-///
 #[cfg(test)]
-pub(crate) type SiteLookupFuture<T> =
-    Pin<Box<dyn Future<Output = eyre::Result<T>> + Send + 'static>>;
+pub async fn init_test_context(config: HashMap<String, String>) -> eyre::Result<Context> {
+    use klickhouse::{ClientOptions, ConnectionManager, bb8};
 
-#[cfg(test)]
-#[mockall::automock]
-pub(crate) trait SiteLookup: Send + Sync {
-    fn find_site_by_name(&self, site: String) -> SiteLookupFuture<crate::cmds::Site>;
-    fn find_site_by_id(&self, id: u32) -> SiteLookupFuture<crate::cmds::Site>;
-    fn enumerate_sites(
-        &self,
-        day: chrono::DateTime<chrono::Utc>,
-    ) -> SiteLookupFuture<Vec<crate::cmds::Site>>;
-    fn match_site(
-        &self,
-        day: chrono::DateTime<chrono::Utc>,
-        antenna: String,
-    ) -> SiteLookupFuture<String>;
+    // Use localhost:1 which will fail fast if accidentally accessed
+    // Port 1 is tcpmux and won't have ClickHouse running
+    let manager = ConnectionManager::new(
+        "127.0.0.1:1".to_string(),
+        ClientOptions {
+            username: "test".to_string(),
+            password: "test".to_string(),
+            default_database: "test".to_string(),
+            ..Default::default()
+        },
+    )
+    .await?;
+
+    // Build the pool without checking connections
+    let pool = bb8::Pool::builder().max_size(1).build_unchecked(manager);
+
+    Ok(Context {
+        config: Arc::new(config),
+        dbh: pool,
+        pool_size: 1,
+        wait: 0,
+        dry_run: true,
+        site_lookup: None,
+    })
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::Context;
-    use std::collections::HashMap;
-    use std::sync::Arc;
-
-    pub async fn init_test_context(config: HashMap<String, String>) -> eyre::Result<Context> {
-        use klickhouse::{ClientOptions, ConnectionManager, bb8};
-
-        // Use localhost:1 which will fail fast if accidentally accessed
-        // Port 1 is tcpmux and won't have ClickHouse running
-        let manager = ConnectionManager::new(
-            "127.0.0.1:1".to_string(),
-            ClientOptions {
-                username: "test".to_string(),
-                password: "test".to_string(),
-                default_database: "test".to_string(),
-                ..Default::default()
-            },
-        )
-        .await?;
-
-        // Build the pool without checking connections
-        let pool = bb8::Pool::builder().max_size(1).build_unchecked(manager);
-
-        Ok(Context {
-            config: Arc::new(config),
-            dbh: pool,
-            pool_size: 1,
-            wait: 0,
-            dry_run: true,
-            site_lookup: None,
-        })
-    }
-}
-
-#[cfg(test)]
-pub(crate) use tests::init_test_context;
