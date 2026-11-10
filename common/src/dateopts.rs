@@ -1,12 +1,12 @@
 use std::time::Duration;
 
 use clap::Parser;
-use eyre::Report;
 use jiff::civil::{date, Date, ISOWeekDate, Weekday};
 use jiff::tz::TimeZone;
 use jiff::{RoundMode, Timestamp, ToSpan, Unit, Zoned, ZonedRound};
-use thiserror::Error;
 use tracing::{error, trace};
+
+use crate::ErrDateOpts;
 
 /// Enum `DateOpts` provides various options for specifying date ranges or formats.
 ///
@@ -61,24 +61,6 @@ pub enum DateOpts {
     Today,
     /// Shortcut to yesterday
     Yesterday,
-}
-
-#[derive(Debug, Error)]
-pub enum ErrDateOpts {
-    #[error("bad date: {0}")]
-    BadDate(String),
-    #[error("bad week number: must be 1 <= {0} <= 53.")]
-    BadWeekNumber(i64),
-    #[error("cannot get date from system")]
-    CannotGetDate,
-    #[error("failed to calculate date: {0}")]
-    FailedCalculus(String),
-}
-
-impl From<Report> for ErrDateOpts {
-    fn from(value: Report) -> Self {
-        ErrDateOpts::BadDate(value.to_string())
-    }
 }
 
 impl DateOpts {

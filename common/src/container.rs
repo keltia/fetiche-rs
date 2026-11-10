@@ -8,6 +8,8 @@ use std::str::FromStr;
 use strum::VariantNames;
 use tabled::{Table, Tabled, settings::Style};
 
+use crate::ContainerError;
+
 /// Represents different supported container formats.
 ///
 /// # Variants
