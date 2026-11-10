@@ -7,10 +7,8 @@ use std::fs;
 use clap::Parser;
 use eyre::Result;
 use klickhouse::{DateTime, Row};
-use polars::io::SerReader;
-use polars::prelude::{CsvParseOptions, ParquetWriter};
+use polars::prelude::{DataFrame, ParquetWriter, df};
 use serde::{Deserialize, Serialize};
-use tempfile::Builder;
 use tracing::{debug, info, trace};
 
 use fetiche_common::Delim;
@@ -287,11 +285,95 @@ async fn export_all_encounters_csv(ctx: &Context, fname: &str) -> Result<()> {
     Ok(())
 }
 
+/// Convert a slice of `Encounter` records directly into a Polars `DataFrame` in memory.
+fn encounters_to_df(encounters: &[Encounter]) -> Result<DataFrame> {
+    let mut site: Vec<i32> = Vec::with_capacity(encounters.len());
+    let mut sitename: Vec<String> = Vec::with_capacity(encounters.len());
+    let mut en_id: Vec<String> = Vec::with_capacity(encounters.len());
+    let mut time: Vec<String> = Vec::with_capacity(encounters.len());
+    let mut journey: Vec<i32> = Vec::with_capacity(encounters.len());
+    let mut drone_id: Vec<String> = Vec::with_capacity(encounters.len());
+    let mut model: Vec<String> = Vec::with_capacity(encounters.len());
+    let mut drone_lat: Vec<f32> = Vec::with_capacity(encounters.len());
+    let mut drone_lon: Vec<f32> = Vec::with_capacity(encounters.len());
+    let mut drone_alt_m: Vec<f32> = Vec::with_capacity(encounters.len());
+    let mut drone_height_m: Vec<f32> = Vec::with_capacity(encounters.len());
+    let mut prox_callsign: Vec<String> = Vec::with_capacity(encounters.len());
+    let mut prox_id: Vec<String> = Vec::with_capacity(encounters.len());
+    let mut prox_lat: Vec<f32> = Vec::with_capacity(encounters.len());
+    let mut prox_lon: Vec<f32> = Vec::with_capacity(encounters.len());
+    let mut prox_alt_m: Vec<f32> = Vec::with_capacity(encounters.len());
+    let mut prox_mode_a: Vec<String> = Vec::with_capacity(encounters.len());
+    let mut prox_ecat: Vec<i32> = Vec::with_capacity(encounters.len());
+    let mut distance_slant_m: Vec<i32> = Vec::with_capacity(encounters.len());
+    let mut distance_hor_m: Vec<i32> = Vec::with_capacity(encounters.len());
+    let mut distance_vert_m: Vec<i32> = Vec::with_capacity(encounters.len());
+    let mut distance_home_m: Vec<i32> = Vec::with_capacity(encounters.len());
+
+    for e in encounters {
+        site.push(e.site);
+        sitename.push(e.sitename.clone());
+        en_id.push(e.en_id.clone());
+        let ts =
+            jiff::Timestamp::from_second(e.time.1 as i64).unwrap_or(jiff::Timestamp::UNIX_EPOCH);
+        let time_str = if let Ok(tz) = jiff::tz::TimeZone::get(e.time.0.name()) {
+            ts.to_zoned(tz).to_string()
+        } else {
+            ts.to_string()
+        };
+        time.push(time_str);
+        journey.push(e.journey);
+        drone_id.push(e.drone_id.clone());
+        model.push(e.model.clone());
+        drone_lat.push(e.drone_lat);
+        drone_lon.push(e.drone_lon);
+        drone_alt_m.push(e.drone_alt_m);
+        drone_height_m.push(e.drone_height_m);
+        prox_callsign.push(e.prox_callsign.clone());
+        prox_id.push(e.prox_id.clone());
+        prox_lat.push(e.prox_lat);
+        prox_lon.push(e.prox_lon);
+        prox_alt_m.push(e.prox_alt_m);
+        prox_mode_a.push(e.prox_mode_a.clone());
+        prox_ecat.push(e.prox_ecat);
+        distance_slant_m.push(e.distance_slant_m);
+        distance_hor_m.push(e.distance_hor_m);
+        distance_vert_m.push(e.distance_vert_m);
+        distance_home_m.push(e.distance_home_m);
+    }
+
+    let df = df!(
+        "site" => site,
+        "sitename" => sitename,
+        "en_id" => en_id,
+        "time" => time,
+        "journey" => journey,
+        "drone_id" => drone_id,
+        "model" => model,
+        "drone_lat" => drone_lat,
+        "drone_lon" => drone_lon,
+        "drone_alt_m" => drone_alt_m,
+        "drone_height_m" => drone_height_m,
+        "prox_callsign" => prox_callsign,
+        "prox_id" => prox_id,
+        "prox_lat" => prox_lat,
+        "prox_lon" => prox_lon,
+        "prox_alt_m" => prox_alt_m,
+        "prox_mode_a" => prox_mode_a,
+        "prox_ecat" => prox_ecat,
+        "distance_slant_m" => distance_slant_m,
+        "distance_hor_m" => distance_hor_m,
+        "distance_vert_m" => distance_vert_m,
+        "distance_home_m" => distance_home_m,
+    )?;
+
+    Ok(df)
+}
+
 /// Exports all encounters as a Parquet file.
 ///
-/// This function first generates a temporary CSV file from all encounters by invoking
-/// the `export_all_encounters_csv` function. It then reads the CSV file into a DataFrame and
-/// writes the DataFrame to a Parquet file in the specified location.
+/// This function retrieves all records in the `airplane_prox` table, converts them
+/// directly into a Polars DataFrame in memory, and writes the DataFrame to a Parquet file.
 ///
 /// # Arguments
 /// * `ctx` - Application context providing access to the database and other resources.
@@ -301,15 +383,13 @@ async fn export_all_encounters_csv(ctx: &Context, fname: &str) -> Result<()> {
 /// * `Result<()>` - Returns an `Ok` result on success, or an error if anything goes wrong.
 ///
 /// # Process
-/// 1. Creates a temporary CSV file using `tempfile`.
-/// 2. Calls `export_all_encounters_csv` to populate the temporary CSV file with encounter data.
-/// 3. Reads the CSV data into a DataFrame using Polars utilities.
-/// 4. Writes the DataFrame data into a Parquet file format.
+/// 1. Retrieves all encounters from the `airplane_prox` table.
+/// 2. Converts the records directly in-memory into a Polars `DataFrame`.
+/// 3. Writes the DataFrame into a Parquet file format.
 ///
 /// # Errors
 /// This function may return errors in the following cases:
-/// * Failure to create the temporary file.
-/// * Issues with reading or writing CSV and Parquet files.
+/// * Issues with writing Parquet files.
 /// * Database query errors while retrieving the encounters data.
 ///
 /// # Examples
@@ -327,25 +407,12 @@ async fn export_all_encounters_csv(ctx: &Context, fname: &str) -> Result<()> {
 ///
 #[tracing::instrument(skip(ctx))]
 async fn export_all_encounters_parquet(ctx: &Context, fname: &str) -> Result<()> {
-    let csv = Builder::new().suffix(".csv").tempfile()?;
-    let tmpname = csv.path().to_string_lossy().to_string();
+    let data = retrieve_all_encounters(ctx).await?;
+    let len = data.len();
 
-    // Generate the csv file as `tmpname`
-    //
-    export_all_encounters_csv(ctx, &tmpname).await?;
+    trace!("Writing {fname} as parquet with {len} encounters.");
 
-    trace!("Writing {fname} as parquet.");
-
-    // nh = no header line (default = false which means has header line).
-    //
-    let header = true;
-
-    let opts = CsvParseOptions::default().with_try_parse_dates(true);
-    let mut df = polars::prelude::CsvReadOptions::default()
-        .with_has_header(header)
-        .with_parse_options(opts)
-        .try_into_reader_with_file_path(Some(tmpname.into()))?
-        .finish()?;
+    let mut df = encounters_to_df(&data)?;
 
     let mut file = fs::File::create(fname)?;
     ParquetWriter::new(&mut file).finish(&mut df)?;
@@ -447,4 +514,68 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
     }
     info!("Done.");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_encounters_to_df_empty() {
+        let empty: Vec<Encounter> = Vec::new();
+        let df = encounters_to_df(&empty).expect("should build dataframe for empty encounters");
+        assert_eq!(df.height(), 0);
+        assert_eq!(df.width(), 22);
+        assert!(df.column("site").is_ok());
+        assert!(df.column("sitename").is_ok());
+        assert!(df.column("en_id").is_ok());
+        assert!(df.column("time").is_ok());
+        assert!(df.column("distance_home_m").is_ok());
+    }
+
+    #[test]
+    fn test_encounters_to_df_populated_and_parquet_write() {
+        let time = DateTime(klickhouse::Tz::UTC, 1704110400);
+
+        let encounter = Encounter {
+            site: 1,
+            sitename: "SiteA".to_string(),
+            en_id: "ENC001".to_string(),
+            time,
+            journey: 42,
+            drone_id: "DRONE01".to_string(),
+            model: "Mavic".to_string(),
+            drone_lat: 48.85,
+            drone_lon: 2.35,
+            drone_alt_m: 120.0,
+            drone_height_m: 50.0,
+            prox_callsign: "AFR123".to_string(),
+            prox_id: "PROX01".to_string(),
+            prox_lat: 48.86,
+            prox_lon: 2.36,
+            prox_alt_m: 300.0,
+            prox_mode_a: "7000".to_string(),
+            prox_ecat: 1,
+            distance_slant_m: 1500,
+            distance_hor_m: 1400,
+            distance_vert_m: 180,
+            distance_home_m: 2500,
+        };
+
+        let encounters = vec![encounter];
+        let mut df = encounters_to_df(&encounters).expect("should convert encounters to df");
+        assert_eq!(df.height(), 1);
+        assert_eq!(df.width(), 22);
+
+        let site_col = df.column("site").unwrap();
+        assert_eq!(site_col.get(0).unwrap(), polars::prelude::AnyValue::Int32(1));
+
+        let temp_dir = tempfile::tempdir().unwrap();
+        let parquet_path = temp_dir.path().join("test_encounters.parquet");
+        let mut file = fs::File::create(&parquet_path).unwrap();
+        ParquetWriter::new(&mut file).finish(&mut df).unwrap();
+
+        assert!(parquet_path.exists());
+        assert!(fs::metadata(&parquet_path).unwrap().len() > 0);
+    }
 }
