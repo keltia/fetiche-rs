@@ -89,23 +89,6 @@ impl From<&str> for Container {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_container_from_str() {
-        assert_eq!(Container::from("data.csv"), Container::CSV);
-        assert_eq!(Container::from("data.CSV"), Container::CSV);
-        assert_eq!(Container::from("data.parquet"), Container::Parquet);
-        assert_eq!(Container::from("data.PARQUET"), Container::Parquet);
-        assert_eq!(Container::from("data.txt"), Container::Raw);
-        assert_eq!(Container::from("data"), Container::Raw);
-        assert_eq!(Container::from("data."), Container::Raw);
-        assert_eq!(Container::from(""), Container::Raw);
-    }
-}
-
 // -----
 
 /// Current `containers.hcl` version (forked from `formats.hcl`).
@@ -153,13 +136,26 @@ pub struct ContainerDescr {
 /// * `format` - A `BTreeMap` holding the metadata for each container type, keyed by the container's name.
 ///
 /// Each entry in the `format` field references a `ContainerDescr` structure, which provides descriptive details about that specific format.
-
 #[derive(Debug, Deserialize)]
 pub struct ContainerFile {
     /// Version
     pub version: usize,
     /// Ordered list of format metadata
     pub format: BTreeMap<String, ContainerDescr>,
+}
+
+impl ContainerFile {
+    /// Parse and validate container format metadata from an HCL string.
+    pub fn parse_str(descr: &str) -> Result<Self, ContainerError> {
+        let fstr: ContainerFile = hcl::from_str(descr)?;
+        if fstr.version != CVERSION {
+            return Err(ContainerError::VersionMismatch {
+                expected: CVERSION,
+                actual: fstr.version,
+            });
+        }
+        Ok(fstr)
+    }
 }
 
 impl Container {
@@ -177,14 +173,91 @@ impl Container {
     /// Returns an error if there is an issue in parsing the HCL file or during processing.
     pub fn list() -> eyre::Result<String> {
         let descr = include_str!("containers.hcl");
-        let fstr: ContainerFile = hcl::from_str(descr)?;
-
-        // Safety checks
-        //
-        assert_eq!(fstr.version, CVERSION);
+        let fstr = ContainerFile::parse_str(descr)?;
 
         let mut table = Table::new(fstr.format);
         let str = table.with(Style::sharp()).to_string();
         Ok(str)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_container_from_str() {
+        assert_eq!(Container::from("data.csv"), Container::CSV);
+        assert_eq!(Container::from("data.CSV"), Container::CSV);
+        assert_eq!(Container::from("data.parquet"), Container::Parquet);
+        assert_eq!(Container::from("data.PARQUET"), Container::Parquet);
+        assert_eq!(Container::from("data.txt"), Container::Raw);
+        assert_eq!(Container::from("data"), Container::Raw);
+        assert_eq!(Container::from("data."), Container::Raw);
+        assert_eq!(Container::from(""), Container::Raw);
+    }
+
+    #[test]
+    fn test_container_list() -> eyre::Result<()> {
+        let table = Container::list()?;
+        assert!(table.contains("CSV") || table.contains("csv") || table.contains("Type"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_container_parse_valid() -> Result<(), ContainerError> {
+        let hcl_data = r#"
+            version = 2
+            format "csv" {
+                type = "text/csv"
+                description = "Comma Separated Values"
+                source = "builtin"
+                url = "https://example.com"
+            }
+        "#;
+        let file = ContainerFile::parse_str(hcl_data)?;
+        assert_eq!(file.version, 2);
+        assert!(file.format.contains_key("csv"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_container_parse_version_mismatch() {
+        let hcl_data = r#"
+            version = 1
+            format "csv" {
+                type = "text/csv"
+                description = "Comma Separated Values"
+                source = "builtin"
+                url = "https://example.com"
+            }
+        "#;
+        let result = ContainerFile::parse_str(hcl_data);
+        assert!(matches!(
+            result,
+            Err(ContainerError::VersionMismatch {
+                expected: 2,
+                actual: 1
+            })
+        ));
+    }
+
+    #[test]
+    fn test_container_parse_syntax_error() {
+        let hcl_data = "invalid hcl content {{{";
+        let result = ContainerFile::parse_str(hcl_data);
+        assert!(matches!(result, Err(ContainerError::Parse(_))));
+    }
+
+    #[test]
+    fn test_container_error_display() {
+        let err = ContainerError::VersionMismatch {
+            expected: 2,
+            actual: 3,
+        };
+        assert_eq!(
+            err.to_string(),
+            "container format version mismatch: expected 2, got 3"
+        );
     }
 }
