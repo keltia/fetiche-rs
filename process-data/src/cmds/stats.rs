@@ -2,11 +2,10 @@
 //!
 
 use std::fmt::{Display, Formatter};
-use std::ops::Add;
-use std::vec;
+use std::iter::Sum;
+use std::ops::{Add, AddAssign};
 
 use chrono::{DateTime, Utc};
-use itertools::fold;
 
 /// Represents different types of statistics that can be gathered and manipulated.
 ///
@@ -18,13 +17,17 @@ pub enum Stats {
     Planes(PlanesStats),
 }
 
+impl Default for Stats {
+    fn default() -> Self {
+        Self::Planes(PlanesStats::default())
+    }
+}
+
 impl Stats {
     /// Summarize a vector of `Stats` into a single `Stats` instance.
     ///
-    /// This method takes a vector of `Stats` and combines them into one.
+    /// This method delegates to `std::iter::Sum`.
     /// If the vector is empty, a default instance of `Stats::Planes` is returned.
-    /// If there is only one element in the vector, it is returned directly.
-    /// Otherwise, all the elements in the vector are folded together using the `+` operator.
     ///
     /// # Arguments
     ///
@@ -48,16 +51,14 @@ impl Stats {
     /// ```
     ///
     pub fn summarise(v: Vec<Stats>) -> Stats {
-        match v.len() {
-            0 => Stats::Planes(PlanesStats::default()),
-            _ => {
-                let first = v[0].clone();
-                if v.len() == 1 {
-                    first
-                } else {
-                    fold(v[1..].iter(), first, |a, b| a + b.clone())
-                }
-            }
+        v.into_iter().sum()
+    }
+}
+
+impl AddAssign for Stats {
+    fn add_assign(&mut self, rhs: Self) {
+        match (self, rhs) {
+            (Stats::Planes(a), Stats::Planes(b)) => *a += b,
         }
     }
 }
@@ -102,10 +103,21 @@ impl Add for Stats {
 
     /// Add two statistics
     ///
-    fn add(self, rhs: Self) -> Self::Output {
-        match self {
-            Stats::Planes(inner) => Stats::Planes(inner + rhs.into()),
-        }
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+impl Sum for Stats {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.reduce(|a, b| a + b).unwrap_or_default()
+    }
+}
+
+impl<'a> Sum<&'a Stats> for Stats {
+    fn sum<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
+        iter.cloned().sum()
     }
 }
 
@@ -388,23 +400,41 @@ impl Display for PlanesStats {
 /// assert_eq!(result.time, 250);
 /// ```
 ///
+impl AddAssign for PlanesStats {
+    fn add_assign(&mut self, rhs: Self) {
+        self.day.extend(rhs.day);
+        if self.distance == 0.0 {
+            self.distance = rhs.distance;
+        }
+        if self.proximity == 0.0 {
+            self.proximity = rhs.proximity;
+        }
+        self.planes += rhs.planes;
+        self.drones += rhs.drones;
+        self.potential += rhs.potential;
+        self.encounters += rhs.encounters;
+        self.time += rhs.time;
+    }
+}
+
 impl Add for PlanesStats {
     type Output = PlanesStats;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        let mut days = self.day.clone();
-        let added = rhs.day.first().unwrap().to_owned();
-        days.push(added);
-        Self {
-            day: days.clone(),
-            distance: self.distance,
-            proximity: self.proximity,
-            planes: self.planes + rhs.planes,
-            drones: self.drones + rhs.drones,
-            potential: self.potential + rhs.potential,
-            encounters: self.encounters + rhs.encounters,
-            time: self.time + rhs.time,
-        }
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+impl Sum for PlanesStats {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.reduce(|a, b| a + b).unwrap_or_default()
+    }
+}
+
+impl<'a> Sum<&'a PlanesStats> for PlanesStats {
+    fn sum<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
+        iter.cloned().sum()
     }
 }
 
