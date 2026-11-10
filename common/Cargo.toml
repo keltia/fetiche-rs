@@ -85,6 +85,7 @@ polars.workspace = true
 proptest.workspace = true
 ractor.workspace = true
 rstest.workspace = true
+tempfile.workspace = true
 tokio.workspace = true
 
 datafusion = "55"

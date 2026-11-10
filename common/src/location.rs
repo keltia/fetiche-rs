@@ -131,10 +131,10 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
 
     let mut list = BTreeMap::<String, Location>::new();
     let mut rdr = csv::Reader::from_reader(data.as_bytes());
-    rdr.deserialize().for_each(|line| {
-        let rec: Location = line.unwrap();
+    for line in rdr.deserialize() {
+        let rec: Location = line?;
         list.insert(rec.name.clone(), rec);
-    });
+    }
 
     Ok(list)
 }
@@ -252,5 +252,53 @@ mod tests {
         assert_eq!(shorten(4.816699981689453), shorten(x1));
         assert_eq!(shorten(51.216697692871094), shorten(y1));
         Ok(())
+    }
+
+    #[test]
+    fn test_load_locations_default() -> Result<()> {
+        let locs = load_locations(None)?;
+        assert!(!locs.is_empty());
+        assert!(locs.contains_key("BEL"));
+        assert!(locs.contains_key("BRU"));
+        let bel = &locs["BEL"];
+        assert_eq!(bel.name, "BEL");
+        assert_eq!(bel.basename, "Belfast");
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_locations_custom_file() -> Result<()> {
+        use std::io::Write;
+        let mut tmp = tempfile::NamedTempFile::new()?;
+        writeln!(
+            tmp,
+            "\"id\",\"name\",\"code\",\"basename\",\"latitude\",\"longitude\",\"ref_altitude\"\n1,\"TEST\",\"8FW4J82W+2R\",\"TestSite\",48.5,2.3,100"
+        )?;
+        let path = tmp.path().to_string_lossy().to_string();
+        let locs = load_locations(Some(path))?;
+        assert_eq!(locs.len(), 1);
+        assert!(locs.contains_key("TEST"));
+        assert_eq!(locs["TEST"].basename, "TestSite");
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_locations_invalid_csv() -> Result<()> {
+        use std::io::Write;
+        let mut tmp = tempfile::NamedTempFile::new()?;
+        writeln!(
+            tmp,
+            "\"id\",\"name\",\"code\",\"basename\",\"latitude\",\"longitude\",\"ref_altitude\"\n1,\"TEST\",\"8FW4J82W+2R\",\"TestSite\",not_a_latitude,2.3,100"
+        )?;
+        let path = tmp.path().to_string_lossy().to_string();
+        let res = load_locations(Some(path));
+        assert!(res.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_locations_nonexistent_file() {
+        let res = load_locations(Some("non_existent_file_path_12345.csv".to_string()));
+        assert!(res.is_err());
     }
 }
