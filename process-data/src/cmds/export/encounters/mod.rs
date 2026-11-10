@@ -359,7 +359,7 @@ async fn export_encounter_list(
                                 let _ = fs::write(&fname, &res).await;
                             }
                             Err(e) => {
-                                eprintln!("({e}");
+                                eprintln!("({e})");
                             }
                         };
                     })
