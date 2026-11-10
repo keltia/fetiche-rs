@@ -13,9 +13,9 @@ use directories::BaseDirs;
 use eyre::{eyre, Result};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
+use std::fs;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
-use std::{env, fs};
 use tracing::{debug, error, trace};
 
 /// Config filename
@@ -94,7 +94,7 @@ where
                     .unwrap();
 
                 #[cfg(windows)]
-                let homedir = env::var("LOCALAPPDATA")
+                let homedir = std::env::var("LOCALAPPDATA")
                     .map_err(|_| error!("No LOCALAPPDATA variable defined, can not continue"))
                     .unwrap();
 
@@ -203,7 +203,9 @@ where
             debug!("{:?}", def);
             def
         };
-        assert!(fname.is_absolute());
+        if !fname.is_absolute() {
+            return Err(eyre!("Config file path must be absolute: {fname:?}"));
+        }
 
         trace!("Loading config file {fname:?} from {:?}", cfg.config_path());
 
@@ -236,26 +238,21 @@ where
     /// Return the list of possible configuration files within basedir
     ///
     pub fn list(&self) -> Vec<String> {
-        env::set_current_dir(self.root.as_path()).unwrap();
-
-        if let Ok(dir) = read_dir(env::current_dir().unwrap()) {
-            let list = dir
-                .into_iter()
-                .filter_map(|f| {
-                    if let Ok(p) = f {
-                        if p.file_name().to_string_lossy().ends_with(".hcl") {
-                            Some(p.file_name().into_string().unwrap())
-                        } else {
-                            None
-                        }
+        if let Ok(dir) = read_dir(&self.root) {
+            dir.into_iter()
+                .filter_map(|entry| {
+                    let entry = entry.ok()?;
+                    let filename = entry.file_name().into_string().ok()?;
+                    if filename.ends_with(".hcl") {
+                        Some(filename)
                     } else {
                         None
                     }
                 })
-                .collect::<Vec<_>>();
-            return list;
+                .collect()
+        } else {
+            vec![]
         }
-        vec![]
     }
 }
 
@@ -326,5 +323,18 @@ mod tests {
         let inner = cfg.inner();
         assert_eq!(CVERSION, inner.version());
         Ok(())
+    }
+
+    #[test]
+    fn test_config_engine_list() {
+        let current_dir = std::env::current_dir().unwrap();
+        let cfg = ConfigFile::<Foo> {
+            tag: "examples".into(),
+            root: PathBuf::from("examples"),
+            inner: None,
+        };
+        let list = cfg.list();
+        assert_eq!(current_dir, std::env::current_dir().unwrap());
+        assert!(list.contains(&"local.hcl".to_string()));
     }
 }
