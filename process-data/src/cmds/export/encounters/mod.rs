@@ -36,6 +36,7 @@ use kml::Kml::Document;
 use kml::{Kml, KmlDocument, KmlVersion};
 use regex::Regex;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use tokio::fs;
 use tracing::{debug, error, trace};
 
@@ -142,6 +143,15 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
     Ok(())
 }
 
+static RE_ENCOUNTER_ID: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r##"^(?<name>[A-Z0-9]{3})-(?<date>\d{8})-(?<journey>\d+)-(\d+)$"##)
+        .expect("valid encounter ID regex")
+});
+
+static RE_DATE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r##"^(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})$"##).expect("valid date regex")
+});
+
 /// Export a single encounter as a KML string based on its ID. This function fetches
 /// data points associated with the specified encounter ID (such as drones and planes)
 /// and generates a structured KML document.
@@ -172,17 +182,14 @@ pub async fn export_encounters(ctx: &Context, opts: &ExpEncounterOpts) -> Result
 async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     // Sanity check on the encounter ID.
     //
-    let re = Regex::new(r##"^(?<name>[A-Z0-9]{3})-(?<date>\d{8})-(?<journey>\d+)-(\d+)$"##)?;
-
-    let (sitename, date, journey) = if let Some(caps) = re.captures(id) {
+    let (sitename, date, journey) = if let Some(caps) = RE_ENCOUNTER_ID.captures(id) {
         let date = &caps["date"];
 
-        let re = Regex::new(r##"^(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})$"##)?;
-        if re.captures(date).is_none() {
+        if RE_DATE.captures(date).is_none() {
             return Err(CmdError::BadDateFormat(id.to_string()).into());
         }
         (
-            &caps["name"].to_string(),
+            caps["name"].to_string(),
             date.to_string(),
             caps["journey"].parse::<i32>()?,
         )
@@ -230,7 +237,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     let prox_id = res.prox_id.clone();
     let prox_callsign = res.prox_callsign.clone();
 
-    let planes = fetch_planes(ctx, sitename, &enc_coord, &prox_id, first, last).await?;
+    let planes = fetch_planes(ctx, &sitename, &enc_coord, &prox_id, first, last).await?;
     if planes.len() <= 1 {
         return Err(CmdError::NotEnoughData("planes".to_string()).into());
     }
@@ -398,5 +405,34 @@ mod tests {
         let result = export_encounter_list(&ctx, &[], &temp_dir).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn test_regex_encounter_id() {
+        assert!(RE_ENCOUNTER_ID.is_match("EIH-20231015-12-1"));
+        assert!(RE_ENCOUNTER_ID.is_match("BGA-20240101-1-42"));
+        assert!(!RE_ENCOUNTER_ID.is_match("invalid-id"));
+        assert!(!RE_ENCOUNTER_ID.is_match("LFPG-20231015-12-1"));
+        assert!(!RE_ENCOUNTER_ID.is_match("EIH-2023101-12-1"));
+
+        let caps = RE_ENCOUNTER_ID.captures("BGA-20240101-1-42").unwrap();
+        assert_eq!(&caps["name"], "BGA");
+        assert_eq!(&caps["date"], "20240101");
+        assert_eq!(&caps["journey"], "1");
+    }
+
+    #[test]
+    fn test_regex_date() {
+        assert!(RE_DATE.is_match("20240101"));
+        assert!(RE_DATE.is_match("19991231"));
+        assert!(!RE_DATE.is_match("2024101"));
+        assert!(!RE_DATE.is_match("2024-01-01"));
+    }
+
+    #[tokio::test]
+    async fn test_export_one_encounter_invalid_id() {
+        let ctx = crate::runtime::init_test_context(HashMap::new()).await.unwrap();
+        let result = export_one_encounter(&ctx, "invalid-encounter-id").await;
+        assert!(result.is_err());
     }
 }
