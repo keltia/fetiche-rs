@@ -35,7 +35,7 @@ use itertools::Itertools;
 use kml::Kml::Document;
 use kml::{Kml, KmlDocument, KmlVersion};
 use regex::Regex;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::fs;
 use tracing::{debug, error, trace};
 
@@ -270,7 +270,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
 /// # Arguments
 ///
 /// * `ctx` - A shared application context that contains configurations and database connection details.
-/// * `list` - A vector of encounter IDs (as strings) to be exported.
+/// * `list` - A slice of encounter IDs (as strings) to be exported.
 /// * `output` - A path to the directory where the exported KML files should be saved.
 ///
 /// # Returns
@@ -292,8 +292,8 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
 #[tracing::instrument(skip(ctx))]
 async fn export_encounter_list(
     ctx: &Context,
-    list: &Vec<String>,
-    output: &PathBuf,
+    list: &[String],
+    output: &Path,
 ) -> Result<usize> {
     assert!(output.is_dir(), "output must be a directory!");
 

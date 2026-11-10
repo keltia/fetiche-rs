@@ -20,9 +20,9 @@ struct DataPoint {
     altitude: f32,
 }
 
-fn from_traj_to_ls(points: &Vec<DataPoint>) -> Result<LineString> {
+fn from_traj_to_ls(points: &[DataPoint]) -> Result<LineString> {
     let coords = points
-        .into_iter()
+        .iter()
         .map(|p| {
             Coord::new(
                 p.longitude as f64,
@@ -42,7 +42,7 @@ fn from_traj_to_ls(points: &Vec<DataPoint>) -> Result<LineString> {
     Ok(ls)
 }
 
-fn from_traj_to_placemark(name: &str, points: &Vec<DataPoint>) -> Result<Kml> {
+fn from_traj_to_placemark(name: &str, points: &[DataPoint]) -> Result<Kml> {
     let ls = from_traj_to_ls(points)?;
     let pm = Placemark {
         name: Some(name.into()),

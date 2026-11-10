@@ -17,7 +17,7 @@ use std::collections::HashMap;
 ///
 /// # Arguments
 ///
-/// * `points` - A reference to a vector of `DataPoint`s containing position data.
+/// * `points` - A reference to a slice of `DataPoint`s containing position data.
 ///
 /// # Returns
 ///
@@ -28,7 +28,7 @@ use std::collections::HashMap;
 /// Will return an error if any issues occur during the processing of points.
 ///
 #[tracing::instrument]
-fn from_points_to_ls(points: &Vec<DataPoint>) -> eyre::Result<LineString> {
+fn from_points_to_ls(points: &[DataPoint]) -> eyre::Result<LineString> {
     let coords = points
         .iter()
         .map(|p| Coord::new(p.longitude, p.latitude, Some(p.altitude)))
@@ -237,7 +237,7 @@ pub fn default_styles() -> Vec<Kml<f64>> {
 pub fn from_traj_to_placemark(
     name: &str,
     icao: &str,
-    points: &Vec<DataPoint>,
+    points: &[DataPoint],
     style: &str,
 ) -> eyre::Result<Kml> {
     let ls = from_points_to_ls(points)?;
