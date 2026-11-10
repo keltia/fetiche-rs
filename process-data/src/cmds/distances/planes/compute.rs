@@ -46,6 +46,8 @@
 //! XXX CH does not have the SQL sequences so we need to generate the en_id field ourselves
 //!
 
+use std::sync::Arc;
+
 use eyre::Result;
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -55,7 +57,7 @@ use serde::{Deserialize, Serialize};
 use tokio::time::{Duration, Instant, sleep};
 use tracing::{debug, error, info, trace};
 
-use crate::cmds::{Calculate, ONE_DEG, PlaneDistance, PlanesStats, Stats, TempTables};
+use crate::cmds::{Calculate, DBVars, ONE_DEG, PlaneDistance, PlanesStats, Stats, TempTables};
 use crate::make_query;
 
 use fetiche_common::jiff_to_chrono;
@@ -109,8 +111,8 @@ impl PlaneDistance {
     /// The function is designed with proper error handling to ensure robustness in cases where
     /// the expected table or data is not present due to query constraints.
     ///
-    #[tracing::instrument(skip(dbh))]
-    async fn select_planes(&mut self, dbh: &Client) -> Result<usize> {
+    #[tracing::instrument(skip(dbh, guard))]
+    async fn select_planes(&mut self, dbh: &Client, guard: &mut TempTablesGuard) -> Result<usize> {
         let dbvars = self.dbvars.clone();
 
         let site = self.site.clone();
@@ -227,6 +229,7 @@ AS (
         };
 
         self.state.push(TempTables::Today);
+        guard.push(TempTables::Today);
         let count: u64 = count.get(0);
         trace!("Total number of planes: {}\n", count);
         Ok(count as usize)
@@ -263,8 +266,8 @@ AS (
     /// `Ok(usize)` with the count of drones matching the criteria.
     /// `Err` in case of any errors during table creation or querying the table.
     ///
-    #[tracing::instrument(skip(dbh))]
-    async fn select_drones(&mut self, dbh: &Client) -> Result<usize> {
+    #[tracing::instrument(skip(dbh, guard))]
+    async fn select_drones(&mut self, dbh: &Client, guard: &mut TempTablesGuard) -> Result<usize> {
         let dbvars = self.dbvars.clone();
         let tag = dbvars.tag.clone();
 
@@ -359,6 +362,7 @@ AS (
         };
 
         self.state.push(TempTables::Candidates);
+        guard.push(TempTables::Candidates);
         let count: u64 = count.get(0);
         trace!("Total number of drones: {}", count);
         Ok(count as usize)
@@ -391,8 +395,8 @@ AS (
     /// `Ok(usize)` with the count of encounters found.
     /// `Err` in case of any errors during table creation or querying.
     ///
-    #[tracing::instrument(skip(dbh))]
-    async fn find_close(&mut self, dbh: &Client) -> Result<usize> {
+    #[tracing::instrument(skip(dbh, guard))]
+    async fn find_close(&mut self, dbh: &Client, guard: &mut TempTablesGuard) -> Result<usize> {
         let dbvars = self.dbvars.clone();
         let tag = dbvars.tag.clone();
 
@@ -471,6 +475,7 @@ AS (
         let count: u64 = count.get(0);
 
         self.state.push(TempTables::TodayClose);
+        guard.push(TempTables::TodayClose);
 
         trace!("Total number of potential encounters: {}", count);
         Ok(count as usize)
@@ -494,8 +499,14 @@ AS (
     /// - `Ok(())` if the table is successfully created.
     /// - `Err` if there is any error during the table creation process.
     ///
-    #[tracing::instrument(skip(dbh))]
-    async fn create_table_ids(&mut self, dbh: &Client, day_name: &str, site: &str) -> Result<()> {
+    #[tracing::instrument(skip(dbh, guard))]
+    async fn create_table_ids(
+        &mut self,
+        dbh: &Client,
+        day_name: &str,
+        site: &str,
+        guard: &mut TempTablesGuard,
+    ) -> Result<()> {
         let dbvars = self.dbvars.clone();
         let tag = dbvars.tag.clone();
 
@@ -513,6 +524,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
             dbvars
         );
         self.state.push(TempTables::Ids);
+        guard.push(TempTables::Ids);
 
         Ok(dbh.execute(&r).await?)
     }
@@ -626,8 +638,12 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     /// - `Ok(usize)` indicating the number of new encounters inserted.
     /// - `Err` if an error occurs during table creation, data selection, or insertions.
     ///
-    #[tracing::instrument(skip(dbh))]
-    async fn select_encounters(&mut self, dbh: &Client) -> Result<usize> {
+    #[tracing::instrument(skip(dbh, guard))]
+    async fn select_encounters(
+        &mut self,
+        dbh: &Client,
+        guard: &mut TempTablesGuard,
+    ) -> Result<usize> {
         let dbvars = self.dbvars.clone();
         trace!("select and record close points. ");
 
@@ -652,7 +668,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
         // - join today_close and ids to get all points with the right en_id
         //
 
-        self.create_table_ids(dbh, &day_name, &name).await?;
+        self.create_table_ids(dbh, &day_name, &name, guard).await?;
         self.insert_ids(dbh, &day_name, &name).await?;
 
         let threshold = self.threshold;
@@ -729,22 +745,199 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     /// - `Err` if an error occurs while dropping any of the tables.
     ///
     #[tracing::instrument(skip(dbh))]
-    async fn cleanup_temp_tables(&self, dbh: &Client) -> Result<()> {
-        let dbvars = self.dbvars.clone();
-        debug!("dbvars={:?}", dbvars);
+    pub async fn cleanup_temp_tables(&self, dbh: &Client) -> Result<()> {
+        TempTablesGuard::drop_tables(dbh, &self.dbvars, &self.state).await
+    }
 
-        // Prepare the queries
+    async fn run_calculation(
+        &mut self,
+        dbh: &Client,
+        guard: &mut TempTablesGuard,
+    ) -> Result<Stats> {
+        info!("Running calculations for {}:", self.date);
+
+        // Convert jiff Timestamp to chrono only for formatting
+        let date_chrono = jiff_to_chrono(self.date)?;
+        let date_str = date_chrono.format("%Y%m%d").to_string();
+
+        let bar = self.progress.clone().unwrap_or_else(|| ProgressBar::new(4));
+        bar.set_length(4);
+        let style = ProgressStyle::with_template(
+            "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>2}/{len:2} {msg}",
+        )?
+        .progress_chars("##-");
+        bar.set_style(style);
+        bar.enable_steady_tick(Duration::from_millis(100));
+
+        // Create our stat struct (PlanesStats still uses chrono for storage)
         //
+        let separation = self.threshold * self.factor;
+        let stats = &mut PlanesStats::new(date_chrono, self.distance, separation);
+        let mut timings = Timings::default();
+
+        // Create table `today` with all identified plane points with the specified range
+        //
+        bar.set_message(format!("{date_str} - Select planes."));
+        let start = Instant::now();
+        let c_planes = self.select_planes(dbh, guard).await?;
+        timings.select_planes = (Instant::now() - start).as_millis();
+
+        bar.inc(1);
+
+        if c_planes == 0 {
+            stats.time = (Instant::now() - start).as_millis();
+            bar.set_message(format!("{date_str} - No planes found."));
+            bar.finish_and_clear();
+            guard.cleanup().await?;
+            return Ok(Stats::Planes(stats.clone()));
+        }
+        stats.planes = c_planes;
+        bar.set_message(format!("{date_str} - {} planes.", c_planes));
+        sleep(Duration::from_millis(self.wait)).await;
+
+        // Create table `candidates` with all designated drone points
+        //
+        bar.set_message(format!("{date_str} - Select drones."));
+        let start = Instant::now();
+        let c_drones = self.select_drones(dbh, guard).await?;
+        timings.select_drones = (Instant::now() - start).as_millis();
+        bar.inc(1);
+
+        if c_drones == 0 {
+            stats.time = (Instant::now() - start).as_millis();
+            bar.set_message(format!("{date_str} - No drones found."));
+            bar.finish_and_clear();
+            guard.cleanup().await?;
+            return Ok(Stats::Planes(stats.clone()));
+        }
+        stats.drones = c_drones;
+        bar.set_message(format!("{date_str} - {} drones.", c_drones));
+        sleep(Duration::from_millis(self.wait)).await;
+
+        // Create table `today_close` with all designated drone points and airplanes in proximity
+        //
+        bar.set_message(format!("{date_str} - Find close planes."));
+        let start = Instant::now();
+        let c_potential = self.find_close(dbh, guard).await?;
+        timings.find_close = (Instant::now() - start).as_millis();
+        bar.inc(1);
+
+        if c_potential == 0 {
+            stats.time = (Instant::now() - start).as_millis();
+            bar.set_message(format!("{date_str} - No potential airprox found."));
+            bar.finish_and_clear();
+            guard.cleanup().await?;
+            return Ok(Stats::Planes(stats.clone()));
+        }
+        stats.potential = c_potential;
+        bar.set_message(format!("{date_str} - {} potentials.", c_potential));
+        sleep(Duration::from_millis(self.wait)).await;
+
+        // Now we have the distance calculated.
+        //
+        bar.set_message(format!("{date_str} - Find encounters."));
+        let start = Instant::now();
+        let c_encounters = self.select_encounters(dbh, guard).await?;
+        timings.select_encounters = (Instant::now() - start).as_millis();
+        bar.inc(1);
+
+        stats.time = (Instant::now() - start).as_millis();
+        if c_encounters == 0 {
+            bar.set_message(format!(
+                "{date_str} - No close encounters of any kind found."
+            ));
+            bar.finish_and_clear();
+            guard.cleanup().await?;
+            return Ok(Stats::Planes(stats.clone()));
+        }
+        stats.encounters = c_encounters;
+        bar.set_message(format!("{date_str} - {} encounters.", c_encounters));
+        sleep(Duration::from_millis(self.wait)).await;
+
+        info!("Stats for {}\n{}", self.date, stats);
+        bar.set_message(format!("{date_str} - Done."));
+        bar.finish_and_clear();
+
+        guard.cleanup().await?;
+
+        debug!("timings={timings:?}");
+
+        Ok(Stats::Planes(stats.clone()))
+    }
+}
+
+/// RAII guard for ClickHouse temporary tables ensuring they are cleaned up on error, cancellation, or completion.
+pub struct TempTablesGuard {
+    dbh: Client,
+    dbvars: Arc<DBVars>,
+    tables: Vec<TempTables>,
+    cleaned: bool,
+}
+
+impl std::fmt::Debug for TempTablesGuard {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TempTablesGuard")
+            .field("dbvars", &self.dbvars)
+            .field("tables", &self.tables)
+            .field("cleaned", &self.cleaned)
+            .finish()
+    }
+}
+
+impl TempTablesGuard {
+    /// Create a new RAII guard for tracking temporary ClickHouse tables.
+    pub fn new(dbh: Client, dbvars: Arc<DBVars>) -> Self {
+        Self {
+            dbh,
+            dbvars,
+            tables: Vec::new(),
+            cleaned: false,
+        }
+    }
+
+    /// Track a temporary table for cleanup.
+    pub fn push(&mut self, table: TempTables) {
+        if !self.tables.contains(&table) {
+            self.tables.push(table);
+        }
+    }
+
+    /// Returns the slice of currently tracked temporary tables.
+    pub fn tables(&self) -> &[TempTables] {
+        &self.tables
+    }
+
+    /// Returns whether no temporary tables are currently tracked.
+    pub fn is_empty(&self) -> bool {
+        self.tables.is_empty()
+    }
+
+    /// Asynchronously drop all tracked temporary tables.
+    pub async fn cleanup(&mut self) -> Result<()> {
+        if self.cleaned || self.tables.is_empty() {
+            return Ok(());
+        }
+        self.cleaned = true;
+        let tables = std::mem::take(&mut self.tables);
+        Self::drop_tables(&self.dbh, &self.dbvars, &tables).await
+    }
+
+    /// Drop specified ClickHouse temporary tables.
+    pub(crate) async fn drop_tables(
+        dbh: &Client,
+        dbvars: &Arc<DBVars>,
+        tables: &[TempTables],
+    ) -> Result<()> {
+        let dbvars = dbvars.clone();
+        debug!("Cleaning up temporary tables with dbvars={:?}", dbvars);
+
         let r1 = make_query!("DROP TABLE IF EXISTS {workdb}.today{tag}", dbvars);
         let r2 = make_query!("DROP TABLE IF EXISTS {workdb}.candidates{tag}", dbvars);
         let r3 = make_query!("DROP TABLE IF EXISTS {workdb}.today_close{tag}", dbvars);
         let r4 = make_query!("DROP TABLE IF EXISTS {workdb}.ids{tag}", dbvars);
 
-        // Now run them
-        //
-        let list = self.state.clone();
-        let res = list
-            .into_iter()
+        let res = tables
+            .iter()
             .map(|t| {
                 let r1 = r1.clone();
                 let r2 = r2.clone();
@@ -765,6 +958,30 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     }
 }
 
+impl Drop for TempTablesGuard {
+    fn drop(&mut self) {
+        if !self.cleaned && !self.tables.is_empty() {
+            let dbh = self.dbh.clone();
+            let dbvars = self.dbvars.clone();
+            let tables = std::mem::take(&mut self.tables);
+            if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                handle.spawn(async move {
+                    trace!(
+                        "TempTablesGuard dropped without explicit cleanup; dropping {:?} in background",
+                        tables
+                    );
+                    let _ = Self::drop_tables(&dbh, &dbvars, &tables).await;
+                });
+            } else {
+                tracing::warn!(
+                    "TempTablesGuard dropped without explicit cleanup outside Tokio runtime; temporary tables {:?} may remain",
+                    tables
+                );
+            }
+        }
+    }
+}
+
 impl Calculate for PlaneDistance {
     /// Run the process for the given day.
     ///
@@ -779,7 +996,7 @@ impl Calculate for PlaneDistance {
     ///
     /// Each step is accompanied by progress updates via `indicatif` for better
     /// visibility during execution. Temporary tables are created during the process
-    /// and are cleaned up afterwards.
+    /// and are cleaned up afterwards via RAII `TempTablesGuard` across both success and failure paths.
     ///
     /// # Parameters
     /// - `dbh`: A reference to the database client used for query execution.
@@ -790,114 +1007,61 @@ impl Calculate for PlaneDistance {
     ///
     #[tracing::instrument(skip(self, dbh))]
     async fn run(&mut self, dbh: &Client) -> Result<Stats> {
-        info!("Running calculations for {}:", self.date);
-
-        // Convert jiff Timestamp to chrono only for formatting
-        let date_chrono = jiff_to_chrono(self.date)?;
-        let date_str = date_chrono.format("%Y%m%d").to_string();
-
-        let bar = self.progress.clone().unwrap_or_else(|| ProgressBar::new(4));
-        bar.set_length(4);
-        let style = ProgressStyle::with_template(
-            "{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos:>2}/{len:2} {msg}",
-        )?
-            .progress_chars("##-");
-        bar.set_style(style);
-        bar.enable_steady_tick(Duration::from_millis(100));
-
-        // Create our stat struct (PlanesStats still uses chrono for storage)
-        //
-        let separation = self.threshold * self.factor;
-        let stats = &mut PlanesStats::new(date_chrono, self.distance, separation);
-        let mut timings = Timings::default();
-
-        // Create table `today` with all identified plane points with the specified range
-        //
-        bar.set_message(format!("{date_str} - Select planes."));
-        let start = Instant::now();
-        let c_planes = self.select_planes(dbh).await?;
-        timings.select_planes = (Instant::now() - start).as_millis();
-
-        bar.inc(1);
-
-        if c_planes == 0 {
-            stats.time = (Instant::now() - start).as_millis();
-            bar.set_message(format!("{date_str} - No planes found."));
-            bar.finish_and_clear();
-            self.cleanup_temp_tables(dbh).await?;
-            return Ok(Stats::Planes(stats.clone()));
+        let mut guard = TempTablesGuard::new(dbh.clone(), self.dbvars.clone());
+        let res = self.run_calculation(dbh, &mut guard).await;
+        // Keep self.state synchronized with created temporary tables for inspection
+        self.state = guard.tables().to_vec();
+        if let Err(ref e) = res {
+            error!("Calculation failed: {e}. Executing temporary table cleanup guard.");
+            if let Err(cleanup_err) = guard.cleanup().await {
+                error!("Failed to clean up temporary ClickHouse tables on error: {cleanup_err}");
+            }
         }
-        stats.planes = c_planes;
-        bar.set_message(format!("{date_str} - {} planes.", c_planes));
-        sleep(Duration::from_millis(self.wait)).await;
+        res
+    }
+}
 
-        // Create table `candidates` with all designated drone points
-        //
-        bar.set_message(format!("{date_str} - Select drones."));
-        let start = Instant::now();
-        let c_drones = self.select_drones(dbh).await?;
-        timings.select_drones = (Instant::now() - start).as_millis();
-        bar.inc(1);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use klickhouse::ClientOptions;
 
-        if c_drones == 0 {
-            stats.time = (Instant::now() - start).as_millis();
-            bar.set_message(format!("{date_str} - No drones found."));
-            bar.finish_and_clear();
-            self.cleanup_temp_tables(dbh).await?;
-            return Ok(Stats::Planes(stats.clone()));
+    async fn make_test_client() -> Option<Client> {
+        Client::connect("127.0.0.1:9000", ClientOptions::default()).await.ok()
+    }
+
+    #[tokio::test]
+    async fn test_temp_tables_guard_lifecycle() {
+        if let Some(dbh) = make_test_client().await {
+            let dbvars = Arc::new(DBVars::default());
+            let mut guard = TempTablesGuard::new(dbh, dbvars);
+
+            assert!(guard.is_empty());
+            assert_eq!(guard.tables().len(), 0);
+
+            guard.push(TempTables::Today);
+            guard.push(TempTables::Candidates);
+            // Duplicate push should be ignored
+            guard.push(TempTables::Today);
+
+            assert_eq!(guard.tables(), &[TempTables::Today, TempTables::Candidates]);
+            assert!(!guard.is_empty());
+
+            // Explicit cleanup marks as cleaned and drains tables
+            let _ = guard.cleanup().await;
+            assert!(guard.is_empty());
         }
-        stats.drones = c_drones;
-        bar.set_message(format!("{date_str} - {} drones.", c_drones));
-        sleep(Duration::from_millis(self.wait)).await;
+    }
 
-        // Create table `today_close` with all designated drone points and airplanes in proximity
-        //
-        bar.set_message(format!("{date_str} - Find close planes."));
-        let start = Instant::now();
-        let c_potential = self.find_close(dbh).await?;
-        timings.find_close = (Instant::now() - start).as_millis();
-        bar.inc(1);
-
-        if c_potential == 0 {
-            stats.time = (Instant::now() - start).as_millis();
-            bar.set_message(format!("{date_str} - No potential airprox found."));
-            bar.finish_and_clear();
-            self.cleanup_temp_tables(dbh).await?;
-            return Ok(Stats::Planes(stats.clone()));
+    #[tokio::test]
+    async fn test_temp_tables_guard_drop_safety() {
+        if let Some(dbh) = make_test_client().await {
+            let dbvars = Arc::new(DBVars::default());
+            let mut guard = TempTablesGuard::new(dbh, dbvars);
+            guard.push(TempTables::Today);
+            guard.push(TempTables::Ids);
+            // Dropping without prior cleanup should not panic
+            drop(guard);
         }
-        stats.potential = c_potential;
-        bar.set_message(format!("{date_str} - {} potentials.", c_potential));
-        sleep(Duration::from_millis(self.wait)).await;
-
-        // Now we have the distance calculated.
-        //
-        bar.set_message(format!("{date_str} - Find encounters."));
-        let start = Instant::now();
-        let c_encounters = self.select_encounters(dbh).await?;
-        timings.select_encounters = (Instant::now() - start).as_millis();
-        bar.inc(1);
-
-        stats.time = (Instant::now() - start).as_millis();
-        if c_encounters == 0 {
-            bar.set_message(format!(
-                "{date_str} - No close encounters of any kind found."
-            ));
-            bar.finish_and_clear();
-            self.cleanup_temp_tables(dbh).await?;
-            return Ok(Stats::Planes(stats.clone()));
-        }
-        stats.encounters = c_encounters;
-        bar.set_message(format!("{date_str} - {} encounters.", c_encounters));
-        sleep(Duration::from_millis(self.wait)).await;
-
-        info!("Stats for {}\n{}", self.date, stats);
-        bar.set_message(format!("{date_str} - Done."));
-        bar.finish_and_clear();
-
-        self.cleanup_temp_tables(dbh).await?;
-
-        debug!("timings={timings:?}");
-
-        Ok(Stats::Planes(stats.clone()))
     }
 }

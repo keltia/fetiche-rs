@@ -29,6 +29,8 @@ use crate::{normalise_day_jiff, parse_date_interval};
 
 mod compute;
 
+pub use compute::TempTablesGuard;
+
 /// Command-line options for the `distances planes` functionality.
 ///
 /// This structure captures the user-provided options for executing distance
@@ -147,7 +149,7 @@ pub struct PlaneDistance {
 /// The `state` attribute in the `PlaneDistance` structure maintains a record of these
 /// tables to ensure proper cleanup during the process.
 ///
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TempTables {
     Today,
     Candidates,
