@@ -688,6 +688,134 @@ mod test {
     }
 
     #[test]
+    fn test_dateopts_parse_month_december_rollover() -> eyre::Result<()> {
+        let opt = DateOpts::Month { num: 12 };
+        let (begin, end) = DateOpts::parse(opt)?;
+        let now = Utc::now();
+        let expected_begin = Utc.with_ymd_and_hms(now.year(), 12, 1, 0, 0, 0).unwrap();
+        let expected_end = Utc.with_ymd_and_hms(now.year() + 1, 1, 1, 0, 0, 0).unwrap();
+
+        assert_eq!(begin, to_ts(expected_begin));
+        assert_eq!(end, to_ts(expected_end));
+        Ok(())
+    }
+
+    #[test]
+    fn test_dateopts_parse_month_zero() {
+        let opt = DateOpts::Month { num: 0 };
+        assert!(matches!(DateOpts::parse(opt), Err(ErrDateOpts::BadDate(m)) if m == "0"));
+    }
+
+    #[test]
+    fn test_dateopts_parse_week_53_error_handling() {
+        let opt = DateOpts::Week { num: 53 };
+        let result = DateOpts::parse(opt);
+        match result {
+            Ok((begin, end)) => {
+                assert!(end > begin);
+            }
+            Err(ErrDateOpts::FailedCalculus(_)) => {}
+            Err(e) => panic!("Unexpected error variant: {e:?}"),
+        }
+    }
+
+    #[test]
+    fn test_dateopts_parse_from_invalid_dates() {
+        let opt1 = DateOpts::From {
+            begin: "not-a-date".into(),
+            end: "2023-02-28".into(),
+        };
+        assert!(DateOpts::parse(opt1).is_err());
+
+        let opt2 = DateOpts::From {
+            begin: "2023-01-01".into(),
+            end: "invalid-end".into(),
+        };
+        assert!(DateOpts::parse(opt2).is_err());
+    }
+
+    #[test]
+    fn test_dateopts_interval_span_invariants() -> eyre::Result<()> {
+        let (begin_today, end_today) = DateOpts::parse(DateOpts::Today)?;
+        assert_eq!(end_today.as_second() - begin_today.as_second(), 86_400);
+
+        let (begin_yesterday, end_yesterday) = DateOpts::parse(DateOpts::Yesterday)?;
+        assert_eq!(
+            end_yesterday.as_second() - begin_yesterday.as_second(),
+            86_400
+        );
+
+        let (begin_week, end_week) = DateOpts::parse(DateOpts::Week { num: 10 })?;
+        assert_eq!(end_week.as_second() - begin_week.as_second(), 7 * 86_400);
+
+        let (begin_day, end_day) = DateOpts::parse(DateOpts::Day {
+            date: "2023-05-15".into(),
+        })?;
+        assert_eq!(end_day.as_second() - begin_day.as_second(), 86_400);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_err_date_opts_display() {
+        assert_eq!(
+            ErrDateOpts::BadWeekNumber(55).to_string(),
+            "bad week number: must be 1 <= 55 <= 53."
+        );
+        assert_eq!(
+            ErrDateOpts::BadDate("2023-13-01".into()).to_string(),
+            "bad date: 2023-13-01"
+        );
+        assert_eq!(
+            ErrDateOpts::CannotGetDate.to_string(),
+            "cannot get date from system"
+        );
+        assert_eq!(
+            ErrDateOpts::FailedCalculus("overflow".into()).to_string(),
+            "failed to calculate date: overflow"
+        );
+    }
+
+    #[test]
+    fn test_err_date_opts_from_report() {
+        let report = eyre::eyre!("custom error message");
+        let err = ErrDateOpts::from(report);
+        assert!(matches!(err, ErrDateOpts::BadDate(msg) if msg == "custom error message"));
+    }
+
+    #[test]
+    fn test_dateopts_clap_parse() {
+        let opt = DateOpts::try_parse_from(["app", "today"]).unwrap();
+        assert_eq!(opt, DateOpts::Today);
+
+        let opt = DateOpts::try_parse_from(["app", "yesterday"]).unwrap();
+        assert_eq!(opt, DateOpts::Yesterday);
+
+        let opt = DateOpts::try_parse_from(["app", "day", "2023-10-15"]).unwrap();
+        assert_eq!(
+            opt,
+            DateOpts::Day {
+                date: "2023-10-15".into()
+            }
+        );
+
+        let opt = DateOpts::try_parse_from(["app", "week", "10"]).unwrap();
+        assert_eq!(opt, DateOpts::Week { num: 10 });
+
+        let opt = DateOpts::try_parse_from(["app", "month", "5"]).unwrap();
+        assert_eq!(opt, DateOpts::Month { num: 5 });
+
+        let opt = DateOpts::try_parse_from(["app", "from", "2023-01-01", "2023-01-02"]).unwrap();
+        assert_eq!(
+            opt,
+            DateOpts::From {
+                begin: "2023-01-01".into(),
+                end: "2023-01-02".into(),
+            }
+        );
+    }
+
+    #[test]
     fn test_parse_date_consistency() -> eyre::Result<()> {
         let date_str = "2023-06-15";
 
