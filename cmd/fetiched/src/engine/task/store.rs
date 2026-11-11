@@ -11,14 +11,13 @@
 use std::fs;
 use std::fs::{create_dir, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 
 use chrono::{Datelike, Timelike, Utc};
 use eyre::Result;
 use tracing::trace;
 
-use fetiche_common::makepath;
 use fetiche_macros::RunnableDerive;
 
 use crate::{Runnable, IO};
@@ -56,14 +55,14 @@ impl Store {
         // We want to have `path/current` pointing to `path/ID`
         //
         let id = format!("{id}");
-        let path: PathBuf = makepath!(&base, &id);
+        let path: PathBuf = Path::new(base).join(&id);
 
         // Base is PATH/ID/
         //
         create_dir(&path)
             .unwrap_or_else(|_| panic!("can not create {} in {}", id, path.to_string_lossy()));
 
-        let curr: PathBuf = makepath!(&base, "current");
+        let curr: PathBuf = Path::new(base).join("current");
         if curr.exists() {
             fs::remove_file(&curr).expect("can not remove current");
         }
@@ -99,9 +98,7 @@ impl Store {
 
         // Full path is BASE/ID/FNAME
         //
-        let path: PathBuf = [self.path.clone().unwrap(), PathBuf::from(fname)]
-            .iter()
-            .collect();
+        let path: PathBuf = self.path.as_ref().unwrap().join(fname);
         trace!("fname={}", path.to_string_lossy());
 
         // Append to it (and create if not yet present)

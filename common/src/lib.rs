@@ -20,7 +20,6 @@ mod daterange;
 mod error;
 mod location;
 mod logging;
-mod macros;
 mod tz;
 
 use clap::{crate_name, crate_version};
