@@ -68,31 +68,30 @@ pub struct BB {
 }
 
 impl BB {
-    /// Take a location and create a bounding box of `dist` nautical miles away
+    /// Take a location and create a bounding box of `dist` nautical miles away.
     ///
-    /// So from (lat, lon) we generate the following bounding box:
-    /// (lat - dist, lon - dist, lat + dist, lon + dist)
-    ///
+    /// Longitude spans are scaled by the cosine of the latitude to ensure consistent physical distance.
     #[tracing::instrument]
     pub fn from_location(value: &Location, dist: u32) -> Self {
         Self::from_lat_lon(value.latitude, value.longitude, dist)
     }
 
-    /// Take a lat lot tuple and create a bounding box of `dist` nautical miles away
+    /// Take a (lat, lon) tuple and create a bounding box of `dist` nautical miles away.
     ///
-    /// So from (lat, lon) we generate the following bounding box:
-    /// (lat - dist, lon - dist, lat + dist, lon + dist)
+    /// Longitude span is compensated for latitude curvature:
+    /// `lon_delta = (dist / ONE_DEG_NM) / cos(lat)`.
     ///
-    /// NOTE: `dist` is in Nautical Miles
-    ///
+    /// NOTE: `dist` is in Nautical Miles.
     #[tracing::instrument]
     pub fn from_lat_lon(lat: f64, lon: f64, dist: u32) -> Self {
-        let dist = dist as f64 / ONE_DEG_NM;
+        let lat_delta = dist as f64 / ONE_DEG_NM;
+        let cos_lat = lat.to_radians().cos().abs().max(1e-6);
+        let lon_delta = lat_delta / cos_lat;
 
         // Calculate the four corners
         //
-        let (min_lat, max_lat) = (lat - dist, lat + dist);
-        let (min_lon, max_lon) = (lon - dist, lon + dist);
+        let (min_lat, max_lat) = (lat - lat_delta, lat + lat_delta);
+        let (min_lon, max_lon) = (lon - lon_delta, lon + lon_delta);
 
         Self {
             min_lon,
@@ -204,9 +203,9 @@ mod tests {
         };
 
         let bb = BB::from_location(&loc, 25);
-        assert_eq!(shorten(-6.616699695587158), shorten(bb.min_lon));
+        assert_eq!(shorten(-6.9211105021200155), shorten(bb.min_lon));
         assert_eq!(shorten(54.283302307128906), shorten(bb.min_lat));
-        assert_eq!(shorten(-5.783299922943115), shorten(bb.max_lon));
+        assert_eq!(shorten(-5.4788894978799845), shorten(bb.max_lon));
         assert_eq!(shorten(55.11669921875), shorten(bb.max_lat));
         Ok(())
     }
@@ -223,9 +222,9 @@ mod tests {
         };
 
         let bb = BB::from_location(&loc, 25);
-        assert_eq!(shorten(3.983299970626831), shorten(bb.min_lon));
+        assert_eq!(shorten(3.7406883419544416), shorten(bb.min_lon));
         assert_eq!(shorten(50.38330078125), shorten(bb.min_lat));
-        assert_eq!(shorten(4.816699981689453), shorten(bb.max_lon));
+        assert_eq!(shorten(5.059311658045558), shorten(bb.max_lon));
         assert_eq!(shorten(51.216697692871094), shorten(bb.max_lat));
         Ok(())
     }
@@ -247,11 +246,45 @@ mod tests {
         let x1 = abb[2].0;
         let y0 = abb[0].1;
         let y1 = abb[2].1;
-        assert_eq!(shorten(3.983299970626831), shorten(x0));
+        assert_eq!(shorten(3.7406883419544416), shorten(x0));
         assert_eq!(shorten(50.38330078125), shorten(y0));
-        assert_eq!(shorten(4.816699981689453), shorten(x1));
+        assert_eq!(shorten(5.059311658045558), shorten(x1));
         assert_eq!(shorten(51.216697692871094), shorten(y1));
         Ok(())
+    }
+
+    #[test]
+    fn test_bb_equator_scaling() {
+        let bb = BB::from_lat_lon(0.0, 10.0, 60);
+        let lat_delta = bb.max_lat - 0.0;
+        let lon_delta = bb.max_lon - 10.0;
+        // At equator, cos(0) == 1.0, so lon_delta == lat_delta
+        assert!((lat_delta - lon_delta).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_bb_high_latitude_scaling() {
+        let bb = BB::from_lat_lon(60.0, 10.0, 60);
+        let lat_delta = bb.max_lat - 60.0;
+        let lon_delta = bb.max_lon - 10.0;
+        // At 60 deg lat, cos(60) == 0.5, so lon_delta == 2.0 * lat_delta
+        assert!((lon_delta - 2.0 * lat_delta).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_bb_southern_hemisphere_scaling() {
+        let bb_north = BB::from_lat_lon(45.0, 0.0, 30);
+        let bb_south = BB::from_lat_lon(-45.0, 0.0, 30);
+        // Symmetry between North and South latitudes
+        assert_eq!(shorten(bb_north.max_lon), shorten(bb_south.max_lon));
+        assert_eq!(shorten(bb_north.min_lon), shorten(bb_south.min_lon));
+    }
+
+    #[test]
+    fn test_bb_pole_no_panic() {
+        let bb = BB::from_lat_lon(90.0, 0.0, 30);
+        assert!(!bb.min_lon.is_nan() && !bb.min_lon.is_infinite());
+        assert!(!bb.max_lon.is_nan() && !bb.max_lon.is_infinite());
     }
 
     #[test]
