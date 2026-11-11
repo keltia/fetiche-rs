@@ -19,7 +19,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 linker_messages = "allow"
 
 [[example]]
-name = "version"
+name = "pyversion"
 
 [badges]
 maintenance = { status = "actively-developed" }
@@ -33,7 +33,7 @@ clap.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
 polars.workspace = true
-#pyo3 = { version = "0.30", features = ["auto-initialize"] }
+pyo3 = { version = "0.24", features = ["auto-initialize"] }
 strum.workspace = true
 tokio.workspace = true
 tracing.workspace = true
