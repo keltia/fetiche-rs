@@ -3,7 +3,7 @@
 
 use chrono::{DateTime, Duration, Utc};
 use eyre::Result;
-use jiff::{civil::Date, SignedDuration, Span, Timestamp};
+use jiff::{civil::Date, SignedDuration, Span, SpanRelativeTo, Timestamp, Unit};
 
 /// This function takes a start and end `DateTime<Utc>` and generates a vector of all days
 /// between (inclusive of start, exclusive of end). It increments the date by one day
@@ -44,8 +44,9 @@ pub fn expand_interval(begin: DateTime<Utc>, end: DateTime<Utc>) -> Result<Vec<D
     if begin >= end {
         return Ok(vec![]);
     }
+    let days_count = (end - begin).num_days().max(0) as usize;
+    let mut intv = Vec::with_capacity(days_count);
     let mut d = begin;
-    let mut intv = vec![];
 
     while d < end {
         intv.push(d);
@@ -93,8 +94,7 @@ pub fn expand_interval_jiff(begin: Date, end: Date) -> Result<Vec<Date>> {
         return Ok(vec![]);
     }
 
-    let days_span = end.since(begin)?;
-    let days_count = days_span.get_days().max(0) as usize;
+    let days_count = end.since(begin)?.total((Unit::Day, begin))?.max(0.0) as usize;
 
     let mut intv = Vec::with_capacity(days_count);
     let day = Span::new().days(1);
@@ -147,8 +147,10 @@ pub fn expand_interval_timestamp(begin: Timestamp, end: Timestamp) -> Result<Vec
         return Ok(vec![]);
     }
 
-    let seconds = (end.as_second() - begin.as_second()).max(0) as usize;
-    let days_count = seconds / 86_400;
+    let days_count = end
+        .since(begin)?
+        .total((Unit::Day, SpanRelativeTo::days_are_24_hours()))?
+        .max(0.0) as usize;
     let mut intv = Vec::with_capacity(days_count);
 
     let day = SignedDuration::from_hours(24);
@@ -317,6 +319,29 @@ mod tests {
 
         let result = expand_interval_timestamp(start, end).unwrap();
         assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_expand_interval_capacity_preallocation() -> Result<()> {
+        let start_chrono = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap();
+        let end_chrono = Utc.with_ymd_and_hms(2024, 1, 11, 0, 0, 0).unwrap();
+        let res_chrono = expand_interval(start_chrono, end_chrono)?;
+        assert_eq!(res_chrono.len(), 10);
+        assert_eq!(res_chrono.capacity(), 10);
+
+        let start_jiff = date(2024, 1, 1);
+        let end_jiff = date(2024, 1, 11);
+        let res_jiff = expand_interval_jiff(start_jiff, end_jiff)?;
+        assert_eq!(res_jiff.len(), 10);
+        assert_eq!(res_jiff.capacity(), 10);
+
+        let start_ts: Timestamp = "2024-01-01T00:00:00Z".parse()?;
+        let end_ts: Timestamp = "2024-01-11T00:00:00Z".parse()?;
+        let res_ts = expand_interval_timestamp(start_ts, end_ts)?;
+        assert_eq!(res_ts.len(), 10);
+        assert_eq!(res_ts.capacity(), 10);
+
+        Ok(())
     }
 
     #[test]
