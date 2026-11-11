@@ -70,7 +70,7 @@ impl Default for Location {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BB {
     /// Longitude - X0
     pub min_lon: f64,
@@ -404,5 +404,26 @@ mod tests {
         assert!(table.contains("TEST"));
         assert!(table.contains("8FW4J82W+2R"));
         assert!(table.contains("u09t"));
+    }
+
+    #[test]
+    fn test_bb_traits() {
+        let bb = BB {
+            min_lon: 1.0,
+            min_lat: 2.0,
+            max_lon: 3.0,
+            max_lat: 4.0,
+        };
+
+        // Test Copy, Clone, PartialEq
+        let copied = bb;
+        let cloned = bb.clone();
+        assert_eq!(bb, copied);
+        assert_eq!(bb, cloned);
+
+        // Test Serialize, Deserialize
+        let serialized = serde_json::to_string(&bb).unwrap();
+        let deserialized: BB = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(bb, deserialized);
     }
 }

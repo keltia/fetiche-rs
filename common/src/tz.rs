@@ -3,6 +3,7 @@
 use std::sync::LazyLock;
 
 use jiff::{tz::TimeZone, Timestamp};
+use serde::{Deserialize, Serialize};
 use tzf_rs::DefaultFinder;
 
 static TZ_FINDER: LazyLock<DefaultFinder> = LazyLock::new(DefaultFinder::new);
@@ -18,7 +19,7 @@ static TZ_FINDER: LazyLock<DefaultFinder> = LazyLock::new(DefaultFinder::new);
 /// * `tzname` - The IANA timezone identifier (e.g., "America/New_York", "Europe/London")
 /// * `offset` - The UTC offset in seconds at the queried time (positive for east of UTC, negative for west)
 ///
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TzEntry {
     /// Timezone name
     pub tzname: String,
@@ -125,5 +126,22 @@ mod tests {
         for h in handles {
             h.join().unwrap();
         }
+    }
+
+    #[test]
+    fn test_tz_entry_traits() {
+        let entry = TzEntry {
+            tzname: "Europe/Paris".to_string(),
+            offset: 3600,
+        };
+
+        // Test Clone, PartialEq, Eq
+        let cloned = entry.clone();
+        assert_eq!(entry, cloned);
+
+        // Test Serialize, Deserialize
+        let serialized = serde_json::to_string(&entry).unwrap();
+        let deserialized: TzEntry = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(entry, deserialized);
     }
 }

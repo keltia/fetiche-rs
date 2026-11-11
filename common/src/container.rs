@@ -55,6 +55,7 @@ use crate::ContainerError;
     Default,
     Deserialize,
     PartialEq,
+    Eq,
     strum::Display,
     Serialize,
     VariantNames,
@@ -107,7 +108,7 @@ const CVERSION: usize = 2;
 /// * `url` - URL pointing to the definition site or further information about the data format.
 ///
 /// This is primarily used to map detailed metadata about different container formats.
-#[derive(Debug, Deserialize, Tabled)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Tabled)]
 pub struct ContainerDescr {
     /// Type of data each format refers to
     #[tabled(rename = "Type")]
@@ -136,7 +137,7 @@ pub struct ContainerDescr {
 /// * `format` - A `BTreeMap` holding the metadata for each container type, keyed by the container's name.
 ///
 /// Each entry in the `format` field references a `ContainerDescr` structure, which provides descriptive details about that specific format.
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ContainerFile {
     /// Version
     pub version: usize,
@@ -259,5 +260,38 @@ mod tests {
             err.to_string(),
             "container format version mismatch: expected 2, got 3"
         );
+    }
+
+    #[test]
+    fn test_container_descr_and_file_traits() {
+        let descr = ContainerDescr {
+            dtype: "text/csv".to_string(),
+            description: "CSV Format".to_string(),
+            source: "builtin".to_string(),
+            url: "https://example.com".to_string(),
+        };
+
+        // Test Clone, PartialEq, Eq
+        let cloned_descr = descr.clone();
+        assert_eq!(descr, cloned_descr);
+
+        // Test Serialize, Deserialize
+        let serialized_descr = serde_json::to_string(&descr).unwrap();
+        let deserialized_descr: ContainerDescr = serde_json::from_str(&serialized_descr).unwrap();
+        assert_eq!(descr, deserialized_descr);
+
+        let mut format_map = BTreeMap::new();
+        format_map.insert("csv".to_string(), descr);
+        let file = ContainerFile {
+            version: 2,
+            format: format_map,
+        };
+
+        let cloned_file = file.clone();
+        assert_eq!(file, cloned_file);
+
+        let serialized_file = serde_json::to_string(&file).unwrap();
+        let deserialized_file: ContainerFile = serde_json::from_str(&serialized_file).unwrap();
+        assert_eq!(file, deserialized_file);
     }
 }
