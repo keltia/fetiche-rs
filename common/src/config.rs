@@ -261,27 +261,7 @@ mod tests {
     use super::*;
     use crate::{IntoConfig, Versioned};
     use fetiche_macros::into_configfile;
-    use serde::{Deserialize, Serialize};
-
-    /// Describe the possible ways to authenticate oneself
-    ///
-    #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-    #[serde(untagged)]
-    enum Auth {
-        /// Nothing special, no auth
-        #[default]
-        Anon,
-        /// Using an API key supplied through the URL or a header
-        Key { api_key: String },
-        /// Using a login/passwd to get a token
-        Token {
-            login: String,
-            password: String,
-            token: String,
-        },
-        /// Using plain login/password
-        Login { username: String, password: String },
-    }
+    use serde::Deserialize;
 
     /// Configuration for the CLI tool, supposed to include parameters and most importantly
     /// credentials for the various sources.
