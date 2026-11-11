@@ -40,6 +40,10 @@ harness = false
 name = "ser"
 harness = false
 
+[[bench]]
+name = "tz"
+harness = false
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
@@ -79,6 +83,7 @@ opentelemetry_sdk = { version = "0.33", features = ["rt-tokio"], optional = true
 tracing-opentelemetry = { version = "0.34", optional = true }
 
 [dev-dependencies]
+cached = "4"
 criterion.workspace = true
 dateparser.workspace = true
 polars.workspace = true

@@ -1,7 +1,11 @@
 //! tz module for timezone handling
 //!
+use std::sync::LazyLock;
+
 use jiff::{tz::TimeZone, Timestamp};
 use tzf_rs::DefaultFinder;
+
+static TZ_FINDER: LazyLock<DefaultFinder> = LazyLock::new(DefaultFinder::new);
 
 /// Represents timezone information for a geographical location.
 ///
@@ -61,7 +65,7 @@ pub struct TzEntry {
 ///
 #[tracing::instrument]
 pub fn find_tz(lat: f64, lon: f64) -> eyre::Result<TzEntry> {
-    let tzname = DefaultFinder::new().get_tz_name(lon, lat).to_string();
+    let tzname = TZ_FINDER.get_tz_name(lon, lat).to_string();
     let tz = TimeZone::get(&tzname)?;
 
     // We need a random timestamp
@@ -103,5 +107,23 @@ mod tests {
         // Note: tzf_rs may handle invalid coordinates differently,
         // this test ensures the function doesn't panic
         let _ = result;
+    }
+
+    #[test]
+    fn test_find_tz_concurrent() {
+        use std::thread;
+
+        let handles: Vec<_> = (0..10)
+            .map(|_| {
+                thread::spawn(|| {
+                    let res = find_tz(48.8566, 2.3522).unwrap();
+                    assert_eq!(res.tzname, "Europe/Paris");
+                })
+            })
+            .collect();
+
+        for h in handles {
+            h.join().unwrap();
+        }
     }
 }
