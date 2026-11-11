@@ -10,33 +10,48 @@ use std::collections::BTreeMap;
 use std::fs;
 
 use eyre::Result;
-use serde::Deserialize;
-use tabled::builder::Builder;
+use serde::{Deserialize, Serialize};
 use tabled::settings::Style;
+use tabled::{Table, Tabled};
 use tracing::trace;
 
 /// one degree is circumference of earth / 360°, convert into nautical miles
 const ONE_DEG_NM: f64 = (40_000. / 1.852) / 360.;
 
+fn display_option(o: &Option<String>) -> String {
+    match o {
+        Some(s) => s.clone(),
+        None => String::new(),
+    }
+}
+
 /// Actual location (this is the same schema as `sites.csv`).
 ///
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Tabled)]
 pub struct Location {
     /// Site id
+    #[tabled(rename = "ID")]
     pub id: u32,
     /// Short name
+    #[tabled(rename = "Location")]
     pub name: String,
     /// Plus code encoded location
+    #[tabled(rename = "Plus Code")]
     pub code: String,
     /// geoHash
+    #[tabled(rename = "GeoHash", display("display_option"))]
     pub hash: Option<String>,
     /// More descriptive name
+    #[tabled(rename = "Basename")]
     pub basename: String,
     /// Latitude
+    #[tabled(rename = "Latitude")]
     pub latitude: f64,
     /// Longitude
+    #[tabled(rename = "Longitude")]
     pub longitude: f64,
     /// Reference altitude
+    #[tabled(rename = "Altitude (m)")]
     pub ref_altitude: f64,
 }
 
@@ -138,46 +153,48 @@ pub fn load_locations(fname: Option<String>) -> Result<BTreeMap<String, Location
     Ok(list)
 }
 
+#[derive(Tabled)]
+struct LocationRow<'a> {
+    #[tabled(rename = "Location")]
+    name: &'a str,
+    #[tabled(rename = "Plus Code")]
+    code: &'a str,
+    #[tabled(rename = "Basename")]
+    basename: &'a str,
+    #[tabled(rename = "Lat/Lon")]
+    point: String,
+    #[tabled(rename = "Altitude")]
+    ref_alt: f64,
+    #[tabled(rename = "Polygon")]
+    poly: String,
+}
+
 /// List loaded locations
 ///
 #[tracing::instrument]
 pub fn list_locations(data: &BTreeMap<String, Location>, dist: u32) -> Result<String> {
     trace!("enter");
-    let header = vec![
-        "Location",
-        "Plus Code",
-        "Basename",
-        "Lat/Lon",
-        "Altitude",
-        "Polygon",
-    ];
+    let rows: Vec<_> = data
+        .values()
+        .map(|loc| {
+            let poly = BB::from_location(loc, dist);
+            let point = format!("{:.5}, {:.5}", loc.latitude, loc.longitude);
+            let poly_str = format!(
+                "{:.2}, {:.2}, {:.2}, {:.2}",
+                poly.min_lat, poly.min_lon, poly.max_lat, poly.max_lon
+            );
+            LocationRow {
+                name: &loc.name,
+                code: &loc.code,
+                basename: &loc.basename,
+                point,
+                ref_alt: loc.ref_altitude,
+                poly: poly_str,
+            }
+        })
+        .collect();
 
-    let mut builder = Builder::default();
-    builder.push_record(header);
-
-    data.keys().for_each(|name| {
-        let mut row = vec![];
-
-        let loc = data.get(name).unwrap();
-        let code = loc.code.clone();
-        let ref_alt = format!("{}", loc.ref_altitude);
-        let basename = loc.basename.clone();
-        let poly = BB::from_location(loc, dist);
-        let point = format!("{:.5}, {:.5}", loc.latitude, loc.longitude);
-        let poly = format!(
-            "{:.2}, {:.2}, {:.2}, {:.2}",
-            poly.min_lat, poly.min_lon, poly.max_lat, poly.max_lon
-        );
-        row.push(name);
-        row.push(&code);
-        row.push(&basename);
-        row.push(&point);
-        row.push(&ref_alt);
-        row.push(&poly);
-        builder.push_record(row);
-    });
-
-    let allf = builder.build().with(Style::sharp()).to_string();
+    let allf = Table::new(rows).with(Style::sharp()).to_string();
     Ok(format!("List all locations ({dist} nm):\n{allf}"))
 }
 
@@ -333,5 +350,59 @@ mod tests {
     fn test_load_locations_nonexistent_file() {
         let res = load_locations(Some("non_existent_file_path_12345.csv".to_string()));
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_list_locations_output() -> Result<()> {
+        let mut locs = BTreeMap::new();
+        locs.insert(
+            "TEST".to_string(),
+            Location {
+                id: 1,
+                name: "TEST".to_string(),
+                code: "8FW4J82W+2R".to_string(),
+                hash: Some("u09t".to_string()),
+                basename: "TestSite".to_string(),
+                latitude: 48.5,
+                longitude: 2.3,
+                ref_altitude: 100.0,
+            },
+        );
+
+        let table = list_locations(&locs, 25)?;
+        assert!(table.contains("List all locations (25 nm):"));
+        assert!(table.contains("TEST"));
+        assert!(table.contains("8FW4J82W+2R"));
+        assert!(table.contains("TestSite"));
+        assert!(table.contains("48.50000, 2.30000"));
+        assert!(table.contains("100"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_list_locations_empty() -> Result<()> {
+        let locs = BTreeMap::new();
+        let table = list_locations(&locs, 10)?;
+        assert!(table.contains("List all locations (10 nm):"));
+        assert!(table.contains("Location"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_location_tabled_derive() {
+        let loc = Location {
+            id: 1,
+            name: "TEST".to_string(),
+            code: "8FW4J82W+2R".to_string(),
+            hash: Some("u09t".to_string()),
+            basename: "TestSite".to_string(),
+            latitude: 48.5,
+            longitude: 2.3,
+            ref_altitude: 100.0,
+        };
+        let table = Table::new([loc]).to_string();
+        assert!(table.contains("TEST"));
+        assert!(table.contains("8FW4J82W+2R"));
+        assert!(table.contains("u09t"));
     }
 }
