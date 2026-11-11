@@ -167,7 +167,7 @@ mod tests {
     #[case("2024-12-31 12:34:56 UTC", "2024-12-31T00:00:00Z")]
     #[case("2024-04-01 08:34:56 UTC", "2024-04-01T00:00:00Z")]
     fn test_normalise_day(#[case] date: &str, #[case] res: &str) {
-        let d = dateparser::parse(&date).unwrap();
+        let d = dateparser::parse(date).unwrap();
         let r = normalise_day(d);
         assert!(r.is_ok());
         let r = r.unwrap();
@@ -226,7 +226,7 @@ mod tests {
 
     #[test]
     fn test_conversion_preserves_nanoseconds() {
-        let chrono_dt = Utc.timestamp_nanos(1609459200_123456789);
+        let chrono_dt = Utc.timestamp_nanos(1_609_459_200_123_456_789);
         let jiff_ts = chrono_to_jiff(chrono_dt);
         let chrono_dt2 = jiff_to_chrono(jiff_ts).unwrap();
 

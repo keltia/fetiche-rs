@@ -304,7 +304,7 @@ mod tests {
         let cfg = cfg?;
         let inner = cfg.inner();
         assert_eq!(CVERSION, inner.version());
-        assert_eq!(false, cfg.inner.unwrap().use_async);
+        assert!(!cfg.inner.unwrap().use_async);
         Ok(())
     }
 

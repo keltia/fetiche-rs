@@ -364,7 +364,7 @@ mod tests {
 
             // Verify +1h in winter and +2h in summer
             let month = paris_time.date().month();
-            if month >= 4 && month <= 10 {
+            if (4..=10).contains(&month) {
                 assert_eq!(paris_time.hour(), (utc.hour() + 2) % 24); // Summer time
             } else {
                 assert_eq!(paris_time.hour(), (utc.hour() + 1) % 24); // Winter time

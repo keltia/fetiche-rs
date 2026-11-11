@@ -22,7 +22,7 @@ async fn test_humantime() -> Result<()> {
 async fn main() -> Result<()> {
     match test_humantime().await {
         Ok(()) => (),
-        Err(e) => eprintln!("error={}", e.to_string()),
+        Err(e) => eprintln!("error={e}"),
     }
 
     let d: Timestamp = "2024-03-08 01:23:45-00".parse()?;

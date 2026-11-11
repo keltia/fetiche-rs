@@ -157,7 +157,7 @@ fn main() -> Result<()> {
 
     // Write the header to the output file immediately
     //
-    wrt.write_record(&["uuid", "ident", "timestamp"])?;
+    wrt.write_record(["uuid", "ident", "timestamp"])?;
 
     let mut records = rdr.records();
     let ctx = ContextV7::new();

@@ -220,9 +220,9 @@ mod tests {
         };
 
         let bb = BB::from_location(&loc, 25);
-        assert_eq!(shorten(-6.9211105021200155), shorten(bb.min_lon));
+        assert_eq!(shorten(-6.921), shorten(bb.min_lon));
         assert_eq!(shorten(54.283302307128906), shorten(bb.min_lat));
-        assert_eq!(shorten(-5.4788894978799845), shorten(bb.max_lon));
+        assert_eq!(shorten(-5.4788), shorten(bb.max_lon));
         assert_eq!(shorten(55.11669921875), shorten(bb.max_lat));
         Ok(())
     }
@@ -407,6 +407,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::clone_on_copy)]
     fn test_bb_traits() {
         let bb = BB {
             min_lon: 1.0,

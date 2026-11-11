@@ -2,7 +2,7 @@ use fetiche_common::{IntoConfig, Versioned};
 use fetiche_macros::{add_version, into_configfile};
 use serde::Deserialize;
 
-#[allow(dead_code)]
+#[allow(dead_code, clippy::disallowed_names)]
 #[add_version(2)]
 #[derive(Debug, Default)]
 struct Foo {
@@ -11,7 +11,7 @@ struct Foo {
 
 // Specify version and filename.
 //
-#[allow(dead_code)]
+#[allow(dead_code, clippy::disallowed_names)]
 #[into_configfile(version = 3, filename = "bar.hcl")]
 #[derive(Debug, Default, Deserialize)]
 struct Bar {
@@ -20,7 +20,7 @@ struct Bar {
 
 // Use default defined in the macro.
 //
-#[allow(dead_code)]
+#[allow(dead_code, clippy::disallowed_names)]
 #[into_configfile]
 #[derive(Debug, Default, Deserialize)]
 struct Baz {
@@ -28,6 +28,7 @@ struct Baz {
 }
 
 
+#[allow(clippy::disallowed_names)]
 fn main() {
     let foo = Foo::new();
     let bar = Bar::new();

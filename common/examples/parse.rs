@@ -238,10 +238,10 @@ output = {
 /// - `Interval`: Specifies a time interval using a `begin` and `end` datetime.
 /// - `Keyword`: Represents a key-value pair middle.
 /// - `Duration`: Specifies a length of time in seconds. Negative values indicate
-///               a period in the past.
+///   a period in the past.
 /// - `Altitude`: Defines altitude-based filters with a `duration`, `min`, and `max` altitude.
 /// - `Stream`: Represents streaming parameters such as start time (`from`),
-///             `duration`, and `delay` between calls.
+///   `duration`, and `delay` between calls.
 /// - `None`: Default variant for no filtering.
 ///
 /// The `Filter` enum can be serialized and is compatible with JSON.

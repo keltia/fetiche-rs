@@ -114,7 +114,10 @@ fn csv_to_struct(bencher: Bencher) {
         Ok(())
     }
 
-    bencher.bench_local(move || black_box(deser_csv().unwrap()));
+    bencher.bench_local(move || {
+        deser_csv().unwrap();
+        black_box(())
+    });
 }
 
 #[divan::bench]
@@ -228,9 +231,8 @@ fn csv_to_df(bencher: Bencher) {
             .map(|i| AdsbRaw {
                 emitter_category: c_emitter
                     .and_then(|c| c.get(i))
-                    .map(|v| v as i32)
                     .unwrap_or(0),
-                gbs: c_gbs.and_then(|c| c.get(i)).map(|v| v as i32).unwrap_or(0),
+                gbs: c_gbs.and_then(|c| c.get(i)).unwrap_or(0),
                 mode_a: c_mode_a
                     .and_then(|c| c.get(i))
                     .map(|v| v.to_string())
@@ -292,5 +294,8 @@ fn csv_to_df(bencher: Bencher) {
         Ok(())
     }
 
-    bencher.bench_local(move || black_box(deser_csv().unwrap()));
+    bencher.bench_local(move || {
+        deser_csv().unwrap();
+        black_box(())
+    });
 }

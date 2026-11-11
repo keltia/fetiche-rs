@@ -42,7 +42,7 @@ async fn worker_thread(out: &mut dyn Write, d: u64) -> Result<()> {
     tokio::spawn(async move {
         loop {
             sleep(WAIT).await;
-            if let Err(_) = tx.send(".").await {
+            if tx.send(".").await.is_err() {
                 break;
             }
         }

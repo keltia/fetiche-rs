@@ -227,6 +227,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::clone_on_copy)]
     fn test_delim_clone_and_copy() {
         let delim1 = Delim::Comma;
         let delim2 = delim1;
