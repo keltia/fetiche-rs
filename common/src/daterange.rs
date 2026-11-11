@@ -41,6 +41,9 @@ use jiff::{civil::Date, SignedDuration, Span, Timestamp};
 /// * Handles no specific edge scenarios like invalid date ranges as it assumes input validity.
 ///
 pub fn expand_interval(begin: DateTime<Utc>, end: DateTime<Utc>) -> Result<Vec<DateTime<Utc>>> {
+    if begin >= end {
+        return Ok(vec![]);
+    }
     let mut d = begin;
     let mut intv = vec![];
 
@@ -51,50 +54,55 @@ pub fn expand_interval(begin: DateTime<Utc>, end: DateTime<Utc>) -> Result<Vec<D
     Ok(intv)
 }
 
-/// This function takes a start and end `jiff::Timestamp` and generates a vector of all days
-/// between (inclusive of start and end). It uses jiff's series functionality to generate
-/// daily timestamps, returning all days as `jiff::Timestamp`.
+/// This function takes a start and end `jiff::civil::Date` and generates a vector of all days
+/// between (inclusive of start, exclusive of end). It increments the date by one day
+/// at each step, returning all days as `jiff::civil::Date`.
 ///
 /// # Arguments
 ///
-/// * `begin` - The starting `jiff::Timestamp` of the interval.
-/// * `end` - The ending `jiff::Timestamp` of the interval.
+/// * `begin` - The starting `jiff::civil::Date` of the interval.
+/// * `end` - The ending `jiff::civil::Date` of the interval.
 ///
 /// # Returns
 ///
-/// A `Result` containing a vector of `jiff::Timestamp` representing all the dates within the interval.
+/// A `Result` containing a vector of `jiff::civil::Date` representing all the dates within the interval.
 /// If an error occurs, it will be inside the `Err` variant.
+///
+/// # Example
+///
+/// ```
+/// use jiff::civil::date;
+/// use fetiche_common::expand_interval_jiff;
+///
+/// let start = date(2024, 2, 1);
+/// let end = date(2024, 2, 4);
+/// let interval = expand_interval_jiff(start, end).unwrap();
+///
+/// assert_eq!(interval.len(), 3);
+/// assert_eq!(interval[0], date(2024, 2, 1));
+/// assert_eq!(interval[1], date(2024, 2, 2));
+/// assert_eq!(interval[2], date(2024, 2, 3));
+/// ```
 ///
 /// # Errors
 ///
-/// * Return an `Err` if there are issues creating the vector of dates.
-/// * Assumes input timestamps are valid and properly formatted.
+/// Returns an `Err` if there are issues with date arithmetic or span calculation.
 ///
 pub fn expand_interval_jiff(begin: Date, end: Date) -> Result<Vec<Date>> {
-    if begin == end {
-        return Ok(vec![begin]);
-    }
-
-    if begin > end {
+    if begin >= end {
         return Ok(vec![]);
     }
-    // Pre-calculate capacity: days between begin and end
+
     let days_span = end.since(begin)?;
-    let days_count = days_span.get_days();
+    let days_count = days_span.get_days().max(0) as usize;
 
-    // Pre-allocate with exact capacity
-    let mut intv = Vec::with_capacity(days_count as usize);
-
+    let mut intv = Vec::with_capacity(days_count);
     let day = Span::new().days(1);
     let mut d = begin;
 
     while d < end {
         intv.push(d);
-        d = d.checked_add(day).expect("overflow");
-    }
-
-    if intv.is_empty() && begin < end {
-        intv.push(begin);
+        d = d.checked_add(day)?;
     }
 
     Ok(intv)
@@ -135,9 +143,13 @@ pub fn expand_interval_jiff(begin: Date, end: Date) -> Result<Vec<Date>> {
 /// Returns an `Err` if there are issues with date arithmetic (overflow).
 ///
 pub fn expand_interval_timestamp(begin: Timestamp, end: Timestamp) -> Result<Vec<Timestamp>> {
-    let days_span = end.since(begin)?;
-    let days_count = days_span.get_days();
-    let mut intv = Vec::with_capacity(days_count as usize);
+    if begin >= end {
+        return Ok(vec![]);
+    }
+
+    let seconds = (end.as_second() - begin.as_second()).max(0) as usize;
+    let days_count = seconds / 86_400;
+    let mut intv = Vec::with_capacity(days_count);
 
     let day = SignedDuration::from_hours(24);
     let mut d = begin;
@@ -205,9 +217,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case(("2024-02-01", "2024-02-01"), ["2024-02-01"].to_vec())]
-    #[case(("2024-02-01", "2024-02-02"), ["2024-02-01", "2024-02-02"].to_vec())]
-    #[case(("2024-02-01", "2024-02-03"), ["2024-02-01", "2024-02-02", "2024-02-03"].to_vec())]
+    #[case(("2024-02-01 00:00:00 UTC", "2024-02-01 00:00:00 UTC"), [].to_vec())]
+    #[case(("2024-02-01 00:00:00 UTC", "2024-02-02 00:00:00 UTC"), ["2024-02-01"].to_vec())]
+    #[case(("2024-02-01 00:00:00 UTC", "2024-02-04 00:00:00 UTC"), ["2024-02-01", "2024-02-02", "2024-02-03"].to_vec())]
     fn test_expand_interval(#[case] b: (&str, &str), #[case] a: Vec<&str>) -> Result<()> {
         let bb = dateparser::parse(b.0).unwrap();
         let ee = dateparser::parse(b.1).unwrap();
@@ -228,6 +240,15 @@ mod tests {
     }
 
     #[test]
+    fn test_expand_interval_jiff_empty_result() {
+        let start = date(2024, 2, 1);
+        let end = date(2024, 2, 1);
+
+        let result = expand_interval_jiff(start, end).unwrap();
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
     fn test_expand_interval_jiff_single_day() {
         let start = date(2024, 2, 1); // 2024-02-01 00:00:00 UTC
         let end = date(2024, 2, 2); // 2024-02-02 00:00:00 UTC
@@ -244,6 +265,9 @@ mod tests {
 
         let result = expand_interval_jiff(start, end).unwrap();
         assert_eq!(result.len(), 3);
+        assert_eq!(result[0], date(2024, 2, 1));
+        assert_eq!(result[1], date(2024, 2, 2));
+        assert_eq!(result[2], date(2024, 2, 3));
     }
 
     #[test]
@@ -252,6 +276,46 @@ mod tests {
         let end = date(2024, 2, 1); // 2024-02-01 00:00:00 UTC
 
         let result = expand_interval_jiff(start, end).unwrap();
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_expand_interval_timestamp_empty_result() {
+        let start: Timestamp = "2024-02-01T00:00:00Z".parse().unwrap();
+        let end: Timestamp = "2024-02-01T00:00:00Z".parse().unwrap();
+
+        let result = expand_interval_timestamp(start, end).unwrap();
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_expand_interval_timestamp_single_day() {
+        let start: Timestamp = "2024-02-01T00:00:00Z".parse().unwrap();
+        let end: Timestamp = "2024-02-02T00:00:00Z".parse().unwrap();
+
+        let result = expand_interval_timestamp(start, end).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], start);
+    }
+
+    #[test]
+    fn test_expand_interval_timestamp_multiple_days() {
+        let start: Timestamp = "2024-02-01T00:00:00Z".parse().unwrap();
+        let end: Timestamp = "2024-02-04T00:00:00Z".parse().unwrap();
+
+        let result = expand_interval_timestamp(start, end).unwrap();
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0], "2024-02-01T00:00:00Z".parse::<Timestamp>().unwrap());
+        assert_eq!(result[1], "2024-02-02T00:00:00Z".parse::<Timestamp>().unwrap());
+        assert_eq!(result[2], "2024-02-03T00:00:00Z".parse::<Timestamp>().unwrap());
+    }
+
+    #[test]
+    fn test_expand_interval_timestamp_invalid_range() {
+        let start: Timestamp = "2024-02-04T00:00:00Z".parse().unwrap();
+        let end: Timestamp = "2024-02-01T00:00:00Z".parse().unwrap();
+
+        let result = expand_interval_timestamp(start, end).unwrap();
         assert_eq!(result.len(), 0);
     }
 
