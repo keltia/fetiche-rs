@@ -275,16 +275,15 @@ pub async fn init_runtime(name: &'static str, opts: &Opts) -> eyre::Result<Conte
     info!("Connecting to {} @ {}", profile.work_db, endpoint);
     trace!("Creating connection pool");
 
-    let manager = ConnectionManager::new(
-        endpoint.clone(),
-        ClientOptions {
-            username: user.clone(),
-            password: pass.clone(),
-            default_database: profile.work_db.clone(),
-            ..Default::default()
-        },
-    )
-    .await?;
+    let mut copts = ClientOptions::default();
+    copts.username = user.clone();
+    copts.password = pass.clone();
+    copts.default_database = profile.work_db.clone();
+    copts
+        .settings
+        .insert("network_compression_method".to_string(), "LZ4".to_string());
+
+    let manager = ConnectionManager::new(endpoint.clone(), copts).await?;
 
     let pool_size = opts.pool_size;
     let pool = bb8::Pool::builder()
@@ -336,8 +335,7 @@ pub fn finish_runtime(_ctx: &Context) -> eyre::Result<()> {
 }
 
 /// Type alias for the pinned future returned by `SiteLookup` methods.
-pub type SiteLookupFuture<T> =
-    Pin<Box<dyn Future<Output = eyre::Result<T>> + Send + 'static>>;
+pub type SiteLookupFuture<T> = Pin<Box<dyn Future<Output = eyre::Result<T>> + Send + 'static>>;
 
 /// Trait defining asynchronous lookup and query methods for `Site` entries.
 #[cfg_attr(test, mockall::automock)]
