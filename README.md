@@ -68,14 +68,17 @@ to compile and install `acutectl` and `process-data`.
 If you want to use [jujutsu] alongside git, it is also very easy:
 
 ```shell
-$ git clone https://github.com/keltia/fetiche-rs
+$ jj git clone https://github.com/keltia/fetiche-rs
 $ cd fetiche-rs
-$ jj git init --colocate
 $ jj b track main@origin develop@origin
 $ cargo install --path .
 ```
 
-See [jujutsu] documentation on how to use it instead of git.
+See [jujutsu] documentation on how to use it instead of git. If you have the [just] command, you can also use:
+
+```shell
+$ just install
+```
 
 > NOTE: I do use [jujustu] myself now.
 
@@ -167,39 +170,22 @@ I use Git Flow for this package so please use something similar or the usual Git
 6. Create a new Pull Request
 
 [ASD]: https://eur.airspacedrone.com/
-
 [ASTERIX]: https://www.eurocontrol.int/asterix/
-
 [Rust 1.85]: https://blog.rust-lang.org/2025/02/20/Rust-1.85.0/
-
 [Mozilla]: https://mozilla.org/
-
 [Opensky]: https://www.opensky-network.org/
-
 [Parquet]: https://parquet.apache.org/
-
 [RUST]: https://www.rust-lang.org/
-
 [Safesky]: https://safesky.app/
-
 [HCL]: https://developer.hashicorp.com/terraform/language
-
 [GitHub issues]: https://github.com/keltia/fetiche-rs/issues
-
 [tokio]: https://crates.io/crates/tokio
-
 [GRPC]: https://en.wikipedia.org/wiki/GRPC
-
 [pyopensky]: https://pypi.org/project/pyopensky/
-
 [DuckDB]: https://duckdb.org/
-
 [Clickhouse]: https://clickhouse.com/
-
 [bdt]: https://github.com/datafusion-contrib/bdt
-
 [Polars]: https://pola.rs/
-
 [ractor]: https://crates.io/crates/ractor
-
 [jujutsu]: https://jj-vcs.github.io/jj/latest/
+[just]: https://just.systems/
