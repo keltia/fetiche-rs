@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
+use jiff::ToSpan;
 use jiff::civil::DateTime;
 use jiff::tz::TimeZone;
-use jiff::ToSpan;
 
 pub fn expand_interval(
     begin: chrono::DateTime<Utc>,
@@ -51,9 +51,9 @@ fn main() -> eyre::Result<()> {
     eprintln!("vec(chrono) = {}", r2.len());
 
     let tz = TimeZone::UTC;
-    let r1 = r1.into_iter().map(|x| x.to_zoned(tz.clone()).unwrap().to_string()).collect::<Vec<_>>();
+    let r1 = r1.into_iter().map(|x| x.to_zoned_datetime(tz.clone()).unwrap().to_string()).collect::<Vec<_>>();
     let r2 = r2.into_iter().map(|x| x.to_rfc3339() + "[UTC]").collect::<Vec<_>>();
-    let r3 = r3.into_iter().map(|x| x.to_zoned(tz.clone()).unwrap().to_string()).collect::<Vec<_>>();
+    let r3 = r3.into_iter().map(|x| x.to_zoned_datetime(tz.clone()).unwrap().to_string()).collect::<Vec<_>>();
 
     if r1 != r2 {
         eprintln!("r1 != r2");

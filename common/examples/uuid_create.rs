@@ -107,7 +107,7 @@ fn process_one(
         if diff > threshold {
             // Time difference is over the threshold, start a new journey
             //
-            let unix_tm = current_tm.to_zoned(TimeZone::UTC)?.timestamp().as_second();
+            let unix_tm = current_tm.to_zoned_datetime(TimeZone::UTC)?.timestamp().as_second();
             let ts = uuid::Timestamp::from_unix(uuid_ctx, unix_tm as u64, 0);
             Uuid::new_v7(ts).to_string()
         } else {
@@ -254,7 +254,7 @@ mod tests {
         ) {
             prop_assume!(delta_secs as f64 <= threshold_secs);
 
-            let prev_dt = Timestamp::from_second(base_secs).unwrap().to_zoned(TimeZone::UTC).datetime();
+            let prev_dt = Timestamp::from_second(base_secs).unwrap().to_zoned_datetime(TimeZone::UTC).datetime();
             let curr_dt = prev_dt.checked_add(Span::new().seconds(delta_secs)).unwrap();
 
             let prev_rec = StringRecord::from(vec![journey_id.clone(), drone_id.clone(), to_ts(prev_dt)]);
@@ -278,7 +278,7 @@ mod tests {
             let threshold = threshold_secs as f64;
             prop_assume!(delta_secs as f64 > threshold);
 
-            let prev_dt = Timestamp::from_second(base_secs).unwrap().to_zoned(TimeZone::UTC).datetime();
+            let prev_dt = Timestamp::from_second(base_secs).unwrap().to_zoned_datetime(TimeZone::UTC).datetime();
             let curr_dt = prev_dt.checked_add(Span::new().seconds(delta_secs)).unwrap();
 
             let prev_rec = StringRecord::from(vec![journey_id.clone(), drone_id.clone(), to_ts(prev_dt)]);
@@ -302,7 +302,7 @@ mod tests {
             delta_secs in 1i64..86400, // up to a day difference
             threshold in 1.0f64..1000.0
         ) {
-            let prev_dt = Timestamp::from_second(base_secs).unwrap().to_zoned(TimeZone::UTC).datetime();
+            let prev_dt = Timestamp::from_second(base_secs).unwrap().to_zoned_datetime(TimeZone::UTC).datetime();
             let curr_dt = prev_dt.checked_add(Span::new().seconds(delta_secs)).unwrap();
 
             let prev_rec = StringRecord::from(vec![journey_id1, drone_id1, to_ts(prev_dt)]);

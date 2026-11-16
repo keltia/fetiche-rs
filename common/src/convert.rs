@@ -2,7 +2,7 @@
 //!
 
 use chrono::{DateTime, Datelike, TimeZone, Utc};
-use jiff::{RoundMode, Timestamp, Unit, Zoned, ZonedRound};
+use jiff::{RoundMode, Timestamp, Unit, ZonedDateTime, ZonedDateTimeRound};
 
 /// Normalises a given `DateTime<Utc>` instance to the beginning of the same day (00:00:00 UTC).
 ///
@@ -43,18 +43,18 @@ pub fn normalise_day(date: DateTime<Utc>) -> eyre::Result<DateTime<Utc>> {
     Ok(date)
 }
 
-/// Normalises a given `jiff::Zoned` instance to the beginning of the same day (00:00:00 in its timezone).
+/// Normalises a given `jiff::ZonedDateTime` instance to the beginning of the same day (00:00:00 in its timezone).
 ///
 /// This function rounds down the provided zoned datetime to the start of the day (midnight)
 /// in the same timezone, effectively setting the time component to 00:00:00.
 ///
 /// # Arguments
 ///
-/// * `date` - A `jiff::Zoned` instance representing the input date and time in a specific timezone.
+/// * `date` - A `jiff::ZonedDateTime` instance representing the input date and time in a specific timezone.
 ///
 /// # Returns
 ///
-/// This function returns a `Result` containing a `jiff::Zoned` instance set to the start of the day
+/// This function returns a `Result` containing a `jiff::ZonedDateTime` instance set to the start of the day
 /// corresponding to the input date in the same timezone. If an error occurs during the rounding process,
 /// an `Err` is returned.
 ///
@@ -80,8 +80,8 @@ pub fn normalise_day(date: DateTime<Utc>) -> eyre::Result<DateTime<Utc>> {
 ///
 #[inline]
 #[tracing::instrument]
-pub fn normalise_day_jiff(date: Zoned) -> eyre::Result<Zoned> {
-    Ok(date.round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Floor))?)
+pub fn normalise_day_jiff(date: ZonedDateTime) -> eyre::Result<ZonedDateTime> {
+    Ok(date.round(ZonedDateTimeRound::new().smallest(Unit::Day).mode(RoundMode::Floor))?)
 }
 
 /// Converts a `chrono::DateTime<Utc>` to a `jiff::Timestamp`.

@@ -317,7 +317,7 @@ fn encounters_to_df(encounters: &[Encounter]) -> Result<DataFrame> {
         let ts =
             jiff::Timestamp::from_second(e.time.1 as i64).unwrap_or(jiff::Timestamp::UNIX_EPOCH);
         let time_str = if let Ok(tz) = jiff::tz::TimeZone::get(e.time.0.name()) {
-            ts.to_zoned(tz).to_string()
+            ts.to_zoned_datetime(tz).to_string()
         } else {
             ts.to_string()
         };

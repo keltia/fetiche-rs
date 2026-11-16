@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 use clap::Parser;
-use jiff::civil::{date, Date, ISOWeekDate, Weekday};
+use jiff::civil::{Date, ISOWeekDate, Weekday, date};
 use jiff::tz::TimeZone;
-use jiff::{RoundMode, Timestamp, ToSpan, Unit, Zoned, ZonedRound};
+use jiff::{RoundMode, Timestamp, ToSpan, Unit, ZonedDateTime, ZonedDateTimeRound};
 use tracing::{error, trace};
 
 use crate::ErrDateOpts;
@@ -98,9 +98,9 @@ impl DateOpts {
     /// use fetiche_common::DateOpts;
     ///
     /// let result = DateOpts::parse(DateOpts::Today).unwrap();
-    /// let now = Timestamp::now().to_zoned(TimeZone::UTC);
-    /// let begin = result.0.to_zoned(TimeZone::UTC);
-    /// let end = result.1.to_zoned(TimeZone::UTC);
+    /// let now = Timestamp::now().to_zoned_datetime(TimeZone::UTC);
+    /// let begin = result.0.to_zoned_datetime(TimeZone::UTC);
+    /// let end = result.1.to_zoned_datetime(TimeZone::UTC);
     ///
     /// assert_eq!(begin.date(), now.date());
     /// assert_eq!(result.1, result.0.checked_add(24.hours()).unwrap());
@@ -113,9 +113,9 @@ impl DateOpts {
     /// use fetiche_common::DateOpts;
     ///
     /// let result = DateOpts::parse(DateOpts::Yesterday).unwrap();
-    /// let now = Timestamp::now().to_zoned(TimeZone::UTC);
-    /// let begin = result.0.to_zoned(TimeZone::UTC);
-    /// let end = result.1.to_zoned(TimeZone::UTC);
+    /// let now = Timestamp::now().to_zoned_datetime(TimeZone::UTC);
+    /// let begin = result.0.to_zoned_datetime(TimeZone::UTC);
+    /// let end = result.1.to_zoned_datetime(TimeZone::UTC);
     ///
     /// assert_eq!(begin.date(), now.date().checked_sub(1.days()).unwrap());
     /// assert_eq!(end.date(), now.date());
@@ -143,13 +143,13 @@ impl DateOpts {
             DateOpts::Today => {
                 trace!("got today true");
 
-                let begin = Zoned::now()
+                let begin = ZonedDateTime::now()
                     .in_tz("Utc")
                     .map_err(|e| {
                         error!("Cannot get date from system: {}", e);
                         ErrDateOpts::CannotGetDate
                     })?
-                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Trunc))
+                    .round(ZonedDateTimeRound::new().smallest(Unit::Day).mode(RoundMode::Trunc))
                     .map_err(|e| {
                         error!("Cannot compute date: {}", e);
                         ErrDateOpts::FailedCalculus(e.to_string())
@@ -163,7 +163,7 @@ impl DateOpts {
             DateOpts::Yesterday => {
                 trace!("got yesterday true");
 
-                let yesterday = Zoned::now()
+                let yesterday = ZonedDateTime::now()
                     .in_tz("Utc")
                     .map_err(|e| {
                         error!("Cannot get date from system: {}", e);
@@ -176,7 +176,7 @@ impl DateOpts {
                     })?;
 
                 let begin = yesterday
-                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Trunc))
+                    .round(ZonedDateTimeRound::new().smallest(Unit::Day).mode(RoundMode::Trunc))
                     .map_err(|e| {
                         error!("Cannot compute date: {}", e);
                         ErrDateOpts::FailedCalculus(e.to_string())
@@ -209,13 +209,13 @@ impl DateOpts {
                 if !(1..=53).contains(&num) {
                     return Err(ErrDateOpts::BadWeekNumber(num));
                 }
-                let year = Zoned::now().year();
+                let year = ZonedDateTime::now().year();
                 let weekdate = ISOWeekDate::new(year, num as i8, Weekday::Monday).map_err(|e| {
                     error!("Cannot compute ISO week date: {e}");
                     ErrDateOpts::FailedCalculus(e.to_string())
                 })?;
                 let begin = Date::from_iso_week_date(weekdate)
-                    .to_zoned(TimeZone::UTC)
+                    .to_zoned_datetime(TimeZone::UTC)
                     .map_err(|_| ErrDateOpts::CannotGetDate)?;
 
                 let end = begin.checked_add(7.days()).map_err(|e| {
@@ -232,13 +232,13 @@ impl DateOpts {
                 let end = parse_date(&end)?;
 
                 let begin = begin
-                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Floor))
+                    .round(ZonedDateTimeRound::new().smallest(Unit::Day).mode(RoundMode::Floor))
                     .map_err(|e| {
                         error!("Cannot compute date: {}", e);
                         ErrDateOpts::FailedCalculus(e.to_string())
                     })?;
                 let end = end
-                    .round(ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Floor))
+                    .round(ZonedDateTimeRound::new().smallest(Unit::Day).mode(RoundMode::Floor))
                     .map_err(|e| {
                         error!("Cannot compute date: {}", e);
                         ErrDateOpts::FailedCalculus(e.to_string())
@@ -251,10 +251,10 @@ impl DateOpts {
                 if !(1..=12).contains(&num) {
                     return Err(ErrDateOpts::BadDate(num.to_string()));
                 }
-                let year = Zoned::now().year();
+                let year = ZonedDateTime::now().year();
 
                 let begin = date(year, num as i8, 1)
-                    .to_zoned(TimeZone::UTC)
+                    .to_zoned_datetime(TimeZone::UTC)
                     .map_err(|e| {
                         error!("bad parsing: {e}");
                         ErrDateOpts::BadDate(e.to_string())
@@ -271,10 +271,10 @@ impl DateOpts {
     }
 }
 
-/// Parses a date string and converts it to a `Zoned` datetime in UTC timezone.
+/// Parses a date string and converts it to a `ZonedDateTime` datetime in UTC timezone.
 ///
 /// This function takes a date string in various formats and parses it into a `jiff::civil::Date`,
-/// then converts it to a `jiff::Zoned` datetime at midnight (00:00:00) in the UTC timezone.
+/// then converts it to a `jiff::ZonedDateTime` datetime at midnight (00:00:00) in the UTC timezone.
 ///
 /// # Arguments
 ///
@@ -284,14 +284,14 @@ impl DateOpts {
 ///
 /// # Returns
 ///
-/// * `Ok(Zoned)` - A `Zoned` datetime representing the parsed date at midnight UTC
+/// * `Ok(ZonedDateTime)` - A `ZonedDateTime` datetime representing the parsed date at midnight UTC
 /// * `Err(ErrDateOpts)` - An error if the date string is invalid or cannot be converted to UTC
 ///
 /// # Errors
 ///
 /// This function will return an error if:
 /// * The date string cannot be parsed as a valid date (e.g., "invalid-date", "2023-13-01")
-/// * The parsed date cannot be converted to a UTC `Zoned` datetime
+/// * The parsed date cannot be converted to a UTC `ZonedDateTime` datetime
 /// * The date contains out-of-range values (e.g., day 32, month 13)
 ///
 /// # Examples
@@ -312,13 +312,13 @@ impl DateOpts {
 /// assert!(parse_date("2023-13-01").is_err());
 /// ```
 #[inline]
-pub fn parse_date(date: &str) -> Result<Zoned, ErrDateOpts> {
+pub fn parse_date(date: &str) -> Result<ZonedDateTime, ErrDateOpts> {
     date.parse::<Date>()
         .map_err(|e| {
             error!("bad parsing: {e}");
             ErrDateOpts::BadDate(e.to_string())
         })?
-        .to_zoned(TimeZone::UTC)
+        .to_zoned_datetime(TimeZone::UTC)
         .map_err(|e| ErrDateOpts::BadDate(e.to_string()))
 }
 
@@ -417,10 +417,10 @@ mod test {
         //
         let week1_monday = jan1 - chrono::Duration::days(jan1_weekday as i64)
             + if jan1_weekday <= 3 {
-                chrono::Duration::days(0)
-            } else {
-                chrono::Duration::days(7)
-            };
+            chrono::Duration::days(0)
+        } else {
+            chrono::Duration::days(7)
+        };
         let expected_begin = week1_monday + chrono::Duration::weeks(4);
         let expected_end = expected_begin + chrono::Duration::days(7);
 

@@ -49,13 +49,13 @@ fn test_chrono_strftime(bencher: Bencher) {
 
 #[divan::bench]
 fn test_jiff_format(bencher: Bencher) {
-    use jiff::Zoned;
+    use jiff::ZonedDateTime;
 
-    fn format_day(day: &Zoned) -> String {
+    fn format_day(day: &ZonedDateTime) -> String {
         format!("{:04}-{:02}-{:02}", day.year(), day.month(), day.day()).to_string()
     }
 
-    let day = Zoned::now();
+    let day = ZonedDateTime::now();
     bencher.bench_local(|| {
         black_box(format_day(&day));
     });
@@ -63,13 +63,13 @@ fn test_jiff_format(bencher: Bencher) {
 
 #[divan::bench]
 fn test_jiff_strftime(bencher: Bencher) {
-    use jiff::Zoned;
+    use jiff::ZonedDateTime;
 
-    fn strftime_day(day: &Zoned) -> String {
+    fn strftime_day(day: &ZonedDateTime) -> String {
         day.strftime("%Y-%m-%d").to_string()
     }
 
-    let day = Zoned::now();
+    let day = ZonedDateTime::now();
     bencher.bench_local(|| {
         black_box(strftime_day(&day));
     });

@@ -318,8 +318,8 @@ pub async fn fetch_encounters_on(ctx: &Context, date: DateOpts) -> Result<Vec<St
     let dbvars = DBVars::from_ctx(ctx);
 
     let (begin, end) = DateOpts::parse(date)?;
-    let begin = begin.to_zoned(TimeZone::UTC).date();
-    let end = end.to_zoned(TimeZone::UTC).date();
+    let begin = begin.to_zoned_datetime(TimeZone::UTC).date();
+    let end = end.to_zoned_datetime(TimeZone::UTC).date();
 
     // Now loop through all days
     //

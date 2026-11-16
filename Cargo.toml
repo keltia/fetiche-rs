@@ -24,7 +24,7 @@ futures = "0.3"
 hcl-rs = "0.20"
 indicatif = "0.18"
 itertools = "0.15.0"
-jiff = { version = "0.2", features = ["serde"] }
+jiff = { version = "1", features = ["serde"] }
 nom = "8"
 object_store = "0.14"
 polars = { version = "0.55", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-datetime", "dtype-categorical", "temporal"] }

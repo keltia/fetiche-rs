@@ -147,7 +147,7 @@ impl Store {
     pub async fn execute(&mut self, data: String, _stdout: Sender<String>) -> Result<()> {
         trace!("store::execute");
 
-        let tm = Timestamp::now().to_zoned(TimeZone::UTC);
+        let tm = Timestamp::now().to_zoned_datetime(TimeZone::UTC);
 
         // Extract parts to create a filename
         //
@@ -238,7 +238,7 @@ mod tests {
         let result = store.execute("test data".to_string(), tx).await;
         assert!(result.is_ok());
 
-        let tm = Timestamp::now().to_zoned(TimeZone::UTC);
+        let tm = Timestamp::now().to_zoned_datetime(TimeZone::UTC);
         let fname = store.path.join(format!(
             "{}{:02}{:02}-{:02}0000",
             tm.year(),
@@ -269,7 +269,7 @@ mod tests {
         let result = store.execute("test data".to_string(), tx).await;
         assert!(result.is_ok());
 
-        let tm = Timestamp::now().to_zoned(TimeZone::UTC);
+        let tm = Timestamp::now().to_zoned_datetime(TimeZone::UTC);
         let fname = store.path.join(format!(
             "{}{:02}{:02}-{:02}0000.json",
             tm.year(),

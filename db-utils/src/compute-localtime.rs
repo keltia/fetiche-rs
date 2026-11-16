@@ -51,7 +51,7 @@
 //! ```
 
 use clap::Parser;
-use jiff::{Timestamp, Zoned};
+use jiff::{Timestamp, ZonedDateTime};
 use log::{error, info};
 use std::io::stdin;
 
@@ -76,9 +76,9 @@ fn main() -> eyre::Result<()> {
     );
 
     let output = if is_date_mode {
-        |p: Zoned| p.date().to_string()
+        |p: ZonedDateTime| p.date().to_string()
     } else {
-        |p: Zoned| p.time().to_string()
+        |p: ZonedDateTime| p.time().to_string()
     };
 
     stdin().lines().for_each(|l| {

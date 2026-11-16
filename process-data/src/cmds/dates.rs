@@ -1,6 +1,6 @@
 use fetiche_common::DateOpts;
 use jiff::tz::TimeZone;
-use jiff::{RoundMode, Timestamp, Unit, ZonedRound};
+use jiff::{RoundMode, Timestamp, Unit, ZonedDateTimeRound};
 use tracing::info;
 
 /// Parses the provided `DateOpts` into a start and end date range.
@@ -71,8 +71,8 @@ pub fn parse_date_interval(date_opts: DateOpts) -> eyre::Result<(Timestamp, Time
 /// Normalizes a jiff timestamp to start of day (00:00:00)
 ///
 pub fn normalise_day_jiff(ts: Timestamp) -> eyre::Result<Timestamp> {
-    let mode = ZonedRound::new().smallest(Unit::Day).mode(RoundMode::Floor);
-    Ok(ts.to_zoned(TimeZone::UTC).round(mode)?.timestamp())
+    let mode = ZonedDateTimeRound::new().smallest(Unit::Day).mode(RoundMode::Floor);
+    Ok(ts.to_zoned_datetime(TimeZone::UTC).round(mode)?.timestamp())
 }
 
 

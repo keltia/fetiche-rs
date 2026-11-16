@@ -40,7 +40,7 @@ fn into_timestamp_jiff(col: &Column) -> Column {
             d.map(|d: &str| {
                 d.parse::<DateTime>()
                     .unwrap()
-                    .to_zoned(TimeZone::UTC)
+                    .to_zoned_datetime(TimeZone::UTC)
                     .unwrap()
                     .timestamp()
                     .as_second()

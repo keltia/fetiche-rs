@@ -10,8 +10,8 @@ use std::{env, vec};
 use csv::{QuoteStyle, WriterBuilder};
 use eyre::Result;
 use futures_util::stream::StreamExt;
-use jiff::{tz::TimeZone, Timestamp};
-use lapin::{options::*, types::FieldTable, Connection, ConnectionProperties, Consumer};
+use jiff::{Timestamp, tz::TimeZone};
+use lapin::{Connection, ConnectionProperties, Consumer, options::*, types::FieldTable};
 use polars::io::{SerReader, SerWriter};
 use polars::prelude::{JsonFormat, JsonReader, JsonWriter};
 use serde::Serialize;
@@ -20,8 +20,8 @@ use tokio::io::AsyncWriteExt;
 use tracing::trace;
 
 use fetiche_common::init_logging;
-use fetiche_formats::senhive::{FusedData, StateMsg};
 use fetiche_formats::DronePoint;
+use fetiche_formats::senhive::{FusedData, StateMsg};
 
 #[derive(Debug, Clone)]
 pub enum Output {
@@ -51,7 +51,7 @@ impl Feed {
             )
             .await?;
 
-        let now = Timestamp::now().to_zoned(TimeZone::UTC);
+        let now = Timestamp::now().to_zoned_datetime(TimeZone::UTC);
         let fname = format!("{:4}{:02}{:02}-{name}", now.year(), now.month(), now.day());
         let fname = Path::new(&fname).with_extension("json");
 
