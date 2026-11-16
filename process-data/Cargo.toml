@@ -59,16 +59,16 @@ tracing.workspace = true
 cached = { version = "4", features = ["async"] }
 clap_complete = "4.6"
 farben = "0.20"
-geo = "0.33"
 klickhouse = { version = "0.16", features = ["derive", "geo-types", "serde", "bb8", "jiff"], path = "../../vendor/klickhouse/klickhouse" }
 kml = "0.15"
 rand = "0.10"
-rust-3d = "0.34"
 regex = "1.13"
 tinytemplate = "1.2"
 
 [dev-dependencies]
 criterion.workspace = true
+geo = "0.33"
+rust-3d = "0.34"
 
 colorsys = "0.7"
 divan = "0.1"
