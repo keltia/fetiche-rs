@@ -13,16 +13,18 @@
 use std::hint::black_box;
 
 use divan::Bencher;
-use polars::prelude::{col, lit, LazyFrame};
+use polars::prelude::{LazyFrame, col, lit};
 
 fn main() {
     divan::main();
 }
 
+const AIRPORTS: &str = "../../data/airports.parquet";
+
 #[divan::bench]
 fn find_with_contains(bencher: Bencher) {
     let name = "FR";
-    let fname = "../data/airports.parquet";
+    let fname = AIRPORTS;
 
     let expr = col("iso_country").str().contains(lit(name), true);
     bencher.bench_local(move || {
@@ -49,7 +51,7 @@ fn find_with_contains(bencher: Bencher) {
 #[divan::bench]
 fn find_with_eq(bencher: Bencher) {
     let name = "FR";
-    let fname = "../data/airports.parquet";
+    let fname = AIRPORTS;
 
     let expr = col("iso_country").eq(lit(name));
     bencher.bench_local(move || {

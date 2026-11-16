@@ -45,7 +45,7 @@ fn bench_rayon(bencher: Bencher) {
 
 fn generate_df() -> Result<DataFrame, PolarsError> {
     let name = "IS";
-    let fname = "../data/airports.parquet";
+    let fname = "../../data/airports.parquet";
 
     let expr = col("iso_country")
         .eq(lit(name))
