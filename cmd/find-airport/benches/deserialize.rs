@@ -140,30 +140,30 @@ fn df_izip(df: &DataFrame) -> PolarsResult<Vec<Airport>> {
     let iata = df.column("iata_code")?.str()?;
 
     let airports = izip!(
-        ident.into_iter(),
-        name.into_iter(),
-        lat.into_iter(),
-        lon.into_iter(),
-        elev.into_iter(),
-        iata.into_iter(),
+        ident.iter(),
+        name.iter(),
+        lat.iter(),
+        lon.iter(),
+        elev.iter(),
+        iata.iter(),
     )
-    .map(|(ident, name, lat, lon, elev, iata)| {
-        // Calculate some more data for the struct
-        //
-        let tzd = find_tz(lat.unwrap(), lon.unwrap()).unwrap();
-        let pluscode = compute_pluscode(lat.unwrap(), lon.unwrap()).unwrap();
-        Airport {
-            ident: ident.unwrap().to_string(),
-            name: name.unwrap().to_string(),
-            latitude_deg: lat.unwrap(),
-            longitude_deg: lon.unwrap(),
-            elevation_m: (elev.unwrap_or(0) as f64 * 0.3048) as i32,
-            iata_code: iata.unwrap().to_string(),
-            timezone: tzd.tzname,
-            offset: tzd.offset / 3600,
-            pluscode,
-        }
-    })
-    .collect();
+        .map(|(ident, name, lat, lon, elev, iata)| {
+            // Calculate some more data for the struct
+            //
+            let tzd = find_tz(lat.unwrap(), lon.unwrap()).unwrap();
+            let pluscode = compute_pluscode(lat.unwrap(), lon.unwrap()).unwrap();
+            Airport {
+                ident: ident.unwrap().to_string(),
+                name: name.unwrap().to_string(),
+                latitude_deg: lat.unwrap(),
+                longitude_deg: lon.unwrap(),
+                elevation_m: (elev.unwrap_or(0) as f64 * 0.3048) as i32,
+                iata_code: iata.unwrap().to_string(),
+                timezone: tzd.tzname,
+                offset: tzd.offset / 3600,
+                pluscode,
+            }
+        })
+        .collect();
     Ok(airports)
 }
