@@ -46,7 +46,7 @@ SELECT
 FROM {workdb}.airplane_prox AS ap, {workdb}.pbi_deployments AS d
 LEFT OUTER JOIN sites AS s
 ON ap.site_id = s.id
-WHERE s.name = d.sitename
+WHERE s.name = d.sitename AND ap.station_name = d.antenna_name AND (ap.time BETWEEN d.start_at AND d.end_at)
 )
     COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI.';
     "##,
