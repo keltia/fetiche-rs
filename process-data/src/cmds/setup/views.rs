@@ -10,10 +10,9 @@ async fn add_pbi_encounters_view(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let sq = make_query!(r##"
-CREATE MATERIALIZED VIEW {workdb}.pbi_encounters
-ENGINE = ReplacingMergeTree
-PRIMARY KEY (time, journey) POPULATE
+    let sq = make_query!(
+        r##"
+CREATE VIEW {workdb}.pbi_encounters
 AS (
 SELECT
   en_id,
@@ -50,7 +49,9 @@ ON ap.site_id = s.id
 WHERE s.name = d.sitename
 )
     COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI.';
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     Ok(dbh.execute(&sq).await?)
 }
@@ -103,9 +104,12 @@ async fn drop_pbi_encounters_view(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let sq = make_query!(r##"
+    let sq = make_query!(
+        r##"
 DROP VIEW IF EXISTS {workdb}.pbi_encounters;
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     Ok(dbh.execute(&sq).await?)
 }
@@ -117,11 +121,9 @@ async fn add_pbi_encounters_summary_view(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let r4 = make_query!(r##"
-CREATE MATERIALIZED VIEW IF NOT EXISTS {workdb}.pbi_encounters_summary
-ENGINE = ReplacingMergeTree
-PRIMARY KEY (en_id)
-POPULATE
+    let r4 = make_query!(
+        r##"
+CREATE VIEW IF NOT EXISTS {workdb}.pbi_encounters_summary
 AS (
   SELECT
       en_id,
@@ -164,7 +166,9 @@ AS (
   ORDER BY time
 )
 COMMENT 'Store all plane-drone encounters with less then 1nm distance for PBI, summarized by drone and encounter.'
-"##, dbvars);
+"##,
+        dbvars
+    );
 
     Ok(dbh.execute(&r4).await?)
 }
@@ -174,7 +178,10 @@ pub async fn drop_pbi_encounters_summary_view(ctx: &Context) -> eyre::Result<()>
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let rm5 = make_query!(r##"DROP VIEW IF EXISTS {workdb}.pbi_encounters_summary"##, dbvars);
+    let rm5 = make_query!(
+        r##"DROP VIEW IF EXISTS {workdb}.pbi_encounters_summary"##,
+        dbvars
+    );
 
     Ok(dbh.execute(&rm5).await?)
 }
@@ -190,7 +197,8 @@ pub async fn add_airplanes_view(ctx: &Context) -> eyre::Result<()> {
 
     // Calculations view
     //
-    let r1 = make_query!(r##"
+    let r1 = make_query!(
+        r##"
 CREATE VIEW IF NOT EXISTS {planedb}.airplanes
 AS
 (
@@ -222,7 +230,9 @@ AS
     ORDER BY time
 )
     COMMENT 'View for airplanes data.'
-"##, dbvars);
+"##,
+        dbvars
+    );
 
     Ok(dbh.execute(&r1).await?)
 }
@@ -234,9 +244,12 @@ pub async fn drop_airplanes_view(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let rm1 = make_query!(r##"
+    let rm1 = make_query!(
+        r##"
 DROP VIEW IF EXISTS {planedb}.airplanes;
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     Ok(dbh.execute(&rm1).await?)
 }
@@ -252,7 +265,8 @@ pub async fn add_drones_view(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let r2 = make_query!(r##"
+    let r2 = make_query!(
+        r##"
 CREATE MATERIALIZED VIEW {dronedb}.drones
     ENGINE = ReplacingMergeTree
     PRIMARY KEY (time, journey)
@@ -283,7 +297,9 @@ AS
     FROM {dronedb}.drones_raw
 )
     COMMENT 'View for drones data with distances.'
-"##, dbvars);
+"##,
+        dbvars
+    );
 
     Ok(dbh.execute(&r2).await?)
 }
@@ -308,7 +324,8 @@ async fn add_pbi_drones_view(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let r2b = make_query!(r##"
+    let r2b = make_query!(
+        r##"
 CREATE VIEW IF NOT EXISTS {workdb}.pbi_drones
 AS (SELECT `journey`,
       `ident`,
@@ -344,7 +361,9 @@ AS (SELECT `journey`,
     WHERE dr.station_name != 'ASDSTATIONV1' AND sitename != ''
   )
   COMMENT 'PBI View for drones data with distances.'
-"##, dbvars);
+"##,
+        dbvars
+    );
 
     Ok(dbh.execute(&r2b).await?)
 }
@@ -412,7 +431,8 @@ async fn add_deployments_view(ctx: &Context) -> eyre::Result<()> {
 
     // Deployments tracking view
     //
-    let r3 = make_query!(r##"
+    let r3 = make_query!(
+        r##"
  CREATE VIEW  IF NOT EXISTS {workdb}.deployments
  AS SELECT
     i.id AS install_id,
@@ -426,7 +446,9 @@ async fn add_deployments_view(ctx: &Context) -> eyre::Result<()> {
  FROM {workdb}.installations AS i, {workdb}.antennas AS a, {workdb}.sites AS s
  WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
  COMMENT 'Find the site for each drone points.'
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     Ok(dbh.execute(&r3).await?)
 }
@@ -450,7 +472,8 @@ async fn add_pbi_deployments_view(ctx: &Context) -> eyre::Result<()> {
 
     // PBI-specific view
     //
-    let r3b = make_query!(r##"
+    let r3b = make_query!(
+        r##"
  CREATE VIEW  IF NOT EXISTS {workdb}.pbi_deployments
  AS SELECT
     i.id AS installation_id,
@@ -468,7 +491,9 @@ async fn add_pbi_deployments_view(ctx: &Context) -> eyre::Result<()> {
  FROM {workdb}.installations AS i, {workdb}.antennas AS a, {workdb}.sites AS s
  WHERE (i.antenna_id = a.id) AND (s.id = i.site_id)
  COMMENT 'Find the site for each drone points for PBI.'
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     Ok(dbh.execute(&r3b).await?)
 }
@@ -490,7 +515,8 @@ async fn add_airprox_summary_view(ctx: &Context) -> eyre::Result<()> {
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let r4 = make_query!(r##"
+    let r4 = make_query!(
+        r##"
 CREATE OR REPLACE VIEW  IF NOT EXISTS {workdb}.airprox_summary AS
 (SELECT
         en_id,
@@ -504,7 +530,9 @@ CREATE OR REPLACE VIEW  IF NOT EXISTS {workdb}.airprox_summary AS
         en_id, journey, drone_id, station_name
     ORDER BY journey)
     COMMENT 'List all encounters ID with the minimum distance.'
-    "##, dbvars);
+    "##,
+        dbvars
+    );
 
     Ok(dbh.execute(&r4).await?)
 }
@@ -547,4 +575,3 @@ pub async fn drop_work_views(ctx: &Context) -> eyre::Result<()> {
     drop_deployments_view(ctx).await?;
     Ok(())
 }
-
