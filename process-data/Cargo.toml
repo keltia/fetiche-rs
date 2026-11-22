@@ -45,7 +45,8 @@ futures.workspace = true
 indicatif.workspace = true
 itertools.workspace = true
 jiff.workspace = true
-polars.workspace = true
+polars-core = { version = "0.55", default-features = false }
+polars-io = { version = "0.55", default-features = false, features = ["parquet"] }
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true

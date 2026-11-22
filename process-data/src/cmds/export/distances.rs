@@ -7,7 +7,8 @@ use std::fs;
 use clap::Parser;
 use eyre::Result;
 use klickhouse::{DateTime, Row};
-use polars::prelude::{DataFrame, ParquetWriter, df};
+use polars_core::prelude::{DataFrame, df};
+use polars_io::prelude::ParquetWriter;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, trace};
 
@@ -519,6 +520,7 @@ pub async fn export_results(ctx: &Context, opts: &ExpDistOpts) -> eyre::Result<(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use polars_core::prelude::AnyValue;
 
     #[test]
     fn test_encounters_to_df_empty() {
@@ -568,7 +570,7 @@ mod tests {
         assert_eq!(df.width(), 22);
 
         let site_col = df.column("site").unwrap();
-        assert_eq!(site_col.get(0).unwrap(), polars::prelude::AnyValue::Int32(1));
+        assert_eq!(site_col.get(0).unwrap(), AnyValue::Int32(1));
 
         let temp_dir = tempfile::tempdir().unwrap();
         let parquet_path = temp_dir.path().join("test_encounters.parquet");
