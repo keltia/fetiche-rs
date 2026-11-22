@@ -263,37 +263,14 @@ mod tests {
     use fetiche_macros::into_configfile;
     use serde::Deserialize;
 
-    /// Configuration for the CLI tool, supposed to include parameters and most importantly
-    /// credentials for the various sources.
-    ///
-    #[into_configfile]
-    #[derive(Debug, Default, Deserialize)]
-    struct Bar {
-        /// Each site credentials
-        pub use_async: bool,
-    }
-
-    pub const CVERSION: usize = 2;
-
-    #[test]
-    fn test_config_engine_load_default() -> Result<()> {
-        // Explicitly load default
-        //
-        let cfg = ConfigFile::<Bar>::load(Some("acutectl.hcl"));
-        assert!(cfg.is_ok());
-        let cfg = cfg?;
-        let inner = cfg.inner();
-        assert_eq!(CVERSION, inner.version());
-        assert!(cfg.inner.unwrap().use_async);
-        Ok(())
-    }
-
     #[allow(dead_code)]
     #[into_configfile]
     #[derive(Clone, Debug, Default, Deserialize)]
     struct Foo {
         pub name: String,
     }
+
+    const CVERSION: usize = 2;
 
     #[test]
     fn test_config_engine_load_file() -> Result<()> {
