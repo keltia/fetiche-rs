@@ -74,6 +74,22 @@ pub fn normalise_day_jiff(ts: Timestamp) -> eyre::Result<Timestamp> {
     Ok(normalise_day(ts.to_zoned_datetime(TimeZone::UTC))?.timestamp())
 }
 
+/// Formats a timestamp in UTC for installation tables and KML metadata.
+///
+/// The output uses `YYYY-MM-DD HH:MM:SS` followed by a literal ` UTC` suffix.
+/// Whole seconds have no fractional part. Other values use 3, 6, or 9 digits
+/// for milliseconds, microseconds, or nanoseconds, using the shortest of
+/// these widths that preserves the value exactly.
+///
+/// # Examples
+///
+/// | Input timestamp | Formatted output |
+/// | --- | --- |
+/// | `2024-01-01T00:00:00Z` | `2024-01-01 00:00:00 UTC` |
+/// | `2024-01-01T00:00:00.73Z` | `2024-01-01 00:00:00.730 UTC` |
+/// | `2024-01-01T00:00:00.73001Z` | `2024-01-01 00:00:00.730010 UTC` |
+/// | `2024-01-01T00:00:00.730010002Z` | `2024-01-01 00:00:00.730010002 UTC` |
+///
 pub(crate) fn format_utc_datetime(value: &Timestamp) -> String {
     let nanos = value.subsec_nanosecond();
     let format = if nanos == 0 {
