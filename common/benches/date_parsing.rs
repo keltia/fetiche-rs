@@ -28,15 +28,6 @@ use jiff::tz::TimeZone;
 use polars::datatypes::Int64Chunked;
 use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, IntoColumn, SerReader};
 
-fn into_timestamp(col: &Column) -> Column {
-    col.str()
-        .unwrap()
-        .iter()
-        .map(|d: Option<&str>| d.map(|d: &str| dateparser::parse(d).unwrap().timestamp()))
-        .collect::<Int64Chunked>()
-        .into_column()
-}
-
 fn into_humantime_secs(col: &Column) -> Column {
     col.str()
         .unwrap()
@@ -110,18 +101,6 @@ fn setup() -> Column {
     df.column("timestamp").unwrap().clone()
 }
 
-fn dateparser(c: &mut Criterion) {
-    let vl = setup();
-    c.bench_function("dateparser", |b| {
-        b.iter({
-            let v = vl.clone();
-            move || {
-                black_box(into_timestamp(&v));
-            }
-        })
-    });
-}
-
 fn jiff_datetime(c: &mut Criterion) {
     let vl = setup();
     c.bench_function("jiff_datetime", |b| {
@@ -158,5 +137,5 @@ fn humantime(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, dateparser, jiff_zoned, jiff_datetime, humantime);
+criterion_group!(benches, jiff_zoned, jiff_datetime, humantime);
 criterion_main!(benches);

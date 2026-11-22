@@ -16,26 +16,9 @@
 
 use std::hint::black_box;
 
-use chrono::{Duration, Utc};
 use criterion::{Criterion, criterion_group, criterion_main};
 use jiff::civil::DateTime;
 use jiff::{Span, ToSpan};
-
-pub fn expand_interval(
-    begin: chrono::DateTime<Utc>,
-    end: chrono::DateTime<Utc>,
-) -> eyre::Result<Vec<chrono::DateTime<Utc>>> {
-    // Pre-calculate capacity
-    let days = (end - begin).num_days();
-    let mut intv = Vec::with_capacity(days as usize);
-
-    let mut d = begin;
-    while d < end {
-        intv.push(d);
-        d += Duration::days(1);
-    }
-    Ok(intv)
-}
 
 pub fn expand_interval_jiff(begin: DateTime, end: DateTime) -> eyre::Result<Vec<DateTime>> {
     // Pre-calculate capacity: days between begin and end
@@ -130,20 +113,5 @@ fn test_jiff_iter(c: &mut Criterion) {
     assert_eq!(r.len(), 366);
 }
 
-fn test_chrono(c: &mut Criterion) {
-    let mut r = vec![];
-
-    // 2024 has 366 days
-    let begin = dateparser::parse("2024-01-01").unwrap();
-    let end = dateparser::parse("2024-12-31").unwrap();
-
-    c.bench_function("chrono+dateparser", |b| {
-        b.iter(|| {
-            r = black_box(expand_interval(begin, end).unwrap());
-        })
-    });
-    assert_eq!(r.len(), 366);
-}
-
-criterion_group!(benches, test_chrono, test_jiff, test_jiff_iter, test_jiff_series);
+criterion_group!(benches, test_jiff, test_jiff_iter, test_jiff_series);
 criterion_main!(benches);

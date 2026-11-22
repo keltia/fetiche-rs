@@ -24,14 +24,13 @@
 //!
 use std::hint::black_box;
 
-use chrono::Utc;
 use criterion::{criterion_group, criterion_main, Criterion};
 use jiff::civil::DateTime;
 use jiff::Timestamp;
 
 fn test_humantime(c: &mut Criterion) {
     let base = "2024-03-08 12:34:56";
-    let mut curr = Utc::now();
+    let mut curr = std::time::SystemTime::UNIX_EPOCH;
 
     c.bench_function("humantime", |b| {
         b.iter(|| {
@@ -64,23 +63,5 @@ fn test_jiff_timestamp(c: &mut Criterion) {
     });
 }
 
-fn test_dateparser(c: &mut Criterion) {
-    let base = "2024-03-08 12:34:56";
-    let mut curr = Utc::now();
-
-    c.bench_function("dateparser", |b| {
-        b.iter(|| {
-            curr = black_box(dateparser::parse(base).unwrap());
-        })
-    });
-    let _ = curr;
-}
-
-criterion_group!(
-    benches,
-    test_dateparser,
-    test_humantime,
-    test_jiff,
-    test_jiff_timestamp
-);
+criterion_group!(benches, test_humantime, test_jiff, test_jiff_timestamp);
 criterion_main!(benches);
