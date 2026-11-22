@@ -21,8 +21,8 @@ use std::time::UNIX_EPOCH;
 use criterion::{Criterion, criterion_group, criterion_main};
 use jiff::civil::DateTime;
 use jiff::tz::{Offset, TimeZone};
-use polars::datatypes::Int64Chunked;
-use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, IntoColumn, SerReader};
+use polars_core::prelude::{Column, Int64Chunked, IntoColumn};
+use polars_io::prelude::{CsvParseOptions, CsvReadOptions, SerReader};
 
 fn into_humantime_secs(col: &Column) -> Column {
     col.str()

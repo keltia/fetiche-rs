@@ -131,7 +131,7 @@ fn csv_to_struct(bencher: Bencher) {
 
 #[divan::bench]
 fn csv_to_df(bencher: Bencher) {
-    use polars::prelude::*;
+    use polars_io::prelude::{CsvReadOptions, SerReader};
 
     fn deser_csv() -> eyre::Result<()> {
         #[derive(Debug, Default, Deserialize, Serialize)]

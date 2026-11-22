@@ -94,8 +94,10 @@ mod df {
 }
 
 mod prs {
-    use polars::polars_utils::compression::ZstdLevel;
-    use polars_io::prelude::*;
+    use polars_io::prelude::{
+        CsvReadOptions, ParquetCompression, ParquetWriter, SerReader, StatisticsOptions,
+    };
+    use polars_utils::compression::ZstdLevel;
 
     pub fn parquet_through_polars() -> eyre::Result<()> {
         let fname = "../data/test-bench.csv";
