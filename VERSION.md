@@ -16,14 +16,14 @@ It has many fundamental changes under the hood:
 
 Main dependencies:
 
-- polars 0.54 (it has replaced datafusion & arrow/parquet)
+- polars 0.55 (it has replaced datafusion & arrow/parquet)
 
 Current crates versions:
 
 - acutectl/0.25.0
-- process-data/0.8.0+clickhouse
+- process-data/0.9.0+clickhouse
 - fetiche-client/0.3.0
 - fetiche-engine/0.26.0
 - fetiche-formats/0.19.0
-- fetiche-common/0.6.0
+- fetiche-common/0.7.0
 - fetiche-macros/0.5.0
