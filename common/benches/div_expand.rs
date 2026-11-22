@@ -114,7 +114,7 @@ fn test_jiff_timestamp_series(bencher: Bencher) {
     #[inline]
     fn expand_interval_jiff(begin: Timestamp, end: Timestamp) -> eyre::Result<Vec<Timestamp>> {
         let intv = begin
-            .series(1.days())
+            .series(24.hours())
             .take_while(|&ts| ts < end)
             .collect::<Vec<_>>();
         Ok(intv)
