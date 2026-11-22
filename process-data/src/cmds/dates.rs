@@ -1,13 +1,13 @@
-use fetiche_common::DateOpts;
+use fetiche_common::{DateOpts, normalise_day};
+use jiff::Timestamp;
 use jiff::tz::TimeZone;
-use jiff::{RoundMode, Timestamp, Unit, ZonedDateTimeRound};
 use tracing::info;
 
 /// Parses the provided `DateOpts` into a start and end date range.
 ///
 /// This function utilizes the `DateOpts::parse` method to interpret and convert
 /// the given date options into a corresponding date interval `(start, stop)`
-/// represented as `DateTime<Utc>`. If the parsing fails, it defaults to the
+/// represented as Jiff timestamps. If the parsing fails, it defaults to the
 /// current day.
 ///
 /// # Arguments
@@ -71,16 +71,40 @@ pub fn parse_date_interval(date_opts: DateOpts) -> eyre::Result<(Timestamp, Time
 /// Normalizes a jiff timestamp to start of day (00:00:00)
 ///
 pub fn normalise_day_jiff(ts: Timestamp) -> eyre::Result<Timestamp> {
-    let mode = ZonedDateTimeRound::new().smallest(Unit::Day).mode(RoundMode::Floor);
-    Ok(ts.to_zoned_datetime(TimeZone::UTC).round(mode)?.timestamp())
+    Ok(normalise_day(ts.to_zoned_datetime(TimeZone::UTC))?.timestamp())
 }
 
+pub(crate) fn format_utc_datetime(value: &Timestamp) -> String {
+    let nanos = value.subsec_nanosecond();
+    let format = if nanos == 0 {
+        "%Y-%m-%d %H:%M:%S UTC"
+    } else if nanos % 1_000_000 == 0 {
+        "%Y-%m-%d %H:%M:%S%.3f UTC"
+    } else if nanos % 1_000 == 0 {
+        "%Y-%m-%d %H:%M:%S%.6f UTC"
+    } else {
+        "%Y-%m-%d %H:%M:%S%.9f UTC"
+    };
+    value.strftime(format).to_string()
+}
 
 #[cfg(test)]
 mod tests {
+    use super::format_utc_datetime;
     use crate::{normalise_day_jiff, parse_date_interval};
     use fetiche_common::DateOpts;
     use jiff::Timestamp;
+
+    #[test]
+    fn test_format_utc_datetime_preserves_fractional_precision() {
+        for fraction in ["", ".730", ".730010", ".730010002"] {
+            let timestamp = format!("2024-01-01T00:00:00{fraction}Z").parse().unwrap();
+            assert_eq!(
+                format_utc_datetime(&timestamp),
+                format!("2024-01-01 00:00:00{fraction} UTC")
+            );
+        }
+    }
 
     #[test]
     fn test_parse_date_interval_valid_range() {
