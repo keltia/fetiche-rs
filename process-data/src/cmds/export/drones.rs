@@ -1,8 +1,8 @@
 //! `export drones`  sub-module.
 //!
 
-use chrono::{DateTime, Utc};
 use clap::Parser;
+use jiff::Timestamp;
 
 use crate::cmds::Format;
 use crate::runtime::Context;
@@ -10,7 +10,7 @@ use crate::runtime::Context;
 #[derive(Debug, Parser)]
 pub struct ExpDroneOpts {
     /// Specific day.
-    pub day: Option<DateTime<Utc>>,
+    pub day: Option<Timestamp>,
     /// Specific week number
     pub week: Option<usize>,
     /// Output format

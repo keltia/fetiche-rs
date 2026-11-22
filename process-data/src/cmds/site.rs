@@ -1,7 +1,7 @@
 //! Anything related to ACUTE site management
 //!
 use cached::cached;
-use chrono::{DateTime, Datelike, Utc};
+use jiff::Timestamp;
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -9,8 +9,8 @@ use tabled::Tabled;
 use tracing::debug;
 
 use crate::cmds::{CmdError, DBVars};
-use crate::make_query;
 use crate::runtime::Context;
+use crate::{make_query, normalise_day_jiff};
 
 /// Represents a site entity stored in the database within the `sites` table.
 ///
@@ -289,7 +289,6 @@ async fn query_site_by_id(ctx: &Context, id: u32) -> eyre::Result<Site> {
     Ok(dbh.query_one::<Site>(q).await?)
 }
 
-
 /// Retrieves all sites that have data for a specified day.
 ///
 /// This function queries the database to return a list of `Site` entities
@@ -298,7 +297,7 @@ async fn query_site_by_id(ctx: &Context, id: u32) -> eyre::Result<Site> {
 ///
 /// ### Arguments
 /// - `ctx` - The application context which holds the database connection.
-/// - `day` - A `DateTime<Utc>` object representing the specific day to search for.
+/// - `day` - A timestamp representing the specific UTC day to search for.
 ///
 /// ### Returns
 /// - `Ok(Vec<Site>)`: A vector of `Site` entities found for the specified `day`.
@@ -307,11 +306,11 @@ async fn query_site_by_id(ctx: &Context, id: u32) -> eyre::Result<Site> {
 /// ### Example
 ///
 /// ```rust
-/// use chrono::Utc;
+/// use jiff::Timestamp;
 /// use process_data::{Context, enumerate_sites};
 ///
 /// async fn example(ctx: &Context) -> eyre::Result<()> {
-///     let sites = enumerate_sites(ctx, Utc::now()).await?;
+///     let sites = enumerate_sites(ctx, Timestamp::now()).await?;
 ///     for site in sites {
 ///         println!("Site: {}", site);
 ///     }
@@ -327,7 +326,7 @@ async fn query_site_by_id(ctx: &Context, id: u32) -> eyre::Result<Site> {
 /// - This function is instrumented with tracing for debugging purposes.
 ///
 #[tracing::instrument(skip(ctx))]
-pub async fn enumerate_sites(ctx: &Context, day: DateTime<Utc>) -> eyre::Result<Vec<Site>> {
+pub async fn enumerate_sites(ctx: &Context, day: Timestamp) -> eyre::Result<Vec<Site>> {
     if let Some(lookup) = &ctx.site_lookup {
         return lookup.enumerate_sites(day).await;
     }
@@ -335,7 +334,7 @@ pub async fn enumerate_sites(ctx: &Context, day: DateTime<Utc>) -> eyre::Result<
     let dbh = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);
 
-    let day_tag = format!("{:4}-{:02}-{:02}", day.year(), day.month(), day.day());
+    let day_start = normalise_day_jiff(day)?;
     let r = make_query!(
         r##"
 SELECT
@@ -352,11 +351,11 @@ FROM
     {workdb}.sites AS s, {workdb}.installations
 WHERE
     (s.id = installations.site_id) AND
-    (toDateTime($1) BETWEEN installations.start_at AND installations.end_at)
+    ($1 BETWEEN installations.start_at AND installations.end_at)
 "##,
         dbvars
     );
-    let q = QueryBuilder::new(&r).arg(day_tag);
+    let q = QueryBuilder::new(&r).arg(day_start);
 
     // Fetch all site IDs for this specific day
     //
@@ -387,11 +386,7 @@ WHERE
 /// - Results are cached using the antenna name and date as the cache key.
 /// - The cache helps avoid redundant database queries for frequently accessed combinations.
 ///
-async fn query_match_site(
-    ctx: &Context,
-    day: DateTime<Utc>,
-    antenna: &str,
-) -> eyre::Result<String> {
+async fn query_match_site(ctx: &Context, day: Timestamp, antenna: &str) -> eyre::Result<String> {
     if let Some(lookup) = &ctx.site_lookup {
         return lookup.match_site(day, antenna.to_owned()).await;
     }
@@ -425,7 +420,7 @@ WHERE d.antenna_name = $1 AND $2 BETWEEN d.start_at AND d.end_at
     convert = r#"{ format!("{}{}", day,antenna.to_string()) }"#
 )]
 #[tracing::instrument(skip(ctx))]
-pub async fn match_site(ctx: &Context, day: DateTime<Utc>, antenna: &str) -> eyre::Result<String> {
+pub async fn match_site(ctx: &Context, day: Timestamp, antenna: &str) -> eyre::Result<String> {
     query_match_site(ctx, day, antenna).await
 }
 
@@ -438,7 +433,7 @@ mod tests {
     };
     use std::time::Duration;
 
-    use chrono::{TimeZone, Utc};
+    use jiff::Timestamp;
 
     use super::{CmdError, Site, find_site, find_site_by_id, match_site};
     use crate::runtime::{MockSiteLookup, init_test_context};
@@ -546,9 +541,9 @@ mod tests {
 
     #[tokio::test]
     async fn match_site_caches_date_and_antenna_keys_and_retries_errors() {
-        let day_one = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap();
-        let day_two = Utc.with_ymd_and_hms(2024, 1, 2, 0, 0, 0).unwrap();
-        let day_missing = Utc.with_ymd_and_hms(2024, 1, 3, 0, 0, 0).unwrap();
+        let day_one = "2024-01-01T00:00:00Z".parse::<Timestamp>().unwrap();
+        let day_two = "2024-01-02T00:00:00Z".parse::<Timestamp>().unwrap();
+        let day_missing = "2024-01-03T00:00:00Z".parse::<Timestamp>().unwrap();
         let missing_antenna = "cached-match-site-missing-test".to_owned();
         let calls = Arc::new(Mutex::new(HashMap::<String, usize>::new()));
         let mut lookup = MockSiteLookup::new();

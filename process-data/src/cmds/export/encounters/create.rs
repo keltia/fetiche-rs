@@ -222,12 +222,12 @@ pub fn default_styles() -> Vec<Kml<f64>> {
 /// # Examples
 ///
 /// ```rust
-/// use chrono::Utc;
+/// use jiff::Timestamp;
 /// use process_data::{from_traj_to_placemark, DataPoint};
 ///
 /// let points = vec![
-///     DataPoint { latitude: 12.34, longitude: 56.78, altitude: 100.0, timestamp: Utc::now() },
-///     DataPoint { latitude: 13.34, longitude: 57.78, altitude: 150.0, timestamp: Utc::now() },
+///     DataPoint { latitude: 12.34, longitude: 56.78, altitude: 100.0, timestamp: Timestamp::now() },
+///     DataPoint { latitude: 13.34, longitude: 57.78, altitude: 150.0, timestamp: Timestamp::now() },
 /// ];
 /// let result = from_traj_to_placemark("My Drone", "ICAO", &points, "#style-id");
 /// assert!(result.is_ok());
@@ -279,14 +279,14 @@ pub fn from_traj_to_placemark(
 /// # Examples
 ///
 /// ```rust
-/// use chrono::Utc;
+/// use jiff::Timestamp;
 /// use process_data::{from_point_to_placemark, Encounter};
 ///
 /// let encounter = Encounter {
 ///     en_id: "encounter-1".to_string(),
 ///     sitename: "test-site".to_string(),
 ///     journey: 1,
-///     timestamp: Utc::now(),
+///     timestamp: Timestamp::now(),
 ///     drone_id: "drone-1".to_string(),
 ///     drone_lat: 12.34,
 ///     drone_lon: 56.78,

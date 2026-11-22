@@ -263,7 +263,7 @@ async fn export_one_encounter(ctx: &Context, id: &str) -> Result<String> {
     let doc = Document {
         attrs: [
             ("name".into(), format!("{id}.kml")),
-            ("time".into(), encounter_timestamp.to_string()),
+            ("time".into(), crate::format_utc_datetime(&encounter_timestamp)),
         ]
             .into(),
         elements,

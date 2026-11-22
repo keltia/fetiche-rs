@@ -16,10 +16,7 @@ use jiff::Timestamp;
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
 
-#[cfg(test)]
-use chrono::{DateTime, Utc};
-
-use fetiche_common::{DateOpts, expand_interval, jiff_to_chrono};
+use fetiche_common::{DateOpts, expand_interval};
 
 use crate::cmds::{Calculate, CmdError, DBVars, PlanesStats, Site, Stats,
                   enumerate_sites, find_site,
@@ -106,7 +103,7 @@ pub struct PlanesOpts {
 pub struct PlaneDistance {
     /// Name of site
     pub site: Site,
-    /// Specific day (stored as jiff Timestamp, converted to chrono only for DB queries)
+    /// Specific UTC day
     pub date: Timestamp,
     /// Optional delay between tasks
     pub wait: u64,
@@ -240,7 +237,7 @@ struct WorkItem {
 ///
 /// # Returns
 ///
-/// Returns a `Result` containing a vector of tuples `(DateTime<Utc>, Site)` where each
+/// Returns a `Result` containing a vector of tuples `(Timestamp, Site)` where each
 /// tuple represents a specific date and site to process during the computation.
 ///
 /// # Behavior
@@ -314,10 +311,9 @@ async fn prepare_work_list(
                         .build();
                     vec![w]
                 } else {
-                    // Process all sites (enumerate_sites still uses chrono)
+                    // Process all sites
                     //
-                    let day_chrono = jiff_to_chrono(day).expect("valid timestamp");
-                    let list = enumerate_sites(ctx, day_chrono).await.unwrap();
+                    let list = enumerate_sites(ctx, day).await.unwrap();
                     let list: Vec<_> = list
                         .iter()
                         .map(|site| {
@@ -359,7 +355,7 @@ async fn prepare_work_list_with_deps<F, G, Fut1, Fut2>(
 ) -> Result<Vec<WorkItem>>
 where
     F: Fn(&Context, &str) -> Fut1 + Send + Sync,
-    G: Fn(&Context, DateTime<Utc>) -> Fut2 + Send + Sync,
+    G: Fn(&Context, Timestamp) -> Fut2 + Send + Sync,
     Fut1: Future<Output=Result<Site>> + Send,
     Fut2: Future<Output=Result<Vec<Site>>> + Send,
 {
@@ -402,8 +398,7 @@ where
                     .build();
                 vec![w]
             } else {
-                let day_chrono = jiff_to_chrono(day).expect("valid timestamp");
-                let list = enum_fn(ctx, day_chrono).await.unwrap();
+                let list = enum_fn(ctx, day).await.unwrap();
                 let list: Vec<_> = list
                     .iter()
                     .map(|site| {
@@ -430,14 +425,14 @@ where
 
 /// Processes batches of distance and separation computations in parallel.
 ///
-/// This function takes a list of `(DateTime<Utc>, Site)` tuples and processes
+/// This function takes a list of `(Timestamp, Site)` tuples and processes
 /// them in parallel using asynchronous tasks. Each batch size is limited by
 /// the pool size defined in the context to optimize execution performance.
 ///
 /// # Arguments
 ///
 /// * `ctx` - The execution context containing runtime configurations such as pool size.
-/// * `work_list` - A vector of tuples `(DateTime<Utc>, Site)` representing the work to process.
+/// * `work_list` - A vector of tuples `(Timestamp, Site)` representing the work to process.
 /// * `distance` - The maximum permissible distance used in the calculations.
 /// * `separation` - The minimum required separation for valid calculations.
 ///
@@ -449,7 +444,7 @@ where
 /// # Behavior
 ///
 /// - The function processes the work list in batches according to the pool size.
-/// - For each `(DateTime<Utc>, Site)` tuple, it spawns an asynchronous task to perform the computation.
+/// - For each `(Timestamp, Site)` tuple, it spawns an asynchronous task to perform the computation.
 /// - Errors during individual computations are logged, and default statistics are returned
 ///   for the corresponding entry.
 ///
@@ -575,13 +570,10 @@ async fn calculate_one_day_on_site(
     // Normalize day using jiff
     let day_jiff = normalise_day_jiff(work.day)?;
 
-    // Convert to chrono only for database formatting
-    let day_chrono = jiff_to_chrono(day_jiff)?;
-
     // Get our parameters for queries.
     //
     let name = work.site.name.clone();
-    let day_name = day_chrono.format("%Y%m%d").to_string();
+    let day_name = day_jiff.strftime("%Y%m%d").to_string();
     let tag = format!("_{name}_{day_name}");
 
     let dbvars = DBVars::from_ctx(ctx).tag(&tag);
@@ -619,7 +611,6 @@ mod tests {
     use super::*;
     use crate::cmds::Site;
     use crate::runtime::{Context, MockSiteLookup, init_test_context};
-    use chrono::{DateTime, Utc};
     use mockall::predicate::*;
     use mockall::*;
     use std::collections::HashMap;
@@ -645,7 +636,7 @@ mod tests {
     #[automock]
     trait DatabaseOperations {
         async fn find_site(&self, ctx: &Context, name: &str) -> Result<Site>;
-        async fn enumerate_sites(&self, ctx: &Context, day: DateTime<Utc>) -> Result<Vec<Site>>;
+        async fn enumerate_sites(&self, ctx: &Context, day: Timestamp) -> Result<Vec<Site>>;
     }
 
     #[tokio::test]
@@ -659,7 +650,7 @@ mod tests {
         let b = "2023-10-01T00:00:00Z".parse::<Timestamp>().unwrap();
         let e = "2023-10-02T00:00:00Z".parse::<Timestamp>().unwrap();
         let dates = vec![b, e];
-        let expected_days = Arc::new([jiff_to_chrono(b)?, jiff_to_chrono(e)?]);
+        let expected_days = Arc::new([b, e]);
         let observed_days = Arc::new(std::sync::Mutex::new(HashMap::new()));
         let mock_sites = Arc::new(vec![
             Site {
@@ -805,7 +796,7 @@ mod tests {
             }
         };
 
-        let mock_enumerate_sites = move |_ctx: &Context, _day: DateTime<Utc>| {
+        let mock_enumerate_sites = move |_ctx: &Context, _day: Timestamp| {
             let sites = sites_clone.clone();
             async move { Ok(sites) }
         };
@@ -847,24 +838,6 @@ mod tests {
         assert!(site_names.contains(&"site3"));
 
         Ok(())
-    }
-
-    #[test]
-    fn test_jiff_to_chrono_valid_conversion() {
-        // Test valid timestamp: 2021-01-01 00:00:00 UTC
-        //
-        let jiff_ts = Timestamp::from_second(1609459200).unwrap();
-        let chrono_dt = jiff_to_chrono(jiff_ts).unwrap();
-        assert_eq!(chrono_dt.timestamp(), 1609459200);
-    }
-
-    #[test]
-    fn test_jiff_to_chrono_epoch() {
-        // Test Unix epoch: 1970-01-01 00:00:00 UTC
-        //
-        let jiff_ts = Timestamp::from_second(0).unwrap();
-        let chrono_dt = jiff_to_chrono(jiff_ts).unwrap();
-        assert_eq!(chrono_dt.timestamp(), 0);
     }
 
     #[test]

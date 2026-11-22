@@ -5,7 +5,7 @@ use std::fmt::{Display, Formatter};
 use std::iter::Sum;
 use std::ops::{Add, AddAssign};
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 
 /// Represents different types of statistics that can be gathered and manipulated.
 ///
@@ -40,10 +40,10 @@ impl Stats {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use chrono::Utc;
+    /// use jiff::Timestamp;
     /// use process_data::{PlanesStats, Stats};
-    /// let stats1 = Stats::Planes(PlanesStats::new(Utc::now(), 50.0, 10.0));
-    /// let stats2 = Stats::Planes(PlanesStats::new(Utc::now(), 60.0, 15.0));
+    /// let stats1 = Stats::Planes(PlanesStats::new(Timestamp::now(), 50.0, 10.0));
+    /// let stats2 = Stats::Planes(PlanesStats::new(Timestamp::now(), 60.0, 15.0));
     ///
     /// let summary = Stats::summarise(vec![stats1, stats2]);
     ///
@@ -83,10 +83,10 @@ impl AddAssign for Stats {
 /// # Example
 ///
 /// ```rust,no_run
-/// # use chrono::Utc;
+/// # use jiff::Timestamp;
 /// # use process_data::{PlanesStats, Stats};
-/// let stats1 = Stats::Planes(PlanesStats::new(Utc::now(), 50.0, 10.0));
-/// let stats2 = Stats::Planes(PlanesStats::new(Utc::now(), 60.0, 15.0));
+/// let stats1 = Stats::Planes(PlanesStats::new(Timestamp::now(), 50.0, 10.0));
+/// let stats2 = Stats::Planes(PlanesStats::new(Timestamp::now(), 60.0, 15.0));
 ///
 /// let combined = stats1 + stats2;
 ///
@@ -140,9 +140,9 @@ impl<'a> Sum<&'a Stats> for Stats {
 /// # Example
 ///
 /// ```rust,no_run
-/// # use chrono::Utc;
+/// # use jiff::Timestamp;
 /// # use process_data::{PlanesStats, Stats};
-/// let stats = Stats::Planes(PlanesStats::new(Utc::now(), 100.0, 5.0));
+/// let stats = Stats::Planes(PlanesStats::new(Timestamp::now(), 100.0, 5.0));
 /// let planes_stats: PlanesStats = stats.into();
 ///
 /// assert_eq!(planes_stats.planes, 0);
@@ -177,7 +177,7 @@ impl From<Stats> for PlanesStats {
 #[derive(Clone, Debug)]
 pub struct PlanesStats {
     /// Specific date
-    day: Vec<DateTime<Utc>>,
+    day: Vec<Timestamp>,
     /// Number of plane points
     pub planes: usize,
     /// Number of drone points
@@ -215,7 +215,7 @@ pub struct Day {
     /// The name or identifier of the monitoring site.
     pub site: String,
     /// The UTC datetime when these statistics were recorded.
-    pub day: DateTime<Utc>,
+    pub day: Timestamp,
     /// The number of planes detected during this period.
     pub planes: usize,
     /// The number of drones detected during this period.
@@ -234,7 +234,7 @@ impl Day {
     pub fn new() -> Self {
         Self {
             site: String::new(),
-            day: Utc::now(),
+            day: Timestamp::now(),
             planes: 0,
             drones: 0,
             potential: 0,
@@ -245,7 +245,7 @@ impl Day {
     }
 
     pub fn header(&self) -> String {
-        format!("{}-{}", self.site, self.day.format("%Y-%m-%d"))
+        format!("{}-{}", self.site, self.day.strftime("%Y-%m-%d"))
     }
 }
 
@@ -291,7 +291,7 @@ impl Default for Day {
 impl Default for PlanesStats {
     fn default() -> Self {
         Self {
-            day: vec![Utc::now()],
+            day: vec![Timestamp::now()],
             planes: 0,
             drones: 0,
             potential: 0,
@@ -320,10 +320,10 @@ impl PlanesStats {
     /// # Example
     ///
     /// ```rust
-    /// use chrono::Utc;
+    /// use jiff::Timestamp;
     /// use process_data::PlanesStats;
     ///
-    /// let day = Utc::now();
+    /// let day = Timestamp::now();
     /// let stats = PlanesStats::new(day, 100.0, 5.0);
     ///
     /// assert_eq!(stats.planes, 0);
@@ -334,7 +334,7 @@ impl PlanesStats {
     /// ```
     ///
     #[inline]
-    pub fn new(day: DateTime<Utc>, distance: f64, proximity: f64) -> Self {
+    pub fn new(day: Timestamp, distance: f64, proximity: f64) -> Self {
         Self {
             day: vec![day],
             distance,
@@ -374,17 +374,17 @@ impl Display for PlanesStats {
 /// # Example
 ///
 /// ```rust
-/// use chrono::Utc;
+/// use jiff::Timestamp;
 /// use process_data::PlanesStats;
 ///
-/// let mut stats1 = PlanesStats::new(Utc::now(), 50.0, 10.0);
+/// let mut stats1 = PlanesStats::new(Timestamp::now(), 50.0, 10.0);
 /// stats1.planes = 5;
 /// stats1.drones = 7;
 /// stats1.potential = 3;
 /// stats1.encounters = 2;
 /// stats1.time = 100;
 ///
-/// let mut stats2 = PlanesStats::new(Utc::now(), 50.0, 10.0);
+/// let mut stats2 = PlanesStats::new(Timestamp::now(), 50.0, 10.0);
 /// stats2.planes = 10;
 /// stats2.drones = 8;
 /// stats2.potential = 4;
@@ -441,7 +441,6 @@ impl<'a> Sum<&'a PlanesStats> for PlanesStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
 
     #[test]
     fn test_planes_stats_default() {
@@ -458,7 +457,7 @@ mod tests {
 
     #[test]
     fn test_planes_stats_new() {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let distance = 50.0;
         let proximity = 10.0;
         let stats = PlanesStats::new(now, distance, proximity);
@@ -475,7 +474,7 @@ mod tests {
 
     #[test]
     fn test_planes_stats_add() {
-        let day1 = Utc::now();
+        let day1 = Timestamp::now();
         let stats1 = PlanesStats {
             day: vec![day1],
             distance: 50.0,
@@ -487,7 +486,7 @@ mod tests {
             time: 100,
         };
 
-        let day2 = Utc::now();
+        let day2 = Timestamp::now();
         let stats2 = PlanesStats {
             day: vec![day2],
             distance: 50.0,
@@ -514,7 +513,7 @@ mod tests {
 
     #[test]
     fn test_planes_stats_sum() {
-        let day1 = Utc::now();
+        let day1 = Timestamp::now();
         let stats1 = PlanesStats {
             day: vec![day1],
             distance: 50.0,
@@ -526,7 +525,7 @@ mod tests {
             time: 100,
         };
 
-        let day2 = Utc::now();
+        let day2 = Timestamp::now();
         let stats2 = PlanesStats {
             day: vec![day2],
             distance: 50.0,
@@ -564,7 +563,7 @@ mod tests {
     #[allow(irrefutable_let_patterns)]
     #[test]
     fn test_stats_sum() {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let stats1 = Stats::Planes(PlanesStats::new(now, 50.0, 10.0));
         let stats2 = Stats::Planes(PlanesStats {
             day: vec![now],
@@ -625,7 +624,7 @@ mod tests {
     #[allow(irrefutable_let_patterns)]
     #[test]
     fn test_stats_summarise_non_empty() {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let stats1 = Stats::Planes(PlanesStats::new(now, 50.0, 10.0));
         let stats2 = Stats::Planes(PlanesStats {
             day: vec![now],
@@ -660,9 +659,7 @@ mod tests {
     fn test_day_header() {
         let mut day = Day::new();
         day.site = "TestSite".to_string();
-        day.day = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .into();
+        day.day = "2024-01-01T00:00:00Z".parse().unwrap();
         assert_eq!(day.header(), "TestSite-2024-01-01");
     }
 

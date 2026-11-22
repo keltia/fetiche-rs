@@ -58,9 +58,7 @@ use tokio::time::{Duration, Instant, sleep};
 use tracing::{debug, error, info, trace};
 
 use crate::cmds::{Calculate, DBVars, ONE_DEG, PlaneDistance, PlanesStats, Stats, TempTables};
-use crate::make_query;
-
-use fetiche_common::jiff_to_chrono;
+use crate::{make_query, normalise_day_jiff};
 
 /// Timings during the calculation process.
 #[derive(Debug, Default, Deserialize)]
@@ -125,17 +123,8 @@ impl PlaneDistance {
         let dist = self.distance * 1.852 / ONE_DEG;
         debug!("{} nm as deg: {}", self.distance, dist);
 
-        // Convert jiff Timestamp to chrono only for database formatting
-        let date_chrono = jiff_to_chrono(self.date)?;
-        let time_from = date_chrono.format("%Y-%m-%d 00:00:00").to_string();
-
-        // Add 1 day using jiff, then convert to chrono for formatting
-        let next_day = self
-            .date
-            .checked_add(SignedDuration::from_hours(24))
-            .expect("date overflow");
-        let next_day_chrono = jiff_to_chrono(next_day)?;
-        let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
+        let time_from = normalise_day_jiff(self.date)?;
+        let time_to = time_from.checked_add(SignedDuration::from_hours(24))?;
 
         info!(
             "From {} to {} on {}/{}.",
@@ -154,7 +143,7 @@ impl PlaneDistance {
         // $8 = distance in degrees (== dist(nm) /  60)   1 deg ~ 60 nm ~111.1 km
         //
         //
-        let day_name = date_chrono.format("%Y%m%d").to_string();
+        let day_name = self.date.strftime("%Y%m%d").to_string();
         let tag = format!("_{name}_{day_name}");
 
         let r1 = make_query!(
@@ -189,8 +178,8 @@ AS (
       site = $1 AND
       prox_alt_m  IS NOT NULL AND
       NOT(prox_alt_m = 0 AND flight_level != 0) AND
-      time >= toDateTime($2) AND
-      time < toDateTime($3) AND
+      time >= $2 AND
+      time < $3 AND
       pointInEllipses(plon, plat, $4, $5, $6, $7)
     ORDER BY (site, time)
 )
@@ -283,17 +272,8 @@ AS (
 
         let site = self.site.clone();
 
-        // Convert jiff Timestamp to chrono only for database formatting
-        let date_chrono = jiff_to_chrono(self.date)?;
-        let time_from = date_chrono.format("%Y-%m-%d 00:00:00").to_string();
-
-        // Add 1 day using jiff, then convert to chrono for formatting
-        let next_day = self
-            .date
-            .checked_add(SignedDuration::from_hours(24))
-            .expect("date overflow");
-        let next_day_chrono = jiff_to_chrono(next_day)?;
-        let time_to = next_day_chrono.format("%Y-%m-%d 00:00:00").to_string();
+        let time_from = normalise_day_jiff(self.date)?;
+        let time_to = time_from.checked_add(SignedDuration::from_hours(24))?;
 
         info!(
             "From {} to {} on {}/{}.",
@@ -334,7 +314,7 @@ AS (
       latitude IS NOT NULL AND
       longitude IS NOT NULL
     WHERE
-      timestamp >= toDateTime($1) AND timestamp < toDateTime($2) AND
+      timestamp >= $1 AND timestamp < $2 AND
       pointInEllipses(longitude,latitude, $3, $4, $5, $6)
     ORDER BY (time, journey)
 )
@@ -655,9 +635,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
         let site = self.site.clone();
         let name = site.name.clone();
 
-        // Convert jiff Timestamp to chrono only for formatting
-        let date_chrono = jiff_to_chrono(self.date)?;
-        let day_name = date_chrono.format("%Y%m%d").to_string();
+        let day_name = self.date.strftime("%Y%m%d").to_string();
 
         // Insert data into table `encounters`
         //
@@ -756,9 +734,7 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
     ) -> Result<Stats> {
         info!("Running calculations for {}:", self.date);
 
-        // Convert jiff Timestamp to chrono only for formatting
-        let date_chrono = jiff_to_chrono(self.date)?;
-        let date_str = date_chrono.format("%Y%m%d").to_string();
+        let date_str = self.date.strftime("%Y%m%d").to_string();
 
         let bar = self.progress.clone().unwrap_or_else(|| ProgressBar::new(4));
         bar.set_length(4);
@@ -769,10 +745,10 @@ CREATE OR REPLACE TABLE {workdb}.ids{tag} (
         bar.set_style(style);
         bar.enable_steady_tick(Duration::from_millis(100));
 
-        // Create our stat struct (PlanesStats still uses chrono for storage)
+        // Create the statistics for this run.
         //
         let separation = self.threshold * self.factor;
-        let stats = &mut PlanesStats::new(date_chrono, self.distance, separation);
+        let stats = &mut PlanesStats::new(self.date, self.distance, separation);
         let mut timings = Timings::default();
 
         // Create table `today` with all identified plane points with the specified range

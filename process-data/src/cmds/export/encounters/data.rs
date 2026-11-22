@@ -14,15 +14,14 @@
 //! ## Dependencies
 //!
 //! This module utilizes the following crates:
-//! - `chrono`: For handling datetime operations.
+//! - `jiff`: For handling datetime operations.
 //! - `eyre`: For error handling and propagation.
 //! - `klickhouse`: For constructing and executing ClickHouse database queries.
 //! - `serde`: For serialization support.
 //! - `tracing`: For logging and instrumentation.
 //!
-use chrono::{DateTime, Utc};
 use eyre::Result;
-use jiff::tz::TimeZone;
+use jiff::{Timestamp, tz::TimeZone};
 use klickhouse::{QueryBuilder, RawRow, Row};
 use serde::Serialize;
 use tracing::{debug, trace};
@@ -47,7 +46,7 @@ use fetiche_common::DateOpts;
 #[derive(Clone, Debug, Row, Serialize)]
 pub struct DataPoint {
     /// The timestamp of the data point in UTC.
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     /// Latitude position (in degrees) of the data point.
     pub latitude: f64,
     /// Longitude position (in degrees) of the data point.
@@ -77,7 +76,7 @@ pub struct Encounter {
     pub en_id: String,
     pub sitename: String,
     pub journey: i32,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     pub drone_id: String,
     pub drone_lat: f32,
     pub drone_lon: f32,
@@ -161,8 +160,8 @@ pub async fn fetch_planes(
     sitename: &str,
     enc_coord: &(f64, f64),
     prox_id: &str,
-    first: DateTime<Utc>,
-    last: DateTime<Utc>,
+    first: Timestamp,
+    last: Timestamp,
 ) -> Result<Vec<DataPoint>> {
     let client = ctx.db().await;
     let dbvars = DBVars::from_ctx(ctx);

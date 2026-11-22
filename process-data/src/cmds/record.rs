@@ -9,8 +9,8 @@
 //! The module interfaces with a database to persist this information for analysis
 //! and auditing purposes.
 //!
-use chrono::{DateTime, Utc};
 use eyre::Result;
+use jiff::civil::Date;
 use klickhouse::{Client, QueryBuilder, Row};
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
@@ -87,7 +87,7 @@ impl History {
 #[derive(Debug, Row)]
 pub struct Record {
     /// Specific day of the run.
-    pub day: DateTime<Utc>,
+    pub day: Date,
     /// The site id.
     pub site_id: i32,
     /// The site name.
@@ -115,7 +115,7 @@ impl History {
     ///
     #[allow(dead_code)]
     #[tracing::instrument(skip(self))]
-    pub async fn insert(&mut self, day: DateTime<Utc>, site_id: u32, status: RecordStatus, stats: String, comment: String) -> Result<()> {
+    pub async fn insert(&mut self, day: Date, site_id: u32, status: RecordStatus, stats: String, comment: String) -> Result<()> {
         let dbh = self.dbh.clone();
         let dbvars = self.dbvars.clone();
 
@@ -141,7 +141,7 @@ INSERT INTO {workdb}.daily_stats (day, site_id, site_name, status, stats, commen
     ///
     #[allow(dead_code)]
     #[tracing::instrument(skip(self))]
-    pub async fn get_by_day(&mut self, day: DateTime<Utc>) -> Result<Vec<Record>> {
+    pub async fn get_by_day(&mut self, day: Date) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
         let dbvars = self.dbvars.clone();
 
@@ -208,7 +208,7 @@ INSERT INTO {workdb}.daily_stats (day, site_id, site_name, status, stats, commen
     ///
     #[allow(dead_code)]
     #[tracing::instrument(skip(self))]
-    pub async fn get_incomplete_by_day(&mut self, day: DateTime<Utc>) -> Result<Vec<Record>> {
+    pub async fn get_incomplete_by_day(&mut self, day: Date) -> Result<Vec<Record>> {
         let dbh = self.dbh.clone();
         let dbvars = self.dbvars.clone();
 

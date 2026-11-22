@@ -347,12 +347,12 @@ pub trait SiteLookup: Send + Sync {
     /// Enumerate all active sites for a given day.
     fn enumerate_sites(
         &self,
-        day: chrono::DateTime<chrono::Utc>,
+        day: jiff::Timestamp,
     ) -> SiteLookupFuture<Vec<crate::cmds::Site>>;
     /// Match an antenna name to a site name for a given day.
     fn match_site(
         &self,
-        day: chrono::DateTime<chrono::Utc>,
+        day: jiff::Timestamp,
         antenna: String,
     ) -> SiteLookupFuture<String>;
 }

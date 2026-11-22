@@ -36,7 +36,6 @@ harness = false
 
 [dependencies]
 bon.workspace = true
-chrono.workspace = true
 clap.workspace = true
 csv.workspace = true
 eyre.workspace = true

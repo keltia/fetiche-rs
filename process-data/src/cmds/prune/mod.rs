@@ -1,11 +1,11 @@
 //! The `prune` command removes encounter data from the database, like after some
 //! metadata changes affecting past calculations, like fixing installation dates.
 //!
-use crate::{Context, DBVars, make_query, parse_date_interval};
+use crate::{Context, DBVars, make_query, normalise_day_jiff, parse_date_interval};
 use clap::Parser;
 use eyre::Result;
 use farben::ceprintln;
-use fetiche_common::{DateOpts, jiff_to_chrono};
+use fetiche_common::DateOpts;
 use klickhouse::{QueryBuilder, RawRow};
 use tracing::trace;
 
@@ -35,13 +35,8 @@ pub async fn run_prune_cmd(ctx: &Context, opts: &PruneOpts) -> Result<usize> {
     let (begin, end) = parse_date_interval(opts.date.clone())?;
     ceprintln!("[green]Pruning encounters between {} and {}", begin, end);
 
-    // Convert jiff Timestamp to chrono only for database formatting
-    //
-    let date_chrono = jiff_to_chrono(begin)?;
-    let time_from = date_chrono.format("%Y-%m-%d 00:00:00").to_string();
-
-    let next_chrono = jiff_to_chrono(end)?;
-    let time_to = next_chrono.format("%Y-%m-%d 00:00:00").to_string();
+    let time_from = normalise_day_jiff(begin)?;
+    let time_to = normalise_day_jiff(end)?;
     let dbvars = DBVars::from_ctx(ctx);
 
     // First count how many
@@ -51,7 +46,7 @@ SELECT count() FROM {workdb}.airplane_prox
 WHERE time BETWEEN $1 AND $2
     "#, dbvars);
 
-    let q = QueryBuilder::new(&r).arg(&time_from).arg(&time_to);
+    let q = QueryBuilder::new(&r).arg(time_from).arg(time_to);
 
     let mut count = match dbh.query_one::<RawRow>(q).await {
         Ok(count) => count,
@@ -79,7 +74,7 @@ DELETE FROM {workdb}.airplane_prox
 WHERE time BETWEEN $1 AND $2
     "#, dbvars);
 
-    let q = QueryBuilder::new(&r).arg(&time_from).arg(&time_to);
+    let q = QueryBuilder::new(&r).arg(time_from).arg(time_to);
     let _ = dbh.execute(q).await?;
     trace!("Removing encounters between {} and {}", time_from, time_to);
 
