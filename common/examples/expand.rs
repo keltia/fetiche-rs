@@ -17,7 +17,7 @@ pub fn expand_interval(
     Ok(intv)
 }
 
-pub fn expand_interval_jiff(begin: DateTime, end: DateTime) -> eyre::Result<Vec<DateTime>> {
+pub fn expand_interval_civil(begin: DateTime, end: DateTime) -> eyre::Result<Vec<DateTime>> {
     let mut d = begin;
     let mut intv = vec![];
 
@@ -38,7 +38,7 @@ fn main() -> eyre::Result<()> {
     let begin = "2024-01-01".parse()?;
     let end = "2025-01-01".parse()?;
 
-    let r1 = expand_interval_jiff(begin, end)?;
+    let r1 = expand_interval_civil(begin, end)?;
     eprintln!("vec(jiff) = {}", r1.len());
 
     let r3 = expand_interval_jiff_series(begin, end)?;
