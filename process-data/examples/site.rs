@@ -1,6 +1,6 @@
-use chrono::{DateTime, Utc};
 use eyre::Result;
 use fetiche_common::init_logging;
+use jiff::Timestamp;
 use klickhouse::{Client, ClientOptions, Progress, QueryBuilder, RawRow, Row, Uuid};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
     }
 
     let antenna = "0QRDJCAR0383TD";
-    let day = "2024-03-01 00:00:00 UTC".parse::<DateTime<Utc>>()?;
+    let day = "2024-03-01T00:00:00Z".parse::<Timestamp>()?;
 
     let q = format!(r##"
 SELECT site_name
