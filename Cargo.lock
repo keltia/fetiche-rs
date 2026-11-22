@@ -3607,14 +3607,12 @@ name = "fetiche-common"
 version = "0.6.0"
 dependencies = [
  "cached",
- "chrono",
  "clap 4.6.9",
  "console-subscriber",
  "criterion 0.8.2",
  "csv",
  "ctrlc",
  "datafusion",
- "dateparser",
  "directories",
  "divan",
  "enum_dispatch",
