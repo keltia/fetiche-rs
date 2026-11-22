@@ -1,32 +1,22 @@
 //! Benchmark between dateparser, humantime and jiff.
 //!
-//! Apple Silicon M1 Max 3.2 GHz, Sonoma 14.5
-//!
+//! AMD 7700X, 32 GB, Rust 1.100.0, jiff 1.0.2
 //! ```text
-//! dateparser              time:   [1.0021 µs 1.0045 µs 1.0070 µs]
-//!                         change: [−1.1123% −0.6057% −0.1310%] (p = 0.02 < 0.05)
+//! humantime               time:   [8.6784 ns 8.6899 ns 8.7025 ns]
+//!                         change: [−0.1621% +1.4839% +3.4864%] (p = 0.10 > 0.05)
 //!
-//! humantime               time:   [14.663 ns 14.698 ns 14.736 ns]
-//!                         change: [+0.1197% +0.4958% +0.8872%] (p = 0.01 < 0.05)
-//! Found 2 outliers among 100 measurements (2.00%)
-//!   1 (1.00%) high mild
-//!   1 (1.00%) high severe
+//! jiff                    time:   [15.895 ns 15.938 ns 15.985 ns]
+//!                         change: [−0.3307% +0.2600% +0.9299%] (p = 0.46 > 0.05)
 //!
-//! jiff                    time:   [15.626 ns 15.678 ns 15.731 ns]
-//!                         change: [−0.0269% +0.2954% +0.6186%] (p = 0.07 > 0.05)
-//!
-//! jiff_timestamp          time:   [24.565 ns 24.623 ns 24.683 ns]
-//!                         change: [−0.1266% +0.2607% +0.6665%] (p = 0.21 > 0.05)
-//! Found 5 outliers among 100 measurements (5.00%)
-//!   2 (2.00%) high mild
-//!   3 (3.00%) high severe
+//! jiff_timestamp          time:   [23.915 ns 23.973 ns 24.029 ns]
+//!                         change: [−1.0791% −0.3673% +0.0863%] (p = 0.28 > 0.05)
 //! ```
 //!
 use std::hint::black_box;
 
-use criterion::{criterion_group, criterion_main, Criterion};
-use jiff::civil::DateTime;
+use criterion::{Criterion, criterion_group, criterion_main};
 use jiff::Timestamp;
+use jiff::civil::DateTime;
 
 fn test_humantime(c: &mut Criterion) {
     let base = "2024-03-08 12:34:56";

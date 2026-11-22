@@ -2,20 +2,16 @@
 //!
 //! Benchmarking dateparser (which we know as very slow) versus jiff.
 //!
-//! Mac Studio 2022, 64 GB, 4 TB, macOS 26.5
+//! AMD 7700X, 32 GB, Rust 1.00.0, jiff 1.0.2
 //! ```text
-//! Gnuplot not found, using plotters backend
-//! dateparser              time:   [4.9951 µs 5.0242 µs 5.0537 µs]
-//!                         change: [−0.2916% +0.3098% +0.9034%] (p = 0.31 > 0.05)
+//! jiff_zoned              time:   [329.82 ns 330.61 ns 331.40 ns]
+//!                         change: [+1.1291% +1.6362% +2.1466%] (p = 0.00 < 0.05)
 //!
-//! jiff_zoned              time:   [309.03 ns 309.68 ns 310.38 ns]
-//!                         change: [+0.2035% +0.4903% +0.7676%] (p = 0.00 < 0.05)
+//! jiff_datetime           time:   [358.35 ns 359.15 ns 360.04 ns]
+//!                         change: [+1.7071% +2.0826% +2.4604%] (p = 0.00 < 0.05)
 //!
-//! jiff_datetime           time:   [326.47 ns 327.18 ns 327.89 ns]
-//!                         change: [−0.6159% −0.2920% −0.0046%] (p = 0.06 > 0.05)
-//!
-//! humantime               time:   [230.27 ns 231.00 ns 231.79 ns]
-//!                         change: [+0.2193% +0.5983% +0.9186%] (p = 0.00 < 0.05)
+//! humantime               time:   [306.17 ns 306.85 ns 307.56 ns]
+//!                         change: [+1.5747% +2.0182% +2.5572%] (p = 0.00 < 0.05)
 //! ```
 
 use std::hint::black_box;

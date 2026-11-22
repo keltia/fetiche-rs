@@ -1,17 +1,15 @@
 //! Benchmark for expand_interval between chrono/jiff
 //!
+//! AMD 7700X, 32 GB, Rust 1.100.0, jiff 1.0.2
 //! ```text
-//! chrono+dateparser       time:   [4.9884 µs 5.0106 µs 5.0369 µs]
-//!                         change: [−0.8854% −0.2825% +0.3640%] (p = 0.39 > 0.05)
-//!                         No change in performance detected.
+//! jiff_loop               time:   [4.3455 µs 4.3606 µs 4.3771 µs]
+//!                         change: [−0.0016% +0.3997% +0.8157%] (p = 0.05 > 0.05)
 //!
-//! jiff                    time:   [1.4378 µs 1.4401 µs 1.4427 µs]
-//!                         change: [−0.4205% −0.1216% +0.1654%] (p = 0.41 > 0.05)
-//!                         No change in performance detected.
+//! jiff_iter               time:   [4.8453 µs 4.8558 µs 4.8679 µs]
+//!                         change: [−0.2014% +0.1856% +0.6133%] (p = 0.40 > 0.05)
 //!
-//! jiff_iter               time:   [3.5292 µs 3.5433 µs 3.5580 µs]
-//!                         change: [−1.3919% −0.7678% −0.2062%] (p = 0.01 < 0.05)
-//!                         Change within noise threshold.
+//! jiff_series             time:   [7.6338 µs 7.6504 µs 7.6671 µs]
+//!                         change: [−8.0658% −5.7577% −3.4942%] (p = 0.00 < 0.05)
 //! ```
 
 use std::hint::black_box;
@@ -45,7 +43,7 @@ pub fn expand_interval_jiff_iter(begin: DateTime, end: DateTime) -> eyre::Result
         let next = d.checked_add(day).ok()?;
         (next < end).then_some(next)
     })
-        .collect();
+    .collect();
 
     Ok(dates)
 }
