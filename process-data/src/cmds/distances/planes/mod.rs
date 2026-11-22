@@ -19,7 +19,7 @@ use tracing::{debug, error, info, trace};
 #[cfg(test)]
 use chrono::{DateTime, Utc};
 
-use fetiche_common::{DateOpts, expand_interval_timestamp, jiff_to_chrono};
+use fetiche_common::{DateOpts, expand_interval, jiff_to_chrono};
 
 use crate::cmds::{Calculate, CmdError, DBVars, PlanesStats, Site, Stats,
                   enumerate_sites, find_site,
@@ -200,7 +200,7 @@ pub async fn planes_calculation(ctx: &Context, opts: &PlanesOpts) -> Result<Stat
     // Step 2: Parse dates (using jiff internally)
     //
     let (begin, end) = parse_date_interval(opts.date.clone())?;
-    let dates = expand_interval_timestamp(begin, end)?;
+    let dates = expand_interval(begin, end)?;
     eprintln!("{} days to process: from {begin} to {end}", dates.len());
 
     // Step 3: Create work list (combination of dates and sites)
