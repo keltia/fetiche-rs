@@ -52,7 +52,6 @@ telemetry = ["dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_s
 console = ["dep:console-subscriber"]
 
 [dependencies]
-chrono.workspace = true
 clap.workspace = true
 csv.workspace = true
 directories.workspace = true
@@ -79,7 +78,6 @@ tracing-opentelemetry = { version = "0.34", optional = true }
 
 [dev-dependencies]
 criterion.workspace = true
-dateparser.workspace = true
 fetiche-macros.workspace = true
 polars.workspace = true
 proptest.workspace = true
