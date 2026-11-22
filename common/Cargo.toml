@@ -57,19 +57,14 @@ clap.workspace = true
 csv.workspace = true
 directories.workspace = true
 eyre.workspace = true
-fetiche-macros.workspace = true
 hcl-rs.workspace = true
 jiff.workspace = true
 serde.workspace = true
-serde_json.workspace = true
 strum.workspace = true
 tabled.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 
-ctrlc = { version = "3.5", features = ["termination"] }
-enum_dispatch = "0.3"
-humantime = "2.4"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "time", "tracing"] }
 tracing-tree = { version = "0.4", features = ["time"] }
@@ -83,18 +78,23 @@ opentelemetry_sdk = { version = "0.33", features = ["rt-tokio"], optional = true
 tracing-opentelemetry = { version = "0.34", optional = true }
 
 [dev-dependencies]
-cached = "4"
 criterion.workspace = true
 dateparser.workspace = true
+fetiche-macros.workspace = true
 polars.workspace = true
 proptest.workspace = true
 ractor.workspace = true
 rstest.workspace = true
+serde_json.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 
+cached = "4"
+ctrlc = { version = "3.5", features = ["termination"] }
 datafusion = "55"
 divan = "0.1"
+enum_dispatch = "0.3"
+humantime = "2.4"
 polars-io = "0.55"
 rand = "0.10"
 test-pretty-log = "0.6"
