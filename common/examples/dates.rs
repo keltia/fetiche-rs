@@ -1,26 +1,22 @@
-use chrono::{DateTime, Utc};
 use eyre::Result;
-use humantime::parse_duration;
-use jiff::Timestamp;
+use jiff::{SignedDuration, Timestamp};
 
-async fn test_humantime() -> Result<()> {
-    let base = "2024-03-08 00:00:00";
+async fn test_jiff() -> Result<()> {
+    let base = "2024-03-08T00:00:00Z";
 
-    let curr = humantime::parse_rfc3339_weak(base)?;
+    let curr: Timestamp = base.parse()?;
     eprintln!("1={curr:?}");
 
-    let added = parse_duration("3h 5min")?;
-    let curr = curr + added;
+    let added: SignedDuration = "3h 5m".parse()?;
+    let curr = curr.checked_add(added)?;
     eprintln!("2={curr:?}");
 
-    let curr: DateTime<Utc> = curr.into();
-    eprintln!("3={curr}");
     Ok(())
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    match test_humantime().await {
+    match test_jiff().await {
         Ok(()) => (),
         Err(e) => eprintln!("error={e}"),
     }
@@ -32,4 +28,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-
