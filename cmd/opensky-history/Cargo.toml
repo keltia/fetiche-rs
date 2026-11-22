@@ -27,11 +27,10 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono.workspace = true
-dateparser.workspace = true
 clap.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
+jiff.workspace = true
 polars-io = { version = "0.55", default-features = false, features = ["csv", "parquet"] }
 pyo3 = { version = "0.24", features = ["auto-initialize"] }
 strum.workspace = true

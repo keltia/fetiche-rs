@@ -16,14 +16,14 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io::Cursor;
 
-use chrono::prelude::*;
 use clap::{Parser, crate_authors, crate_version};
-use eyre::{Result, eyre};
+use eyre::{Result, WrapErr, eyre};
 use inline_python::{Context, python};
+use jiff::{Timestamp, civil::DateTime, tz::TimeZone};
 use polars_io::prelude::{CsvParseOptions, CsvReadOptions, ParquetWriter, SerReader};
 use tracing::{info, trace};
 
-use fetiche_common::{BB, Location, init_logging, list_locations, load_locations};
+use fetiche_common::{BB, Location, init_logging, list_locations, load_locations, parse_date};
 
 use crate::cli::{Opts, Otype, banner, version};
 use crate::segment::extract_segments;
@@ -75,26 +75,17 @@ async fn main() -> Result<()> {
         }
     };
 
-    // Get arguments, parse anything as a date
-    //
-    let start = match opts.begin {
-        Some(start) => dateparser::parse(&start),
-        None => Ok(Utc::now()),
-    }
-        .unwrap();
-    trace!("start={}", start);
+    let start = match opts.begin.as_deref() {
+        Some(value) => parse_history_timestamp(value).wrap_err("invalid start date")?,
+        None => Timestamp::now(),
+    };
+    let end = match opts.end.as_deref() {
+        Some(value) => parse_history_timestamp(value).wrap_err("invalid end date")?,
+        None => Timestamp::now(),
+    };
 
-    let end = match opts.end {
-        Some(end) => dateparser::parse(&end),
-        None => Ok(Utc::now()),
-    }
-        .unwrap();
-    trace!("end={}", end);
-
-    // Convert into UNIX timestamps
-    //
-    let start = start.timestamp() as i32;
-    let end = end.timestamp() as i32;
+    let start = start.as_second();
+    let end = end.as_second();
 
     println!("From: {} To: {}", start, end);
 
@@ -165,4 +156,35 @@ async fn main() -> Result<()> {
         fs::write(output, data)?;
     }
     Ok(())
+}
+
+fn parse_history_timestamp(value: &str) -> Result<Timestamp> {
+    if let Ok(timestamp) = value.parse::<Timestamp>() {
+        return Ok(timestamp);
+    }
+
+    if let Ok(datetime) = value.parse::<DateTime>()
+        && value.contains(['T', ' '])
+    {
+        return Ok(datetime.to_zoned_datetime(TimeZone::system())?.timestamp());
+    }
+
+    Ok(parse_date(value)?.timestamp())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_history_timestamp;
+
+    #[test]
+    fn parses_dates_and_offset_timestamps() -> eyre::Result<()> {
+        let midnight = parse_history_timestamp("2024-01-01")?;
+        assert_eq!(midnight.as_second(), 1_704_067_200);
+        assert_eq!(
+            parse_history_timestamp("2024-01-01T01:00:00+01:00")?,
+            midnight
+        );
+        assert!(parse_history_timestamp("not a date").is_err());
+        Ok(())
+    }
 }

@@ -1,6 +1,6 @@
 use tracing::trace;
 
-const ONE_HOUR: i32 = 3_600;
+const ONE_HOUR: i64 = 3_600;
 
 /// Calculate the list of 1h segments necessary for a given time interval
 ///
@@ -25,11 +25,11 @@ const ONE_HOUR: i32 = 3_600;
 /// N requests
 ///
 #[tracing::instrument]
-pub fn extract_segments(start: i32, stop: i32) -> eyre::Result<Vec<i32>> {
+pub fn extract_segments(start: i64, stop: i64) -> eyre::Result<Vec<i64>> {
     trace!("enter");
 
-    let beg_hour = start - (start % ONE_HOUR);
-    let end_hour = stop - (stop % ONE_HOUR);
+    let beg_hour = start.div_euclid(ONE_HOUR) * ONE_HOUR;
+    let end_hour = stop.div_euclid(ONE_HOUR) * ONE_HOUR;
 
     let mut v = vec![];
     let mut i = beg_hour;
@@ -51,7 +51,8 @@ mod tests {
     #[case(3610, 7200, & [3600, 7200])]
     #[case(3610, 7230, & [3600, 7200])]
     #[case(3610, 11000, & [3600, 7200, 10800])]
-    fn test_extract_segment(#[case] fr: i32, #[case] to: i32, #[case] res: &[i32]) {
+    #[case(2_147_486_400, 2_147_490_000, &[2_147_486_400, 2_147_490_000])]
+    fn test_extract_segment(#[case] fr: i64, #[case] to: i64, #[case] res: &[i64]) {
         assert_eq!(res, extract_segments(fr, to).unwrap());
     }
 }

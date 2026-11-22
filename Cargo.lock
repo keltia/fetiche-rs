@@ -5934,12 +5934,11 @@ checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
 name = "opensky-history"
 version = "0.2.1"
 dependencies = [
- "chrono",
  "clap 4.6.9",
- "dateparser",
  "eyre",
  "fetiche-common",
  "inline-python",
+ "jiff 1.0.2",
  "polars-io",
  "pyo3",
  "rstest",

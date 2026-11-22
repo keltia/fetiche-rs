@@ -26,10 +26,10 @@ pub struct Opts {
     pub range: u32,
     #[clap(short = 'V')]
     pub version: bool,
-    /// Start date (YYYY-MM-DD).
+    /// Start date (YYYY-MM-DD at UTC midnight, or an ISO 8601 date-time).
     #[clap(short = 'B', long)]
     pub begin: Option<String>,
-    /// End date (YYYY-MM-DD).
+    /// End date (YYYY-MM-DD at UTC midnight, or an ISO 8601 date-time).
     #[clap(short = 'E', long)]
     pub end: Option<String>,
     /// Location name (if in `locations.hcl`).
