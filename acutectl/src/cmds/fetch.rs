@@ -11,8 +11,8 @@ use tracing::{debug, info, trace};
 
 use crate::FetchOpts;
 
-use fetiche_client::{EngineSingle, Filter, JobBuilder, JobState};
-use fetiche_common::DateOpts;
+use fetiche_client::{EngineSingle, JobBuilder, JobState};
+use fetiche_common::{DateOpts, Filter};
 
 /// Fetches data from a specified network site using the provided engine and options.
 ///

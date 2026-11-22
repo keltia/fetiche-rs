@@ -22,6 +22,7 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 bon.workspace = true
 eyre.workspace = true
+fetiche-common.workspace = true
 fetiche-engine.workspace = true
 fetiche-formats.workspace = true
 hcl-rs.workspace = true

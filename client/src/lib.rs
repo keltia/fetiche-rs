@@ -4,8 +4,8 @@ mod single;
 pub use job::*;
 pub use single::*;
 
-// Re-export engine stuff.
-pub use fetiche_engine::{Filter, Freq, JobState};
+pub use fetiche_common::Filter;
+pub use fetiche_engine::{Freq, JobState};
 
 /// Client signature
 ///

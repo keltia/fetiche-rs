@@ -6,7 +6,8 @@ use eyre::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use tracing::{debug, info, trace};
 
-use fetiche_client::{EngineSingle, Filter, Freq, JobBuilder, JobState};
+use fetiche_client::{EngineSingle, Freq, JobBuilder, JobState};
+use fetiche_common::Filter;
 
 use crate::{Status, StreamOpts};
 

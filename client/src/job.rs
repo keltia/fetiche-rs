@@ -32,7 +32,8 @@ use eyre::Result;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
 
-use fetiche_engine::{Filter, ParserError};
+use fetiche_common::Filter;
+use fetiche_engine::ParserError;
 use fetiche_formats::Format;
 
 pub use fetiche_engine::Freq;
@@ -273,7 +274,7 @@ impl JobBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fetiche_engine::{Filter, Freq};
+    use fetiche_engine::Freq;
     use proptest::prelude::*;
 
     #[test]

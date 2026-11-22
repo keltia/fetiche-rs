@@ -23,7 +23,7 @@ mod subr;
 
 #[cfg(test)]
 mod tests {
-    use fetiche_common::ConfigFile;
+    use fetiche_common::{ConfigFile, IntoConfig, Versioned};
     use fetiche_macros::into_configfile;
     use serde::Deserialize;
 
@@ -41,14 +41,11 @@ mod tests {
 
     #[test]
     fn test_config_engine_load_default() -> eyre::Result<()> {
-        // Explicitly load default
-        //
-        let cfg = ConfigFile::<Bar>::load(Some("acutectl.hcl"));
-        assert!(cfg.is_ok());
-        let cfg = cfg?;
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/src/acutectl.hcl");
+        let cfg = ConfigFile::<Bar>::load(Some(path))?;
         let inner = cfg.inner();
         assert_eq!(CVERSION, inner.version());
-        assert!(cfg.inner().unwrap().use_async);
+        assert!(!inner.use_async);
         Ok(())
     }
 }
