@@ -1,13 +1,11 @@
 //! Micro-benchmark for strftime/format between chrono and jiff
 //!
-//! PC, AMD 7700X, 32 GB, 1 TB M2 SSD, Win11 25H2
+//! PC, AMD 7700X, 32 GB, 1 TB M2 SSD, Win11 25H2, Rust 1.100.0, jiff 1.0.2
 //! ```text
 //! Timer precision: 100 ns
-//! format                   fastest       │ slowest       │ median        │ mean          │ samples │ iters
-//! ├─ test_chrono_format    128.7 ns      │ 163 ns        │ 130.2 ns      │ 131.4 ns      │ 100     │ 12800
-//! ├─ test_chrono_strftime  218.5 ns      │ 315.4 ns      │ 231 ns        │ 236.6 ns      │ 100     │ 6400
-//! ├─ test_jiff_format      120.1 ns      │ 252.1 ns      │ 127.1 ns      │ 128.6 ns      │ 100     │ 12800
-//! ╰─ test_jiff_strftime    85.74 ns      │ 88.87 ns      │ 86.13 ns      │ 86.27 ns      │ 100     │ 12800
+//! format                 fastest       │ slowest       │ median        │ mean          │ samples │ iters
+//! ├─ test_jiff_format    113.8 ns      │ 146.6 ns      │ 114.6 ns      │ 115.2 ns      │ 100     │ 12800
+//! ╰─ test_jiff_strftime  99.82 ns      │ 17.79 µs      │ 99.82 ns      │ 277.8 ns      │ 100     │ 100
 //! ```
 //!
 
