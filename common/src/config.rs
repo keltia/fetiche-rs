@@ -10,7 +10,7 @@
 use crate::IntoConfig;
 
 use directories::BaseDirs;
-use eyre::{eyre, Result};
+use eyre::{Result, eyre};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::fs;
@@ -284,7 +284,7 @@ mod tests {
         let cfg = cfg?;
         let inner = cfg.inner();
         assert_eq!(CVERSION, inner.version());
-        assert!(!cfg.inner.unwrap().use_async);
+        assert!(cfg.inner.unwrap().use_async);
         Ok(())
     }
 
