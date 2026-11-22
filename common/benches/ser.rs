@@ -34,13 +34,23 @@ mod parse_str_date {
     use jiff::civil::DateTime;
     use serde::{self, Deserialize, Deserializer, Serializer};
 
-    const FORMAT: &str = "%Y-%m-%d %H:%M:%S%.f";
+    pub(super) const FORMAT: &str = "%Y-%m-%d %H:%M:%S%.f";
 
     pub fn serialize<S>(date: &DateTime, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let s = date.strftime(FORMAT).to_string();
+        let nanos = date.subsec_nanosecond();
+        let format = if nanos == 0 {
+            "%Y-%m-%d %H:%M:%S"
+        } else if nanos % 1_000_000 == 0 {
+            "%Y-%m-%d %H:%M:%S%.3f"
+        } else if nanos % 1_000 == 0 {
+            "%Y-%m-%d %H:%M:%S%.6f"
+        } else {
+            "%Y-%m-%d %H:%M:%S%.9f"
+        };
+        let s = date.strftime(format).to_string();
         serializer.serialize_str(&s)
     }
 
@@ -236,7 +246,7 @@ fn csv_to_df(bencher: Bencher) {
                     .unwrap_or_default(),
                 time_rec_position: c_time_rec
                     .and_then(|c| c.get(i))
-                    .map(|s| DateTime::strptime("%Y-%m-%d %H:%M:%S%.f", s).unwrap_or_default())
+                    .map(|s| DateTime::strptime(parse_str_date::FORMAT, s).unwrap_or_default())
                     .unwrap_or_default(),
                 aircraft_address: c_addr
                     .and_then(|c| c.get(i))
