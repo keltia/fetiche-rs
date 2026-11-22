@@ -32,7 +32,7 @@ dateparser.workspace = true
 clap.workspace = true
 eyre.workspace = true
 fetiche-common.workspace = true
-polars.workspace = true
+polars-io = { version = "0.55", default-features = false, features = ["csv", "parquet"] }
 pyo3 = { version = "0.24", features = ["auto-initialize"] }
 strum.workspace = true
 tokio.workspace = true

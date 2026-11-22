@@ -20,8 +20,7 @@ use chrono::prelude::*;
 use clap::{Parser, crate_authors, crate_version};
 use eyre::{Result, eyre};
 use inline_python::{Context, python};
-use polars::io::SerReader;
-use polars::prelude::{CsvParseOptions, CsvReadOptions, ParquetWriter};
+use polars_io::prelude::{CsvParseOptions, CsvReadOptions, ParquetWriter, SerReader};
 use tracing::{info, trace};
 
 use fetiche_common::{BB, Location, init_logging, list_locations, load_locations};
