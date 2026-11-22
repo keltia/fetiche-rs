@@ -93,32 +93,31 @@ impl DateOpts {
     ///
     /// Parsing "Today":
     /// ```rust
-    /// use jiff::{Timestamp, ToSpan};
+    /// use jiff::ToSpan;
     /// use jiff::tz::TimeZone;
     /// use fetiche_common::DateOpts;
     ///
     /// let result = DateOpts::parse(DateOpts::Today).unwrap();
-    /// let now = Timestamp::now().to_zoned_datetime(TimeZone::UTC);
     /// let begin = result.0.to_zoned_datetime(TimeZone::UTC);
-    /// let end = result.1.to_zoned_datetime(TimeZone::UTC);
     ///
-    /// assert_eq!(begin.date(), now.date());
+    /// assert_eq!(begin.hour(), 0);
+    /// assert_eq!(begin.minute(), 0);
     /// assert_eq!(result.1, result.0.checked_add(24.hours()).unwrap());
     /// ```
     ///
     /// Parsing "Yesterday":
     /// ```rust
-    /// use jiff::{Timestamp, ToSpan};
+    /// use jiff::ToSpan;
     /// use jiff::tz::TimeZone;
     /// use fetiche_common::DateOpts;
     ///
     /// let result = DateOpts::parse(DateOpts::Yesterday).unwrap();
-    /// let now = Timestamp::now().to_zoned_datetime(TimeZone::UTC);
     /// let begin = result.0.to_zoned_datetime(TimeZone::UTC);
     /// let end = result.1.to_zoned_datetime(TimeZone::UTC);
     ///
-    /// assert_eq!(begin.date(), now.date().checked_sub(1.days()).unwrap());
-    /// assert_eq!(end.date(), now.date());
+    /// assert_eq!(begin.hour(), 0);
+    /// assert_eq!(end.hour(), 0);
+    /// assert_eq!(result.1, result.0.checked_add(24.hours()).unwrap());
     /// ```
     ///
     /// Parsing a specific date:
@@ -139,11 +138,17 @@ impl DateOpts {
     ///
     #[tracing::instrument]
     pub fn parse(opts: Self) -> Result<(Timestamp, Timestamp), ErrDateOpts> {
+        Self::parse_at(opts, ZonedDateTime::now())
+    }
+
+    // Keep the clock outside the calculation so boundary behavior can be tested
+    // against a fixed instant without changing the public interface.
+    fn parse_at(opts: Self, now: ZonedDateTime) -> Result<(Timestamp, Timestamp), ErrDateOpts> {
         Ok(match opts {
             DateOpts::Today => {
                 trace!("got today true");
 
-                let begin = ZonedDateTime::now()
+                let begin = now.clone()
                     .in_tz("Utc")
                     .map_err(|e| {
                         error!("Cannot get date from system: {}", e);
@@ -163,7 +168,7 @@ impl DateOpts {
             DateOpts::Yesterday => {
                 trace!("got yesterday true");
 
-                let yesterday = ZonedDateTime::now()
+                let yesterday = now.clone()
                     .in_tz("Utc")
                     .map_err(|e| {
                         error!("Cannot get date from system: {}", e);
@@ -209,7 +214,7 @@ impl DateOpts {
                 if !(1..=53).contains(&num) {
                     return Err(ErrDateOpts::BadWeekNumber(num));
                 }
-                let year = ZonedDateTime::now().year();
+                let year = now.year();
                 let weekdate = ISOWeekDate::new(year, num as i8, Weekday::Monday).map_err(|e| {
                     error!("Cannot compute ISO week date: {e}");
                     ErrDateOpts::FailedCalculus(e.to_string())
@@ -251,7 +256,7 @@ impl DateOpts {
                 if !(1..=12).contains(&num) {
                     return Err(ErrDateOpts::BadDate(num.to_string()));
                 }
-                let year = ZonedDateTime::now().year();
+                let year = now.year();
 
                 let begin = date(year, num as i8, 1)
                     .to_zoned_datetime(TimeZone::UTC)
@@ -329,6 +334,110 @@ mod test {
 
     fn midnight_utc(day: Date) -> eyre::Result<Timestamp> {
         Ok(day.to_zoned_datetime(TimeZone::UTC)?.into())
+    }
+
+    fn parse_at_utc(opts: DateOpts, instant: &str) -> eyre::Result<(Timestamp, Timestamp)> {
+        let timestamp: Timestamp = instant.parse()?;
+        Ok(DateOpts::parse_at(opts, timestamp.to_zoned_datetime(TimeZone::UTC))?)
+    }
+
+    #[test]
+    fn test_dateopts_fixed_clock_across_new_year() -> eyre::Result<()> {
+        for (instant, today, tomorrow, yesterday) in [
+            (
+                "2020-12-31T23:59:59Z",
+                "2020-12-31T00:00:00Z",
+                "2021-01-01T00:00:00Z",
+                "2020-12-30T00:00:00Z",
+            ),
+            (
+                "2021-01-01T00:00:00Z",
+                "2021-01-01T00:00:00Z",
+                "2021-01-02T00:00:00Z",
+                "2020-12-31T00:00:00Z",
+            ),
+        ] {
+            let (begin, end) = parse_at_utc(DateOpts::Today, instant)?;
+            assert_eq!(begin, today.parse::<Timestamp>()?);
+            assert_eq!(end, tomorrow.parse::<Timestamp>()?);
+
+            let (begin, end) = parse_at_utc(DateOpts::Yesterday, instant)?;
+            assert_eq!(begin, yesterday.parse::<Timestamp>()?);
+            assert_eq!(end, today.parse::<Timestamp>()?);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_dateopts_fixed_clock_iso_week_year_boundaries() -> eyre::Result<()> {
+        // Week numbers refer to the selected calendar year as an ISO week-year.
+        // January 1 can itself belong to the previous ISO week-year.
+        for (instant, week, expected_begin, expected_end) in [
+            (
+                "2020-12-31T12:00:00Z",
+                1,
+                "2019-12-30T00:00:00Z",
+                "2020-01-06T00:00:00Z",
+            ),
+            (
+                "2020-12-31T12:00:00Z",
+                53,
+                "2020-12-28T00:00:00Z",
+                "2021-01-04T00:00:00Z",
+            ),
+            (
+                "2021-01-01T12:00:00Z",
+                1,
+                "2021-01-04T00:00:00Z",
+                "2021-01-11T00:00:00Z",
+            ),
+            (
+                "2022-01-01T12:00:00Z",
+                1,
+                "2022-01-03T00:00:00Z",
+                "2022-01-10T00:00:00Z",
+            ),
+        ] {
+            let (begin, end) = parse_at_utc(DateOpts::Week { num: week }, instant)?;
+            assert_eq!(begin, expected_begin.parse::<Timestamp>()?);
+            assert_eq!(end, expected_end.parse::<Timestamp>()?);
+        }
+
+        // 2021 has only 52 ISO weeks; unlike 2020, week 53 is invalid.
+        assert!(parse_at_utc(DateOpts::Week { num: 53 }, "2021-06-01T12:00:00Z").is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_dateopts_fixed_clock_month_rollover() -> eyre::Result<()> {
+        for (instant, month, expected_begin, expected_end) in [
+            (
+                "2020-12-31T23:59:59Z",
+                12,
+                "2020-12-01T00:00:00Z",
+                "2021-01-01T00:00:00Z",
+            ),
+            (
+                "2021-01-01T00:00:00Z",
+                12,
+                "2021-12-01T00:00:00Z",
+                "2022-01-01T00:00:00Z",
+            ),
+            (
+                "2024-02-29T12:00:00Z",
+                2,
+                "2024-02-01T00:00:00Z",
+                "2024-03-01T00:00:00Z",
+            ),
+        ] {
+            let (begin, end) = parse_at_utc(DateOpts::Month { num: month }, instant)?;
+            assert_eq!(begin, expected_begin.parse::<Timestamp>()?);
+            assert_eq!(end, expected_end.parse::<Timestamp>()?);
+        }
+
+        Ok(())
     }
 
     #[test]
