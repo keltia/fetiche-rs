@@ -31,7 +31,7 @@ use std::fmt::{Display, Formatter};
 ///
 /// ## Creating an Interval Filter
 /// ```rust
-/// use fetiche_engine::Filter;
+/// use fetiche_common::Filter;
 ///
 /// let begin: jiff::Timestamp = "2023-10-01T00:00:00Z".parse().unwrap();
 /// let end: jiff::Timestamp = "2023-10-02T00:00:00Z".parse().unwrap();
@@ -40,21 +40,21 @@ use std::fmt::{Display, Formatter};
 ///
 /// ## Creating a Keyword Filter
 /// ```rust
-/// use fetiche_engine::Filter;
+/// use fetiche_common::Filter;
 ///
 /// let middle = Filter::keyword("icao24", "foobar");
 /// ```
 ///
 /// ## Creating a Duration Filter
 /// ```rust
-/// use fetiche_engine::Filter;
+/// use fetiche_common::Filter;
 ///
 /// let middle = Filter::since(3600); // Filter for the past hour
 /// ```
 ///
 /// ## Creating a Stream Filter
 /// ```rust
-/// use fetiche_engine::Filter;
+/// use fetiche_common::Filter;
 ///
 /// let middle = Filter::stream(5, 3600, 10); // Stream starting at 5s, lasting 1 hour with a 10s delay
 /// ```
