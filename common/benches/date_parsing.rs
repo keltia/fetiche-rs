@@ -20,7 +20,7 @@ use std::time::UNIX_EPOCH;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use jiff::civil::DateTime;
-use jiff::tz::TimeZone;
+use jiff::tz::{Offset, TimeZone};
 use polars::datatypes::Int64Chunked;
 use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, IntoColumn, SerReader};
 
@@ -65,10 +65,8 @@ fn into_timestamp_jiff(col: &Column) -> Column {
         .iter()
         .map(|d: Option<&str>| {
             d.map(|d: &str| {
-                d.parse::<DateTime>()
-                    .unwrap()
-                    .duration_since(DateTime::MIN)
-                    .as_secs()
+                let date = d.parse::<DateTime>().unwrap();
+                Offset::UTC.to_timestamp(date).unwrap().as_second()
             })
         })
         .collect::<Int64Chunked>()
