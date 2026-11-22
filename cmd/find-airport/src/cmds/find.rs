@@ -29,7 +29,8 @@
 
 use eyre::Result;
 use pluscodes::Coordinate;
-use polars::prelude::*;
+use polars_core::prelude::{DataFrame, PolarsResult};
+use polars_lazy::prelude::{LazyFrame, col, lit};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::Path;

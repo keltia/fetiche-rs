@@ -1,4 +1,4 @@
-use polars::prelude::*;
+use polars_lazy::prelude::{LazyFrame, col, lit};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {

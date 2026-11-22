@@ -9,8 +9,10 @@ use std::time::{Duration, UNIX_EPOCH};
 use eyre::Result;
 use futures::future::join_all;
 use jiff::{SignedDuration, Timestamp};
-use polars::polars_utils::compression::ZstdLevel;
-use polars::prelude::*;
+use polars_io::prelude::{
+    CsvReadOptions, ParquetCompression, ParquetWriter, SerReader, StatisticsOptions,
+};
+use polars_utils::compression::ZstdLevel;
 use reqwest::redirect::Policy;
 use tokio::fs;
 use tracing::{debug, info, trace, warn};

@@ -17,7 +17,8 @@ use divan::Bencher;
 use fetiche_common::find_tz;
 use itertools::izip;
 use pluscodes::Coordinate;
-use polars::prelude::*;
+use polars_core::prelude::{DataFrame, PolarsError, PolarsResult};
+use polars_lazy::prelude::{LazyFrame, col, lit};
 use rayon::prelude::*;
 use serde::Deserialize;
 

@@ -13,7 +13,7 @@
 use std::hint::black_box;
 
 use divan::Bencher;
-use polars::prelude::{LazyFrame, col, lit};
+use polars_lazy::prelude::{LazyFrame, col, lit};
 
 fn main() {
     divan::main();

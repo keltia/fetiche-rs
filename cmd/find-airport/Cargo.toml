@@ -50,8 +50,11 @@ tracing.workspace = true
 
 farben = "0.20"
 pluscodes = "0.5"
-polars = { version = "0.55", features = ["async", "serde", "lazy", "sql", "strings", "parquet", "json", "dtype-categorical", "temporal"] }
-polars-utils = "0.55"
+polars-core = { version = "0.55", default-features = false }
+polars-io = { version = "0.55", default-features = false, features = ["csv", "parquet"] }
+# Polars 0.55 string expressions import polars-time through the temporal feature.
+polars-lazy = { version = "0.55", default-features = false, features = ["parquet", "regex", "streaming", "strings", "temporal"] }
+polars-utils = { version = "0.55", default-features = false }
 rayon = "1.12"
 
 [dev-dependencies]

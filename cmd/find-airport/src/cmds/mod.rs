@@ -14,7 +14,7 @@ use std::path::Path;
 use std::time::UNIX_EPOCH;
 
 use jiff::Timestamp;
-use polars::prelude::{ParquetReader, SerReader};
+use polars_io::prelude::{ParquetReader, SerReader};
 use strum::VariantNames;
 use tabled::Tabled;
 
