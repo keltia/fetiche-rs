@@ -59,6 +59,7 @@ eyre.workspace = true
 hcl-rs.workspace = true
 jiff.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 strum.workspace = true
 tabled.workspace = true
 thiserror.workspace = true
@@ -83,7 +84,6 @@ polars.workspace = true
 proptest.workspace = true
 ractor.workspace = true
 rstest.workspace = true
-serde_json.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 

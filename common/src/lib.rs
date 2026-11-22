@@ -7,6 +7,7 @@ pub use csv::*;
 pub use dateopts::*;
 pub use daterange::*;
 pub use error::*;
+pub use filter::*;
 pub use location::*;
 pub use logging::*;
 pub use tz::*;
@@ -18,8 +19,10 @@ mod csv;
 mod dateopts;
 mod daterange;
 mod error;
+mod filter;
 mod location;
 mod logging;
+pub mod time;
 mod tz;
 
 use clap::{crate_name, crate_version};
