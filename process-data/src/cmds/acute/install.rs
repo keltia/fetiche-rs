@@ -1,10 +1,10 @@
 use crate::cmds::{CrudSubCommand, DBVars, Format, render_output};
-use crate::make_query;
+use crate::{format_utc_datetime, make_query};
 use crate::runtime::Context;
 
-use chrono::{DateTime, Utc};
 use clap::Parser;
 use eyre::Result;
+use jiff::Timestamp;
 use klickhouse::{QueryBuilder, Row};
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
@@ -23,8 +23,10 @@ pub struct InstOpts {
 #[derive(Debug, Deserialize, Row, Serialize, Tabled)]
 struct Install {
     pub install_id: i32,
-    pub start_at: DateTime<Utc>,
-    pub end_at: DateTime<Utc>,
+    #[tabled(display = "format_utc_datetime")]
+    pub start_at: Timestamp,
+    #[tabled(display = "format_utc_datetime")]
+    pub end_at: Timestamp,
     #[serde(rename = "type")]
     pub atype: String,
     pub antenna_name: String,
