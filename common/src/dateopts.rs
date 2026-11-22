@@ -325,49 +325,35 @@ pub fn parse_date(date: &str) -> Result<ZonedDateTime, ErrDateOpts> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use chrono::{DateTime, Datelike, TimeZone as CTZ, Utc};
     use test_pretty_log::test;
 
-    #[inline]
-    fn to_ts(dt: DateTime<Utc>) -> Timestamp {
-        Timestamp::from_second(dt.timestamp()).unwrap()
+    fn midnight_utc(day: Date) -> eyre::Result<Timestamp> {
+        Ok(day.to_zoned_datetime(TimeZone::UTC)?.into())
     }
 
     #[test]
     fn test_dateopts_parse_today() -> eyre::Result<()> {
-        let opt = DateOpts::Today;
-        let result = DateOpts::parse(opt);
+        let before = Timestamp::now().to_zoned_datetime(TimeZone::UTC).date();
+        let (begin, end) = DateOpts::parse(DateOpts::Today)?;
+        let after = Timestamp::now().to_zoned_datetime(TimeZone::UTC).date();
 
-        assert!(result.is_ok());
-        let (begin, end) = result?;
-        let now = Utc::now();
-        let expected_begin = Utc
-            .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
-            .unwrap();
-        let expected_end = expected_begin + chrono::Duration::days(1);
-
-        assert_eq!(begin, to_ts(expected_begin));
-        assert_eq!(end, to_ts(expected_end));
+        // Either date is valid if midnight UTC occurs during the call.
+        assert!(begin == midnight_utc(before)? || begin == midnight_utc(after)?);
+        assert_eq!(end, begin.checked_add(24.hours())?);
 
         Ok(())
     }
 
     #[test]
     fn test_dateopts_parse_yesterday() -> eyre::Result<()> {
-        let opt = DateOpts::Yesterday;
-        let result = DateOpts::parse(opt);
+        let before = Timestamp::now().to_zoned_datetime(TimeZone::UTC).date();
+        let (begin, end) = DateOpts::parse(DateOpts::Yesterday)?;
+        let after = Timestamp::now().to_zoned_datetime(TimeZone::UTC).date();
 
-        assert!(result.is_ok());
-        let (begin, end) = result?;
-        let now = Utc::now();
-        let expected_begin = Utc
-            .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
-            .unwrap()
-            - chrono::Duration::days(1);
-        let expected_end = expected_begin + chrono::Duration::days(1);
-
-        assert_eq!(begin, to_ts(expected_begin));
-        assert_eq!(end, to_ts(expected_end));
+        let previous_before = before.checked_sub(1.days())?;
+        let previous_after = after.checked_sub(1.days())?;
+        assert!(begin == midnight_utc(previous_before)? || begin == midnight_utc(previous_after)?);
+        assert_eq!(end, begin.checked_add(24.hours())?);
 
         Ok(())
     }
@@ -377,15 +363,12 @@ mod test {
         let opt = DateOpts::Day {
             date: "2023-10-15".into(),
         };
-        let result = DateOpts::parse(opt);
+        let (begin, end) = DateOpts::parse(opt)?;
+        let expected_begin: Timestamp = "2023-10-15T00:00:00Z".parse()?;
+        let expected_end: Timestamp = "2023-10-16T00:00:00Z".parse()?;
 
-        assert!(result.is_ok());
-        let (begin, end) = result?;
-        let expected_begin = dateparser::parse("2023-10-15 00:00:00 UTC").unwrap();
-        let expected_end = expected_begin + chrono::Duration::days(1);
-
-        assert_eq!(begin, to_ts(expected_begin));
-        assert_eq!(end, to_ts(expected_end));
+        assert_eq!(begin, expected_begin);
+        assert_eq!(end, expected_end);
 
         Ok(())
     }
@@ -401,31 +384,17 @@ mod test {
 
     #[test]
     fn test_dateopts_parse_week() -> eyre::Result<()> {
-        let opt = DateOpts::Week { num: 5 };
-        let result = DateOpts::parse(opt);
+        let before_year = ZonedDateTime::now().year();
+        let (begin, end) = DateOpts::parse(DateOpts::Week { num: 5 })?;
+        let after_year = ZonedDateTime::now().year();
 
-        assert!(result.is_ok());
-        let (begin, end) = result?;
-
-        let now = Utc::now();
-        // Find the Monday of ISO week 5 using chrono
-        //
-        let jan1 = Utc.with_ymd_and_hms(now.year(), 1, 1, 0, 0, 0).unwrap();
-        let jan1_weekday = jan1.weekday().num_days_from_monday();
-
-        // ISO week 1 is the week with the first Thursday (i.e., the week containing Jan 4)
-        //
-        let week1_monday = jan1 - chrono::Duration::days(jan1_weekday as i64)
-            + if jan1_weekday <= 3 {
-            chrono::Duration::days(0)
-        } else {
-            chrono::Duration::days(7)
+        let week_start = |year| -> eyre::Result<Timestamp> {
+            let week = ISOWeekDate::new(year, 5, Weekday::Monday)?;
+            midnight_utc(Date::from_iso_week_date(week))
         };
-        let expected_begin = week1_monday + chrono::Duration::weeks(4);
-        let expected_end = expected_begin + chrono::Duration::days(7);
 
-        assert_eq!(begin, to_ts(expected_begin));
-        assert_eq!(end, to_ts(expected_end));
+        assert!(begin == week_start(before_year)? || begin == week_start(after_year)?);
+        assert_eq!(end, begin.checked_add(168.hours())?);
 
         Ok(())
     }
@@ -447,17 +416,17 @@ mod test {
 
     #[test]
     fn test_dateopts_parse_month() -> eyre::Result<()> {
-        let opt = DateOpts::Month { num: 3 };
-        let result = DateOpts::parse(opt);
+        let before_year = ZonedDateTime::now().year();
+        let (begin, end) = DateOpts::parse(DateOpts::Month { num: 3 })?;
+        let after_year = ZonedDateTime::now().year();
 
-        assert!(result.is_ok());
-        let (begin, end) = result?;
-        let now = Utc::now();
-        let expected_begin = Utc.with_ymd_and_hms(now.year(), 3, 1, 0, 0, 0).unwrap();
-        let expected_end = Utc.with_ymd_and_hms(now.year(), 4, 1, 0, 0, 0).unwrap();
-
-        assert_eq!(begin, to_ts(expected_begin));
-        assert_eq!(end, to_ts(expected_end));
+        let expected_begin = |year| midnight_utc(date(year, 3, 1));
+        assert!(begin == expected_begin(before_year)? || begin == expected_begin(after_year)?);
+        let expected_end: Timestamp = begin
+            .to_zoned_datetime(TimeZone::UTC)
+            .checked_add(1.month())?
+            .into();
+        assert_eq!(end, expected_end);
 
         Ok(())
     }
@@ -481,18 +450,14 @@ mod test {
             begin: "2022-06-14 00:00:00".into(),
             end: "2023-02-28 00:00:00".into(),
         };
-        let r = DateOpts::parse(opt);
 
-        assert!(r.is_ok());
-        let (b, e) = r.unwrap();
-        assert_eq!(
-            to_ts(dateparser::parse("2022-06-14 00:00:00 UTC").unwrap()),
-            b
-        );
-        assert_eq!(
-            to_ts(dateparser::parse("2023-02-28 00:00:00 UTC").unwrap()),
-            e
-        );
+        let (begin, end) = DateOpts::parse(opt)?;
+        let expected_begin: Timestamp = "2022-06-14T00:00:00Z".parse()?;
+        let expected_end: Timestamp = "2023-02-28T00:00:00Z".parse()?;
+
+        assert_eq!(begin, expected_begin);
+        assert_eq!(end, expected_end);
+
         Ok(())
     }
 
@@ -502,18 +467,13 @@ mod test {
             begin: "2022-06-14".into(),
             end: "2023-02-28".into(),
         };
-        let r = DateOpts::parse(opt);
+        let (begin, end) = DateOpts::parse(opt)?;
+        let expected_begin: Timestamp = "2022-06-14T00:00:00Z".parse()?;
+        let expected_end: Timestamp = "2023-02-28T00:00:00Z".parse()?;
 
-        assert!(r.is_ok());
-        let (b, e) = r.unwrap();
-        assert_eq!(
-            to_ts(dateparser::parse("2022-06-14 00:00:00 UTC").unwrap()),
-            b
-        );
-        assert_eq!(
-            to_ts(dateparser::parse("2023-02-28 00:00:00 UTC").unwrap()),
-            e
-        );
+        assert_eq!(begin, expected_begin);
+        assert_eq!(end, expected_end);
+
         Ok(())
     }
 
@@ -671,14 +631,18 @@ mod test {
 
     #[test]
     fn test_dateopts_parse_month_december_rollover() -> eyre::Result<()> {
-        let opt = DateOpts::Month { num: 12 };
-        let (begin, end) = DateOpts::parse(opt)?;
-        let now = Utc::now();
-        let expected_begin = Utc.with_ymd_and_hms(now.year(), 12, 1, 0, 0, 0).unwrap();
-        let expected_end = Utc.with_ymd_and_hms(now.year() + 1, 1, 1, 0, 0, 0).unwrap();
+        let before_year = ZonedDateTime::now().year();
+        let (begin, end) = DateOpts::parse(DateOpts::Month { num: 12 })?;
+        let after_year = ZonedDateTime::now().year();
 
-        assert_eq!(begin, to_ts(expected_begin));
-        assert_eq!(end, to_ts(expected_end));
+        let expected_begin = |year| midnight_utc(date(year, 12, 1));
+        assert!(begin == expected_begin(before_year)? || begin == expected_begin(after_year)?);
+        let expected_end: Timestamp = begin
+            .to_zoned_datetime(TimeZone::UTC)
+            .checked_add(1.month())?
+            .into();
+        assert_eq!(end, expected_end);
+
         Ok(())
     }
 
