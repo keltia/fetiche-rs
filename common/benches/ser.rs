@@ -7,7 +7,7 @@
 //! ╰─ csv_to_struct  18.89 µs      │ 59.69 µs      │ 19.19 µs      │ 20.13 µs      │ 100     │ 100
 //! ```
 //!
-use chrono::{DateTime, NaiveDateTime, Utc};
+use jiff::civil::DateTime;
 use divan::Bencher;
 use serde::{Deserialize, Serialize};
 use std::hint::black_box;
@@ -31,26 +31,25 @@ EmitterCategory,GBS,ModeA,TimeRecPosition,AircraftAddress,Latitude,Longitude,Geo
 5,1,2036,2026-03-24 00:00:01.930,4243FA,63.9889253676,-22.6054136641,,,,,,,,'AZG5721 ',0,1,0,0,22.000,0.000"##;
 
 mod parse_str_date {
-    use chrono::{DateTime, NaiveDateTime, Utc};
+    use jiff::civil::DateTime;
     use serde::{self, Deserialize, Deserializer, Serializer};
 
     const FORMAT: &str = "%Y-%m-%d %H:%M:%S%.f";
 
-    pub fn serialize<S>(date: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(date: &DateTime, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let s = format!("{}", date.format(FORMAT));
+        let s = date.strftime(FORMAT).to_string();
         serializer.serialize_str(&s)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime, D::Error>
     where
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let dt = NaiveDateTime::parse_from_str(&s, FORMAT).map_err(serde::de::Error::custom)?;
-        Ok(DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc))
+        DateTime::strptime(FORMAT, &s).map_err(serde::de::Error::custom)
     }
 }
 
@@ -68,7 +67,7 @@ fn csv_to_struct(bencher: Bencher) {
             #[serde(rename = "ModeA")]
             mode_a: String,
             #[serde(rename = "TimeRecPosition", with = "parse_str_date")]
-            time_rec_position: DateTime<Utc>,
+            time_rec_position: DateTime,
             #[serde(rename = "AircraftAddress")]
             aircraft_address: String,
             #[serde(rename = "Latitude")]
@@ -134,7 +133,7 @@ fn csv_to_df(bencher: Bencher) {
             #[serde(rename = "ModeA")]
             mode_a: String,
             #[serde(rename = "TimeRecPosition")]
-            time_rec_position: DateTime<Utc>,
+            time_rec_position: DateTime,
             #[serde(rename = "AircraftAddress")]
             aircraft_address: String,
             #[serde(rename = "Latitude")]
@@ -240,9 +239,8 @@ fn csv_to_df(bencher: Bencher) {
                 time_rec_position: c_time_rec
                     .and_then(|c| c.get(i))
                     .map(|s| {
-                        let d = NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.f")
-                            .unwrap_or_default();
-                        d.and_utc()
+                        DateTime::strptime("%Y-%m-%d %H:%M:%S%.f", s)
+                            .unwrap_or_default()
                     })
                     .unwrap_or_default(),
                 aircraft_address: c_addr
