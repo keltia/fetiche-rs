@@ -8,6 +8,42 @@ This is a special app, it uses embedded Python through
 It uses [SSH]  to connect to a specific shell on the `data.opensky-network.org` machine.
 It supports only `pyopensky` v1.4 for now.  2.x API has completely changed.
 
+## Building on Windows with Python 3.15 installed
+
+PyO3 0.24 supports CPython through 3.13. Build this command with a side-by-side
+64-bit Python 3.13 and Rust nightly, which is required by `inline-python`.
+Use the same Python installation at build time and runtime because
+`inline-python` compiles Python bytecode during the Rust build.
+
+From the repository root in PowerShell, download and select the portable
+[CPython 3.13.17 NuGet package](https://www.nuget.org/packages/python/3.13.17):
+
+```powershell
+$root = (New-Item -ItemType Directory -Force target/opensky-python).FullName
+$pythonDir = Join-Path $root 'python-3.13.17/tools'
+$pythonExe = Join-Path $pythonDir 'python.exe'
+if (-not (Test-Path -LiteralPath $pythonExe)) {
+    $archive = Join-Path $root 'python-3.13.17.zip'
+    Invoke-WebRequest -Uri 'https://api.nuget.org/v3-flatcontainer/python/3.13.17/python.3.13.17.nupkg' -OutFile $archive
+    Expand-Archive -LiteralPath $archive -DestinationPath (Join-Path $root 'python-3.13.17') -Force
+}
+
+$env:PYO3_PYTHON = $pythonExe
+$env:PYTHONHOME = $pythonDir
+$env:PATH = "$pythonDir;$env:PATH"
+
+cargo +nightly test -p opensky-history --all-targets --locked
+cargo +nightly run -p opensky-history --locked -- -V
+```
+
+If needed, install the Rust toolchain with `rustup toolchain install nightly`.
+If you previously set `PYO3_USE_ABI3_FORWARD_COMPATIBILITY`, unset it for this
+build. The limited ABI omits the marshal API used by `inline-python`.
+
+The Python selection applies to the current PowerShell session. To make live
+OpenSky requests, install the supported `pyopensky` version into this Python
+environment using `& $env:PYO3_PYTHON -m pip` and configure your OpenSky access.
+
 ## USAGE
 
 <details>
@@ -32,7 +68,9 @@ Options:
 
 </details>
 
-You MUST give it a location (see below). If no dates are specified, it will retrieve data for the current day.
+Give the command a location and use `-B` and `-E` to set the interval. A date such as
+`2024-01-01` means midnight UTC. An ISO 8601 date-time can include an offset, as in
+`2024-01-01T01:00:00+01:00`. A date-time without an offset uses the system time zone.
 
 Due to the way the Opensky Impala is available, you have to specify the segment where the data you are interested in is,
 otherwise queries will take a very long time. Right now, the app will figure it out for you given the date interval
