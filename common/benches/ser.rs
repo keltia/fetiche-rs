@@ -3,12 +3,12 @@
 //!```text
 //! Timer precision: 100 ns
 //! ser               fastest       │ slowest       │ median        │ mean          │ samples │ iters
-//! ├─ csv_to_df      60.69 µs      │ 1.563 ms      │ 75.49 µs      │ 95.01 µs      │ 100     │ 100
-//! ╰─ csv_to_struct  18.89 µs      │ 59.69 µs      │ 19.19 µs      │ 20.13 µs      │ 100     │ 100
+//! ├─ csv_to_df      56.59 µs      │ 1.725 ms      │ 64.89 µs      │ 86.18 µs      │ 100     │ 100
+//! ╰─ csv_to_struct  17.29 µs      │ 58.79 µs      │ 17.59 µs      │ 18.16 µs      │ 100     │ 100
 //! ```
 //!
-use jiff::civil::DateTime;
 use divan::Bencher;
+use jiff::civil::DateTime;
 use serde::{Deserialize, Serialize};
 use std::hint::black_box;
 use std::io::Cursor;
@@ -228,9 +228,7 @@ fn csv_to_df(bencher: Bencher) {
 
         let _rows: Vec<AdsbRaw> = (0..n)
             .map(|i| AdsbRaw {
-                emitter_category: c_emitter
-                    .and_then(|c| c.get(i))
-                    .unwrap_or(0),
+                emitter_category: c_emitter.and_then(|c| c.get(i)).unwrap_or(0),
                 gbs: c_gbs.and_then(|c| c.get(i)).unwrap_or(0),
                 mode_a: c_mode_a
                     .and_then(|c| c.get(i))
@@ -238,10 +236,7 @@ fn csv_to_df(bencher: Bencher) {
                     .unwrap_or_default(),
                 time_rec_position: c_time_rec
                     .and_then(|c| c.get(i))
-                    .map(|s| {
-                        DateTime::strptime("%Y-%m-%d %H:%M:%S%.f", s)
-                            .unwrap_or_default()
-                    })
+                    .map(|s| DateTime::strptime("%Y-%m-%d %H:%M:%S%.f", s).unwrap_or_default())
                     .unwrap_or_default(),
                 aircraft_address: c_addr
                     .and_then(|c| c.get(i))

@@ -1,19 +1,16 @@
-//! Using `Divan` instead of `Criterion`
+//! jiff DateTime/Timestamp
 //!
-//! jiff DateTime/Timestamp vs chrono DateTime<Utc>
-//!
-//! AMD 7700X, 32 GB, rust 1.84.1
+//! AMD 7700X, 32 GB, rust 1.100.0
 //! ```text
 //! Timer precision: 100 ns
 //! div_expand                         fastest       │ slowest       │ median        │ mean          │ samples │ iters
-//! ├─ test_chrono                     1.662 µs      │ 2.662 µs      │ 1.699 µs      │ 1.737 µs      │ 100     │ 800
-//! ├─ test_jiff_duration              8.499 µs      │ 24.29 µs      │ 12.69 µs      │ 10.96 µs      │ 100     │ 100
-//! ├─ test_jiff_duration_date         2.699 µs      │ 3.849 µs      │ 2.749 µs      │ 2.775 µs      │ 100     │ 400
-//! ├─ test_jiff_duration_date_series  4.299 µs      │ 10.02 µs      │ 4.324 µs      │ 4.616 µs      │ 100     │ 400
-//! ├─ test_jiff_duration_timestamp    1.874 µs      │ 7.512 µs      │ 2.799 µs      │ 3.159 µs      │ 100     │ 800
-//! ├─ test_jiff_naive                 8.699 µs      │ 14.99 µs      │ 8.999 µs      │ 9.087 µs      │ 100     │ 100
-//! ├─ test_jiff_timestamp_series      199.8 ns      │ 13.69 µs      │ 249.8 ns      │ 397.8 ns      │ 100     │ 100
-//! ╰─ test_jiff_timestamp_series_h    2.349 µs      │ 3.212 µs      │ 2.462 µs      │ 2.681 µs      │ 100     │ 800
+//! ├─ test_jiff_duration              7.849 µs      │ 10.04 µs      │ 7.949 µs      │ 8.008 µs      │ 100     │ 200
+//! ├─ test_jiff_duration_date         1.699 µs      │ 2.499 µs      │ 1.724 µs      │ 1.739 µs      │ 100     │ 800
+//! ├─ test_jiff_duration_date_series  3.874 µs      │ 4.949 µs      │ 3.924 µs      │ 3.939 µs      │ 100     │ 400
+//! ├─ test_jiff_duration_timestamp    874.8 ns      │ 5.199 µs      │ 874.8 ns      │ 940.5 ns      │ 100     │ 400
+//! ├─ test_jiff_naive                 4.799 µs      │ 5.249 µs      │ 4.849 µs      │ 4.865 µs      │ 100     │ 200
+//! ├─ test_jiff_timestamp_series      99.81 ns      │ 17.09 µs      │ 99.81 ns      │ 287.8 ns      │ 100     │ 100
+//! ╰─ test_jiff_timestamp_series_h    1.262 µs      │ 5.362 µs      │ 1.287 µs      │ 1.348 µs      │ 100     │ 800
 //! ```
 //! Thanks to Bsky: @burntsushi.net (Andrew Gallant)
 //!
@@ -22,13 +19,13 @@ fn main() {
     divan::main();
 }
 
-use divan::{black_box, Bencher};
+use divan::{Bencher, black_box};
 use jiff::{Timestamp, ToSpan};
 
 #[divan::bench]
 fn test_jiff_naive(bencher: Bencher) {
-    use jiff::civil::DateTime;
     use jiff::Span;
+    use jiff::civil::DateTime;
 
     #[inline]
     fn expand_interval_jiff(begin: DateTime, end: DateTime) -> eyre::Result<Vec<DateTime>> {
@@ -50,8 +47,8 @@ fn test_jiff_naive(bencher: Bencher) {
 
 #[divan::bench]
 fn test_jiff_duration(bencher: Bencher) {
-    use jiff::civil::DateTime;
     use jiff::SignedDuration;
+    use jiff::civil::DateTime;
 
     #[inline]
     fn expand_interval_jiff(begin: DateTime, end: DateTime) -> eyre::Result<Vec<DateTime>> {
@@ -73,8 +70,8 @@ fn test_jiff_duration(bencher: Bencher) {
 
 #[divan::bench]
 fn test_jiff_duration_date(bencher: Bencher) {
-    use jiff::civil::Date;
     use jiff::SignedDuration;
+    use jiff::civil::Date;
 
     #[inline]
     fn expand_interval_jiff(begin: Date, end: Date) -> eyre::Result<Vec<Date>> {
@@ -100,7 +97,10 @@ fn test_jiff_duration_date_series(bencher: Bencher) {
 
     #[inline]
     fn expand_interval_jiff(begin: Date, end: Date) -> eyre::Result<Vec<Date>> {
-        let intv = begin.series(1.days()).take_while(|&ts| ts < end).collect::<Vec<_>>();
+        let intv = begin
+            .series(1.days())
+            .take_while(|&ts| ts < end)
+            .collect::<Vec<_>>();
         Ok(intv)
     }
 
@@ -113,7 +113,10 @@ fn test_jiff_duration_date_series(bencher: Bencher) {
 fn test_jiff_timestamp_series(bencher: Bencher) {
     #[inline]
     fn expand_interval_jiff(begin: Timestamp, end: Timestamp) -> eyre::Result<Vec<Timestamp>> {
-        let intv = begin.series(1.days()).take_while(|&ts| ts < end).collect::<Vec<_>>();
+        let intv = begin
+            .series(1.days())
+            .take_while(|&ts| ts < end)
+            .collect::<Vec<_>>();
         Ok(intv)
     }
 
@@ -126,7 +129,10 @@ fn test_jiff_timestamp_series(bencher: Bencher) {
 fn test_jiff_timestamp_series_h(bencher: Bencher) {
     #[inline]
     fn expand_interval_jiff(begin: Timestamp, end: Timestamp) -> eyre::Result<Vec<Timestamp>> {
-        let intv = begin.series(24.hours()).take_while(|&ts| ts < end).collect::<Vec<_>>();
+        let intv = begin
+            .series(24.hours())
+            .take_while(|&ts| ts < end)
+            .collect::<Vec<_>>();
         Ok(intv)
     }
 
