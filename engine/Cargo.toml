@@ -21,7 +21,7 @@ avionix = []
 flightaware = []
 opensky = []
 safesky = []
-senhive = []
+senhive = ["polars-io/json"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -61,7 +61,8 @@ hcl-rs.workspace = true
 jiff.workspace = true
 nom.workspace = true
 object_store.workspace = true
-polars.workspace = true
+polars-core = { version = "0.55", default-features = false }
+polars-io = { version = "0.55", default-features = false, features = ["csv", "parquet"] }
 ractor.workspace = true
 reqwest.workspace = true
 serde.workspace = true
@@ -89,6 +90,7 @@ criterion.workspace = true
 dateparser.workspace = true
 directories.workspace = true
 indicatif.workspace = true
+polars-io = { version = "0.55", default-features = false, features = ["json"] }
 rstest.workspace = true
 
 ctrlc = "3.5"

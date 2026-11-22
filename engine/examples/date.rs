@@ -4,8 +4,8 @@
 use eyre::Result;
 use jiff::civil::DateTime;
 use jiff::tz::TimeZone;
-use polars::datatypes::Int64Chunked;
-use polars::prelude::{Column, CsvParseOptions, CsvReadOptions, IntoColumn, SerReader};
+use polars_core::prelude::{Column, Int64Chunked, IntoColumn};
+use polars_io::prelude::{CsvParseOptions, CsvReadOptions, SerReader};
 use std::io::Cursor;
 
 fn main() -> Result<()> {

@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
 use eyre::Result;
-use polars::prelude::*;
+use polars_io::prelude::{CsvParseOptions, CsvReadOptions, ParquetWriter, SerReader};
 use tokio::fs;
 use tracing::{info, trace};
 
@@ -119,6 +119,7 @@ impl Default for Save {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use polars_io::prelude::ParquetReader;
     use std::sync::mpsc::channel;
 
     #[test]
@@ -154,6 +155,30 @@ mod tests {
 
         assert_eq!("test_with_args", t.name);
         assert_eq!("{\"key\":\"value\"}", t.args);
+    }
+
+    #[tokio::test]
+    async fn test_save_to_parquet() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("output.parquet");
+        let mut save = Save::new("test_parquet_save", Format::Asd, Container::Parquet);
+        save.path(path.to_str().unwrap());
+        let (tx, _rx) = channel();
+
+        save.execute(
+            "timestamp,altitude\n2024-01-01T00:00:00Z,1200\n".to_owned(),
+            tx,
+        )
+        .await?;
+
+        let df = ParquetReader::new(std::fs::File::open(path)?).finish()?;
+        assert_eq!(df.shape(), (1, 2));
+        assert_eq!(
+            df.column("timestamp")?.str()?.get(0),
+            Some("2024-01-01T00:00:00Z")
+        );
+        assert_eq!(df.column("altitude")?.i64()?.get(0), Some(1200));
+        Ok(())
     }
 
     #[tokio::test]

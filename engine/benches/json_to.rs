@@ -15,7 +15,7 @@ use std::io::Cursor;
 use std::num::NonZeroUsize;
 
 use csv::{QuoteStyle, WriterBuilder};
-use polars::prelude::{JsonFormat, JsonReader, JsonWriter, SerReader, SerWriter};
+use polars_io::prelude::{JsonFormat, JsonReader, JsonWriter, SerReader, SerWriter};
 
 use fetiche_formats::senhive::FusedData;
 use fetiche_formats::DronePoint;

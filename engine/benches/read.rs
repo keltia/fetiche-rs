@@ -2,8 +2,7 @@ use std::hint::black_box;
 use std::io::{BufRead, Cursor};
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use polars::io::SerReader;
-use polars::prelude::{JsonFormat, JsonReader};
+use polars_io::prelude::{JsonFormat, JsonReader, SerReader};
 
 use fetiche_formats::avionix::CubeData;
 
