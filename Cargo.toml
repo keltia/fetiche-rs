@@ -11,7 +11,6 @@ clap = { version = "4", features = ["cargo", "derive"] }
 criterion = { version = "0.8", features = ["async", "async_tokio", "async_futures"] }
 csv = "1.4"
 ctrlc = { version = "3.5", features = ["termination"] }
-dateparser = "0.3.1"
 directories = "6"
 env_logger = "0.11"
 eyre = { version = "0.6", features = ["auto-install", "track-caller"] }
@@ -30,7 +29,7 @@ object_store = "0.14"
 proptest = "1.11"
 ractor = { version = "0.16", features = ["async-trait", "serde"] }
 reqwest = { version = "0.13", features = ["blocking", "gzip", "json", "socks", "deflate"] }
-rstest = "0.28"
+rstest = "0.29"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_repr = "0.1"
