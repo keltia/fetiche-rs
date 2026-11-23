@@ -84,6 +84,7 @@ tracing-opentelemetry = { version = "0.34", optional = true }
 
 [dev-dependencies]
 criterion.workspace = true
+ctrlc.workspace = true
 fetiche-macros.workspace = true
 polars-core = { version = "0.55", default-features = false }
 polars-io = { version = "0.55", default-features = false, features = ["csv", "parquet"] }
@@ -95,7 +96,6 @@ tempfile.workspace = true
 tokio.workspace = true
 
 cached = "4"
-ctrlc = { version = "3.5", features = ["termination"] }
 datafusion = "55"
 divan = "0.1"
 enum_dispatch = "0.3"

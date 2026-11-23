@@ -87,12 +87,12 @@ tokio-native-tls = { version = "0.3", optional = true }
 
 [dev-dependencies]
 criterion.workspace = true
+ctrlc.workspace = true
 directories.workspace = true
 indicatif.workspace = true
 rstest.workspace = true
 tempfile.workspace = true
 
-ctrlc = "3.5"
 dateparser = "0.3"
 divan = "0.1"
 polars-io = { version = "0.55", default-features = false, features = ["json"] }
