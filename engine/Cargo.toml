@@ -18,8 +18,8 @@ json = []
 aeroscope = []
 asd = []
 avionix = []
-flightaware = []
-opensky = []
+flightaware = ["base64_light", "tokio-native-tls"]
+opensky = ["mini-moka"]
 safesky = []
 senhive = ["polars-io/json"]
 
@@ -61,38 +61,39 @@ hcl-rs.workspace = true
 jiff.workspace = true
 nom.workspace = true
 object_store.workspace = true
-polars-core = { version = "0.55", default-features = false }
-polars-io = { version = "0.55", default-features = false, features = ["csv", "parquet"] }
 ractor.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
 tabled.workspace = true
-tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
-base64_light = "0.1"
 enum_dispatch = "0.3"
 humantime = "2.4"
-lapin = { version = "4.11", features = ["native-tls"] }
-mini-moka = "0.10"
+lapin = { version = "4.13", features = ["native-tls"] }
 native-tls = "0.2"
+polars-core = { version = "0.55", default-features = false }
+polars-io = { version = "0.55", default-features = false, features = ["csv", "parquet"] }
 percent-encoding = "2.3"
 futures-util = "0.3"
-tokio-native-tls = "0.3"
 regex = "1.13"
+
+base64_light = { version = "0.1", optional = true }
+mini-moka = { version = "0.10", optional = true }
+tokio-native-tls = { version = "0.3", optional = true }
 
 [dev-dependencies]
 criterion.workspace = true
-dateparser.workspace = true
 directories.workspace = true
 indicatif.workspace = true
-polars-io = { version = "0.55", default-features = false, features = ["json"] }
 rstest.workspace = true
+tempfile.workspace = true
 
 ctrlc = "3.5"
+dateparser = "0.3"
 divan = "0.1"
+polars-io = { version = "0.55", default-features = false, features = ["json"] }
 test-pretty-log = "0.6"
