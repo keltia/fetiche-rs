@@ -74,6 +74,6 @@ colorsys = "0.7"
 divan = "0.1"
 mockall = "0.15"
 
-[target.'cfg(unix)'.dependencies]
+[target.'cfg(unix)'.dev-dependencies]
 pprof = { version = "0.15", features = ["criterion", "flamegraph"] }
 
