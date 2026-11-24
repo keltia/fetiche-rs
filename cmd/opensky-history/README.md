@@ -44,6 +44,39 @@ The Python selection applies to the current PowerShell session. To make live
 OpenSky requests, install the supported `pyopensky` version into this Python
 environment using `& $env:PYO3_PYTHON -m pip` and configure your OpenSky access.
 
+## Building on Linux or macOS with a side-by-side Python 3.13
+
+Install [pyenv](https://github.com/pyenv/pyenv#installation) and the
+[Python build dependencies for your operating system](https://github.com/pyenv/pyenv/blob/master/plugins/python-build/README.md#suggested-build-environment).
+Use pyenv to install CPython 3.13.17, the same version as in the Windows
+instructions. Pyenv builds the shared Python library needed for embedding by
+default.
+
+From the repository root in the same terminal session, run the following commands.
+If needed, first install Rust nightly with `rustup toolchain install nightly`.
+
+```sh
+pyenv install -s 3.13.17
+python_dir="$(pyenv prefix 3.13.17)"
+export PYO3_PYTHON="$python_dir/bin/python3.13"
+export PATH="$python_dir/bin:$PATH"
+unset PYTHONHOME PYO3_USE_ABI3_FORWARD_COMPATIBILITY
+
+# On Linux, let the executable find pyenv's shared Python library.
+if [ "$(uname -s)" = Linux ]; then
+    export LD_LIBRARY_PATH="$python_dir/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+
+"$PYO3_PYTHON" --version
+cargo +nightly test -p opensky-history --all-targets --locked
+cargo +nightly run -p opensky-history --locked -- -V
+```
+
+Keep these settings when running the executable so it uses the same Python
+installation as the build. To make live OpenSky requests, install the supported
+package with `"$PYO3_PYTHON" -m pip install 'pyopensky==1.4'` and configure your
+OpenSky access.
+
 ## USAGE
 
 <details>
