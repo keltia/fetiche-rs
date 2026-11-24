@@ -6,7 +6,7 @@
 //! v2: Has initial number of workers for the runner factory.
 //!
 //! Example:
-//! ```rust
+//! ```rust,no_run
 //! # #[tokio::main]
 //! # async fn main() -> eyre::Result<()> {
 //! use tracing::trace;

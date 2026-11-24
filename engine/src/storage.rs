@@ -118,16 +118,20 @@ impl Storage {
     /// use std::collections::BTreeMap;
     /// use fetiche_engine::{Storage, StorageConfig};
     ///
+    /// # fn main() -> eyre::Result<()> {
+    /// let root = tempfile::tempdir()?;
     /// let mut config = BTreeMap::new();
     /// config.insert(
     ///     "local".to_string(),
     ///     StorageConfig::Directory {
-    ///         path: std::path::PathBuf::from("/tmp/data"),
+    ///         path: root.path().join("data"),
     ///         rotation: "1h".to_string(),
     ///     },
     /// );
     ///
     /// let storage = Storage::register(&config)?;
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     #[tracing::instrument]
@@ -197,6 +201,8 @@ impl Storage {
     /// use std::collections::BTreeMap;
     /// use fetiche_engine::{Storage, StorageConfig};
     ///
+    /// # fn main() -> eyre::Result<()> {
+    /// let root = tempfile::tempdir()?;
     /// let mut config = BTreeMap::new();
     /// config.insert(
     ///     "cache".to_string(),
@@ -207,13 +213,15 @@ impl Storage {
     /// config.insert(
     ///     "local".to_string(),
     ///     StorageConfig::Directory {
-    ///         path: std::path::PathBuf::from("/tmp/data"),
+    ///         path: root.path().join("data"),
     ///         rotation: "5h".to_string(),
     ///     },
     /// );
     ///
     /// let storage = Storage::register(&config)?;
-    /// println!("{}", storage.list().unwrap());
+    /// println!("{}", storage.list()?);
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// ### Panics:

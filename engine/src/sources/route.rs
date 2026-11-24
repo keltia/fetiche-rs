@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// ```
 /// use std::collections::BTreeMap;
-/// use fetiche_sources::Routes;
+/// use fetiche_engine::Routes;
 ///
 /// let mut routes = Routes::from(BTreeMap::from([
 ///     ("home".to_string(), "/home".to_string()),

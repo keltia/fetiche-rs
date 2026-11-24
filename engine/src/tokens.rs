@@ -34,21 +34,24 @@ use crate::{TokenStatus, TokenType};
 ///
 /// # Examples
 ///
-/// ```no_run
-/// use futures::executor::block_on;
+/// ```
+/// use std::path::PathBuf;
 /// use fetiche_engine::{TokenStorage, TokenType};
 /// use fetiche_engine::token::AsdToken;
 ///
-/// # block_on(async {
+/// # #[tokio::main]
+/// # async fn main() -> eyre::Result<()> {
+/// let directory = tempfile::tempdir()?;
+/// let path = PathBuf::from(directory.path());
 /// // Register a directory containing token files
-/// let mut storage = TokenStorage::register("path/to/tokens").await?;
+/// let mut storage = TokenStorage::register(&path).await?;
 ///
 /// // Store a new token
 /// let token_data = TokenType::AsdToken(AsdToken::default());
-/// let _ = storage.store("asd_token_file", token_data).await;
+/// storage.store("asd_token_file", token_data).await?;
 ///
 /// // Retrieve a token by key
-/// if let Ok(token) = storage.load("asd_existing_token_file").await {
+/// if let Ok(token) = storage.load("asd_token_file").await {
 ///     println!("Loaded token: {:?}", token);
 /// }
 ///
@@ -56,8 +59,8 @@ use crate::{TokenStatus, TokenType};
 /// if let Ok(token_list) = storage.as_string().await {
 ///     println!("{}", token_list);
 /// }
-/// # Ok::<(), eyre::Report>(())
-/// # })?;
+/// # Ok(())
+/// # }
 /// ```
 ///
 #[derive(Debug)]

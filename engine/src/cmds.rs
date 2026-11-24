@@ -50,10 +50,10 @@ impl Engine {
     /// use fetiche_engine::{Engine, JobState};
     ///
     /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// async fn main() -> eyre::Result<()> {
     /// let mut engine = Engine::new().await?;
     ///
-    ///     let job = engine.create_job("example_job")?;
+    ///     let job = engine.create_job("example_job").await?;
     ///     println!("Job created with ID: {}", job.id);
     ///     assert_eq!(job.state, JobState::Created);
     ///     Ok(())

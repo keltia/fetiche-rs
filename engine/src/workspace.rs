@@ -25,14 +25,14 @@
 //!
 //! ```no_run
 //! use std::path::PathBuf;
-//! use engine::workspace::WorkSpace;
+//! use fetiche_engine::Workspace;
 //!
 //! # async fn run() -> eyre::Result<()> {
 //! // Create a new workspace with base directory
-//! let workspace = WorkSpace::new(&PathBuf::from("/tmp/workspaces"))?;
+//! let workspace = Workspace::new(&PathBuf::from("/tmp/workspaces"))?;
 //!
 //! // List all workspace directories
-//! let dirs = workspace.list().await;
+//! let dirs = workspace.list().await?;
 //!
 //! // Delete a specific workspace
 //! workspace.delete("001").await?;

@@ -168,7 +168,7 @@ impl Engine {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// # #[tokio::main]
     /// # async fn main() -> eyre::Result<()> {
     /// # use fetiche_engine::Engine;
