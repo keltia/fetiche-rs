@@ -196,11 +196,20 @@ impl Engine {
         //
         let id = call!(self.scheduler, SchedulerMsg::Allocate)?;
 
-        // Retrieve the site's data from the Sources actor.
-        //
+        Self::build_job(jt, id, async |site| {
+            call!(self.sources, |port| SourcesMsg::Get(site, port))?
+        })
+        .await
+    }
+
+    async fn build_job(
+        jt: JobText,
+        id: usize,
+        mut lookup_site: impl AsyncFnMut(String) -> Result<Site>,
+    ) -> Result<Job> {
         let producer = match jt.producer {
             ProducerText::Fetch(p, args) => {
-                let site = call!(self.sources, |port| SourcesMsg::Get(p.clone(), port))??;
+                let site = lookup_site(p.clone()).await?;
                 if site.is_fetchable() {
                     let mut f = Fetch::new(&jt.name);
                     f.site(site);
@@ -211,7 +220,7 @@ impl Engine {
                 }
             }
             ProducerText::Stream(p, args) => {
-                let site = call!(self.sources, |port| SourcesMsg::Get(p.clone(), port))??;
+                let site = lookup_site(p.clone()).await?;
                 if site.is_streamable() {
                     let mut s = Stream::new(&jt.name);
                     s.site(site);
@@ -285,6 +294,23 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Capability;
+
+    async fn parse_job(input: &str) -> Result<Job> {
+        Engine::build_job(hcl::from_str(input)?, 1, async |name: String| {
+            let feature = match name.as_str() {
+                "lux-me" => Capability::Fetch,
+                "opensky" => Capability::Stream,
+                _ => return Err(eyre::eyre!("Unknown source {name}")),
+            };
+            Ok(Site {
+                name,
+                feature,
+                ..Site::default()
+            })
+        })
+        .await
+    }
 
     #[test_pretty_log::test]
     #[tokio::test]
@@ -342,7 +368,7 @@ mod tests {
             }
         "#;
 
-        let job = engine.parse(job_str).await?;
+        let job = parse_job(job_str).await?;
 
         assert_eq!(job.name, "test_stream");
         assert!(matches!(job.producer, Producer::Stream(_)));
@@ -367,7 +393,7 @@ mod tests {
             }
         "#;
 
-        let job = engine.parse(job_str).await?;
+        let job = parse_job(job_str).await?;
 
         assert_eq!(job.name, "test_read");
         assert!(matches!(job.producer, Producer::Read(_)));
@@ -403,7 +429,7 @@ mod tests {
             }
         "#;
 
-        let job = engine.parse(job_str).await?;
+        let job = parse_job(job_str).await?;
 
         assert_eq!(job.middle.len(), 2);
         assert!(matches!(job.middle[0], Middle::Copy(_)));
@@ -422,7 +448,7 @@ mod tests {
             invalid hcl syntax
         "#;
 
-        let result = engine.parse(job_str).await;
+        let result = parse_job(job_str).await;
         assert!(result.is_err());
         let _ = engine.shutdown();
         Ok(())
