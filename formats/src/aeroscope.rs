@@ -5,6 +5,7 @@
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
+use crate::common::unix_seconds;
 use crate::{to_feet, to_knots, Cat129, Cat21, Position, TodCalculated};
 
 /// Structure representing the Aeroscope data format.
@@ -67,9 +68,7 @@ pub struct Aeroscope {
 
 impl Aeroscope {
     fn receive_unix_seconds(&self) -> i64 {
-        let timestamp = self.receive_date.parse::<Timestamp>().unwrap();
-        // Round down to the Unix second containing a pre-epoch timestamp.
-        timestamp.as_second() - i64::from(timestamp.subsec_nanosecond() < 0)
+        unix_seconds(self.receive_date.parse::<Timestamp>().unwrap())
     }
 }
 
