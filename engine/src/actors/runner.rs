@@ -14,7 +14,7 @@ use std::io::Write;
 
 use futures::stream::{self, StreamExt};
 use ractor::factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId};
-use ractor::{call, cast, ActorProcessingErr, ActorRef, RpcReplyPort};
+use ractor::{ActorProcessingErr, ActorRef, RpcReplyPort, call, cast};
 use tracing::{debug, info, trace};
 
 use crate::task::Runnable;
@@ -120,7 +120,7 @@ impl Worker for RunnerActor {
                 let mut job = work.job.clone();
 
                 let job = job.register(stat.clone());
-                dbg!(&job);
+                debug!("job={:?}", job);
 
                 info!(
                     "Job({})::run({}) with {} tasks",
