@@ -3,11 +3,12 @@
 
 // ----- queue: `fused_data`
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::DronePoint;
+use crate::common::Rfc3339Timestamp;
 use crate::senhive::Coordinates;
 
 // ----- Original raw data format
@@ -236,11 +237,13 @@ pub struct FusionState {
 /// - `pilot_identification` (Option<PilotIdentification>): Optional information about the pilot.
 /// - `pilot_state` (PilotState): The pilot's current state, including location and other metadata.
 ///
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct System {
     #[serde(rename = "trackID")]
     pub track_id: String,
-    pub timestamp: DateTime<Utc>,
+    #[serde_as(serialize_as = "Rfc3339Timestamp")]
+    pub timestamp: Timestamp,
     #[serde(rename = "timestampLog")]
     pub timestamp_log: Option<Vec<TSLog>>,
     #[serde(rename = "fusionState")]
@@ -255,14 +258,16 @@ pub struct System {
 ///
 /// # Fields
 /// - `process_name` (String): The name of the process.
-/// - `timestamp` (DateTime<Utc>): The time at which the process occurred.
+/// - `timestamp` (Timestamp): The time at which the process occurred.
 /// - `msg` (Option<String>): An optional message providing additional context or details
 ///   about the process.
 ///
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TSLog {
     pub process_name: String,
-    pub timestamp: DateTime<Utc>,
+    #[serde_as(serialize_as = "Rfc3339Timestamp")]
+    pub timestamp: Timestamp,
     pub msg: Option<String>,
 }
 
@@ -308,11 +313,11 @@ pub struct FusedData {
 /// Now define the mapping between our type `FusedData` and `DronePoint`:
 ///
 /// ```rust,no_run
-/// use chrono::{DateTime, Utc};
+/// use jiff::Timestamp;
 ///
 /// struct DroneData {
 ///     /// timestamp -- system.timestamp
-///     pub time: DateTime<Utc>,
+///     pub time: Timestamp,
 ///     /// Each record is part of a drone journey with a specific ID -- system.track_id
 ///     pub journey: String,
 ///     /// Identifier for the drone -- vehicle_identification.serial

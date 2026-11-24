@@ -12,9 +12,12 @@
 //! The structures and enums in this module are designed to provide a standardized
 //! way to handle drone telemetry data across different data sources and drone types.
 //!
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use strum::EnumString;
+
+use crate::common::Rfc3339Timestamp;
 
 /// Represents a flattened structure containing comprehensive information
 /// related to a drone's data feed.
@@ -54,11 +57,11 @@ use strum::EnumString;
 ///
 /// Example:
 /// ```rust
-/// use chrono::Utc;
+/// use jiff::Timestamp;
 /// use fetiche_formats::DronePoint;
 ///
 /// let point = DronePoint {
-///     time: Utc::now(),
+///     time: "2025-01-01T00:00:00.1Z".parse::<Timestamp>().unwrap(),
 ///     journey: "12345".into(),
 ///     ident: Some("DRONE-001".into()),
 ///     make: Some("DJI".into()),
@@ -78,7 +81,10 @@ use strum::EnumString;
 ///     station_name: Some("Station XYZ".into()),
 /// };
 ///
-/// println!("{:?}", point);
+/// let mut writer = csv::WriterBuilder::new().has_headers(false).from_writer(vec![]);
+/// writer.serialize(&point).unwrap();
+/// let csv = writer.into_inner().unwrap();
+/// assert!(csv.starts_with(b"2025-01-01T00:00:00.100Z,"));
 /// ```
 ///
 /// ## See Also
@@ -86,10 +92,12 @@ use strum::EnumString;
 /// - [`UAVType`]: Enumeration for drone types (e.g., FixedWing, MultiRotor, etc.).
 /// - [`DataSource`]: Enum to represent different data sources like ADS-B, MLAT, etc.
 ///
+#[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct DronePoint {
     /// timestamp
-    pub time: DateTime<Utc>,
+    #[serde_as(serialize_as = "Rfc3339Timestamp")]
+    pub time: Timestamp,
     /// Each record is part of a drone journey with a specific ID
     pub journey: String,
     /// Identifier for the drone

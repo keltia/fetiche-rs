@@ -147,16 +147,14 @@ pub fn to_meters(a: f32) -> f32 {
     a / 3.28084
 }
 
-#[cfg(any(feature = "aeroscope", feature = "safesky"))]
+#[cfg(any(feature = "aeroscope", feature = "safesky", all(feature = "asd", feature = "asterix")))]
 pub(crate) fn unix_seconds(timestamp: jiff::Timestamp) -> i64 {
     // A fractional timestamp before the epoch belongs to the preceding second.
     timestamp.as_second() - i64::from(timestamp.subsec_nanosecond() < 0)
 }
 
-#[cfg(feature = "senhive")]
 pub(crate) struct Rfc3339Timestamp;
 
-#[cfg(feature = "senhive")]
 impl serde_with::SerializeAs<jiff::Timestamp> for Rfc3339Timestamp {
     fn serialize_as<S>(timestamp: &jiff::Timestamp, serializer: S) -> Result<S::Ok, S::Error>
     where

@@ -5,13 +5,19 @@
 //!
 //! JSON endpoint added later by ASD in Nov. 2022.
 
-use chrono::{DateTime, NaiveDateTime, Utc};
+use jiff::{Timestamp, civil::DateTime, tz::TimeZone};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, PickFirst, serde_as};
 
 #[cfg(feature = "asterix")]
 use crate::{Cat21, TodCalculated, convert_to, get_drone_id, to_feet, to_knots};
+#[cfg(feature = "asterix")]
+use tracing::debug;
+
+use crate::common::Rfc3339Timestamp;
+#[cfg(feature = "asterix")]
+use crate::common::unix_seconds;
 use crate::{DataSource, DronePoint};
 
 /// Represents a record obtained from the ASD site.
@@ -31,15 +37,15 @@ use crate::{DataSource, DronePoint};
 ///
 /// The `time` field is computed afterwards from the `timestamp` field,
 /// which is provided in a non-standard string format. The corrected `time`
-/// is represented using `DateTime<Utc>` from the `chrono` crate.
+/// is represented using `jiff::Timestamp`.
 ///
 #[serde_as]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Asd {
     /// Hidden UNIX timestamp
     #[serde(skip_deserializing)]
-    #[serde_as(as = "PickFirst<(_, DisplayFromStr)>")]
-    pub time: DateTime<Utc>,
+    #[serde_as(serialize_as = "Rfc3339Timestamp")]
+    pub time: Timestamp,
     /// Each record is part of a drone journey with a specific ID
     pub journey: u32,
     /// Identifier for the drone
@@ -152,7 +158,7 @@ impl Asd {
     /// Generate a proper timestamp from the non-standard string they emit.
     ///
     /// Fixes the timestamp by converting the non-standard string representation of the timestamp
-    /// into a proper `DateTime<Utc>` instance.
+    /// into a `Timestamp` instance.
     ///
     /// # Returns
     ///
@@ -163,11 +169,11 @@ impl Asd {
     ///
     /// Valid timestamp example:
     /// ```
-    /// use chrono::{TimeZone, Utc};
+    /// use jiff::Timestamp;
     /// use fetiche_formats::Asd;
     ///
     /// let asd = Asd {
-    ///     time: Utc::now(),
+    ///     time: Timestamp::now(),
     ///     journey: 42,
     ///     ident: "Drone123".to_string(),
     ///     model: Some("ModelX".to_string()),
@@ -196,15 +202,15 @@ impl Asd {
     /// let fixed_asd = result.unwrap();
     /// assert_eq!(
     ///     fixed_asd.time,
-    ///     Utc.with_ymd_and_hms(2023, 10, 22, 15, 30, 45).unwrap()
+    ///     "2023-10-22T15:30:45Z".parse::<Timestamp>().unwrap()
     /// );
     /// ```
     ///
     #[inline]
     pub fn fix_tm(&self) -> Result<Asd> {
-        let tod = NaiveDateTime::parse_from_str(&self.timestamp, "%Y-%m-%d %H:%M:%S")?;
+        let tod = DateTime::strptime("%Y-%m-%d %H:%M:%S", &self.timestamp)?;
         let mut out = self.clone();
-        out.time = tod.and_utc();
+        out.time = TimeZone::UTC.to_timestamp(tod)?;
         Ok(out)
     }
 }
@@ -249,13 +255,13 @@ impl From<&Asd> for Cat21 {
     ///
     /// #### Example Usage:
     /// ```
-    /// use chrono::Utc;
+    /// use jiff::Timestamp;
     /// use fetiche_formats::{Asd, Cat21};
     ///
     /// let asd = Asd {
-    ///     time: Utc::now(),
+    ///     time: Timestamp::UNIX_EPOCH,
     ///     journey: 42,
-    ///     ident: "Drone123".to_string(),
+    ///     ident: "AB12345678".to_string(),
     ///     model: Some("ModelX".to_string()),
     ///     source: "ASD Source".to_string(),
     ///     location: 1,
@@ -276,7 +282,8 @@ impl From<&Asd> for Cat21 {
     ///     station_longitude: Some(2.3530),
     /// };
     ///
-    /// let cat21: Cat21 = Cat21::from(&asd);
+    /// let cat21 = Cat21::from(&asd.fix_tm().unwrap());
+    /// assert_eq!(cat21.rec_time_posix, 1_697_988_645);
     /// ```
     ///
     /// **Note:** This is part of the `asterix` feature module and will only be available
@@ -285,7 +292,7 @@ impl From<&Asd> for Cat21 {
     ///
     #[tracing::instrument]
     fn from(line: &Asd) -> Self {
-        let tod = line.time.timestamp();
+        let tod = unix_seconds(line.time);
         let alt_geo_ft = line.altitude.unwrap_or(0i16);
         let alt_geo_ft: f32 = alt_geo_ft.into();
         Cat21 {
@@ -317,12 +324,11 @@ impl From<&Asd> for Cat21 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
 
     #[test]
     fn test_fix_tm_valid_timestamp() {
         let asd = Asd {
-            time: Utc::now(),
+            time: Timestamp::now(),
             journey: 42,
             ident: "Drone123".to_string(),
             model: Some("ModelX".to_string()),
@@ -351,14 +357,14 @@ mod tests {
         let fixed_asd = result.unwrap();
         assert_eq!(
             fixed_asd.time,
-            Utc.with_ymd_and_hms(2023, 10, 22, 15, 30, 45).unwrap()
+            "2023-10-22T15:30:45Z".parse::<Timestamp>().unwrap()
         );
     }
 
     #[test]
     fn test_fix_tm_invalid_timestamp() {
         let asd = Asd {
-            time: Utc::now(),
+            time: Timestamp::now(),
             journey: 42,
             ident: "Drone123".to_string(),
             model: Some("ModelX".to_string()),

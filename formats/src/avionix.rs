@@ -5,6 +5,7 @@
 
 use crate::{DataSource, DronePoint, UAVType, to_meters};
 use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, serde_conv};
 use strum::EnumString;
@@ -146,7 +147,8 @@ pub struct CubeData {
 impl From<&CubeData> for DronePoint {
     fn from(value: &CubeData) -> Self {
         DronePoint {
-            time: DateTime::from_timestamp_nanos((value.time as i64) * 1_000_000_000i64),
+            time: Timestamp::from_second(i64::from(value.time))
+                .expect("u32 Unix seconds fit in a Jiff timestamp"),
             ident: Some(value.fli.clone()),
             journey: String::from(""),
             make: None,
@@ -349,7 +351,7 @@ mod tests {
 
         assert_eq!(
             drone_point.time,
-            DateTime::from_timestamp_nanos((cube_data.time as i64) * 1_000_000_000i64)
+            Timestamp::from_second(i64::from(cube_data.time)).unwrap()
         );
         assert_eq!(drone_point.ident, Some(cube_data.fli.clone()));
         assert_eq!(drone_point.journey, String::from(""));
