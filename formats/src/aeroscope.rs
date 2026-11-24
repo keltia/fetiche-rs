@@ -2,7 +2,7 @@
 //! CSV data Cat21-like
 //!
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::{to_feet, to_knots, Cat129, Cat21, Position, TodCalculated};
@@ -65,13 +65,21 @@ pub struct Aeroscope {
     pub speed: f32,
 }
 
+impl Aeroscope {
+    fn receive_unix_seconds(&self) -> i64 {
+        let timestamp = self.receive_date.parse::<Timestamp>().unwrap();
+        // Round down to the Unix second containing a pre-epoch timestamp.
+        timestamp.as_second() - i64::from(timestamp.subsec_nanosecond() < 0)
+    }
+}
+
 impl From<&Aeroscope> for Cat21 {
     /// Transforms an `Aeroscope` struct into a `Cat21` struct.
     ///
     /// This implementation converts the data from the `Aeroscope` format
     /// into the `Cat21` format. The following processes are applied:
     ///
-    /// - Parsing the `receive_date` field into a `DateTime<Utc>` type and converting
+    /// - Parsing the `receive_date` field into a `Timestamp` and converting
     ///   it to a UNIX timestamp for the `tod` field.
     /// - The `drone_id` field is truncated to the middle section to derive a safe
     ///   and anonymized version, which becomes the `callsign` field.
@@ -104,15 +112,16 @@ impl From<&Aeroscope> for Cat21 {
     ///     flight_id: "FL56789".to_string(),
     ///     home_location: Position::default(),
     ///     pilot_position: Position::default(),
-    ///     receive_date: "2023-10-22T14:00:00Z".to_string(),
+    ///     receive_date: "2023-10-22T16:00:00.125+02:00".to_string(),
     ///     speed: 55.0,
     /// };
     ///
     /// let record: Cat21 = Cat21::from(&aeroscope);
     ///
     /// assert_eq!(record.callsign, "12345678");
-    /// assert_eq!(record.alt_geo_ft, 328.084); // altitude converted to feet
-    /// assert_eq!(record.groundspeed_kt, 29.6628); // speed converted to knots
+    /// assert_eq!(record.rec_time_posix, 1_697_983_200);
+    /// assert_eq!(record.alt_geo_ft, 328); // altitude converted to whole feet
+    /// assert!((record.groundspeed_kt - 29.7).abs() < 0.001);
     /// assert_eq!(record.track_angle_deg, 45.0); // azimuth mapped as heading
     /// ```
     ///
@@ -133,8 +142,7 @@ impl From<&Aeroscope> for Cat21 {
     /// ```
     #[tracing::instrument]
     fn from(line: &Aeroscope) -> Self {
-        let tod = line.receive_date.parse::<DateTime<Utc>>().unwrap();
-        let tod = tod.timestamp();
+        let tod = line.receive_unix_seconds();
         let lid = if line.drone_id != "null" {
             line.drone_id[2..10].to_owned()
         } else {
@@ -173,7 +181,7 @@ impl From<&Aeroscope> for Cat129 {
     /// This implementation extracts and transforms relevant data from the `Aeroscope` format
     /// to the `Cat129` format. The transformation process includes:
     ///
-    /// - Parsing the `receive_date` field into a `DateTime<Utc>` and extracting the UNIX timestamp.
+    /// - Parsing the `receive_date` field into a `Timestamp` and extracting the UNIX timestamp.
     /// - Deriving a truncated `uas_serial` from the `drone_id` for privacy reasons. If the `drone_id`
     ///   is "null", the `uas_serial` will also default to "null".
     ///
@@ -202,17 +210,17 @@ impl From<&Aeroscope> for Cat129 {
     ///     flight_id: "FL12345".to_string(),
     ///     home_location: Position::default(),
     ///     pilot_position: Position::default(),
-    ///     receive_date: "2023-10-22T13:45:00Z".to_string(),
+    ///     receive_date: "1969-12-31T23:59:59.875Z".to_string(),
     ///     speed: 50.0,
     /// };
     /// let record: Cat129 = Cat129::from(&aeroscope);
     /// assert_eq!(record.uas_serial, "00123456");
+    /// assert_eq!(record.tod, -1);
     /// ```
     ///
     #[tracing::instrument]
     fn from(line: &Aeroscope) -> Self {
-        let tod = line.receive_date.parse::<DateTime<Utc>>().unwrap();
-        let tod = tod.timestamp();
+        let tod = line.receive_unix_seconds();
         let lid = if line.drone_id != "null" {
             line.drone_id[2..10].to_owned()
         } else {

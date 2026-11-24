@@ -114,6 +114,12 @@ convert_to!(from_asd, Asd, Cat21);
 /// - `station_name`: Cloned from ASD station_name
 ///
 /// Default values are used for optional fields that may be None in the ASD record.
+impl From<Asd> for DronePoint {
+    fn from(value: Asd) -> Self {
+        Self::from(&value)
+    }
+}
+
 impl From<&Asd> for DronePoint {
     fn from(from: &Asd) -> Self {
         let from = from.clone();
