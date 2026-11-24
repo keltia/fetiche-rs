@@ -38,8 +38,7 @@ use fetiche_formats::Format;
 
 use crate::actors::StatsMsg;
 use crate::{
-    AccessError, Auth, AuthError, Capability, Fetchable, Site, Stats, StreamableSource,
-    version,
+    AccessError, Auth, AuthError, Capability, Fetchable, Site, Stats, StreamableSource, version,
 };
 
 /// Firehose is out target
@@ -131,16 +130,6 @@ pub enum Command {
     Live,
     Pitr { pitr: i64 },
     Range { begin: i64, end: i64 },
-}
-
-/// Credentials to submit to the site to get the token
-///
-#[derive(Debug, Deserialize, Serialize)]
-struct Credentials {
-    /// Email as username
-    username: String,
-    /// Password
-    password: String,
 }
 
 impl Flightaware {
