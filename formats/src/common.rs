@@ -147,6 +147,12 @@ pub fn to_meters(a: f32) -> f32 {
     a / 3.28084
 }
 
+#[cfg(any(feature = "aeroscope", feature = "safesky"))]
+pub(crate) fn unix_seconds(timestamp: jiff::Timestamp) -> i64 {
+    // A fractional timestamp before the epoch belongs to the preceding second.
+    timestamp.as_second() - i64::from(timestamp.subsec_nanosecond() < 0)
+}
+
 /// Prepares a CSV output from a vector of data, using a custom delimiter.
 ///
 /// # Arguments

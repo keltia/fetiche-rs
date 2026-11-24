@@ -102,6 +102,8 @@ macro_rules! convert_to {
 /// Example:
 /// ```no_run
 /// # fn main() -> eyre::Result<()> {
+/// # #[cfg(feature = "asd")]
+/// # {
 /// # use fetiche_formats::Asd;
 /// use fetiche_formats::from_json_to_csv;
 ///
@@ -110,6 +112,7 @@ macro_rules! convert_to {
 ///
 /// let res = from_json_to_csv(&input.into_bytes(), &data)?;
 /// eprintln!("res = {res}");
+/// # }
 /// # Ok(())
 /// # }
 /// ```
