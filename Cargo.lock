@@ -3666,12 +3666,11 @@ dependencies = [
 
 [[package]]
 name = "fetiche-formats"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "criterion 0.8.2",
  "csv",
  "eyre",
- "fetiche-macros",
  "hcl-rs",
  "jiff 1.0.2",
  "nom 8.0.0",
