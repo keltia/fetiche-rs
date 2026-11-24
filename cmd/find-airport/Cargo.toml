@@ -18,6 +18,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 [lints.rust]
 linker_messages = "allow"
 
+[lints.cargo]
+# Plain cargo test skips the benchmarks that use divan and itertools.
+unused_dependencies = "allow"
+
 [badges]
 maintenance = { status = "actively-developed" }
 
