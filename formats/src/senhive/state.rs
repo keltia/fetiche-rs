@@ -1,10 +1,13 @@
 //! This is the module for data types for the `system_state` / `dl_system_state` queues
 //!
 
-use crate::senhive::Coordinates;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use strum::EnumString;
+
+use crate::common::Rfc3339Timestamp;
+use crate::senhive::Coordinates;
 
 // ----- queue: `system_state`
 
@@ -90,9 +93,10 @@ pub enum State {
 /// - `altitude` (Altitude): Stores information about the sensor's altitude above the ground, mean sea level, or geodetic altitude.
 /// - `estimated_coverage` (Option<String>): Represents the area covered by the sensor, specified as a WKT polygon.
 /// - `state` (String): The current state of the sensor (e.g., OK, WARNING, ERROR).
-/// - `last_online` (Option<DateTime<Utc>>): The last known time the sensor was online.
+/// - `last_online` (Option<Timestamp>): The last known time the sensor was online.
 /// - `meta_data` (Option<String>): Additional meta-information related to the sensor, serialized as a string.
 ///
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Sensor {
     pub serial: String,
@@ -106,7 +110,8 @@ pub struct Sensor {
     pub estimated_coverage: Option<String>,
     pub state: String,
     #[serde(rename = "lastOnline")]
-    pub last_online: Option<DateTime<Utc>>,
+    #[serde_as(serialize_as = "Option<Rfc3339Timestamp>")]
+    pub last_online: Option<Timestamp>,
     #[serde(rename = "metaData")]
     pub meta_data: Option<String>,
 }
@@ -119,15 +124,48 @@ pub struct Sensor {
 ///
 /// - `version` (Option<String>): The version of the message or protocol being used.
 /// - `name` (String): The name of the system or entity sending the message.
-/// - `timestamp` (DateTime<Utc>): The time when the message was generated.
+/// - `timestamp` (Timestamp): The time when the message was generated.
 /// - `sensors` (Vec<Sensor>): A list of sensors attached to the system, with their details.
 /// - `services` (Vec<Service>): A list of services running in the system, along with their states.
 ///
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StateMsg {
     pub version: Option<String>,
     pub name: String,
-    pub timestamp: DateTime<Utc>,
+    #[serde_as(serialize_as = "Rfc3339Timestamp")]
+    pub timestamp: Timestamp,
     pub sensors: Vec<Sensor>,
     pub services: Vec<Service>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn state_timestamp_wire_format() -> eyre::Result<()> {
+        let mut input = json!({
+            "name": "system",
+            "timestamp": "2025-01-01T01:00:00.1+01:00",
+            "sensors": [{
+                "serial": "123",
+                "name": "sensor",
+                "type": "RADAR",
+                "altitude": {},
+                "state": "OK",
+            }],
+            "services": [],
+        });
+        let state: StateMsg = serde_json::from_value(input.clone())?;
+        assert_eq!(state.sensors[0].last_online, None);
+
+        input["sensors"][0]["lastOnline"] = json!("2025-01-01T00:00:00.1234Z");
+        let state: StateMsg = serde_json::from_value(input)?;
+        let output = serde_json::to_value(state)?;
+        assert_eq!(output["timestamp"], "2025-01-01T00:00:00.100Z");
+        assert_eq!(output["sensors"][0]["lastOnline"], "2025-01-01T00:00:00.123400Z");
+        Ok(())
+    }
 }
