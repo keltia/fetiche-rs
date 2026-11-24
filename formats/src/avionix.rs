@@ -3,12 +3,13 @@
 //! URL: http://www.avionix.pl
 //!
 
-use crate::{DataSource, DronePoint, UAVType, to_meters};
-use chrono::{DateTime, Utc};
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, serde_conv};
 use strum::EnumString;
+
+use crate::common::Rfc3339Timestamp;
+use crate::{DataSource, DronePoint, UAVType, to_meters};
 
 // Enable deserialization from either i32/f64 into the final i32.  Value is rounded up or down as
 // needed.
@@ -210,9 +211,10 @@ fn gda_to_state(gda: &str) -> u8 {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AvionixCat21 {
-    /// UNIX timestamp in milli-secs (i64)
+    /// RFC 3339 timestamp stored as a string.
     #[serde(rename = "uti")]
-    pub time: DateTime<Utc>,
+    #[serde_as(serialize_as = "Rfc3339Timestamp")]
+    pub time: Timestamp,
     /// ESRI timestamp e.g. 2015-07-26 07:36:51.657189000
     pub dat: String,
     /// SIC
@@ -313,6 +315,34 @@ enum Category {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cat21_timestamp_wire_format() -> eyre::Result<()> {
+        let input = serde_json::json!({
+            "uti": "2024-11-25T14:27:38.1+01:00",
+            "Dat": "2024-11-25 13:27:38.100000000",
+            "Sic": 200,
+            "Sac": 8,
+            "Hex": "44cc43",
+            "Fli": "BEL7LX",
+            "Lat": 49.25,
+            "Lon": 2.24,
+            "Gda": "A",
+            "Src": "A",
+            "Alt": 32225,
+            "Spd": 562,
+            "Trk": 31.77,
+            "Cat": "A3",
+            "Squ": "1000",
+            "Vrt": -448,
+            "Mps": 2,
+            "Nic": 1,
+        });
+        let record: AvionixCat21 = serde_json::from_value(input)?;
+        assert_eq!(record.time, Timestamp::new(1_732_541_258, 100_000_000)?);
+        assert_eq!(serde_json::to_value(record)?["uti"], "2024-11-25T13:27:38.100Z");
+        Ok(())
+    }
 
     #[test]
     fn test_from_cubedata_to_dronepoint() {
