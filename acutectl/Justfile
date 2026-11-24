@@ -1,4 +1,5 @@
 # For testing
+set fallback
 
 yesterday: yesterday-csv yesterday-parquet
 
