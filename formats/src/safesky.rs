@@ -9,9 +9,10 @@
 
 use std::net::IpAddr;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::Deserialize;
 
+use crate::common::unix_seconds;
 use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
 
 /// Our input structure from the csv file coming from Safesky file
@@ -19,7 +20,7 @@ use crate::{to_feet, to_knots, Bool, Cat21, TodCalculated};
 #[derive(Debug, Deserialize)]
 pub struct Safesky {
     /// UTC Timestamp
-    pub last_update: DateTime<Utc>,
+    pub last_update: Timestamp,
     /// ID of the station ?
     pub id: String,
     /// Apparently always "safesky"
@@ -50,7 +51,7 @@ impl From<&Safesky> for Cat21 {
     ///
     #[tracing::instrument]
     fn from(line: &Safesky) -> Self {
-        let tod = line.last_update.timestamp();
+        let tod = unix_seconds(line.last_update);
         Cat21 {
             sac: 8,
             sic: 200,
@@ -88,5 +89,29 @@ impl From<&Safesky> for Cat21 {
             track_angle_deg: 0.0,
             rec_num: 1,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn csv_timestamp_to_cat21() -> eyre::Result<()> {
+        let input = concat!(
+            "last_update,id,source,transponder_type,aircraft_type,latitude,longitude,",
+            "altitude,vertical_rate,accuracy,altitude_accuracy,course,ground_speed,",
+            "status,turn_rate,call_sign,ip\n",
+            "1970-01-01T01:00:01.125+01:00,123,safesky,ADS-BI,PLANE,48.8,2.3,",
+            "100,0,10,10,90,50,AIRBORNE,,TEST123,\n",
+        );
+        let mut reader = csv::Reader::from_reader(input.as_bytes());
+        let beacon = reader.deserialize::<Safesky>().next().unwrap()?;
+
+        assert_eq!(beacon.last_update, Timestamp::new(1, 125_000_000)?);
+        let record = Cat21::from(&beacon);
+        assert_eq!(record.rec_time_posix, 1);
+        assert_eq!(record.tod, 128);
+        Ok(())
     }
 }
