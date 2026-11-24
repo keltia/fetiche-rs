@@ -20,7 +20,7 @@ use fetiche_formats::Format;
 use crate::actors::{SchedulerMsg, SourcesMsg};
 use crate::{
     Consumer, Copy, Engine, Fetch, Filter, Job, JobState, Middle, ParserError, Producer, Read,
-    Save, Store, Stream, Tee,
+    Save, Site, Store, Stream, Tee,
 };
 
 /// Represents the type of job to be executed.
@@ -315,9 +315,6 @@ mod tests {
     #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_fetch_job() -> Result<()> {
-        let mut engine = Engine::single().await?;
-        engine.ps();
-
         let job_str = r#"
             name = "test_fetch"
             producer = {
@@ -335,22 +332,18 @@ mod tests {
             }
         "#;
 
-        let job = engine.parse(job_str).await?;
+        let job = parse_job(job_str).await?;
 
         assert_eq!(job.name, "test_fetch");
         assert!(matches!(job.producer, Producer::Fetch(_)));
         assert!(matches!(job.consumer, Consumer::Save(_)));
 
-        let _ = engine.shutdown();
         Ok(())
     }
 
     #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_stream_job() -> Result<()> {
-        let mut engine = Engine::single().await?;
-        engine.ps();
-
         let job_str = r#"
             name = "test_stream"
             producer = {
@@ -373,16 +366,12 @@ mod tests {
         assert_eq!(job.name, "test_stream");
         assert!(matches!(job.producer, Producer::Stream(_)));
         assert!(matches!(job.consumer, Consumer::Save(_)));
-        let _ = engine.shutdown();
         Ok(())
     }
 
     #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_read_job() -> Result<()> {
-        let mut engine = Engine::single().await?;
-        engine.ps();
-
         let job_str = r#"
             name = "test_read"
             producer = {
@@ -398,16 +387,12 @@ mod tests {
         assert_eq!(job.name, "test_read");
         assert!(matches!(job.producer, Producer::Read(_)));
         assert!(matches!(job.consumer, Consumer::Save(_)));
-        let _ = engine.shutdown();
         Ok(())
     }
 
     #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_job_with_filters() -> Result<()> {
-        let mut engine = Engine::single().await?;
-        engine.ps();
-
         let job_str = r#"
             name = "test_filters"
             producer = {
@@ -434,23 +419,18 @@ mod tests {
         assert_eq!(job.middle.len(), 2);
         assert!(matches!(job.middle[0], Middle::Copy(_)));
         assert!(matches!(job.middle[1], Middle::Tee(_)));
-        let _ = engine.shutdown();
         Ok(())
     }
 
     #[test_pretty_log::test]
     #[tokio::test]
     async fn test_parse_invalid_hcl() -> Result<()> {
-        let mut engine = Engine::single().await?;
-        engine.ps();
-
         let job_str = r#"
             invalid hcl syntax
         "#;
 
         let result = parse_job(job_str).await;
         assert!(result.is_err());
-        let _ = engine.shutdown();
         Ok(())
     }
 }
