@@ -39,6 +39,7 @@ maintenance = { status = "actively-developed" }
 csv.workspace = true
 eyre.workspace = true
 hcl-rs.workspace = true
+jiff.workspace = true
 nom.workspace = true
 serde.workspace = true
 serde_json.workspace = true

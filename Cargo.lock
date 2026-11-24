@@ -3674,6 +3674,7 @@ dependencies = [
  "eyre",
  "fetiche-macros",
  "hcl-rs",
+ "jiff 1.0.2",
  "nom 8.0.0",
  "rstest",
  "serde",
