@@ -153,6 +153,30 @@ pub(crate) fn unix_seconds(timestamp: jiff::Timestamp) -> i64 {
     timestamp.as_second() - i64::from(timestamp.subsec_nanosecond() < 0)
 }
 
+#[cfg(feature = "senhive")]
+pub(crate) struct Rfc3339Timestamp;
+
+#[cfg(feature = "senhive")]
+impl serde_with::SerializeAs<jiff::Timestamp> for Rfc3339Timestamp {
+    fn serialize_as<S>(timestamp: &jiff::Timestamp, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        // Preserve the existing UTC wire format with groups of three fractional digits.
+        let nanos = timestamp.subsec_nanosecond();
+        let precision = if nanos == 0 {
+            0
+        } else if nanos % 1_000_000 == 0 {
+            3
+        } else if nanos % 1_000 == 0 {
+            6
+        } else {
+            9
+        };
+        serializer.collect_str(&format_args!("{timestamp:.precision$}"))
+    }
+}
+
 /// Prepares a CSV output from a vector of data, using a custom delimiter.
 ///
 /// # Arguments
