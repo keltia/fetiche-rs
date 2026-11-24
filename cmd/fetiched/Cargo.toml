@@ -16,7 +16,6 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 eyre.workspace = true
-chrono.workspace = true
 clap.workspace = true
 env_logger.workspace = true
 fetiche-common.workspace = true

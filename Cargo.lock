@@ -3703,7 +3703,6 @@ dependencies = [
  "actix-rt",
  "actix-storage",
  "actix-storage-dashmap",
- "chrono",
  "clap 4.6.9",
  "daemonize",
  "directories",

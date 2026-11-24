@@ -36,7 +36,6 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono.workspace = true
 csv.workspace = true
 eyre.workspace = true
 hcl-rs.workspace = true
@@ -49,6 +48,7 @@ strum.workspace = true
 tabled.workspace = true
 tracing.workspace = true
 
+chrono = { version = "0.4", features = ["std", "serde"] }
 fetiche-macros = { path = "../macros", version = "0.5.0" }
 
 [dev-dependencies]
