@@ -4,7 +4,7 @@ use ractor::{call, cast};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::trace;
 
-use crate::actors::{StateMsg, StatsMsg};
+use crate::actors::StatsMsg;
 use crate::{AuthError, Command, Flightaware, Param, Result, Stats, StatsError, Streamable};
 use fetiche_formats::Format;
 
@@ -49,21 +49,22 @@ impl Streamable for Flightaware {
         };
 
         trace!("tls connect");
-        let mut stream = self.connect(proxy).await;
+        let mut stream = self.connect(proxy).await?;
 
         // Send request
         //
-        trace!("req={req}");
-        let _ = stream.write(req.as_bytes()).await?;
+        stream.write_all(req.as_bytes()).await?;
 
         trace!("read answer");
 
-        let buf = BufReader::new(&mut stream);
-        for line in buf.lines().await {
-            let line = line.unwrap();
-            trace!("line={}", line);
-            let _ = out.send(line);
+        let mut lines = BufReader::new(stream).lines();
+        let mut counts = Stats::default();
+        while let Some(line) = lines.next_line().await? {
+            counts.pkts += 1;
+            counts.bytes += line.len() as u64;
+            out.send(line)?;
         }
+        cast!(stat, StatsMsg::Update(tag.clone(), counts))?;
 
         let stats = call!(stat, |port| StatsMsg::Get(tag.clone(), port))?;
         Ok(stats)

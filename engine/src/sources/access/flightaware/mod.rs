@@ -19,28 +19,28 @@
 
 mod stream;
 
-use std::io::{BufRead, BufReader, Write};
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
-use base64_light::base64_encode;
-use eyre::{eyre, Result};
+use eyre::{Result, eyre};
 use jiff::Timestamp;
 use ractor::ActorRef;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
 use strum::VariantNames;
-// Add these imports
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
-use tokio_native_tls::TlsConnector as TokioTlsConnector;
+use tokio_native_tls::{TlsConnector as TokioTlsConnector, TlsStream};
 use tracing::trace;
 
 use fetiche_formats::Format;
 
 use crate::actors::StatsMsg;
-use crate::{version, AccessError, Auth, AuthError, Capability, Fetchable, Site, Stats, Streamable, StreamableSource};
+use crate::{
+    AccessError, Auth, AuthError, Capability, Fetchable, Site, Stats, StreamableSource,
+    version,
+};
 
 /// Firehose is out target
 const SITE: &str = "firehose.flightaware.com";
@@ -223,7 +223,8 @@ impl Flightaware {
         let stream = if let Some(proxy_url_str) = proxy {
             trace!("using proxy");
 
-            let url = Url::parse(&proxy_url_str).map_err(|e| AccessError::BadProxyString(proxy_url_str).into())?;
+            let url = Url::parse(&proxy_url_str)
+                .map_err(|_| AccessError::BadProxyString(proxy_url_str))?;
             let (host, port) = (url.host_str().unwrap(), url.port().unwrap_or(80));
 
             trace!("proxy = {}:{}", host, port);
@@ -235,7 +236,10 @@ impl Flightaware {
             let auth = if !url.username().is_empty() {
                 let passwd = url.password().unwrap_or("");
                 let credentials = format!("{}:{}", url.username(), passwd);
-                format!("Proxy-Authorization: Basic {}\r\n", base64_light::base64_encode(&credentials))
+                format!(
+                    "Proxy-Authorization: Basic {}\r\n",
+                    base64_light::base64_encode(&credentials)
+                )
             } else {
                 String::new()
             };
@@ -243,7 +247,11 @@ impl Flightaware {
             // Send the CONNECT request to the proxy
             let connect_req = format!(
                 "CONNECT {}:{} HTTP/1.1\r\nHost: {}\r\n{}User-Agent: {}\r\n\r\n",
-                SITE, PORT, SITE, auth, version()
+                SITE,
+                PORT,
+                SITE,
+                auth,
+                version()
             );
 
             stream.write_all(connect_req.as_bytes()).await?;
@@ -265,13 +273,13 @@ impl Flightaware {
 
         // Handover to the TLS engine
         trace!("TCP={:?}", stream);
-        let tls_stream = connector.connect(SITE, stream)
+        let tls_stream = connector
+            .connect(SITE, stream)
             .await
-            .map_err(|e| AccessError::TlsConnectFailed(e).into())?;
+            .map_err(|e| AccessError::TlsConnectFailed(e.to_string()))?;
 
         Ok(tls_stream)
     }
-
 
     #[tracing::instrument(skip(self, stat))]
     pub fn stats(&mut self, stat: ActorRef<StatsMsg>) -> &mut Self {
@@ -309,7 +317,7 @@ impl Fetchable for Flightaware {
     }
 
     #[tracing::instrument(skip(self, _token))]
-    async fn fetch(&self, out: Sender<String>, _token: &str, args: &str) -> Result<()> {
+    async fn fetch(&self, out: Sender<String>, _token: &str, args: &str) -> Result<Stats> {
         trace!("fetch with TLS");
         let args: Param = serde_json::from_str(args)?;
 
@@ -342,23 +350,19 @@ impl Fetchable for Flightaware {
 
         // Send request
         //
-        trace!("req={req}");
-        stream.write_all(req.as_bytes())?;
+        stream.write_all(req.as_bytes()).await?;
 
         trace!("read answer, format as an array");
-        let buf = BufReader::new(&mut stream);
-        let res = buf
-            .lines()
-            .map(|l| l.unwrap())
-            .inspect(|l| {
-                trace!("line={l}");
-            })
-            .collect::<Vec<_>>()
-            .join(",\n");
-        trace!("End of fetch");
-
-        drop(stream);
-        Ok(out.send(format!("[{res}]"))?)
+        let mut lines = BufReader::new(stream).lines();
+        let mut records = Vec::new();
+        let mut stats = Stats::default();
+        while let Some(line) = lines.next_line().await? {
+            stats.pkts += 1;
+            stats.bytes += line.len() as u64;
+            records.push(line);
+        }
+        out.send(format!("[{}]", records.join(",\n")))?;
+        Ok(stats)
     }
 
     fn format(&self) -> Format {
@@ -368,6 +372,7 @@ impl Fetchable for Flightaware {
 
 #[cfg(test)]
 mod tests {
+    use crate::sources::access::flightaware::get_timestamp;
     use jiff::Timestamp;
 
     #[test]
