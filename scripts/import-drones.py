@@ -67,8 +67,8 @@ def process_one(dir, fname, action):
     pwd = os.getenv('CLICKHOUSE_PASSWD')
     dbn = os.getenv('CLICKHOUSE_DB') or db
 
-    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {dbn} --password {pwd} -q \"INSERT INTO drones_raw FORMAT Csv\""
-    cmd = f"/bin/tail -n +2 {os.path.join(dir, fname)} | {ch_cmd}"
+    ch_cmd = f"{clickhouse} -h {host} -u {user} -d {dbn} --password {pwd} -q \"INSERT INTO drones_raw FORMAT CsvWithNames\""
+    cmd = f"/bin/cat {os.path.join(dir, fname)} | {ch_cmd}"
     logging.info(f"{cmd}")
     if action:
         ret = run(cmd, shell=True, capture_output=True)
