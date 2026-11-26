@@ -5,6 +5,22 @@ the broader repository layout. The implementation under [
 `../../cmd/fetiched/src/engine`](../../cmd/fetiched/src/engine/mod.rs) has its own execution path and is outside this
 document's scope.
 
+## Authoritative completion
+
+The first improvement below is implemented. The architecture review that follows records the baseline that motivated it.
+The runner now drains terminal output while monitoring every stage's Tokio join handle. Success requires all stages to
+return successfully. A stage error or panic records the stage's position and name, aborts remaining stages, and waits for
+their tasks to exit. Cancellation reported by a task has its own status. Output written before a failure is retained.
+
+`WaitGroup::rx` is now a Tokio oneshot receiver for `JobOutcome`, which carries the job ID, terminal status, and
+statistics snapshot. The results actor acknowledges storage before the caller is notified on the normal path.
+`Work` dropped before publication reports cancellation directly to its waiter.
+`submit_job_and_wait` still returns statistics on success and reports failed or cancelled outcomes as errors.
+Pipeline channels use unbounded Tokio MPSC so idle stages can yield and be cancelled. Queue limits, scheduler dispatch
+policy, and engine-wide shutdown coordination remain future improvements.
+
+[Runner](../src/actors/runner.rs), [Outcome types](../src/job.rs), [Results](../src/actors/results.rs)
+
 ## Architecture and startup
 
 The engine uses Ractor actors on Tokio to configure, schedule, and observe jobs. Each job is an ordered chain with one
