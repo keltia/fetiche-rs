@@ -340,7 +340,17 @@ mod tests {
         let job = parse_job(job_str).await?;
 
         assert_eq!(job.name, "test_fetch");
-        assert!(matches!(job.producer, Producer::Fetch(_)));
+        assert_eq!(job.id, 1);
+        assert_eq!(job.state(), JobState::Ready);
+        assert!(job.middle.is_empty());
+        let Producer::Fetch(fetch) = job.producer else {
+            panic!("expected a Fetch producer");
+        };
+        assert_eq!(fetch.site.unwrap().name, "lux-me");
+        assert_eq!(
+            Filter::from(fetch.args.as_str()),
+            Filter::stream(1746898373376, 3600, 10)
+        );
         assert!(matches!(job.consumer, Consumer::Save(_)));
 
         Ok(())
@@ -369,7 +379,14 @@ mod tests {
         let job = parse_job(job_str).await?;
 
         assert_eq!(job.name, "test_stream");
-        assert!(matches!(job.producer, Producer::Stream(_)));
+        let Producer::Stream(stream) = job.producer else {
+            panic!("expected a Stream producer");
+        };
+        assert_eq!(stream.site.unwrap().name, "opensky");
+        assert_eq!(
+            Filter::from(stream.args.as_str()),
+            Filter::stream(1746898373376, 3600, 10)
+        );
         assert!(matches!(job.consumer, Consumer::Save(_)));
         Ok(())
     }
@@ -426,8 +443,119 @@ mod tests {
 
         assert_eq!(job.middle.len(), 2);
         assert!(matches!(job.middle[0], Middle::Copy(_)));
-        assert!(matches!(job.middle[1], Middle::Tee(_)));
+        let Middle::Tee(tee) = &job.middle[1] else {
+            panic!("expected a Tee filter");
+        };
+        assert_eq!(tee.fname, "copy.csv");
         Ok(())
+    }
+
+    /// A known source with the wrong capability yields the operation-specific parser error.
+    #[rstest::rstest]
+    #[case("Fetch", "opensky")]
+    #[case("Stream", "lux-me")]
+    #[tokio::test]
+    async fn test_parse_rejects_incompatible_source(#[case] operation: &str, #[case] site: &str) {
+        let hcl = format!(
+            r#"
+            name = "incompatible_source"
+            producer = {{ {operation} = ["{site}", 60] }}
+            output = {{ Save = "output.csv" }}
+            "#
+        );
+
+        let err = parse_job(&hcl).await.unwrap_err();
+        match (operation, err.downcast_ref::<ParserError>()) {
+            ("Fetch", Some(ParserError::NotFetchable(name)))
+            | ("Stream", Some(ParserError::NotStreamable(name))) => assert_eq!(name, site),
+            _ => panic!("unexpected error for {operation} from {site}: {err:?}"),
+        }
+    }
+
+    /// Source lookup failures survive job construction with the source name intact.
+    #[tokio::test]
+    async fn test_parse_propagates_source_lookup_failure() {
+        let err = parse_job(
+            r#"
+            name = "unknown_source"
+            producer = { Fetch = ["missing", 60] }
+            output = { Save = "output.csv" }
+            "#,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(err.to_string(), "Unknown source missing");
+    }
+
+    /// Empty middle stages and the stdout destination produce a usable Save consumer.
+    #[tokio::test]
+    async fn test_parse_stdout_with_empty_middle() -> Result<()> {
+        let job = parse_job(
+            r#"
+            name = "stdout"
+            producer = { Read = "input.csv" }
+            middle = []
+            output = { Save = "-" }
+            "#,
+        )
+        .await?;
+        assert!(job.middle.is_empty());
+        let Consumer::Save(save) = job.consumer else {
+            panic!("expected a Save consumer");
+        };
+        assert!(save.path.is_none());
+        Ok(())
+    }
+
+    /// A Store destination creates its job-specific directory during parsing.
+    #[tokio::test]
+    async fn test_parse_store_job() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().to_string_lossy().replace('\\', "/");
+        let hcl = format!(
+            r#"
+            name = "store"
+            producer = {{ Read = "input.csv" }}
+            output = {{ Store = ["{path}", "Hourly"] }}
+            "#
+        );
+
+        let job = parse_job(&hcl).await?;
+        assert!(matches!(job.consumer, Consumer::Store(_)));
+        assert!(dir.path().join(job.id.to_string()).is_dir());
+        Ok(())
+    }
+
+    /// Store construction errors reach the parser caller.
+    #[tokio::test]
+    async fn test_parse_rejects_empty_store_path() {
+        let err = parse_job(
+            r#"
+            name = "empty_store"
+            producer = { Read = "input.csv" }
+            output = { Store = ["", "Hourly"] }
+            "#,
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(
+            err.downcast_ref::<crate::EngineStatus>(),
+            Some(crate::EngineStatus::NoPathDefined)
+        ));
+    }
+
+    /// Valid HCL with missing or malformed job fields fails during deserialization.
+    #[rstest::rstest]
+    #[case(r#"producer = { Read = "input.csv" }"#)]
+    #[case(r#"producer = { Unknown = "input.csv" }
+        output = { Save = "output.csv" }"#)]
+    #[case(r#"producer = { Read = "input.csv" }
+        output = { Store = ["data", "Weekly"] }"#)]
+    #[tokio::test]
+    async fn test_parse_rejects_invalid_job_fields(#[case] fields: &str) {
+        let hcl = format!("name = \"invalid\"\n{fields}");
+        let err = parse_job(&hcl).await.unwrap_err();
+        assert!(err.downcast_ref::<hcl::Error>().is_some(), "{err:?}");
     }
 
     #[test_pretty_log::test]
