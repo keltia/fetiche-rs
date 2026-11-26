@@ -80,6 +80,7 @@ use tracing::info;
 const CHANNEL_CAPACITY: usize = 16;
 
 trait Runnable: Debug {
+    /// Starts a stage and returns its bounded output receiver and completion handle.
     fn run(&self, input: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
 }
 
@@ -90,6 +91,7 @@ struct Counter {
 }
 
 impl Runnable for Counter {
+    /// Logs each input, emits three counts for it, and sends `end` after EOF.
     fn run(&self, mut input: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>) {
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         let Self { tag, cnt } = *self;
@@ -114,6 +116,7 @@ struct Msg {
 }
 
 impl Runnable for Msg {
+    /// Forwards all incoming messages and appends the configured string after EOF.
     fn run(&self, mut input: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>) {
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         let msg = self.msg.clone();
@@ -136,6 +139,7 @@ struct Job {
 }
 
 impl Job {
+    /// Creates a named job with no stages.
     fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -143,11 +147,16 @@ impl Job {
         }
     }
 
+    /// Appends a stage and returns the job for further configuration.
     fn add(&mut self, stage: Box<dyn Runnable>) -> &mut Self {
         self.stages.push(stage);
         self
     }
 
+    /// Triggers the pipeline, writes its output, and awaits every stage.
+    ///
+    /// If writing fails, dropping the final receiver releases blocked senders.
+    /// The write error takes precedence over stage errors.
     async fn run(&self, out: &mut (impl AsyncWrite + Unpin)) -> Result<()> {
         eprintln!("starting {}", self.name);
         let (tx, mut output) = mpsc::channel(CHANNEL_CAPACITY);
@@ -182,6 +191,9 @@ impl Job {
     }
 }
 
+/// Runs the three-stage example after checking the PID file.
+///
+/// On success, flushes stdout, waits five seconds, and attempts PID-file cleanup.
 #[tokio::main]
 async fn main() -> Result<()> {
     init_logging("simple_tokio", false, true, None)?;
@@ -214,4 +226,28 @@ async fn main() -> Result<()> {
 
     let _ = fs::remove_file(pid).await;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A closed writer makes the job return its I/O error and release stage tasks.
+    #[tokio::test]
+    async fn run_reports_a_closed_output_stream() {
+        let (mut writer, reader) = io::duplex(1);
+        drop(reader);
+
+        let mut job = Job::new("closed output");
+        job.add(Box::new(Counter { tag: 1, cnt: 1 }));
+
+        let error = tokio::time::timeout(Duration::from_secs(5), job.run(&mut writer))
+            .await
+            .expect("job did not exit after its output closed")
+            .unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<std::io::Error>().unwrap().kind(),
+            ErrorKind::BrokenPipe
+        );
+    }
 }

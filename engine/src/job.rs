@@ -33,6 +33,7 @@ pub struct JobOutcome {
 }
 
 impl JobOutcome {
+    /// Returns the statistics on success or a job-scoped error on failure or cancellation.
     pub(crate) fn into_stats(self) -> eyre::Result<Stats> {
         let id = self.id;
         match self.status {
