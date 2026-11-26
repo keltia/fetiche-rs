@@ -73,3 +73,72 @@ mod opensky;
 mod safesky;
 #[cfg(feature = "senhive")]
 mod senhive;
+
+#[cfg(all(test, any(feature = "avionix", feature = "senhive")))]
+mod tests {
+    use super::*;
+    use ractor::{Actor, ActorProcessingErr, ActorRef};
+    use std::time::Duration;
+    use tokio::time::timeout;
+
+    const TEST_TIMEOUT: Duration = Duration::from_secs(5);
+
+    struct IdleWorker;
+
+    #[ractor::async_trait]
+    impl Actor for IdleWorker {
+        type Msg = ();
+        type State = ();
+        type Arguments = ();
+
+        /// Starts the idle actor used to exercise stream cleanup without a network source.
+        async fn pre_start(
+            &self,
+            _myself: ActorRef<Self::Msg>,
+            _args: Self::Arguments,
+        ) -> Result<Self::State, ActorProcessingErr> {
+            Ok(())
+        }
+    }
+
+    /// An expired stream deadline stops the worker and waits for its exit.
+    #[tokio::test]
+    async fn stream_deadline_stops_the_worker() {
+        let (worker, handle) = Actor::spawn(None, IdleWorker, ()).await.unwrap();
+        let _guard = KillActorOnDrop(worker.get_cell());
+        timeout(
+            TEST_TIMEOUT,
+            wait_for_stream(worker.get_cell(), handle, Duration::from_millis(1)),
+        )
+        .await
+        .expect("stream deadline did not stop the worker")
+        .unwrap();
+        assert_eq!(worker.get_cell().get_status(), ractor::ActorStatus::Stopped);
+    }
+
+    /// Even an indefinite stream reports a worker that has already stopped.
+    #[tokio::test]
+    async fn indefinite_stream_reports_worker_exit() {
+        let (worker, handle) = Actor::spawn(None, IdleWorker, ()).await.unwrap();
+        worker.stop(None);
+        let error = timeout(
+            TEST_TIMEOUT,
+            wait_for_stream(worker.get_cell(), handle, Duration::ZERO),
+        )
+        .await
+        .expect("worker exit did not complete the stream wait")
+        .unwrap_err();
+        assert_eq!(error.to_string(), "source worker stopped before the stream ended");
+    }
+
+    /// Dropping the stream's guard stops its actor even outside the deadline path.
+    #[tokio::test]
+    async fn dropping_stream_guard_stops_the_worker() {
+        let (worker, handle) = Actor::spawn(None, IdleWorker, ()).await.unwrap();
+        drop(KillActorOnDrop(worker.get_cell()));
+        timeout(TEST_TIMEOUT, handle)
+            .await
+            .expect("dropping the guard did not stop the worker")
+            .unwrap();
+    }
+}

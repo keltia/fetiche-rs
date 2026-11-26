@@ -471,4 +471,26 @@ mod tests {
                 if stage == "panicking" && error.contains("test panic")
         ));
     }
+
+    /// Confirms an aborted stage produces a typed cancellation carrying its name.
+    #[tokio::test]
+    async fn aborted_stage_reports_cancelled_status() {
+        let mut stages = StageTasks::default();
+        let (output_tx, output_rx) = channel(1);
+        let task = tokio::spawn(std::future::pending::<eyre::Result<()>>());
+        task.abort();
+        stages.push("aborted".into(), task);
+
+        // Keep the terminal channel open to ensure cancellation can finish without EOF.
+        let status = timeout(Duration::from_secs(5), stages.drain(output_rx))
+            .await
+            .unwrap();
+        drop(output_tx);
+        assert_eq!(
+            status,
+            JobStatus::Cancelled {
+                stage: Some("aborted".into())
+            }
+        );
+    }
 }
