@@ -1,6 +1,6 @@
 use crate::cmds::{CrudSubCommand, DBVars, Format, render_output};
-use crate::{format_utc_datetime, make_query};
 use crate::runtime::Context;
+use crate::{format_utc_datetime, make_query};
 
 use clap::Parser;
 use eyre::Result;
@@ -16,6 +16,9 @@ pub struct InstOpts {
     /// Output format
     #[clap(short = 'F', long, default_value = "table")]
     pub format: Format,
+    /// Display active installations only.
+    #[clap(short = 'A', long)]
+    pub active: bool,
     #[clap(subcommand)]
     pub subcmd: Option<CrudSubCommand>,
 }
@@ -43,15 +46,21 @@ pub async fn install_list(ctx: &Context, opts: &InstOpts) -> Result<()> {
 
     // Find all installations with sites' name and antenna's ID
     //
-    let r = make_query!(
-        r##"
+    let r = if opts.active {
+        eprintln!("Listing all active installations:");
+        make_query!(r##"
+SELECT * FROM {workdb}.deployments
+WHERE end_at > now('UTC')
+ORDER BY start_at ASC
+"##, dbvars)
+    } else {
+        eprintln!("Listing all installations:");
+        make_query!(r##"
 SELECT * FROM {workdb}.deployments
 ORDER BY start_at ASC
-"##,
-        dbvars
-    );
+"##, dbvars)
+    };
 
-    eprintln!("Listing all installations:");
 
     let q = QueryBuilder::new(&r);
     let res = dbh.query_collect::<Install>(q).await?;
