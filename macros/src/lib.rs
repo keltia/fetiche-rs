@@ -5,10 +5,13 @@ use quote::quote;
 use syn::parse::Parser;
 use syn::{parse_macro_input, Data, DeriveInput, Fields, Ident, LitInt};
 
-/// Most basic proc_macro ever: use as a template.
+/// Generates the engine's `Runnable` implementation for a cloneable stage.
 ///
-/// `execute()` takes whatever was sent from the previous stage and process is, knowing that
-/// any input should be sent directly to the stdout channel.
+/// The wrapper owns a clone of the stage and awaits
+/// `execute(input, output_sender)` for each incoming string. It creates a
+/// Tokio MPSC output channel with the input channel's capacity. The returned
+/// join handle resolves when the input closes or the stage returns an error.
+/// See `fetiche_engine::Runnable::run` for a runnable stage example.
 ///
 #[proc_macro_derive(RunnableDerive)]
 pub fn runnable(input: TokenStream) -> TokenStream {

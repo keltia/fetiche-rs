@@ -170,10 +170,12 @@ impl Worker for RunnerActor {
     }
 }
 
+/// Records a failure in job coordination without a stage identifier.
 fn job_failure(error: String) -> JobStatus {
     JobStatus::Failed { stage: None, error }
 }
 
+/// Records a failure with the stage label used in the job outcome.
 fn stage_failure(stage: String, error: String) -> JobStatus {
     JobStatus::Failed {
         stage: Some(stage),
@@ -181,6 +183,15 @@ fn stage_failure(stage: String, error: String) -> JobStatus {
     }
 }
 
+/// Validates, wires, and starts the producer, middle stages, and consumer.
+///
+/// The runner sends a single trigger to the producer, drains and discards terminal
+/// messages, and waits for every stage. An invalid stage fails before any tasks
+/// start. An execution failure or cancellation causes remaining tasks to be
+/// aborted and joined before the status is returned.
+///
+/// Each channel has `queue_capacity` message slots. The caller must supply a
+/// capacity accepted by Tokio MPSC.
 async fn run_pipeline(job: EngineJob, queue_capacity: usize) -> JobStatus {
     let mut stages = Vec::with_capacity(job.middle.len() + 2);
     let mut add_stage = |name: String, task, invalid| {
@@ -216,6 +227,7 @@ async fn run_pipeline(job: EngineJob, queue_capacity: usize) -> JobStatus {
     status
 }
 
+/// Owns the stage joins and retains abort handles if the runner is dropped.
 #[derive(Default)]
 struct StageTasks {
     pending: FuturesUnordered<StageJoin>,
@@ -226,12 +238,18 @@ type StageJoin =
     futures::future::BoxFuture<'static, (String, Result<eyre::Result<()>, tokio::task::JoinError>)>;
 
 impl StageTasks {
+    /// Tracks a running stage and the label to report if its join fails.
     fn push(&mut self, name: String, handle: JoinHandle<eyre::Result<()>>) {
         self.abort_handles.push(handle.abort_handle());
         self.pending
             .push(Box::pin(async move { (name, handle.await) }));
     }
 
+    /// Consumes terminal messages while polling stage joins so a full output
+    /// channel cannot prevent a stage from finishing.
+    ///
+    /// The first failed or cancelled join determines the status. The receiver is
+    /// dropped, and the remaining tasks are aborted and joined before returning.
     async fn drain(mut self, mut output: Receiver<String>) -> JobStatus {
         let mut output_open = true;
         while output_open || !self.pending.is_empty() {
@@ -257,6 +275,7 @@ impl StageTasks {
         JobStatus::Succeeded
     }
 
+    /// Requests cancellation for every registered task, including unfinished joins.
     fn abort_all(&self) {
         for handle in &self.abort_handles {
             handle.abort();
@@ -265,6 +284,7 @@ impl StageTasks {
 }
 
 impl Drop for StageTasks {
+    /// Requests cancellation if supervision ends before all tasks are joined.
     fn drop(&mut self) {
         self.abort_all();
     }
@@ -303,6 +323,7 @@ mod tests {
     use std::time::Duration;
     use tokio::time::timeout;
 
+    /// Checks that a capacity-one edge stalls its sending stage and preserves message order.
     #[tokio::test]
     async fn stage_waits_for_capacity_and_preserves_order() {
         let (input, receiver) = channel(1);
@@ -326,6 +347,7 @@ mod tests {
         .unwrap();
     }
 
+    /// Exercises runner dispatch and checks that the outcome is already retrievable on notification.
     #[tokio::test]
     async fn failed_outcome_is_published_before_the_waiter_is_notified() {
         let (stats, _) = Actor::spawn(Some("runner-test-stats".into()), StatsActor, "test".into())
@@ -378,6 +400,7 @@ mod tests {
         results.stop(None);
     }
 
+    /// Runs a producer, a tee, and a sink, then checks the tee's output after completion.
     #[tokio::test]
     async fn successful_pipeline_waits_for_its_side_effects() {
         let directory = tempfile::tempdir().unwrap();
@@ -398,6 +421,7 @@ mod tests {
         assert_eq!(std::fs::read_to_string(copy).unwrap(), "DUMMY");
     }
 
+    /// Checks that a producer error identifies its position and stage type.
     #[tokio::test]
     async fn stage_execute_error_is_reported_with_its_name() {
         let job = EngineJob::builder()
@@ -415,6 +439,7 @@ mod tests {
         ));
     }
 
+    /// Checks that a panic stops an idle peer with a live output sender.
     #[tokio::test]
     async fn task_panic_cancels_and_joins_a_pending_stage() {
         let mut stages = StageTasks::default();

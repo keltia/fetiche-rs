@@ -57,5 +57,29 @@ pub enum Task {
 #[enum_dispatch(Task)]
 pub trait Runnable: Debug {
     fn cap(&self) -> IO;
+
+    /// Starts the stage and returns its output receiver and completion handle.
+    ///
+    /// A derived stage creates a bounded output channel with the input channel's
+    /// capacity. Close the input sender to signal EOF, drain the output, and
+    /// await the handle to observe the stage's result.
+    ///
+    /// ```
+    /// use fetiche_engine::{Copy, Runnable};
+    /// use tokio::sync::mpsc;
+    ///
+    /// #[tokio::main(flavor = "current_thread")]
+    /// async fn main() -> eyre::Result<()> {
+    ///     let (tx, input) = mpsc::channel(1);
+    ///     let (mut output, task) = Copy::new().run(input).await;
+    ///     tx.send("data".into()).await?;
+    ///     drop(tx);
+    ///
+    ///     assert_eq!(output.recv().await.as_deref(), Some("data"));
+    ///     assert!(output.recv().await.is_none());
+    ///     task.await??;
+    ///     Ok(())
+    /// }
+    /// ```
     async fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<eyre::Result<()>>);
 }

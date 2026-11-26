@@ -70,6 +70,10 @@ impl Convert {
         Ok(stdout.send(res).await?)
     }
 
+    /// Converts one configured JSON payload into DronePoint CSV.
+    ///
+    /// This synchronous helper runs on Tokio's blocking executor when called by
+    /// [`Self::execute`]. Unsupported format pairs panic.
     fn convert(&self, data: String) -> Result<String> {
         match self.into {
             // This one is always enabled.

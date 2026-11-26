@@ -1,15 +1,22 @@
 pub use error::*;
 
+/// Stops a source actor when its owning stream exits or is cancelled.
 #[cfg(any(feature = "avionix", feature = "senhive"))]
 pub(super) struct KillActorOnDrop(pub ractor::ActorCell);
 
 #[cfg(any(feature = "avionix", feature = "senhive"))]
 impl Drop for KillActorOnDrop {
+    /// Sends the actor a kill signal during stream cleanup.
     fn drop(&mut self) {
         self.0.kill();
     }
 }
 
+/// Waits for the stream deadline, then signals the worker to stop and joins it.
+///
+/// A zero duration disables the deadline. A worker that exits before the
+/// deadline is an error, and a failed task join is propagated to the caller.
+/// The caller owns a [`KillActorOnDrop`] guard to cover cancellation of this wait.
 #[cfg(any(feature = "avionix", feature = "senhive"))]
 async fn wait_for_stream(
     worker: ractor::ActorCell,

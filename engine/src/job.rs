@@ -60,6 +60,29 @@ pub struct WaitGroup {
 }
 
 impl WaitGroup {
+    /// Associates a job ID with the receiver for its single terminal outcome.
+    ///
+    /// The scheduler creates this for callers of [`Engine::submit_job`](crate::Engine::submit_job).
+    /// Await `rx` and inspect the outcome status to distinguish success, failure, and cancellation.
+    ///
+    /// ```
+    /// use fetiche_engine::{Job, JobStatus, WaitGroup, Work};
+    /// use tokio::sync::oneshot;
+    ///
+    /// #[tokio::main(flavor = "current_thread")]
+    /// async fn main() -> eyre::Result<()> {
+    ///     let job = Job::builder().id(7).build();
+    ///     let (tx, rx) = oneshot::channel();
+    ///     let wait = WaitGroup::new(job.id, rx);
+    ///     let work = Work::new(job, tx);
+    ///
+    ///     drop(work);
+    ///     let outcome = wait.rx.await?;
+    ///     assert_eq!(outcome.id, wait.id);
+    ///     assert_eq!(outcome.status, JobStatus::Cancelled { stage: None });
+    ///     Ok(())
+    /// }
+    /// ```
     #[tracing::instrument(skip(rx))]
     pub fn new(id: usize, rx: oneshot::Receiver<JobOutcome>) -> Self {
         Self { id, rx }
@@ -91,6 +114,7 @@ pub(crate) struct JobCompletion {
 }
 
 impl JobCompletion {
+    /// Takes the sender and attempts a single delivery of the terminal outcome.
     pub(crate) fn send(mut self, outcome: JobOutcome) {
         if let Some(tx) = self.tx.take() {
             let _ = tx.send(outcome);
@@ -99,6 +123,7 @@ impl JobCompletion {
 }
 
 impl Drop for JobCompletion {
+    /// Reports cancellation when the work is dropped before an outcome is sent.
     fn drop(&mut self) {
         if let Some(tx) = self.tx.take() {
             let _ = tx.send(JobOutcome {
@@ -111,13 +136,10 @@ impl Drop for JobCompletion {
 }
 
 impl Work {
-    /// Creates a new Work instance.
+    /// Wraps a job with the sender for its terminal outcome.
     ///
-    /// # Arguments
-    ///
-    /// * `job` - The job to be executed
-    /// * `tx` - A sender channel for job completion notification
-    ///
+    /// Dropping the work before execution reports cancellation through `tx`.
+    /// See [`WaitGroup::new`] for a runnable example.
     #[tracing::instrument(skip(tx))]
     pub fn new(job: Job, tx: oneshot::Sender<JobOutcome>) -> Self {
         let completion = JobCompletion { id: job.id, tx: Some(tx) };
@@ -289,6 +311,7 @@ impl Job {
 mod tests {
     use super::*;
 
+    /// Confirms the completion channel carries a typed cancellation for abandoned work.
     #[tokio::test]
     async fn dropping_queued_work_notifies_the_waiter_of_cancellation() {
         let (tx, rx) = oneshot::channel();

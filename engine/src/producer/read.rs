@@ -65,6 +65,32 @@ impl Read {
     }
 
     /// Override the maximum size of the single UTF-8 payload emitted by this stage.
+    ///
+    /// A file of exactly this size is accepted. A larger file produces
+    /// [`EngineStatus::ReadTooLarge`] before any part of it is sent.
+    ///
+    /// ```
+    /// use fetiche_engine::Read;
+    /// use std::num::NonZeroU32;
+    /// use tokio::sync::mpsc;
+    ///
+    /// #[tokio::main(flavor = "current_thread")]
+    /// async fn main() -> eyre::Result<()> {
+    ///     let directory = tempfile::tempdir()?;
+    ///     let path = directory.path().join("input.txt");
+    ///     tokio::fs::write(&path, "data").await?;
+    ///
+    ///     let mut reader = Read::new("read input");
+    ///     reader.path(path.to_str().unwrap());
+    ///     reader.max_bytes(NonZeroU32::new(4).unwrap());
+    ///     let (tx, mut rx) = mpsc::channel(1);
+    ///
+    ///     let stats = reader.execute(String::new(), tx).await?;
+    ///     assert_eq!(stats.bytes, 4);
+    ///     assert_eq!(rx.recv().await.as_deref(), Some("data"));
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn max_bytes(&mut self, limit: NonZeroU32) -> &mut Self {
         self.max_bytes = limit;
         self
@@ -76,8 +102,10 @@ impl Read {
         self
     }
 
-    /// The heart of the matter: fetch data
+    /// Reads the configured UTF-8 file and sends it downstream as one message.
     ///
+    /// Returns file statistics after the send succeeds. A missing path, an
+    /// oversized file, invalid UTF-8, or a closed receiver causes an error.
     #[tracing::instrument(skip(self))]
     pub async fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<Stats> {
         trace!("Read::transform()");
@@ -201,6 +229,7 @@ mod tests {
         assert_eq!(lines, res);
     }
 
+    /// Confirms a file above the limit fails without emitting a partial payload.
     #[tokio::test]
     async fn test_read_rejects_an_oversized_file_without_sending_a_partial_payload() {
         use std::io::Write;
