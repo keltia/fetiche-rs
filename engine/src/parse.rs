@@ -196,10 +196,14 @@ impl Engine {
         //
         let id = call!(self.scheduler, SchedulerMsg::Allocate)?;
 
-        Self::build_job(jt, id, async |site| {
+        let mut job = Self::build_job(jt, id, async |site| {
             call!(self.sources, |port| SourcesMsg::Get(site, port))?
         })
-        .await
+        .await?;
+        if let Producer::Read(reader) = &mut job.producer {
+            reader.max_bytes(self.read_max_bytes);
+        }
+        Ok(job)
     }
 
     async fn build_job(
@@ -231,7 +235,8 @@ impl Engine {
                 }
             }
             ProducerText::Read(p) => {
-                let r = Read::new(&p);
+                let mut r = Read::new(&p);
+                r.path(&p);
                 Producer::Read(r)
             }
         };
@@ -385,7 +390,10 @@ mod tests {
         let job = parse_job(job_str).await?;
 
         assert_eq!(job.name, "test_read");
-        assert!(matches!(job.producer, Producer::Read(_)));
+        let Producer::Read(reader) = job.producer else {
+            panic!("expected a Read producer");
+        };
+        assert_eq!(reader.path.as_deref(), Some(std::path::Path::new("input.csv")));
         assert!(matches!(job.consumer, Consumer::Save(_)));
         Ok(())
     }

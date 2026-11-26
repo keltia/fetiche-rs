@@ -37,6 +37,7 @@
 use std::collections::BTreeMap;
 use std::env;
 use std::fmt::Debug;
+use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -144,6 +145,8 @@ pub struct EngineConfig {
     pub workers: Option<usize>,
     /// Number of queued messages per pipeline edge.
     pub pipeline_queue_capacity: Option<usize>,
+    /// Maximum file size in bytes for a configured Read stage.
+    pub read_max_bytes: Option<NonZeroU32>,
     /// Sync the engine state every 30 seconds by default
     pub sync: Option<Duration>,
     /// This is our clock: we get a message every 2 seconds by default
@@ -179,6 +182,7 @@ pub struct EngineConfig {
 pub struct Engine {
     /// Running mode
     mode: EngineMode,
+    read_max_bytes: NonZeroU32,
     /// Current process DI
     pub pid: u32,
     /// Main area where state is saved (PID, jobs, etc.)
@@ -476,6 +480,9 @@ impl Engine {
         //
         let engine = Engine {
             mode,
+            read_max_bytes: cfg
+                .read_max_bytes
+                .unwrap_or(producer::DEFAULT_READ_MAX_BYTES),
             pid,
             home: base.clone(),
             ws: ws.clone(),

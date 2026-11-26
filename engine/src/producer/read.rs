@@ -1,19 +1,22 @@
 //! `Read` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
+use std::num::NonZeroU32;
 use std::path::PathBuf;
 
 use eyre::Result;
 use jiff::Timestamp;
-use tokio::sync::mpsc::Sender;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
+use tokio::sync::mpsc::Sender;
 use tracing::trace;
 
 use fetiche_formats::Format;
 use fetiche_macros::RunnableDerive;
 
 use crate::{EngineStatus, IO, Producer, Runnable, Stats};
+
+pub(crate) const DEFAULT_READ_MAX_BYTES: NonZeroU32 = NonZeroU32::new(64 * 1024 * 1024).unwrap();
 
 /// The Read task
 ///
@@ -29,6 +32,7 @@ pub struct Read {
     pub path: Option<PathBuf>,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
+    max_bytes: NonZeroU32,
 }
 
 impl From<Read> for Producer {
@@ -48,6 +52,7 @@ impl Read {
             format: Format::None,
             path: None,
             args: "".to_string(),
+            max_bytes: DEFAULT_READ_MAX_BYTES,
         }
     }
 
@@ -56,6 +61,12 @@ impl Read {
     #[tracing::instrument(skip(self))]
     pub fn path(&mut self, name: &str) -> &mut Self {
         self.path = Some(PathBuf::from(name));
+        self
+    }
+
+    /// Override the maximum size of the single UTF-8 payload emitted by this stage.
+    pub fn max_bytes(&mut self, limit: NonZeroU32) -> &mut Self {
+        self.max_bytes = limit;
         self
     }
 
@@ -70,23 +81,29 @@ impl Read {
     #[tracing::instrument(skip(self))]
     pub async fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<Stats> {
         trace!("Read::transform()");
-        if self.path.is_none() {
-            Err(EngineStatus::UninitialisedRead.into())
-        } else {
-            let p = self.path.clone().unwrap();
-            let mut lines = String::new();
-            let size = File::open(&p).await?.read_to_string(&mut lines).await?;
-
-            // Now send each line down the pipe (while counting)
-            //
-            stdout.send(lines).await?;
-            Ok(Stats {
-                tm: Timestamp::now().as_second() as u64,
-                bytes: size as u64,
-                pkts: 1u32,
-                ..Default::default()
-            })
+        let path = self.path.as_ref().ok_or(EngineStatus::UninitialisedRead)?;
+        let max_bytes = u64::from(self.max_bytes.get());
+        let mut data = Vec::new();
+        let size = File::open(path)
+            .await?
+            .take(max_bytes + 1)
+            .read_to_end(&mut data)
+            .await?;
+        if size as u64 > max_bytes {
+            return Err(EngineStatus::ReadTooLarge {
+                path: path.clone(),
+                max_bytes,
+            }
+            .into());
         }
+
+        stdout.send(String::from_utf8(data)?).await?;
+        Ok(Stats {
+            tm: Timestamp::now().as_second() as u64,
+            bytes: size as u64,
+            pkts: 1,
+            ..Default::default()
+        })
     }
 }
 
@@ -169,6 +186,7 @@ mod tests {
 
         let mut t = Read::new("foo");
         t.path(temp_file.path().to_str().unwrap());
+        t.max_bytes(NonZeroU32::new(17).unwrap());
         let (tx, mut rx) = channel(1);
 
         // Execute should succeed and send lines to channel
@@ -181,5 +199,24 @@ mod tests {
         }
         let res = vec![["line1", "line2", "line3"].join("\n")];
         assert_eq!(lines, res);
+    }
+
+    #[tokio::test]
+    async fn test_read_rejects_an_oversized_file_without_sending_a_partial_payload() {
+        use std::io::Write;
+
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(b"abcd").unwrap();
+        let mut reader = Read::new("test");
+        reader.path(file.path().to_str().unwrap());
+        reader.max_bytes(NonZeroU32::new(3).unwrap());
+        let (tx, mut rx) = channel(1);
+
+        let error = reader.execute(String::new(), tx).await.unwrap_err();
+        assert!(matches!(
+            error.downcast_ref::<EngineStatus>(),
+            Some(EngineStatus::ReadTooLarge { max_bytes: 3, .. })
+        ));
+        assert!(rx.recv().await.is_none());
     }
 }

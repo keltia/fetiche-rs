@@ -32,6 +32,11 @@ pub enum EngineStatus {
     RemoveLink(String),
     #[error("Uninitialised Read")]
     UninitialisedRead,
+    #[error("Read input {path:?} exceeds the {max_bytes}-byte limit")]
+    ReadTooLarge {
+        path: std::path::PathBuf,
+        max_bytes: u64,
+    },
     #[error("Site {0} is not fetchable")]
     NotFetchable(String),
     #[error("Site {0} is not streamable")]
