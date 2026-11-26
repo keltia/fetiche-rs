@@ -65,9 +65,13 @@ impl Convert {
     pub async fn execute(&mut self, data: String, stdout: Sender<String>) -> Result<()> {
         trace!("convert::execute");
 
-        // Bow out early
-        //
-        let res = match self.into {
+        let stage = self.clone();
+        let res = tokio::task::spawn_blocking(move || stage.convert(data)).await??;
+        Ok(stdout.send(res).await?)
+    }
+
+    fn convert(&self, data: String) -> Result<String> {
+        match self.into {
             // This one is always enabled.
             //
             Format::DronePoint => {
@@ -90,12 +94,10 @@ impl Convert {
                     }
                     _ => unimplemented!(),
                 };
-                prepare_csv(res, false)?
+                Ok(prepare_csv(res, false)?)
             }
             _ => unimplemented!(),
-        };
-
-        Ok(stdout.send(res).await?)
+        }
     }
 }
 

@@ -10,6 +10,7 @@ use tokio::sync::mpsc::Sender;
 use eyre::Result;
 use polars_io::prelude::{CsvParseOptions, CsvReadOptions, ParquetWriter, SerReader};
 use tokio::fs;
+use tokio::task::spawn_blocking;
 use tracing::{info, trace};
 
 use fetiche_common::Container;
@@ -83,18 +84,20 @@ impl Save {
                 Container::Parquet => {
                     trace!("from csv to parquet");
 
-                    let cur = Cursor::new(&data);
-                    let opts = CsvParseOptions::default().with_try_parse_dates(false);
-                    let mut df = CsvReadOptions::default()
-                        .with_has_header(true)
-                        .with_parse_options(opts)
-                        .into_reader_with_file_handle(cur)
-                        .finish()?;
-
-                    info!("writing {}", path);
-                    let mut file = std::fs::File::create(path)?;
-
-                    ParquetWriter::new(&mut file).finish(&mut df)?;
+                    let path = std::path::absolute(path)?;
+                    spawn_blocking(move || -> Result<()> {
+                        let opts = CsvParseOptions::default().with_try_parse_dates(false);
+                        let mut df = CsvReadOptions::default()
+                            .with_has_header(true)
+                            .with_parse_options(opts)
+                            .into_reader_with_file_handle(Cursor::new(data))
+                            .finish()?;
+                        info!("writing {}", path.display());
+                        let file = std::fs::File::create(path)?;
+                        ParquetWriter::new(file).finish(&mut df)?;
+                        Ok(())
+                    })
+                    .await??;
                 }
                 _ => {
                     trace!("raw data");
@@ -104,7 +107,7 @@ impl Save {
         } else {
             trace!("...into stdout");
 
-            println!("{}", data);
+            spawn_blocking(move || println!("{data}")).await?;
         }
         Ok(())
     }

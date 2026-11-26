@@ -4,8 +4,8 @@
 //!
 
 use std::fmt::Debug;
-use std::fs::OpenOptions;
-use std::io::Write;
+use tokio::fs::OpenOptions;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::Sender;
 
 use eyre::Result;
@@ -44,9 +44,10 @@ impl Tee {
         let mut fh = OpenOptions::new()
             .create(true)
             .append(true)
-            .open(&self.fname)?;
-        write!(fh, "{data}")?;
-        fh.flush()?;
+            .open(std::path::absolute(&self.fname)?)
+            .await?;
+        fh.write_all(data.as_bytes()).await?;
+        fh.flush().await?;
         trace!("written into {}", &self.fname);
         Ok(stdout.send(data).await?)
     }

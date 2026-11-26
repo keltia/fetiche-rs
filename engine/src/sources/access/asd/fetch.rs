@@ -21,6 +21,7 @@ use polars_io::prelude::{CsvParseOptions, CsvReadOptions, CsvWriter, SerReader, 
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
+use tokio::task::spawn_blocking;
 use tracing::{debug, error, trace, warn};
 
 use fetiche_formats::Format;
@@ -59,7 +60,11 @@ impl Fetchable for Asd {
         // See if there is a stored token.
         // Use it if not expired, otherwise fetch a new one.
         //
-        let tentative = AsdToken::retrieve(&fname).map_err(|e| AuthError::Retrieval(e.to_string()))?;
+        let path = fname.clone();
+        let tentative = spawn_blocking(move || AsdToken::retrieve(&path))
+            .await
+            .map_err(|e| AuthError::Retrieval(e.to_string()))?
+            .map_err(|e| AuthError::Retrieval(e.to_string()))?;
 
         // Now check it.
         //
@@ -67,10 +72,12 @@ impl Fetchable for Asd {
             // Either what we retrieved is absent (so we got an invalid token) or is invalid
             //
             warn!("Stored token in {:?} has expired/is invalid, deleting!", fname);
-            match AsdToken::purge(&fname) {
-                Ok(()) => (),
-                Err(e) => error!("Cannot remove token: {}", e.to_string()),
-            };
+            let path = fname.clone();
+            match spawn_blocking(move || AsdToken::purge(&path)).await {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => error!("Cannot remove token: {e}"),
+                Err(e) => error!("Cannot remove token: {e}"),
+            }
 
             let client = reqwest::Client::new();
             // fetch token from site
@@ -101,7 +108,10 @@ impl Fetchable for Asd {
             // Write fetched token in `tokens` (unless it is during tests)
             //
             #[cfg(not(test))]
-            AsdToken::store(&fname, &resp).map_err(|e| AuthError::Storing(e.to_string()))?;
+            spawn_blocking(move || AsdToken::store(&fname, &resp))
+                .await
+                .map_err(|e| AuthError::Storing(e.to_string()))?
+                .map_err(|e| AuthError::Storing(e.to_string()))?;
             res.token
         } else {
             // Valid, not expired, etc.
@@ -194,37 +204,31 @@ impl Fetchable for Asd {
         //
         let resp = resp.text().await?;
         trace!("resp={}", resp);
-        let data: Payload = serde_json::from_str(&resp)?;
+        let bytes = resp.len() as u64;
+        let data = spawn_blocking(move || -> eyre::Result<String> {
+            let payload: Payload = serde_json::from_str(&resp)?;
+            trace!("Fetched {}", payload.filename);
+            let opts = CsvParseOptions::default().with_try_parse_dates(false);
+            let mut df = CsvReadOptions::default()
+                .with_has_header(true)
+                .with_parse_options(opts)
+                .into_reader_with_file_handle(Cursor::new(payload.content))
+                .finish()?;
 
-        trace!("Fetched {}", data.filename);
+            let rows = df.apply("timestamp", into_timestamp)?;
+            let mut data = Vec::new();
+            CsvWriter::new(&mut data).finish(rows)?;
+            Ok(String::from_utf8(data)?)
+        })
+        .await??;
 
-        // We need to fix the timestamp field.
-        //
-        let cur = Cursor::new(&data.content);
-        let opts = CsvParseOptions::default().with_try_parse_dates(false);
-        let mut df = CsvReadOptions::default()
-            .with_has_header(true)
-            .with_parse_options(opts)
-            .into_reader_with_file_handle(cur)
-            .finish()?;
-
-        // Fix timestamp by replacing the parsed date with its 64-bit timestamp.
-        //
-        let r = df.apply("timestamp", into_timestamp)?;
-
-        let mut data = vec![];
-        CsvWriter::new(&mut data).finish(r)?;
-
-        // Send statistics
-        //
         let stats = Stats {
             tm: Timestamp::now().as_second() as u64,
             pkts: data.len() as u32,
-            bytes: resp.len() as u64,
+            bytes,
             ..Default::default()
         };
 
-        let data = String::from_utf8(data)?;
         out.send(data).await?;
         Ok(stats)
     }

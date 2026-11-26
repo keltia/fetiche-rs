@@ -25,7 +25,7 @@ impl Stdout {
 
     #[tracing::instrument(skip(self, data, _out))]
     pub async fn execute(&mut self, data: String, _out: Sender<String>) -> Result<()> {
-        println!("{}", data);
+        tokio::task::spawn_blocking(move || println!("{data}")).await?;
         Ok(())
     }
 }
