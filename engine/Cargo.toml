@@ -92,6 +92,7 @@ directories.workspace = true
 indicatif.workspace = true
 rstest.workspace = true
 tempfile.workspace = true
+tokio = { workspace = true, features = ["fs", "io-std"] }
 
 base64_light = "0.1"
 dateparser = "0.3"
