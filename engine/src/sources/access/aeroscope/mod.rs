@@ -17,7 +17,7 @@ use eyre::Result;
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 use tracing::{debug, trace};
 
 use fetiche_formats::Format;
@@ -197,7 +197,7 @@ impl Fetchable for Aeroscope {
             ..Default::default()
         };
 
-        out.send(resp)?;
+        out.send(resp).await?;
         Ok(stats)
     }
 

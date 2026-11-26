@@ -5,7 +5,7 @@
 //!
 //! FIXME: incomplete
 
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use eyre::Result;
 use tracing::trace;

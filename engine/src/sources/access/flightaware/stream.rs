@@ -1,4 +1,4 @@
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use ractor::{call, cast};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -62,7 +62,7 @@ impl Streamable for Flightaware {
         while let Some(line) = lines.next_line().await? {
             counts.pkts += 1;
             counts.bytes += line.len() as u64;
-            out.send(line)?;
+            out.send(line).await?;
         }
         cast!(stat, StatsMsg::Update(tag.clone(), counts))?;
 

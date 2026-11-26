@@ -10,7 +10,7 @@
 //!
 //! FIXME: this is not using an actor
 
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use eyre::Result;
 use nom::Parser;
@@ -111,7 +111,7 @@ impl Streamable for OpenskyDevice {
             let len = line.len();
             st.pkts += 1;
             st.bytes = st.bytes + len as u64;
-            let _ = out.send(line.clone())?;
+            let _ = out.send(line.clone()).await?;
         };
 
         stat.cast(StatsMsg::Update(tag, Stats {

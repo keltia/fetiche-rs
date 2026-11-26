@@ -1,7 +1,7 @@
 //! `Fetch` is a `Runnable` task as defined in the `engine`  crate.
 //!
 
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use eyre::Result;
 use tracing::trace;

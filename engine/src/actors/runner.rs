@@ -14,7 +14,7 @@ use futures::stream::{FuturesUnordered, StreamExt};
 
 use ractor::factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId};
 use ractor::{ActorProcessingErr, ActorRef, RpcReplyPort, call, cast};
-use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
+use tokio::sync::mpsc::{Receiver, channel};
 use tokio::task::{AbortHandle, JoinHandle};
 use tracing::{debug, info, trace};
 
@@ -51,6 +51,7 @@ pub struct RunnerActor;
 ///
 #[derive(Clone, Debug)]
 pub struct RunnerArgs {
+    pub queue_capacity: usize,
     /// Reference to the Result actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -59,6 +60,7 @@ pub struct RunnerArgs {
 
 #[derive(Clone, Debug)]
 pub struct RunnerState {
+    queue_capacity: usize,
     /// Reference to the Result actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -81,6 +83,7 @@ impl Worker for RunnerActor {
     ) -> Result<Self::State, ActorProcessingErr> {
         trace!("runner {} starting", wid);
         let state = RunnerState {
+            queue_capacity: startup_context.queue_capacity,
             results: startup_context.results.clone(),
             stats: startup_context.stats.clone(),
         };
@@ -137,7 +140,7 @@ impl Worker for RunnerActor {
 
                 match cast!(stat, StatsMsg::New(job_tag.clone())) {
                     Ok(_) => {
-                        outcome.status = run_pipeline(job).await;
+                        outcome.status = run_pipeline(job, state.queue_capacity).await;
                         match call!(stat, |port| StatsMsg::Get(job_tag.clone(), port)) {
                             Ok(snapshot) => outcome.stats = snapshot,
                             Err(err) if outcome.status == JobStatus::Succeeded => {
@@ -178,7 +181,7 @@ fn stage_failure(stage: String, error: String) -> JobStatus {
     }
 }
 
-async fn run_pipeline(job: EngineJob) -> JobStatus {
+async fn run_pipeline(job: EngineJob, queue_capacity: usize) -> JobStatus {
     let mut stages = Vec::with_capacity(job.middle.len() + 2);
     let mut add_stage = |name: String, task, invalid| {
         stages.push((format!("{} ({name})", stages.len() + 1), task, invalid));
@@ -196,14 +199,14 @@ async fn run_pipeline(job: EngineJob) -> JobStatus {
         return stage_failure(name.clone(), "invalid stage".into());
     }
 
-    let (trigger, mut output) = unbounded_channel();
+    let (trigger, mut output) = channel(queue_capacity);
     let mut tasks = StageTasks::default();
     for (name, mut stage, _) in stages {
         let (next, handle) = stage.run(output).await;
         tasks.push(name, handle);
         output = next;
     }
-    let started = trigger.send("start".to_string());
+    let started = trigger.send("start".to_string()).await;
     drop(trigger);
 
     let status = tasks.drain(output).await;
@@ -229,7 +232,7 @@ impl StageTasks {
             .push(Box::pin(async move { (name, handle.await) }));
     }
 
-    async fn drain(mut self, mut output: UnboundedReceiver<String>) -> JobStatus {
+    async fn drain(mut self, mut output: Receiver<String>) -> JobStatus {
         let mut output_open = true;
         while output_open || !self.pending.is_empty() {
             tokio::select! {
@@ -269,6 +272,7 @@ impl Drop for StageTasks {
 
 #[derive(Clone, Debug)]
 pub struct RunnerBuilder {
+    pub queue_capacity: usize,
     /// Reference to the Results actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -281,6 +285,7 @@ impl WorkerBuilder<RunnerActor, RunnerArgs> for RunnerBuilder {
         (
             RunnerActor,
             RunnerArgs {
+                queue_capacity: self.queue_capacity,
                 results: self.results.clone(),
                 stats: self.stat.clone(),
             },
@@ -299,6 +304,29 @@ mod tests {
     use tokio::time::timeout;
 
     #[tokio::test]
+    async fn stage_waits_for_capacity_and_preserves_order() {
+        let (input, receiver) = channel(1);
+        let (mut output, task) = crate::Copy::new().run(receiver).await;
+        assert_eq!(output.max_capacity(), 1);
+        timeout(Duration::from_secs(5), async {
+            input.send("first".into()).await.unwrap();
+            input.send("second".into()).await.unwrap();
+            // This permit establishes that the stage has taken the second message.
+            drop(input.reserve().await.unwrap());
+            drop(input);
+
+            assert_eq!(output.len(), 1);
+            assert!(!task.is_finished());
+            assert_eq!(output.recv().await.as_deref(), Some("first"));
+            assert_eq!(output.recv().await.as_deref(), Some("second"));
+            assert!(output.recv().await.is_none());
+            task.await.unwrap().unwrap();
+        })
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
     async fn failed_outcome_is_published_before_the_waiter_is_notified() {
         let (stats, _) = Actor::spawn(Some("runner-test-stats".into()), StatsActor, "test".into())
             .await
@@ -314,6 +342,7 @@ mod tests {
         >::default();
         let args = FactoryArguments::builder()
             .worker_builder(Box::new(RunnerBuilder {
+                queue_capacity: 1,
                 results: results.clone(),
                 stat: stats.clone(),
             }))
@@ -361,7 +390,7 @@ mod tests {
         job.add(Middle::Tee(Tee::into(copy.to_str().unwrap())));
 
         assert_eq!(
-            timeout(Duration::from_secs(5), run_pipeline(job))
+            timeout(Duration::from_secs(5), run_pipeline(job, 1))
                 .await
                 .unwrap(),
             JobStatus::Succeeded
@@ -377,7 +406,7 @@ mod tests {
             .consumer(Consumer::Stdout(Stdout::new()))
             .build();
 
-        let status = timeout(Duration::from_secs(5), run_pipeline(job))
+        let status = timeout(Duration::from_secs(5), run_pipeline(job, 1))
             .await
             .unwrap();
         assert!(matches!(
@@ -389,7 +418,7 @@ mod tests {
     #[tokio::test]
     async fn task_panic_cancels_and_joins_a_pending_stage() {
         let mut stages = StageTasks::default();
-        let (output_tx, output_rx) = unbounded_channel();
+        let (output_tx, output_rx) = channel(1);
         let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
         stages.push(
             "pending".into(),

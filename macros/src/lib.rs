@@ -24,9 +24,9 @@ pub fn runnable(input: TokenStream) -> TokenStream {
             #[::tracing::instrument(skip(self, input))]
             async fn run(
                 &mut self,
-                mut input: ::tokio::sync::mpsc::UnboundedReceiver<::std::string::String>,
-            ) -> (::tokio::sync::mpsc::UnboundedReceiver<::std::string::String>, ::tokio::task::JoinHandle<Result<()>>) {
-                let (stdout, stdin) = ::tokio::sync::mpsc::unbounded_channel::<::std::string::String>();
+                mut input: ::tokio::sync::mpsc::Receiver<::std::string::String>,
+            ) -> (::tokio::sync::mpsc::Receiver<::std::string::String>, ::tokio::task::JoinHandle<Result<()>>) {
+                let (stdout, stdin) = ::tokio::sync::mpsc::channel::<::std::string::String>(input.max_capacity());
 
                 let mut src = self.clone();
                 let h = ::tokio::spawn(async move {

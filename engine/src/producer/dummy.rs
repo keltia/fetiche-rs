@@ -1,4 +1,4 @@
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use eyre::Result;
 
@@ -19,7 +19,7 @@ impl Dummy {
 
     #[tracing::instrument(skip(self))]
     pub async fn execute(&mut self, _data: String, stdout: Sender<String>) -> Result<Stats> {
-        stdout.send("DUMMY".to_string())?;
+        stdout.send("DUMMY".to_string()).await?;
         Ok(Stats::default())
     }
 }

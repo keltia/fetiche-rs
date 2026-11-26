@@ -4,8 +4,7 @@
 
 use std::convert::TryInto;
 use std::str::FromStr;
-use std::sync::mpsc::channel;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::{Sender, channel, unbounded_channel};
 use std::time::{Duration, Instant};
 
 use clap::{crate_name, crate_version};
@@ -232,7 +231,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         // out as a `dyn Write` is not `Send` so we cannot use it within a thread.  Use channels
         // to work around this.
         //
-        let (tx, rx) = channel::<String>();
+        let (tx, mut rx) = channel::<String>(out.max_capacity());
 
         // Timer set?  If yes, launch a sleeper thread
         //
@@ -244,7 +243,7 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             tokio::spawn(async move || {
                 trace!("alarm set to {}s", d);
                 tokio::time::sleep(time::Duration::from_secs(d as u64)).await;
-                tx1.send("TIMEOUT".to_string()).unwrap();
+                let _ = tx1.send("TIMEOUT".to_string()).await;
             });
             trace!("end of sleep");
         }
@@ -253,13 +252,13 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
 
         // Launch stat gathering thread.
         //
-        let (st_tx, st_rx) = channel::<StatMsg>();
+        let (st_tx, mut st_rx) = unbounded_channel::<StatMsg>();
         tokio::spawn(async move || {
             trace!("stats::thread");
 
             let start = Instant::now();
             let mut stats = Stats::default();
-            while let Ok(msg) = st_rx.recv() {
+            while let Some(msg) = st_rx.recv().await {
                 match msg {
                     StatMsg::Pkts => stats.pkts += 1,
                     StatMsg::Hits => stats.hits += 1,
@@ -289,7 +288,9 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
             trace!("stats::display");
             loop {
                 tokio::time::sleep(Duration::from_secs(30_u64)).await;
-                let _ = disp_tx.send(StatMsg::Print);
+                if disp_tx.send(StatMsg::Print).is_err() {
+                    break;
+                }
             }
         });
 
@@ -377,7 +378,9 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                             let _ = stat_tx.send(StatMsg::Pkts);
                             let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
 
-                            tx.send(buf).expect("send");
+                            if tx.send(buf).await.is_err() {
+                                break;
+                            }
                             cache.insert(sl.time, true);
                         }
                     }
@@ -405,8 +408,8 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
         // Now data gathering loop.  Should this be another thread?
         //
         loop {
-            match rx.recv() {
-                Ok(msg) => match msg.as_str() {
+            match rx.recv().await {
+                Some(msg) => match msg.as_str() {
                     // Timer expired
                     //
                     "TIMEOUT" => {
@@ -418,10 +421,10 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                     _ => {
                         // Every record is separated with LF
                         //
-                        out.send(format!("{}\n", msg))?;
+                        out.send(format!("{}\n", msg)).await?;
                     }
                 },
-                _ => continue,
+                None => break,
             }
         }
         // End threads

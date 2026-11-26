@@ -18,7 +18,7 @@
 //! The module interfaces with AMQP queues to receive both stored and current data from
 //! the Senhive data source.
 //!
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 use std::time::Duration;
 
 use eyre::Result;

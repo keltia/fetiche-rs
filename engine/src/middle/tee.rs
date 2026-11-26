@@ -6,7 +6,7 @@
 use std::fmt::Debug;
 use std::fs::OpenOptions;
 use std::io::Write;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use eyre::Result;
 use tracing::trace;
@@ -48,7 +48,7 @@ impl Tee {
         write!(fh, "{data}")?;
         fh.flush()?;
         trace!("written into {}", &self.fname);
-        Ok(stdout.send(data)?)
+        Ok(stdout.send(data).await?)
     }
 }
 
@@ -80,7 +80,7 @@ mod tests {
         let mut tee = Tee::into(file_path.to_str().unwrap());
 
         // Mock a channel to simulate stdout behavior
-        let (tx, mut rx) = mpsc::unbounded_channel();
+        let (tx, mut rx) = mpsc::channel(2);
 
         // Write some data using the Tee instance
         let data = "Hello, Tee!".to_string();
@@ -106,7 +106,7 @@ mod tests {
         let mut tee = Tee::into(file_path.to_str().unwrap());
 
         // Mock a channel to simulate stdout behavior
-        let (tx, mut rx) = mpsc::unbounded_channel();
+        let (tx, mut rx) = mpsc::channel(2);
 
         // Write multiple pieces of data using the Tee instance
         let data1 = "First line\n".to_string();

@@ -115,6 +115,8 @@ const TICK: Duration = Duration::from_secs(2);
 /// Sync state every 30s by default.
 const SYNC: Duration = Duration::from_secs(30);
 
+const DEFAULT_PIPELINE_QUEUE_CAPACITY: usize = 16;
+
 /// The `EngineConfig` struct provides the configuration options used to initialize
 /// and manage the `Engine`. It is loaded from the `engine.hcl` file or other sources
 /// and defines the base runtime parameters for the engine.
@@ -140,6 +142,8 @@ pub struct EngineConfig {
     pub basedir: PathBuf,
     /// Number of workers for the runner factory.
     pub workers: Option<usize>,
+    /// Number of queued messages per pipeline edge.
+    pub pipeline_queue_capacity: Option<usize>,
     /// Sync the engine state every 30 seconds by default
     pub sync: Option<Duration>,
     /// This is our clock: we get a message every 2 seconds by default
@@ -291,6 +295,16 @@ impl Engine {
             return Err(EngineStatus::BadConfigVersion(cfg.version(), ENGINE_VERSION).into());
         }
 
+        let queue_capacity = cfg
+            .pipeline_queue_capacity
+            .unwrap_or(DEFAULT_PIPELINE_QUEUE_CAPACITY);
+        if !(1..=tokio::sync::Semaphore::MAX_PERMITS).contains(&queue_capacity) {
+            return Err(eyre::eyre!(
+                "pipeline_queue_capacity must be between 1 and {}",
+                tokio::sync::Semaphore::MAX_PERMITS
+            ));
+        }
+
         // Ensure we have sensible defaults.
         //
         let (workers, sync, tick) = if mode == EngineMode::Daemon {
@@ -403,6 +417,7 @@ impl Engine {
             queues::DefaultQueue<usize, RunnerMsg>,
         >::default();
         let runner_builder = RunnerBuilder {
+            queue_capacity,
             results: results.clone(),
             stat: stat.clone(),
         };

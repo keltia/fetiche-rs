@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use tokio::sync::mpsc::UnboundedReceiver as Receiver;
+use tokio::sync::mpsc::Receiver;
 
 use tokio::task::JoinHandle;
 use tracing::error;

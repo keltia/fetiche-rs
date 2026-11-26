@@ -6,7 +6,7 @@ use reqwest::Url;
 use serde_json::json;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufStream};
 use tokio::net::TcpStream;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, info, trace};
 
 use super::{DEF_PORT, DEF_SITE};
@@ -215,12 +215,11 @@ impl Actor for Worker {
                         WorkerMode::Server => {
                             // Apply traffic filtering for remote mode
                             let filtered = filter_payload(&state.traffic, raw.as_ref())?;
-                            out.send(filtered).expect("send");
+                            out.send(filtered).await?;
                         }
                         WorkerMode::Local => {
                             // Send raw data for local mode
-                            out.send(String::from_utf8(buf[..n].to_vec())?)
-                                .expect("send");
+                            out.send(String::from_utf8(buf[..n].to_vec())?).await?;
                         }
                     }
                 }

@@ -2,7 +2,7 @@
 //!
 
 use std::fmt::Debug;
-use tokio::sync::mpsc::UnboundedReceiver as Receiver;
+use tokio::sync::mpsc::Receiver;
 
 use enum_dispatch::enum_dispatch;
 use serde::Deserialize;

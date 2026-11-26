@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use eyre::Result;
 use jiff::Timestamp;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use tracing::trace;
@@ -79,7 +79,7 @@ impl Read {
 
             // Now send each line down the pipe (while counting)
             //
-            stdout.send(lines)?;
+            stdout.send(lines).await?;
             Ok(Stats {
                 tm: Timestamp::now().as_second() as u64,
                 bytes: size as u64,
@@ -99,7 +99,7 @@ impl Default for Read {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::sync::mpsc::unbounded_channel as channel;
+    use tokio::sync::mpsc::channel;
 
     #[test]
     fn test_read_new() {
@@ -131,7 +131,7 @@ mod tests {
     #[tokio::test]
     async fn test_read_execute_uninitialized() {
         let mut t = Read::new("foo");
-        let (tx, _rx) = channel();
+        let (tx, _rx) = channel(1);
 
         // Execute should fail as path and format are not set
         let result = t.execute(String::new(), tx).await;
@@ -149,7 +149,7 @@ mod tests {
     async fn test_read_execute_with_nonexistent_file() {
         let mut t = Read::new("foo");
         t.path("/nonexistent");
-        let (tx, _rx) = channel();
+        let (tx, _rx) = channel(1);
 
         // Execute should fail as file does not exist
         let result = t.execute(String::new(), tx).await;
@@ -169,7 +169,7 @@ mod tests {
 
         let mut t = Read::new("foo");
         t.path(temp_file.path().to_str().unwrap());
-        let (tx, mut rx) = channel();
+        let (tx, mut rx) = channel(1);
 
         // Execute should succeed and send lines to channel
         let result = t.execute(String::new(), tx).await;

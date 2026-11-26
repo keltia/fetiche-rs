@@ -5,7 +5,7 @@
 //! Worker actor that manages topic subscriptions and message processing.
 //!
 use std::fmt::Debug;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use futures_util::stream::StreamExt;
 use lapin::{options::BasicAckOptions, Connection, ConnectionProperties};
@@ -171,7 +171,7 @@ impl Actor for Worker {
                             let s = Stats { bytes: len, pkts: 1, ..Default::default() };
                             stat.cast(StatsMsg::Update(tag.clone(), s))?;
 
-                            out.send(data)?;
+                            out.send(data).await?;
                         },
                         // This drains the `dl_fused_data` topic, we expect this to happen upon startup.
                         //
@@ -191,7 +191,7 @@ impl Actor for Worker {
                             let s = Stats { bytes: len, pkts: 1, ..Default::default() };
                             stat.cast(StatsMsg::Update(tag.clone(), s))?;
 
-                            out.send(data.clone())?;
+                            out.send(data).await?;
                         },
                         // Rest is just handling events.
                         //

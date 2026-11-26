@@ -1,7 +1,7 @@
 //! Feed module provides functionality for creating and managing AMQP message consumers
 //! through RabbitMQ connections.
 
-use lapin::options::BasicConsumeOptions;
+use lapin::options::{BasicConsumeOptions, BasicQosOptions};
 use lapin::types::FieldTable;
 use lapin::{Connection, Consumer};
 
@@ -40,6 +40,7 @@ impl Feed {
     pub async fn new(conn: &Connection, name: &str, tag: &str) -> eyre::Result<Self> {
         // Create a channel
         let data_ch = conn.create_channel().await?;
+        data_ch.basic_qos(1, BasicQosOptions::default()).await?;
         eprintln!("Created {name} channel");
 
         let data = data_ch

@@ -5,7 +5,7 @@
 //! - Output: DronePoint
 //!
 
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use eyre::Result;
 use tracing::trace;
@@ -95,7 +95,7 @@ impl Convert {
             _ => unimplemented!(),
         };
 
-        Ok(stdout.send(res)?)
+        Ok(stdout.send(res).await?)
     }
 }
 

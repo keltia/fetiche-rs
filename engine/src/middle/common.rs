@@ -5,7 +5,7 @@
 //!
 
 use std::fmt::Debug;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use eyre::Result;
 
@@ -38,7 +38,7 @@ impl Nothing {
     #[inline]
     #[tracing::instrument]
     pub async fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
-        Ok(stdout.send(format!("{}|NOP", data))?)
+        Ok(stdout.send(format!("{}|NOP", data)).await?)
     }
 }
 
@@ -72,7 +72,7 @@ impl Copy {
     #[inline]
     #[tracing::instrument]
     pub async fn execute(&self, data: String, stdout: Sender<String>) -> Result<()> {
-        Ok(stdout.send(data)?)
+        Ok(stdout.send(data).await?)
     }
 }
 
@@ -113,7 +113,7 @@ impl Message {
     #[inline]
     #[tracing::instrument]
     pub async fn execute(&self, _data: String, stdout: Sender<String>) -> Result<()> {
-        Ok(stdout.send(self.msg.to_string())?)
+        Ok(stdout.send(self.msg.to_string()).await?)
     }
 }
 
@@ -145,7 +145,7 @@ mod tests {
     #[tokio::test]
     async fn test_nothing_execute() {
         let nothing = Nothing::new();
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, mut rx) = tokio::sync::mpsc::channel(2);
 
         let input_data = "TestData".to_string();
         nothing.execute(input_data.clone(), tx).await.unwrap();
@@ -169,7 +169,7 @@ mod tests {
     #[tokio::test]
     async fn test_copy_execute() {
         let copy = Copy::new();
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, mut rx) = tokio::sync::mpsc::channel(2);
 
         let input_data = "TestCopyData".to_string();
         copy.execute(input_data.clone(), tx).await.unwrap();
@@ -191,7 +191,7 @@ mod tests {
     async fn test_message_execute() {
         let msg = "TestMessageContent".to_string();
         let message = Message::new(&msg);
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, mut rx) = tokio::sync::mpsc::channel(2);
 
         let input_data = "UnusedData".to_string();
         message.execute(input_data, tx).await.unwrap();

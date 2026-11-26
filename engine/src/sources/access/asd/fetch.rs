@@ -10,7 +10,7 @@
 //!
 
 use std::io::Cursor;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 use std::time::UNIX_EPOCH;
 
 use clap::{crate_name, crate_version};
@@ -225,7 +225,7 @@ impl Fetchable for Asd {
         };
 
         let data = String::from_utf8(data)?;
-        out.send(data)?;
+        out.send(data).await?;
         Ok(stats)
     }
 

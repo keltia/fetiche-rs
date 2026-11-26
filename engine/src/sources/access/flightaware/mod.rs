@@ -20,7 +20,7 @@
 mod stream;
 
 use std::str::FromStr;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use eyre::{Result, eyre};
 use jiff::Timestamp;
@@ -350,7 +350,7 @@ impl Fetchable for Flightaware {
             stats.bytes += line.len() as u64;
             records.push(line);
         }
-        out.send(format!("[{}]", records.join(",\n")))?;
+        out.send(format!("[{}]", records.join(",\n"))).await?;
         Ok(stats)
     }
 

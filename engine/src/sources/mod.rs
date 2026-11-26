@@ -7,7 +7,7 @@
 //!
 
 use std::fmt::Debug;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use enum_dispatch::enum_dispatch;
 use eyre::Result;

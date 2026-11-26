@@ -5,7 +5,7 @@
 
 use std::io::Cursor;
 use std::path::PathBuf;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::Sender;
 
 use eyre::Result;
 use polars_io::prelude::{CsvParseOptions, CsvReadOptions, ParquetWriter, SerReader};
@@ -120,7 +120,7 @@ impl Default for Save {
 mod tests {
     use super::*;
     use polars_io::prelude::ParquetReader;
-    use tokio::sync::mpsc::unbounded_channel as channel;
+    use tokio::sync::mpsc::channel;
 
     #[test]
     fn test_write_new() {
@@ -163,7 +163,7 @@ mod tests {
         let path = dir.path().join("output.parquet");
         let mut save = Save::new("test_parquet_save", Format::Asd, Container::Parquet);
         save.path(path.to_str().unwrap());
-        let (tx, _rx) = channel();
+        let (tx, _rx) = channel(1);
 
         save.execute(
             "timestamp,altitude\n2024-01-01T00:00:00Z,1200\n".to_owned(),
@@ -186,7 +186,7 @@ mod tests {
         let mut t = Save::new("test_parquet_save", Format::Asd, Container::Parquet);
         t.path("/invalid/path/output.parquet");
 
-        let (tx, _rx) = channel::<String>();
+        let (tx, _rx) = channel::<String>(1);
         let result = t.execute("dummy_data".to_string(), tx).await;
 
         assert!(result.is_err());
@@ -197,7 +197,7 @@ mod tests {
         let mut t = Save::new("test_raw_write", Format::None, Container::Raw);
         t.path("test_output.txt");
 
-        let (tx, _rx) = channel::<String>();
+        let (tx, _rx) = channel::<String>(1);
         let result = t.execute("test_raw_data".to_string(), tx).await;
 
         assert!(result.is_ok());
@@ -216,7 +216,7 @@ mod tests {
         let mut t = Save::new("test_stdout", Format::None, Container::Raw);
         t.path("-");
 
-        let (tx, _rx) = channel();
+        let (tx, _rx) = channel(1);
         let result = t.execute("output_to_stdout".to_string(), tx).await;
 
         assert!(result.is_ok());
