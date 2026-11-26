@@ -10,7 +10,7 @@
 //!
 
 use std::io::Cursor;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 use std::time::UNIX_EPOCH;
 
 use clap::{crate_name, crate_version};

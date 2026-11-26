@@ -17,7 +17,7 @@ use eyre::Result;
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 use tracing::{debug, trace};
 
 use fetiche_formats::Format;

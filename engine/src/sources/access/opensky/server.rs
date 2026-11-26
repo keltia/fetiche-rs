@@ -4,7 +4,8 @@
 
 use std::convert::TryInto;
 use std::str::FromStr;
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::channel;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 use std::time::{Duration, Instant};
 
 use clap::{crate_name, crate_version};

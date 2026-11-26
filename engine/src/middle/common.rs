@@ -5,7 +5,7 @@
 //!
 
 use std::fmt::Debug;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 
 use eyre::Result;
 
@@ -145,12 +145,12 @@ mod tests {
     #[tokio::test]
     async fn test_nothing_execute() {
         let nothing = Nothing::new();
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
         let input_data = "TestData".to_string();
         nothing.execute(input_data.clone(), tx).await.unwrap();
 
-        let result = rx.recv().unwrap();
+        let result = rx.recv().await.unwrap();
         assert_eq!(result, format!("{}|NOP", input_data));
     }
 
@@ -169,12 +169,12 @@ mod tests {
     #[tokio::test]
     async fn test_copy_execute() {
         let copy = Copy::new();
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
         let input_data = "TestCopyData".to_string();
         copy.execute(input_data.clone(), tx).await.unwrap();
 
-        let result = rx.recv().unwrap();
+        let result = rx.recv().await.unwrap();
         assert_eq!(result, input_data);
     }
 
@@ -191,12 +191,12 @@ mod tests {
     async fn test_message_execute() {
         let msg = "TestMessageContent".to_string();
         let message = Message::new(&msg);
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
         let input_data = "UnusedData".to_string();
         message.execute(input_data, tx).await.unwrap();
 
-        let result = rx.recv().unwrap();
+        let result = rx.recv().await.unwrap();
         assert_eq!(result, msg);
     }
 }

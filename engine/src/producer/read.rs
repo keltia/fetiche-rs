@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use eyre::Result;
 use jiff::Timestamp;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use tracing::trace;
@@ -99,7 +99,7 @@ impl Default for Read {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::mpsc::channel;
+    use tokio::sync::mpsc::unbounded_channel as channel;
 
     #[test]
     fn test_read_new() {
@@ -131,7 +131,7 @@ mod tests {
     #[tokio::test]
     async fn test_read_execute_uninitialized() {
         let mut t = Read::new("foo");
-        let (tx, rx) = channel();
+        let (tx, _rx) = channel();
 
         // Execute should fail as path and format are not set
         let result = t.execute(String::new(), tx).await;
@@ -149,7 +149,7 @@ mod tests {
     async fn test_read_execute_with_nonexistent_file() {
         let mut t = Read::new("foo");
         t.path("/nonexistent");
-        let (tx, rx) = channel();
+        let (tx, _rx) = channel();
 
         // Execute should fail as file does not exist
         let result = t.execute(String::new(), tx).await;
@@ -169,14 +169,14 @@ mod tests {
 
         let mut t = Read::new("foo");
         t.path(temp_file.path().to_str().unwrap());
-        let (tx, rx) = channel();
+        let (tx, mut rx) = channel();
 
         // Execute should succeed and send lines to channel
         let result = t.execute(String::new(), tx).await;
         assert!(result.is_ok());
 
         let mut lines: Vec<String> = vec![];
-        for received in rx {
+        while let Some(received) = rx.recv().await {
             lines.push(received);
         }
         let res = vec![["line1", "line2", "line3"].join("\n")];

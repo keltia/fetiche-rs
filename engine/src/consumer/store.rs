@@ -9,7 +9,7 @@
 //!
 
 use std::path::PathBuf;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 
 use eyre::Result;
 use jiff::{Timestamp, tz::TimeZone};
@@ -199,7 +199,7 @@ mod tests {
     use super::*;
     use jiff::Timestamp;
     use std::path::Path;
-    use std::sync::mpsc;
+    use tokio::sync::mpsc;
     use tempfile::tempdir;
 
     #[tokio::test]
@@ -233,7 +233,7 @@ mod tests {
         let path = dir.path().to_str().unwrap();
 
         let mut store = Store::new(path, 1, Freq::Hourly).await.unwrap();
-        let (tx, _rx) = mpsc::channel();
+        let (tx, _rx) = mpsc::unbounded_channel();
 
         let result = store.execute("test data".to_string(), tx).await;
         assert!(result.is_ok());
@@ -256,7 +256,7 @@ mod tests {
 
         let mut store = Store::new(path, 1, Freq::Hourly).await.unwrap();
         store.use_ext(".json");
-        let (tx, _rx) = mpsc::channel();
+        let (tx, _rx) = mpsc::unbounded_channel();
 
         // Ensure we have the tree
         //

@@ -5,7 +5,7 @@
 
 use std::io::Cursor;
 use std::path::PathBuf;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 
 use eyre::Result;
 use polars_io::prelude::{CsvParseOptions, CsvReadOptions, ParquetWriter, SerReader};
@@ -120,7 +120,7 @@ impl Default for Save {
 mod tests {
     use super::*;
     use polars_io::prelude::ParquetReader;
-    use std::sync::mpsc::channel;
+    use tokio::sync::mpsc::unbounded_channel as channel;
 
     #[test]
     fn test_write_new() {

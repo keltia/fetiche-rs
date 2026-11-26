@@ -12,7 +12,7 @@
 
 use std::collections::BTreeMap;
 use std::str::FromStr;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 use std::time::Duration;
 
 use ractor::pg::join;

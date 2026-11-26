@@ -6,7 +6,7 @@ use eyre::Result;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use reqwest::Url;
 use serde_json::json;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 use tracing::{debug, error, info, trace};
 
 use super::{DEF_PORT, DEF_SITE};

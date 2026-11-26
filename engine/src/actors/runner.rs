@@ -156,13 +156,13 @@ impl Worker for RunnerActor {
 
                 // Set the pipeline up
                 //
-                let (key, stdout) = std::sync::mpsc::channel::<String>();
+                let (key, stdout) = tokio::sync::mpsc::unbounded_channel::<String>();
 
                 trace!("create pipeline");
 
                 // Gather results for all tasks into a single pipeline using `Iterator::fold()`
                 //
-                let output = stream::iter(task_list.iter_mut())
+                let mut output = stream::iter(task_list.iter_mut())
                     .fold(stdout, async move |acc, t| {
                         let (rx, _h) = t.run(acc).await;
                         rx
@@ -181,7 +181,7 @@ impl Worker for RunnerActor {
 
                 // Wait for the final output to be received and send it out
                 //
-                for msg in output {
+                while let Some(msg) = output.recv().await {
                     write!(&mut data, "{}", msg)?;
                 }
 

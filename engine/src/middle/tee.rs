@@ -6,7 +6,7 @@
 use std::fmt::Debug;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 
 use eyre::Result;
 use tracing::trace;
@@ -66,7 +66,7 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Read;
-    use std::sync::mpsc;
+    use tokio::sync::mpsc;
 
     use tempfile::tempdir;
 
@@ -80,14 +80,14 @@ mod tests {
         let mut tee = Tee::into(file_path.to_str().unwrap());
 
         // Mock a channel to simulate stdout behavior
-        let (tx, rx) = mpsc::channel();
+        let (tx, mut rx) = mpsc::unbounded_channel();
 
         // Write some data using the Tee instance
         let data = "Hello, Tee!".to_string();
         tee.execute(data.clone(), tx).await.unwrap();
 
         // Check that the data was sent through the channel
-        assert_eq!(rx.recv().unwrap(), data);
+        assert_eq!(rx.recv().await.unwrap(), data);
 
         // Check that the data was written to the file
         let mut file = File::open(file_path).unwrap();
@@ -106,7 +106,7 @@ mod tests {
         let mut tee = Tee::into(file_path.to_str().unwrap());
 
         // Mock a channel to simulate stdout behavior
-        let (tx, rx) = mpsc::channel();
+        let (tx, mut rx) = mpsc::unbounded_channel();
 
         // Write multiple pieces of data using the Tee instance
         let data1 = "First line\n".to_string();
@@ -116,7 +116,10 @@ mod tests {
         tee.execute(data2.clone(), tx).await.unwrap();
 
         // Collect the received data from the channel
-        let outputs: Vec<_> = rx.try_iter().collect();
+        let mut outputs = Vec::new();
+        while let Some(output) = rx.recv().await {
+            outputs.push(output);
+        }
         assert_eq!(outputs, vec![data1.clone(), data2.clone()]);
 
         // Check that the data was written to the file

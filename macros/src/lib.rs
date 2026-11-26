@@ -24,17 +24,13 @@ pub fn runnable(input: TokenStream) -> TokenStream {
             #[::tracing::instrument(skip(self, input))]
             async fn run(
                 &mut self,
-                mut input: ::std::sync::mpsc::Receiver<::std::string::String>,
-            ) -> (::std::sync::mpsc::Receiver<std::string::String>, ::tokio::task::JoinHandle<Result<()>>) {
-                let (stdout, mut stdin) = ::std::sync::mpsc::channel::<::std::string::String>();
+                mut input: ::tokio::sync::mpsc::UnboundedReceiver<::std::string::String>,
+            ) -> (::tokio::sync::mpsc::UnboundedReceiver<::std::string::String>, ::tokio::task::JoinHandle<Result<()>>) {
+                let (stdout, stdin) = ::tokio::sync::mpsc::unbounded_channel::<::std::string::String>();
 
                 let mut src = self.clone();
                 let h = ::tokio::spawn(async move {
-                    // Add our message
-                    //
-                    for data in input {
-                        // Do something (or not) with the input data if there is an error
-                        //
+                    while let Some(data) = input.recv().await {
                         src.execute(data, stdout.clone()).await.unwrap();
                     }
                     Ok(())

@@ -1,4 +1,4 @@
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 
 use ractor::{call, cast};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};

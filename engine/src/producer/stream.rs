@@ -4,7 +4,7 @@
 use std::fmt::{Debug, Formatter};
 
 use eyre::Result;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 use tracing::trace;
 
 use fetiche_macros::RunnableDerive;

@@ -20,7 +20,7 @@
 mod stream;
 
 use std::str::FromStr;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 
 use eyre::{Result, eyre};
 use jiff::Timestamp;

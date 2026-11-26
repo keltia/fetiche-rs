@@ -5,7 +5,7 @@
 //! Worker actor that manages topic subscriptions and message processing.
 //!
 use std::fmt::Debug;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 
 use futures_util::stream::StreamExt;
 use lapin::{options::BasicAckOptions, Connection, ConnectionProperties};

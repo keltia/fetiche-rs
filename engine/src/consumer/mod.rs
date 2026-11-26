@@ -18,7 +18,7 @@
 //! and lifecycle management.
 
 use std::fmt::Display;
-use std::sync::mpsc::Receiver;
+use tokio::sync::mpsc::UnboundedReceiver as Receiver;
 
 use tokio::task::JoinHandle;
 use tracing::error;
