@@ -214,24 +214,16 @@ impl Engine {
         info!("Relocating to {workdir:?}");
 
         trace!("submit job {}", job.id);
-        let wg = call!(self.scheduler, |port| {
-            SchedulerMsg::Add(job.clone(), port)
-        })?;
-        assert_eq!(wg.id, job.id);
-
-        // Next tick, the job will run
-        //
-        trace!("wait for job {}", job.id);
-        wg.rx.recv()?;
-        trace!("job {} finished", job.id);
-
-        let stats = call!(self.results, |port| ResultsMsg::Fetch(job.id, port))?;
-
-        // Go back
-        //
+        let result = async {
+            let wg = self.submit_job(job).await?;
+            let outcome = wg.rx.await.map_err(|err| {
+                eyre::eyre!("job {} ended without a completion outcome: {err}", wg.id)
+            })?;
+            outcome.into_stats()
+        }
+        .await;
         env::set_current_dir(&olddir)?;
-
-        Ok(stats)
+        result
     }
 
     /// Waits for a specific job to complete and retrieves its final statistics.
@@ -260,7 +252,9 @@ impl Engine {
     ///
     #[tracing::instrument(skip(self))]
     pub async fn wait_for(&mut self, id: usize, tx: Sender<Stats>) -> Result<Stats> {
-        let res = call_t!(self.results, |port| ResultsMsg::Fetch(id, port), 10000)?;
+        let outcome = call_t!(self.results, |port| ResultsMsg::Fetch(id, port), 10000)?
+            .ok_or_else(|| eyre::eyre!("no completed outcome for job {id}"))?;
+        let res = outcome.into_stats()?;
 
         tx.send(res.clone())?;
         Ok(res)

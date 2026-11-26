@@ -9,13 +9,45 @@
 //! A `WaitGroup` is the struct you get after submission to be notified when the job has finished.
 //!
 use std::collections::VecDeque;
-use std::sync::mpsc::{Receiver, Sender};
 
 use bon::Builder;
 use ractor::ActorRef;
+use tokio::sync::oneshot;
 
 use crate::actors::StatsMsg;
-use crate::{Consumer, Middle, Producer};
+use crate::{Consumer, Middle, Producer, Stats};
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum JobStatus {
+    Succeeded,
+    Failed { stage: Option<String>, error: String },
+    Cancelled { stage: Option<String> },
+}
+
+/// The final status and statistics snapshot for one job.
+#[derive(Clone, Debug, PartialEq)]
+pub struct JobOutcome {
+    pub id: usize,
+    pub status: JobStatus,
+    pub stats: Stats,
+}
+
+impl JobOutcome {
+    pub(crate) fn into_stats(self) -> eyre::Result<Stats> {
+        let id = self.id;
+        match self.status {
+            JobStatus::Succeeded => Ok(self.stats),
+            JobStatus::Failed { stage: Some(stage), error } => {
+                Err(eyre::eyre!("job {id}, stage {stage}: {error}"))
+            }
+            JobStatus::Failed { stage: None, error } => Err(eyre::eyre!("job {id}: {error}")),
+            JobStatus::Cancelled { stage: Some(stage) } => {
+                Err(eyre::eyre!("job {id}, stage {stage}: cancelled"))
+            }
+            JobStatus::Cancelled { stage: None } => Err(eyre::eyre!("job {id}: cancelled")),
+        }
+    }
+}
 
 /// This gets sent back to the caller when submitting the job.
 ///
@@ -24,12 +56,12 @@ pub struct WaitGroup {
     /// ID of the job
     pub id: usize,
     /// Synchronisation point
-    pub rx: Receiver<()>,
+    pub rx: oneshot::Receiver<JobOutcome>,
 }
 
 impl WaitGroup {
     #[tracing::instrument(skip(rx))]
-    pub fn new(id: usize, rx: Receiver<()>) -> Self {
+    pub fn new(id: usize, rx: oneshot::Receiver<JobOutcome>) -> Self {
         Self { id, rx }
     }
 }
@@ -44,12 +76,38 @@ impl WaitGroup {
 /// # Fields
 ///
 /// * `job` - The job to be executed
-/// * `tx` - A sender channel used for synchronization when the job completes
+/// * `completion` - Delivers the outcome when the job completes
 ///
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Work {
     pub job: Job,
-    pub tx: Sender<()>,
+    pub(crate) completion: JobCompletion,
+}
+
+#[derive(Debug)]
+pub(crate) struct JobCompletion {
+    id: usize,
+    tx: Option<oneshot::Sender<JobOutcome>>,
+}
+
+impl JobCompletion {
+    pub(crate) fn send(mut self, outcome: JobOutcome) {
+        if let Some(tx) = self.tx.take() {
+            let _ = tx.send(outcome);
+        }
+    }
+}
+
+impl Drop for JobCompletion {
+    fn drop(&mut self) {
+        if let Some(tx) = self.tx.take() {
+            let _ = tx.send(JobOutcome {
+                id: self.id,
+                status: JobStatus::Cancelled { stage: None },
+                stats: Stats::default(),
+            });
+        }
+    }
 }
 
 impl Work {
@@ -61,8 +119,9 @@ impl Work {
     /// * `tx` - A sender channel for job completion notification
     ///
     #[tracing::instrument(skip(tx))]
-    pub fn new(job: Job, tx: Sender<()>) -> Self {
-        Self { job, tx }
+    pub fn new(job: Job, tx: oneshot::Sender<JobOutcome>) -> Self {
+        let completion = JobCompletion { id: job.id, tx: Some(tx) };
+        Self { job, completion }
     }
 
     /// Returns the current state of the contained job.
@@ -229,6 +288,17 @@ impl Job {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn dropping_queued_work_notifies_the_waiter_of_cancellation() {
+        let (tx, rx) = oneshot::channel();
+        let work = Work::new(Job::builder().id(7).build(), tx);
+        drop(work);
+
+        let outcome = rx.await.unwrap();
+        assert_eq!(outcome.id, 7);
+        assert_eq!(outcome.status, JobStatus::Cancelled { stage: None });
+    }
 
     #[test]
     fn test_job_new() {

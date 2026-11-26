@@ -31,7 +31,7 @@ pub fn runnable(input: TokenStream) -> TokenStream {
                 let mut src = self.clone();
                 let h = ::tokio::spawn(async move {
                     while let Some(data) = input.recv().await {
-                        src.execute(data, stdout.clone()).await.unwrap();
+                        src.execute(data, stdout.clone()).await?;
                     }
                     Ok(())
                 });

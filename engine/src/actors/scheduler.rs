@@ -12,11 +12,11 @@
 //!
 
 use std::collections::VecDeque;
-use std::sync::mpsc::channel;
 use std::time::Duration;
 
 use ractor::factory::{FactoryMessage, JobOptions};
 use ractor::{factory, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use tokio::sync::oneshot;
 use tracing::{error, info, trace, warn};
 
 use crate::actors::{ResultsMsg, RunnerMsg, StateMsg};
@@ -85,7 +85,7 @@ pub struct SchedulerState {
 
     // The queues
     waiting: VecDeque<Work>,
-    running: VecDeque<Work>,
+    running: VecDeque<Job>,
     finished: VecDeque<Job>,
 }
 
@@ -154,7 +154,7 @@ impl Actor for SchedulerActor {
                     if let Some(work) = state.waiting.pop_front() {
                         // Move unto the running queue
                         //
-                        state.running.push_back(work.clone());
+                        state.running.push_back(work.job.clone());
 
                         // Hand over to the runner factory
                         //
@@ -227,7 +227,7 @@ impl Actor for SchedulerActor {
             // This is ps(1)
             //
             SchedulerMsg::List(sender) => {
-                let list = state.running.iter().map(|j| j.id()).collect::<Vec<usize>>();
+                let list = state.running.iter().map(|j| j.id).collect::<Vec<usize>>();
                 sender.send(list)?;
             }
 
@@ -250,7 +250,7 @@ impl Actor for SchedulerActor {
                 }
                 trace!("Adding job to waiting queue: {:?}", queued);
 
-                let (tx, rx) = channel();
+                let (tx, rx) = oneshot::channel();
 
                 let work = Work::new(job.clone(), tx);
                 let wg = WaitGroup::new(job.id, rx);
@@ -268,8 +268,7 @@ impl Actor for SchedulerActor {
                     Some(batch) => batch,
                     None => return Ok(()),
                 };
-                state.finished.push_back(work.job.clone());
-                work.tx.send(())?;
+                state.finished.push_back(work);
             }
 
             SchedulerMsg::RemoveById(id) => {

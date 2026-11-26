@@ -10,17 +10,20 @@
 //! - `RunnerActor`: The actual actor implementation that processes jobs
 //! - `RunnerArgs`: Configuration and dependencies required by the Runner actor
 //!
-use std::io::Write;
+use futures::stream::{FuturesUnordered, StreamExt};
 
-use futures::stream::{self, StreamExt};
 use ractor::factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId};
 use ractor::{ActorProcessingErr, ActorRef, RpcReplyPort, call, cast};
+use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
+use tokio::task::{AbortHandle, JoinHandle};
 use tracing::{debug, info, trace};
 
 use crate::task::Runnable;
 
 use crate::actors::{ResultsMsg, StatsMsg};
-use crate::{Stats, Task, Work};
+use crate::{
+    Consumer, Job as EngineJob, JobOutcome, JobStatus, Middle, Producer, Stats, Task, Work,
+};
 
 /// Messages that can be handled by the Runner actor.
 ///
@@ -30,7 +33,7 @@ use crate::{Stats, Task, Work};
 #[derive(Debug)]
 pub enum RunnerMsg {
     /// Run next job
-    Run(Work, RpcReplyPort<Stats>),
+    Run(Work, RpcReplyPort<()>),
 }
 
 /// The Runner actor implementation that processes jobs from the queue.
@@ -117,90 +120,150 @@ impl Worker for RunnerActor {
                 let stat = state.stats.clone();
                 let results = state.results.clone();
 
-                let mut job = work.job.clone();
+                let Work {
+                    mut job,
+                    completion,
+                } = work;
+                job.register(stat.clone());
+                info!(job_id = job.id, "Job({wid})::run({})", job.name);
 
-                let job = job.register(stat.clone());
-                debug!("job={:?}", job);
+                let id = job.id;
+                let job_tag = format!("job#{id}");
+                let mut outcome = JobOutcome {
+                    id,
+                    status: JobStatus::Succeeded,
+                    stats: Stats::default(),
+                };
 
-                info!(
-                    "Job({})::run({}) with {} tasks",
-                    wid,
-                    job.name,
-                    job.middle.len() + 2
-                );
-
-                let job_tag = format!("job#{}", job.id);
-                let _ = cast!(stat, StatsMsg::New(job_tag.clone()))?;
-
-                let mut data = vec![];
-
-                // insert tasks into the pipeline
-                //
-                let p = job.producer.clone();
-                let c = job.consumer.clone();
-                let first = vec![Task::from(p)];
-                let filters = job
-                    .middle
-                    .iter()
-                    .map(|t| Task::from(t.clone()))
-                    .collect::<Vec<Task>>();
-                let last = vec![Task::from(c)];
-
-                // Create our list of linked tasks
-                //
-                let mut task_list = [first, filters, last]
-                    .into_iter()
-                    .flatten()
-                    .collect::<Vec<Task>>();
-                debug!("task_list: {:?}", task_list);
-
-                // Set the pipeline up
-                //
-                let (key, stdout) = tokio::sync::mpsc::unbounded_channel::<String>();
-
-                trace!("create pipeline");
-
-                // Gather results for all tasks into a single pipeline using `Iterator::fold()`
-                //
-                let mut output = stream::iter(task_list.iter_mut())
-                    .fold(stdout, async move |acc, t| {
-                        let (rx, _h) = t.run(acc).await;
-                        rx
-                    })
-                    .await;
-
-                trace!("starting pipe");
-
-                // Start the pipeline
-                //
-                let _ = key.send("start".to_string())?;
-
-                // Close the pipeline which will stop all threads in sequence
-                //
-                drop(key);
-
-                // Wait for the final output to be received and send it out
-                //
-                while let Some(msg) = output.recv().await {
-                    write!(&mut data, "{}", msg)?;
+                match cast!(stat, StatsMsg::New(job_tag.clone())) {
+                    Ok(_) => {
+                        outcome.status = run_pipeline(job).await;
+                        match call!(stat, |port| StatsMsg::Get(job_tag.clone(), port)) {
+                            Ok(snapshot) => outcome.stats = snapshot,
+                            Err(err) if outcome.status == JobStatus::Succeeded => {
+                                outcome.status = job_failure(format!("read statistics: {err}"));
+                            }
+                            Err(err) => debug!(job_id = id, %err, "Could not read job statistics"),
+                        }
+                        let _ = cast!(stat, StatsMsg::Reset(job_tag));
+                    }
+                    Err(err) => {
+                        outcome.status = job_failure(format!("initialize statistics: {err}"))
+                    }
                 }
 
-                // Fetch stats for the specific job run
-                //
-                let stats = call!(stat, |port| StatsMsg::Get(job_tag.clone(), port))?;
-                let _ = cast!(results, ResultsMsg::Submit(work.id(), stats.clone()))?;
-                let _ = sender.send(stats.clone());
+                if let Err(err) = call!(results, |port| ResultsMsg::Submit(outcome.clone(), port)) {
+                    if outcome.status == JobStatus::Succeeded {
+                        outcome.status = job_failure(format!("publish outcome: {err}"));
+                    }
+                    debug!(job_id = id, %err, "Could not publish job outcome");
+                }
 
-                // Clean stats
-                //
-                let _ = cast!(stat, StatsMsg::Reset(job_tag))?;
-
-                // Update status.
-                //
-                let _ = work.tx.send(());
+                completion.send(outcome);
+                let _ = sender.send(());
             }
         }
         Ok(key)
+    }
+}
+
+fn job_failure(error: String) -> JobStatus {
+    JobStatus::Failed { stage: None, error }
+}
+
+fn stage_failure(stage: String, error: String) -> JobStatus {
+    JobStatus::Failed {
+        stage: Some(stage),
+        error,
+    }
+}
+
+async fn run_pipeline(job: EngineJob) -> JobStatus {
+    let mut stages = Vec::with_capacity(job.middle.len() + 2);
+    let mut add_stage = |name: String, task, invalid| {
+        stages.push((format!("{} ({name})", stages.len() + 1), task, invalid));
+    };
+    let invalid = matches!(job.producer, Producer::Invalid);
+    add_stage(job.producer.to_string(), Task::from(job.producer), invalid);
+    for middle in job.middle {
+        let invalid = matches!(middle, Middle::Invalid);
+        add_stage(middle.to_string(), Task::from(middle), invalid);
+    }
+    let invalid = matches!(job.consumer, Consumer::Invalid);
+    add_stage(job.consumer.to_string(), Task::from(job.consumer), invalid);
+
+    if let Some((name, _, _)) = stages.iter().find(|(_, _, invalid)| *invalid) {
+        return stage_failure(name.clone(), "invalid stage".into());
+    }
+
+    let (trigger, mut output) = unbounded_channel();
+    let mut tasks = StageTasks::default();
+    for (name, mut stage, _) in stages {
+        let (next, handle) = stage.run(output).await;
+        tasks.push(name, handle);
+        output = next;
+    }
+    let started = trigger.send("start".to_string());
+    drop(trigger);
+
+    let status = tasks.drain(output).await;
+    if status == JobStatus::Succeeded && started.is_err() {
+        return job_failure("could not start producer: receiver closed".into());
+    }
+    status
+}
+
+#[derive(Default)]
+struct StageTasks {
+    pending: FuturesUnordered<StageJoin>,
+    abort_handles: Vec<AbortHandle>,
+}
+
+type StageJoin =
+    futures::future::BoxFuture<'static, (String, Result<eyre::Result<()>, tokio::task::JoinError>)>;
+
+impl StageTasks {
+    fn push(&mut self, name: String, handle: JoinHandle<eyre::Result<()>>) {
+        self.abort_handles.push(handle.abort_handle());
+        self.pending
+            .push(Box::pin(async move { (name, handle.await) }));
+    }
+
+    async fn drain(mut self, mut output: UnboundedReceiver<String>) -> JobStatus {
+        let mut output_open = true;
+        while output_open || !self.pending.is_empty() {
+            tokio::select! {
+                message = output.recv(), if output_open => {
+                    output_open = message.is_some();
+                }
+                joined = self.pending.next(), if !self.pending.is_empty() => {
+                    let Some((stage, result)) = joined else { continue };
+                    let status = match result {
+                        Ok(Ok(())) => continue,
+                        Ok(Err(err)) => stage_failure(stage, format!("{err:#}")),
+                        Err(err) if err.is_cancelled() => JobStatus::Cancelled { stage: Some(stage) },
+                        Err(err) => stage_failure(stage, err.to_string()),
+                    };
+                    drop(output);
+                    self.abort_all();
+                    while self.pending.next().await.is_some() {}
+                    return status;
+                }
+            }
+        }
+        JobStatus::Succeeded
+    }
+
+    fn abort_all(&self) {
+        for handle in &self.abort_handles {
+            handle.abort();
+        }
+    }
+}
+
+impl Drop for StageTasks {
+    fn drop(&mut self) {
+        self.abort_all();
     }
 }
 
@@ -222,5 +285,136 @@ impl WorkerBuilder<RunnerActor, RunnerArgs> for RunnerBuilder {
                 stats: self.stat.clone(),
             },
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::actors::{ResultsActor, StatsActor};
+    use crate::{Dummy, Read, Stdout, Tee};
+    use ractor::Actor;
+    use ractor::factory::{Factory, FactoryArguments, JobOptions, queues, routing};
+    use std::time::Duration;
+    use tokio::time::timeout;
+
+    #[tokio::test]
+    async fn failed_outcome_is_published_before_the_waiter_is_notified() {
+        let (stats, _) = Actor::spawn(Some("runner-test-stats".into()), StatsActor, "test".into())
+            .await
+            .unwrap();
+        let (results, _) = Actor::spawn(None, ResultsActor, ()).await.unwrap();
+        let factory = Factory::<
+            usize,
+            RunnerMsg,
+            RunnerArgs,
+            RunnerActor,
+            routing::QueuerRouting<usize, RunnerMsg>,
+            queues::DefaultQueue<usize, RunnerMsg>,
+        >::default();
+        let args = FactoryArguments::builder()
+            .worker_builder(Box::new(RunnerBuilder {
+                results: results.clone(),
+                stat: stats.clone(),
+            }))
+            .queue(Default::default())
+            .router(Default::default())
+            .num_initial_workers(1)
+            .build();
+        let (factory, _) = Actor::spawn(None, factory, args).await.unwrap();
+        let job = EngineJob::builder()
+            .id(7)
+            .producer(Producer::Read(Read::new("uninitialized")))
+            .consumer(Consumer::Stdout(Stdout::new()))
+            .build();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let work = Work::new(job, tx);
+        let (dispatch_reply, _) = tokio::sync::oneshot::channel();
+        factory
+            .cast(FactoryMessage::Dispatch(Job {
+                key: 7,
+                msg: RunnerMsg::Run(work, dispatch_reply.into()),
+                options: JobOptions::default(),
+                accepted: None,
+            }))
+            .unwrap();
+
+        let outcome = timeout(Duration::from_secs(5), rx).await.unwrap().unwrap();
+        assert!(matches!(outcome.status, JobStatus::Failed { .. }));
+        let stored = call!(results, |port| ResultsMsg::Fetch(7, port)).unwrap();
+        assert_eq!(stored, Some(outcome));
+
+        factory.stop(None);
+        stats.stop(None);
+        results.stop(None);
+    }
+
+    #[tokio::test]
+    async fn successful_pipeline_waits_for_its_side_effects() {
+        let directory = tempfile::tempdir().unwrap();
+        let copy = directory.path().join("copy.txt");
+        let mut job = EngineJob::builder()
+            .id(1)
+            .producer(Producer::Dummy(Dummy::new()))
+            .consumer(Consumer::Stdout(Stdout::new()))
+            .build();
+        job.add(Middle::Tee(Tee::into(copy.to_str().unwrap())));
+
+        assert_eq!(
+            timeout(Duration::from_secs(5), run_pipeline(job))
+                .await
+                .unwrap(),
+            JobStatus::Succeeded
+        );
+        assert_eq!(std::fs::read_to_string(copy).unwrap(), "DUMMY");
+    }
+
+    #[tokio::test]
+    async fn stage_execute_error_is_reported_with_its_name() {
+        let job = EngineJob::builder()
+            .id(1)
+            .producer(Producer::Read(Read::new("uninitialized")))
+            .consumer(Consumer::Stdout(Stdout::new()))
+            .build();
+
+        let status = timeout(Duration::from_secs(5), run_pipeline(job))
+            .await
+            .unwrap();
+        assert!(matches!(
+            status,
+            JobStatus::Failed { stage: Some(stage), .. } if stage == "1 (Read)"
+        ));
+    }
+
+    #[tokio::test]
+    async fn task_panic_cancels_and_joins_a_pending_stage() {
+        let mut stages = StageTasks::default();
+        let (output_tx, output_rx) = unbounded_channel();
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        stages.push(
+            "pending".into(),
+            tokio::spawn(async move {
+                let _ = ready_tx.send(());
+                std::future::pending::<()>().await;
+                drop(output_tx);
+                Ok(())
+            }),
+        );
+        stages.push(
+            "panicking".into(),
+            tokio::spawn(async move {
+                ready_rx.await?;
+                panic!("test panic");
+            }),
+        );
+
+        let status = timeout(Duration::from_secs(5), stages.drain(output_rx))
+            .await
+            .unwrap();
+        assert!(matches!(
+            status,
+            JobStatus::Failed { stage: Some(stage), error }
+                if stage == "panicking" && error.contains("test panic")
+        ));
     }
 }
