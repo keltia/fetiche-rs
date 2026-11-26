@@ -38,17 +38,66 @@ use fetiche_formats::Format;
 
 pub use fetiche_engine::Freq;
 
+/// Defines the input, optional processing steps, and output of a job.
+///
+/// Use [`Self::builder`] to construct a definition and
+/// [`crate::EngineSingle::parse_job`] to turn it into an engine job.
+///
+/// # Examples
+///
+/// ```
+/// use fetiche_client::{ConsumerText, JobText, ProducerText};
+///
+/// let job = JobText::builder()
+///     .name("copy_file")
+///     .producer(ProducerText::Read("input.txt".into()))
+///     .output(ConsumerText::Save("output.txt".into()))
+///     .build();
+/// assert_eq!(job.name, "copy_file");
+/// ```
+///
 #[derive(Builder, Debug, Deserialize, Serialize)]
+#[builder(
+    builder_type(doc {
+        /// Fluent builder returned by [`JobText::builder`].
+        ///
+    }),
+    start_fn(doc {
+        /// Starts a builder for a job definition.
+        ///
+    }),
+    finish_fn(doc {
+        /// Returns the job definition with defaults for omitted fields.
+        ///
+        /// Set a producer and an output before passing the definition to
+        /// [`crate::EngineSingle::parse_job`]. Both default to invalid placeholders.
+        ///
+    })
+)]
 pub struct JobText {
     /// Job name.
+    ///
+    /// Defaults to an empty string.
+    ///
     #[builder(into, default = String::new())]
     pub name: String,
     /// Data generator
+    ///
+    /// Defaults to [`ProducerText::Invalid`].
+    ///
     #[builder(default = ProducerText::default())]
     pub producer: ProducerText,
     /// Optional list of filters like `Tee` or `Save`.
+    ///
+    /// Steps run in list order. Use [`MiddleText::Tee`] to save a copy
+    /// and [`ConsumerText::Save`] to save the final output.
+    ///
     pub middle: Option<Vec<MiddleText>>,
     /// Output file name.
+    ///
+    /// Defaults to [`ConsumerText::Invalid`]. The output variant determines
+    /// which destination settings apply.
+    ///
     #[builder(default = ConsumerText::default())]
     pub output: ConsumerText,
 }
@@ -65,14 +114,26 @@ pub struct JobText {
 /// - `Read`: Reads data from an existing file or resource.
 /// - `Stream`: Streams data directly from an external source in real-time.
 ///
+/// For serialization and deserialization through Serde, use the case-sensitive
+/// variant names, such as `Fetch` and `Read`.
+///
 #[derive(Clone, Debug, Default, Deserialize, EnumString, PartialEq, Serialize)]
 pub enum ProducerText {
     /// One-shot fetch a block of data.
+    ///
+    /// Takes the configured source name and its filter.
+    ///
     Fetch(String, Filter),
     /// Read a local file.
+    ///
     Read(String),
     /// Long-running job, streaming.
+    ///
+    /// Takes the configured source name and its filter.
+    ///
     Stream(String, Filter),
+    /// Default placeholder for a job definition with no selected input.
+    ///
     #[default]
     Invalid,
 }
@@ -93,14 +154,27 @@ pub enum ProducerText {
 ///
 /// `String` - The target or path associated with the middle action.
 ///
+/// The current enum exposes [`Self::Convert`], [`Self::Copy`], and [`Self::Tee`]
+/// as processing options. Use [`ConsumerText::Save`] for the final output.
+///
 #[derive(Clone, Debug, Default, Deserialize, EnumString, PartialEq, Serialize)]
 pub enum MiddleText {
     //// Conversion between formats.
+    /// Requests conversion to the given format.
+    ///
+    /// Parsing a job with this step currently panics.
+    ///
     Convert(Format),
     /// Block by block copy.
+    ///
     Copy,
     /// Duplicate the data in a given file.
+    ///
+    /// Forwards the data downstream as it writes the copy.
+    ///
     Tee(String),
+    /// Default placeholder for an unspecified processing step.
+    ///
     #[default]
     Invalid,
 }
@@ -121,22 +195,39 @@ pub enum MiddleText {
 /// Each variant has an associated `String` value, representing the path
 /// or target destination for the consumer action.
 ///
+/// [`Self::Store`] also takes a [`Freq`] that controls file rotation.
+///
 #[derive(Clone, Debug, Default, Deserialize, EnumString, PartialEq, Serialize)]
 pub enum ConsumerText {
     /// Archive multiple files in a single one.
+    ///
+    /// The engine parser currently maps this option to an invalid consumer.
+    ///
     Archive(String),
     /// Save in a file.
+    ///
     Save(String),
     /// Store files by frequency in the specified directory.
+    ///
     Store(String, Freq),
+    /// Default placeholder for a job definition with no selected output.
+    ///
     #[default]
     Invalid,
 }
 
+/// Source operation selected by [`JobBuilder`].
+///
 #[derive(Clone, Debug, Default)]
 pub enum JobType {
+    /// Fetches a batch of data from the named source.
+    ///
     Fetch(String),
+    /// Streams data from the named source.
+    ///
     Stream(String),
+    /// Default state before a source operation has been selected.
+    ///
     #[default]
     Invalid,
 }
@@ -152,6 +243,23 @@ pub enum JobType {
 ///
 /// All configuration is done through method chaining, with the final job
 /// being created by calling `build()`.
+///
+/// Select a source with [`Self::fetch`] or [`Self::stream`], set a filter with
+/// [`Self::filter`], and select an output with [`Self::save`] or [`Self::store`]
+/// before calling [`Self::build`].
+///
+/// # Examples
+///
+/// ```
+/// use fetiche_client::{Filter, JobBuilder};
+///
+/// let job = JobBuilder::new("fetch_data")
+///     .fetch("configured_source")
+///     .filter(Filter::default())
+///     .save("output.csv")
+///     .build()?;
+/// # Ok::<(), eyre::Report>(())
+/// ```
 ///
 #[derive(Debug, Clone, Default)]
 pub struct JobBuilder {
@@ -186,6 +294,8 @@ impl JobBuilder {
     /// # Arguments
     /// * `site` - The URL or identifier of the site to fetch from
     ///
+    /// The engine looks up the source by its configured name. This replaces the previous source selection.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn fetch(&mut self, site: &str) -> &mut Self {
         self.producer = JobType::Fetch(site.to_string());
@@ -196,6 +306,8 @@ impl JobBuilder {
     ///
     /// # Arguments
     /// * `site` - The URL or identifier of the site to stream from
+    ///
+    /// The engine looks up the source by its configured name. This replaces the previous source selection.
     ///
     #[tracing::instrument(skip(self))]
     pub fn stream(&mut self, site: &str) -> &mut Self {
@@ -208,6 +320,8 @@ impl JobBuilder {
     /// # Arguments
     /// * `f` - The filter to apply to the data
     ///
+    /// This replaces any previous filter.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn filter(&mut self, f: Filter) -> &mut Self {
         self.filter = Some(f);
@@ -218,6 +332,8 @@ impl JobBuilder {
     ///
     /// # Arguments
     /// * `fname` - The name of the file to write to
+    ///
+    /// Passing `None` skips adding a processing step.
     ///
     #[tracing::instrument(skip(self))]
     pub fn tee(&mut self, fname: Option<String>) -> &mut Self {
@@ -232,6 +348,8 @@ impl JobBuilder {
     /// # Arguments
     /// * `fname` - The name of the file to save to
     ///
+    /// This replaces any previous output.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn save(&mut self, fname: &str) -> &mut Self {
         self.output = Some(ConsumerText::Save(fname.to_string()));
@@ -244,6 +362,8 @@ impl JobBuilder {
     /// * `path` - The path where data should be stored
     /// * `freq` - The frequency at which data should be stored
     ///
+    /// This replaces any previous output.
+    ///
     #[tracing::instrument(skip(self))]
     pub fn store(&mut self, path: &str, freq: Freq) -> &mut Self {
         self.output = Some(ConsumerText::Store(path.to_string(), freq));
@@ -251,6 +371,17 @@ impl JobBuilder {
     }
 
     /// Builds the final job configuration.
+    ///
+    /// The builder retains its settings for subsequent calls. The engine resolves
+    /// the source and sets up the pipeline when the definition is parsed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if neither [`Self::fetch`] nor [`Self::stream`] has been selected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a source is selected but the filter or output is missing.
     ///
     #[tracing::instrument(skip(self))]
     pub fn build(&mut self) -> Result<JobText> {
