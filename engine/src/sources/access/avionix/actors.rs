@@ -1,11 +1,11 @@
 use std::fmt::Debug;
-use std::io::{BufReader, BufWriter, Read, Write};
-use std::net::{Shutdown, TcpStream};
 
 use eyre::Result;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use reqwest::Url;
 use serde_json::json;
+use tokio::io::{AsyncReadExt, AsyncWriteExt, BufStream};
+use tokio::net::TcpStream;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use tracing::{debug, error, info, trace};
 
@@ -108,11 +108,7 @@ impl Actor for Worker {
                 // Do the connection
                 //
                 trace!("tcp::connect");
-                let mut conn =
-                    TcpStream::connect(format!("{site}:{port}")).expect("connect failed");
-
-                let mut conn_in = BufReader::new(&conn);
-                let mut conn_out = BufWriter::new(&conn);
+                let mut conn = BufStream::new(TcpStream::connect((site, port)).await?);
 
                 // Handle authentication for remote mode only
                 if matches!(state.mode, WorkerMode::Server) {
@@ -121,10 +117,9 @@ impl Actor for Worker {
 
                     // Send credentials
                     let auth_str = format!("{}\n{}\n", api_key, user_key);
-                    conn_out
-                        .write_all(auth_str.as_bytes())
-                        .expect("auth write failed");
-                    conn_out.flush().expect("flush auth");
+                    conn
+                        .write_all(auth_str.as_bytes()).await?;
+                    conn.flush().await?;
 
                     trace!("avionix::stream(as {}:{})", api_key, user_key);
                 } else {
@@ -134,11 +129,11 @@ impl Actor for Worker {
                 // Manage url parameters for both modes
                 if let Some(min) = min {
                     let min_str = format!("min_altitude={min}\n");
-                    let _ = conn_out.write(min_str.as_bytes());
+                    conn.write_all(min_str.as_bytes()).await?;
                 }
                 if let Some(max) = max {
                     let max_str = format!("max_altitude={max}\n");
-                    let _ = conn_out.write(max_str.as_bytes());
+                    conn.write_all(max_str.as_bytes()).await?;
                 }
 
                 let out = state.out.clone();
@@ -150,14 +145,15 @@ impl Actor for Worker {
                     .expect("stat::error");
 
                 // Start stream
-                let _ = conn_out.write(START_MARKER.as_ref());
-                conn_out.flush().expect("flush marker");
+                conn.write_all(START_MARKER.as_ref()).await?;
+                conn.flush().await?;
 
                 trace!("avionixcube::stream started");
                 loop {
                     let mut buf = vec![0u8; 4096];
 
-                    let n = match conn_in.read(&mut buf[..]) {
+                    let n = match conn.read(&mut buf[..]).await {
+                        Ok(0) => return Err(eyre::eyre!("Avionix stream closed").into()),
                         Ok(size) => {
                             trace!("{} bytes read.", size);
                             size
@@ -173,27 +169,14 @@ impl Actor for Worker {
                             ))
                                 .expect("stat::error");
 
-                            conn.shutdown(Shutdown::Both).expect("shutdown socket");
-
-                            // We need to drop otherwise `conn` still remains.
-                            drop(conn_in);
-                            drop(conn_out);
-
                             stat.cast(StatsMsg::Update(
                                 "avionixcube".into(),
                                 Stats {
                                     reconnect: 1,
                                     ..Default::default()
                                 },
-                            ))
-                                .expect("stat::error");
-
-                            conn = TcpStream::connect(format!("{site}:{port}"))
-                                .expect("connect failed");
-
-                            // Re-establish connection
-                            conn_in = BufReader::new(&conn);
-                            conn_out = BufWriter::new(&conn);
+                            ))?;
+                            conn = BufStream::new(TcpStream::connect((site, port)).await?);
 
                             // Re-authenticate for remote mode only
                             if matches!(state.mode, WorkerMode::Server) {
@@ -201,15 +184,14 @@ impl Actor for Worker {
                                 let api_key = url.username();
 
                                 let auth_str = format!("{}\n{}\n", api_key, user_key);
-                                conn_out
-                                    .write_all(auth_str.as_bytes())
-                                    .expect("auth write failed");
-                                conn_out.flush().expect("flush auth");
+                                conn
+                                    .write_all(auth_str.as_bytes()).await?;
+                                conn.flush().await?;
                             }
 
                             // Send marker again
-                            let _ = conn_out.write(START_MARKER.as_ref());
-                            conn_out.flush().expect("flush marker");
+                            conn.write_all(START_MARKER.as_ref()).await?;
+                            conn.flush().await?;
 
                             continue;
                         }

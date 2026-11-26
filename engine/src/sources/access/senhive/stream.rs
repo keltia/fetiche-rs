@@ -18,7 +18,6 @@
 //! The module interfaces with AMQP queues to receive both stored and current data from
 //! the Senhive data source.
 //!
-use std::sync::mpsc::channel;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use std::time::Duration;
 
@@ -30,6 +29,7 @@ use fetiche_formats::Format;
 
 use super::actors::{Worker, WorkerArgs, WorkerMsg};
 use crate::actors::StatsMsg;
+use crate::sources::access::{KillActorOnDrop, wait_for_stream};
 use crate::sources::SENHIVE_PG;
 use crate::{AuthError, Filter, Senhive, Stats, StatsError, Streamable};
 
@@ -38,13 +38,13 @@ impl Senhive {
         &self,
         out: Sender<String>,
         stat: ActorRef<StatsMsg>,
-    ) -> Result<(ActorRef<WorkerMsg>, String)> {
+    ) -> Result<(ActorRef<WorkerMsg>, tokio::task::JoinHandle<()>, String)> {
         let url = self.base_url.clone();
         trace!("Starting worker actor.");
 
         let args = WorkerArgs { url, out, stat: stat.clone() };
         let tag = String::from("senhive::worker");
-        let (worker, _handle) = Actor::spawn(Some(tag.clone()), Worker, args).await?;
+        let (worker, handle) = Actor::spawn(Some(tag.clone()), Worker, args).await?;
 
         pg::join(SENHIVE_PG.into(), vec![worker.get_cell(), stat.get_cell()]);
 
@@ -55,7 +55,7 @@ impl Senhive {
                 info!("  {}", member.get_name().unwrap_or("<anon>".into()));
             });
 
-        Ok((worker, tag))
+        Ok((worker, handle, tag))
     }
 }
 
@@ -96,7 +96,8 @@ impl Streamable for Senhive {
         );
 
         let stat = self.stat.clone().ok_or(StatsError::NotInitialized)?;
-        let (worker, tag) = self.setup_actors(out, stat.clone()).await?;
+        let (worker, handle, tag) = self.setup_actors(out, stat.clone()).await?;
+        let _worker_guard = KillActorOnDrop(worker.get_cell());
 
         info!("List of actors.");
         let list = pg::get_members(&SENHIVE_PG.to_string());
@@ -108,34 +109,13 @@ impl Streamable for Senhive {
         //
         worker.cast(WorkerMsg::Consume("fused_data".into(), "data".into()))?;
 
-        // Set the clock ticking unless duration is 0
-        //
-        info!("Get clock ticking.");
-        if stream_duration != Duration::from_secs(0) {
-            info!("Sleeping for {}s.", stream_duration.as_secs());
-            worker.exit_after(stream_duration);
-            tokio::time::sleep(stream_duration).await;
-            info!("Timer expired.");
-        } else {
-            // We somehow needs to wait for a ^C.
-            //
-            let (_tx, rx) = channel::<()>();
-            rx.recv().expect("Something failed here.");
-        }
+        wait_for_stream(worker.get_cell(), handle, stream_duration).await?;
 
         // End threads
         //
         trace!("Senhive::stream stopping.");
 
         let stats = call!(stat, |port| StatsMsg::Exit(tag, port))?;
-        // Stop everyone in the group.
-        //
-        pg::get_members(&SENHIVE_PG.to_string())
-            .iter()
-            .for_each(|member| {
-                member.stop(Some("Ending.".to_string()));
-            });
-
         Ok(stats)
     }
 

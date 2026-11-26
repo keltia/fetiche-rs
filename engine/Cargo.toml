@@ -17,7 +17,7 @@ json = []
 
 aeroscope = []
 asd = []
-avionix = []
+avionix = ["tokio/net"]
 flightaware = ["base64_light", "tokio-native-tls"]
 opensky = ["mini-moka"]
 safesky = []

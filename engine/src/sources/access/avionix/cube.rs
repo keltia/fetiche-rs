@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info, trace, warn};
 
+use crate::sources::access::{KillActorOnDrop, wait_for_stream};
 use crate::actors::{StatsMsg, Supervisor};
 use crate::{AVIONIX_PG, Auth, AuthError, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, Worker, WorkerArgs, WorkerMode, WorkerMsg};
 use fetiche_formats::Format;
@@ -154,6 +155,7 @@ Duration {}s
         trace!("starting supervisor actor.");
         let tag = String::from("avionixcube::supervisor");
         let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await?;
+        let _supervisor_guard = KillActorOnDrop(sup.get_cell());
 
         // Launch the worker actor
         //
@@ -175,8 +177,9 @@ Duration {}s
             mode: WorkerMode::Local,
         };
         let tag = String::from("avionixcube::worker");
-        let (worker, _handle) =
+        let (worker, handle) =
             Actor::spawn_linked(Some(tag.clone()), Worker, args, sup.get_cell()).await?;
+        let _worker_guard = KillActorOnDrop(worker.get_cell());
 
         // Insert each actor in the PG_SOURCES group.
         //
@@ -195,34 +198,13 @@ Duration {}s
         //
         worker.cast(WorkerMsg::Consume(filter))?;
 
-        // Set the clock ticking unless duration is 0
-        //
-        info!("Get clock ticking.");
-        if stream_duration != Duration::from_secs(0) {
-            info!("Sleeping for {}s.", stream_duration.as_secs());
-            worker.exit_after(stream_duration);
-            tokio::time::sleep(stream_duration).await;
-            info!("Timer expired.");
-        } else {
-            // We somehow needs to wait for a ^C.
-            //
-            let (_tx, rx) = std::sync::mpsc::channel::<()>();
-            rx.recv().expect("Something failed here.");
-        }
+        wait_for_stream(worker.get_cell(), handle, stream_duration).await?;
 
         // End threads
         //
         trace!("avionixcube::stream stopping.");
 
         let stats = call!(stat, |port| StatsMsg::Exit(tag, port))?;
-
-        // Stop everyone in the group.
-        //
-        pg::get_members(&AVIONIX_PG.to_string())
-            .iter()
-            .for_each(|member| {
-                member.stop(Some("Ending.".to_string()));
-            });
 
         Ok(stats)
     }
