@@ -1,11 +1,55 @@
-//! Basic framework for the runner
+//! A thread-per-stage runner built from standard Rust channels.
 //!
-//! cf. [Playground](https://play.rust-lang.org/?version=nightly&mode=debug&edition=2021&gist=7fcf8265fc664d887e97959c61a18f6c)
+//! Run it with `cargo run -p fetiche-engine --example simple`. The example
+//! shows how to assemble a job from different kinds of stages and pass
+//! messages through them. It implements the runner directly without a macro.
 //!
-//! this is the bare version without using the macro.
+//! ## Architecture
 //!
-//! Added daemonize stuff to test detaching from the terminal **UNIX-only**
+//! `Job` stores the stages in insertion order in a `VecDeque<Box<dyn Runnable>>`.
+//! The shared `Runnable` trait lets the same job hold both `Counter` and `Msg`.
+//! Each stage takes ownership of its input receiver, creates an unbounded
+//! `std::sync::mpsc` channel for its output, and spawns a worker thread.
+//! It returns the output receiver and the worker's join handle.
 //!
+//! `Job::run` creates the input channel and folds over the stages, passing
+//! each output receiver to the next stage. It keeps the first sender and
+//! drains the last receiver on the calling thread. The join handles are
+//! collected during setup and dropped when the job returns, so worker return
+//! values and panics are never collected by the job.
+//!
+//! ```text
+//! Job input -> Counter(tag=1, cnt=1) -> Msg("bnar") -> Counter(tag=3, cnt=42) -> output
+//! ```
+//!
+//! ## Message flow and shutdown
+//!
+//! 1. The job sends one empty string to start the first counter, then drops
+//!    the input sender. Each worker's receive loop drains its input and ends
+//!    when the upstream sender has been dropped.
+//! 2. The first counter prints the input and sends `t1 ->1,`, `t1 ->2,`, and
+//!    `t1 ->3,`. Once its input closes, it sends `end` and exits, dropping
+//!    its output sender.
+//! 3. `Msg` forwards all four strings in order. Once its input closes, it
+//!    sends `bnar` and exits, closing the next counter's input.
+//! 4. The final counter prints each of its five inputs and emits
+//!    `t3 ->42,`, `t3 ->43,`, and `t3 ->44,` for each one. The first
+//!    counter's `end` is ordinary data here. Channel closure causes the
+//!    final counter to send its own `end` and exit.
+//! 5. The job writes and flushes one `received: (...)` line per message to
+//!    the supplied `Write` target. The example uses stdout and produces 16
+//!    such lines. The job returns when the final channel is drained and closed.
+//!
+//! ## Process lifecycle
+//!
+//! `main` initializes logging and checks the Unix-style path
+//! `/tmp/simple.pid`. If the file exists, it reads and parses the PID,
+//! prints it, and exits with status 1. The example runs in the foreground
+//! and never creates a PID file. After the pipeline finishes, `main` flushes
+//! stdout, sleeps for five seconds, and attempts to remove that path,
+//! ignoring any removal error.
+//!
+//! See also the original [Playground example](https://play.rust-lang.org/?version=nightly&mode=debug&edition=2021&gist=7fcf8265fc664d887e97959c61a18f6c).
 
 use std::collections::VecDeque;
 use std::fmt::Debug;
