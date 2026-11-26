@@ -7,7 +7,7 @@ document's scope.
 
 ## Authoritative completion
 
-The first improvement below is implemented. The architecture review that follows records the baseline that motivated it.
+The architecture review below records the baseline that motivated the first two improvements, which are now implemented.
 The runner now drains terminal output while monitoring every stage's Tokio join handle. Success requires all stages to
 return successfully. A stage error or panic records the stage's position and name, aborts remaining stages, and waits for
 their tasks to exit. Cancellation reported by a task has its own status. Output written before a failure is retained.
@@ -16,10 +16,36 @@ their tasks to exit. Cancellation reported by a task has its own status. Output 
 statistics snapshot. The results actor acknowledges storage before the caller is notified on the normal path.
 `Work` dropped before publication reports cancellation directly to its waiter.
 `submit_job_and_wait` still returns statistics on success and reports failed or cancelled outcomes as errors.
-Pipeline channels use unbounded Tokio MPSC so idle stages can yield and be cancelled. Queue limits, scheduler dispatch
-policy, and engine-wide shutdown coordination remain future improvements.
 
 [Runner](../src/actors/runner.rs), [Outcome types](../src/job.rs), [Results](../src/actors/results.rs)
+
+## Backpressure and blocking work
+
+Pipeline edges use bounded Tokio MPSC channels. A full edge suspends the sending stage or source adapter until its
+receiver makes room. Each stage inherits its input channel's capacity when it creates the next channel. Senhive
+requests an AMQP prefetch of one delivery per feed to limit buffering ahead of the pipeline.
+
+Set these optional values at the top level of `engine.hcl`. The example shows the defaults.
+
+```hcl
+pipeline_queue_capacity = 16
+read_max_bytes          = 67108864
+```
+
+`pipeline_queue_capacity` limits queued messages per edge. The default is a starting point. Use representative
+message sizes and sink throughput when tuning it. A stage can also hold an in-flight message. Network fetchers can
+materialize a full source response, so the queue capacity does not establish a job-wide byte limit.
+
+A `Read` stage sends one UTF-8 payload to preserve the file boundaries expected by consumers such as `Save`.
+`read_max_bytes` sets the maximum input size for HCL jobs. An oversized file fails the stage before it emits a
+payload. Programmatically built stages use the same default and can override it with `Read::max_bytes`.
+
+`Tee` awaits file writes and flushes before forwarding. Parquet output, batch conversion, ASD token file access,
+and sink console writes use Tokio's blocking executor. A blocking operation already in progress can finish after
+its stage is cancelled. Scheduler dispatch policy and engine-wide shutdown coordination remain future improvements.
+
+[Engine configuration](../src/lib.rs), [Stage wrapper](../../macros/src/lib.rs), [Read](../src/producer/read.rs),
+[Tee](../src/middle/tee.rs), [Save](../src/consumer/save.rs), [Senhive feed](../src/sources/access/senhive/feed.rs)
 
 ## Architecture and startup
 
