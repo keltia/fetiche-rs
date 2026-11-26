@@ -24,9 +24,16 @@ pub trait Runnable: Debug {
     fn run(&mut self, out: Receiver<String>) -> (Receiver<String>, JoinHandle<Result<()>>);
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 struct Counter {
+    tag: usize,
     cnt: usize,
+}
+
+impl Counter {
+    fn tag(&self) -> usize {
+        self.tag
+    }
 }
 
 impl Runnable for Counter {
@@ -34,12 +41,14 @@ impl Runnable for Counter {
         let (tx1, rx1) = channel::<String>();
 
         let cnt = self.cnt.clone();
+        let tag = self.tag();
         let h = thread::spawn(move || {
             eprintln!("counter");
             for data in rx {
                 // send our data
+                println!("data: {}", data);
                 for i in cnt..(cnt + 3) {
-                    let data = format!("->{},", i);
+                    let data = format!("t{} ->{},", tag, i);
                     if tx1.send(data).is_err() {
                         eprintln!("err");
                         break;
@@ -131,11 +140,11 @@ fn main() -> Result<()> {
 
     let mut stdout = io::stdout();
 
-    let t1 = Counter { cnt: 1 };
+    let t1 = Counter { tag: 1, cnt: 1 };
     let t2 = Msg {
         msg: "bnar".to_string(),
     };
-    let t3 = Counter { cnt: 42 };
+    let t3 = Counter { tag: 3, cnt: 42 };
 
     let mut j = Job::new("test");
 
@@ -148,7 +157,7 @@ fn main() -> Result<()> {
     let _ = stdout.flush()?;
 
     info!("sleep");
-    sleep(Duration::from_secs(20));
+    sleep(Duration::from_secs(5));
 
     let _ = fs::remove_file(&pid);
 
