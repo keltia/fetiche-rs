@@ -150,15 +150,15 @@ impl DBVars {
 ///
 /// # Arguments
 ///
-/// * `$q` - A string literal containing the SQL query template with placeholders
-///   (e.g., `{planedb}`, `{dronedb}`, `{workdb}`, `{tag}`)
+/// * `$q` - A string literal, `String`, or `&str` expression containing the SQL query
+///   template with placeholders (e.g., `{planedb}`, `{dronedb}`, `{workdb}`, `{tag}`).
+///   The macro borrows the template, so an owned `String` can be reused.
 /// * `$val` - An expression that evaluates to a `DBVars` instance containing the
 ///   database configuration values to substitute into the template
 ///
 /// # Returns
 ///
-/// Returns a `Result<String, eyre::Error>` containing the rendered query on success,
-/// or an error if template rendering fails.
+/// Evaluates to the rendered `String` on success and propagates errors to the caller.
 ///
 /// # Errors
 ///
@@ -214,8 +214,8 @@ impl DBVars {
 ///
 #[macro_export]
 macro_rules! make_query {
-    ($q:literal, $val:expr) => {
-        $crate::load_query($q, &$val)?
+    ($q:expr, $val:expr $(,)?) => {
+        $crate::load_query(&($q), &$val)?
     };
 }
 
@@ -333,6 +333,40 @@ mod tests {
             result.unwrap(),
             "SELECT * FROM planes_prod.flights WHERE id > 100"
         );
+    }
+
+    #[test]
+    fn test_make_query_with_string_expressions() -> Result<()> {
+        let dbvars = DBVars {
+            planedb: "planes_prod".into(),
+            ..Default::default()
+        };
+        let template = String::from("SELECT * FROM {planedb}.flights");
+        let expected = "SELECT * FROM planes_prod.flights";
+
+        assert_eq!(make_query!(template, dbvars), expected);
+        let borrowed = template.as_str();
+        assert_eq!(make_query!(borrowed, dbvars), expected);
+        assert_eq!(make_query!(template.clone(), dbvars,), expected);
+        Ok(())
+    }
+
+    #[test]
+    fn test_make_query_evaluates_template_once() -> Result<()> {
+        let dbvars = DBVars::default();
+        let mut evaluations = 0;
+
+        let query = make_query!(
+            {
+                evaluations += 1;
+                String::from("SELECT 1")
+            },
+            dbvars
+        );
+
+        assert_eq!(query, "SELECT 1");
+        assert_eq!(evaluations, 1);
+        Ok(())
     }
 
     #[test]
