@@ -65,7 +65,7 @@ pub use producer::*;
 pub use sources::*;
 pub use storage::*;
 pub use task::*;
-pub use tokens::TokenStorage;
+pub use actors::{TokenMsg, TokenStorage};
 pub use workspace::*;
 
 use crate::actors::*;
@@ -90,7 +90,6 @@ mod storage;
 mod subr;
 mod task;
 pub mod token;
-mod tokens;
 mod workspace;
 
 /// Engine signature
