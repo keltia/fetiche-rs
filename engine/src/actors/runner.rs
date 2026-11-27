@@ -5,9 +5,11 @@ use ractor::{ActorProcessingErr, ActorRef, RpcReplyPort, call, cast};
 use tokio::sync::watch;
 use tracing::{debug, info, trace};
 
-use crate::actors::{ResultsMsg, StatsMsg, TokenMsg};
+use crate::actors::{ResultsMsg, StatsMsg};
 use crate::pipeline::run_pipeline;
 use crate::{JobOutcome, JobStatus, Stats, Work};
+#[cfg(feature = "asd")]
+use crate::{Producer, TokenMsg};
 
 /// Messages that can be handled by the Runner actor.
 ///
@@ -38,6 +40,7 @@ pub struct RunnerArgs {
     pub queue_capacity: usize,
     pub cancel: watch::Receiver<bool>,
     /// Engine token actor used by fetch stages.
+    #[cfg(feature = "asd")]
     pub tokens: Option<ActorRef<TokenMsg>>,
     /// Reference to the Result actor
     pub results: ActorRef<ResultsMsg>,
@@ -49,6 +52,7 @@ pub struct RunnerArgs {
 pub struct RunnerState {
     queue_capacity: usize,
     cancel: watch::Receiver<bool>,
+    #[cfg(feature = "asd")]
     tokens: Option<ActorRef<TokenMsg>>,
     /// Reference to the Result actor
     pub results: ActorRef<ResultsMsg>,
@@ -75,6 +79,7 @@ impl Worker for RunnerActor {
         let state = RunnerState {
             queue_capacity: startup_context.queue_capacity,
             cancel: startup_context.cancel,
+            #[cfg(feature = "asd")]
             tokens: startup_context.tokens,
             results: startup_context.results.clone(),
             stats: startup_context.stats.clone(),
@@ -116,13 +121,12 @@ impl Worker for RunnerActor {
 
                 match cast!(stat, StatsMsg::New(job_tag.clone())) {
                     Ok(_) => {
-                        outcome.status = run_pipeline(
-                            job,
-                            state.queue_capacity,
-                            state.cancel.clone(),
-                            state.tokens.clone(),
-                        )
-                        .await;
+                        #[cfg(feature = "asd")]
+                        if let Producer::Fetch(fetch) = &mut job.producer {
+                            fetch.tokens = state.tokens.clone();
+                        }
+                        outcome.status =
+                            run_pipeline(job, state.queue_capacity, state.cancel.clone()).await;
                         match call!(stat, |port| StatsMsg::Get(job_tag.clone(), port)) {
                             Ok(snapshot) => outcome.stats = snapshot,
                             Err(err) if outcome.status == JobStatus::Succeeded => {
@@ -162,6 +166,7 @@ pub struct RunnerBuilder {
     pub queue_capacity: usize,
     pub cancel: watch::Receiver<bool>,
     /// Engine token actor used by fetch stages.
+    #[cfg(feature = "asd")]
     pub tokens: Option<ActorRef<TokenMsg>>,
     /// Reference to the Results actor
     pub results: ActorRef<ResultsMsg>,
@@ -178,6 +183,7 @@ impl WorkerBuilder<RunnerActor, RunnerArgs> for RunnerBuilder {
             RunnerArgs {
                 queue_capacity: self.queue_capacity,
                 cancel: self.cancel.clone(),
+                #[cfg(feature = "asd")]
                 tokens: self.tokens.clone(),
                 results: self.results.clone(),
                 stats: self.stat.clone(),
@@ -215,6 +221,7 @@ mod tests {
             .worker_builder(Box::new(RunnerBuilder {
                 queue_capacity: 1,
                 cancel: tokio::sync::watch::channel(false).1,
+                #[cfg(feature = "asd")]
                 tokens: None,
                 results: results.clone(),
                 stat: stats.clone(),

@@ -164,8 +164,9 @@ server, and anonymous or omitted authentication selects the local Cube. [Source 
    this submission path serializes dispatch through the scheduler's mailbox. A long job can delay subsequent ticks and
    other scheduler messages, including control
    requests. [Scheduler](../src/actors/scheduler.rs), [Factory setup](../src/engine/startup.rs)
-4. **Wire and start.** The runner delegates execution to the pipeline. The pipeline flattens the producer, middle
-   stages, and consumer into an ordered `Task` list. It
+4. **Wire and start.** The runner attaches engine dependencies, including the token actor for ASD fetches, and
+   delegates execution to the pipeline. The pipeline flattens the producer, middle stages, and consumer into an
+   ordered `Task` list. It
    creates the first channel, then folds over the list, passing each stage's output receiver to the next stage's
    `Runnable::run`. Once the chain is wired, the pipeline sends `"start"` and drops the input sender. The producer's
    `execute` uses that message as a trigger and obtains its payload from the configured

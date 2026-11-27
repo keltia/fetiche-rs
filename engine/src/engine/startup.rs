@@ -233,6 +233,7 @@ impl Engine {
             let runner_builder = RunnerBuilder {
                 queue_capacity,
                 cancel: resources.cancellation(),
+                #[cfg(feature = "asd")]
                 tokens: Some(tokens.clone()),
                 results: results.clone(),
                 stat: stat.clone(),

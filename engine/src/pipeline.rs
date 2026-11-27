@@ -1,12 +1,11 @@
 //! Stage wiring, execution, and supervision for a single job.
 
 use futures::stream::{FuturesUnordered, StreamExt};
-use ractor::ActorRef;
 use tokio::sync::mpsc::{Receiver, channel};
 use tokio::sync::watch;
 use tokio::task::{AbortHandle, JoinHandle};
 
-use crate::{Consumer, Job as EngineJob, JobStatus, Middle, Producer, Runnable, Task, TokenMsg};
+use crate::{Consumer, Job, JobStatus, Middle, Producer, Runnable, Task};
 
 /// Records a failure with the stage label used in the job outcome.
 fn stage_failure(stage: String, error: String) -> JobStatus {
@@ -16,7 +15,7 @@ fn stage_failure(stage: String, error: String) -> JobStatus {
     }
 }
 
-/// Validates, wires, and starts the producer, middle stages, and consumer.
+/// Validates, wires, and starts the stages of a job prepared by the caller.
 ///
 /// The pipeline sends a single trigger to the producer, drains and discards terminal
 /// messages, and waits for every stage. An invalid stage fails before any tasks
@@ -26,22 +25,14 @@ fn stage_failure(stage: String, error: String) -> JobStatus {
 ///
 /// Each channel has `queue_capacity` message slots. The caller must supply a
 /// capacity accepted by Tokio MPSC.
-/// Engine workers pass their token actor to ASD fetch stages.
 pub(crate) async fn run_pipeline(
-    mut job: EngineJob,
+    job: Job,
     queue_capacity: usize,
     cancel: watch::Receiver<bool>,
-    tokens: Option<ActorRef<TokenMsg>>,
 ) -> JobStatus {
     if *cancel.borrow() {
         return JobStatus::Cancelled { stage: None };
     }
-    #[cfg(feature = "asd")]
-    if let Producer::Fetch(fetch) = &mut job.producer {
-        fetch.tokens = tokens;
-    }
-    #[cfg(not(feature = "asd"))]
-    let _ = (&mut job, tokens);
     let mut stages = Vec::with_capacity(job.middle.len() + 2);
     let mut add_stage = |name: String, task, invalid| {
         stages.push((format!("{} ({name})", stages.len() + 1), task, invalid));
@@ -158,6 +149,37 @@ mod tests {
     use std::time::Duration;
     use tokio::time::timeout;
 
+    /// Reports the invalid middle stage before the producer can execute.
+    #[tokio::test]
+    async fn invalid_middle_stage_is_reported_before_execution() {
+        let mut job = Job::builder()
+            .id(1)
+            .producer(Producer::Read(Read::new("uninitialized")))
+            .consumer(Consumer::Stdout(Stdout::new()))
+            .build();
+        job.add(Middle::Invalid);
+
+        let status = run_pipeline(job, 1, watch::channel(false).1).await;
+        assert_eq!(
+            status,
+            JobStatus::Failed {
+                stage: Some("2 (Invalid)".into()),
+                error: "invalid stage".into(),
+            }
+        );
+    }
+
+    /// A cancellation already requested at entry takes precedence over stage validation.
+    #[tokio::test]
+    async fn pending_cancellation_skips_pipeline_validation() {
+        let job = Job::builder().id(1).build();
+        let (_cancel, signal) = watch::channel(true);
+        assert_eq!(
+            run_pipeline(job, 1, signal).await,
+            JobStatus::Cancelled { stage: None }
+        );
+    }
+
     /// Checks that a capacity-one edge stalls its sending stage and preserves message order.
     #[tokio::test]
     async fn stage_waits_for_capacity_and_preserves_order() {
@@ -187,7 +209,7 @@ mod tests {
     async fn successful_pipeline_waits_for_its_side_effects() {
         let directory = tempfile::tempdir().unwrap();
         let copy = directory.path().join("copy.txt");
-        let mut job = EngineJob::builder()
+        let mut job = Job::builder()
             .id(1)
             .producer(Producer::Dummy(Dummy::new()))
             .consumer(Consumer::Stdout(Stdout::new()))
@@ -197,7 +219,7 @@ mod tests {
         assert_eq!(
             timeout(
                 Duration::from_secs(5),
-                run_pipeline(job, 1, watch::channel(false).1, None)
+                run_pipeline(job, 1, watch::channel(false).1)
             )
             .await
             .unwrap(),
@@ -209,7 +231,7 @@ mod tests {
     /// Checks that a producer error identifies its position and stage type.
     #[tokio::test]
     async fn stage_execute_error_is_reported_with_its_name() {
-        let job = EngineJob::builder()
+        let job = Job::builder()
             .id(1)
             .producer(Producer::Read(Read::new("uninitialized")))
             .consumer(Consumer::Stdout(Stdout::new()))
@@ -217,7 +239,7 @@ mod tests {
 
         let status = timeout(
             Duration::from_secs(5),
-            run_pipeline(job, 1, watch::channel(false).1, None),
+            run_pipeline(job, 1, watch::channel(false).1),
         )
         .await
         .unwrap();
