@@ -131,33 +131,15 @@ impl Engine {
         Ok(job)
     }
 
-    /// Submits a new job to be executed by parsing the job string, setting it to Ready state,
-    /// and queuing it for execution.
+    /// Queues a ready job and returns a receiver for its terminal outcome.
     ///
-    /// # Parameters
-    ///
-    /// - `job_str`: A string slice containing the job description to be parsed into a `Job`.
-    ///
-    /// # Returns
-    ///
-    /// - Returns `Ok(usize)` containing the ID of the newly created and queued job.
-    /// - Returns `Err` if job creation, parsing, queueing or state sync fails.
+    /// Use [`Engine::parse_job`] to construct a job from HCL. This call
+    /// waits for queue admission. Await [`WaitGroup::rx`] for the job result.
     ///
     /// # Errors
     ///
-    /// This method returns an error if:
-    /// - Job string parsing fails
-    /// - Job queueing fails
-    /// - State synchronization fails
-    ///
-    /// # Notes
-    ///
-    /// The method performs the following steps:
-    /// 1. Parses the job string into a Job struct
-    /// 2. Sets the job state to Ready
-    /// 3. Queues the job for execution
-    /// 4. Synchronizes the engine state
-    ///
+    /// Returns an error if the job is unready, its ID is already outstanding,
+    /// or the scheduler cannot be reached.
     #[tracing::instrument(skip(self, job), fields(job_id = job.id))]
     pub async fn submit_job(&mut self, job: Job) -> Result<WaitGroup> {
         if job.state() != JobState::Ready {

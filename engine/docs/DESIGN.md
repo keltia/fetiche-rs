@@ -7,7 +7,7 @@ document's scope.
 
 ## Authoritative completion
 
-The architecture review below records the baseline that motivated the first two improvements, which are now implemented.
+The architecture review below records the baseline that motivated the pipeline and scheduler changes described here.
 The runner now drains terminal output while monitoring every stage's Tokio join handle. Success requires all stages to
 return successfully. A stage error or panic records the stage's position and name, aborts remaining stages, and waits for
 their tasks to exit. Cancellation reported by a task has its own status. Output written before a failure is retained.
@@ -42,12 +42,29 @@ payload. Programmatically built stages use the same default and can override it 
 
 `Tee` awaits file writes and flushes before forwarding. Parquet output, batch conversion, ASD token file access,
 and sink console writes use Tokio's blocking executor. A blocking operation already in progress can finish after
-its stage is cancelled. Scheduler dispatch policy and engine-wide shutdown coordination remain future improvements.
+its stage is cancelled.
 
 [Engine configuration](../src/lib.rs), [Stage wrapper](../../macros/src/lib.rs), [Read](../src/producer/read.rs),
 [Tee](../src/middle/tee.rs), [Save](../src/consumer/save.rs), [Senhive feed](../src/sources/access/senhive/feed.rs)
 
-## Architecture and startup
+## Scheduler dispatch
+
+The scheduler dispatches waiting jobs in FIFO order up to the configured runner count. A tick or resume can fill
+available slots. The scheduler sends factory messages without waiting for execution in its mailbox, so status,
+submission, and suspension commands remain available while a stream runs. Suspension pauses new dispatches and
+allows active jobs to finish.
+
+A watcher outside the mailbox turns the runner's reply or a dropped reply port into a completion message keyed
+by job ID. The scheduler releases that slot and refills it if dispatch is active. The job waiter still receives its
+typed outcome from the runner or the dropped work. Results remain in the results actor. The scheduler reports
+whether waiting and dispatched work are empty independently of retained results.
+
+Queued jobs can be removed by ID and receive a cancellation outcome. Removal of dispatched jobs returns an
+error. Duplicate IDs are rejected while a job is outstanding. The state snapshot and engine-wide shutdown still
+have their existing lifecycle. [Scheduler](../src/actors/scheduler.rs), [Runner](../src/actors/runner.rs),
+[Engine commands](../src/cmds.rs)
+
+## Baseline architecture and startup
 
 The engine uses Ractor actors on Tokio to configure, schedule, and observe jobs. Each job is an ordered chain with one
 producer, zero or more middle stages, and one consumer. Stages execute concurrently, while each individual stage

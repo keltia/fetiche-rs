@@ -292,7 +292,14 @@ impl Actor for SchedulerActor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::actors::{
+        ResultsActor, ResultsMsg, RunnerActor, RunnerArgs, RunnerBuilder, StatsActor,
+    };
+    use crate::{Consumer, Producer, Read, Save};
     use crate::{JobOutcome, JobStatus, Stats};
+    use fetiche_common::Container;
+    use fetiche_formats::Format;
+    use ractor::factory::{Factory, FactoryArguments, queues, routing};
     use ractor::{Message, call};
     use tokio::sync::mpsc;
     use tokio::time::timeout;
@@ -335,31 +342,40 @@ mod tests {
         dispatched: mpsc::UnboundedReceiver<FactoryMessage<usize, RunnerMsg>>,
     }
 
+    /// Starts a scheduler with a test state actor and timers long enough for manual ticks.
+    async fn spawn_scheduler(
+        factory: ActorRef<FactoryMessage<usize, RunnerMsg>>,
+        workers: usize,
+    ) -> (ActorRef<SchedulerMsg>, ActorRef<StateMsg>) {
+        let (state_tx, _state_rx) = mpsc::unbounded_channel();
+        let (state, _) = Actor::spawn(None, Forward(std::marker::PhantomData), state_tx)
+            .await
+            .unwrap();
+        let (scheduler, _) = Actor::spawn(
+            None,
+            SchedulerActor,
+            SchedulerArguments {
+                sync: Duration::from_secs(3600),
+                tick: Duration::from_secs(3600),
+                last: 1,
+                workers,
+                state: state.clone(),
+                factory,
+            },
+        )
+        .await
+        .unwrap();
+        (scheduler, state)
+    }
+
     impl Fixture {
         /// Starts a scheduler with manual ticks and a controllable factory.
         async fn new(workers: usize) -> Self {
-            let (state_tx, _state_rx) = mpsc::unbounded_channel();
-            let (state, _) = Actor::spawn(None, Forward(std::marker::PhantomData), state_tx)
-                .await
-                .unwrap();
             let (factory_tx, dispatched) = mpsc::unbounded_channel();
             let (factory, _) = Actor::spawn(None, Forward(std::marker::PhantomData), factory_tx)
                 .await
                 .unwrap();
-            let (scheduler, _) = Actor::spawn(
-                None,
-                SchedulerActor,
-                SchedulerArguments {
-                    sync: Duration::from_secs(3600),
-                    tick: Duration::from_secs(3600),
-                    last: 1,
-                    workers,
-                    state: state.clone(),
-                    factory: factory.clone(),
-                },
-            )
-            .await
-            .unwrap();
+            let (scheduler, state) = spawn_scheduler(factory.clone(), workers).await;
             Self {
                 scheduler,
                 state,
@@ -535,5 +551,81 @@ mod tests {
             assert_eq!(outcome.status, JobStatus::Cancelled { stage: None });
         }
         assert!(call!(fixture.scheduler, SchedulerMsg::Empty).unwrap());
+    }
+
+    /// Runs a local file job through actual runners and verifies its published outcome.
+    #[tokio::test]
+    async fn scheduler_runs_and_retires_a_local_file_job() {
+        let (stats, _) = Actor::spawn(
+            Some("scheduler-test-stats".into()),
+            StatsActor,
+            "test".into(),
+        )
+        .await
+        .unwrap();
+        let (results, _) = Actor::spawn(None, ResultsActor, ()).await.unwrap();
+        let factory = Factory::<
+            usize,
+            RunnerMsg,
+            RunnerArgs,
+            RunnerActor,
+            routing::QueuerRouting<usize, RunnerMsg>,
+            queues::DefaultQueue<usize, RunnerMsg>,
+        >::default();
+        let args = FactoryArguments::builder()
+            .worker_builder(Box::new(RunnerBuilder {
+                queue_capacity: 1,
+                results: results.clone(),
+                stat: stats.clone(),
+            }))
+            .queue(Default::default())
+            .router(Default::default())
+            .num_initial_workers(1)
+            .build();
+        let (factory, _) = Actor::spawn(None, factory, args).await.unwrap();
+        let (scheduler, state) = spawn_scheduler(factory.clone(), 1).await;
+
+        let dir = tempfile::tempdir().unwrap();
+        let input = dir.path().join("input.txt");
+        let output = dir.path().join("output.txt");
+        tokio::fs::write(&input, "scheduled data").await.unwrap();
+        let mut read = Read::new("local input");
+        read.path(input.to_str().unwrap());
+        let mut save = Save::new("local output", Format::None, Container::Raw);
+        save.path(output.to_str().unwrap());
+        let job = Job::builder()
+            .id(17)
+            .state(JobState::Ready)
+            .producer(Producer::Read(read))
+            .consumer(Consumer::Save(save))
+            .build();
+        let waiter = call!(scheduler, |port| SchedulerMsg::Add(job, port))
+            .unwrap()
+            .unwrap();
+        scheduler.cast(SchedulerMsg::Start).unwrap();
+
+        let outcome = timeout(TEST_TIMEOUT, waiter.rx).await.unwrap().unwrap();
+        assert_eq!(outcome.status, JobStatus::Succeeded);
+        assert_eq!(
+            tokio::fs::read_to_string(output).await.unwrap(),
+            "scheduled data"
+        );
+        assert_eq!(
+            call!(results, |port| ResultsMsg::Fetch(17, port)).unwrap(),
+            Some(outcome)
+        );
+        timeout(TEST_TIMEOUT, async {
+            while !call!(scheduler, SchedulerMsg::Empty).unwrap() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("completed job did not leave the running queue");
+
+        scheduler.kill();
+        factory.stop(None);
+        state.stop(None);
+        stats.stop(None);
+        results.stop(None);
     }
 }
