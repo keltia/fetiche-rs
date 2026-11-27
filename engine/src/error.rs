@@ -12,6 +12,12 @@ pub enum TokenStatus {
 
 #[derive(Debug, Error)]
 pub enum EngineStatus {
+    /// The daemon worker pool must contain at least one runner.
+    #[error("workers must be greater than zero")]
+    ZeroWorkers,
+    /// Scheduler timers require a positive interval.
+    #[error("{0} must be greater than zero")]
+    ZeroInterval(&'static str),
     #[error("Bad config file version v{0}, need {1}")]
     BadConfigVersion(usize, usize),
     #[error("Can not create directory {0}")]

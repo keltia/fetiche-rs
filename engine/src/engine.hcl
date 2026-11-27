@@ -1,15 +1,25 @@
-version = 2
+version = 3
 
 basedir = "/var/db/acute"
 
-// Describe a local directory tree used to store files
-//
-storage "hourly" {
-  path     = ":basedir/hourly"
-  rotation = "1h"
-}
+# Optional daemon controls. If omitted, workers follows available parallelism.
+workers = 2
+tick    = { secs = 2, nanos = 0 }
+sync    = { secs = 30, nanos = 0 }
 
-storage "daily" {
-  path     = ":basedir/data"
-  rotation = "1d"
+pipeline_queue_capacity = 16
+read_max_bytes          = 67108864
+
+# Use absolute paths for local storage.
+storage = {
+  hourly = {
+    path     = "/var/db/acute/hourly"
+    rotation = "1h"
+  }
+  hive = {
+    path = "/var/db/acute/hive"
+  }
+  cache = {
+    url = "redis://127.0.0.1:6379"
+  }
 }

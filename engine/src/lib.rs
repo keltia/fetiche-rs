@@ -53,7 +53,7 @@ use ractor::{Actor, ActorRef, call, cast};
 use serde::Deserialize;
 use strum::EnumString;
 use tokio::fs;
-use tracing::{debug, error, info, trace};
+use tracing::{error, info, trace};
 
 pub use auth::*;
 pub use consumer::*;
@@ -157,6 +157,33 @@ pub struct EngineConfig {
     pub tick: Option<Duration>,
     /// List of storage types
     pub storage: BTreeMap<String, StorageConfig>,
+}
+
+impl EngineConfig {
+    /// Validates explicitly configured worker and timer settings, then resolves
+    /// the effective settings for the selected mode.
+    fn runtime_settings(&self, mode: EngineMode) -> Result<(usize, Duration, Duration)> {
+        if self.workers == Some(0) {
+            return Err(EngineStatus::ZeroWorkers.into());
+        }
+        for (name, interval) in [("tick", self.tick), ("sync", self.sync)] {
+            if interval == Some(Duration::ZERO) {
+                return Err(EngineStatus::ZeroInterval(name).into());
+            }
+        }
+        if mode == EngineMode::Single {
+            return Ok((1, SYNC, Duration::from_secs(1)));
+        }
+
+        let workers = self.workers.unwrap_or_else(|| {
+            std::thread::available_parallelism().map_or(1, |workers| workers.get())
+        });
+        Ok((
+            workers,
+            self.sync.unwrap_or(SYNC),
+            self.tick.unwrap_or(TICK),
+        ))
+    }
 }
 
 /// The Engine struct serves as the core runtime component responsible for managing and coordinating
@@ -289,6 +316,7 @@ impl Engine {
     /// Will return an error if:
     /// - The configuration file cannot be loaded or parsed
     /// - The configuration version doesn't match the expected version
+    /// - The configured worker count or a scheduler interval is zero
     /// - Any of the engine components (actors, storage, etc.) fail to initialize
     /// - Required directories cannot be created or accessed
     ///
@@ -328,25 +356,15 @@ impl Engine {
             ));
         }
 
-        // Ensure we have sensible defaults.
-        //
-        let (workers, sync, tick) = if mode == EngineMode::Daemon {
-            let workers =
-                cfg.workers
-                    .unwrap_or_else(|| match std::thread::available_parallelism() {
-                        Ok(n) => n.get(),
-                        Err(_) => 1,
-                    });
-            let sync = cfg.sync.unwrap_or(SYNC);
-            let tick = cfg.tick.unwrap_or(TICK);
-            (workers, sync, tick)
-        } else {
-            // When running as a single instance, we have no need for multiple workers or a 2s tick
-            //
-            (1, SYNC, Duration::from_secs(1))
-        };
-
-        debug!(mode = %mode, "Engine configuration loaded");
+        let (workers, sync, tick) = cfg.runtime_settings(mode)?;
+        let read_max_bytes = cfg
+            .read_max_bytes
+            .unwrap_or(producer::DEFAULT_READ_MAX_BYTES);
+        info!(
+            mode = %mode, workers, sync = ?sync, tick = ?tick, queue_capacity,
+            read_max_bytes = read_max_bytes.get(),
+            "Resolved engine runtime settings"
+        );
 
         let pid = std::process::id();
         info!("Engine PID={}", pid);
@@ -523,9 +541,7 @@ impl Engine {
 
         Ok(Self {
             mode,
-            read_max_bytes: cfg
-                .read_max_bytes
-                .unwrap_or(producer::DEFAULT_READ_MAX_BYTES),
+            read_max_bytes,
             lifecycle: Arc::new(Lifecycle::new(resources, workdir.clone())),
             pid,
             home: base,
@@ -541,5 +557,61 @@ impl Engine {
             state,
             stats: stat,
         })
+    }
+}
+
+#[cfg(test)]
+mod config_tests {
+    use super::*;
+
+    /// The checked-in HCL deserializes with the current version and settings.
+    #[test]
+    fn checked_in_hcl_matches_engine_schema() -> Result<()> {
+        let config: EngineConfig = hcl::from_str(include_str!("engine.hcl"))?;
+        assert_eq!(config.version(), ENGINE_VERSION);
+        assert_eq!(
+            config.runtime_settings(EngineMode::Daemon)?,
+            (2, SYNC, TICK)
+        );
+        assert_eq!(
+            config.runtime_settings(EngineMode::Single)?,
+            (1, SYNC, Duration::from_secs(1))
+        );
+        assert_eq!(
+            config.pipeline_queue_capacity,
+            Some(DEFAULT_PIPELINE_QUEUE_CAPACITY)
+        );
+        assert_eq!(
+            config.read_max_bytes,
+            Some(producer::DEFAULT_READ_MAX_BYTES)
+        );
+        assert!(matches!(
+            config.storage["hourly"],
+            StorageConfig::Directory { .. }
+        ));
+        assert!(matches!(config.storage["hive"], StorageConfig::Hive { .. }));
+        assert!(matches!(
+            config.storage["cache"],
+            StorageConfig::Cache { .. }
+        ));
+        Ok(())
+    }
+
+    /// Zero worker counts and timer intervals fail before the scheduler starts.
+    #[rstest::rstest]
+    #[case("workers = 0", "workers")]
+    #[case("tick = { secs = 0, nanos = 0 }", "tick")]
+    #[case("sync = { secs = 0, nanos = 0 }", "sync")]
+    fn rejects_zero_runtime_settings(#[case] field: &str, #[case] name: &str) -> Result<()> {
+        let input = format!("version = 3\nbasedir = \".\"\nstorage = {{}}\n{field}");
+        let config: EngineConfig = hcl::from_str(&input)?;
+        let error = config.runtime_settings(EngineMode::Daemon).unwrap_err();
+        let field = match error.downcast_ref::<EngineStatus>() {
+            Some(EngineStatus::ZeroWorkers) => "workers",
+            Some(EngineStatus::ZeroInterval(field)) => field,
+            _ => panic!("unexpected error: {error:?}"),
+        };
+        assert_eq!(field, name);
+        Ok(())
     }
 }
