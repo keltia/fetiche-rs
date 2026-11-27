@@ -44,7 +44,7 @@ payload. Programmatically built stages use the same default and can override it 
 and sink console writes use Tokio's blocking executor. A blocking operation already in progress can finish after
 its stage is cancelled.
 
-[Engine configuration](../src/lib.rs), [Stage wrapper](../../macros/src/lib.rs), [Read](../src/producer/read.rs),
+[Engine configuration](../src/config.rs), [Stage wrapper](../../macros/src/lib.rs), [Read](../src/producer/read.rs),
 [Tee](../src/middle/tee.rs), [Save](../src/consumer/save.rs), [Senhive feed](../src/sources/access/senhive/feed.rs)
 
 ## Scheduler dispatch

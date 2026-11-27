@@ -34,14 +34,11 @@
 //! member function for the main task.  It takes the previous stage output as a string and should
 //! return a string with the transformed output that will be sent to the next stage.
 //!
-use std::collections::BTreeMap;
 use std::env;
-use std::fmt::Debug;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
 
 use eyre::Result;
 use futures_util::StreamExt;
@@ -50,13 +47,13 @@ use object_store::{ObjectStore, ObjectStoreExt};
 use ractor::factory::{Factory, FactoryArguments, FactoryMessage, queues, routing};
 use ractor::registry::registered;
 use ractor::{Actor, ActorRef, call, cast};
-use serde::Deserialize;
 use strum::EnumString;
 use tokio::fs;
 use tracing::{error, info, trace};
 
 pub use actors::{TokenMsg, TokenStorage};
 pub use auth::*;
+pub use config::EngineConfig;
 pub use consumer::*;
 pub use error::*;
 pub use job::*;
@@ -71,12 +68,13 @@ pub use workspace::*;
 use crate::actors::*;
 use crate::lifecycle::{Lifecycle, Resources};
 
-use fetiche_common::{ConfigFile, Filter, IntoConfig, Versioned, time};
-use fetiche_macros::into_configfile;
+use crate::config::{DEFAULT_PIPELINE_QUEUE_CAPACITY, ENGINE_CONFIG, ENGINE_VERSION};
+use fetiche_common::{ConfigFile, Filter, Versioned, time};
 
 mod actors;
 mod auth;
 mod cmds;
+mod config;
 mod consumer;
 mod error;
 mod job;
@@ -98,14 +96,8 @@ pub fn version() -> String {
     format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }
 
-/// Configuration filename
-const ENGINE_CONFIG: &str = "engine.hcl";
-
 /// Current running process ID — We have a separate forked engine
 const ENGINE_PID: &str = "acutectl.pid";
-
-/// Configuration file version
-const ENGINE_VERSION: usize = 3;
 
 /// Engine process group for the actors
 const ENGINE_PG: &str = "engine.pg";
@@ -113,78 +105,7 @@ const ENGINE_PG: &str = "engine.pg";
 /// File created into our workdir to indicate something is running.
 const CANARY_FILE: &str = "running";
 
-/// Clock tick
-const TICK: Duration = Duration::from_secs(2);
-
-/// Sync state every 30s by default.
-const SYNC: Duration = Duration::from_secs(30);
-
-const DEFAULT_PIPELINE_QUEUE_CAPACITY: usize = 16;
 static NEXT_ENGINE_INSTANCE: AtomicUsize = AtomicUsize::new(0);
-
-/// The `EngineConfig` struct provides the configuration options used to initialize
-/// and manage the `Engine`. It is loaded from the `engine.hcl` file or other sources
-/// and defines the base runtime parameters for the engine.
-///
-/// # Fields
-///
-/// - `basedir`
-///     The base directory where engine-related files, such as state, jobs, and tasks,
-///     are stored. This path acts as the root directory for engine operations.
-///
-/// - `workers`
-///     Initial number of runner spawned by the factory.
-///
-/// - `storage`
-///     A `BTreeMap` defining various storage configurations. This can include
-///     settings for in-memory caching, directory-based storage, or Hive-based
-///     sharding. Each storage configuration must conform to the `StorageConfig` enum.
-///
-#[into_configfile(version = 3, filename = "engine.hcl")]
-#[derive(Clone, Debug, Default, Deserialize)]
-pub struct EngineConfig {
-    /// Base directory
-    pub basedir: PathBuf,
-    /// Number of workers for the runner factory.
-    pub workers: Option<usize>,
-    /// Number of queued messages per pipeline edge.
-    pub pipeline_queue_capacity: Option<usize>,
-    /// Maximum file size in bytes for a configured Read stage.
-    pub read_max_bytes: Option<NonZeroU32>,
-    /// Sync the engine state every 30 seconds by default
-    pub sync: Option<Duration>,
-    /// This is our clock: we get a message every 2 seconds by default
-    pub tick: Option<Duration>,
-    /// List of storage types
-    pub storage: BTreeMap<String, StorageConfig>,
-}
-
-impl EngineConfig {
-    /// Validates explicitly configured worker and timer settings, then resolves
-    /// the effective settings for the selected mode.
-    fn runtime_settings(&self, mode: EngineMode) -> Result<(usize, Duration, Duration)> {
-        if self.workers == Some(0) {
-            return Err(EngineStatus::ZeroWorkers.into());
-        }
-        for (name, interval) in [("tick", self.tick), ("sync", self.sync)] {
-            if interval == Some(Duration::ZERO) {
-                return Err(EngineStatus::ZeroInterval(name).into());
-            }
-        }
-        if mode == EngineMode::Single {
-            return Ok((1, SYNC, Duration::from_secs(1)));
-        }
-
-        let workers = self.workers.unwrap_or_else(|| {
-            std::thread::available_parallelism().map_or(1, |workers| workers.get())
-        });
-        Ok((
-            workers,
-            self.sync.unwrap_or(SYNC),
-            self.tick.unwrap_or(TICK),
-        ))
-    }
-}
 
 /// The Engine struct serves as the core runtime component responsible for managing and coordinating
 /// various services and actors within the system. It handles the initialization, coordination, and
@@ -560,61 +481,5 @@ impl Engine {
             state,
             stats: stat,
         })
-    }
-}
-
-#[cfg(test)]
-mod config_tests {
-    use super::*;
-
-    /// The checked-in HCL deserializes with the current version and settings.
-    #[test]
-    fn checked_in_hcl_matches_engine_schema() -> Result<()> {
-        let config: EngineConfig = hcl::from_str(include_str!("engine.hcl"))?;
-        assert_eq!(config.version(), ENGINE_VERSION);
-        assert_eq!(
-            config.runtime_settings(EngineMode::Daemon)?,
-            (2, SYNC, TICK)
-        );
-        assert_eq!(
-            config.runtime_settings(EngineMode::Single)?,
-            (1, SYNC, Duration::from_secs(1))
-        );
-        assert_eq!(
-            config.pipeline_queue_capacity,
-            Some(DEFAULT_PIPELINE_QUEUE_CAPACITY)
-        );
-        assert_eq!(
-            config.read_max_bytes,
-            Some(producer::DEFAULT_READ_MAX_BYTES)
-        );
-        assert!(matches!(
-            config.storage["hourly"],
-            StorageConfig::Directory { .. }
-        ));
-        assert!(matches!(config.storage["hive"], StorageConfig::Hive { .. }));
-        assert!(matches!(
-            config.storage["cache"],
-            StorageConfig::Cache { .. }
-        ));
-        Ok(())
-    }
-
-    /// Zero worker counts and timer intervals fail before the scheduler starts.
-    #[rstest::rstest]
-    #[case("workers = 0", "workers")]
-    #[case("tick = { secs = 0, nanos = 0 }", "tick")]
-    #[case("sync = { secs = 0, nanos = 0 }", "sync")]
-    fn rejects_zero_runtime_settings(#[case] field: &str, #[case] name: &str) -> Result<()> {
-        let input = format!("version = 3\nbasedir = \".\"\nstorage = {{}}\n{field}");
-        let config: EngineConfig = hcl::from_str(&input)?;
-        let error = config.runtime_settings(EngineMode::Daemon).unwrap_err();
-        let field = match error.downcast_ref::<EngineStatus>() {
-            Some(EngineStatus::ZeroWorkers) => "workers",
-            Some(EngineStatus::ZeroInterval(field)) => field,
-            _ => panic!("unexpected error: {error:?}"),
-        };
-        assert_eq!(field, name);
-        Ok(())
     }
 }
