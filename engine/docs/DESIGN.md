@@ -17,7 +17,7 @@ and its path accessors. Its files cover [startup and rollback](../src/engine/sta
 ## Authoritative completion
 
 The architecture review below records the baseline that motivated the pipeline and scheduler changes described here.
-The runner now drains terminal output while monitoring every stage's Tokio join handle. Success requires all stages to
+The pipeline drains terminal output while monitoring every stage's Tokio join handle. Success requires all stages to
 return successfully. A stage error or panic records the stage's position and name, aborts remaining stages, and waits for
 their tasks to exit. Cancellation reported by a task has its own status. Output written before a failure is retained.
 
@@ -26,7 +26,7 @@ statistics snapshot. The results actor acknowledges storage before the caller is
 `Work` dropped before publication reports cancellation directly to its waiter.
 `submit_job_and_wait` still returns statistics on success and reports failed or cancelled outcomes as errors.
 
-[Runner](../src/actors/runner.rs), [Outcome types](../src/job.rs), [Results](../src/actors/results.rs)
+[Pipeline](../src/pipeline.rs), [Runner](../src/actors/runner.rs), [Outcome types](../src/job.rs), [Results](../src/actors/results.rs)
 
 ## Backpressure and blocking work
 
@@ -164,11 +164,12 @@ server, and anonymous or omitted authentication selects the local Cube. [Source 
    this submission path serializes dispatch through the scheduler's mailbox. A long job can delay subsequent ticks and
    other scheduler messages, including control
    requests. [Scheduler](../src/actors/scheduler.rs), [Factory setup](../src/engine/startup.rs)
-4. **Wire and start.** The runner flattens the producer, middle stages, and consumer into an ordered `Task` list. It
+4. **Wire and start.** The runner delegates execution to the pipeline. The pipeline flattens the producer, middle
+   stages, and consumer into an ordered `Task` list. It
    creates the first channel, then folds over the list, passing each stage's output receiver to the next stage's
-   `Runnable::run`. Once the chain is wired, the runner sends `"start"` and drops the input sender. The producer's
+   `Runnable::run`. Once the chain is wired, the pipeline sends `"start"` and drops the input sender. The producer's
    `execute` uses that message as a trigger and obtains its payload from the configured
-   source. [Runner](../src/actors/runner.rs), [Task contract](../src/task.rs)
+   source. [Pipeline](../src/pipeline.rs), [Task contract](../src/task.rs)
 
 ## Stage execution and data flow
 

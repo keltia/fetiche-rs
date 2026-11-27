@@ -56,6 +56,7 @@ mod engine;
 mod error;
 mod job;
 mod middle;
+mod pipeline;
 mod producer;
 mod sources;
 mod stats;
