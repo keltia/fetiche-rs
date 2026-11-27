@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use eyre::Result;
 use futures::TryStreamExt;
-use jiff::Timestamp;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path;
 use object_store::{ObjectMeta, ObjectStore, ObjectStoreExt};
@@ -41,6 +40,8 @@ pub enum TokenMsg {
     Table(RpcReplyPort<Result<String>>),
     /// Return the number of registered tokens.
     Count(RpcReplyPort<usize>),
+    /// Report whether the token snapshot is empty.
+    IsEmpty(RpcReplyPort<bool>),
     /// Return the registered storage path.
     Path(RpcReplyPort<String>),
 }
@@ -87,6 +88,9 @@ impl Actor for TokenActor {
             }
             TokenMsg::Count(reply) => {
                 let _ = reply.send(state.len());
+            }
+            TokenMsg::IsEmpty(reply) => {
+                let _ = reply.send(state.is_empty());
             }
             TokenMsg::Path(reply) => {
                 let _ = reply.send(state.path());
@@ -148,6 +152,7 @@ pub struct TokenStorage {
     store: Arc<LocalFileSystem>,
     /// Base path for token files
     base_path: Path,
+    directory: PathBuf,
     /// Btree of (key, AuthToken)
     list: BTreeMap<String, TokenType>,
 }
@@ -167,23 +172,16 @@ impl TokenStorage {
         let store = LocalFileSystem::new_with_prefix(path)?;
         let mut db = BTreeMap::<String, TokenType>::new();
 
-        // List all objects in the directory
-        //
-        let list_stream = store.list(None);
-        let objects: Vec<ObjectMeta> = list_stream.try_collect().await?;
-
         trace!("reading directory {path:?}");
-
-        for object in objects {
-            if let Some(file_name) = object.location.filename() {
-                let token = read_token(&store, &object.location, file_name).await?;
-                db.insert(file_name.to_owned(), token);
-            }
+        for (key, object) in token_objects(&store).await? {
+            let token = read_token(&store, &object.location, &key).await?;
+            db.insert(key, token);
         }
 
         Ok(TokenStorage {
             store: Arc::new(store),
             base_path: Path::from_filesystem_path(path)?,
+            directory: path.clone(),
             list: db,
         })
     }
@@ -193,16 +191,11 @@ impl TokenStorage {
     #[tracing::instrument(skip(self, key, data))]
     pub async fn store(&mut self, key: &str, data: TokenType) -> Result<()> {
         validate_token_key(key)?;
-        // Serialize the token data
-        let serialized = match &data {
-            TokenType::AsdToken(token) => serde_json::to_string(token)?,
-        };
-
         // Create the full path for the token file
-        let file_path = self.base_path.clone().join(key);
+        let file_path = Path::default().join(key);
 
         // Store in the object store
-        self.store.put(&file_path, serialized.into()).await?;
+        write_token(&self.store, &file_path, &data).await?;
 
         // Update the in-memory cache
         self.list.insert(key.into(), data);
@@ -224,9 +217,43 @@ impl TokenStorage {
 
         // If not in cache, try to load from object store
         //
-        let file_path = self.base_path.clone().join(key);
+        let file_path = Path::default().join(key);
 
-        read_token(&self.store, &file_path, key).await
+        match read_token(&self.store, &file_path, key).await {
+            Err(error) if matches!(error.downcast_ref(), Some(TokenStatus::NotFound(_))) => {
+                read_token(&self.store, &self.base_path.clone().join(key), key).await
+            }
+            result => result,
+        }
+    }
+
+    /// Loads from the shared cache or from the source's separate configured directory.
+    async fn load_for_source(&self, directory: PathBuf, key: &str) -> Result<TokenType> {
+        if directory == self.directory {
+            return self.load(key).await;
+        }
+        validate_token_key(key)?;
+        if !tokio::fs::try_exists(&directory).await? {
+            return Err(TokenStatus::NotFound(key.to_owned()).into());
+        }
+        let store = LocalFileSystem::new_with_prefix(&directory)?;
+        read_token(&store, &Path::default().join(key), key).await
+    }
+
+    /// Persists in the configured directory and updates the shared cache for engine tokens.
+    async fn store_for_source(
+        &mut self,
+        directory: PathBuf,
+        key: &str,
+        data: TokenType,
+    ) -> Result<()> {
+        if directory == self.directory {
+            return self.store(key, data).await;
+        }
+        validate_token_key(key)?;
+        tokio::fs::create_dir_all(&directory).await?;
+        let store = LocalFileSystem::new_with_prefix(&directory)?;
+        write_token(&store, &Path::default().join(key), &data).await
     }
 
     #[tracing::instrument(skip(self))]
@@ -263,30 +290,13 @@ impl TokenStorage {
         let mut builder = Builder::default();
         builder.push_record(header);
 
-        // List all objects in the base path
-        let list_stream = self.store.list(None);
-        let objects: Vec<ObjectMeta> = list_stream.try_collect().await?;
-
-        for object in objects {
-            let mut row = vec![];
-
-            if let Some(file_name) = object.location.filename() {
-                row.push(file_name.to_string());
-
-                // FIXME: Determine producer based on file name
-                if file_name.starts_with("asd_default_token") {
-                    row.push("Asd".into());
-                } else {
-                    row.push("Unknown".into());
-                }
-
-                row.push(object.last_modified.to_string());
+        for (key, object) in token_objects(&self.store).await? {
+            let producer = if key.starts_with("asd_default_token") {
+                "Asd"
             } else {
-                row.push("INVALID".to_string());
-                row.push("Unknown".to_string());
-                row.push(Timestamp::from_second(0).unwrap().to_string());
-            }
-            builder.push_record(row);
+                "Unknown"
+            };
+            builder.push_record([key, producer.into(), object.last_modified.to_string()]);
         }
 
         let table = builder.build().with(Style::rounded()).to_string();
@@ -331,11 +341,36 @@ impl TokenStorage {
     }
 }
 
+/// Finds each token file, preferring the directory root over older nested copies.
+async fn token_objects(store: &LocalFileSystem) -> Result<BTreeMap<String, ObjectMeta>> {
+    let mut objects = store.list(None);
+    let mut by_key = BTreeMap::new();
+    while let Some(object) = objects.try_next().await? {
+        if let Some(key) = object.location.filename() {
+            if object.location == Path::default().join(key) {
+                by_key.insert(key.to_owned(), object);
+            } else {
+                by_key.entry(key.to_owned()).or_insert(object);
+            }
+        }
+    }
+    Ok(by_key)
+}
+
 /// Checks that the key names a format understood by this store.
 fn validate_token_key(key: &str) -> Result<(), TokenStatus> {
     if !key.starts_with("asd_") {
         return Err(TokenStatus::Unknown(key.to_owned()));
     }
+    Ok(())
+}
+
+/// Serializes a typed token and writes it to its object-store location.
+async fn write_token(store: &LocalFileSystem, location: &Path, data: &TokenType) -> Result<()> {
+    let serialized = match data {
+        TokenType::AsdToken(token) => serde_json::to_string(token)?,
+    };
+    store.put(location, serialized.into()).await?;
     Ok(())
 }
 
@@ -384,9 +419,103 @@ fn run_sync<T>(operation: impl Future<Output = Result<T>>) -> Result<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ractor::{call, cast};
     use rstest::*;
     use std::path::PathBuf;
     use tempfile::{TempDir, tempdir};
+
+    /// Verifies that bad files, failed writes and abandoned replies leave the actor usable.
+    #[tokio::test]
+    async fn token_actor_survives_request_failures() -> Result<()> {
+        let dir = tempdir()?;
+        let root = dir.path().join("tokens");
+        tokio::fs::create_dir(&root).await?;
+        let (actor, handle) = Actor::spawn(None, TokenActor, root.clone()).await?;
+        assert!(call!(actor, TokenMsg::IsEmpty)?);
+
+        let corrupt_key = "asd_corrupt";
+        tokio::fs::write(root.join(corrupt_key), r#"{"expiredAt":"secret"}"#).await?;
+        let err = call!(actor, TokenMsg::Get, corrupt_key.to_owned())?.unwrap_err();
+        assert!(
+            matches!(err.downcast_ref(), Some(TokenStatus::Malformed { key, .. }) if key == corrupt_key)
+        );
+        assert!(!format!("{err:#}").contains("secret"));
+
+        // Replace the backing directory with a file to force a write failure on every platform.
+        let backup = dir.path().join("backup");
+        tokio::fs::rename(&root, &backup).await?;
+        tokio::fs::write(&root, "blocks token writes").await?;
+        let key = "asd_valid";
+        let token = TokenType::AsdToken(AsdToken::default());
+        assert!(call!(actor, TokenMsg::Store, key.to_owned(), token.clone())?.is_err());
+        assert!(call!(actor, TokenMsg::IsEmpty)?);
+        tokio::fs::remove_file(&root).await?;
+        tokio::fs::rename(&backup, &root).await?;
+
+        let (reply, receiver) = tokio::sync::oneshot::channel();
+        drop(receiver);
+        cast!(actor, TokenMsg::Count(reply.into()))?;
+        call!(actor, TokenMsg::Store, key.to_owned(), token.clone())??;
+        assert_eq!(call!(actor, TokenMsg::Get, key.to_owned())??, token);
+        assert!(!call!(actor, TokenMsg::IsEmpty)?);
+        actor.stop(None);
+        handle.await?;
+        Ok(())
+    }
+
+    /// Keeps configured source credentials in their own directories.
+    #[tokio::test]
+    async fn source_tokens_honor_the_configured_directory() -> Result<()> {
+        let dir = tempdir()?;
+        let root = dir.path().join("tokens");
+        let source = dir.path().join("source-tokens");
+        tokio::fs::create_dir(&root).await?;
+        let (actor, handle) = Actor::spawn(None, TokenActor, root).await?;
+        let key = "asd_account".to_owned();
+        let token = TokenType::AsdToken(AsdToken::default());
+        let err = call!(actor, TokenMsg::GetForSource, source.clone(), key.clone())?.unwrap_err();
+        assert!(matches!(err.downcast_ref(), Some(TokenStatus::NotFound(_))));
+        call!(
+            actor,
+            TokenMsg::StoreForSource,
+            source.clone(),
+            key.clone(),
+            token.clone()
+        )??;
+        assert!(source.join(&key).is_file());
+        assert_eq!(call!(actor, TokenMsg::GetForSource, source, key)??, token);
+        assert!(call!(actor, TokenMsg::IsEmpty)?);
+        actor.stop(None);
+        handle.await?;
+        Ok(())
+    }
+
+    /// Preserves older nested tokens and prefers an updated token in the root after restart.
+    #[tokio::test]
+    async fn updated_root_token_takes_precedence_over_legacy_copy() -> Result<()> {
+        let dir = tempdir()?;
+        let root = dir.path().to_path_buf();
+        let key = "asd_legacy";
+        let mut storage = TokenStorage::register(&root).await?;
+        let original = AsdToken::default();
+        let legacy_path = storage.base_path.clone().join(key);
+        write_token(
+            &storage.store,
+            &legacy_path,
+            &TokenType::AsdToken(original.clone()),
+        )
+        .await?;
+        assert_eq!(storage.load(key).await?, TokenType::AsdToken(original));
+
+        let mut updated = AsdToken::default();
+        updated.token = "updated-token".into();
+        let updated = TokenType::AsdToken(updated);
+        storage.store(key, updated.clone()).await?;
+        let reopened = TokenStorage::register(&root).await?;
+        assert_eq!(reopened.load(key).await?, updated);
+        assert_eq!(reopened.as_string().await?.matches(key).count(), 1);
+        Ok(())
+    }
 
     #[fixture]
     fn temp_dir() -> TempDir {
