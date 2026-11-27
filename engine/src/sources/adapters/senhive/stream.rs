@@ -29,7 +29,7 @@ use fetiche_formats::Format;
 
 use super::actors::{Worker, WorkerArgs, WorkerMsg};
 use crate::actors::StatsMsg;
-use crate::sources::access::{KillActorOnDrop, wait_for_stream};
+use crate::sources::adapters::{KillActorOnDrop, wait_for_stream};
 use crate::sources::SENHIVE_PG;
 use crate::{AuthError, Filter, Senhive, Stats, StatsError, Streamable};
 

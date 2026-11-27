@@ -361,7 +361,7 @@ impl Fetchable for Flightaware {
 
 #[cfg(test)]
 mod tests {
-    use crate::sources::access::flightaware::get_timestamp;
+    use crate::sources::adapters::flightaware::get_timestamp;
     use jiff::Timestamp;
 
     #[test]

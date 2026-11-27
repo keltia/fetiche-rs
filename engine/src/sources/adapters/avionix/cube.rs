@@ -21,7 +21,7 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, trace, warn};
 
-use crate::sources::access::{KillActorOnDrop, wait_for_stream};
+use crate::sources::adapters::{KillActorOnDrop, wait_for_stream};
 use crate::actors::{StatsMsg, Supervisor};
 use crate::{AVIONIX_PG, Auth, AuthError, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, Worker, WorkerArgs, WorkerMode, WorkerMsg};
 use fetiche_formats::Format;

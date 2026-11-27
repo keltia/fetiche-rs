@@ -79,7 +79,7 @@ HTTP endpoints or login-based auth and direct TCP otherwise.
 ### SafeSky (feature `safesky`)
 
 The adapter can load an API key. Beacon fetching remains unimplemented and returns an unsupported-operation error.
-[SafeSky adapter](src/sources/access/safesky/mod.rs)
+[SafeSky adapter](src/sources/adapters/safesky/mod.rs)
 
 ### Flightaware (feature `flightaware`)
 

@@ -10,7 +10,7 @@ pub use crate::stats::*;
 
 // Re-export these modules for a shorted import path.
 //
-pub use access::*;
+pub use adapters::*;
 pub use capability::*;
 pub use config::{SOURCES_CONFIG, SourcesConfig};
 pub use error::*;
@@ -19,7 +19,7 @@ pub use route::*;
 pub use selection::{Fetchable, FetchableSource, Streamable, StreamableSource};
 pub use site::*;
 
-mod access;
+mod adapters;
 mod capability;
 mod config;
 mod error;

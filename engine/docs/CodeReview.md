@@ -32,8 +32,8 @@ ASD authentication traces the returned token. The Avionix worker traces both aut
 setup passes credentials in a connection URL. Token storage instrumentation captures the token argument, whose
 debug representation includes the value. Replace these logs with safe fields such as source name and authentication
 result. Skip sensitive arguments in spans and audit debug formatting of source configs and runner messages for
-transitive exposure. [ASD fetch](../src/sources/access/asd/fetch.rs), [Avionix worker](../src/sources/access/avionix/actors.rs),
-[Avionix setup](../src/sources/access/avionix/server.rs), [Token storage](../src/actors/tokens.rs), [Token type](../src/sources/access/asd/token.rs)
+transitive exposure. [ASD fetch](../src/sources/adapters/asd/fetch.rs), [Avionix worker](../src/sources/adapters/avionix/actors.rs),
+[Avionix setup](../src/sources/adapters/avionix/server.rs), [Token storage](../src/actors/tokens.rs), [Token type](../src/sources/adapters/asd/token.rs)
 
 ### High — A long-running job occupies the scheduler mailbox
 
@@ -81,7 +81,7 @@ The data feeds acknowledge messages before conversion and before the bounded pip
 cancellation while waiting for queue capacity can therefore leave a broker-acknowledged delivery absent from the
 output. Decide which event constitutes acceptance. An acknowledgement after channel send covers local enqueue.
 A guarantee through persistence needs a sink acknowledgement and a retry or deduplication policy.
-[Senhive actor](../src/sources/access/senhive/actors.rs), [Prefetch configuration](../src/sources/access/senhive/feed.rs)
+[Senhive actor](../src/sources/adapters/senhive/actors.rs), [Prefetch configuration](../src/sources/adapters/senhive/feed.rs)
 
 ## Verification and next coverage
 

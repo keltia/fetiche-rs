@@ -54,7 +54,7 @@ and sink console writes use Tokio's blocking executor. A blocking operation alre
 its stage is cancelled.
 
 [Engine configuration](../src/config.rs), [Stage wrapper](../../macros/src/lib.rs), [Read](../src/producer/read.rs),
-[Tee](../src/middle/tee.rs), [Save](../src/consumer/save.rs), [Senhive feed](../src/sources/access/senhive/feed.rs)
+[Tee](../src/middle/tee.rs), [Save](../src/consumer/save.rs), [Senhive feed](../src/sources/adapters/senhive/feed.rs)
 
 ## Scheduler dispatch
 
@@ -206,7 +206,7 @@ entry, submits the snapshot to the results actor, replies to the factory caller,
 `WaitGroup` notification. The results actor stores statistics in memory by job ID and returns default statistics when a
 lookup misses. Producer return values such as `Read`'s `Stats` are discarded by the wrapper. Some source adapters
 publish stats under their own tags, so the runner's job-tag snapshot can omit source
-work. [Runner](../src/actors/runner.rs), [Results](../src/actors/results.rs), [Statistics](../src/actors/stats.rs), [FlightAware stream](../src/sources/access/flightaware/stream.rs)
+work. [Runner](../src/actors/runner.rs), [Results](../src/actors/results.rs), [Statistics](../src/actors/stats.rs), [FlightAware stream](../src/sources/adapters/flightaware/stream.rs)
 
 The runner drops each stage handle during wiring. An `execute` error therefore panics inside its task, and the resulting
 sender drop can look like normal end of input to other stages. A caller can receive a completion notification after

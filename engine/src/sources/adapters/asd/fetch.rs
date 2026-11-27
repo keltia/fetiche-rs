@@ -27,7 +27,7 @@ use tracing::{info, trace, warn};
 
 use fetiche_formats::Format;
 
-use crate::sources::access::asd::{Credentials, DEF_TOKEN, Param, Source};
+use crate::sources::adapters::asd::{Credentials, DEF_TOKEN, Param, Source};
 use crate::token::AsdToken;
 use crate::{
     Asd, AuthError, Expirable, Fetchable, Filter, Stats, TokenMsg, TokenStatus, TokenType,
