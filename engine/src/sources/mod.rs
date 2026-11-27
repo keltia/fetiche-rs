@@ -30,8 +30,9 @@ pub use crate::stats::*;
 //
 pub use access::*;
 pub use capability::*;
-pub use config::*;
+pub use config::SourcesConfig;
 pub use error::*;
+pub use registry::Sources;
 pub use route::*;
 pub use site::*;
 
@@ -39,6 +40,7 @@ mod access;
 mod capability;
 mod config;
 mod error;
+mod registry;
 mod route;
 mod site;
 
