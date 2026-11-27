@@ -12,7 +12,10 @@ use fetiche_common::{ConfigFile, IntoConfig, Versioned};
 use fetiche_macros::into_configfile;
 use serde::Deserialize;
 
-use super::{SOURCES_CONFIG, Site, Sources};
+use super::{Site, Sources};
+
+/// Default configuration filename
+pub const SOURCES_CONFIG: &str = "sources.hcl";
 
 /// Configuration for multiple sources.
 ///
