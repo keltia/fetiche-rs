@@ -3,7 +3,8 @@
 use std::path::PathBuf;
 
 use eyre::Result;
-use fetiche_engine::{Engine, EngineMode, JobStatus};
+use fetiche_engine::token::AsdToken;
+use fetiche_engine::{Engine, EngineMode, JobStatus, TokenMsg, TokenStatus, TokenType};
 use tokio::fs;
 
 const FILE_JOB: &str = r#"
@@ -12,6 +13,51 @@ const FILE_JOB: &str = r#"
     middle = [{ Tee = "copy.txt" }]
     output = { Save = "output.txt" }
 "#;
+
+/// Exercises the token actor through engine clones and verifies persistence after restart.
+#[tokio::test]
+async fn token_actor_shares_storage_and_persists_across_engine_restarts() -> Result<()> {
+    let home = tempfile::tempdir()?;
+    let config = write_config(home.path()).await?;
+    let config = config.to_str().unwrap();
+    let engine = Engine::load(config, EngineMode::Single).await?;
+    let clone = engine.clone();
+    let key = "asd_account";
+    let value = "test-token-value";
+    let mut token = AsdToken::default();
+    token.token = value.into();
+
+    let missing = engine.load_token(key).await.unwrap_err();
+    assert!(matches!(
+        missing.downcast_ref(),
+        Some(TokenStatus::NotFound(_))
+    ));
+    let unknown = engine
+        .store_token("unsupported", TokenType::AsdToken(token.clone()))
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        unknown.downcast_ref(),
+        Some(TokenStatus::Unknown(_))
+    ));
+    engine.store_token(key, TokenType::AsdToken(token)).await?;
+    let TokenType::AsdToken(loaded) = clone.load_token(key).await?;
+    assert_eq!(loaded.token, value);
+    assert_eq!(ractor::call!(clone.tokens, TokenMsg::Count)?, 1);
+    assert_eq!(ractor::call!(clone.tokens, TokenMsg::List)?.len(), 1);
+    assert!(ractor::call!(clone.tokens, TokenMsg::Path)?.ends_with("/tokens"));
+    let listing = clone.list_tokens().await?;
+    assert!(listing.contains(key));
+    assert!(!listing.contains(value));
+
+    engine.shutdown().await?;
+    assert!(clone.load_token(key).await.is_err());
+    let restarted = Engine::load(config, EngineMode::Single).await?;
+    let TokenType::AsdToken(loaded) = restarted.load_token(key).await?;
+    assert_eq!(loaded.token, value);
+    restarted.cleanup().await?;
+    Ok(())
+}
 
 /// Writes an isolated configuration and returns the explicit engine config path.
 async fn write_config(home: &std::path::Path) -> Result<PathBuf> {

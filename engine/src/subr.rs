@@ -18,9 +18,10 @@ use tracing::trace;
 use fetiche_common::Container;
 use fetiche_formats::Format;
 
-use crate::actors::{SourcesMsg, StateMsg};
+use crate::actors::{SourcesMsg, StateMsg, TokenMsg};
 use crate::{
-    ENGINE_CONFIG, Engine, IO, SOURCES_CONFIG, STATE_FILE, Sources, Storage, Workspace, version,
+    ENGINE_CONFIG, Engine, IO, SOURCES_CONFIG, STATE_FILE, Sources, Storage, TokenType, Workspace,
+    version,
 };
 
 impl Engine {
@@ -121,7 +122,33 @@ impl Engine {
     ///
     #[tracing::instrument(skip(self))]
     pub async fn list_tokens(&self) -> Result<String> {
-        self.tokens.as_string().await
+        call!(self.tokens, TokenMsg::Table)?
+    }
+
+    /// Loads a token by key through the token actor.
+    ///
+    /// Returns a storage error if the key is unsupported, missing, or unreadable.
+    pub async fn load_token(&self, key: &str) -> Result<TokenType> {
+        call!(self.tokens, TokenMsg::Get, key.to_owned())?
+    }
+
+    /// Persists a token by key through the token actor.
+    ///
+    /// A successful reply means the storage backend accepted the write and the
+    /// token actor updated its in-memory list.
+    ///
+    /// ```no_run
+    /// # async fn example(engine: &fetiche_engine::Engine) -> eyre::Result<()> {
+    /// use fetiche_engine::{TokenType, token::AsdToken};
+    ///
+    /// let key = "asd_example";
+    /// engine.store_token(key, TokenType::AsdToken(AsdToken::default())).await?;
+    /// let token = engine.load_token(key).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn store_token(&self, key: &str, token: TokenType) -> Result<()> {
+        call!(self.tokens, TokenMsg::Store, key.to_owned(), token)?
     }
 
     /// Returns the full path to the engine's configuration file

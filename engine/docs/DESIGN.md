@@ -92,7 +92,9 @@ pipeline limits. [Configuration example](../src/engine.hcl), [Startup](../src/li
 Local storage areas require a directory. Rotations are positive whole numbers with an `s`, `m`, `h`, or `d` suffix,
 and the resulting seconds must fit in `u32`. Directory errors keep the underlying I/O cause. Token registration and
 lookup report unsupported filenames, malformed data, missing tokens, and read failures separately. Synchronous token
-methods return errors and run outside Tokio. [Storage](../src/storage.rs), [Tokens](../src/tokens.rs)
+methods return errors and run outside Tokio for standalone storage. Inside the engine, the linked token actor owns
+the storage and serializes reads, writes, and listings. Engine clones share its mailbox, and engine shutdown stops
+the actor. [Storage](../src/storage.rs), [Tokens](../src/actors/tokens.rs)
 
 `Read` in a job requires a nonempty literal filename such as `Read = "input.csv"`. The engine does not evaluate
 expressions in file paths. `Convert` and `Archive` return parser errors before a job becomes ready.

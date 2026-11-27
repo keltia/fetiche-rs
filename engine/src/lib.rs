@@ -55,6 +55,7 @@ use strum::EnumString;
 use tokio::fs;
 use tracing::{error, info, trace};
 
+pub use actors::{TokenMsg, TokenStorage};
 pub use auth::*;
 pub use consumer::*;
 pub use error::*;
@@ -65,7 +66,6 @@ pub use producer::*;
 pub use sources::*;
 pub use storage::*;
 pub use task::*;
-pub use actors::{TokenMsg, TokenStorage};
 pub use workspace::*;
 
 use crate::actors::*;
@@ -225,8 +225,8 @@ pub struct Engine {
     pub workdir: PathBuf,
     /// Storage area for long-running jobs
     pub storage: Arc<Storage>,
-    /// Storage areas for auth tokens
-    pub tokens: Arc<TokenStorage>,
+    /// Actor that owns the engine's persistent token storage.
+    pub tokens: ActorRef<TokenMsg>,
     // -- actors
     /// Supervisor actor, top of the process group
     pub supervisor: ActorRef<SuperMsg>,
@@ -496,8 +496,10 @@ impl Engine {
             let tokens_area = home.join("tokens");
 
             trace!("load tokens from {tokens_area:?}");
-            let tokens = TokenStorage::register(&tokens_area).await?;
-            info!("{} tokens loaded", tokens.len());
+            let (tokens, handle) =
+                Actor::spawn_linked(name("tokens"), TokenActor, tokens_area, sup.get_cell())
+                    .await?;
+            resources.track(&tokens, handle);
 
             call!(state, StateMsg::Flush)??;
 
@@ -548,7 +550,7 @@ impl Engine {
             ws,
             workdir,
             storage: Arc::new(areas),
-            tokens: Arc::new(tokens),
+            tokens,
             supervisor: sup,
             scheduler,
             factory,

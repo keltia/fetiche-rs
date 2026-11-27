@@ -16,7 +16,7 @@ credential logging, scheduler bookkeeping, and shutdown ownership.
 | Rotation syntax | Open. The parser still uses signed `i8`, casts before multiplying, and returns the unconsumed suffix. Registration accepts a successful prefix parse. [Storage](../src/storage.rs) |
 | Startup validation | Partly resolved. Startup checks the config version and queue capacity and creates the run directory. Daemon worker counts and timer intervals still lack explicit validation. [Engine startup](../src/lib.rs) |
 | Graceful shutdown | Partly resolved. `Engine::shutdown` exists, and the runner supervises stage completion. Engine-level shutdown still sends stop signals without joining actors or acknowledging a final state sync. [Shutdown](../src/subr.rs), [Runner](../src/actors/runner.rs) |
-| Token registration and tracing | Partly resolved. Token and storage registration already have tracing spans. Token loading still panics on unsupported entries, and some spans and source logs can expose credentials. [Tokens](../src/tokens.rs), [Storage](../src/storage.rs) |
+| Token registration and tracing | Partly resolved. Token and storage registration already have tracing spans. Token loading still panics on unsupported entries, and some spans and source logs can expose credentials. [Tokens](../src/actors/tokens.rs), [Storage](../src/storage.rs) |
 | Error typing | Partly resolved. Domain errors and typed job outcomes already coexist with `eyre`. Improve context at specific boundaries, especially storage and token I/O, before considering a crate-wide error type. [Errors](../src/error.rs), [Outcomes](../src/job.rs) |
 | Feature gating and CI | Open. Default builds include FlightAware. Both the no-default-features and all-features library checks failed in this review, and CI uses the default feature set. [Cargo features](../Cargo.toml), [CI](../../.github/workflows/rust.yml) |
 | Observability | Partly resolved. Jobs have identifiers and outcomes, and startup has tracing. Scheduler ticks log at info level without queue depth or worker utilization, and the resolved runtime settings have no dedicated startup summary. [Scheduler](../src/actors/scheduler.rs), [Engine startup](../src/lib.rs) |
@@ -33,7 +33,7 @@ setup passes credentials in a connection URL. Token storage instrumentation capt
 debug representation includes the value. Replace these logs with safe fields such as source name and authentication
 result. Skip sensitive arguments in spans and audit debug formatting of source configs and runner messages for
 transitive exposure. [ASD fetch](../src/sources/access/asd/fetch.rs), [Avionix worker](../src/sources/access/avionix/actors.rs),
-[Avionix setup](../src/sources/access/avionix/server.rs), [Token storage](../src/tokens.rs), [Token type](../src/sources/access/asd/token.rs)
+[Avionix setup](../src/sources/access/avionix/server.rs), [Token storage](../src/actors/tokens.rs), [Token type](../src/sources/access/asd/token.rs)
 
 ### High — A long-running job occupies the scheduler mailbox
 
@@ -69,7 +69,7 @@ Resolve stage paths against a job workspace instead. [Engine startup](../src/lib
   error context. Add boundary and failure cases alongside the existing positive tests. [Storage](../src/storage.rs)
 - Return typed errors for unsupported token entries and preserve I/O errors on lookup. Registration currently panics
   on an unexpected filename, and the synchronous registration wrapper unwraps errors.
-  [Token storage](../src/tokens.rs)
+  [Token storage](../src/actors/tokens.rs)
 - Reject unsupported HCL stages before marking a job ready. `Convert` reaches `unimplemented!()`, and `Archive`
   produces an invalid consumer that the runner rejects later. A numeric `Read` value can deserialize as an HCL
   expression string. Define whether such expressions are supported before adding a strict path type.
