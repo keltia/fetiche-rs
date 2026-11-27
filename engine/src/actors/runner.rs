@@ -1,4 +1,17 @@
-//! Runner worker dispatch, metrics, and job outcome publication.
+//! The runner is a Ractor factory worker that processes dispatched jobs.
+//!
+//! It registers per-job statistics, supplies engine dependencies to the job,
+//! and delegates stage execution to [`run_pipeline`]. The pipeline runs the
+//! stages concurrently and returns their terminal status. The runner collects
+//! the statistics snapshot, submits the outcome to the results actor, and
+//! then notifies the caller waiting for the job.
+//!
+//! # Components
+//!
+//! - [`RunnerMsg`] carries a dispatched job and its acknowledgement port.
+//! - [`RunnerActor`] implements the factory worker.
+//! - [`RunnerArgs`] supplies the channel capacity, cancellation signal, and
+//!   actor handles shared with each worker.
 
 use ractor::factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId};
 use ractor::{ActorProcessingErr, ActorRef, RpcReplyPort, call, cast};
@@ -31,9 +44,10 @@ pub struct RunnerActor;
 
 /// Configuration and dependencies required by the Runner actor.
 ///
-/// Contains references to other actors that the Runner needs to interact with:
-/// - queue: Reference to the Queue actor for retrieving jobs
-/// - stats: Reference to the Stats actor for reporting metrics
+/// The stats actor tracks per-job metrics, and the results actor stores each
+/// terminal outcome. With the ASD feature enabled, the token actor is passed
+/// to fetch stages. The worker also passes the channel capacity and engine
+/// cancellation signal to the pipeline.
 ///
 #[derive(Clone, Debug)]
 pub struct RunnerArgs {
@@ -88,6 +102,16 @@ impl Worker for RunnerActor {
     }
 
     /// Runs a dispatched job, collects metrics, and publishes its outcome before notifying the waiter.
+    ///
+    /// The worker initializes metrics and delegates execution to [`run_pipeline`].
+    /// It then reads and resets the job's metrics and submits the status and
+    /// statistics to the results actor. The job waiter receives its outcome
+    /// after that submission attempt. The worker acknowledges dispatch separately.
+    ///
+    /// `wid` identifies the worker. The dispatched message carries the job's
+    /// factory key and its work envelope. `state` holds the actor handles and
+    /// pipeline settings. The worker returns the factory key after handling
+    /// the dispatch, including when the job itself fails.
     #[tracing::instrument(skip_all)]
     async fn handle(
         &self,
