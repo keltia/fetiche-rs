@@ -448,6 +448,7 @@ impl Engine {
             sync,
             tick,
             last,
+            workers,
             state: state.clone(),
             factory: factory.clone(),
         };

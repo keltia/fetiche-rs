@@ -1,15 +1,8 @@
-//! Scheduler actor implementation that manages task execution and coordination.
+//! Dispatches queued jobs to available runner slots without waiting in the mailbox.
 //!
-//! This module provides a simple scheduler that:
-//! - Controls the execution flow of tasks through state transitions
-//! - Coordinates with queue, state, and results actors
-//! - Manages runner factory for task execution
-//! - Implements periodic task checking through ticks
-//! - Supports start/stop/suspend operations
-//!
-//! The scheduler operates in different modes (Idle, Running, Suspended, etc.)
-//! and coordinates task execution through message passing.
-//!
+//! A tick fills available slots in FIFO order. Completion releases a slot by job
+//! ID and can dispatch the next waiting job immediately. Suspension pauses new
+//! dispatches while allowing current jobs to complete and control messages to run.
 
 use std::collections::{BTreeSet, VecDeque};
 use std::time::Duration;
@@ -17,7 +10,7 @@ use std::time::Duration;
 use ractor::factory::{FactoryMessage, JobOptions};
 use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, factory};
 use tokio::sync::oneshot;
-use tracing::{error, info, trace, warn};
+use tracing::{info, trace, warn};
 
 use crate::actors::{RunnerMsg, StateMsg};
 use crate::{EngineStatus, Job, JobState, SchedulerError, WaitGroup, Work};
@@ -26,7 +19,9 @@ use crate::{EngineStatus, Job, JobState, SchedulerError, WaitGroup, Work};
 #[derive(Debug)]
 pub enum SchedulerMsg {
     // Basic operations
+    /// Starts the timers or resumes a suspended scheduler.
     Start,
+    /// Pauses dispatch while jobs already handed to the factory keep running.
     Suspend,
     Stop,
     Sync,
@@ -48,11 +43,9 @@ pub enum SchedulerMsg {
 
 #[derive(Debug, Default, PartialEq)]
 enum Mode {
-    Exiting,
     #[default]
     Idle,
     Starting,
-    Running,
     Suspended,
 }
 
@@ -62,6 +55,8 @@ pub struct SchedulerArguments {
     pub sync: Duration,
     pub tick: Duration,
     pub last: usize,
+    /// Number of runner slots managed by this scheduler.
+    pub workers: usize,
 
     // Actors
     pub state: ActorRef<StateMsg>,
@@ -69,13 +64,13 @@ pub struct SchedulerArguments {
 }
 
 /// Internal state maintained by the scheduler actor
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct SchedulerState {
     mode: Mode,
     sync: Duration,
     tick: Duration,
     last: usize,
+    workers: usize,
 
     // Actors
     state: ActorRef<StateMsg>,
@@ -87,6 +82,48 @@ pub struct SchedulerState {
 }
 
 impl SchedulerState {
+    /// Fills available worker slots from the waiting queue.
+    ///
+    /// Each successful dispatch starts a completion watcher outside the mailbox.
+    /// Both a runner reply and a dropped reply port release the tracked slot.
+    /// If the factory has stopped accepting messages, dropping queued work delivers
+    /// cancellation to its waiters.
+    fn dispatch_ready(&mut self, scheduler: &ActorRef<SchedulerMsg>) {
+        if self.mode != Mode::Idle {
+            return;
+        }
+        while self.running.len() < self.workers {
+            let Some(work) = self.waiting.pop_front() else {
+                break;
+            };
+            let id = work.id();
+            let (reply, finished) = oneshot::channel();
+            let dispatch = FactoryMessage::Dispatch(factory::Job {
+                key: id,
+                msg: RunnerMsg::Run(work, reply.into()),
+                options: JobOptions::default(),
+                accepted: None,
+            });
+            if self.factory.cast(dispatch).is_err() {
+                warn!(job_id = id, "Runner factory closed during dispatch");
+                self.waiting.clear();
+                break;
+            }
+
+            self.running.insert(id);
+            let scheduler = scheduler.clone();
+            let cell = scheduler.get_cell();
+            tokio::spawn(async move {
+                tokio::select! {
+                    _ = finished => {
+                        let _ = scheduler.cast(SchedulerMsg::Finished(id));
+                    }
+                    _ = cell.wait(None) => {}
+                }
+            });
+        }
+    }
+
     /// Queues a ready job and creates its completion receiver. Only one outstanding
     /// job can use a given ID.
     fn enqueue(&mut self, job: Job) -> Result<WaitGroup, SchedulerError> {
@@ -147,6 +184,7 @@ impl Actor for SchedulerActor {
             sync: args.sync,
             tick: args.tick,
             last: args.last,
+            workers: args.workers,
             state: args.state.clone(),
             factory: args.factory.clone(),
             waiting: VecDeque::new(),
@@ -154,7 +192,8 @@ impl Actor for SchedulerActor {
         })
     }
 
-    /// Handles scheduler commands and applies queue changes by job ID.
+    /// Handles scheduler commands without awaiting factory work and applies queue
+    /// changes by job ID.
     #[tracing::instrument(skip(self, myself, message, state))]
     async fn handle(
         &self,
@@ -164,46 +203,8 @@ impl Actor for SchedulerActor {
     ) -> Result<(), ActorProcessingErr> {
         match message {
             // ----- Basic operations
-
-            // The most important message, the one we get every clock tick
-            //
             SchedulerMsg::Tick => {
-                // Idle -> Running
-                //
-                info!("tick");
-                if state.mode == Mode::Idle {
-                    state.mode = Mode::Running;
-
-                    // Check the waiting queue
-                    //
-                    if let Some(work) = state.waiting.pop_front() {
-                        // Move unto the running queue
-                        //
-                        let id = work.id();
-                        state.running.insert(id);
-
-                        // Hand over to the runner factory
-                        //
-                        let dispatch = state
-                            .factory
-                            .call(
-                                |port| {
-                                    FactoryMessage::Dispatch(factory::Job {
-                                        key: id,
-                                        msg: RunnerMsg::Run(work, port),
-                                        options: JobOptions::default(),
-                                        accepted: None,
-                                    })
-                                },
-                                None,
-                            )
-                            .await;
-                        state.finish(id);
-                        dispatch?;
-                    };
-                    state.mode = Mode::Idle;
-                }
-                // Ignore tick if not idle.
+                state.dispatch_ready(&myself);
             }
             // sync is handled here now.
             //
@@ -213,8 +214,6 @@ impl Actor for SchedulerActor {
             // The real start of the scheduler, we will generate clock ticks now.
             //
             SchedulerMsg::Start => {
-                // Starting -> Idle
-                //
                 if state.mode == Mode::Starting {
                     // Begin with a sync.
                     //
@@ -224,12 +223,9 @@ impl Actor for SchedulerActor {
                     //
                     myself.send_interval(state.tick, || SchedulerMsg::Tick);
                     myself.send_interval(state.sync, || SchedulerMsg::Sync);
-
-                    state.mode = Mode::Idle;
-                    return Ok(());
                 }
-                error!("Scheduler was not started");
-                return Err(SchedulerError::WrongState.into());
+                state.mode = Mode::Idle;
+                state.dispatch_ready(&myself);
             }
             // Suspend if idle
             //
@@ -238,17 +234,11 @@ impl Actor for SchedulerActor {
                 //
                 if state.mode == Mode::Idle {
                     state.mode = Mode::Suspended;
-                } else {
-                    error!("Scheduler is not idle");
-                    return Err(SchedulerError::WrongState.into());
                 }
             }
             // Shutdown
             //
             SchedulerMsg::Stop => {
-                // Regardless of our state, we are done.
-                // -> Exiting
-                state.mode = Mode::Exiting;
                 warn!("Scheduler exiting.");
                 myself.kill();
             }
@@ -282,6 +272,7 @@ impl Actor for SchedulerActor {
 
             SchedulerMsg::Finished(id) => {
                 state.finish(id);
+                state.dispatch_ready(&myself);
             }
 
             SchedulerMsg::RemoveById(id, reply) => {
@@ -301,7 +292,7 @@ impl Actor for SchedulerActor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::JobStatus;
+    use crate::{JobOutcome, JobStatus, Stats};
     use ractor::{Message, call};
     use tokio::sync::mpsc;
     use tokio::time::timeout;
@@ -346,7 +337,7 @@ mod tests {
 
     impl Fixture {
         /// Starts a scheduler with manual ticks and a controllable factory.
-        async fn new() -> Self {
+        async fn new(workers: usize) -> Self {
             let (state_tx, _state_rx) = mpsc::unbounded_channel();
             let (state, _) = Actor::spawn(None, Forward(std::marker::PhantomData), state_tx)
                 .await
@@ -362,6 +353,7 @@ mod tests {
                     sync: Duration::from_secs(3600),
                     tick: Duration::from_secs(3600),
                     last: 1,
+                    workers,
                     state: state.clone(),
                     factory: factory.clone(),
                 },
@@ -389,6 +381,35 @@ mod tests {
             .unwrap()
             .unwrap()
         }
+
+        /// Retrieves a dispatched job and verifies the factory and work IDs agree.
+        async fn next_dispatch(&mut self, expected: usize) -> (Work, RpcReplyPort<()>) {
+            let message = timeout(TEST_TIMEOUT, self.dispatched.recv())
+                .await
+                .expect("scheduler did not dispatch work")
+                .unwrap();
+            let FactoryMessage::Dispatch(job) = message else {
+                panic!("expected a dispatch");
+            };
+            let RunnerMsg::Run(work, reply) = job.msg;
+            assert_eq!(job.key, expected);
+            assert_eq!(work.id(), expected);
+            (work, reply)
+        }
+
+        /// Waits for the completion watcher to reconcile the expected running IDs.
+        async fn wait_for_running(&self, expected: &[usize]) {
+            timeout(TEST_TIMEOUT, async {
+                loop {
+                    if call!(self.scheduler, SchedulerMsg::List).unwrap() == expected {
+                        break;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .expect("running IDs did not settle");
+        }
     }
 
     impl Drop for Fixture {
@@ -403,7 +424,7 @@ mod tests {
     /// Removes a queued job by ID and keeps the other job and the scheduler alive.
     #[tokio::test]
     async fn remove_waiting_job_by_id() {
-        let mut fixture = Fixture::new().await;
+        let mut fixture = Fixture::new(1).await;
         let first = fixture.enqueue(40).await.unwrap();
         let second = fixture.enqueue(90).await.unwrap();
         let scheduler = &fixture.scheduler;
@@ -430,5 +451,89 @@ mod tests {
         assert_eq!(first.rx.await.unwrap().id, 40);
         assert!(call!(scheduler, SchedulerMsg::Empty).unwrap());
         assert!(fixture.dispatched.try_recv().is_err());
+    }
+
+    /// Keeps the mailbox responsive while both slots are occupied and refills the
+    /// slot of a later job that finishes first.
+    #[tokio::test]
+    async fn dispatch_refills_the_correct_slot_after_out_of_order_completion() {
+        let mut fixture = Fixture::new(2).await;
+        let _first = fixture.enqueue(40).await.unwrap();
+        let second = fixture.enqueue(90).await.unwrap();
+        let _third = fixture.enqueue(110).await.unwrap();
+        fixture.scheduler.cast(SchedulerMsg::Start).unwrap();
+        let (_first_work, _first_reply) = fixture.next_dispatch(40).await;
+        let (second_work, second_reply) = fixture.next_dispatch(90).await;
+
+        fixture.scheduler.cast(SchedulerMsg::Tick).unwrap();
+        assert_eq!(
+            call!(fixture.scheduler, SchedulerMsg::List).unwrap(),
+            [40, 90]
+        );
+        assert!(fixture.dispatched.try_recv().is_err());
+        assert_eq!(fixture.enqueue(200).await.unwrap().id, 200);
+        assert!(matches!(
+            call!(fixture.scheduler, |port| SchedulerMsg::RemoveById(90, port)).unwrap(),
+            Err(EngineStatus::JobIsRunning(90))
+        ));
+
+        second_work.completion.send(JobOutcome {
+            id: 90,
+            status: JobStatus::Succeeded,
+            stats: Stats::default(),
+        });
+        second_reply.send(()).unwrap();
+        let (_third_work, _third_reply) = fixture.next_dispatch(110).await;
+        assert_eq!(
+            call!(fixture.scheduler, SchedulerMsg::List).unwrap(),
+            [40, 110]
+        );
+        assert_eq!(second.rx.await.unwrap().status, JobStatus::Succeeded);
+    }
+
+    /// Processes a dropped factory job while suspended, then dispatches the next
+    /// job only after the scheduler resumes.
+    #[tokio::test]
+    async fn suspension_keeps_control_and_completion_messages_responsive() {
+        let mut fixture = Fixture::new(1).await;
+        let first = fixture.enqueue(40).await.unwrap();
+        fixture.scheduler.cast(SchedulerMsg::Start).unwrap();
+        let (work, reply) = fixture.next_dispatch(40).await;
+        fixture.scheduler.cast(SchedulerMsg::Suspend).unwrap();
+        let _second = fixture.enqueue(90).await.unwrap();
+        fixture.scheduler.cast(SchedulerMsg::Tick).unwrap();
+        assert_eq!(call!(fixture.scheduler, SchedulerMsg::List).unwrap(), [40]);
+
+        drop(work);
+        drop(reply);
+        let outcome = timeout(TEST_TIMEOUT, first.rx).await.unwrap().unwrap();
+        assert_eq!(outcome.status, JobStatus::Cancelled { stage: None });
+        fixture.wait_for_running(&[]).await;
+        assert!(!call!(fixture.scheduler, SchedulerMsg::Empty).unwrap());
+        assert!(fixture.dispatched.try_recv().is_err());
+
+        fixture.scheduler.cast(SchedulerMsg::Start).unwrap();
+        let (_work, _reply) = fixture.next_dispatch(90).await;
+    }
+
+    /// A stopped factory cancels waiting jobs instead of leaving them outstanding.
+    #[tokio::test]
+    async fn closed_factory_cancels_waiting_jobs() {
+        let fixture = Fixture::new(2).await;
+        let first = fixture.enqueue(40).await.unwrap();
+        let second = fixture.enqueue(90).await.unwrap();
+        fixture
+            .factory
+            .get_cell()
+            .kill_and_wait(Some(TEST_TIMEOUT))
+            .await
+            .unwrap();
+        fixture.scheduler.cast(SchedulerMsg::Start).unwrap();
+
+        for waiter in [first, second] {
+            let outcome = timeout(TEST_TIMEOUT, waiter.rx).await.unwrap().unwrap();
+            assert_eq!(outcome.status, JobStatus::Cancelled { stage: None });
+        }
+        assert!(call!(fixture.scheduler, SchedulerMsg::Empty).unwrap());
     }
 }
