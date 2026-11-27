@@ -83,6 +83,21 @@ before deleting it. A Tokio blocking operation that has already started can stil
 [Workspace paths](../src/workspace.rs), [Startup](../src/lib.rs), [Lifecycle](../src/lifecycle.rs),
 [Shutdown](../src/subr.rs), [Public API tests](../tests/lifecycle.rs)
 
+## Configuration validation
+
+`engine.hcl` uses version 3. Explicit worker counts and timer intervals must be positive. Scheduler intervals use
+the HCL shape `{ secs = 2, nanos = 0 }`. Startup logs the effective settings, including the runner count and
+pipeline limits. [Configuration example](../src/engine.hcl), [Startup](../src/lib.rs)
+
+Local storage areas require a directory. Rotations are positive whole numbers with an `s`, `m`, `h`, or `d` suffix,
+and the resulting seconds must fit in `u32`. Directory errors keep the underlying I/O cause. Token registration and
+lookup report unsupported filenames, malformed data, missing tokens, and read failures separately. Synchronous token
+methods return errors and run outside Tokio. [Storage](../src/storage.rs), [Tokens](../src/tokens.rs)
+
+`Read` in a job requires a nonempty literal filename such as `Read = "input.csv"`. The engine does not evaluate
+expressions in file paths. `Convert` and `Archive` return parser errors before a job becomes ready.
+[Job parser](../src/parse.rs)
+
 ## Baseline architecture and startup
 
 The engine uses Ractor actors on Tokio to configure, schedule, and observe jobs. Each job is an ordered chain with one
