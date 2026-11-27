@@ -4,6 +4,9 @@ use thiserror::Error;
 ///
 #[derive(Debug, Error)]
 pub enum AccessError {
+    /// This adapter recognizes the source but does not implement the operation.
+    #[error("{0} does not support {1}")]
+    UnsupportedOperation(&'static str, &'static str),
     #[error("Bad configuration parameter: {0}")]
     BadParam(String),
     #[error("No such site {0}")]
