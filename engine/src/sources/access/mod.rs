@@ -59,6 +59,11 @@ pub use senhive::*;
 
 mod error;
 
+// The persisted format is also supported when the ASD adapter is disabled.
+#[path = "asd/token.rs"]
+mod asd_token;
+pub use asd_token::AsdToken;
+
 #[cfg(feature = "aeroscope")]
 mod aeroscope;
 #[cfg(feature = "asd")]
