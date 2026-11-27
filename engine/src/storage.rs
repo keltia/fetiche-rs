@@ -134,7 +134,7 @@ impl Storage {
     /// # }
     /// ```
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(cfg), fields(area_count = cfg.len()))]
     pub fn register(cfg: &BTreeMap<String, StorageConfig>) -> Result<Self> {
         trace!("load storage areas");
 
@@ -181,7 +181,7 @@ impl Storage {
                 }
             }
         }
-        debug!("b={:?}", b);
+        debug!(area_count = b.len(), "Registered storage areas");
         Ok(Storage(b))
     }
 

@@ -86,7 +86,7 @@ impl Actor for Worker {
 
     /// Connect to the given server and save the initial state.
     ///
-    #[tracing::instrument(skip(self, myself))]
+    #[tracing::instrument(skip(self, myself, args))]
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
@@ -99,7 +99,7 @@ impl Actor for Worker {
         trace!("tcp::connect");
         let conn = Connection::connect(&args.url, ConnectionProperties::default())
             .await
-            .expect("connect failed");
+            .map_err(|_| eyre::eyre!("Senhive AMQP connection failed"))?;
 
         Ok(WorkerState {
             conn,
@@ -116,7 +116,7 @@ impl Actor for Worker {
     /// Every packet received is converted into a `DronePoint` and saved as CSV, easier to store
     /// inside a DB.
     ///
-    #[tracing::instrument(skip(self, myself))]
+    #[tracing::instrument(skip(self, myself, state))]
     async fn handle(
         &self,
         myself: ActorRef<Self::Msg>,

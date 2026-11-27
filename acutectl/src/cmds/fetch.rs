@@ -33,7 +33,7 @@ use fetiche_common::{DateOpts, Filter};
 /// - The job execution fails
 ///
 #[tracing::instrument(
-    skip(engine),
+    skip(engine, fopts),
     fields(
         site = %fopts.site,
         output = ?fopts.output,
@@ -96,13 +96,12 @@ pub async fn fetch_from_site(engine: &mut EngineSingle, fopts: &FetchOpts) -> Re
         .tee(tee)
         .save(&final_output)
         .build()?;
-    debug!("{:?}", &job);
 
     // We have a properly configured jon.
     //
     let job = engine.parse_job(job).await?;
     let id = job.id;
-    trace!("Job #{id} parsed: {:?}", job);
+    trace!(job_id = id, "Parsed fetch job");
 
     assert_eq!(job.state(), JobState::Ready);
     let res = engine.submit_job_and_wait(job).await?;

@@ -89,11 +89,7 @@ impl Streamable for Senhive {
             Filter::Stream { duration, .. } => Duration::from_secs(duration as u64),
             _ => Duration::new(0, 0),
         };
-        trace!(
-            "Streaming data from {} for {}s",
-            self.base_url,
-            stream_duration.as_secs()
-        );
+        trace!(duration_secs = stream_duration.as_secs(), "Starting Senhive stream");
 
         let stat = self.stat.clone().ok_or(StatsError::NotInitialized)?;
         let (worker, handle, tag) = self.setup_actors(out, stat.clone()).await?;

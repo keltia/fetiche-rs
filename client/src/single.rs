@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use crate::JobText;
 use eyre::Result;
 pub use fetiche_engine::{Engine, Job, Stats};
-use tracing::debug;
 
 /// Client for configuring and running jobs with a local engine in single mode.
 ///
@@ -61,10 +60,9 @@ impl EngineSingle {
     ///
     /// The engine parser currently panics on [`MiddleText::Convert`](crate::MiddleText::Convert).
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, job))]
     pub async fn parse_job(&mut self, job: JobText) -> Result<Job> {
         let job = hcl::to_string(&job)?;
-        debug!("jobtext = {}", job);
         self.e.parse_job(&job).await
     }
 
@@ -79,7 +77,7 @@ impl EngineSingle {
     /// directories, scheduling fails, or the completion signal or statistics
     /// cannot be retrieved.
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, job), fields(job_id = job.id))]
     pub async fn submit_job_and_wait(&mut self, job: Job) -> Result<Stats> {
         self.e.submit_job_and_wait(job).await
     }

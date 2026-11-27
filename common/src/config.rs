@@ -217,7 +217,7 @@ where
         };
 
         let data: T = hcl::from_str(&data)?;
-        debug!("struct data = {data:?}");
+        debug!(config_type = std::any::type_name::<T>(), "Parsed configuration");
 
         cfg.inner = Some(data);
         Ok(cfg)

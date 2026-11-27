@@ -159,19 +159,15 @@ impl Streamable for OpenskyServer {
     /// - it helps to determine whether we had lack of traffic for a longer time if we have no
     ///   cached entries
     ///
-    #[tracing::instrument(skip(self, out))]
+    #[tracing::instrument(skip(self, out, _token, args))]
     async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<Stats> {
         let mut stream_duration = 0;
         let mut stream_delay = 1000;
 
         let now = Timestamp::now().as_second();
 
-        let login = self.login.clone();
-        let password = self.password.clone();
-        trace!("opensky::stream(as {}:{})", login, password);
-
         let url = format!("{}{}", self.base_url, self.get);
-        trace!("Streaming data from {}…", url);
+        trace!("Starting OpenSky stream");
 
         // FIXME: we can have only one argument
         //
@@ -211,12 +207,10 @@ impl Streamable for OpenskyServer {
 
         info!(
             r##"
-StreamURL: {}
 Duration {}s with {}ms delay and cache with {} entries for {}s
 
 <number>: data packet / ".": no traffic / "*": cache hit
         "##,
-            url,
             stream_duration,
             stream_delay,
             CACHE_SIZE,
@@ -324,13 +318,13 @@ Duration {}s with {}ms delay and cache with {} entries for {}s
                 let resp = match resp {
                     Ok(resp) => resp,
                     Err(e) => {
-                        error!("worker-thread: {}", e.to_string());
+                        error!("worker-thread: {}", e.without_url());
                         stat_tx.send(StatMsg::Error).expect("stat::error");
                         tokio::time::sleep(Duration::from_secs(2)).await;
                         continue;
                     }
                 };
-                debug!("{:?}", &resp);
+                debug!(status = %resp.status(), "OpenSky response");
 
                 // Check status of request.  We will ignore any error for now as the server
                 // does not seem to be very stable.  It tends to returns 502 for transient errors.

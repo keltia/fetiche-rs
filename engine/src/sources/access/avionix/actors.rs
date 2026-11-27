@@ -7,7 +7,7 @@ use serde_json::json;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufStream};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
-use tracing::{debug, error, info, trace};
+use tracing::{error, info, trace};
 
 use super::{DEF_PORT, DEF_SITE};
 use crate::actors::StatsMsg;
@@ -121,7 +121,7 @@ impl Actor for Worker {
                         .write_all(auth_str.as_bytes()).await?;
                     conn.flush().await?;
 
-                    trace!("avionix::stream(as {}:{})", api_key, user_key);
+                    trace!("Avionix credentials sent");
                 } else {
                     trace!("avionix::stream(local)");
                 }
@@ -138,7 +138,7 @@ impl Actor for Worker {
 
                 let out = state.out.clone();
 
-                info!("StreamURL: {}", url);
+                info!(host = site, port, "Streaming from Avionix");
 
                 let stat = state.stat.clone();
                 stat.cast(StatsMsg::Reset("avionixcube".into()))
@@ -198,7 +198,6 @@ impl Actor for Worker {
                     };
 
                     let raw = String::from_utf8_lossy(&buf[..n]);
-                    debug!("raw={}", raw);
 
                     stat.cast(StatsMsg::Update(
                         "avionixcube".into(),

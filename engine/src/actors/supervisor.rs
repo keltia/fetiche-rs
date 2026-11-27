@@ -95,7 +95,7 @@ impl Actor for Supervisor {
     /// # Supervision Events
     /// This function handles the following lifecycle events:
     /// - **ActorTerminated**: Logs the successful termination of a child actor.
-    /// - **ActorFailed**: Logs the failure of a child actor along with the error details.
+    /// - **ActorFailed**: Logs which actor failed. Error payloads can contain sensitive data.
     /// - **ProcessGroupChanged**: Logs any changes in the actor's process group membership.
     /// - **ActorStarted**: Logs the successful startup of a child actor.
     ///
@@ -107,7 +107,7 @@ impl Actor for Supervisor {
     /// # Errors
     /// This function does not return any errors and always resolves to `Ok(())`.
     ///
-    #[tracing::instrument(skip(self, _myself))]
+    #[tracing::instrument(skip(self, _myself, message))]
     async fn handle_supervisor_evt(
         &self,
         _myself: ActorRef<Self::Msg>,
@@ -118,8 +118,8 @@ impl Actor for Supervisor {
             SupervisionEvent::ActorTerminated(cell, ..) => {
                 trace!("Actor {} is finished.", cell.get_name().unwrap());
             }
-            SupervisionEvent::ActorFailed(cell, err) => {
-                trace!("Actor {} terminated with: {err}", cell.get_name().unwrap());
+            SupervisionEvent::ActorFailed(cell, _) => {
+                trace!("Actor {} failed", cell.get_name().unwrap());
             }
             SupervisionEvent::ProcessGroupChanged(msg) => {
                 trace!("Process group changed {msg:?}");

@@ -138,7 +138,7 @@ impl Asd {
     /// # Panics
     /// - Panics if the `auth` field in the `Site` does not contain a valid authentication configuration.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("asd::load");
 

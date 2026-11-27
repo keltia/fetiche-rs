@@ -120,7 +120,7 @@ impl Actor for SchedulerActor {
         })
     }
 
-    #[tracing::instrument(skip(self, myself))]
+    #[tracing::instrument(skip(self, myself, message, state))]
     async fn handle(
         &self,
         myself: ActorRef<Self::Msg>,
@@ -244,11 +244,10 @@ impl Actor for SchedulerActor {
             // Add a job to the waiting queue
             //
             SchedulerMsg::Add(job, port) => {
-                let queued = job.clone();
                 if job.state() != JobState::Ready {
                     return Err(SchedulerError::JobNotReady(job.id).into());
                 }
-                trace!("Adding job to waiting queue: {:?}", queued);
+                trace!(job_id = job.id, "Adding job to waiting queue");
 
                 let (tx, rx) = oneshot::channel();
 

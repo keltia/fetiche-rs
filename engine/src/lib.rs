@@ -327,7 +327,7 @@ impl Engine {
             (1, SYNC, Duration::from_secs(1))
         };
 
-        debug!("Engine config: {:#?}", cfg);
+        debug!(mode = %mode, "Engine configuration loaded");
 
         let pid = std::process::id();
         info!("Engine PID={}", pid);
@@ -509,11 +509,12 @@ impl Engine {
 
         // Display the current storage objects.
         //
-        trace!("Storage objects:");
         let mut flist = base.list(None);
-        while let Some(meta) = flist.next().await.transpose()? {
-            trace!("{:?} ({} bytes)", meta.location, meta.size);
+        let mut object_count = 0usize;
+        while flist.next().await.transpose()?.is_some() {
+            object_count += 1;
         }
+        trace!(object_count, "Listed storage objects");
 
         // Get the ball rolling.  Next tick, we will check the queue.
         //

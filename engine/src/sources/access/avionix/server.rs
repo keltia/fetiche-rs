@@ -21,7 +21,6 @@ use std::time::Duration;
 use ractor::pg::join;
 use ractor::{Actor, ActorRef, call, pg};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tracing::{error, info, trace, warn};
 
 use crate::sources::access::{KillActorOnDrop, wait_for_stream};
@@ -95,7 +94,7 @@ impl AvionixServer {
                     self.user_key = user_key.to_owned();
                 }
                 _ => {
-                    error!("Bad auth parameter: {}", json!(auth));
+                    error!(source = %site.name, "Invalid Avionix authentication method");
                     panic!("nope");
                 }
             }
@@ -136,7 +135,7 @@ impl Streamable for AvionixServer {
     /// Right now it runs until killed by Ctrl+C or the timer expire (if set).
     ///
     ///
-    #[tracing::instrument(skip(self, out))]
+    #[tracing::instrument(skip(self, out, _token, args))]
     async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<Stats> {
         let filter = Filter::from(args);
         let stat = match self.stat.clone() {
@@ -149,7 +148,7 @@ impl Streamable for AvionixServer {
             _ => Duration::new(0, 0),
         };
 
-        trace!("Streaming data from {}…", self.base_url);
+        trace!("Starting Avionix server stream");
 
         // Infinite loop until we get cancelled or a timeout expires
         // self.duration is 0 -> infinite

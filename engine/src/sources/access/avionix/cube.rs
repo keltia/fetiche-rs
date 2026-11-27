@@ -19,7 +19,6 @@ use ractor::pg::join;
 use ractor::{Actor, ActorRef, call, pg};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tracing::{error, info, trace, warn};
 
 use crate::sources::access::{KillActorOnDrop, wait_for_stream};
@@ -82,7 +81,7 @@ impl Cube {
             match auth {
                 Auth::Anon => {}
                 _ => {
-                    error!("Bad auth parameter: {}", json!(auth));
+                    error!(source = %site.name, "Invalid Avionix authentication method");
                     panic!("nope");
                 }
             }
@@ -122,7 +121,7 @@ impl Streamable for Cube {
     ///
     /// No cache is needed because it is plain TCP streaming.
     ///
-    #[tracing::instrument(skip(self, out))]
+    #[tracing::instrument(skip(self, out, _token, args))]
     async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> eyre::Result<Stats> {
         let filter = Filter::from(args);
         let stat = match self.stat.clone() {
@@ -135,16 +134,7 @@ impl Streamable for Cube {
             _ => Duration::new(0, 0),
         };
 
-        trace!("Streaming data from {}…", self.base_url);
-
-        info!(
-            r##"
-StreamURL: {}
-Duration {}s
-        "##,
-            self.base_url,
-            stream_duration.as_secs()
-        );
+        info!(duration_secs = stream_duration.as_secs(), "Starting Avionix Cube stream");
 
         // Infinite loop until we get cancelled or timeout expire
         // self.duration is 0 -> infinite

@@ -55,7 +55,7 @@ impl Fetch {
 
     /// Add a date middle if specified
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, f))]
     pub fn with(&mut self, f: Filter) -> &mut Self {
         self.args = f.to_string();
         self
@@ -68,7 +68,7 @@ impl Fetch {
         let site = self.site.clone();
         let stats = match site {
             Some(site) => {
-                trace!("Site: {}", site.name);
+                trace!(source = %site.name, "Fetching from source");
 
                 let src = FetchableSource::from_site(site)?;
 
@@ -76,7 +76,6 @@ impl Fetch {
                 //
                 let token = src.authenticate().await?;
 
-                trace!("execute:args={}", self.args);
                 let args = self.args.clone();
                 src.fetch(stdout, &token, &args).await?
             }

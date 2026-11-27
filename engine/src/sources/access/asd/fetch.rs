@@ -22,7 +22,7 @@ use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
 use tokio::task::spawn_blocking;
-use tracing::{debug, error, trace, warn};
+use tracing::{error, trace, warn};
 
 use fetiche_formats::Format;
 
@@ -40,7 +40,7 @@ impl Fetchable for Asd {
     ///
     #[tracing::instrument(skip(self))]
     async fn authenticate(&self) -> eyre::Result<String, AuthError> {
-        trace!("authenticate as ({:?})", &self.login);
+        trace!(source = %self.site, "Authenticating with ASD");
 
         // Prepare our submission data
         //
@@ -71,7 +71,7 @@ impl Fetchable for Asd {
         let token = if tentative.is_expired() {
             // Either what we retrieved is absent (so we got an invalid token) or is invalid
             //
-            warn!("Stored token in {:?} has expired/is invalid, deleting!", fname);
+            warn!(source = %self.site, "Stored token expired or invalid");
             let path = fname.clone();
             match spawn_blocking(move || AsdToken::purge(&path)).await {
                 Ok(Ok(())) => {}
@@ -83,7 +83,7 @@ impl Fetchable for Asd {
             // fetch token from site
             //
             let url = format!("{}{}", self.base_url, self.token);
-            trace!("Fetching token through {}…", url);
+            trace!(source = %self.site, "Requesting a new token");
 
             let resp = client
                 .post(url)
@@ -92,18 +92,15 @@ impl Fetchable for Asd {
                 .body(json!(&cred).to_string())
                 .send()
                 .await
-                .map_err(|e| AuthError::HTTP(e.to_string()))?;
+                .map_err(|e| AuthError::HTTP(e.without_url().to_string()))?;
 
-            trace!("resp={:?}", resp);
             let resp = resp
                 .text()
                 .await
-                .map_err(|_| AuthError::Retrieval(cred.email.clone()))?;
+                .map_err(|_| AuthError::Retrieval("ASD response body".into()))?;
 
             let res: AsdToken =
-                serde_json::from_str(&resp).map_err(|_| AuthError::Decoding(cred.email.clone()))?;
-
-            trace!("token={}", res.token);
+                serde_json::from_str(&resp).map_err(|_| AuthError::Decoding("ASD token response".into()))?;
 
             // Write fetched token in `tokens` (unless it is during tests)
             //
@@ -118,16 +115,16 @@ impl Fetchable for Asd {
             //
             tentative.token
         };
+        trace!(source = %self.site, "ASD authentication succeeded");
         Ok(token)
     }
 
     /// Fetch actual data using the aforementioned token
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, out, token, args))]
     async fn fetch(&self, out: Sender<String>, token: &str, args: &str) -> eyre::Result<Stats> {
         const DEF_SOURCES: &[Source] = &[Source::As, Source::Wi];
 
-        trace!("args={}", args);
         let f: Filter = serde_json::from_str(args)?;
 
         // If we have a middle defined, extract times
@@ -157,12 +154,11 @@ impl Fetchable for Asd {
         };
 
         let data = json!(data).to_string();
-        debug!("data={}", data);
 
         // use token
         //
         let url = format!("{}{}", self.base_url, self.get);
-        trace!("Fetching data through {}…", url);
+        trace!(source = %self.site, "Fetching ASD data");
 
         let client = reqwest::Client::new();
 
@@ -179,31 +175,18 @@ impl Fetchable for Asd {
             .header("authorization", format!("Bearer {}", token))
             .body(data)
             .send()
-            .await?;
+            .await
+            .map_err(reqwest::Error::without_url)?;
 
-        debug!("raw resp={:?}", &resp);
 
-        // Check status
-        //
-        match resp.status() {
-            StatusCode::OK => {}
-            code => {
-                // This is highly ASD specific
-                //
-                use percent_encoding::percent_decode;
-                trace!("error resp={:?}", resp);
-                let h = resp.headers();
-                let errtxt = percent_decode(h["x-debug-exception"].as_bytes()).decode_utf8()?;
-                let errfile =
-                    percent_decode(h["x-debug-exception-file"].as_bytes()).decode_utf8()?;
-                return Err(eyre!("Error({}): {} in {}", code, errtxt, errfile));
-            }
+        let status = resp.status();
+        if status != StatusCode::OK {
+            return Err(eyre!("ASD request failed with HTTP {status}"));
         }
 
         // What we receive is an anonymous JSON object containing the filename and CSV content.
         //
-        let resp = resp.text().await?;
-        trace!("resp={}", resp);
+        let resp = resp.text().await.map_err(reqwest::Error::without_url)?;
         let bytes = resp.len() as u64;
         let data = spawn_blocking(move || -> eyre::Result<String> {
             let payload: Payload = serde_json::from_str(&resp)?;

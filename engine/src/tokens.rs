@@ -91,8 +91,6 @@ impl TokenStorage {
 
         for object in objects {
             if let Some(file_name) = object.location.filename() {
-                trace!("Processing file: {}", file_name);
-
                 let data = store.get(&object.location).await?;
                 let bytes = data.bytes().await?;
                 let raw = String::from_utf8(bytes.to_vec())?;
@@ -114,7 +112,7 @@ impl TokenStorage {
     }
 
     /// Store a token in the object store and update the in-memory list
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, key, data))]
     pub async fn store(&mut self, key: &str, data: TokenType) -> Result<()> {
         // Serialize the token data
         let serialized = match &data {
@@ -133,7 +131,7 @@ impl TokenStorage {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, key))]
     pub async fn load(&self, key: &str) -> Result<TokenType> {
         // First check the in-memory cache
         //
@@ -234,14 +232,14 @@ impl TokenStorage {
     }
 
     /// Synchronous version of store for backward compatibility
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, key, data))]
     pub fn store_sync(&mut self, key: &str, data: TokenType) -> Result<()> {
         let rt = Handle::current();
         rt.block_on(async { self.store(key, data).await })
     }
 
     /// Synchronous version of load for backward compatibility
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, key))]
     pub fn load_sync(&self, key: &str) -> Result<TokenType> {
         let rt = Handle::current();
         rt.block_on(async { self.load(key).await })

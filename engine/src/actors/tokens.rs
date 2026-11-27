@@ -68,7 +68,7 @@ impl Actor for TokenActor {
         Ok(tokens)
     }
 
-    #[tracing::instrument(skip(self, _myself))]
+    #[tracing::instrument(skip(self, _myself, message, state))]
     async fn handle(
         &self,
         _myself: ActorRef<Self::Msg>,

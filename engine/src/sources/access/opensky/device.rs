@@ -89,7 +89,7 @@ impl Streamable for OpenskyDevice {
         Ok(String::new())
     }
 
-    #[tracing::instrument(skip(self, out, _token))]
+    #[tracing::instrument(skip(self, out, _token, args))]
     async fn stream(&self, out: Sender<String>, _token: &str, _args: &str) -> Result<Stats> {
         //let args: Param = serde_json::from_str(args)?;
 

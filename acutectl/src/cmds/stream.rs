@@ -11,7 +11,7 @@ use fetiche_common::Filter;
 
 use crate::{Status, StreamOpts};
 
-#[tracing::instrument(skip(engine))]
+#[tracing::instrument(skip(engine, sopts), fields(source = %sopts.site))]
 pub async fn stream_from_site(engine: &mut EngineSingle, sopts: &StreamOpts) -> Result<()> {
     check_args(sopts)?;
 
@@ -63,7 +63,6 @@ pub async fn stream_from_site(engine: &mut EngineSingle, sopts: &StreamOpts) -> 
         .tee(tee)
         .store(&output, freq)
         .build()?;
-    dbg!(&job);
 
     let job = engine.parse_job(job).await?;
     let id = job.id;

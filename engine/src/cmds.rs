@@ -124,7 +124,7 @@ impl Engine {
     ///
     /// This method is instrumented for tracing, excluding the `self` parameter.
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, job_script))]
     pub async fn parse_job(&mut self, job_script: &str) -> Result<Job> {
         let mut job = self.parse(job_script).await?;
         job.set(JobState::Ready);
@@ -158,7 +158,7 @@ impl Engine {
     /// 3. Queues the job for execution
     /// 4. Synchronizes the engine state
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, job), fields(job_id = job.id))]
     pub async fn submit_job(&mut self, job: Job) -> Result<WaitGroup> {
         if job.state() != JobState::Ready {
             return Err(EngineStatus::JobNotReady(job.id).into());
@@ -200,7 +200,7 @@ impl Engine {
     ///
     /// This method is instrumented for tracing, excluding the `self` parameter.
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, job), fields(job_id = job.id))]
     pub async fn submit_job_and_wait(&mut self, job: Job) -> Result<Stats> {
         if job.state() != JobState::Ready {
             return Err(EngineStatus::JobNotReady(job.id).into());
@@ -353,7 +353,7 @@ impl Drop for Engine {
     /// - Iterates through each actor and sends a stop signal
     /// - Actors will clean up resources before terminating
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     fn drop(&mut self) {
         pg::get_members(&ENGINE_PG.to_string())
             .iter()

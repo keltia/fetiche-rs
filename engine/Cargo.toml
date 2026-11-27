@@ -77,7 +77,6 @@ lapin = { version = "4.13", features = ["native-tls"] }
 native-tls = "0.2"
 polars-core = { version = "0.55", default-features = false }
 polars-io = { version = "0.55", default-features = false, features = ["csv", "parquet"] }
-percent-encoding = "2.3"
 futures-util = "0.3"
 regex = "1.13"
 
@@ -99,3 +98,4 @@ dateparser = "0.3"
 divan = "0.1"
 polars-io = { version = "0.55", default-features = false, features = ["json"] }
 test-pretty-log = "0.6"
+tracing-subscriber = "0.3"

@@ -128,7 +128,7 @@ impl Fetchable for Aeroscope {
     ///
     #[tracing::instrument(skip(self))]
     async fn authenticate(&self) -> Result<String, AuthError> {
-        trace!("aeroscope::authenticate({:?})", &self.login);
+        trace!(source = %self.name(), "Authenticating with Aeroscope");
 
         // Prepare our submission data
         //
@@ -140,7 +140,6 @@ impl Fetchable for Aeroscope {
         // fetch token
         //
         let url = format!("{}{}", self.base_url, self.token);
-        trace!("Fetching token through {}…", url);
 
         let client = reqwest::Client::new();
         let resp = client
@@ -153,22 +152,22 @@ impl Fetchable for Aeroscope {
             .json(&cred)
             .send()
             .await
-            .map_err(|e| AuthError::HTTP(e.to_string()))?;
+            .map_err(|e| AuthError::HTTP(e.without_url().to_string()))?;
 
         let resp = resp
             .text()
             .await
-            .map_err(|_| AuthError::Retrieval(cred.username.clone()))?;
+            .map_err(|_| AuthError::Retrieval("Aeroscope response body".into()))?;
         let res: Token =
-            serde_json::from_str(&resp).map_err(|e| AuthError::Decoding(e.to_string()))?;
+            serde_json::from_str(&resp).map_err(|_| AuthError::Decoding("Aeroscope token response".into()))?;
 
-        debug!("res={:?}", res);
+        trace!(source = %self.name(), "Aeroscope authentication succeeded");
         Ok(res.access_token)
     }
 
     /// Fetch actual data from the site as a long String.
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, out, token, _args))]
     async fn fetch(&self, out: Sender<String>, token: &str, _args: &str) -> Result<Stats> {
 
         // Use the token to authenticate ourselves
@@ -182,10 +181,10 @@ impl Fetchable for Aeroscope {
             .body(json!(&token).to_string())
             .send()
             .await
-            .map_err(|e| AuthError::HTTP(e.to_string()))?;
+            .map_err(|e| AuthError::HTTP(e.without_url().to_string()))?;
 
 
-        let resp = resp.text().await?;
+        let resp = resp.text().await.map_err(reqwest::Error::without_url)?;
 
         debug!("{} bytes read. ", resp.len());
         // Send statistics

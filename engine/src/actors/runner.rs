@@ -107,7 +107,7 @@ impl Worker for RunnerActor {
     /// # Returns
     /// Returns the job key on successful execution, or an ActorProcessingErr on failure
     ///
-    #[tracing::instrument(skip(self, _factory))]
+    #[tracing::instrument(skip_all)]
     async fn handle(
         &self,
         wid: WorkerId,
@@ -115,7 +115,7 @@ impl Worker for RunnerActor {
         Job { msg, key, .. }: Job<usize, RunnerMsg>,
         state: &mut Self::State,
     ) -> Result<usize, ActorProcessingErr> {
-        trace!("runner {} got message: {:?}", wid, msg);
+        trace!(worker_id = wid, job_id = key, "Runner received job");
         match msg {
             // Takes the next job from the queue.
             //
@@ -146,7 +146,7 @@ impl Worker for RunnerActor {
                             Err(err) if outcome.status == JobStatus::Succeeded => {
                                 outcome.status = job_failure(format!("read statistics: {err}"));
                             }
-                            Err(err) => debug!(job_id = id, %err, "Could not read job statistics"),
+                            Err(_) => debug!(job_id = id, "Could not read job statistics"),
                         }
                         let _ = cast!(stat, StatsMsg::Reset(job_tag));
                     }
@@ -159,7 +159,7 @@ impl Worker for RunnerActor {
                     if outcome.status == JobStatus::Succeeded {
                         outcome.status = job_failure(format!("publish outcome: {err}"));
                     }
-                    debug!(job_id = id, %err, "Could not publish job outcome");
+                    debug!(job_id = id, "Could not publish job outcome");
                 }
 
                 completion.send(outcome);

@@ -23,7 +23,7 @@ const DAY_SECONDS: i64 = 86_400;
 
 /// Access token derived from username/password
 ///
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[derive(Clone, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AsdToken {
     /// The actual token
@@ -47,6 +47,15 @@ pub struct AsdToken {
     homepage: String,
 }
 
+impl std::fmt::Debug for AsdToken {
+    /// Shows expiration metadata while omitting token values and account details.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AsdToken")
+            .field("expired_at", &self.expired_at)
+            .finish_non_exhaustive()
+    }
+}
+
 impl AsdToken {
     #[tracing::instrument]
     /// Return an invalid (and expired) token by default.
@@ -68,7 +77,7 @@ impl AsdToken {
         }
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(json))]
     pub fn from_json(json: &str) -> Result<Self> {
         let temp: AsdToken = serde_json::from_str(json).unwrap_or(AsdToken::new());
         Ok(temp)
@@ -93,7 +102,7 @@ impl AsdToken {
     /// - Returns an error with the variant `AuthError::Retrieval` if the file cannot be found.
     /// - Returns an error if the file cannot be read due to insufficient permissions or other I/O issues.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(fname))]
     pub fn retrieve(fname: &PathBuf) -> Result<AsdToken> {
         let str = if fname.exists() {
             fs::read_to_string(fname)?
@@ -128,7 +137,7 @@ impl AsdToken {
     ///   permission issues.
     /// - Returns an error if the token cannot be written to the file.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(fname, data))]
     pub fn store(fname: &PathBuf, data: &str) -> Result<()> {
         let dir = fname.parent().unwrap();
 
@@ -141,7 +150,6 @@ impl AsdToken {
 
             fs::create_dir_all(dir)?
         }
-        trace!("store_token: {fname:?}");
         Ok(fs::write(fname, data)?)
     }
 
@@ -165,10 +173,8 @@ impl AsdToken {
     /// - Returns an error if the file does not exist or cannot be removed due to
     ///   insufficient permissions or other I/O issues.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(fname))]
     pub fn purge(fname: &PathBuf) -> Result<()> {
-        trace!("purge expired token in {fname:?}");
-
         Ok(fs::remove_file(fname)?)
     }
 }

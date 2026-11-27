@@ -86,7 +86,7 @@ impl From<&str> for DataType {
 /// - `auth`: Optional authentication details required for the site.
 /// - `routes`: Optional list of available routes for the site.
 ///
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Default, Deserialize, Serialize, PartialEq)]
 pub struct Site {
     /// Features of the site
     pub feature: Capability,
@@ -218,17 +218,22 @@ impl Site {
     }
 }
 
-impl Display for Site {
+impl Debug for Site {
+    /// Prints source metadata while omitting URLs and routes that may contain credentials.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let auth = match self.auth.clone() {
-            Some(auth) => auth,
-            _ => Auth::Anon,
-        };
-        write!(
-            f,
-            "{{ format={} url={} auth={} routes={:?} }}",
-            self.format, self.base_url, auth, self.routes
-        )
+        f.debug_struct("Site")
+            .field("name", &self.name)
+            .field("feature", &self.feature)
+            .field("format", &self.format)
+            .field("auth", &self.auth)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Display for Site {
+    /// Displays the same credential-safe source metadata as `Debug`.
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(self, f)
     }
 }
 

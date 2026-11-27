@@ -12,7 +12,7 @@ use eyre::Result;
 use ractor::call;
 use serde::{Deserialize, Serialize};
 use strum::{EnumString, VariantNames};
-use tracing::{debug, trace};
+use tracing::debug;
 
 use fetiche_common::Container;
 use fetiche_formats::Format;
@@ -187,10 +187,9 @@ impl Engine {
     /// # }
     /// ```
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, job_str))]
     pub async fn parse(&mut self, job_str: &str) -> Result<Job> {
         let jt: JobText = hcl::from_str(job_str)?;
-        trace!("jobtext = {:?}", &jt);
 
         // Assign a new ID
         //
@@ -241,7 +240,7 @@ impl Engine {
             }
         };
 
-        debug!("Filters: {:?}", &jt.middle);
+        debug!(job_id = id, "Building job stages");
         // Lets have a look at filters now.
         //
         let list = if let Some(filters) = &jt.middle {
@@ -291,7 +290,7 @@ impl Engine {
             consumer,
             stats: None,
         };
-        debug!("Job: {:?}", job);
+        debug!(job_id = job.id, "Parsed job");
         Ok(job)
     }
 }
@@ -300,6 +299,100 @@ impl Engine {
 mod tests {
     use super::*;
     use crate::Capability;
+
+    /// Captures emitted spans and events while a job with fake credentials is built.
+    #[cfg(feature = "asd")]
+    #[tokio::test]
+    async fn test_job_and_token_traces_omit_credentials() -> Result<()> {
+        use crate::token::AsdToken;
+        use crate::{Auth, TokenStorage, TokenType, Work};
+        use std::io::{self, Write};
+        use std::sync::{Arc, Mutex};
+        use tracing_subscriber::fmt::format::FmtSpan;
+
+        #[derive(Clone, Default)]
+        struct Capture(Arc<Mutex<Vec<u8>>>);
+
+        impl Write for Capture {
+            /// Appends a formatted trace record to the shared test buffer.
+            fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+                self.0.lock().unwrap().write(bytes)
+            }
+
+            /// The in-memory buffer is immediately visible to the test.
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+
+        let capture = Capture::default();
+        let writer = capture.clone();
+        let subscriber = tracing_subscriber::fmt()
+            .with_writer(move || writer.clone())
+            .with_ansi(false)
+            .with_max_level(tracing::Level::TRACE)
+            .with_span_events(FmtSpan::NEW)
+            .finish();
+        let _subscriber_guard = tracing::subscriber::set_default(subscriber);
+
+        let input = hcl::from_str(
+            r#"
+            name = "trace-job"
+            producer = { Fetch = ["trace-source", { name = "key", value = "fake-filter-secret" }] }
+            output = { Save = "output.csv" }
+            "#,
+        )?;
+        let job = Engine::build_job(input, 901, async |name| {
+            Ok(Site {
+                name,
+                feature: Capability::Fetch,
+                base_url: "https://example.test/?key=fake-url-secret".into(),
+                auth: Some(Auth::Token {
+                    login: "fake-login-secret".into(),
+                    password: "fake-password-secret".into(),
+                    token: "fake-source-token".into(),
+                }),
+                ..Site::default()
+            })
+        })
+        .await?;
+        let Producer::Fetch(fetch) = &job.producer else {
+            panic!("expected a Fetch producer");
+        };
+        let site = fetch.site.as_ref().unwrap();
+        let formatted_source = format!("{site} {site:?}");
+        assert!(formatted_source.contains("trace-source"));
+        let (completion, _outcome) = tokio::sync::oneshot::channel();
+        let _work = Work::new(job, completion);
+
+        let mut token = AsdToken::new();
+        token.token = "fake-stored-token".into();
+        let json = serde_json::to_string(&token)?;
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("fake-login-secret");
+        AsdToken::store(&path, &json)?;
+        let token = AsdToken::retrieve(&path)?;
+        assert_eq!(token.token, "fake-stored-token");
+        AsdToken::purge(&path)?;
+        let mut tokens = TokenStorage::register(&dir.path().to_path_buf()).await?;
+        tokens.store("asd_fake-login-secret", TokenType::AsdToken(token)).await?;
+
+        let captured = capture.0.lock().unwrap();
+        let logs = std::str::from_utf8(&captured)?;
+        assert!(logs.contains("job_id=901") && logs.contains("trace-source"), "{logs}");
+        for secret in [
+            "fake-filter-secret",
+            "fake-url-secret",
+            "fake-login-secret",
+            "fake-password-secret",
+            "fake-source-token",
+            "fake-stored-token",
+        ] {
+            assert!(!logs.contains(secret), "trace exposed {secret}");
+            assert!(!formatted_source.contains(secret), "source format exposed {secret}");
+        }
+        Ok(())
+    }
 
     async fn parse_job(input: &str) -> Result<Job> {
         Engine::build_job(hcl::from_str(input)?, 1, async |name: String| {

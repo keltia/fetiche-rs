@@ -73,7 +73,7 @@ impl Stream {
 
     /// Add a date middle if specified
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, f))]
     pub fn with(&mut self, f: Filter) -> &mut Self {
         self.args = f.to_string();
         self
@@ -94,7 +94,7 @@ impl Stream {
         let site = self.site.clone();
         let stats = match site {
             Some(site) => {
-                trace!("Site: {}", site);
+                trace!(source = %site.name, "Streaming from source");
 
                 let src = StreamableSource::from_site(site)?;
 

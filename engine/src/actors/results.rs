@@ -29,7 +29,7 @@ impl Actor for ResultsActor {
         })
     }
 
-    #[tracing::instrument(skip(self, _myself, state))]
+    #[tracing::instrument(skip(self, _myself, state, message))]
     async fn handle(&self, _myself: ActorRef<Self::Msg>, message: Self::Msg, state: &mut Self::State) -> Result<(), ActorProcessingErr> {
         match message {
             ResultsMsg::Submit(outcome, ack) => {

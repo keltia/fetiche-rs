@@ -223,7 +223,7 @@ impl Engine {
     /// each command's name, type, and description. Validates the file version
     /// before processing.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn list_commands(&self) -> eyre::Result<String> {
         trace!("list all commands");
 

@@ -75,7 +75,7 @@ impl Safesky {
         }
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn load(&mut self, site: &Site) -> &mut Self {
         trace!("safesky::load");
 
@@ -93,7 +93,7 @@ impl Safesky {
         self
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     pub fn source(&self) -> FetchableSource {
         FetchableSource::Safesky(self.clone())
     }
@@ -113,7 +113,7 @@ impl Fetchable for Safesky {
     /// Safesky is using an API key you need to have for all transactions, there is no
     /// real authentication.
     ///
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     async fn authenticate(&self) -> Result<String, AuthError> {
         trace!("safesky::authenticate");
 
@@ -123,7 +123,7 @@ impl Fetchable for Safesky {
         Ok(self.api_key.clone())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, _out, _token, _args))]
     async fn fetch(&self, _out: Sender<String>, _token: &str, _args: &str) -> Result<()> {
         trace!("safesky::fetch");
         todo!()

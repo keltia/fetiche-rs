@@ -23,7 +23,7 @@ impl Streamable for Flightaware {
 
     /// FIXME: not tested or working
     ///
-    #[tracing::instrument(skip(self, out, _token))]
+    #[tracing::instrument(skip(self, out, _token, args))]
     async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<Stats> {
         trace!("stream with TLS");
         let args: Param = serde_json::from_str(args)?;

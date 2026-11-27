@@ -47,7 +47,7 @@ use crate::token::AsdToken;
 /// println!("Auth: {}", auth);
 /// ```
 ///
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum Auth {
     /// Nothing special, no auth
@@ -73,62 +73,33 @@ pub enum Auth {
     Login { username: String, password: String },
 }
 
+impl Debug for Auth {
+    /// Prints the authentication method with all credential fields redacted.
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let method = match self {
+            Self::Anon => return f.write_str("Anon"),
+            Self::UserKey { .. } => "UserKey",
+            Self::Key { .. } => "Key",
+            Self::Token { .. } => "Token",
+            Self::Vhost { .. } => "Vhost",
+            Self::Login { .. } => "Login",
+        };
+        write!(f, "{method}(HIDDEN)")
+    }
+}
+
 impl Display for Auth {
-    /// Implements the `Display` trait for the `Auth` enum to provide a user-friendly string representation.
+    /// Displays the authentication method without credential values.
     ///
-    /// Sensitive information such as passwords and API keys are obfuscated for security purposes.
     ///
-    /// # Obfuscation Details:
-    ///
-    /// - **Passwords:** Replaced with `"HIDDEN"`.
-    /// - **API keys:** Replaced with `"HIDDEN"`.
-    ///
-    /// The representation depends on the variant of the `Auth` enum.
-    ///
-    /// # Examples:
-    ///
-    /// ```rust
+    /// ```
     /// use fetiche_engine::Auth;
     ///
-    /// let auth = Auth::Token {
-    ///     login: "user".to_string(),
-    ///     password: "mypassword".to_string(),
-    ///     token: "12345".to_string(),
-    /// };
-    ///
-    /// assert!(auth.to_string().contains("HIDDEN"));
+    /// let auth = Auth::Key { api_key: "example-key".to_owned() };
+    /// assert_eq!(auth.to_string(), "Key(HIDDEN)");
     /// ```
-    ///
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        // Hide passwords & API keys
-        //
-        let auth = match self.clone() {
-            Auth::Vhost {
-                vhost, username, ..
-            } => Auth::Vhost {
-                vhost,
-                username,
-                password: "HIDDEN".to_string(),
-            },
-            Auth::UserKey { .. } => Auth::UserKey {
-                api_key: "HIDDEN".to_string(),
-                user_key: "HIDDEN".to_string(),
-            },
-            Auth::Key { .. } => Auth::Key {
-                api_key: "HIDDEN".to_string(),
-            },
-            Auth::Login { username, .. } => Auth::Login {
-                username,
-                password: "HIDDEN".to_string(),
-            },
-            Auth::Token { login, token, .. } => Auth::Token {
-                login,
-                token,
-                password: "HIDDEN".to_string(),
-            },
-            _ => Auth::Anon,
-        };
-        write!(f, "{:?}", auth)
+        Debug::fmt(self, f)
     }
 }
 

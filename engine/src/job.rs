@@ -141,7 +141,7 @@ impl Work {
     ///
     /// Dropping the work before execution reports cancellation through `tx`.
     /// See [`WaitGroup::new`] for a runnable example.
-    #[tracing::instrument(skip(tx))]
+    #[tracing::instrument(skip(job, tx), fields(job_id = job.id))]
     pub fn new(job: Job, tx: oneshot::Sender<JobOutcome>) -> Self {
         let completion = JobCompletion { id: job.id, tx: Some(tx) };
         Self { job, completion }

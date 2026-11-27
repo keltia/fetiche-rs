@@ -202,7 +202,7 @@ impl Flightaware {
 
     /// Establish the TCP/TLS connection, optionally goes through an HTTP proxy
     ///
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, proxy))]
     async fn connect(&self, proxy: Option<String>) -> Result<TlsStream<TcpStream>> {
         let native_connector = native_tls::TlsConnector::new()?;
         let connector = TokioTlsConnector::from(native_connector);
@@ -213,7 +213,7 @@ impl Flightaware {
             trace!("using proxy");
 
             let url = Url::parse(&proxy_url_str)
-                .map_err(|_| AccessError::BadProxyString(proxy_url_str))?;
+                .map_err(|_| AccessError::BadProxyString("invalid proxy URL".into()))?;
             let (host, port) = (url.host_str().unwrap(), url.port().unwrap_or(80));
 
             trace!("proxy = {}:{}", host, port);
@@ -305,7 +305,7 @@ impl Fetchable for Flightaware {
         Ok(format!("{}:{}", self.login, self.password))
     }
 
-    #[tracing::instrument(skip(self, _token))]
+    #[tracing::instrument(skip(self, out, _token, args))]
     async fn fetch(&self, out: Sender<String>, _token: &str, args: &str) -> Result<Stats> {
         trace!("fetch with TLS");
         let args: Param = serde_json::from_str(args)?;
