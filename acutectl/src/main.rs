@@ -24,15 +24,15 @@
 //   -h, --help             Print help
 //! ```
 
-use clap::{crate_authors, crate_description, crate_version, Parser};
+use clap::{Parser, crate_authors, crate_description, crate_version};
 use eyre::Result;
 use serde::Deserialize;
 use tokio::runtime::Runtime;
 use tracing::{debug, trace};
 
-use acutectl::{handle_subcmd, ConfigCmd, Opts, Status, SubCommand};
+use acutectl::{ConfigCmd, Opts, Status, SubCommand, handle_subcmd};
 use fetiche_client::EngineSingle;
-use fetiche_common::{close_logging, init_logging, ConfigFile, IntoConfig, Versioned};
+use fetiche_common::{ConfigFile, IntoConfig, Versioned, close_logging, init_logging};
 use fetiche_macros::into_configfile;
 
 /// Binary name, using a different binary name
@@ -56,6 +56,7 @@ pub struct AcuteConfig {
     use_async: bool,
 }
 
+/// Runs the command and awaits engine shutdown before exiting.
 #[tokio::main]
 async fn main() -> Result<()> {
     let opts = Opts::parse();
@@ -104,35 +105,36 @@ async fn main() -> Result<()> {
 
     // We shortcut the `config`  sub-commands here to avoid exporting some variables to `handle_subcmd()`
     //
-    match subcmd {
-        // Handle `config acutectl|engine|sources`
-        //
-        SubCommand::Config(copts) => match copts.subcmd {
-            ConfigCmd::Acutectl => {
-                let p = cfile
-                    .config_path()
-                    .join(CONFIG)
-                    .to_string_lossy()
-                    .to_string();
-                println!("{p}");
-            }
-            ConfigCmd::Engine => {
-                let p = engine.config_file()?.to_string_lossy().to_string();
-                println!("{p}");
-            }
-            ConfigCmd::Sources => {
-                let p = engine.sources_file()?.to_string_lossy().to_string();
-                println!("{p}");
-            }
-        },
-        _ => {
-            // For the moment the whole of Engine is sync so we need to block.
+    let command = async {
+        match subcmd {
+            // Handle `config acutectl|engine|sources`
             //
-            let _ = handle_subcmd(&mut engine, &subcmd).await?;
+            SubCommand::Config(copts) => match copts.subcmd {
+                ConfigCmd::Acutectl => {
+                    let p = cfile
+                        .config_path()
+                        .join(CONFIG)
+                        .to_string_lossy()
+                        .to_string();
+                    println!("{p}");
+                }
+                ConfigCmd::Engine => {
+                    let p = engine.config_file()?.to_string_lossy().to_string();
+                    println!("{p}");
+                }
+                ConfigCmd::Sources => {
+                    let p = engine.sources_file()?.to_string_lossy().to_string();
+                    println!("{p}");
+                }
+            },
+            _ => handle_subcmd(&mut engine, &subcmd).await?,
         }
+        Ok(())
     }
+    .await;
+    let shutdown = engine.shutdown().await;
     close_logging();
-    Ok(())
+    command.and(shutdown)
 }
 
 /// Return our version number

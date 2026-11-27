@@ -82,21 +82,20 @@ impl EngineSingle {
         self.e.submit_job_and_wait(job).await
     }
 
-    /// Attempts to remove the single-mode engine's working directory and its contents.
+    /// Shuts down the single-mode engine and removes its workspace.
     ///
-    /// The engine ignores directory removal errors. Call [`Self::shutdown`]
-    /// before cleanup if you also need to stop the engine and remove its run marker.
+    /// Propagates shutdown or filesystem errors.
     ///
     #[tracing::instrument(skip(self))]
     pub async fn cleanup(&mut self) -> Result<()> {
         self.e.cleanup().await
     }
 
-    /// Requests that the engine actors stop and removes the workspace's run marker.
+    /// Drains or cancels active jobs and awaits the engine's final state write and actor exits.
     ///
     /// # Errors
     ///
-    /// Returns an error if the run marker cannot be removed.
+    /// Propagates shutdown, persistence, and marker cleanup errors.
     ///
     #[tracing::instrument(skip(self))]
     pub async fn shutdown(&mut self) -> Result<()> {

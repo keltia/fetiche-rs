@@ -60,9 +60,28 @@ typed outcome from the runner or the dropped work. Results remain in the results
 whether waiting and dispatched work are empty independently of retained results.
 
 Queued jobs can be removed by ID and receive a cancellation outcome. Removal of dispatched jobs returns an
-error. Duplicate IDs are rejected while a job is outstanding. The state snapshot and engine-wide shutdown still
-have their existing lifecycle. [Scheduler](../src/actors/scheduler.rs), [Runner](../src/actors/runner.rs),
+error. Duplicate IDs are rejected while a job is outstanding. [Scheduler](../src/actors/scheduler.rs), [Runner](../src/actors/runner.rs),
 [Engine commands](../src/cmds.rs)
+
+## Workspace and shutdown ownership
+
+Both submission methods resolve relative `Read`, `Tee`, and `Save` paths against the engine workspace without
+changing the process working directory. The HCL parser uses the same workspace for `Store` before it creates
+the destination directory. Absolute paths and stdout output keep their configured meaning.
+
+An explicit engine configuration path selects its containing directory for sources, tokens, and state. Each engine
+claims its workspace with an exclusive `running` marker. A pre-existing marker prevents a new claim. If startup
+fails after claiming the workspace, the engine joins actors already started and releases the marker after cleanup.
+
+Clones share one lifecycle owner. Shutdown closes scheduler admission, cancels waiting jobs, and lets dispatched
+jobs finish within the grace period. The default is five seconds. The first `shutdown_with_timeout` caller can
+choose another grace period. After the deadline, the engine signals cancellation and the runner aborts and joins
+its stages. Shutdown acknowledges a final state write and joins the engine actors before removing the marker.
+The engine retains the marker if it cannot confirm actor exit. Single-mode cleanup detaches the owned workspace
+before deleting it. A Tokio blocking operation that has already started can still finish after cancellation.
+
+[Workspace paths](../src/workspace.rs), [Startup](../src/lib.rs), [Lifecycle](../src/lifecycle.rs),
+[Shutdown](../src/subr.rs), [Public API tests](../tests/lifecycle.rs)
 
 ## Baseline architecture and startup
 
