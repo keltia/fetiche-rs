@@ -29,13 +29,10 @@ use crate::Flightaware;
 use crate::Safesky;
 #[cfg(feature = "senhive")]
 use crate::Senhive;
-#[cfg(feature = "opensky")]
-use crate::{OpenskyDevice, OpenskyServer};
 
 use crate::{AccessError, Auth, FetchableSource, Site, StreamableSource, SOURCES_CONFIG};
 
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
-#[cfg(any(feature = "asd", feature = "aeroscope", feature = "safesky", feature = "avionix", feature = "flightaware", feature = "opensky", feature = "senhive"))]
 use fetiche_formats::Format;
 use fetiche_macros::into_configfile;
 
@@ -129,11 +126,13 @@ impl Sources {
         Sources::from(all)
     }
 
+    /// Resolves a configured fetch adapter, or errors if its format is unavailable.
     pub fn as_fetchable(&self, name: &str) -> Result<FetchableSource> {
         match self.site.get(name) {
             Some(site) => {
                 trace!("site={}", site);
-                let fmt = site.format();
+                let fmt = site.format.parse::<Format>()
+                    .map_err(|_| AccessError::InvalidSite(name.to_owned()))?;
 
                 // We have to explicitly list all supported formats as we return
                 // an enum whether the site will be fetchable or not
@@ -161,12 +160,22 @@ impl Sources {
         }
     }
 
+    /// Looks up a configured streaming source and errors for unavailable formats.
+    /// OpenSky endpoints use the same adapter selection as the pipeline.
     #[tracing::instrument(skip(self))]
     pub fn as_streamable(&self, name: &str) -> Result<StreamableSource> {
         match self.site.get(name) {
             Some(site) => {
                 trace!("site={}", site);
-                let fmt = site.format();
+                #[cfg(feature = "opensky")]
+                if matches!(
+                    site.format.to_ascii_lowercase().as_str(),
+                    "opensky" | "openskyserver" | "openskydevice"
+                ) {
+                    return StreamableSource::from_site(site.clone());
+                }
+                let fmt = site.format.parse::<Format>()
+                    .map_err(|_| AccessError::InvalidSite(name.to_owned()))?;
 
                 // We have to explicitly list all supported formats as we return
                 // an enum whether the site will be streamable or not
@@ -180,16 +189,6 @@ impl Sources {
                         } else {
                             let s = Cube::new().load(site).clone();
                             Ok(StreamableSource::Cube(s))
-                        }
-                    }
-                    #[cfg(feature = "opensky")]
-                    Format::Opensky => {
-                        if let Some(Auth::Login { .. }) = site.auth {
-                            let s = OpenskyServer::new().load(site).clone();
-                            Ok(StreamableSource::OpenskyServer(s))
-                        } else {
-                            let s = OpenskyDevice::new().load(site).clone();
-                            Ok(StreamableSource::OpenskyDevice(s))
                         }
                     }
                     #[cfg(feature = "flightaware")]

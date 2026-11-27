@@ -111,9 +111,12 @@ pub enum StreamableSource {
 
 impl StreamableSource {
     /// Resolves an enabled adapter or returns an error for an unavailable site.
+    ///
+    /// The legacy `opensky` format selects HTTP polling for HTTP endpoints or
+    /// login-based authentication, and direct TCP otherwise.
     #[tracing::instrument]
     pub fn from_site(value: Site) -> Result<Self> {
-        match value.format.as_str() {
+        match value.format.to_ascii_lowercase().as_str() {
             #[cfg(feature = "avionix")]
             "cubedata" => {
                 let variant = value.variant().unwrap_or("avionixserver".into());
@@ -136,14 +139,17 @@ impl StreamableSource {
                 Ok(StreamableSource::from(s))
             }
             #[cfg(feature = "opensky")]
-            "openskyserver" => {
-                let s = OpenskyServer::new().load(&value).clone();
-                Ok(StreamableSource::from(s))
-            }
-            #[cfg(feature = "opensky")]
-            "openskydevice" => {
-                let s = OpenskyDevice::new().load(&value).clone();
-                Ok(StreamableSource::from(s))
+            format @ ("opensky" | "openskyserver" | "openskydevice") => {
+                let server = format == "openskyserver"
+                    || (format == "opensky"
+                        && (matches!(&value.auth, Some(crate::Auth::Login { .. }))
+                            || value.base_url.starts_with("https://")
+                            || value.base_url.starts_with("http://")));
+                if server {
+                    Ok(OpenskyServer::new().load(&value).clone().into())
+                } else {
+                    Ok(OpenskyDevice::new().load(&value).clone().into())
+                }
             }
             _ => Err(AccessError::InvalidSite(value.name).into()),
         }
@@ -256,14 +262,33 @@ mod tests {
             format: "unknown-format".into(),
             ..Site::default()
         };
+        let sources = Sources::from(vec![(site.name.clone(), site.clone())]);
         for error in [
             FetchableSource::from_site(site.clone()).unwrap_err(),
             StreamableSource::from_site(site).unwrap_err(),
+            sources.as_fetchable("unavailable").unwrap_err(),
+            sources.as_streamable("unavailable").unwrap_err(),
         ] {
             assert!(matches!(
                 error.downcast_ref::<AccessError>(),
                 Some(AccessError::InvalidSite(name)) if name == "unavailable"
             ));
         }
+    }
+
+    /// The checked-in OpenSky entries select the same adapters through both lookup APIs.
+    #[cfg(feature = "opensky")]
+    #[test]
+    fn configured_opensky_sites_select_the_expected_adapters() -> Result<()> {
+        let sources: Sources = hcl::from_str(include_str!("sources.hcl"))?;
+        for (name, expected) in [
+            ("opensky-server", "openskyserver"),
+            ("opensky-local", "openskydevice"),
+        ] {
+            let site = sources.get(name).unwrap().clone();
+            assert_eq!(StreamableSource::from_site(site)?.name(), expected);
+            assert_eq!(sources.as_streamable(name)?.name(), expected);
+        }
+        Ok(())
     }
 }

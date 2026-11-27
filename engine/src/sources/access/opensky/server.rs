@@ -1,436 +1,310 @@
-//! This is the streaming implementation for Opensky, server-side.
-//!
-//! FIXME: this is not using an actor
+//! Polls an OpenSky HTTP endpoint and streams new snapshots downstream.
 
-use std::convert::TryInto;
-use std::str::FromStr;
-use tokio::sync::mpsc::{Sender, channel, unbounded_channel};
-use std::time::{Duration, Instant};
+use std::fmt;
+use std::time::Duration;
 
-use clap::{crate_name, crate_version};
-use eyre::Result;
+use eyre::{Result, eyre};
 use jiff::Timestamp;
-use mini_moka::sync::{Cache, ConcurrentCacheExt};
+use mini_moka::sync::Cache;
 use ractor::ActorRef;
-use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
-use tokio::time;
-use tracing::{debug, error, info, trace};
+use reqwest::{Client, StatusCode, Url};
+use serde::{Deserialize, Serialize, de::IgnoredAny};
+use tokio::sync::mpsc::Sender;
+use tokio::time::{Instant, sleep, timeout};
+use tracing::debug;
 
-use crate::sources::access::opensky::{StatMsg, MAX_INTERVAL};
+use super::{CACHE_IDLE, CACHE_MAX, CACHE_SIZE, MAX_INTERVAL};
+use crate::actors::StatsMsg;
 use crate::{
-    Auth, AuthError, Capability, Filter, Site, Stats, Streamable, StreamableSource, CACHE_IDLE,
-    CACHE_MAX, CACHE_SIZE,
+    AccessError, Auth, AuthError, Capability, Filter, Site, Stats, Streamable, StreamableSource,
 };
-use fetiche_formats::{Format, StateList};
+use fetiche_formats::Format;
 
-/// This si the Opensky client/source struct.
-///
-/// FIXME: this had only the "get" route (which will be "stream" for the streamable part).
-///        this is confusing and incorrect.
-///
-#[derive(Clone, Debug, Deserialize, Serialize)]
+/// An HTTP polling adapter for OpenSky-compatible state endpoints.
+#[derive(Clone, Deserialize, Serialize)]
 pub struct OpenskyServer {
-    /// Describe the different features of the source
     pub feature: Capability,
-    /// Input formats
     pub format: Format,
-    /// Full URL
     pub base_url: String,
-    /// Add this to `base_url` to fetch data
     pub get: String,
-    /// Running time (for streams)
     pub duration: i32,
-    /// Stats actor ref
-    pub stats: Option<ActorRef<Stats>>,
+    #[serde(skip)]
+    pub stats: Option<ActorRef<StatsMsg>>,
+    #[serde(skip)]
+    auth: Option<Auth>,
 }
 
-#[allow(dead_code)]
-/// This is the struct holding potential parameters to the API
-///
-#[derive(Debug, Serialize)]
-struct Param {
-    /// timestamp of the state vectors to be retrieved
-    pub time: Option<u32>,
-    /// One or more ICAO24 transponder address
-    pub icao24: Option<Vec<String>>,
-    /// One or more receiver IDs
-    pub serials: Option<Vec<u32>>,
-}
-
-#[allow(dead_code)]
-/// Credentials to submit to the site to get the token
-///
-#[derive(Debug, Serialize)]
-struct Credentials {
-    /// Email as username
-    username: String,
-    /// Password
-    password: String,
+impl fmt::Debug for OpenskyServer {
+    /// Reports adapter metadata without exposing the endpoint or credentials.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OpenskyServer")
+            .field("feature", &self.feature)
+            .field("format", &self.format)
+            .field("duration", &self.duration)
+            .finish_non_exhaustive()
+    }
 }
 
 impl OpenskyServer {
-    #[tracing::instrument]
+    /// Creates an unconfigured HTTP polling adapter.
     pub fn new() -> Self {
-        OpenskyServer {
+        Self {
             feature: Capability::Stream,
             format: Format::Opensky,
-            base_url: "".into(),
-            get: "".to_owned(),
+            base_url: String::new(),
+            get: String::new(),
             duration: 0,
             stats: None,
+            auth: None,
         }
     }
 
-    /// Load some data from in-memory loaded config
-    ///
+    /// Loads the base URL, stream route, and optional HTTP Basic credentials.
     #[tracing::instrument(skip(self))]
-    pub fn load(&mut self, site: Site) -> &mut Self {
-        self.format = Format::from_str(&site.format).unwrap_or(Format::None);
-        let base_url = site.base_url.clone();
-        let get = site.route("stream").unwrap_or("".into());
-        if let Some(auth) = &site.auth {
-            match auth {
-                Auth::Login {
-                    username,
-                    password,
-                } => {
-                    self.base_url = format!("https://{username}:{password}@{base_url}/{get}");
-                }
-                _ => self.base_url = "".into(),
-            }
-        };
+    pub fn load(&mut self, site: &Site) -> &mut Self {
+        self.base_url.clone_from(&site.base_url);
+        self.get = site.route("stream").cloned().unwrap_or_default();
+        self.auth = site.auth.clone();
         self
     }
 
-    #[tracing::instrument(skip(self))]
-    pub fn stats(&mut self, stats: ActorRef<Stats>) -> &mut Self {
+    /// Registers an optional observer for final polling statistics.
+    pub fn stats(&mut self, stats: ActorRef<StatsMsg>) -> &mut Self {
         self.stats = Some(stats);
         self
     }
 
-    #[tracing::instrument(skip(self))]
+    /// Wraps this polling adapter in the engine's dispatch enum.
     pub fn source(&self) -> StreamableSource {
         StreamableSource::OpenskyServer(self.clone())
+    }
+
+    /// Appends the configured route and encodes a query parameter.
+    fn endpoint(&self, query: Option<(&str, &str)>) -> Result<Url> {
+        let invalid = || AccessError::BadParam("invalid OpenSky HTTP endpoint".into());
+        let mut url = Url::parse(&self.base_url).map_err(|_| invalid())?;
+        if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+            return Err(invalid().into());
+        }
+        if !self.get.is_empty() {
+            let path = format!(
+                "{}/{}",
+                url.path().trim_end_matches('/'),
+                self.get.trim_start_matches('/')
+            );
+            url.set_path(&path);
+        }
+        if let Some((name, value)) = query {
+            url.query_pairs_mut().append_pair(name, value);
+        }
+        Ok(url)
+    }
+
+    /// Requests snapshots serially so backpressure limits how quickly the adapter polls.
+    async fn poll(
+        &self,
+        url: &Url,
+        delay: Duration,
+        out: &Sender<String>,
+        stats: &mut Stats,
+    ) -> Result<()> {
+        let client = Client::builder()
+            .user_agent(concat!(
+                env!("CARGO_PKG_NAME"),
+                "/",
+                env!("CARGO_PKG_VERSION")
+            ))
+            .build()
+            .map_err(reqwest::Error::without_url)?;
+        let cache = Cache::builder()
+            .max_capacity(CACHE_SIZE)
+            .time_to_idle(CACHE_IDLE)
+            .time_to_live(CACHE_MAX)
+            .build();
+        loop {
+            let mut request = client.get(url.clone());
+            if let Some(Auth::Login { username, password }) = &self.auth {
+                request = request.basic_auth(username, Some(password));
+            }
+            match request.send().await {
+                Ok(response) if response.status() == StatusCode::OK => {
+                    let text = response.text().await.map_err(reqwest::Error::without_url)?;
+                    forward_snapshot(text, &cache, out, stats).await?;
+                }
+                Ok(response) => {
+                    let status = response.status();
+                    stats.err += 1;
+                    if status.is_client_error() && status != StatusCode::TOO_MANY_REQUESTS {
+                        return Err(eyre!("OpenSky request failed with HTTP {status}"));
+                    }
+                    debug!(%status, "Retrying OpenSky request");
+                }
+                Err(error) => {
+                    stats.err += 1;
+                    debug!(error = %error.without_url(), "Retrying OpenSky request");
+                }
+            }
+            sleep(delay).await;
+        }
     }
 }
 
 impl Default for OpenskyServer {
+    /// Returns an unconfigured HTTP polling adapter.
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// Represent the area we want to get all from
-///
-/// FIXME: this is not handled
-///
-#[derive(Debug, Serialize, Deserialize)]
-struct Args {
-    lamin: f32,
-    lomin: f32,
-    lamax: f32,
-    lomax: f32,
-}
-
 impl Streamable for OpenskyServer {
-    #[tracing::instrument(skip(self))]
+    /// Returns the adapter identifier.
     fn name(&self) -> String {
-        "openskyserver".to_string()
+        "openskyserver".into()
     }
 
-    /// All credentials are passed every time we call the API so return a fake token
-    ///
-    #[tracing::instrument(skip(self))]
+    /// Uses the site's credentials for each request. No separate token is needed.
     async fn authenticate(&self) -> Result<String, AuthError> {
-        Ok("".into())
+        Ok(String::new())
     }
 
-    /// The main stream function
-    ///
-    /// Right now it runs until killed by Ctrl+C or the timer expire (if set).
-    ///
-    /// API Error are currently ignored after waiting for some time.  The server is not
-    /// stable enough to consider fatal errors (5xx) as real.  It will recover even after
-    /// a 502.
-    ///
-    /// The cache might be overkill because keeping only the last timestamp might be enough but:
-    /// - it is easy to code and use
-    /// - it helps to determine whether we had lack of traffic for a longer time if we have no
-    ///   cached entries
-    ///
-    #[tracing::instrument(skip(self, out, _token, args))]
+    /// Polls until the configured duration elapses or an error occurs.
+    /// Zero duration continues until cancellation or downstream closure.
+    #[tracing::instrument(skip_all)]
     async fn stream(&self, out: Sender<String>, _token: &str, args: &str) -> Result<Stats> {
-        let mut stream_duration = 0;
-        let mut stream_delay = 1000;
-
         let now = Timestamp::now().as_second();
-
-        let url = format!("{}{}", self.base_url, self.get);
-        trace!("Starting OpenSky stream");
-
-        // FIXME: we can have only one argument
-        //
-        let args = Filter::from(args);
-        let tm = match args {
+        let (seconds, delay, query) = match Filter::from(args) {
             Filter::Stream {
+                from,
                 duration,
                 delay,
-                from,
-            } => {
-                stream_duration = duration;
-                stream_delay = delay;
-
-                if from == 0 {
-                    None
-                } else {
-                    let start = if now - from > MAX_INTERVAL {
-                        now - MAX_INTERVAL
-                    } else {
-                        from
-                    };
-
-                    // API takes 32-bit timestamp
-                    //
-                    let start: i32 = start.try_into().unwrap();
-                    Some(format!("time={}", start))
-                }
-            }
-            Filter::Keyword { name, value } => Some(format!("{}={}", name, value)),
-            _ => None,
-        };
-
-        let url = match tm {
-            Some(tm) => format!("{}?{}", url, tm),
-            _ => url,
-        };
-
-        info!(
-            r##"
-Duration {}s with {}ms delay and cache with {} entries for {}s
-
-<number>: data packet / ".": no traffic / "*": cache hit
-        "##,
-            stream_duration,
-            stream_delay,
-            CACHE_SIZE,
-            CACHE_IDLE.as_secs(),
-        );
-
-        // Infinite loop until we get cancelled or a timeout expires
-        // self.duration is 0 -> infinite
-        // self.duration is N -> run for N secs
-        //
-
-        // out as a `dyn Write` is not `Send` so we cannot use it within a thread.  Use channels
-        // to work around this.
-        //
-        let (tx, mut rx) = channel::<String>(out.max_capacity());
-
-        // Timer set?  If yes, launch a sleeper thread
-        //
-        if stream_duration != 0 {
-            trace!("setup wakeup alarm");
-
-            let d = stream_duration;
-            let tx1 = tx.clone();
-            tokio::spawn(async move || {
-                trace!("alarm set to {}s", d);
-                tokio::time::sleep(time::Duration::from_secs(d as u64)).await;
-                let _ = tx1.send("TIMEOUT".to_string()).await;
-            });
-            trace!("end of sleep");
-        }
-
-        let client = reqwest::Client::new();
-
-        // Launch stat gathering thread.
-        //
-        let (st_tx, mut st_rx) = unbounded_channel::<StatMsg>();
-        tokio::spawn(async move || {
-            trace!("stats::thread");
-
-            let start = Instant::now();
-            let mut stats = Stats::default();
-            while let Some(msg) = st_rx.recv().await {
-                match msg {
-                    StatMsg::Pkts => stats.pkts += 1,
-                    StatMsg::Hits => stats.hits += 1,
-                    StatMsg::Miss => stats.miss += 1,
-                    StatMsg::Empty => stats.empty += 1,
-                    StatMsg::Error => stats.err += 1,
-                    StatMsg::Bytes(n) => stats.bytes += n,
-                    StatMsg::Print => {
-                        stats.tm = start.elapsed().as_secs();
-                        eprintln!("Stats: {}", stats)
-                    }
-                    // The end
-                    StatMsg::Exit => {
-                        stats.tm = start.elapsed().as_secs();
-                        break;
-                    }
-                }
-            }
-            eprintln!("\nSession: {}", stats);
-            trace!("end of stats thread");
-        });
-
-        // Launch a thread that sleep for 30s then ask for statistics
-        //
-        let disp_tx = st_tx.clone();
-        tokio::spawn(async move || {
-            trace!("stats::display");
-            loop {
-                tokio::time::sleep(Duration::from_secs(30_u64)).await;
-                if disp_tx.send(StatMsg::Print).is_err() {
-                    break;
-                }
-            }
-        });
-
-        // Worker thread1
-        //
-        let stat_tx = st_tx.clone();
-        tokio::spawn(async move || {
-            trace!("Starting worker thread");
-
-            // Cache is local to the worker thread
-            //
-            let cache = Cache::builder()
-                .max_capacity(CACHE_SIZE)
-                .time_to_idle(CACHE_IDLE)
-                .time_to_live(CACHE_MAX)
-                .build();
-
-            loop {
-                let resp = client
-                    .get(&url)
-                    .header(
-                        "user-agent",
-                        format!("{}/{}", crate_name!(), crate_version!()),
+            } => (
+                u64::from(duration),
+                Duration::from_millis(u64::from(delay.max(1))),
+                (from != 0).then(|| {
+                    (
+                        "time".to_owned(),
+                        from.max(now.saturating_sub(MAX_INTERVAL)).to_string(),
                     )
-                    .header("content-type", "application/json")
-                    .send()
-                    .await;
+                }),
+            ),
+            Filter::Keyword { name, value } => (
+                self.duration.max(0) as u64,
+                Duration::from_secs(1),
+                Some((name, value)),
+            ),
+            _ => (self.duration.max(0) as u64, Duration::from_secs(1), None),
+        };
+        let endpoint = self.endpoint(
+            query
+                .as_ref()
+                .map(|(name, value)| (name.as_str(), value.as_str())),
+        )?;
 
-                // Do not exit thread on server error, sleep and try to recover
-                //
-                let resp = match resp {
-                    Ok(resp) => resp,
-                    Err(e) => {
-                        error!("worker-thread: {}", e.without_url());
-                        stat_tx.send(StatMsg::Error).expect("stat::error");
-                        tokio::time::sleep(Duration::from_secs(2)).await;
-                        continue;
-                    }
-                };
-                debug!(status = %resp.status(), "OpenSky response");
-
-                // Check status of request.  We will ignore any error for now as the server
-                // does not seem to be very stable.  It tends to returns 502 for transient errors.
-                // So we sleep and continue
-                //
-                match resp.status() {
-                    StatusCode::OK => {
-                        trace!("OK");
-                    }
-                    code => {
-                        let h = &resp.headers();
-                        eprintln!("Error({}): {:?},", code, h);
-                        stat_tx.send(StatMsg::Error).expect("stat::error");
-                        tokio::time::sleep(Duration::from_millis(stream_delay as u64)).await;
-                        continue;
-                    }
-                }
-
-                let buf = resp.text().await?;
-
-                // Retrieve the answer and look into it, if answer was empty this should be rather fast
-                //
-                let sl: StateList = serde_json::from_str(buf.as_str())?;
-
-                // Check whether data was returned
-                //
-                if sl.states.is_some() {
-                    // Check whether we've seen it before
-                    //
-                    match cache.get(&sl.time) {
-                        // We have seen it, loop
-                        //
-                        Some(_time) => {
-                            eprint!("*");
-                            let _ = stat_tx.send(StatMsg::Hits);
-                            tokio::time::sleep(Duration::from_millis(stream_delay as u64)).await;
-                            continue;
-                        }
-                        // No, send it it and cache its `time`
-                        //
-                        _ => {
-                            eprint!("{},", sl.time);
-
-                            let _ = stat_tx.send(StatMsg::Miss);
-                            let _ = stat_tx.send(StatMsg::Pkts);
-                            let _ = stat_tx.send(StatMsg::Bytes(buf.len() as u64));
-
-                            if tx.send(buf).await.is_err() {
-                                break;
-                            }
-                            cache.insert(sl.time, true);
-                        }
-                    }
+        let started = Instant::now();
+        let mut stats = Stats::default();
+        let poll = self.poll(&endpoint, delay, &out, &mut stats);
+        tokio::select! {
+            _ = out.closed() => return Err(eyre!("OpenSky downstream receiver closed")),
+            result = async {
+                if seconds == 0 {
+                    poll.await
                 } else {
-                    // Are there still entries?  If no, then we have only empty traffic for CACHE_MAX.
-                    //
-                    let _ = stat_tx.send(StatMsg::Empty);
-
-                    cache.sync();
-                    if cache.entry_count() == 0 {
-                        eprintln!("No traffic, waiting for 2s.");
-                        tokio::time::sleep(Duration::from_secs(2_u64)).await;
-                    } else {
-                        eprint!(".");
+                    match timeout(Duration::from_secs(seconds), poll).await {
+                        Ok(result) => result,
+                        Err(_) => Ok(()),
                     }
                 }
-
-                // Whatever happened, sleep for to avoid CPU/network overload
-                if stream_delay != 0 {
-                    tokio::time::sleep(Duration::from_millis(stream_delay as u64)).await;
-                }
-            }
-        });
-
-        // Now data gathering loop.  Should this be another thread?
-        //
-        loop {
-            match rx.recv().await {
-                Some(msg) => match msg.as_str() {
-                    // Timer expired
-                    //
-                    "TIMEOUT" => {
-                        trace!("End of scheduled run.");
-                        break;
-                    }
-                    // Anything else is sent
-                    //
-                    _ => {
-                        // Every record is separated with LF
-                        //
-                        out.send(format!("{}\n", msg)).await?;
-                    }
-                },
-                None => break,
-            }
+            } => result?,
         }
-        // End threads
-        //
-        let _ = st_tx.send(StatMsg::Exit);
+        stats.tm = started.elapsed().as_secs();
+        if let Some(observer) = &self.stats {
+            observer.cast(StatsMsg::Update(self.name(), stats.clone()))?;
+        }
+        Ok(stats)
+    }
 
-        // sync; sync; sync
-        //
+    /// Returns the OpenSky data format.
+    fn format(&self) -> Format {
+        Format::Opensky
+    }
+}
+
+#[derive(Deserialize)]
+struct Snapshot {
+    time: i64,
+    states: Option<Vec<IgnoredAny>>,
+}
+
+/// Sends the first nonempty snapshot for a timestamp and counts skipped snapshots.
+async fn forward_snapshot(
+    payload: String,
+    cache: &Cache<i64, ()>,
+    out: &Sender<String>,
+    stats: &mut Stats,
+) -> Result<()> {
+    let snapshot: Snapshot = serde_json::from_str(&payload).map_err(|err| {
+        eyre!(
+            "invalid OpenSky snapshot at line {}, column {}",
+            err.line(),
+            err.column()
+        )
+    })?;
+    if snapshot.states.is_none_or(|states| states.is_empty()) {
+        stats.empty += 1;
+    } else if cache.get(&snapshot.time).is_some() {
+        stats.hits += 1;
+    } else {
+        let bytes = payload.len() as u64;
+        out.send(payload + "\n").await?;
+        cache.insert(snapshot.time, ());
+        stats.pkts += 1;
+        stats.bytes += bytes;
+        stats.miss += 1;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The configured route appends to the base path and query values are escaped.
+    #[test]
+    fn polling_endpoint_preserves_base_path_and_encodes_query() -> Result<()> {
+        let source = OpenskyServer {
+            base_url: "https://example.test/api".into(),
+            get: "/states/own".into(),
+            ..OpenskyServer::default()
+        };
+        let url = source.endpoint(Some(("icao24", "aa&bb")))?;
+        assert_eq!(url.path(), "/api/states/own");
+        assert_eq!(url.query(), Some("icao24=aa%26bb"));
         Ok(())
     }
 
-    fn format(&self) -> Format {
-        Format::Opensky
+    /// Typical array snapshots are forwarded once, while empty snapshots only update counters.
+    #[tokio::test]
+    async fn polling_forwards_unique_nonempty_snapshots() -> Result<()> {
+        let payload = r#"{"time":1,"states":[["abc123"]]}"#;
+        let cache = Cache::new(4);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut stats = Stats::default();
+        for input in [
+            payload,
+            payload,
+            r#"{"time":2,"states":null}"#,
+            r#"{"time":3,"states":[]}"#,
+        ] {
+            forward_snapshot(input.into(), &cache, &tx, &mut stats).await?;
+        }
+        drop(tx);
+        assert_eq!(rx.recv().await.unwrap(), format!("{payload}\n"));
+        assert!(rx.recv().await.is_none());
+        assert_eq!(
+            (stats.pkts, stats.hits, stats.miss, stats.empty),
+            (1, 1, 1, 2)
+        );
+        assert_eq!(stats.bytes, payload.len() as u64);
+        Ok(())
     }
 }

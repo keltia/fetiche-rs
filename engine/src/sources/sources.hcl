@@ -69,7 +69,7 @@ site "opensky-local" {
   feature  = "stream"
   type     = "adsb"
   format   = "opensky"
-  base_url = "tcp://192.168.42.1:30005"
+  base_url = "tcp://192.168.42.1:30003"
   routes = {
     stream = "live"
   }

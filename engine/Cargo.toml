@@ -19,7 +19,7 @@ aeroscope = []
 asd = []
 avionix = ["tokio/net"]
 flightaware = ["base64_light", "tokio-native-tls"]
-opensky = ["mini-moka"]
+opensky = ["mini-moka", "tokio/net"]
 safesky = []
 senhive = ["polars-io/json"]
 
