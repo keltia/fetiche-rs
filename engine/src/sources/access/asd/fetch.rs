@@ -34,8 +34,7 @@ use crate::{
 };
 
 impl Asd {
-    /// Uses the engine token actor when supplied and the configured file for standalone sources.
-    ///
+    /// Uses the engine's shared token store when supplied. Standalone sources use `token_base`.
     #[tracing::instrument(skip(self, tokens))]
     pub(crate) async fn authenticate_with_tokens(
         &self,
@@ -296,29 +295,37 @@ fn epoch_timestamp() -> Timestamp {
 mod tests {
     use super::*;
 
-    /// A cached actor token authenticates even when the backing file is unavailable.
+    /// Engine authentication uses the actor's cache and standalone authentication uses `token_base`.
     #[tokio::test]
     async fn asd_authenticates_from_the_engine_token_actor() -> eyre::Result<()> {
         let directory = tempfile::tempdir()?;
         let root = directory.path().to_path_buf();
         let (actor, handle) =
             ractor::Actor::spawn(None, crate::actors::TokenActor, root.clone()).await?;
+        let standalone = tempfile::tempdir()?;
         let source = Asd {
             login: "test@example.invalid".into(),
-            token_base: root.clone(),
+            token_base: standalone.path().to_path_buf(),
             ..Asd::new()
         };
         let key = format!("{DEF_TOKEN}-{}", source.login);
         let mut token = AsdToken::default();
         token.token = "cached-token".into();
         token.expired_at = crate::time::now_seconds() + 3600;
-        call!(actor, TokenMsg::Store, key, TokenType::AsdToken(token))??;
-        // A source using the standalone file API would now have to authenticate online.
-        tokio::fs::remove_file(root.join(&format!("{DEF_TOKEN}-{}", source.login))).await?;
+        call!(
+            actor,
+            TokenMsg::Store,
+            key.clone(),
+            TokenType::AsdToken(token.clone())
+        )??;
+        tokio::fs::remove_file(root.join(&key)).await?;
+        token.token = "standalone-token".into();
+        tokio::fs::write(source.token_base.join(&key), serde_json::to_vec(&token)?).await?;
         assert_eq!(
             source.authenticate_with_tokens(Some(&actor)).await?,
             "cached-token"
         );
+        assert_eq!(source.authenticate().await?, "standalone-token");
         actor.stop(None);
         handle.await?;
         Ok(())

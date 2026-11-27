@@ -432,33 +432,6 @@ mod tests {
         Ok(())
     }
 
-    /// Keeps configured source credentials in their own directories.
-    #[tokio::test]
-    async fn source_tokens_honor_the_configured_directory() -> Result<()> {
-        let dir = tempdir()?;
-        let root = dir.path().join("tokens");
-        let source = dir.path().join("source-tokens");
-        tokio::fs::create_dir(&root).await?;
-        let (actor, handle) = Actor::spawn(None, TokenActor, root).await?;
-        let key = "asd_account".to_owned();
-        let token = TokenType::AsdToken(AsdToken::default());
-        let err = call!(actor, TokenMsg::GetForSource, source.clone(), key.clone())?.unwrap_err();
-        assert!(matches!(err.downcast_ref(), Some(TokenStatus::NotFound(_))));
-        call!(
-            actor,
-            TokenMsg::StoreForSource,
-            source.clone(),
-            key.clone(),
-            token.clone()
-        )??;
-        assert!(source.join(&key).is_file());
-        assert_eq!(call!(actor, TokenMsg::GetForSource, source, key)??, token);
-        assert!(call!(actor, TokenMsg::IsEmpty)?);
-        actor.stop(None);
-        handle.await?;
-        Ok(())
-    }
-
     /// Preserves older nested tokens and prefers an updated token in the root after restart.
     #[tokio::test]
     async fn updated_root_token_takes_precedence_over_legacy_copy() -> Result<()> {
