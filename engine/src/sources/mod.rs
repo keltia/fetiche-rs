@@ -112,6 +112,12 @@ pub enum StreamableSource {
 impl StreamableSource {
     /// Resolves an enabled adapter or returns an error for an unavailable site.
     ///
+    /// For `cubedata`, `avionixserver` selects the server and `cube` or
+    /// `avionixcube` selects the local device. Variant names are case-insensitive.
+    /// Without a variant, user and API keys select the server, while anonymous
+    /// or omitted authentication selects the local device. Unknown variants and
+    /// incompatible authentication return [`AccessError::InvalidSite`].
+    ///
     /// The legacy `opensky` format selects HTTP polling for HTTP endpoints or
     /// login-based authentication, and direct TCP otherwise.
     #[tracing::instrument]
@@ -119,13 +125,18 @@ impl StreamableSource {
         match value.format.to_ascii_lowercase().as_str() {
             #[cfg(feature = "avionix")]
             "cubedata" => {
-                let variant = value.variant().unwrap_or("avionixserver".into());
-                if variant.contains("avionixserver") {
-                    let s = AvionixServer::new().load(&value).clone();
-                    Ok(StreamableSource::from(s))
-                } else {
-                    let s = Cube::new().load(&value).clone();
-                    Ok(StreamableSource::from(s))
+                use crate::Auth;
+
+                let variant = value.variant.as_deref().map(str::to_ascii_lowercase);
+                match (variant.as_deref(), &value.auth) {
+                    (Some("avionixserver"), None | Some(Auth::UserKey { .. }))
+                    | (None, Some(Auth::UserKey { .. })) => {
+                        Ok(AvionixServer::new().load(&value).clone().into())
+                    }
+                    (Some("cube" | "avionixcube") | None, None | Some(Auth::Anon)) => {
+                        Ok(Cube::new().load(&value).clone().into())
+                    }
+                    _ => Err(AccessError::InvalidSite(value.name).into()),
                 }
             }
             #[cfg(feature = "flightaware")]
@@ -253,6 +264,64 @@ pub const SOURCES_CONFIG: &str = "sources.hcl";
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Selects Avionix adapters from explicit variants and legacy authentication.
+    #[cfg(feature = "avionix")]
+    #[test]
+    fn avionix_selection_honors_variant_and_legacy_auth() -> Result<()> {
+        let user_key = crate::Auth::UserKey {
+            api_key: "test-api-key".into(),
+            user_key: "test-user-key".into(),
+        };
+        for (variant, auth, expected) in [
+            (
+                Some("AvionixServer"),
+                Some(user_key.clone()),
+                "AvionixServer",
+            ),
+            (Some("AvionixServer"), None, "AvionixServer"),
+            (Some("avionixcube"), Some(crate::Auth::Anon), "AvionixCube"),
+            (Some("cube"), None, "AvionixCube"),
+            (None, Some(user_key.clone()), "AvionixServer"),
+            (None, Some(crate::Auth::Anon), "AvionixCube"),
+            (None, None, "AvionixCube"),
+        ] {
+            let site = Site {
+                name: "avionix".into(),
+                format: "CubeData".into(),
+                variant: variant.map(str::to_owned),
+                auth,
+                ..Site::default()
+            };
+            assert_eq!(StreamableSource::from_site(site)?.name(), expected);
+        }
+
+        for (variant, auth) in [
+            (Some("unknown"), None),
+            (Some("cube"), Some(user_key)),
+            (Some("avionixserver"), Some(crate::Auth::Anon)),
+            (
+                None,
+                Some(crate::Auth::Key {
+                    api_key: "test-key".into(),
+                }),
+            ),
+        ] {
+            let site = Site {
+                name: "avionix".into(),
+                format: "cubedata".into(),
+                variant: variant.map(str::to_owned),
+                auth,
+                ..Site::default()
+            };
+            let err = StreamableSource::from_site(site).unwrap_err();
+            assert!(matches!(
+                err.downcast_ref(),
+                Some(AccessError::InvalidSite(name)) if name == "avionix"
+            ));
+        }
+        Ok(())
+    }
 
     /// Unavailable adapters return a typed error in every feature configuration.
     #[test]
