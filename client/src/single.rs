@@ -68,8 +68,8 @@ impl EngineSingle {
 
     /// Submits a ready job and returns its final [`Stats`] after it finishes.
     ///
-    /// This call blocks while waiting for completion. The engine changes the
-    /// process working directory to its workspace and restores it on success.
+    /// The engine resolves relative paths against its workspace, then awaits the
+    /// job outcome without changing the process working directory.
     ///
     /// # Errors
     ///

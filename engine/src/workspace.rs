@@ -58,6 +58,25 @@ use tracing::{error, trace};
 
 use crate::{CANARY_FILE, WsError};
 
+/// Anchors a relative stage path at the workspace, preserving absolute paths.
+///
+/// Windows drive-relative or root-only paths are ambiguous and must be written
+/// as fully qualified paths.
+pub(crate) fn resolve_stage_path(
+    workspace: &std::path::Path,
+    path: &std::path::Path,
+) -> Result<PathBuf> {
+    if path.is_absolute() {
+        return Ok(path.to_path_buf());
+    }
+    if path.has_root()
+        || matches!(path.components().next(), Some(std::path::Component::Prefix(_)))
+    {
+        return Err(eyre::eyre!("stage path must be absolute or workspace-relative: {}", path.display()));
+    }
+    Ok(workspace.join(path))
+}
+
 // -----
 
 /// Represents the current status of a workspace directory.

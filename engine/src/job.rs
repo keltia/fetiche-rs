@@ -9,6 +9,7 @@
 //! A `WaitGroup` is the struct you get after submission to be notified when the job has finished.
 //!
 use std::collections::VecDeque;
+use std::path::Path;
 
 use bon::Builder;
 use ractor::ActorRef;
@@ -237,6 +238,29 @@ pub enum JobState {
 }
 
 impl Job {
+    /// Anchors relative paths at the supplied workspace before dispatch.
+    ///
+    /// Absolute paths are preserved. A `Save` configured for stdout has no
+    /// path to resolve. `Store` already owns an absolute directory.
+    pub(crate) fn resolve_paths(&mut self, workspace: &Path) -> eyre::Result<()> {
+        if let Producer::Read(read) = &mut self.producer
+            && let Some(path) = &mut read.path
+            && path.is_relative()
+        {
+            *path = crate::workspace::resolve_stage_path(workspace, path)?;
+        }
+        for middle in &mut self.middle {
+            if let Middle::Tee(tee) = middle {
+                resolve_string_path(workspace, &mut tee.fname)?;
+            }
+        }
+        if let Consumer::Save(save) = &mut self.consumer
+            && let Some(path) = &mut save.path
+        {
+            resolve_string_path(workspace, path)?;
+        }
+        Ok(())
+    }
     /// Adds a middleware middle task to the job's pipeline.
     ///
     /// This method appends a new middle task to the end of the job's middle queue,
@@ -308,9 +332,55 @@ impl Job {
     }
 }
 
+/// Resolves a path used by a stage that keeps its filename as UTF-8.
+fn resolve_string_path(workspace: &Path, path: &mut String) -> eyre::Result<()> {
+    if Path::new(path).is_relative() {
+        let resolved = crate::workspace::resolve_stage_path(workspace, Path::new(path))?;
+        *path = resolved
+            .to_str()
+            .ok_or_else(|| eyre::eyre!("stage path is not UTF-8: {}", resolved.display()))?
+            .to_owned();
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The same relative filenames resolve independently for each job workspace.
+    #[test]
+    fn stage_paths_use_the_job_workspace() -> eyre::Result<()> {
+        use crate::{Read, Save, Tee};
+        use fetiche_common::Container;
+        use fetiche_formats::Format;
+
+        let root = tempfile::tempdir()?;
+        let mut read = Read::new("file");
+        read.path("input.txt");
+        let mut save = Save::new("output", Format::None, Container::Raw);
+        save.path("output.txt");
+        let mut job = Job::builder()
+            .id(1)
+            .producer(Producer::Read(read))
+            .consumer(Consumer::Save(save))
+            .build();
+        job.add(Middle::Tee(Tee::into("copy.txt")));
+
+        for directory in ["one", "two"] {
+            let workspace = root.path().join(directory);
+            let mut job = job.clone();
+            job.resolve_paths(&workspace)?;
+            job.resolve_paths(&root.path().join("different"))?;
+            let Producer::Read(read) = job.producer else { panic!("expected Read") };
+            let Consumer::Save(save) = job.consumer else { panic!("expected Save") };
+            let Middle::Tee(tee) = &job.middle[0] else { panic!("expected Tee") };
+            assert_eq!(read.path.unwrap(), workspace.join("input.txt"));
+            assert_eq!(Path::new(&save.path.unwrap()), workspace.join("output.txt"));
+            assert_eq!(Path::new(&tee.fname), workspace.join("copy.txt"));
+        }
+        Ok(())
+    }
 
     /// Confirms the completion channel carries a typed cancellation for abandoned work.
     #[tokio::test]

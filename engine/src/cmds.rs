@@ -14,13 +14,12 @@
 //! with tracing for debugging and monitoring purposes.
 //!
 
-use std::env;
 use std::sync::mpsc::Sender;
 
 use eyre::Result;
 use ractor::registry::registered;
 use ractor::{call, call_t, cast, pg};
-use tracing::{info, trace};
+use tracing::trace;
 
 use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
 use crate::{ENGINE_PG, Engine, EngineMode, EngineStatus, Job, JobState, Stats, WaitGroup};
@@ -134,18 +133,20 @@ impl Engine {
     /// Queues a ready job and returns a receiver for its terminal outcome.
     ///
     /// Use [`Engine::parse_job`] to construct a job from HCL. This call
-    /// waits for queue admission. Await [`WaitGroup::rx`] for the job result.
+    /// waits for queue admission. Relative stage paths are resolved against the
+    /// engine's workspace. Await [`WaitGroup::rx`] for the job result.
     ///
     /// # Errors
     ///
     /// Returns an error if the job is unready, its ID is already outstanding,
     /// or the scheduler cannot be reached.
     #[tracing::instrument(skip(self, job), fields(job_id = job.id))]
-    pub async fn submit_job(&mut self, job: Job) -> Result<WaitGroup> {
+    pub async fn submit_job(&mut self, mut job: Job) -> Result<WaitGroup> {
         if job.state() != JobState::Ready {
             return Err(EngineStatus::JobNotReady(job.id).into());
         }
 
+        job.resolve_paths(&std::path::absolute(&self.workdir)?)?;
         trace!("submit job {}", job.id);
         let wg = call!(self.scheduler, |port| { SchedulerMsg::Add(job, port) })??;
 
@@ -156,9 +157,8 @@ impl Engine {
 
     /// Submits a job for execution and waits for it to complete, returning the final statistics.
     ///
-    /// This method combines job submission with waiting for completion in a single call. It submits
-    /// the job to the scheduler and blocks until execution is finished, then retrieves and returns
-    /// the final job statistics.
+    /// Submits through [`Self::submit_job`] and asynchronously waits for the job
+    /// outcome. Paths resolve against the workspace for both submission methods.
     ///
     /// # Arguments
     ///
@@ -184,28 +184,11 @@ impl Engine {
     ///
     #[tracing::instrument(skip(self, job), fields(job_id = job.id))]
     pub async fn submit_job_and_wait(&mut self, job: Job) -> Result<Stats> {
-        if job.state() != JobState::Ready {
-            return Err(EngineStatus::JobNotReady(job.id).into());
-        }
-
-        // Save where we are
-        //
-        let workdir = self.workdir.clone();
-        let olddir = env::current_dir()?;
-        env::set_current_dir(&workdir)?;
-        info!("Relocating to {workdir:?}");
-
-        trace!("submit job {}", job.id);
-        let result = async {
-            let wg = self.submit_job(job).await?;
-            let outcome = wg.rx.await.map_err(|err| {
-                eyre::eyre!("job {} ended without a completion outcome: {err}", wg.id)
-            })?;
-            outcome.into_stats()
-        }
-        .await;
-        env::set_current_dir(&olddir)?;
-        result
+        let wg = self.submit_job(job).await?;
+        let outcome = wg.rx.await.map_err(|err| {
+            eyre::eyre!("job {} ended without a completion outcome: {err}", wg.id)
+        })?;
+        outcome.into_stats()
     }
 
     /// Waits for a specific job to complete and retrieves its final statistics.

@@ -7,6 +7,7 @@
 //!
 
 use std::collections::VecDeque;
+use std::path::Path;
 
 use eyre::Result;
 use ractor::call;
@@ -195,7 +196,7 @@ impl Engine {
         //
         let id = call!(self.scheduler, SchedulerMsg::Allocate)?;
 
-        let mut job = Self::build_job(jt, id, async |site| {
+        let mut job = Self::build_job(jt, id, &self.workdir, async |site| {
             call!(self.sources, |port| SourcesMsg::Get(site, port))?
         })
         .await?;
@@ -205,9 +206,11 @@ impl Engine {
         Ok(job)
     }
 
+    /// Builds a ready job and resolves a Store directory before creating it.
     async fn build_job(
         jt: JobText,
         id: usize,
+        workspace: &Path,
         mut lookup_site: impl AsyncFnMut(String) -> Result<Site>,
     ) -> Result<Job> {
         let producer = match jt.producer {
@@ -274,7 +277,15 @@ impl Engine {
                 Consumer::Save(f)
             }
             ConsumerText::Store(c, f) => {
-                let s = Store::new(&c, id, f).await?;
+                let path = if c.is_empty() {
+                    c
+                } else {
+                    let path = crate::workspace::resolve_stage_path(workspace, Path::new(&c))?;
+                    path.to_str()
+                        .ok_or_else(|| eyre::eyre!("storage path is not UTF-8: {}", path.display()))?
+                        .to_owned()
+                };
+                let s = Store::new(&path, id, f).await?;
                 Consumer::Store(s)
             }
         };
@@ -342,7 +353,7 @@ mod tests {
             output = { Save = "output.csv" }
             "#,
         )?;
-        let job = Engine::build_job(input, 901, async |name| {
+        let job = Engine::build_job(input, 901, Path::new("."), async |name| {
             Ok(Site {
                 name,
                 feature: Capability::Fetch,
@@ -395,7 +406,7 @@ mod tests {
     }
 
     async fn parse_job(input: &str) -> Result<Job> {
-        Engine::build_job(hcl::from_str(input)?, 1, async |name: String| {
+        Engine::build_job(hcl::from_str(input)?, 1, Path::new("."), async |name: String| {
             let feature = match name.as_str() {
                 "lux-me" => Capability::Fetch,
                 "opensky" => Capability::Stream,

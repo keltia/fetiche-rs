@@ -59,6 +59,9 @@ impl Store {
     /// Given a base directory in `path` create the tree if not present and store the full
     /// path as path/ID
     ///
+    /// Relative directory names supplied directly are anchored at construction.
+    /// The HCL job parser supplies a path relative to the engine workspace.
+    ///
     #[tracing::instrument]
     pub async fn new(path: &str, id: usize, freq: Freq) -> Result<Self> {
         trace!("store::new");
@@ -72,7 +75,7 @@ impl Store {
 
         // We want to have `path/current` pointing to `path/ID`
         //
-        let base = PathBuf::from(path);
+        let base = std::path::absolute(path)?;
         let path = base.join(id.to_string());
         trace!("Store path is {}", path.to_string_lossy().to_string());
 
