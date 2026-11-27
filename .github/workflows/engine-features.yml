@@ -1,0 +1,35 @@
+name: Engine feature matrix
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  engine:
+    name: Engine / ${{ matrix.configuration }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - configuration: default
+            flags: ''
+          - configuration: no-source-features
+            flags: --no-default-features
+          - configuration: all-features
+            flags: --all-features
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Check all engine targets
+        run: cargo check -p fetiche-engine --all-targets ${{ matrix.flags }}
+      - name: Run engine tests
+        run: cargo test -p fetiche-engine --lib --tests ${{ matrix.flags }}
+      - name: Build engine documentation
+        if: matrix.configuration == 'all-features'
+        run: cargo doc -p fetiche-engine --all-features --no-deps
