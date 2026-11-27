@@ -5,7 +5,8 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::trace;
 
 use crate::actors::StatsMsg;
-use crate::{AuthError, Command, Flightaware, Param, Result, Stats, StatsError, Streamable};
+use crate::{AuthError, Command, Flightaware, Param, Stats, StatsError, Streamable};
+use eyre::Result;
 use fetiche_formats::Format;
 
 impl Streamable for Flightaware {

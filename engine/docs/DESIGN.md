@@ -61,7 +61,7 @@ whether waiting and dispatched work are empty independently of retained results.
 
 Queued jobs can be removed by ID and receive a cancellation outcome. Removal of dispatched jobs returns an
 error. Duplicate IDs are rejected while a job is outstanding. [Scheduler](../src/actors/scheduler.rs), [Runner](../src/actors/runner.rs),
-[Engine commands](../src/cmds.rs)
+[Engine commands](../src/engine/jobs.rs)
 
 ## Workspace and shutdown ownership
 
@@ -80,14 +80,14 @@ its stages. Shutdown acknowledges a final state write and joins the engine actor
 The engine retains the marker if it cannot confirm actor exit. Single-mode cleanup detaches the owned workspace
 before deleting it. A Tokio blocking operation that has already started can still finish after cancellation.
 
-[Workspace paths](../src/workspace.rs), [Startup](../src/lib.rs), [Lifecycle](../src/lifecycle.rs),
-[Shutdown](../src/subr.rs), [Public API tests](../tests/lifecycle.rs)
+[Workspace paths](../src/workspace.rs), [Startup](../src/engine/startup.rs), [Lifecycle](../src/engine/lifecycle.rs),
+[Shutdown](../src/engine/subr.rs), [Public API tests](../tests/lifecycle.rs)
 
 ## Configuration validation
 
 `engine.hcl` uses version 3. Explicit worker counts and timer intervals must be positive. Scheduler intervals use
 the HCL shape `{ secs = 2, nanos = 0 }`. Startup logs the effective settings, including the runner count and
-pipeline limits. [Configuration example](../src/engine.hcl), [Startup](../src/lib.rs)
+pipeline limits. [Configuration example](../src/engine.hcl), [Startup](../src/engine/startup.rs)
 
 Local storage areas require a directory. Rotations are positive whole numbers with an `s`, `m`, `h`, or `d` suffix,
 and the resulting seconds must fit in `u32`. Directory errors keep the underlying I/O cause. Token registration and
@@ -102,7 +102,7 @@ can still be read. [Storage](../src/storage.rs), [Tokens](../src/actors/tokens.r
 
 `Read` in a job requires a nonempty literal filename such as `Read = "input.csv"`. The engine does not evaluate
 expressions in file paths. `Convert` and `Archive` return parser errors before a job becomes ready.
-[Job parser](../src/parse.rs)
+[Job parser](../src/engine/parse.rs)
 
 ## Baseline architecture and startup
 
@@ -127,7 +127,7 @@ flowchart TD
     Scheduler -->|" Periodic sync "| State["State actor"]
 ```
 
-[`Engine::load`](../src/lib.rs) loads and checks the version of `engine.hcl`, creates the work directory and its
+[`Engine::load`](../src/engine/startup.rs) loads and checks the version of `engine.hcl`, creates the work directory and its
 `running` marker, and starts a supervisor with linked actors for sources, state, statistics, results, the runner
 factory, and scheduling. It also registers storage areas and token storage. Single mode uses one runner and a one-second
 tick. Daemon mode uses the configured worker count or the available CPU parallelism, a two-second default tick, and a
@@ -145,16 +145,16 @@ server, and anonymous or omitted authentication selects the local Cube. [Source 
    asks the scheduler for an ID. For `Fetch` and `Stream`, it resolves the named site through the sources actor and
    checks the requested capability. `Read` uses a file path. The parser builds a `Ready` job with concrete stage enum
    variants. The job shape enforces producer, middle, and consumer positions, while individual variants determine what
-   processing is available. [Parser](../src/parse.rs), [Job model](../src/job.rs)
+   processing is available. [Parser](../src/engine/parse.rs), [Job model](../src/job.rs)
 2. **Submit.** `Engine::submit_job` and the scheduler check for `JobState::Ready`. The scheduler enqueues a `Work`
    containing the job and a completion sender. It returns a `WaitGroup` containing the job ID and a standard-channel
    receiver for a unit notification. `submit_job_and_wait` wraps submission, blocks on that notification, and then
-   fetches statistics from the results actor. [Engine commands](../src/cmds.rs), [Scheduler](../src/actors/scheduler.rs)
+   fetches statistics from the results actor. [Engine commands](../src/engine/jobs.rs), [Scheduler](../src/actors/scheduler.rs)
 3. **Dispatch.** On a tick while idle, the scheduler moves one waiting job to its running queue, dispatches it through
    the factory, and awaits the runner's statistics reply within the tick handler. The factory has a worker pool, but
    this submission path serializes dispatch through the scheduler's mailbox. A long job can delay subsequent ticks and
    other scheduler messages, including control
-   requests. [Scheduler](../src/actors/scheduler.rs), [Factory setup](../src/lib.rs)
+   requests. [Scheduler](../src/actors/scheduler.rs), [Factory setup](../src/engine/startup.rs)
 4. **Wire and start.** The runner flattens the producer, middle stages, and consumer into an ordered `Task` list. It
    creates the first channel, then folds over the list, passing each stage's output receiver to the next stage's
    `Runnable::run`. Once the chain is wired, the runner sends `"start"` and drops the input sender. The producer's
@@ -210,7 +210,7 @@ JSON snapshot on sync and clears its queue collections on startup. Together thes
 without durable job replay. [Scheduler](../src/actors/scheduler.rs), [State](../src/actors/state.rs)
 
 `Engine::shutdown` requests stops for actors in the engine process group and removes the `running` marker. It returns
-without waiting for stage tasks or coordinating a drain of in-flight jobs. [Shutdown implementation](../src/subr.rs)
+without waiting for stage tasks or coordinating a drain of in-flight jobs. [Shutdown implementation](../src/engine/subr.rs)
 
 ## Strengths
 
@@ -233,7 +233,7 @@ without waiting for stage tasks or coordinating a drain of in-flight jobs. [Shut
 | Job state and capacity        | Waiting behind a long job delays scheduler responsiveness. Completion and removal are not consistently keyed by job ID, and both running entries and results can accumulate.                                                                                                                                            |
 | Validation and sink semantics | `Convert` reaches `unimplemented!()` in HCL parsing, and `Archive` becomes an invalid consumer that panics when dispatched. Text payloads leave format and framing implicit. Repeated writes to raw `Save` replace earlier messages, while append sinks can duplicate output if a job is retried after partial success. |
 
-[Parser](../src/parse.rs), [Scheduler](../src/actors/scheduler.rs), [Runner](../src/actors/runner.rs), [Derive macro](../../macros/src/lib.rs), [Save](../src/consumer/save.rs)
+[Parser](../src/engine/parse.rs), [Scheduler](../src/actors/scheduler.rs), [Runner](../src/actors/runner.rs), [Derive macro](../../macros/src/lib.rs), [Save](../src/consumer/save.rs)
 
 ## Possible improvements
 

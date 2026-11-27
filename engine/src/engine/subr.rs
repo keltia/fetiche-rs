@@ -18,9 +18,10 @@ use tracing::trace;
 use fetiche_common::Container;
 use fetiche_formats::Format;
 
-use crate::actors::{SourcesMsg, StateMsg, TokenMsg};
+use crate::actors::{STATE_FILE, SourcesMsg, StateMsg, TokenMsg};
+use crate::config::ENGINE_CONFIG;
 use crate::{
-    ENGINE_CONFIG, Engine, IO, SOURCES_CONFIG, STATE_FILE, Sources, Storage, TokenType, Workspace,
+    Engine, IO, SOURCES_CONFIG, Sources, Storage, TokenType, Workspace,
     version,
 };
 
@@ -177,7 +178,7 @@ impl Engine {
     /// See [`Self::shutdown_with_timeout`] for the shutdown sequence and errors.
     #[tracing::instrument(skip(self))]
     pub async fn shutdown(&self) -> Result<()> {
-        self.shutdown_with_timeout(crate::lifecycle::SHUTDOWN_GRACE)
+        self.shutdown_with_timeout(super::lifecycle::SHUTDOWN_GRACE)
             .await
     }
 
@@ -264,7 +265,7 @@ impl Engine {
     pub fn list_commands(&self) -> eyre::Result<String> {
         trace!("list all commands");
 
-        let allcmds_s = include_str!("cmds.hcl");
+        let allcmds_s = include_str!("../cmds.hcl");
         let allcmds: CmdsFile = hcl::from_str(allcmds_s)?;
 
         // Safety checks

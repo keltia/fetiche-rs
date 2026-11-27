@@ -11,17 +11,17 @@ credential logging, scheduler bookkeeping, and shutdown ownership.
 
 | Topic | Current status |
 | --- | --- |
-| Engine constructors | Resolved. `Engine::new` and `Engine::single` already return `Result<Self>` and delegate to `load`. Their error docs still describe startup failures as panics. [Constructors](../src/lib.rs) |
+| Engine constructors | Resolved. `Engine::new` and `Engine::single` already return `Result<Self>` and delegate to `load`. Their error docs still describe startup failures as panics. [Constructors](../src/engine/startup.rs) |
 | Storage registration | Partly resolved. `Storage::register` returns errors for directory creation and rotation parsing. An existing regular file can pass the existence check, and the directory error loses the original I/O cause. [Storage](../src/storage.rs) |
 | Rotation syntax | Open. The parser still uses signed `i8`, casts before multiplying, and returns the unconsumed suffix. Registration accepts a successful prefix parse. [Storage](../src/storage.rs) |
-| Startup validation | Partly resolved. Startup checks the config version and queue capacity and creates the run directory. Daemon worker counts and timer intervals still lack explicit validation. [Engine startup](../src/lib.rs) |
-| Graceful shutdown | Partly resolved. `Engine::shutdown` exists, and the runner supervises stage completion. Engine-level shutdown still sends stop signals without joining actors or acknowledging a final state sync. [Shutdown](../src/subr.rs), [Runner](../src/actors/runner.rs) |
+| Startup validation | Partly resolved. Startup checks the config version and queue capacity and creates the run directory. Daemon worker counts and timer intervals still lack explicit validation. [Engine startup](../src/engine/startup.rs) |
+| Graceful shutdown | Partly resolved. `Engine::shutdown` exists, and the runner supervises stage completion. Engine-level shutdown still sends stop signals without joining actors or acknowledging a final state sync. [Shutdown](../src/engine/subr.rs), [Runner](../src/actors/runner.rs) |
 | Token registration and tracing | Partly resolved. Token and storage registration already have tracing spans. Token loading still panics on unsupported entries, and some spans and source logs can expose credentials. [Tokens](../src/actors/tokens.rs), [Storage](../src/storage.rs) |
 | Error typing | Partly resolved. Domain errors and typed job outcomes already coexist with `eyre`. Improve context at specific boundaries, especially storage and token I/O, before considering a crate-wide error type. [Errors](../src/error.rs), [Outcomes](../src/job.rs) |
 | Feature gating and CI | Open. Default builds include FlightAware. Both the no-default-features and all-features library checks failed in this review, and CI uses the default feature set. [Cargo features](../Cargo.toml), [CI](../../.github/workflows/rust.yml) |
-| Observability | Partly resolved. Jobs have identifiers and outcomes, and startup has tracing. Scheduler ticks log at info level without queue depth or worker utilization, and the resolved runtime settings have no dedicated startup summary. [Scheduler](../src/actors/scheduler.rs), [Engine startup](../src/lib.rs) |
-| Tests | Improved. Parser and runner regressions now cover capability errors, backpressure, failed outcomes, and cancellation. Startup, public submission, scheduler, and shutdown still lack an end-to-end test. [Parser tests](../src/parse.rs), [Runner tests](../src/actors/runner.rs) |
-| Listing APIs | Resolved. The engine exposes formatted source, token, and storage listings. [Engine helpers](../src/subr.rs) |
+| Observability | Partly resolved. Jobs have identifiers and outcomes, and startup has tracing. Scheduler ticks log at info level without queue depth or worker utilization, and the resolved runtime settings have no dedicated startup summary. [Scheduler](../src/actors/scheduler.rs), [Engine startup](../src/engine/startup.rs) |
+| Tests | Improved. Parser and runner regressions now cover capability errors, backpressure, failed outcomes, and cancellation. Startup, public submission, scheduler, and shutdown still lack an end-to-end test. [Parser tests](../src/engine/parse.rs), [Runner tests](../src/actors/runner.rs) |
+| Listing APIs | Resolved. The engine exposes formatted source, token, and storage listings. [Engine helpers](../src/engine/subr.rs) |
 | Documentation | Partly resolved. The README has an actor overview and the pipeline has a design document. The checked-in engine HCL still declares version 2 while the loader requires version 3, and the README attributes the state sync timer to the state actor. The scheduler owns that timer. [README](../README.md), [HCL example](../src/engine.hcl), [Scheduler](../src/actors/scheduler.rs) |
 
 ## Priority findings
@@ -55,14 +55,14 @@ and stop admission before draining or cancelling jobs and awaiting final state s
 
 `submit_job_and_wait` also changes the process-wide working directory across an async wait. Concurrent callers can
 resolve relative paths against another job's workspace, and dropping the waiting future bypasses the explicit restore.
-Resolve stage paths against a job workspace instead. [Engine startup](../src/lib.rs), [Shutdown and sync](../src/subr.rs),
-[Submission and destructor](../src/cmds.rs), [State startup and sync](../src/actors/state.rs)
+Resolve stage paths against a job workspace instead. [Engine startup](../src/engine/startup.rs), [Shutdown and sync](../src/engine/subr.rs),
+[Submission and destructor](../src/engine/jobs.rs), [State startup and sync](../src/actors/state.rs)
 
 ### Medium — Reject invalid configuration before execution
 
 - Validate daemon worker count and positive tick and sync intervals before starting actors. Log the effective settings
   with structured fields. Update the checked-in HCL to the current schema and cover it with a configuration test.
-  [Engine startup](../src/lib.rs), [HCL example](../src/engine.hcl)
+  [Engine startup](../src/engine/startup.rs), [HCL example](../src/engine.hcl)
 - Parse the entire storage rotation string using an unsigned value and checked conversion to seconds. For example,
   the current parser can accept the `1h` prefix of `1hgarbage`, while signed values either wrap on cast or overflow
   during multiplication. Define whether zero is allowed. Verify storage locations are directories and retain filesystem
@@ -73,7 +73,7 @@ Resolve stage paths against a job workspace instead. [Engine startup](../src/lib
 - Reject unsupported HCL stages before marking a job ready. `Convert` reaches `unimplemented!()`, and `Archive`
   produces an invalid consumer that the runner rejects later. A numeric `Read` value can deserialize as an HCL
   expression string. Define whether such expressions are supported before adding a strict path type.
-  [Parser](../src/parse.rs), [Runner](../src/actors/runner.rs)
+  [Parser](../src/engine/parse.rs), [Runner](../src/actors/runner.rs)
 
 ### Medium — Define Senhive's delivery guarantee
 

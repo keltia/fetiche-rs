@@ -1,18 +1,4 @@
-//! Engine command implementation module
-//!
-//! This module implements the core command functionality for the engine, including:
-//! - Job creation and management
-//! - Job queue operations
-//! - Job state transitions
-//! - Job submission and execution
-//!
-//! The commands are implemented as methods on the `Engine` struct and provide the primary
-//! interface for interacting with the engine's job processing capabilities.
-//!
-//! Each command ensures proper state management and provides appropriate error handling
-//! when operations cannot be completed successfully. All operations are instrumented
-//! with tracing for debugging and monitoring purposes.
-//!
+//! Job creation, submission, status, removal, and engine cleanup.
 
 use std::sync::mpsc::Sender;
 
@@ -279,7 +265,7 @@ impl Engine {
         }
         self.shutdown().await?;
         let workspace = self.lifecycle.workspace().to_path_buf();
-        let resources = match crate::lifecycle::Resources::claim(&workspace) {
+        let resources = match super::lifecycle::Resources::claim(&workspace) {
             Ok(resources) => resources,
             Err(err)
                 if err
