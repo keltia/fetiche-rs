@@ -3618,7 +3618,7 @@ dependencies = [
 
 [[package]]
 name = "fetiche-engine"
-version = "0.26.0"
+version = "0.30.0"
 dependencies = [
  "base64_light",
  "bon",

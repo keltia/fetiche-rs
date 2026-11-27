@@ -23,7 +23,7 @@ Current crates versions:
 - acutectl/0.25.0
 - process-data/0.9.0+clickhouse
 - fetiche-client/0.3.0
-- fetiche-engine/0.26.0
+- fetiche-engine/0.30.0
 - fetiche-formats/0.19.0
 - fetiche-common/0.7.0
 - fetiche-macros/0.5.0
