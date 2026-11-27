@@ -29,7 +29,6 @@ use fetiche_formats::Format;
 use crate::{Auth, Capability, FetchableSource, Site};
 
 mod fetch;
-pub mod token;
 
 /// Default token
 const DEF_TOKEN: &str = "asd_default_token";

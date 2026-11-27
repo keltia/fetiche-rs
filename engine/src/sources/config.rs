@@ -35,6 +35,7 @@ use crate::{OpenskyDevice, OpenskyServer};
 use crate::{AccessError, Auth, FetchableSource, Site, StreamableSource, SOURCES_CONFIG};
 
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
+#[cfg(any(feature = "asd", feature = "aeroscope", feature = "safesky", feature = "avionix", feature = "flightaware", feature = "opensky", feature = "senhive"))]
 use fetiche_formats::Format;
 use fetiche_macros::into_configfile;
 

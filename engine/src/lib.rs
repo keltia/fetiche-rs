@@ -89,6 +89,7 @@ mod stats;
 mod storage;
 mod subr;
 mod task;
+pub mod token;
 mod tokens;
 mod workspace;
 

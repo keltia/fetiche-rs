@@ -9,6 +9,15 @@
 use std::fmt::Debug;
 use tokio::sync::mpsc::Sender;
 
+#[cfg(any(
+    feature = "asd",
+    feature = "aeroscope",
+    feature = "safesky",
+    feature = "avionix",
+    feature = "flightaware",
+    feature = "opensky",
+    feature = "senhive"
+))]
 use enum_dispatch::enum_dispatch;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
@@ -36,7 +45,10 @@ mod site;
 #[macro_use]
 mod macros;
 
-#[enum_dispatch]
+#[cfg_attr(
+    any(feature = "asd", feature = "aeroscope", feature = "safesky"),
+    enum_dispatch
+)]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum FetchableSource {
     #[cfg(feature = "asd")]
@@ -48,30 +60,39 @@ pub enum FetchableSource {
 }
 
 impl FetchableSource {
+    /// Resolves an enabled adapter or returns an error for an unavailable site.
     #[tracing::instrument]
     pub fn from_site(value: Site) -> Result<Self> {
-        Ok(match value.format.as_str() {
+        match value.format.as_str() {
             #[cfg(feature = "asd")]
             "asd" => {
                 let s = Asd::new().load(&value).clone();
-                FetchableSource::from(s)
+                Ok(FetchableSource::from(s))
             }
             #[cfg(feature = "aeroscope")]
             "aeroscope" => {
                 let s = Aeroscope::new().load(&value).clone();
-                FetchableSource::from(s)
+                Ok(FetchableSource::from(s))
             }
             #[cfg(feature = "safesky")]
             "safesky" => {
                 let s = Safesky::new().load(&value).clone();
-                FetchableSource::from(s)
+                Ok(FetchableSource::from(s))
             }
-            _ => unimplemented!(),
-        })
+            _ => Err(AccessError::InvalidSite(value.name).into()),
+        }
     }
 }
 
-#[enum_dispatch]
+#[cfg_attr(
+    any(
+        feature = "avionix",
+        feature = "flightaware",
+        feature = "opensky",
+        feature = "senhive"
+    ),
+    enum_dispatch
+)]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum StreamableSource {
     #[cfg(feature = "avionix")]
@@ -89,42 +110,43 @@ pub enum StreamableSource {
 }
 
 impl StreamableSource {
+    /// Resolves an enabled adapter or returns an error for an unavailable site.
     #[tracing::instrument]
     pub fn from_site(value: Site) -> Result<Self> {
-        Ok(match value.format.as_str() {
+        match value.format.as_str() {
             #[cfg(feature = "avionix")]
             "cubedata" => {
                 let variant = value.variant().unwrap_or("avionixserver".into());
                 if variant.contains("avionixserver") {
                     let s = AvionixServer::new().load(&value).clone();
-                    StreamableSource::from(s)
+                    Ok(StreamableSource::from(s))
                 } else {
                     let s = Cube::new().load(&value).clone();
-                    StreamableSource::from(s)
+                    Ok(StreamableSource::from(s))
                 }
             }
             #[cfg(feature = "flightaware")]
             "flightaware" => {
                 let s = Flightaware::new().load(&value).clone();
-                StreamableSource::from(s)
+                Ok(StreamableSource::from(s))
             }
             #[cfg(feature = "senhive")]
             "senhive" => {
                 let s = Senhive::new().load(&value).clone();
-                StreamableSource::from(s)
+                Ok(StreamableSource::from(s))
             }
             #[cfg(feature = "opensky")]
             "openskyserver" => {
                 let s = OpenskyServer::new().load(&value).clone();
-                StreamableSource::from(s)
+                Ok(StreamableSource::from(s))
             }
             #[cfg(feature = "opensky")]
             "openskydevice" => {
                 let s = OpenskyDevice::new().load(&value).clone();
-                StreamableSource::from(s)
+                Ok(StreamableSource::from(s))
             }
-            _ => unimplemented!(),
-        })
+            _ => Err(AccessError::InvalidSite(value.name).into()),
+        }
     }
 }
 
@@ -132,7 +154,10 @@ impl StreamableSource {
 /// a single interface.
 ///
 #[allow(async_fn_in_trait)]
-#[enum_dispatch(FetchableSource)]
+#[cfg_attr(
+    any(feature = "asd", feature = "aeroscope", feature = "safesky"),
+    enum_dispatch(FetchableSource)
+)]
 pub trait Fetchable {
     /// Return site's name
     fn name(&self) -> String;
@@ -149,7 +174,15 @@ pub trait Fetchable {
 /// some API (cf. Opensky).
 ///
 #[allow(async_fn_in_trait)]
-#[enum_dispatch(StreamableSource)]
+#[cfg_attr(
+    any(
+        feature = "avionix",
+        feature = "flightaware",
+        feature = "opensky",
+        feature = "senhive"
+    ),
+    enum_dispatch(StreamableSource)
+)]
 pub trait Streamable: Debug {
     /// Return site's name
     fn name(&self) -> String;
@@ -161,5 +194,76 @@ pub trait Streamable: Debug {
     fn format(&self) -> Format;
 }
 
+// Without adapters these enums are uninhabited. Matching by value makes that
+// explicit because the compiler treats references as inhabited.
+#[cfg(not(any(feature = "asd", feature = "aeroscope", feature = "safesky")))]
+impl Fetchable for FetchableSource {
+    /// No fetchable source can be constructed in this build.
+    fn name(&self) -> String {
+        match *self {}
+    }
+    /// No fetchable source can authenticate in this build.
+    async fn authenticate(&self) -> Result<String, AuthError> {
+        match *self {}
+    }
+    /// No fetchable source can fetch data in this build.
+    async fn fetch(&self, _: Sender<String>, _: &str, _: &str) -> Result<Stats> {
+        match *self {}
+    }
+    /// No fetchable source can report a format in this build.
+    fn format(&self) -> Format {
+        match *self {}
+    }
+}
+
+#[cfg(not(any(
+    feature = "avionix",
+    feature = "flightaware",
+    feature = "opensky",
+    feature = "senhive"
+)))]
+impl Streamable for StreamableSource {
+    /// No streamable source can be constructed in this build.
+    fn name(&self) -> String {
+        match *self {}
+    }
+    /// No streamable source can authenticate in this build.
+    async fn authenticate(&self) -> Result<String, AuthError> {
+        match *self {}
+    }
+    /// No streamable source can stream data in this build.
+    async fn stream(&self, _: Sender<String>, _: &str, _: &str) -> Result<Stats> {
+        match *self {}
+    }
+    /// No streamable source can report a format in this build.
+    fn format(&self) -> Format {
+        match *self {}
+    }
+}
+
 /// Default configuration filename
 pub const SOURCES_CONFIG: &str = "sources.hcl";
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Unavailable adapters return a typed error in every feature configuration.
+    #[test]
+    fn unavailable_site_returns_error_for_both_source_kinds() {
+        let site = Site {
+            name: "unavailable".into(),
+            format: "unknown-format".into(),
+            ..Site::default()
+        };
+        for error in [
+            FetchableSource::from_site(site.clone()).unwrap_err(),
+            StreamableSource::from_site(site).unwrap_err(),
+        ] {
+            assert!(matches!(
+                error.downcast_ref::<AccessError>(),
+                Some(AccessError::InvalidSite(name)) if name == "unavailable"
+            ));
+        }
+    }
+}
