@@ -165,7 +165,7 @@ impl Engine {
         }
 
         trace!("submit job {}", job.id);
-        let wg = call!(self.scheduler, |port| { SchedulerMsg::Add(job, port) })?;
+        let wg = call!(self.scheduler, |port| { SchedulerMsg::Add(job, port) })??;
 
         // note will be for retrieving results later
         //
@@ -280,36 +280,19 @@ impl Engine {
         eprintln!("Actor list:\n{plist}");
     }
 
-    /// Removes a job from the engine by its ID.
-    ///
-    /// This method attempts to remove a job with the specified ID from the engine's job queue.
-    /// The job cannot be removed if it is currently in the Running state.
-    ///
-    /// # Arguments
-    ///
-    /// - `job_id`: The unique identifier of the job to remove.
-    ///
-    /// # Returns
-    ///
-    /// - On success, returns `Ok(())` after removing the job and syncing state.
-    /// - On failure, returns an `Err` containing details about what went wrong.
+    /// Cancels a queued job by ID and requests a state sync.
     ///
     /// # Errors
     ///
-    /// This method will return an error in the following cases:
-    ///
-    /// - If the job is currently running (`EngineStatus::JobIsRunning`)
-    /// - If the job cannot be found in the queue
-    /// - If state synchronization fails after removal
-    ///
-    /// # Tracing
-    ///
-    /// This method is instrumented for tracing, excluding the `self` parameter.
+    /// Returns [`EngineStatus::JobIsRunning`] for a job that has been dispatched
+    /// and [`EngineStatus::JobNotQueued`] for an unknown ID. Actor communication
+    /// errors are propagated. A successful removal delivers a cancelled outcome
+    /// to the job's [`WaitGroup`].
     ///
     #[tracing::instrument(skip(self))]
     pub async fn remove_job(&mut self, job_id: usize) -> Result<()> {
+        call!(self.scheduler, |port| SchedulerMsg::RemoveById(job_id, port))??;
         cast!(self.state, StateMsg::Remove(job_id))?;
-        cast!(self.scheduler, SchedulerMsg::RemoveById(job_id))?;
         self.sync()
     }
 

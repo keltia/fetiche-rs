@@ -449,7 +449,6 @@ impl Engine {
             tick,
             last,
             state: state.clone(),
-            results: results.clone(),
             factory: factory.clone(),
         };
         let (scheduler, _h) = Actor::spawn_linked(

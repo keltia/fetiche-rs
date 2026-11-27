@@ -11,16 +11,16 @@
 //! and coordinates task execution through message passing.
 //!
 
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::time::Duration;
 
 use ractor::factory::{FactoryMessage, JobOptions};
-use ractor::{factory, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, factory};
 use tokio::sync::oneshot;
 use tracing::{error, info, trace, warn};
 
-use crate::actors::{ResultsMsg, RunnerMsg, StateMsg};
-use crate::{Job, JobState, SchedulerError, WaitGroup, Work};
+use crate::actors::{RunnerMsg, StateMsg};
+use crate::{EngineStatus, Job, JobState, SchedulerError, WaitGroup, Work};
 
 /// Messages that can be sent to control the scheduler's operation
 #[derive(Debug)]
@@ -33,17 +33,17 @@ pub enum SchedulerMsg {
     Tick,
     // Queue operations
     /// Adds a new job to the waiting queue.
-    Add(Job, RpcReplyPort<WaitGroup>),
+    Add(Job, RpcReplyPort<Result<WaitGroup, SchedulerError>>),
     /// Gets the next available job ID. Returns the ID through the reply port.
     Allocate(RpcReplyPort<usize>),
-    /// Check if there is anything to do in any of the queues.
+    /// Reports whether there are no waiting or dispatched jobs.
     Empty(RpcReplyPort<bool>),
-    /// Move from running into the finished queue.
+    /// Releases the running entry for this job ID.
     Finished(usize),
-    /// Lists all job IDs currently in the queue. Returns the list of IDs through the reply port.
+    /// Lists dispatched jobs in job ID order.
     List(RpcReplyPort<Vec<usize>>),
-    /// Removes a job from the queue using its ID.
-    RemoveById(usize),
+    /// Removes a waiting job by ID and reports whether it was removed.
+    RemoveById(usize, RpcReplyPort<Result<(), EngineStatus>>),
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -65,7 +65,6 @@ pub struct SchedulerArguments {
 
     // Actors
     pub state: ActorRef<StateMsg>,
-    pub results: ActorRef<ResultsMsg>,
     pub factory: ActorRef<FactoryMessage<usize, RunnerMsg>>,
 }
 
@@ -80,13 +79,49 @@ pub struct SchedulerState {
 
     // Actors
     state: ActorRef<StateMsg>,
-    results: ActorRef<ResultsMsg>,
     factory: ActorRef<FactoryMessage<usize, RunnerMsg>>,
 
     // The queues
     waiting: VecDeque<Work>,
-    running: VecDeque<Job>,
-    finished: VecDeque<Job>,
+    running: BTreeSet<usize>,
+}
+
+impl SchedulerState {
+    /// Queues a ready job and creates its completion receiver. Only one outstanding
+    /// job can use a given ID.
+    fn enqueue(&mut self, job: Job) -> Result<WaitGroup, SchedulerError> {
+        let id = job.id;
+        if job.state() != JobState::Ready {
+            return Err(SchedulerError::JobNotReady(id));
+        }
+        if self.running.contains(&id) || self.waiting.iter().any(|work| work.id() == id) {
+            return Err(SchedulerError::DuplicateJob(id));
+        }
+        let (tx, rx) = oneshot::channel();
+        trace!(job_id = id, "Adding job to waiting queue");
+        self.waiting.push_back(Work::new(job, tx));
+        Ok(WaitGroup::new(id, rx))
+    }
+
+    /// Drops a waiting job by ID, notifying its waiter of cancellation.
+    /// A dispatched job owns a runner slot until it finishes.
+    fn remove_waiting(&mut self, id: usize) -> Result<(), EngineStatus> {
+        if self.running.contains(&id) {
+            return Err(EngineStatus::JobIsRunning(id));
+        }
+        let index = self
+            .waiting
+            .iter()
+            .position(|work| work.id() == id)
+            .ok_or(EngineStatus::JobNotQueued(id))?;
+        self.waiting.remove(index);
+        Ok(())
+    }
+
+    /// Retires exactly the completed job. Unknown IDs have no effect.
+    fn finish(&mut self, id: usize) {
+        self.running.remove(&id);
+    }
 }
 
 /// Actor implementation for the scheduler that manages task execution flow
@@ -98,6 +133,7 @@ impl Actor for SchedulerActor {
     type State = SchedulerState;
     type Arguments = SchedulerArguments;
 
+    /// Starts with empty job queues and waits for the initial `Start` message.
     #[tracing::instrument(skip(self, _myself, args))]
     async fn pre_start(
         &self,
@@ -112,14 +148,13 @@ impl Actor for SchedulerActor {
             tick: args.tick,
             last: args.last,
             state: args.state.clone(),
-            results: args.results.clone(),
             factory: args.factory.clone(),
             waiting: VecDeque::new(),
-            running: VecDeque::new(),
-            finished: VecDeque::new(),
+            running: BTreeSet::new(),
         })
     }
 
+    /// Handles scheduler commands and applies queue changes by job ID.
     #[tracing::instrument(skip(self, myself, message, state))]
     async fn handle(
         &self,
@@ -139,31 +174,22 @@ impl Actor for SchedulerActor {
                 if state.mode == Mode::Idle {
                     state.mode = Mode::Running;
 
-                    // Loop if nothing to do
-                    //
-                    if state.waiting.is_empty()
-                        && state.running.is_empty()
-                        && state.finished.is_empty()
-                    {
-                        state.mode = Mode::Idle;
-                        return Ok(());
-                    }
-
                     // Check the waiting queue
                     //
                     if let Some(work) = state.waiting.pop_front() {
                         // Move unto the running queue
                         //
-                        state.running.push_back(work.job.clone());
+                        let id = work.id();
+                        state.running.insert(id);
 
                         // Hand over to the runner factory
                         //
-                        let _ = state
+                        let dispatch = state
                             .factory
                             .call(
                                 |port| {
                                     FactoryMessage::Dispatch(factory::Job {
-                                        key: work.id(),
+                                        key: id,
                                         msg: RunnerMsg::Run(work, port),
                                         options: JobOptions::default(),
                                         accepted: None,
@@ -171,7 +197,9 @@ impl Actor for SchedulerActor {
                                 },
                                 None,
                             )
-                            .await?;
+                            .await;
+                        state.finish(id);
+                        dispatch?;
                     };
                     state.mode = Mode::Idle;
                 }
@@ -227,8 +255,7 @@ impl Actor for SchedulerActor {
             // This is ps(1)
             //
             SchedulerMsg::List(sender) => {
-                let list = state.running.iter().map(|j| j.id).collect::<Vec<usize>>();
-                sender.send(list)?;
+                let _ = sender.send(state.running.iter().copied().collect());
             }
 
             // ----- Job operations
@@ -237,53 +264,171 @@ impl Actor for SchedulerActor {
             //
             SchedulerMsg::Allocate(sender) => {
                 info!("New job allocated {}", state.last);
-                sender.send(state.last)?;
+                let id = state.last;
                 state.last += 1;
+                let _ = sender.send(id);
             }
 
             // Add a job to the waiting queue
             //
             SchedulerMsg::Add(job, port) => {
-                if job.state() != JobState::Ready {
-                    return Err(SchedulerError::JobNotReady(job.id).into());
+                let id = job.id;
+                let result = state.enqueue(job);
+                let queued = result.is_ok();
+                if port.send(result).is_err() && queued {
+                    let _ = state.remove_waiting(id);
                 }
-                trace!(job_id = job.id, "Adding job to waiting queue");
-
-                let (tx, rx) = oneshot::channel();
-
-                let work = Work::new(job.clone(), tx);
-                let wg = WaitGroup::new(job.id, rx);
-
-                // We add the job and its notification channel after completion.
-                //
-                state.waiting.push_back(work);
-                let _ = port.send(wg)?;
             }
 
-            // Move a job from the running queue into the finished one.
-            //
-            SchedulerMsg::Finished(_batch) => {
-                let work = match state.running.pop_front() {
-                    Some(batch) => batch,
-                    None => return Ok(()),
-                };
-                state.finished.push_back(work);
+            SchedulerMsg::Finished(id) => {
+                state.finish(id);
             }
 
-            SchedulerMsg::RemoveById(id) => {
-                state.running.remove(id);
+            SchedulerMsg::RemoveById(id, reply) => {
+                let _ = reply.send(state.remove_waiting(id));
             }
 
             // Returns status of all queues.
             //
             SchedulerMsg::Empty(sender) => {
-                sender.send(
-                    state.waiting.is_empty()
-                        && state.running.is_empty()
-                        && state.finished.is_empty(),
-                )?;
+                let _ = sender.send(state.waiting.is_empty() && state.running.is_empty());
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::JobStatus;
+    use ractor::{Message, call};
+    use tokio::sync::mpsc;
+    use tokio::time::timeout;
+
+    const TEST_TIMEOUT: Duration = Duration::from_secs(5);
+
+    struct Forward<M>(std::marker::PhantomData<fn() -> M>);
+
+    #[ractor::async_trait]
+    impl<M: Message> Actor for Forward<M> {
+        type Msg = M;
+        type State = mpsc::UnboundedSender<M>;
+        type Arguments = mpsc::UnboundedSender<M>;
+
+        /// Uses the provided channel as the test actor's mailbox observer.
+        async fn pre_start(
+            &self,
+            _myself: ActorRef<M>,
+            args: Self::Arguments,
+        ) -> Result<Self::State, ActorProcessingErr> {
+            Ok(args)
+        }
+
+        /// Forwards messages so the test can control when a factory job finishes.
+        async fn handle(
+            &self,
+            _myself: ActorRef<M>,
+            message: M,
+            state: &mut Self::State,
+        ) -> Result<(), ActorProcessingErr> {
+            let _ = state.send(message);
+            Ok(())
+        }
+    }
+
+    struct Fixture {
+        scheduler: ActorRef<SchedulerMsg>,
+        state: ActorRef<StateMsg>,
+        factory: ActorRef<FactoryMessage<usize, RunnerMsg>>,
+        dispatched: mpsc::UnboundedReceiver<FactoryMessage<usize, RunnerMsg>>,
+    }
+
+    impl Fixture {
+        /// Starts a scheduler with manual ticks and a controllable factory.
+        async fn new() -> Self {
+            let (state_tx, _state_rx) = mpsc::unbounded_channel();
+            let (state, _) = Actor::spawn(None, Forward(std::marker::PhantomData), state_tx)
+                .await
+                .unwrap();
+            let (factory_tx, dispatched) = mpsc::unbounded_channel();
+            let (factory, _) = Actor::spawn(None, Forward(std::marker::PhantomData), factory_tx)
+                .await
+                .unwrap();
+            let (scheduler, _) = Actor::spawn(
+                None,
+                SchedulerActor,
+                SchedulerArguments {
+                    sync: Duration::from_secs(3600),
+                    tick: Duration::from_secs(3600),
+                    last: 1,
+                    state: state.clone(),
+                    factory: factory.clone(),
+                },
+            )
+            .await
+            .unwrap();
+            Self {
+                scheduler,
+                state,
+                factory,
+                dispatched,
+            }
+        }
+
+        /// Submits a ready job with the requested ID.
+        async fn enqueue(&self, id: usize) -> Result<WaitGroup, SchedulerError> {
+            let job = Job::builder().id(id).state(JobState::Ready).build();
+            timeout(
+                TEST_TIMEOUT,
+                self.scheduler
+                    .call(|port| SchedulerMsg::Add(job, port), None),
+            )
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap()
+        }
+    }
+
+    impl Drop for Fixture {
+        /// Stops the actors owned by this test fixture.
+        fn drop(&mut self) {
+            self.scheduler.kill();
+            self.factory.kill();
+            self.state.kill();
+        }
+    }
+
+    /// Removes a queued job by ID and keeps the other job and the scheduler alive.
+    #[tokio::test]
+    async fn remove_waiting_job_by_id() {
+        let mut fixture = Fixture::new().await;
+        let first = fixture.enqueue(40).await.unwrap();
+        let second = fixture.enqueue(90).await.unwrap();
+        let scheduler = &fixture.scheduler;
+
+        assert!(matches!(
+            fixture.enqueue(40).await,
+            Err(SchedulerError::DuplicateJob(40))
+        ));
+        call!(scheduler, |port| SchedulerMsg::RemoveById(90, port))
+            .unwrap()
+            .unwrap();
+        let outcome = timeout(TEST_TIMEOUT, second.rx).await.unwrap().unwrap();
+        assert_eq!(outcome.id, 90);
+        assert_eq!(outcome.status, JobStatus::Cancelled { stage: None });
+
+        assert!(!call!(scheduler, SchedulerMsg::Empty).unwrap());
+        assert!(matches!(
+            call!(scheduler, |port| SchedulerMsg::RemoveById(90, port)).unwrap(),
+            Err(EngineStatus::JobNotQueued(90))
+        ));
+        call!(scheduler, |port| SchedulerMsg::RemoveById(40, port))
+            .unwrap()
+            .unwrap();
+        assert_eq!(first.rx.await.unwrap().id, 40);
+        assert!(call!(scheduler, SchedulerMsg::Empty).unwrap());
+        assert!(fixture.dispatched.try_recv().is_err());
     }
 }

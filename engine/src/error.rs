@@ -78,6 +78,8 @@ pub enum StateError {
 
 #[derive(Debug, Error)]
 pub enum SchedulerError {
+    #[error("Job {0} is already queued or running")]
+    DuplicateJob(usize),
     #[error("Empty queue.")]
     EmptyQueue,
     #[error("Job {0} is not runnable")]
