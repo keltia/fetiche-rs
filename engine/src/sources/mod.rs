@@ -63,7 +63,7 @@ impl FetchableSource {
     /// Resolves an enabled adapter or returns an error for an unavailable site.
     #[tracing::instrument]
     pub fn from_site(value: Site) -> Result<Self> {
-        match value.format.as_str() {
+        match value.format.to_ascii_lowercase().as_str() {
             #[cfg(feature = "asd")]
             "asd" => {
                 let s = Asd::new().load(&value).clone();
@@ -293,7 +293,9 @@ mod tests {
                 auth,
                 ..Site::default()
             };
+            let sources = Sources::from(vec![(site.name.clone(), site.clone())]);
             assert_eq!(StreamableSource::from_site(site)?.name(), expected);
+            assert_eq!(sources.as_streamable("avionix")?.name(), expected);
         }
 
         for (variant, auth) in [
@@ -320,6 +322,58 @@ mod tests {
                 Some(AccessError::InvalidSite(name)) if name == "avionix"
             ));
         }
+        Ok(())
+    }
+
+    /// Distinguishes a missing registry entry from a known site with an unavailable adapter.
+    #[test]
+    fn missing_site_returns_unknown_site_for_both_source_kinds() {
+        let sources = Sources::from(Vec::<(String, Site)>::new());
+        for error in [
+            sources.as_fetchable("missing").unwrap_err(),
+            sources.as_streamable("missing").unwrap_err(),
+        ] {
+            assert!(matches!(
+                error.downcast_ref(),
+                Some(AccessError::UnknownSite(name)) if name == "missing"
+            ));
+        }
+    }
+
+    /// A configured Avionix site is unavailable in both paths when its feature is disabled.
+    #[cfg(not(feature = "avionix"))]
+    #[test]
+    fn disabled_avionix_returns_invalid_site() -> Result<()> {
+        let sources: Sources = hcl::from_str(include_str!("sources.hcl"))?;
+        let site = sources.get("avionix-rid").unwrap().clone();
+        for error in [
+            StreamableSource::from_site(site).unwrap_err(),
+            sources.as_streamable("avionix-rid").unwrap_err(),
+        ] {
+            assert!(matches!(
+                error.downcast_ref(),
+                Some(AccessError::InvalidSite(_))
+            ));
+        }
+        Ok(())
+    }
+
+    /// Preserves case-insensitive format matching across the registry and pipeline.
+    #[cfg(feature = "asd")]
+    #[test]
+    fn both_fetch_selectors_accept_mixed_case_formats() -> Result<()> {
+        let defaults: Sources = hcl::from_str(include_str!("sources.hcl"))?;
+        let mut site = defaults.get("lux").unwrap().clone();
+        site.format = "AsD".into();
+        let sources = Sources::from(vec![("lux".into(), site.clone())]);
+        assert!(matches!(
+            FetchableSource::from_site(site)?,
+            FetchableSource::Asd(_)
+        ));
+        assert!(matches!(
+            sources.as_fetchable("lux")?,
+            FetchableSource::Asd(_)
+        ));
         Ok(())
     }
 

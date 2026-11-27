@@ -3,37 +3,19 @@
 //! FIXME: too many dependencies on being part of the binary and not from `fetiched`.
 //!
 
-use std::collections::btree_map::{IntoValues, Iter, IterMut, Keys, Values, ValuesMut};
 use std::collections::BTreeMap;
+use std::collections::btree_map::{IntoValues, Iter, IterMut, Keys, Values, ValuesMut};
 use std::fs;
 use std::ops::{Index, IndexMut};
 use std::path::{Path, PathBuf};
 
+use crate::{AccessError, Auth, FetchableSource, SOURCES_CONFIG, Site, StreamableSource};
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tabled::builder::Builder;
 use tabled::settings::Style;
-use tracing::trace;
-
-#[cfg(feature = "aeroscope")]
-use crate::Aeroscope;
-#[cfg(feature = "asd")]
-use crate::Asd;
-#[cfg(feature = "avionix")]
-use crate::AvionixServer;
-#[cfg(feature = "avionix")]
-use crate::Cube;
-#[cfg(feature = "flightaware")]
-use crate::Flightaware;
-#[cfg(feature = "safesky")]
-use crate::Safesky;
-#[cfg(feature = "senhive")]
-use crate::Senhive;
-
-use crate::{AccessError, Auth, FetchableSource, Site, StreamableSource, SOURCES_CONFIG};
 
 use fetiche_common::{ConfigFile, IntoConfig, Versioned};
-use fetiche_formats::Format;
 use fetiche_macros::into_configfile;
 
 /// Configuration for multiple sources.
@@ -126,88 +108,27 @@ impl Sources {
         Sources::from(all)
     }
 
-    /// Resolves a configured fetch adapter, or errors if its format is unavailable.
+    /// Looks up a site by name and resolves it with the pipeline's fetch selector.
+    ///
+    /// Returns [`AccessError::UnknownSite`] when the registry has no matching name.
+    /// A site without a supported fetch adapter returns [`AccessError::InvalidSite`].
     pub fn as_fetchable(&self, name: &str) -> Result<FetchableSource> {
-        match self.site.get(name) {
-            Some(site) => {
-                trace!("site={}", site);
-                let fmt = site.format.parse::<Format>()
-                    .map_err(|_| AccessError::InvalidSite(name.to_owned()))?;
-
-                // We have to explicitly list all supported formats as we return
-                // an enum whether the site will be fetchable or not
-                //
-                match fmt {
-                    #[cfg(feature = "asd")]
-                    Format::Asd => {
-                        let s = Asd::new().load(site).clone();
-                        Ok(FetchableSource::Asd(s))
-                    }
-                    #[cfg(feature = "aeroscope")]
-                    Format::Aeroscope => {
-                        let s = Aeroscope::new().load(site).clone();
-                        Ok(FetchableSource::Aeroscope(s))
-                    }
-                    #[cfg(feature = "safesky")]
-                    Format::Safesky => {
-                        let s = Safesky::new().load(site).clone();
-                        Ok(FetchableSource::Safesky(s))
-                    }
-                    _ => Err(AccessError::InvalidSite(name.to_string()).into()),
-                }
-            }
-            None => Err(AccessError::UnknownSite(name.to_string()).into()),
-        }
+        let site = self
+            .get(name)
+            .ok_or_else(|| AccessError::UnknownSite(name.to_owned()))?;
+        FetchableSource::from_site(site.clone())
     }
 
-    /// Looks up a configured streaming source and errors for unavailable formats.
-    /// OpenSky endpoints use the same adapter selection as the pipeline.
+    /// Looks up a site by name and resolves it with the pipeline's stream selector.
+    ///
+    /// Returns [`AccessError::UnknownSite`] when the registry has no matching name.
+    /// A site without a supported stream adapter returns [`AccessError::InvalidSite`].
     #[tracing::instrument(skip(self))]
     pub fn as_streamable(&self, name: &str) -> Result<StreamableSource> {
-        match self.site.get(name) {
-            Some(site) => {
-                trace!("site={}", site);
-                #[cfg(feature = "opensky")]
-                if matches!(
-                    site.format.to_ascii_lowercase().as_str(),
-                    "opensky" | "openskyserver" | "openskydevice"
-                ) {
-                    return StreamableSource::from_site(site.clone());
-                }
-                let fmt = site.format.parse::<Format>()
-                    .map_err(|_| AccessError::InvalidSite(name.to_owned()))?;
-
-                // We have to explicitly list all supported formats as we return
-                // an enum whether the site will be streamable or not
-                //
-                match fmt {
-                    #[cfg(feature = "avionix")]
-                    Format::CubeData => {
-                        if let Some(Auth::UserKey { .. }) = site.auth {
-                            let s = AvionixServer::new().load(site).clone();
-                            Ok(StreamableSource::AvionixServer(s))
-                        } else {
-                            let s = Cube::new().load(site).clone();
-                            Ok(StreamableSource::Cube(s))
-                        }
-                    }
-                    #[cfg(feature = "flightaware")]
-                    Format::Flightaware => {
-                        let s = Flightaware::new().load(site).clone();
-
-                        Ok(StreamableSource::Flightaware(s))
-                    }
-                    #[cfg(feature = "senhive")]
-                    Format::Senhive => {
-                        let s = Senhive::new().load(site).clone();
-
-                        Ok(StreamableSource::Senhive(s))
-                    }
-                    _ => Err(AccessError::InvalidSite(name.to_string()).into()),
-                }
-            }
-            None => Err(AccessError::UnknownSite(name.to_string()).into()),
-        }
+        let site = self
+            .get(name)
+            .ok_or_else(|| AccessError::UnknownSite(name.to_owned()))?;
+        StreamableSource::from_site(site.clone())
     }
 
     /// Install default files
