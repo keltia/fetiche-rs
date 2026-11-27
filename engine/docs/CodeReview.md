@@ -1,185 +1,97 @@
-Fetiche Engine: Code Review and Improvement Suggestions
+# Fetiche engine code review
 
-Scope
+Reviewed on 2026-11-27. This revisits the earlier review of `fetiche-engine`, including startup, storage, tokens,
+source adapters, and actor orchestration. [DESIGN.md](DESIGN.md) covers the pipeline and its recent changes in detail.
 
-- This review focuses on the fetiche-engine crate: its initialization flow (Engine), storage handling, actor
-  orchestration, and related modules referenced from lib.rs (actors, storage, tokens, sources, scheduler/factory
-  integration).
-- The aim is to provide actionable, incremental improvements with low-risk changes first, followed by medium/longer-term
-  refactors.
+The actor layout, typed HCL configuration, and separation of source, storage, and token responsibilities remain useful.
+Job execution now has bounded queues, supervised tasks, and typed outcomes. The highest-priority remaining issues are
+credential logging, scheduler bookkeeping, and shutdown ownership.
 
-Executive summary
+## Earlier findings revisited
 
-- Strengths
-    - Clear actor-based architecture with ractor: supervisor, scheduler, runner factory, state, results, sources, stats.
-    - Good observability via tracing and EnvFilter; structured startup logs; helpful debug/trace dumps (actors list,
-      storage listing).
-    - Config versioning via macros (into_configfile) and strong typed config structures.
-    - Separation of storage, tokens, and sources registration phases keeps boundaries clean.
-- Main opportunities
-    - Avoid panics in library paths; prefer Result-returning constructors and error propagation.
-    - Tighten parsing and validation (e.g., rotation parsing uses i8; directory creation unwraps).
-    - Provide graceful shutdown and lifecycle hooks for actors; ensure Start/Tick/Sync semantics are well-bounded.
-    - Expand test coverage for configuration and storage cases; add compile-time feature matrix CI entries.
-    - Clarify feature gating and default behavior to reduce unexpected compilation of unused sources.
+| Topic | Current status |
+| --- | --- |
+| Engine constructors | Resolved. `Engine::new` and `Engine::single` already return `Result<Self>` and delegate to `load`. Their error docs still describe startup failures as panics. [Constructors](../src/lib.rs) |
+| Storage registration | Partly resolved. `Storage::register` returns errors for directory creation and rotation parsing. An existing regular file can pass the existence check, and the directory error loses the original I/O cause. [Storage](../src/storage.rs) |
+| Rotation syntax | Open. The parser still uses signed `i8`, casts before multiplying, and returns the unconsumed suffix. Registration accepts a successful prefix parse. [Storage](../src/storage.rs) |
+| Startup validation | Partly resolved. Startup checks the config version and queue capacity and creates the run directory. Daemon worker counts and timer intervals still lack explicit validation. [Engine startup](../src/lib.rs) |
+| Graceful shutdown | Partly resolved. `Engine::shutdown` exists, and the runner supervises stage completion. Engine-level shutdown still sends stop signals without joining actors or acknowledging a final state sync. [Shutdown](../src/subr.rs), [Runner](../src/actors/runner.rs) |
+| Token registration and tracing | Partly resolved. Token and storage registration already have tracing spans. Token loading still panics on unsupported entries, and some spans and source logs can expose credentials. [Tokens](../src/tokens.rs), [Storage](../src/storage.rs) |
+| Error typing | Partly resolved. Domain errors and typed job outcomes already coexist with `eyre`. Improve context at specific boundaries, especially storage and token I/O, before considering a crate-wide error type. [Errors](../src/error.rs), [Outcomes](../src/job.rs) |
+| Feature gating and CI | Open. Default builds include FlightAware. Both the no-default-features and all-features library checks failed in this review, and CI uses the default feature set. [Cargo features](../Cargo.toml), [CI](../../.github/workflows/rust.yml) |
+| Observability | Partly resolved. Jobs have identifiers and outcomes, and startup has tracing. Scheduler ticks log at info level without queue depth or worker utilization, and the resolved runtime settings have no dedicated startup summary. [Scheduler](../src/actors/scheduler.rs), [Engine startup](../src/lib.rs) |
+| Tests | Improved. Parser and runner regressions now cover capability errors, backpressure, failed outcomes, and cancellation. Startup, public submission, scheduler, and shutdown still lack an end-to-end test. [Parser tests](../src/parse.rs), [Runner tests](../src/actors/runner.rs) |
+| Listing APIs | Resolved. The engine exposes formatted source, token, and storage listings. [Engine helpers](../src/subr.rs) |
+| Documentation | Partly resolved. The README has an actor overview and the pipeline has a design document. The checked-in engine HCL still declares version 2 while the loader requires version 3, and the README attributes the state sync timer to the state actor. The scheduler owns that timer. [README](../README.md), [HCL example](../src/engine.hcl), [Scheduler](../src/actors/scheduler.rs) |
 
-Detailed findings and recommendations
+## Priority findings
 
-1) Engine constructors: avoid panics, provide fallible variants (Low effort)
+### High — Source tracing can expose credentials
 
-- Current:
-    - Engine::new() and Engine::single() return Self and panic on error via unwrap_or_else + panic.
-    - Engine::load() is async and returns Result<Self> but is only used indirectly.
-- Suggestion:
-    - Add try_new() -> Result<Self> and try_single() -> Result<Self> that call load and return errors to the caller.
-      Keep existing new()/single() as convenience wrappers (possibly #[deprecated] in future).
-    - Benefit: binaries (e.g., fetiched) can decide whether to retry, log, or exit with a specific code instead of hard
-      panic.
+ASD authentication traces the returned token. The Avionix worker traces both authentication fields, and its source
+setup passes credentials in a connection URL. Token storage instrumentation captures the token argument, whose
+debug representation includes the value. Replace these logs with safe fields such as source name and authentication
+result. Skip sensitive arguments in spans and audit debug formatting of source configs and runner messages for
+transitive exposure. [ASD fetch](../src/sources/access/asd/fetch.rs), [Avionix worker](../src/sources/access/avionix/actors.rs),
+[Avionix setup](../src/sources/access/avionix/server.rs), [Token storage](../src/tokens.rs), [Token type](../src/sources/access/asd/token.rs)
 
-2) Storage::register: remove panics and unwraps (Low/Medium effort)
+### High — A long-running job occupies the scheduler mailbox
 
-- Current:
-    - Directory creation uses std::fs::create_dir_all(path).unwrap_or_else(... panic!).
-    - Rotation parsing uses Self::parse_rotation(...).unwrap().
-- Suggestion:
-    - Change register to return Result<Self> and propagate file-system and parsing errors.
-    - Alternatively, add register_strict() -> Result<Self> and keep register() that logs and skips invalid entries.
-    - Benefit: robust startup that can report misconfiguration without crashing the whole engine.
+The tick handler moves one job to the running queue and awaits the runner's reply inside the handler. An indefinite
+stream can keep later submissions and scheduler control messages waiting despite spare factory workers. The runner
+publishes outcomes without sending the scheduler's `Finished` message, leaving completed jobs in its running queue.
+The existing `Finished` handler pops the front entry, and `RemoveById` uses the ID as a deque index. Dispatch without
+awaiting execution in the mailbox handler and use job-ID keyed completion and removal. Test out-of-order completion
+and the responsiveness of scheduler commands while a stream is active.
+[Scheduler](../src/actors/scheduler.rs), [Runner](../src/actors/runner.rs)
 
-3) Rotation parsing: use u32 parser and wider numeric range (Low effort)
+### High — Shutdown and workspace resources lack per-engine ownership
 
-- Current:
-    - parse_rotation uses nom::character::complete::i8 which caps numeric value at 127 and then matches one_of("smhd").
-    - This disallows values like "1000s" or "168h" even if valid semantically.
-- Suggestion:
-    - Use nom::character::complete::u32 (or u64 if needed) for the number, then multiply based on suffix:
-        - map_res((u32, one_of("smhd")), |(n, tag)| -> Ok(match tag { 's' => n, 'm' => n*60, 'h' => n*3600, 'd' => n*
-          86400, _ => n }))
-    - Add a numeric overflow guard when converting to seconds (saturating or checked_mul with a clear error) to avoid
-      wrap.
-    - Extend tests: include boundary cases (e.g., 0s, 1m, 1000h, invalid suffix, missing suffix).
+The shutdown method and the destructor send stop signals through the same process group. Because `Engine` is cloneable,
+dropping any clone can request stops for the shared actors. Explicit shutdown removes the running marker without
+awaiting in-flight work, actor exits, or a final state write. Startup also creates the marker and starts actors before
+all later initialization steps have succeeded. Give lifecycle ownership to one shared owner, roll back partial startup,
+and stop admission before draining or cancelling jobs and awaiting final state sync.
 
-4) Engine initialization logging and config validation (Low effort)
+`submit_job_and_wait` also changes the process-wide working directory across an async wait. Concurrent callers can
+resolve relative paths against another job's workspace, and dropping the waiting future bypasses the explicit restore.
+Resolve stage paths against a job workspace instead. [Engine startup](../src/lib.rs), [Shutdown and sync](../src/subr.rs),
+[Submission and destructor](../src/cmds.rs), [State startup and sync](../src/actors/state.rs)
 
-- Current:
-    - Checks config version vs ENGINE_VERSION (good) and logs home/workdir.
-- Suggestions:
-    - Log computed defaults for workers, sync, tick explicitly at info level to aid ops troubleshooting.
-    - Validate that basedir exists (or create it) and that workdir path is under basedir to avoid accidental writes
-      elsewhere.
-    - Consider warning if workers == 0 (should be clamped to >=1) or if sync < tick (may cause excessive syncs).
+### Medium — Reject invalid configuration before execution
 
-5) Actor lifecycle and graceful shutdown (Medium effort)
+- Validate daemon worker count and positive tick and sync intervals before starting actors. Log the effective settings
+  with structured fields. Update the checked-in HCL to the current schema and cover it with a configuration test.
+  [Engine startup](../src/lib.rs), [HCL example](../src/engine.hcl)
+- Parse the entire storage rotation string using an unsigned value and checked conversion to seconds. For example,
+  the current parser can accept the `1h` prefix of `1hgarbage`, while signed values either wrap on cast or overflow
+  during multiplication. Define whether zero is allowed. Verify storage locations are directories and retain filesystem
+  error context. Add boundary and failure cases alongside the existing positive tests. [Storage](../src/storage.rs)
+- Return typed errors for unsupported token entries and preserve I/O errors on lookup. Registration currently panics
+  on an unexpected filename, and the synchronous registration wrapper unwraps errors.
+  [Token storage](../src/tokens.rs)
+- Reject unsupported HCL stages before marking a job ready. `Convert` reaches `unimplemented!()`, and `Archive`
+  produces an invalid consumer that the runner rejects later. A numeric `Read` value can deserialize as an HCL
+  expression string. Define whether such expressions are supported before adding a strict path type.
+  [Parser](../src/parse.rs), [Runner](../src/actors/runner.rs)
 
-- Current:
-    - Startup spawns supervisor, stats, sources, state, results, factory, scheduler; then cast! Start to scheduler.
-    - No visible shutdown path in lib.rs (might exist in actors module).
-- Suggestions:
-    - Define an Engine::shutdown(self) async that sends a Stop/Shutdown message to scheduler and/or supervisor, awaits
-      actor handles, and flushes state (call engine.sync()).
-    - If feasible, tie into Ctrl+C handling in binaries to trigger graceful shutdown (dev-dependency ctrlc exists in
-      workspace).
+### Medium — Define Senhive's delivery guarantee
 
-6) Token storage and secrets handling (Low effort)
+The data feeds acknowledge messages before conversion and before the bounded pipeline send. A conversion error or
+cancellation while waiting for queue capacity can therefore leave a broker-acknowledged delivery absent from the
+output. Decide which event constitutes acceptance. An acknowledgement after channel send covers local enqueue.
+A guarantee through persistence needs a sink acknowledgement and a retry or deduplication policy.
+[Senhive actor](../src/sources/access/senhive/actors.rs), [Prefetch configuration](../src/sources/access/senhive/feed.rs)
 
-- Current:
-    - Tokens are loaded from a tokens directory under config_path().
-- Suggestions:
-    - Add log at info/debug listing token names only (not values), and warn on malformed entries.
-    - Document environment override mechanism if any (or consider adding one) for CI/testing.
+## Verification and next coverage
 
-7) Error typing and context (Low effort)
+- `cargo test -p fetiche-engine --lib` passed all 125 default-feature library tests.
+- `cargo check -p fetiche-engine --no-default-features --lib` failed on ASD token imports, empty source dispatch enums,
+  and conversion type inference.
+- `cargo check -p fetiche-engine --all-features --lib` failed in optional OpenSky and SafeSky code. This also blocks
+  the all-features configuration requested by docs.rs. [Cargo metadata](../Cargo.toml)
 
-- Current:
-    - eyre::Result is used widely. Good for top-level; within library boundaries, having a domain error (thiserror) can
-      help.
-- Suggestions:
-    - For public API errors (Engine load/try_new, Storage register/parse_rotation), consider returning a custom
-      EngineError/StorageError with thiserror and rich context.
-    - Keep eyre anyhow-like flexibility for binaries.
-
-8) Feature gating and compile-time surface (Low/Medium effort)
-
-- Current:
-    - Many sources are behind features, defaults enable aeroscope, asd, avionix, senhive; opensky/flightaware/safesky
-      optional.
-- Suggestions:
-    - For faster dev cycles, consider default-features = [] in dev profiles or provide documented cargo aliases.
-    - CI: add a minimal-features job (no-default-features + 1 source), and a full-features job to ensure both
-      configurations compile and tests pass.
-
-9) Observability: structured spans and periodic telemetry (Low effort)
-
-- Current:
-    - #[tracing::instrument] on key Engine functions; good start.
-- Suggestions:
-    - Add instrument to storage registration and token registration functions; include fields like counts and durations.
-    - Ensure scheduler tick emits periodic heartbeat at trace/debug with queue length, worker count, pending jobs (if
-      available).
-
-10) Tests and property checks (Low/Medium effort)
-
-- Current:
-    - storage.rs already has rstest tests for parse_rotation and jiff-based relative calculations.
-- Suggestions:
-    - Add tests for misconfigured storage entries (invalid rotation, nonexistent path) once register returns Result.
-    - Add an integration test to spin up a minimal Engine with no sources (or a mocked source via feature) to validate
-      actor startup and graceful shutdown.
-
-11) API ergonomics (Low effort)
-
-- Suggest adding getters on Engine for commonly printed lists (tokens list, sources list) as Result<String> to ease CLI
-  integration.
-- Provide Engine::list_storage() -> Result<String> similar to tokens list, leveraging tabled.
-
-12) Documentation
-
-- Current:
-    - lib.rs has solid crate-level docs and examples.
-- Suggestions:
-    - Add a short Architecture section in engine/README.md summarizing actors and flow, linking to this file.
-    - Document EngineConfig fields in engine.hcl with examples for each storage variant.
-
-Spot examples (based on current code)
-
-- Engine::new()/single() panics on error:
-    - Consider:
-      // Non-panicking variants
-      pub async fn try_new() -> eyre::Result<Self> { Self::load(ENGINE_CONFIG, EngineMode::Daemon).await }
-      pub async fn try_single() -> eyre::Result<Self> { Self::load(ENGINE_CONFIG, EngineMode::Single).await }
-
-- storage::parse_rotation uses i8 and unwraps:
-    - Consider switching to u32 parser and propagate errors; add checked_mul:
-      map_res((u32, one_of("smhd")), |(n, tag)| match tag { 's' => Ok(n), 'm' => n.checked_mul(60).ok_or(ParseError::
-      Overflow), ... })
-
-Quick wins checklist
-
-- [x] Add try_new()/try_single() and update binaries to use them (optional for now).
-- [x] Storage::register: return Result; replace unwraps/panics with error propagation and logging.
-- [ ] storage::parse_rotation: switch i8 -> u32, add overflow guards, extend tests.
-- [ ] Engine startup: log computed workers/sync/tick at info level; validate ranges.
-- [ ] Add #[tracing::instrument] to storage and token registration helpers; add key-value fields in spans.
-- [ ] CI: add minimal-features matrix job (if maintained in this repo’s CI).
-
-Potential medium-term refactors
-
-- Actor supervision strategy: define hierarchical restart policies and backoff for failing actors (if ractor supports it
-  via Supervisor strategy).
-- Pluggable storage backends using object_store abstraction end-to-end (today LocalFileSystem is used; generalize when
-  needed).
-- Introduce a DomainError enum for engine with thiserror; keep eyre for top-level to add context from binaries.
-
-Risks and compatibility
-
-- Changing constructor signatures would be a breaking change if new()/single() were modified; prefer adding try_*
-  variants first.
-- Making Storage::register return Result is a small API change; consider adding a new method name to avoid breaking
-  callers.
-- parse_rotation numeric widening expands accepted inputs; verify any config relies on the old cap (unlikely).
-
-Closing notes
-
-- The engine codebase is in good shape with solid structure and observability. The above changes are aimed at improving
-  robustness (avoiding panics), configuration flexibility, and developer ergonomics, while keeping changes incremental
-  and low risk.
+Prioritize a temporary-workspace smoke test that loads configuration, starts the engine, parses and submits a local
+file job, checks the outcome and output, and shuts down. Add scheduler tests for simultaneous work and keyed
+completion. Restore both feature configurations before requiring them in CI. Live sources and shutdown timing were
+reviewed from code and were outside these test runs.
