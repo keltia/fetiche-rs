@@ -21,7 +21,7 @@ use tracing::{debug, info, trace};
 
 use crate::task::Runnable;
 
-use crate::actors::{ResultsMsg, StatsMsg};
+use crate::actors::{ResultsMsg, StatsMsg, TokenMsg};
 use crate::{
     Consumer, Job as EngineJob, JobOutcome, JobStatus, Middle, Producer, Stats, Task, Work,
 };
@@ -54,6 +54,8 @@ pub struct RunnerActor;
 pub struct RunnerArgs {
     pub queue_capacity: usize,
     pub cancel: watch::Receiver<bool>,
+    /// Engine token actor used by fetch stages.
+    pub tokens: Option<ActorRef<TokenMsg>>,
     /// Reference to the Result actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -64,6 +66,7 @@ pub struct RunnerArgs {
 pub struct RunnerState {
     queue_capacity: usize,
     cancel: watch::Receiver<bool>,
+    tokens: Option<ActorRef<TokenMsg>>,
     /// Reference to the Result actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -89,6 +92,7 @@ impl Worker for RunnerActor {
         let state = RunnerState {
             queue_capacity: startup_context.queue_capacity,
             cancel: startup_context.cancel,
+            tokens: startup_context.tokens,
             results: startup_context.results.clone(),
             stats: startup_context.stats.clone(),
         };
@@ -145,8 +149,13 @@ impl Worker for RunnerActor {
 
                 match cast!(stat, StatsMsg::New(job_tag.clone())) {
                     Ok(_) => {
-                        outcome.status =
-                            run_pipeline(job, state.queue_capacity, state.cancel.clone()).await;
+                        outcome.status = run_pipeline(
+                            job,
+                            state.queue_capacity,
+                            state.cancel.clone(),
+                            state.tokens.clone(),
+                        )
+                        .await;
                         match call!(stat, |port| StatsMsg::Get(job_tag.clone(), port)) {
                             Ok(snapshot) => outcome.stats = snapshot,
                             Err(err) if outcome.status == JobStatus::Succeeded => {
@@ -199,14 +208,22 @@ fn stage_failure(stage: String, error: String) -> JobStatus {
 ///
 /// Each channel has `queue_capacity` message slots. The caller must supply a
 /// capacity accepted by Tokio MPSC.
+/// Engine workers pass their token actor to ASD fetch stages.
 async fn run_pipeline(
-    job: EngineJob,
+    mut job: EngineJob,
     queue_capacity: usize,
     cancel: watch::Receiver<bool>,
+    tokens: Option<ActorRef<TokenMsg>>,
 ) -> JobStatus {
     if *cancel.borrow() {
         return JobStatus::Cancelled { stage: None };
     }
+    #[cfg(feature = "asd")]
+    if let Producer::Fetch(fetch) = &mut job.producer {
+        fetch.tokens = tokens;
+    }
+    #[cfg(not(feature = "asd"))]
+    let _ = (&mut job, tokens);
     let mut stages = Vec::with_capacity(job.middle.len() + 2);
     let mut add_stage = |name: String, task, invalid| {
         stages.push((format!("{} ({name})", stages.len() + 1), task, invalid));
@@ -317,6 +334,8 @@ impl Drop for StageTasks {
 pub struct RunnerBuilder {
     pub queue_capacity: usize,
     pub cancel: watch::Receiver<bool>,
+    /// Engine token actor used by fetch stages.
+    pub tokens: Option<ActorRef<TokenMsg>>,
     /// Reference to the Results actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -332,6 +351,7 @@ impl WorkerBuilder<RunnerActor, RunnerArgs> for RunnerBuilder {
             RunnerArgs {
                 queue_capacity: self.queue_capacity,
                 cancel: self.cancel.clone(),
+                tokens: self.tokens.clone(),
                 results: self.results.clone(),
                 stats: self.stat.clone(),
             },
@@ -392,6 +412,7 @@ mod tests {
             .worker_builder(Box::new(RunnerBuilder {
                 queue_capacity: 1,
                 cancel: tokio::sync::watch::channel(false).1,
+                tokens: None,
                 results: results.clone(),
                 stat: stats.clone(),
             }))
@@ -442,7 +463,7 @@ mod tests {
         assert_eq!(
             timeout(
                 Duration::from_secs(5),
-                run_pipeline(job, 1, watch::channel(false).1)
+                run_pipeline(job, 1, watch::channel(false).1, None)
             )
             .await
             .unwrap(),
@@ -462,7 +483,7 @@ mod tests {
 
         let status = timeout(
             Duration::from_secs(5),
-            run_pipeline(job, 1, watch::channel(false).1),
+            run_pipeline(job, 1, watch::channel(false).1, None),
         )
         .await
         .unwrap();

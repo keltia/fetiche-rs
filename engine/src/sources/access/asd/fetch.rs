@@ -10,36 +10,37 @@
 //!
 
 use std::io::Cursor;
-use tokio::sync::mpsc::Sender;
 use std::time::UNIX_EPOCH;
+use tokio::sync::mpsc::Sender;
 
 use clap::{crate_name, crate_version};
 use eyre::eyre;
 use jiff::{Span, Timestamp};
 use polars_core::prelude::{Column, Int64Chunked, IntoColumn};
 use polars_io::prelude::{CsvParseOptions, CsvReadOptions, CsvWriter, SerReader, SerWriter};
+use ractor::{ActorRef, call};
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
 use tokio::task::spawn_blocking;
-use tracing::{error, trace, warn};
+use tracing::{info, trace, warn};
 
 use fetiche_formats::Format;
 
 use crate::sources::access::asd::{Credentials, DEF_TOKEN, Param, Source};
 use crate::token::AsdToken;
-use crate::{Asd, AuthError, Expirable, Fetchable, Filter, Stats};
+use crate::{
+    Asd, AuthError, Expirable, Fetchable, Filter, Stats, TokenMsg, TokenStatus, TokenType,
+};
 
-impl Fetchable for Asd {
-    #[inline]
-    fn name(&self) -> String {
-        self.site.to_string()
-    }
-
-    /// Authenticate to the site using the supplied credentials and get a token
+impl Asd {
+    /// Uses the engine token actor when supplied and the configured file for standalone sources.
     ///
-    #[tracing::instrument(skip(self))]
-    async fn authenticate(&self) -> eyre::Result<String, AuthError> {
+    #[tracing::instrument(skip(self, tokens))]
+    pub(crate) async fn authenticate_with_tokens(
+        &self,
+        tokens: Option<&ActorRef<TokenMsg>>,
+    ) -> eyre::Result<String, AuthError> {
         trace!(source = %self.site, "Authenticating with ASD");
 
         // Prepare our submission data
@@ -53,32 +54,38 @@ impl Fetchable for Asd {
         //
         // Use `<token>-<email>` to allow identity-based tokens
         //
-        let token_base = &self.token_base;
-        let fname = format!("{}-{}", DEF_TOKEN, self.login);
-        let fname = token_base.join(fname);
-
-        // See if there is a stored token.
-        // Use it if not expired, otherwise fetch a new one.
-        //
-        let path = fname.clone();
-        let tentative = spawn_blocking(move || AsdToken::retrieve(&path))
-            .await
-            .map_err(|e| AuthError::Retrieval(e.to_string()))?
-            .map_err(|e| AuthError::Retrieval(e.to_string()))?;
+        let key = format!("{DEF_TOKEN}-{}", self.login);
+        let fname = self.token_base.join(&key);
+        let tentative = if let Some(tokens) = tokens {
+            match call!(tokens, TokenMsg::Get, key.clone())
+                .map_err(|err| AuthError::Retrieval(err.to_string()))?
+            {
+                Ok(TokenType::AsdToken(token)) => token,
+                Err(err)
+                    if matches!(
+                        err.downcast_ref(),
+                        Some(TokenStatus::NotFound(_) | TokenStatus::Malformed { .. })
+                    ) =>
+                {
+                    AsdToken::default()
+                }
+                Err(err) => return Err(AuthError::Retrieval(err.to_string())),
+            }
+        } else {
+            let path = fname.clone();
+            spawn_blocking(move || AsdToken::retrieve(&path))
+                .await
+                .map_err(|err| AuthError::Retrieval(err.to_string()))?
+                .map_err(|err| AuthError::Retrieval(err.to_string()))?
+        };
 
         // Now check it.
         //
+        info!(source = %self.site, "checking token date");
         let token = if tentative.is_expired() {
             // Either what we retrieved is absent (so we got an invalid token) or is invalid
             //
             warn!(source = %self.site, "Stored token expired or invalid");
-            let path = fname.clone();
-            match spawn_blocking(move || AsdToken::purge(&path)).await {
-                Ok(Ok(())) => {}
-                Ok(Err(e)) => error!("Cannot remove token: {e}"),
-                Err(e) => error!("Cannot remove token: {e}"),
-            }
-
             let client = reqwest::Client::new();
             // fetch token from site
             //
@@ -88,7 +95,10 @@ impl Fetchable for Asd {
             let resp = client
                 .post(url)
                 .header("content-type", "application/json")
-                .header("user-agent", format!("{}/{}", crate_name!(), crate_version!()))
+                .header(
+                    "user-agent",
+                    format!("{}/{}", crate_name!(), crate_version!()),
+                )
                 .body(json!(&cred).to_string())
                 .send()
                 .await
@@ -99,16 +109,25 @@ impl Fetchable for Asd {
                 .await
                 .map_err(|_| AuthError::Retrieval("ASD response body".into()))?;
 
-            let res: AsdToken =
-                serde_json::from_str(&resp).map_err(|_| AuthError::Decoding("ASD token response".into()))?;
+            let res: AsdToken = serde_json::from_str(&resp)
+                .map_err(|_| AuthError::Decoding("ASD token response".into()))?;
 
-            // Write fetched token in `tokens` (unless it is during tests)
-            //
-            #[cfg(not(test))]
-            spawn_blocking(move || AsdToken::store(&fname, &resp))
-                .await
-                .map_err(|e| AuthError::Storing(e.to_string()))?
-                .map_err(|e| AuthError::Storing(e.to_string()))?;
+            if let Some(tokens) = tokens {
+                call!(
+                    tokens,
+                    TokenMsg::Store,
+                    key,
+                    TokenType::AsdToken(res.clone())
+                )
+                .map_err(|err| AuthError::Storing(err.to_string()))?
+                .map_err(|err| AuthError::Storing(err.to_string()))?;
+            } else {
+                #[cfg(not(test))]
+                spawn_blocking(move || AsdToken::store(&fname, &resp))
+                    .await
+                    .map_err(|err| AuthError::Storing(err.to_string()))?
+                    .map_err(|err| AuthError::Storing(err.to_string()))?;
+            }
             res.token
         } else {
             // Valid, not expired, etc.
@@ -117,6 +136,18 @@ impl Fetchable for Asd {
         };
         trace!(source = %self.site, "ASD authentication succeeded");
         Ok(token)
+    }
+}
+
+impl Fetchable for Asd {
+    #[inline]
+    fn name(&self) -> String {
+        self.site.to_string()
+    }
+
+    /// Authenticates a standalone ASD source using its configured token directory.
+    async fn authenticate(&self) -> eyre::Result<String, AuthError> {
+        self.authenticate_with_tokens(None).await
     }
 
     /// Fetch actual data using the aforementioned token
@@ -177,7 +208,6 @@ impl Fetchable for Asd {
             .send()
             .await
             .map_err(reqwest::Error::without_url)?;
-
 
         let status = resp.status();
         if status != StatusCode::OK {
@@ -245,7 +275,15 @@ fn into_timestamp(col: &Column) -> Column {
     col.str()
         .unwrap()
         .iter()
-        .map(|d: Option<&str>| d.map(|d: &str| humantime::parse_rfc3339_weak(d).unwrap().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64))
+        .map(|d: Option<&str>| {
+            d.map(|d: &str| {
+                humantime::parse_rfc3339_weak(d)
+                    .unwrap()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs() as i64
+            })
+        })
         .collect::<Int64Chunked>()
         .into_column()
 }
@@ -257,6 +295,34 @@ fn epoch_timestamp() -> Timestamp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A cached actor token authenticates even when the backing file is unavailable.
+    #[tokio::test]
+    async fn asd_authenticates_from_the_engine_token_actor() -> eyre::Result<()> {
+        let directory = tempfile::tempdir()?;
+        let root = directory.path().to_path_buf();
+        let (actor, handle) =
+            ractor::Actor::spawn(None, crate::actors::TokenActor, root.clone()).await?;
+        let source = Asd {
+            login: "test@example.invalid".into(),
+            token_base: root.clone(),
+            ..Asd::new()
+        };
+        let key = format!("{DEF_TOKEN}-{}", source.login);
+        let mut token = AsdToken::default();
+        token.token = "cached-token".into();
+        token.expired_at = crate::time::now_seconds() + 3600;
+        call!(actor, TokenMsg::Store, key, TokenType::AsdToken(token))??;
+        // A source using the standalone file API would now have to authenticate online.
+        tokio::fs::remove_file(root.join(&format!("{DEF_TOKEN}-{}", source.login))).await?;
+        assert_eq!(
+            source.authenticate_with_tokens(Some(&actor)).await?,
+            "cached-token"
+        );
+        actor.stop(None);
+        handle.await?;
+        Ok(())
+    }
 
     #[test]
     fn test_clean_asd_data() {
@@ -274,7 +340,7 @@ mod tests {
             "endTime": end_time,
             "sources": ["as", "wi"]
         })
-            .to_string();
+        .to_string();
 
         assert_eq!(result, expected);
     }

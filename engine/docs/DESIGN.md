@@ -94,7 +94,9 @@ and the resulting seconds must fit in `u32`. Directory errors keep the underlyin
 lookup report unsupported filenames, malformed data, missing tokens, and read failures separately. Synchronous token
 methods return errors and run outside Tokio for standalone storage. Inside the engine, the linked token actor owns
 the storage and serializes reads, writes, and listings. Engine clones share its mailbox, and engine shutdown stops
-the actor. [Storage](../src/storage.rs), [Tokens](../src/actors/tokens.rs)
+the actor. Engine-run ASD fetches use that actor for their configured token directory. The ASD token format lives
+with the source and remains readable when the network adapter is disabled. New engine token files are written at
+the storage root, and older nested files can still be read. [Storage](../src/storage.rs), [Tokens](../src/actors/tokens.rs)
 
 `Read` in a job requires a nonempty literal filename such as `Read = "input.csv"`. The engine does not evaluate
 expressions in file paths. `Convert` and `Archive` return parser errors before a job becomes ready.

@@ -438,6 +438,16 @@ impl Engine {
                 Actor::spawn_linked(name("results"), ResultsActor, (), sup.get_cell()).await?;
             resources.track(&results, handle);
 
+            // Register tokens
+            //
+            let tokens_area = home.join("tokens");
+
+            trace!("load tokens from {tokens_area:?}");
+            let (tokens, handle) =
+                Actor::spawn_linked(name("tokens"), TokenActor, tokens_area, sup.get_cell())
+                    .await?;
+            resources.track(&tokens, handle);
+
             // ----- Start Runner Factory
 
             let factory_def = Factory::<
@@ -451,6 +461,7 @@ impl Engine {
             let runner_builder = RunnerBuilder {
                 queue_capacity,
                 cancel: resources.cancellation(),
+                tokens: Some(tokens.clone()),
                 results: results.clone(),
                 stat: stat.clone(),
             };
@@ -490,16 +501,6 @@ impl Engine {
             trace!("load storage areas");
             let areas = Storage::register(&cfg.storage)?;
             info!("{} areas loaded", areas.len());
-
-            // Register tokens
-            //
-            let tokens_area = home.join("tokens");
-
-            trace!("load tokens from {tokens_area:?}");
-            let (tokens, handle) =
-                Actor::spawn_linked(name("tokens"), TokenActor, tokens_area, sup.get_cell())
-                    .await?;
-            resources.track(&tokens, handle);
 
             call!(state, StateMsg::Flush)??;
 

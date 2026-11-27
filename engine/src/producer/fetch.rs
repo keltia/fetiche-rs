@@ -9,10 +9,7 @@ use tracing::trace;
 use fetiche_macros::RunnableDerive;
 
 use crate::sources::Fetchable;
-use crate::{
-    EngineStatus, FetchableSource, Filter, IO, Producer, Runnable, Site,
-    Stats,
-};
+use crate::{EngineStatus, FetchableSource, Filter, IO, Producer, Runnable, Site, Stats};
 
 /// The Fetch task
 ///
@@ -26,6 +23,9 @@ pub struct Fetch {
     pub site: Option<Site>,
     /// Optional arguments (usually json-encoded string)
     pub args: String,
+    /// Token actor supplied by the engine when running an ASD fetch.
+    #[cfg(feature = "asd")]
+    pub(crate) tokens: Option<ractor::ActorRef<crate::TokenMsg>>,
 }
 
 impl From<Fetch> for Producer {
@@ -42,6 +42,8 @@ impl Fetch {
             name: s.to_string(),
             args: String::new(),
             site: None,
+            #[cfg(feature = "asd")]
+            tokens: None,
         }
     }
 
@@ -74,6 +76,17 @@ impl Fetch {
 
                 // Stream data as bytes
                 //
+                #[cfg(feature = "asd")]
+                let token = match &src {
+                    FetchableSource::Asd(source) => {
+                        source
+                            .authenticate_with_tokens(self.tokens.as_ref())
+                            .await?
+                    }
+                    #[allow(unreachable_patterns)]
+                    _ => src.authenticate().await?,
+                };
+                #[cfg(not(feature = "asd"))]
                 let token = src.authenticate().await?;
 
                 let args = self.args.clone();

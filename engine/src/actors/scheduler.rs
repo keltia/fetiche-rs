@@ -639,6 +639,7 @@ mod tests {
             .worker_builder(Box::new(RunnerBuilder {
                 queue_capacity: 1,
                 cancel: tokio::sync::watch::channel(false).1,
+                tokens: None,
                 results: results.clone(),
                 stat: stats.clone(),
             }))
