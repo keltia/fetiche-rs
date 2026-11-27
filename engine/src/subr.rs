@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use eyre::Result;
 use object_store::path::Path;
-use ractor::{call, cast, pg};
+use ractor::{call, cast};
 use serde::Deserialize;
 use tabled::builder::Builder;
 use tabled::settings::Style;
@@ -20,8 +20,7 @@ use fetiche_formats::Format;
 
 use crate::actors::{SourcesMsg, StateMsg};
 use crate::{
-    CANARY_FILE, ENGINE_CONFIG, ENGINE_PG, Engine, IO, SOURCES_CONFIG, STATE_FILE, Sources,
-    Storage, Workspace, version,
+    ENGINE_CONFIG, Engine, IO, SOURCES_CONFIG, STATE_FILE, Sources, Storage, Workspace, version,
 };
 
 impl Engine {
@@ -146,33 +145,44 @@ impl Engine {
         self.ws.clone()
     }
 
-    /// Performs a graceful shutdown of the engine
+    /// Shuts down this engine with a five-second grace period for active jobs.
     ///
-    /// This method handles the cleanup and shutdown process by:
-    /// - Removing the canary file that indicates the engine is running
-    /// - Stopping all actor processes in the engine process group
-    ///
-    /// The shutdown is considered complete once all actors have been stopped
-    /// and the canary file has been deleted.
-    ///
+    /// See [`Self::shutdown_with_timeout`] for the shutdown sequence and errors.
     #[tracing::instrument(skip(self))]
     pub async fn shutdown(&self) -> Result<()> {
-        // Shutdown all actors.
-        //
-        pg::get_members(&ENGINE_PG.to_string())
-            .iter()
-            .for_each(|cell| {
-                cell.stop(Some("Shutdown requested.".into()));
-            });
+        self.shutdown_with_timeout(crate::lifecycle::SHUTDOWN_GRACE)
+            .await
+    }
 
-        // Delete the canary file
-        //
-        let canary = self.workdir.join(CANARY_FILE);
-
-        trace!("delete canary file {:?} ...", canary);
-        std::fs::remove_file(canary)?;
-
-        Ok(())
+    /// Stops admission and gives dispatched jobs up to `grace` to finish.
+    ///
+    /// Queued jobs are cancelled immediately. After the grace period, active
+    /// pipelines receive a cancellation signal. The engine flushes state and
+    /// awaits its actors before removing its running marker. Calls on any
+    /// clone share the same shutdown task and result. The first call sets the
+    /// grace period.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the engine cannot drain or cancel jobs, write final
+    /// state, join the actors, or remove the running marker.
+    ///
+    /// ```no_run
+    /// use fetiche_engine::Engine;
+    /// use std::time::Duration;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> eyre::Result<()> {
+    ///     let engine = Engine::single().await?;
+    ///     engine.shutdown_with_timeout(Duration::from_secs(2)).await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[tracing::instrument(skip(self))]
+    pub async fn shutdown_with_timeout(&self, grace: std::time::Duration) -> Result<()> {
+        self.lifecycle
+            .shutdown(self.scheduler.clone(), self.state.clone(), grace)
+            .await
     }
 
     /// Returns a string containing version information for the engine and its modules

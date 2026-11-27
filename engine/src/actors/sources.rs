@@ -1,9 +1,11 @@
 //! Actor maintaining the different sources we have loaded.
 //!
 
-use crate::{Site, Sources, ENGINE_PG};
-use eyre::{eyre, Result};
-use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use std::path::PathBuf;
+
+use crate::{ENGINE_PG, Site, Sources};
+use eyre::{Result, eyre};
+use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, pg};
 
 /// Messages handled by the `SourcesActor`.
 ///
@@ -45,8 +47,8 @@ pub struct SourcesActor;
 #[ractor::async_trait]
 impl Actor for SourcesActor {
     type Msg = SourcesMsg;
-    type State = Sources;
-    type Arguments = ();
+    type State = (Sources, PathBuf);
+    type Arguments = PathBuf;
 
     ///
     /// Pre-start hook for the `SourcesActor`.
@@ -58,7 +60,7 @@ impl Actor for SourcesActor {
     /// # Parameters
     /// - `myself`: A reference to the current actor's `ActorRef`. This can be used to interact with
     ///   the actor itself, such as for further initialization steps.
-    /// - `_args`: The arguments provided when starting the actor. These are not used in this implementation.
+    /// - `home`: The engine directory containing the source configuration.
     ///
     /// # Returns
     /// A `Result` that contains the initial actor state (`Sources`) if successful,
@@ -76,12 +78,12 @@ impl Actor for SourcesActor {
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
-        _args: Self::Arguments,
+        home: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
 
-        let src = Sources::new()?;
-        Ok(src)
+        let src = Sources::load(&home)?;
+        Ok((src, home))
     }
 
     /// Main message handling method for the `SourcesActor`.
@@ -112,6 +114,7 @@ impl Actor for SourcesActor {
         message: Self::Msg,
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
+        let (state, home) = state;
         match message {
             SourcesMsg::Get(key, sender) => {
                 let site = match state.get(&key) {
@@ -138,7 +141,7 @@ impl Actor for SourcesActor {
                 sender.send(res)?;
             }
             SourcesMsg::Reload(sender) => {
-                let sources = Sources::new()?;
+                let sources = Sources::load(home)?;
                 sender.send(sources.clone())?;
                 *state = sources;
             }

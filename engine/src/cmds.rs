@@ -18,11 +18,11 @@ use std::sync::mpsc::Sender;
 
 use eyre::Result;
 use ractor::registry::registered;
-use ractor::{call, call_t, cast, pg};
+use ractor::{call, call_t, cast};
 use tracing::trace;
 
 use crate::actors::{ResultsMsg, SchedulerMsg, StateMsg};
-use crate::{ENGINE_PG, Engine, EngineMode, EngineStatus, Job, JobState, Stats, WaitGroup};
+use crate::{Engine, EngineMode, EngineStatus, Job, JobState, Stats, WaitGroup};
 
 /// Basically, this is the exposed API to the Engine.
 ///
@@ -256,57 +256,40 @@ impl Engine {
     ///
     #[tracing::instrument(skip(self))]
     pub async fn remove_job(&mut self, job_id: usize) -> Result<()> {
-        call!(self.scheduler, |port| SchedulerMsg::RemoveById(job_id, port))??;
+        call!(self.scheduler, |port| SchedulerMsg::RemoveById(
+            job_id, port
+        ))??;
         cast!(self.state, StateMsg::Remove(job_id))?;
         self.sync()
     }
 
-    /// Cleans up engine resources by removing the working directory in single mode.
+    /// Shuts down the engine and removes its workspace in single mode.
     ///
-    /// This method handles cleanup of filesystem resources used by the engine:
-    /// - In single mode: Removes the temporary working directory
-    /// - In other modes: No cleanup is performed
-    ///
-    /// # Returns
-    ///
-    /// - Returns `Ok(())` on successful cleanup or if no cleanup was needed
-    /// - Returns `Err` if directory removal fails
+    /// Daemon workspaces are retained. The single-instance workspace is
+    /// reclaimed exclusively before removal so another engine can use it safely.
     ///
     /// # Errors
     ///
-    /// This method will return an error if:
-    /// - The working directory cannot be removed
-    /// - Filesystem operations fail during cleanup
-    ///
+    /// Returns shutdown and filesystem errors. An already-removed workspace is
+    /// treated as successfully cleaned up.
     #[tracing::instrument(skip(self))]
     pub async fn cleanup(&self) -> Result<()> {
-        if self.mode == EngineMode::Single {
-            // We need to remove the directory known as `workdir`
-            //
-            let _ = std::fs::remove_dir_all(self.workdir.clone());
+        if self.mode != EngineMode::Single {
+            return Ok(());
         }
-        Ok(())
-    }
-}
-
-impl Drop for Engine {
-    /// Shuts down the engine and all its associated actors.
-    ///
-    /// This method gracefully terminates the engine by stopping all registered actors
-    /// in the engine process group.
-    ///
-    /// # Behavior
-    ///
-    /// - Retrieves all members of the engine process group
-    /// - Iterates through each actor and sends a stop signal
-    /// - Actors will clean up resources before terminating
-    ///
-    #[tracing::instrument(skip(self))]
-    fn drop(&mut self) {
-        pg::get_members(&ENGINE_PG.to_string())
-            .iter()
-            .for_each(|cell| {
-                cell.stop(Some("Shutdown requested.".into()));
-            });
+        self.shutdown().await?;
+        let workspace = self.lifecycle.workspace().to_path_buf();
+        let resources = match crate::lifecycle::Resources::claim(&workspace) {
+            Ok(resources) => resources,
+            Err(err)
+                if err
+                    .downcast_ref::<std::io::Error>()
+                    .is_some_and(|io| io.kind() == std::io::ErrorKind::NotFound) =>
+            {
+                return Ok(());
+            }
+            Err(err) => return Err(err),
+        };
+        tokio::spawn(async move { resources.remove_workspace(&workspace).await }).await?
     }
 }

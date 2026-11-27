@@ -40,12 +40,13 @@ use std::fmt::Debug;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use eyre::Result;
 use futures_util::StreamExt;
-use object_store::ObjectStore;
 use object_store::local::LocalFileSystem;
+use object_store::{ObjectStore, ObjectStoreExt};
 use ractor::factory::{Factory, FactoryArguments, FactoryMessage, queues, routing};
 use ractor::registry::registered;
 use ractor::{Actor, ActorRef, call, cast};
@@ -68,6 +69,7 @@ pub use tokens::TokenStorage;
 pub use workspace::*;
 
 use crate::actors::*;
+use crate::lifecycle::{Lifecycle, Resources};
 
 use fetiche_common::{ConfigFile, Filter, IntoConfig, Versioned, time};
 use fetiche_macros::into_configfile;
@@ -78,6 +80,7 @@ mod cmds;
 mod consumer;
 mod error;
 mod job;
+mod lifecycle;
 mod middle;
 mod parse;
 mod producer;
@@ -117,6 +120,7 @@ const TICK: Duration = Duration::from_secs(2);
 const SYNC: Duration = Duration::from_secs(30);
 
 const DEFAULT_PIPELINE_QUEUE_CAPACITY: usize = 16;
+static NEXT_ENGINE_INSTANCE: AtomicUsize = AtomicUsize::new(0);
 
 /// The `EngineConfig` struct provides the configuration options used to initialize
 /// and manage the `Engine`. It is loaded from the `engine.hcl` file or other sources
@@ -183,6 +187,7 @@ pub struct Engine {
     /// Running mode
     mode: EngineMode,
     read_max_bytes: NonZeroU32,
+    lifecycle: Arc<Lifecycle>,
     /// Current process DI
     pub pid: u32,
     /// Main area where state is saved (PID, jobs, etc.)
@@ -237,7 +242,7 @@ impl Engine {
     ///
     /// # Errors
     ///
-    /// Will panic if the Engine cannot be created due to configuration or initialization errors.
+    /// Returns an error if configuration or startup fails.
     ///
     #[tracing::instrument]
     pub async fn new() -> Result<Self> {
@@ -254,7 +259,7 @@ impl Engine {
     ///
     /// # Errors
     ///
-    /// Will panic if the Engine cannot be created due to configuration or initialization errors.
+    /// Returns an error if configuration or startup fails.
     ///
     #[tracing::instrument]
     pub async fn single() -> Result<Self> {
@@ -263,7 +268,12 @@ impl Engine {
         Self::load(ENGINE_CONFIG, EngineMode::Single).await
     }
 
-    /// Creates a new Engine instance by loading configuration from the specified file
+    /// Starts an engine from the specified configuration file.
+    ///
+    /// A bare filename is looked up in the default configuration directory.
+    /// An explicit path uses its containing directory for sources, tokens, and
+    /// state. On startup failure, the engine stops any actors it started and
+    /// releases its running marker.
     ///
     /// # Arguments
     ///
@@ -289,7 +299,16 @@ impl Engine {
 
         let root = ConfigFile::<EngineConfig>::load(Some(fname))?;
         let cfg = root.inner();
-        let home = root.config_path();
+        let filename = std::path::Path::new(fname);
+        let home = if filename.file_name() == Some(filename.as_os_str()) {
+            root.config_path()
+        } else {
+            fs::canonicalize(filename)
+                .await?
+                .parent()
+                .ok_or_else(|| eyre::eyre!("engine configuration must have a parent directory"))?
+                .to_owned()
+        };
         info!("Home is in {home:?}");
 
         // Bail out if different
@@ -334,14 +353,15 @@ impl Engine {
 
         // Create our object storage "vision" out of our base directory.
         //
-        let base = Arc::new(LocalFileSystem::new_with_prefix(home)?.with_automatic_cleanup(true));
+        let base = Arc::new(LocalFileSystem::new_with_prefix(&home)?.with_automatic_cleanup(true));
 
         // Move ourselves into our base
         //
         // BASEDIR/var/run/<PID> for single instance runs
         // BASEDIR/var/run/acute for fetiched runs
         //
-        let work_prefix = cfg.basedir.join("var").join("run");
+        let work_prefix = std::path::absolute(cfg.basedir.join("var").join("run"))?;
+        fs::create_dir_all(&work_prefix).await?;
         let ws = Workspace::new(&work_prefix)?;
 
         let workdir = if mode == EngineMode::Single {
@@ -351,176 +371,175 @@ impl Engine {
         };
         fs::create_dir_all(&workdir).await?;
 
-        // Put our canary file.
-        //
-        let canary = workdir.join(CANARY_FILE);
-        fs::File::create(&canary).await?;
+        let mut resources = Resources::claim(&workdir)?;
+        let instance = NEXT_ENGINE_INSTANCE.fetch_add(1, Ordering::Relaxed);
+        let name = |role| Some(format!("engine::{instance}::{role}"));
+        let startup = async {
+            // ----- Start actors
 
-        // ----- Start actors
+            // We have a generic supervisor actor.
+            //
+            trace!("starting supervisor actor aka init.");
+            let (sup, handle) = Actor::spawn(name("supervisor"), Supervisor, ()).await?;
+            resources.track(&sup, handle);
 
-        // We have a generic supervisor actor.
-        //
-        trace!("starting supervisor actor aka init.");
-        let tag = String::from("init");
-        let (sup, _h) = Actor::spawn(Some(tag), Supervisor, ()).await?;
+            // Start the stats gathering service.
+            //
+            trace!("starting stats actor.");
+            let (stat, handle) =
+                Actor::spawn_linked(name("stats"), StatsActor, "sources".into(), sup.get_cell())
+                    .await?;
+            resources.track(&stat, handle);
 
-        // Start the stats gathering service.
-        //
-        trace!("starting stats actor.");
-        let tag = String::from("engine::stats");
-        let (stat, _h) =
-            Actor::spawn_linked(Some(tag), StatsActor, "sources".into(), sup.get_cell()).await?;
+            // Start sources service
+            //
+            trace!("load sources");
+            let (src, handle) =
+                Actor::spawn_linked(name("sources"), SourcesActor, home.clone(), sup.get_cell())
+                    .await?;
+            resources.track(&src, handle);
 
-        // Start sources service
-        //
-        trace!("load sources");
-        let (src, _h) = Actor::spawn_linked(
-            Some("engine::sources".into()),
-            SourcesActor,
-            (),
-            sup.get_cell(),
-        )
-        .await?;
+            let count = call!(src, SourcesMsg::Count)?;
+            info!("{} sources loaded", count);
 
-        let count = call!(src, SourcesMsg::Count)?;
-        info!("{} sources loaded", count);
+            // Start state service
+            //
+            trace!("load state.");
+            let (state, handle) =
+                Actor::spawn_linked(name("state"), StateActor, base.clone(), sup.get_cell())
+                    .await?;
+            resources.track(&state, handle);
+            trace!("state={:?}", state);
 
-        // Start state service
-        //
-        trace!("load state.");
-        let (state, _h) = Actor::spawn_linked(
-            Some("engine::state".into()),
-            StateActor,
-            base.clone(),
-            sup.get_cell(),
-        )
-        .await?;
-        trace!("state={:?}", state);
+            // Get last used ID from the previous state
+            //
+            let last = call!(state, StateMsg::Last)?;
 
-        // Get last used ID from the previous state
-        //
-        let last = call!(state, StateMsg::Last)?;
+            trace!("load results");
+            let (results, handle) =
+                Actor::spawn_linked(name("results"), ResultsActor, (), sup.get_cell()).await?;
+            resources.track(&results, handle);
 
-        trace!("load results");
-        let (results, _h) = Actor::spawn_linked(
-            Some("engine::results".into()),
-            ResultsActor,
-            (),
-            sup.get_cell(),
-        )
-        .await?;
+            // ----- Start Runner Factory
 
-        // ----- Start Runner Factory
+            let factory_def = Factory::<
+                usize,
+                RunnerMsg,
+                RunnerArgs,
+                RunnerActor,
+                routing::QueuerRouting<usize, RunnerMsg>,
+                queues::DefaultQueue<usize, RunnerMsg>,
+            >::default();
+            let runner_builder = RunnerBuilder {
+                queue_capacity,
+                cancel: resources.cancellation(),
+                results: results.clone(),
+                stat: stat.clone(),
+            };
+            let factory_args = FactoryArguments::builder()
+                .worker_builder(Box::new(runner_builder))
+                .queue(Default::default())
+                .router(Default::default())
+                .num_initial_workers(workers)
+                .build();
 
-        let factory_def = Factory::<
-            usize,
-            RunnerMsg,
-            RunnerArgs,
-            RunnerActor,
-            routing::QueuerRouting<usize, RunnerMsg>,
-            queues::DefaultQueue<usize, RunnerMsg>,
-        >::default();
-        let runner_builder = RunnerBuilder {
-            queue_capacity,
-            cancel: tokio::sync::watch::channel(false).1,
-            results: results.clone(),
-            stat: stat.clone(),
+            // Spawn factory under supervision too.
+            //
+            let (factory, handle) =
+                Actor::spawn_linked(name("factory"), factory_def, factory_args, sup.get_cell())
+                    .await?;
+            resources.track(&factory, handle);
+
+            // Spawn the actual scheduler
+            //
+            let sargs = SchedulerArguments {
+                sync,
+                tick,
+                last,
+                workers,
+                state: state.clone(),
+                factory: factory.clone(),
+            };
+            let (scheduler, handle) =
+                Actor::spawn_linked(name("scheduler"), SchedulerActor, sargs, sup.get_cell())
+                    .await?;
+            resources.track(&scheduler, handle);
+
+            // ----- Register non-actor subsystems
+
+            // Register storage areas
+            //
+            trace!("load storage areas");
+            let areas = Storage::register(&cfg.storage)?;
+            info!("{} areas loaded", areas.len());
+
+            // Register tokens
+            //
+            let tokens_area = home.join("tokens");
+
+            trace!("load tokens from {tokens_area:?}");
+            let tokens = TokenStorage::register(&tokens_area).await?;
+            info!("{} tokens loaded", tokens.len());
+
+            call!(state, StateMsg::Flush)??;
+
+            // If debug/trace, list all the actors running at this point.
+            //
+            let plist = registered().join("\n");
+            trace!("Actor list:\n{plist}");
+
+            // Display the current storage objects.
+            //
+            let mut flist = base.list(None);
+            let mut object_count = 0usize;
+            while flist.next().await.transpose()?.is_some() {
+                object_count += 1;
+            }
+            trace!(object_count, "Listed storage objects");
+
+            // Get the ball rolling.  Next tick, we will check the queue.
+            //
+            cast!(scheduler, SchedulerMsg::Start)?;
+
+            base.put(
+                &object_store::path::Path::from(ENGINE_PID),
+                pid.to_string().into(),
+            )
+            .await?;
+            Ok::<_, eyre::Report>((
+                sup, scheduler, factory, results, src, state, stat, areas, tokens,
+            ))
+        }
+        .await;
+        let (sup, scheduler, factory, results, src, state, stat, areas, tokens) = match startup {
+            Ok(started) => started,
+            Err(err) => {
+                if let Err(cleanup_error) = resources.teardown().await {
+                    tracing::warn!(%cleanup_error, "Engine startup rollback did not finish");
+                }
+                return Err(err);
+            }
         };
-        let factory_args = FactoryArguments::builder()
-            .worker_builder(Box::new(runner_builder))
-            .queue(Default::default())
-            .router(Default::default())
-            .num_initial_workers(workers)
-            .build();
 
-        // Spawn factory under supervision too.
-        //
-        let (factory, _h) = Actor::spawn_linked(
-            Some("factory".into()),
-            factory_def,
-            factory_args,
-            sup.get_cell(),
-        )
-        .await?;
-
-        // Spawn the actual scheduler
-        //
-        let sargs = SchedulerArguments {
-            sync,
-            tick,
-            last,
-            workers,
-            state: state.clone(),
-            factory: factory.clone(),
-        };
-        let (scheduler, _h) = Actor::spawn_linked(
-            Some("scheduler".into()),
-            SchedulerActor,
-            sargs,
-            sup.get_cell(),
-        )
-        .await?;
-
-        // ----- Register non-actor subsystems
-
-        // Register storage areas
-        //
-        trace!("load storage areas");
-        let areas = Storage::register(&cfg.storage)?;
-        info!("{} areas loaded", areas.len());
-
-        // Register tokens
-        //
-        let tokens_area = root.config_path().join("tokens");
-
-        trace!("load tokens from {tokens_area:?}");
-        let tokens = TokenStorage::register(&tokens_area).await?;
-        info!("{} tokens loaded", tokens.len());
-
-        // Instantiate everything
-        //
-        let engine = Engine {
+        Ok(Self {
             mode,
             read_max_bytes: cfg
                 .read_max_bytes
                 .unwrap_or(producer::DEFAULT_READ_MAX_BYTES),
+            lifecycle: Arc::new(Lifecycle::new(resources, workdir.clone())),
             pid,
-            home: base.clone(),
-            ws: ws.clone(),
-            workdir: workdir.clone(),
+            home: base,
+            ws,
+            workdir,
             storage: Arc::new(areas),
             tokens: Arc::new(tokens),
-            supervisor: sup.clone(),
-            scheduler: scheduler.clone(),
-            factory: factory.clone(),
-            results: results.clone(),
-            sources: src.clone(),
-            state: state.clone(),
-            stats: stat.clone(),
-        };
-
-        // Sync immediately, ensuring the state is clean
-        //
-        engine.sync()?;
-
-        // If debug/trace, list all the actors running at this point.
-        //
-        let plist = registered().join("\n");
-        trace!("Actor list:\n{plist}");
-
-        // Display the current storage objects.
-        //
-        let mut flist = base.list(None);
-        let mut object_count = 0usize;
-        while flist.next().await.transpose()?.is_some() {
-            object_count += 1;
-        }
-        trace!(object_count, "Listed storage objects");
-
-        // Get the ball rolling.  Next tick, we will check the queue.
-        //
-        cast!(scheduler, SchedulerMsg::Start)?;
-
-        Ok(engine)
+            supervisor: sup,
+            scheduler,
+            factory,
+            results,
+            sources: src,
+            state,
+            stats: stat,
+        })
     }
 }

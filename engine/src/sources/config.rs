@@ -7,7 +7,7 @@ use std::collections::btree_map::{IntoValues, Iter, IterMut, Keys, Values, Value
 use std::collections::BTreeMap;
 use std::fs;
 use std::ops::{Index, IndexMut};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use eyre::Result;
 use serde::{Deserialize, Serialize};
@@ -102,21 +102,30 @@ impl Sources {
     #[tracing::instrument]
     pub fn new() -> Result<Self> {
         let src_file = ConfigFile::<SourcesConfig>::load(Some(SOURCES_CONFIG))?;
-        let src = src_file.inner();
+        Ok(Self::from_config(src_file.inner(), &src_file.root()))
+    }
 
-        let all = src
+    /// Loads sources and resolves their token paths relative to the named configuration directory.
+    pub(crate) fn load(home: &Path) -> Result<Self> {
+        let file = home.join(SOURCES_CONFIG);
+        let config: SourcesConfig = hcl::from_str(&fs::read_to_string(file)?)?;
+        Ok(Self::from_config(&config, home))
+    }
+
+    /// Attaches source identifiers and token directories to parsed configuration entries.
+    fn from_config(config: &SourcesConfig, home: &Path) -> Self {
+        let all = config
             .site
             .iter()
             .map(|(n, s)| {
                 let mut site = s.clone();
 
                 site.name = n.to_string();
-                site.token_base = Some(src_file.root().join(site.token_base.unwrap_or("".into())));
+                site.token_base = Some(home.join(site.token_base.unwrap_or_default()));
                 (n.to_string(), site)
             })
             .collect::<Vec<_>>();
-        let s = Sources::from(all);
-        Ok(s)
+        Sources::from(all)
     }
 
     pub fn as_fetchable(&self, name: &str) -> Result<FetchableSource> {

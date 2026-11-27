@@ -13,13 +13,13 @@ use std::sync::Arc;
 
 use jiff::Timestamp;
 use object_store::local::LocalFileSystem;
-use object_store::{path::Path, ObjectStoreExt};
-use ractor::{pg, Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use object_store::{ObjectStoreExt, path::Path};
+use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, pg};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{error, info, trace, warn};
+use tracing::{error, trace, warn};
 
-use crate::{StateError, ENGINE_PG, ENGINE_PID};
+use crate::{ENGINE_PG, StateError};
 
 /// The main state data file will be created in `basedir`.
 pub(crate) const STATE_FILE: &str = "state";
@@ -56,6 +56,8 @@ pub enum StateMsg {
     GetPid(RpcReplyPort<u32>),
     /// Sync unto state file on disk.
     Sync,
+    /// Persists the current snapshot and reports the write result.
+    Flush(RpcReplyPort<Result<(), object_store::Error>>),
 }
 
 /// Represents the current state of the `StateActor` actor.
@@ -143,13 +145,10 @@ impl Actor for StateActor {
     /// # Behavior
     /// - Reads the state from a file (`state`) in the given `args` directory.
     /// - Updates the state with the current process ID (`pid`).
-    /// - Writes the process ID to a `pid` file in the same directory.
-    /// - Schedules a periodic synchronization (`Sync`) message to itself every 30 seconds.
+    /// - Starts with an empty snapshot when the state file is absent.
     /// - Joins the actor to a process group (`ENGINE_PG`) for cluster-related operations.
     ///
-    /// # Panics
-    ///
-    /// This function panics if it fails to write the `pid` file to disk.
+    /// Existing snapshots that cannot be read or decoded fail startup.
     ///
     #[tracing::instrument(skip(self, myself))]
     async fn pre_start(
@@ -159,35 +158,43 @@ impl Actor for StateActor {
     ) -> Result<Self::State, ActorProcessingErr> {
         let base = args.clone();
 
-        let data = base.get(&Path::from(STATE_FILE)).await?.bytes().await?.to_vec();
+        let data = match base.get(&Path::from(STATE_FILE)).await {
+            Ok(data) => Some(data.bytes().await?),
+            Err(object_store::Error::NotFound { .. }) => None,
+            Err(err) => return Err(err.into()),
+        };
 
         // Read the `state` file.  If we can't read it as `State`, try with the previous
         // version.  If it succeeds, regenerate a new one.
         //
-        let mut data: State = match serde_json::from_slice(&data) {
-            Ok(state) => state,
-            Err(_) => {
-                let st: State1 = match serde_json::from_slice(&data) {
-                    Ok(st) => {
-                        warn!("Previous version of the state file detected, resetting.");
-                        st
+        let mut data: State = if let Some(data) = data {
+            match serde_json::from_slice(&data) {
+                Ok(state) => state,
+                Err(_) => {
+                    let st: State1 = match serde_json::from_slice(&data) {
+                        Ok(st) => {
+                            warn!("Previous version of the state file detected, resetting.");
+                            st
+                        }
+                        Err(e) => {
+                            error!(
+                                "Impossible to load state file in {:?}: {}",
+                                STATE_FILE,
+                                e.to_string()
+                            );
+                            return Err(StateError::UnrecognizedFile(STATE_FILE.into()).into());
+                        }
+                    };
+                    // returns a new one using previous data
+                    //
+                    State {
+                        last: st.last,
+                        ..Default::default()
                     }
-                    Err(e) => {
-                        error!(
-                            "Impossible to load state file in {:?}: {}",
-                            STATE_FILE,
-                            e.to_string()
-                        );
-                        return Err(StateError::UnrecognizedFile(STATE_FILE.into()).into());
-                    }
-                };
-                // returns a new one using previous data
-                //
-                State {
-                    last: st.last,
-                    ..Default::default()
                 }
             }
+        } else {
+            State::default()
         };
 
         // Reset everything except the last pid we just loaded
@@ -198,10 +205,6 @@ impl Actor for StateActor {
         data.running = VecDeque::new();
         data.finished = VecDeque::new();
         data.dirty = false;
-
-        let pidfile = Path::from(ENGINE_PID);
-        let _ = data.state.put(&pidfile, format!("{}", data.pid).into()).await;
-        info!("PID {} written in {:?}", data.pid, data.state.path_to_filesystem(&Path::from(ENGINE_PID))?);
 
         pg::join(ENGINE_PG.into(), vec![myself.get_cell()]);
 
@@ -229,6 +232,7 @@ impl Actor for StateActor {
     /// - `StateMsg::Next(RpcReplyPort<usize>)`: Sends back the next available job ID.
     /// - `StateMsg::GetPid(RpcReplyPort<u32>)`: Sends back the current actor's process ID.
     /// - `StateMsg::Sync`: Synchronizes the current state to disk, updating the timestamp.
+    /// - `StateMsg::Flush`: Writes the current state and replies with the result.
     ///
     #[tracing::instrument(skip(self, _myself))]
     async fn handle(
@@ -300,14 +304,23 @@ impl Actor for StateActor {
             }
             StateMsg::Sync => {
                 trace!("stateactor::sync");
-
-                state.tm = Timestamp::now().as_second();
-                let data = json!(state).to_string();
-                let state_file = Path::from(STATE_FILE);
-                let _ = state.state.put(&state_file, data.into()).await?;
-                state.dirty = false;
+                state.flush().await?;
+            }
+            StateMsg::Flush(reply) => {
+                let _ = reply.send(state.flush().await);
             }
         }
+        Ok(())
+    }
+}
+
+impl State {
+    /// Writes the current snapshot and marks it clean after the write succeeds.
+    async fn flush(&mut self) -> Result<(), object_store::Error> {
+        self.tm = Timestamp::now().as_second();
+        let data = json!(self).to_string();
+        self.state.put(&Path::from(STATE_FILE), data.into()).await?;
+        self.dirty = false;
         Ok(())
     }
 }
