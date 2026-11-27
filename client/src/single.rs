@@ -54,11 +54,8 @@ impl EngineSingle {
     /// # Errors
     ///
     /// Returns an error if HCL serialization or parsing fails, a source cannot
-    /// be resolved or lacks the requested capability, or job setup fails.
-    ///
-    /// # Panics
-    ///
-    /// The engine parser currently panics on [`MiddleText::Convert`](crate::MiddleText::Convert).
+    /// be resolved or lacks the requested capability, a stage is unsupported,
+    /// or job setup fails.
     ///
     #[tracing::instrument(skip(self, job))]
     pub async fn parse_job(&mut self, job: JobText) -> Result<Job> {

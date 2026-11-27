@@ -80,6 +80,12 @@ pub enum EngineStatus {
 
 #[derive(Debug, Error)]
 pub enum ParserError {
+    /// The HCL producer path must be an ordinary, nonempty string literal.
+    #[error("Read requires a nonempty literal file path")]
+    InvalidReadPath,
+    /// The named stage has no HCL implementation.
+    #[error("{0} is not a supported HCL job stage")]
+    UnsupportedStage(&'static str),
     #[error("Unknown site {0}")]
     UnknownSite(String),
     #[error("Site {0} is not fetchable")]

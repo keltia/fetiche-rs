@@ -3,7 +3,7 @@
 //! Description of the job & task language -- leveraging HCL support.  The advantage is that we
 //! could switch to JSON or anything else.
 //!
-//! See [this example](../../examples/parse.rs) for a simple usage example.
+//! See [`Engine::parse`] for a usage example.
 //!
 
 use std::collections::VecDeque;
@@ -28,7 +28,7 @@ use crate::{
 ///
 /// This enum captures the various job types supported by the Fetiche language,
 /// which defines how data is processed or retrieved. The job type is
-/// serialized and deserialized using lowercase strings (e.g., "fetch", "read").
+/// deserialized from HCL variant names such as `Fetch` and `Read`.
 ///
 /// # Variants
 ///
@@ -36,12 +36,12 @@ use crate::{
 /// - `Read`: Reads data from an existing file or resource.
 /// - `Stream`: Streams data directly from an external source in real-time.
 ///
-#[derive(Clone, Debug, Deserialize, EnumString, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 enum ProducerText {
     /// One-shot fetch a block of data.
     Fetch(String, Filter),
-    /// Read a local file.
-    Read(String),
+    /// Read a local file using a literal path.
+    Read(hcl::Expression),
     /// Long-running job, streaming.
     Stream(String, Filter),
 }
@@ -55,8 +55,8 @@ enum ProducerText {
 /// # Variants
 ///
 /// - `Tee`: Duplicates the data stream to the specified target.
-/// - `Split`: Splits the job output into multiple paths or files.
-/// - `Save`: Saves intermediate results to the specified path.
+/// - `Copy`: Forwards its input.
+/// - `Convert`: Reserved for a future implementation and rejected by the job parser.
 ///
 /// # Fields
 ///
@@ -167,6 +167,10 @@ impl Engine {
     /// - `Ok(Job)` - A fully configured Job instance ready for execution
     /// - `Err(e)` - An error if parsing fails or the job configuration is invalid
     ///
+    /// `Read` requires a nonempty literal string. The engine does not evaluate
+    /// HCL expressions or interpolate templates in file paths. `Convert` and
+    /// `Archive` are rejected before a job is ready to submit.
+    ///
     /// # Example
     ///
     /// ```rust,no_run
@@ -206,7 +210,8 @@ impl Engine {
         Ok(job)
     }
 
-    /// Builds a ready job and resolves a Store directory before creating it.
+    /// Builds a ready job after validating its source, paths, and stage kinds.
+    /// A Store directory is created only after the earlier stages validate.
     async fn build_job(
         jt: JobText,
         id: usize,
@@ -237,6 +242,12 @@ impl Engine {
                 }
             }
             ProducerText::Read(p) => {
+                let hcl::Expression::String(p) = p else {
+                    return Err(ParserError::InvalidReadPath.into());
+                };
+                if p.is_empty() {
+                    return Err(ParserError::InvalidReadPath.into());
+                }
                 let mut r = Read::new(&p);
                 r.path(&p);
                 Producer::Read(r)
@@ -246,31 +257,21 @@ impl Engine {
         debug!(job_id = id, "Building job stages");
         // Lets have a look at filters now.
         //
-        let list = if let Some(filters) = &jt.middle {
-            filters
-                .iter()
-                .map(|t| match t {
-                    MiddleText::Convert(_) => {
-                        unimplemented!()
-                    }
-                    MiddleText::Copy => {
-                        let c = Copy::new();
-                        Middle::Copy(c)
-                    }
-                    MiddleText::Tee(fname) => {
-                        let tee = Tee::into(fname);
-                        Middle::Tee(tee)
-                    }
-                })
-                .collect()
-        } else {
-            VecDeque::new()
-        };
+        let list = jt
+            .middle
+            .unwrap_or_default()
+            .into_iter()
+            .map(|stage| match stage {
+                MiddleText::Convert(_) => Err(ParserError::UnsupportedStage("Convert")),
+                MiddleText::Copy => Ok(Middle::Copy(Copy::new())),
+                MiddleText::Tee(fname) => Ok(Middle::Tee(Tee::into(&fname))),
+            })
+            .collect::<Result<VecDeque<_>, _>>()?;
 
         // And finally at consumers.
         //
         let consumer = match jt.output {
-            ConsumerText::Archive(_) => Consumer::Invalid,
+            ConsumerText::Archive(_) => return Err(ParserError::UnsupportedStage("Archive").into()),
             ConsumerText::Save(c) => {
                 let mut f = Save::new(&c, Format::None, Container::Raw);
                 f.path(&c);
@@ -282,7 +283,9 @@ impl Engine {
                 } else {
                     let path = crate::workspace::resolve_stage_path(workspace, Path::new(&c))?;
                     path.to_str()
-                        .ok_or_else(|| eyre::eyre!("storage path is not UTF-8: {}", path.display()))?
+                        .ok_or_else(|| {
+                            eyre::eyre!("storage path is not UTF-8: {}", path.display())
+                        })?
                         .to_owned()
                 };
                 let s = Store::new(&path, id, f).await?;
@@ -386,11 +389,16 @@ mod tests {
         assert_eq!(token.token, "fake-stored-token");
         AsdToken::purge(&path)?;
         let mut tokens = TokenStorage::register(&dir.path().to_path_buf()).await?;
-        tokens.store("asd_fake-login-secret", TokenType::AsdToken(token)).await?;
+        tokens
+            .store("asd_fake-login-secret", TokenType::AsdToken(token))
+            .await?;
 
         let captured = capture.0.lock().unwrap();
         let logs = std::str::from_utf8(&captured)?;
-        assert!(logs.contains("job_id=901") && logs.contains("trace-source"), "{logs}");
+        assert!(
+            logs.contains("job_id=901") && logs.contains("trace-source"),
+            "{logs}"
+        );
         for secret in [
             "fake-filter-secret",
             "fake-url-secret",
@@ -400,24 +408,32 @@ mod tests {
             "fake-stored-token",
         ] {
             assert!(!logs.contains(secret), "trace exposed {secret}");
-            assert!(!formatted_source.contains(secret), "source format exposed {secret}");
+            assert!(
+                !formatted_source.contains(secret),
+                "source format exposed {secret}"
+            );
         }
         Ok(())
     }
 
     async fn parse_job(input: &str) -> Result<Job> {
-        Engine::build_job(hcl::from_str(input)?, 1, Path::new("."), async |name: String| {
-            let feature = match name.as_str() {
-                "lux-me" => Capability::Fetch,
-                "opensky" => Capability::Stream,
-                _ => return Err(eyre::eyre!("Unknown source {name}")),
-            };
-            Ok(Site {
-                name,
-                feature,
-                ..Site::default()
-            })
-        })
+        Engine::build_job(
+            hcl::from_str(input)?,
+            1,
+            Path::new("."),
+            async |name: String| {
+                let feature = match name.as_str() {
+                    "lux-me" => Capability::Fetch,
+                    "opensky" => Capability::Stream,
+                    _ => return Err(eyre::eyre!("Unknown source {name}")),
+                };
+                Ok(Site {
+                    name,
+                    feature,
+                    ..Site::default()
+                })
+            },
+        )
         .await
     }
 
@@ -514,7 +530,10 @@ mod tests {
         let Producer::Read(reader) = job.producer else {
             panic!("expected a Read producer");
         };
-        assert_eq!(reader.path.as_deref(), Some(std::path::Path::new("input.csv")));
+        assert_eq!(
+            reader.path.as_deref(),
+            Some(std::path::Path::new("input.csv"))
+        );
         assert!(matches!(job.consumer, Consumer::Save(_)));
         Ok(())
     }
@@ -651,15 +670,105 @@ mod tests {
     /// Valid HCL with missing or malformed job fields fails during deserialization.
     #[rstest::rstest]
     #[case(r#"producer = { Read = "input.csv" }"#)]
-    #[case(r#"producer = { Unknown = "input.csv" }
-        output = { Save = "output.csv" }"#)]
-    #[case(r#"producer = { Read = "input.csv" }
-        output = { Store = ["data", "Weekly"] }"#)]
+    #[case(
+        r#"producer = { Unknown = "input.csv" }
+        output = { Save = "output.csv" }"#
+    )]
+    #[case(
+        r#"producer = { Read = "input.csv" }
+        output = { Store = ["data", "Weekly"] }"#
+    )]
     #[tokio::test]
     async fn test_parse_rejects_invalid_job_fields(#[case] fields: &str) {
         let hcl = format!("name = \"invalid\"\n{fields}");
         let err = parse_job(&hcl).await.unwrap_err();
         assert!(err.downcast_ref::<hcl::Error>().is_some(), "{err:?}");
+    }
+
+    /// Read accepts literal paths and rejects HCL expressions, templates, and empty paths.
+    #[rstest::rstest]
+    #[case("42")]
+    #[case("var.input")]
+    #[case(r#""prefix-${var.input}.csv""#)]
+    #[case(r#""""#)]
+    #[tokio::test]
+    async fn test_parse_rejects_invalid_read_path(#[case] path: &str) {
+        let hcl = format!(
+            r#"
+            name = "read"
+            producer = {{ Read = {path} }}
+            output = {{ Save = "-" }}
+            "#
+        );
+        let err = parse_job(&hcl).await.unwrap_err();
+        assert!(
+            matches!(
+                err.downcast_ref::<ParserError>(),
+                Some(ParserError::InvalidReadPath)
+            ),
+            "{err:?}"
+        );
+    }
+
+    /// Quoting a numeric filename preserves it as a path.
+    #[tokio::test]
+    async fn test_parse_accepts_numeric_literal_filename() -> Result<()> {
+        let job = parse_job(
+            r#"
+            name = "read"
+            producer = { Read = "42" }
+            output = { Save = "-" }
+        "#,
+        )
+        .await?;
+        let Producer::Read(read) = job.producer else {
+            panic!("expected Read")
+        };
+        assert_eq!(read.path.as_deref(), Some(Path::new("42")));
+        Ok(())
+    }
+
+    /// Unsupported Convert fails before Store creates a directory.
+    #[tokio::test]
+    async fn test_parse_rejects_convert_before_store_setup() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let text = hcl::from_str(
+            r#"
+            name = "unsupported conversion"
+            producer = { Read = "input.csv" }
+            middle = [{ Convert = "DronePoint" }]
+            output = { Store = ["output", "Hourly"] }
+        "#,
+        )?;
+        let err = Engine::build_job(text, 1, dir.path(), |_| async {
+            panic!("Read should not resolve a source")
+        })
+        .await
+        .unwrap_err();
+        assert!(matches!(
+            err.downcast_ref::<ParserError>(),
+            Some(ParserError::UnsupportedStage("Convert"))
+        ));
+        assert!(!dir.path().join("output").exists());
+        Ok(())
+    }
+
+    /// Archive returns a parser error rather than creating an invalid consumer.
+    #[tokio::test]
+    async fn test_parse_rejects_archive() {
+        let err = parse_job(
+            r#"
+            name = "unsupported archive"
+            producer = { Read = "input.csv" }
+            output = { Archive = "old-data" }
+        "#,
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(
+            err.downcast_ref::<ParserError>(),
+            Some(ParserError::UnsupportedStage("Archive"))
+        ));
     }
 
     #[test_pretty_log::test]
