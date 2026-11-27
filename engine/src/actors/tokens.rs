@@ -152,7 +152,6 @@ pub struct TokenStorage {
     store: Arc<LocalFileSystem>,
     /// Base path for token files
     base_path: Path,
-    directory: PathBuf,
     /// Btree of (key, AuthToken)
     list: BTreeMap<String, TokenType>,
 }
@@ -181,7 +180,6 @@ impl TokenStorage {
         Ok(TokenStorage {
             store: Arc::new(store),
             base_path: Path::from_filesystem_path(path)?,
-            directory: path.clone(),
             list: db,
         })
     }
@@ -225,35 +223,6 @@ impl TokenStorage {
             }
             result => result,
         }
-    }
-
-    /// Loads from the shared cache or from the source's separate configured directory.
-    async fn load_for_source(&self, directory: PathBuf, key: &str) -> Result<TokenType> {
-        if directory == self.directory {
-            return self.load(key).await;
-        }
-        validate_token_key(key)?;
-        if !tokio::fs::try_exists(&directory).await? {
-            return Err(TokenStatus::NotFound(key.to_owned()).into());
-        }
-        let store = LocalFileSystem::new_with_prefix(&directory)?;
-        read_token(&store, &Path::default().join(key), key).await
-    }
-
-    /// Persists in the configured directory and updates the shared cache for engine tokens.
-    async fn store_for_source(
-        &mut self,
-        directory: PathBuf,
-        key: &str,
-        data: TokenType,
-    ) -> Result<()> {
-        if directory == self.directory {
-            return self.store(key, data).await;
-        }
-        validate_token_key(key)?;
-        tokio::fs::create_dir_all(&directory).await?;
-        let store = LocalFileSystem::new_with_prefix(&directory)?;
-        write_token(&store, &Path::default().join(key), &data).await
     }
 
     #[tracing::instrument(skip(self))]
