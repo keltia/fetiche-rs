@@ -8,6 +8,23 @@ pub enum TokenStatus {
     NotFound(String),
     #[error("Unknown token type in {0}")]
     Unknown(String),
+    /// The token file exists, but the contents cannot be decoded.
+    #[error("malformed token {key} at line {line}, column {column}")]
+    Malformed {
+        key: String,
+        line: usize,
+        column: usize,
+    },
+    /// The storage backend failed to read the token.
+    #[error("could not read token {key}")]
+    Read {
+        key: String,
+        #[source]
+        source: object_store::Error,
+    },
+    /// Synchronous token calls must run outside Tokio.
+    #[error("use the asynchronous token API inside a Tokio runtime")]
+    BlockingCallInRuntime,
 }
 
 #[derive(Debug, Error)]

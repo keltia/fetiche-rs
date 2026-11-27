@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::fmt::Debug;
+use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -11,7 +12,7 @@ use object_store::path::Path;
 use object_store::{ObjectMeta, ObjectStore, ObjectStoreExt};
 use tabled::builder::Builder;
 use tabled::settings::Style;
-use tokio::runtime::Handle;
+use tokio::runtime::{Builder as RuntimeBuilder, Handle};
 use tracing::{debug, trace};
 
 use crate::token::AsdToken;
@@ -74,7 +75,13 @@ pub struct TokenStorage {
 }
 
 impl TokenStorage {
-    /// Read the directory and return all tokens (one per file)
+    /// Reads the directory and loads its supported token files.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TokenStatus::Unknown`] for unsupported filenames,
+    /// [`TokenStatus::Malformed`] for malformed token data, and preserves
+    /// backend errors when an object cannot be read.
     ///
     #[tracing::instrument]
     pub async fn register(path: &PathBuf) -> Result<Self> {
@@ -91,16 +98,8 @@ impl TokenStorage {
 
         for object in objects {
             if let Some(file_name) = object.location.filename() {
-                let data = store.get(&object.location).await?;
-                let bytes = data.bytes().await?;
-                let raw = String::from_utf8(bytes.to_vec())?;
-
-                if file_name.starts_with("asd_") {
-                    let token_data: AsdToken = serde_json::from_str(&raw)?;
-                    db.insert(file_name.to_string(), TokenType::AsdToken(token_data));
-                } else {
-                    unimplemented!("Unsupported token type for file: {}", file_name)
-                }
+                let token = read_token(&store, &object.location, file_name).await?;
+                db.insert(file_name.to_owned(), token);
             }
         }
 
@@ -111,9 +110,11 @@ impl TokenStorage {
         })
     }
 
-    /// Store a token in the object store and update the in-memory list
+    /// Stores a token under a supported key and updates the in-memory list
+    /// after the write succeeds. Unsupported keys return [`TokenStatus::Unknown`].
     #[tracing::instrument(skip(self, key, data))]
     pub async fn store(&mut self, key: &str, data: TokenType) -> Result<()> {
+        validate_token_key(key)?;
         // Serialize the token data
         let serialized = match &data {
             TokenType::AsdToken(token) => serde_json::to_string(token)?,
@@ -131,6 +132,10 @@ impl TokenStorage {
         Ok(())
     }
 
+    /// Loads a token from the cache or falls back to storage.
+    ///
+    /// Unsupported keys, missing objects, malformed data, and other backend
+    /// read errors have distinct [`TokenStatus`] variants.
     #[tracing::instrument(skip(self, key))]
     pub async fn load(&self, key: &str) -> Result<TokenType> {
         // First check the in-memory cache
@@ -143,20 +148,7 @@ impl TokenStorage {
         //
         let file_path = self.base_path.clone().join(key);
 
-        match self.store.get(&file_path).await {
-            Ok(data) => {
-                let bytes = data.bytes().await?;
-                let raw = String::from_utf8(bytes.to_vec())?;
-
-                if key.starts_with("asd_") {
-                    let token_data: AsdToken = serde_json::from_str(&raw)?;
-                    Ok(TokenType::AsdToken(token_data))
-                } else {
-                    unimplemented!("Unsupported token type for key: {}", key)
-                }
-            }
-            Err(_) => Err(TokenStatus::NotFound(key.to_string()).into()),
-        }
+        read_token(&self.store, &file_path, key).await
     }
 
     #[tracing::instrument(skip(self))]
@@ -224,33 +216,91 @@ impl TokenStorage {
         Ok(table)
     }
 
-    /// Synchronous version of register for backward compatibility
+    /// Loads the token directory from synchronous code.
+    ///
+    /// Returns the same validation errors as [`Self::register`]. Use the
+    /// asynchronous API when calling from a Tokio runtime.
+    ///
+    /// ```
+    /// # fn main() -> eyre::Result<()> {
+    /// let dir = tempfile::tempdir()?;
+    /// let storage = fetiche_engine::TokenStorage::register_sync(&dir.path().to_path_buf())?;
+    /// assert!(storage.is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[tracing::instrument]
-    pub fn register_sync(path: &PathBuf) -> Self {
-        let rt = Handle::current();
-        rt.block_on(async { Self::register(path).await.unwrap() })
+    pub fn register_sync(path: &PathBuf) -> Result<Self> {
+        run_sync(Self::register(path))
     }
 
-    /// Synchronous version of store for backward compatibility
+    /// Stores a token from synchronous code. Use [`Self::store`] in Tokio.
     #[tracing::instrument(skip(self, key, data))]
     pub fn store_sync(&mut self, key: &str, data: TokenType) -> Result<()> {
-        let rt = Handle::current();
-        rt.block_on(async { self.store(key, data).await })
+        run_sync(self.store(key, data))
     }
 
-    /// Synchronous version of load for backward compatibility
+    /// Loads a token from synchronous code. Use [`Self::load`] in Tokio.
     #[tracing::instrument(skip(self, key))]
     pub fn load_sync(&self, key: &str) -> Result<TokenType> {
-        let rt = Handle::current();
-        rt.block_on(async { self.load(key).await })
+        run_sync(self.load(key))
     }
 
-    /// Synchronous version of to_string for backward compatibility
+    /// Lists tokens from synchronous code. Use [`Self::as_string`] in Tokio.
     #[tracing::instrument(skip(self))]
     pub fn to_string_sync(&self) -> Result<String> {
-        let rt = Handle::current();
-        rt.block_on(async { self.as_string().await })
+        run_sync(self.as_string())
     }
+}
+
+/// Checks that the key names a format understood by this store.
+fn validate_token_key(key: &str) -> Result<(), TokenStatus> {
+    if !key.starts_with("asd_") {
+        return Err(TokenStatus::Unknown(key.to_owned()));
+    }
+    Ok(())
+}
+
+/// Reads a supported token object and reports malformed JSON without quoting its contents.
+async fn read_token(store: &LocalFileSystem, location: &Path, key: &str) -> Result<TokenType> {
+    validate_token_key(key)?;
+    let data = store
+        .get(location)
+        .await
+        .map_err(|err| token_read_error(key, err))?;
+    let bytes = data
+        .bytes()
+        .await
+        .map_err(|err| token_read_error(key, err))?;
+    let token: AsdToken = serde_json::from_slice(&bytes).map_err(|err| TokenStatus::Malformed {
+        key: key.to_owned(),
+        line: err.line(),
+        column: err.column(),
+    })?;
+    Ok(TokenType::AsdToken(token))
+}
+
+/// Distinguishes a missing object from other storage failures.
+fn token_read_error(key: &str, source: object_store::Error) -> TokenStatus {
+    if matches!(source, object_store::Error::NotFound { .. }) {
+        TokenStatus::NotFound(key.to_owned())
+    } else {
+        TokenStatus::Read {
+            key: key.to_owned(),
+            source,
+        }
+    }
+}
+
+/// Runs an async token operation on a temporary runtime from a synchronous caller.
+fn run_sync<T>(operation: impl Future<Output = Result<T>>) -> Result<T> {
+    if Handle::try_current().is_ok() {
+        return Err(TokenStatus::BlockingCallInRuntime.into());
+    }
+    RuntimeBuilder::new_current_thread()
+        .enable_all()
+        .build()?
+        .block_on(operation)
 }
 
 #[cfg(test)]
@@ -298,9 +348,112 @@ mod tests {
     async fn test_load_nonexistent(temp_dir: TempDir) -> Result<()> {
         let temp = PathBuf::from(temp_dir.path());
         let storage = TokenStorage::register(&temp).await?;
-        let result = storage.load("nonexistent").await;
-        assert!(result.is_err());
+        let err = storage.load("asd_nonexistent").await.unwrap_err();
+        assert!(matches!(
+            err.downcast_ref::<TokenStatus>(),
+            Some(TokenStatus::NotFound(key)) if key == "asd_nonexistent"
+        ));
         Ok(())
+    }
+
+    /// Unsupported filenames produce a typed error in both token APIs.
+    #[test]
+    fn test_register_sync_reports_unsupported_token_file() -> Result<()> {
+        let dir = tempdir()?;
+        let path = dir.path().to_path_buf();
+        assert!(TokenStorage::register_sync(&path)?.is_empty());
+        std::fs::write(path.join("unknown.json"), "not a token")?;
+        let err = TokenStorage::register_sync(&path).unwrap_err();
+        assert!(matches!(
+            err.downcast_ref::<TokenStatus>(),
+            Some(TokenStatus::Unknown(key)) if key == "unknown.json"
+        ));
+        Ok(())
+    }
+
+    /// Blocking token methods reject calls from Tokio instead of panicking.
+    #[tokio::test]
+    async fn test_sync_calls_return_error_inside_tokio() -> Result<()> {
+        let dir = tempdir()?;
+        let path = dir.path().to_path_buf();
+        let mut storage = TokenStorage::register(&path).await?;
+        for err in [
+            TokenStorage::register_sync(&path).unwrap_err(),
+            storage
+                .store_sync("asd_token", TokenType::AsdToken(AsdToken::default()))
+                .unwrap_err(),
+            storage.load_sync("asd_token").unwrap_err(),
+            storage.to_string_sync().unwrap_err(),
+        ] {
+            assert!(matches!(
+                err.downcast_ref::<TokenStatus>(),
+                Some(TokenStatus::BlockingCallInRuntime)
+            ));
+        }
+        Ok(())
+    }
+
+    /// A malformed on-disk record reports its location without echoing credential values.
+    #[tokio::test]
+    async fn test_malformed_token_is_reported_without_its_contents() -> Result<()> {
+        let dir = tempdir()?;
+        let path = dir.path().to_path_buf();
+        let storage = TokenStorage::register(&path).await?;
+        let key = "asd_corrupt";
+        storage
+            .store
+            .put(
+                &storage.base_path.clone().join(key),
+                r#"{"expiredAt":"fake-secret"}"#.into(),
+            )
+            .await?;
+        for err in [
+            storage.load(key).await.unwrap_err(),
+            TokenStorage::register(&path).await.unwrap_err(),
+        ] {
+            assert!(matches!(
+                err.downcast_ref::<TokenStatus>(),
+                Some(TokenStatus::Malformed { key: name, line: 1, .. }) if name == key
+            ));
+            assert!(!format!("{err:#}").contains("fake-secret"));
+        }
+        Ok(())
+    }
+
+    /// Unsupported keys are rejected for both reading and writing.
+    #[tokio::test]
+    async fn test_unsupported_key_cannot_be_loaded_or_stored() -> Result<()> {
+        let dir = tempdir()?;
+        let mut storage = TokenStorage::register(&dir.path().to_path_buf()).await?;
+        for err in [
+            storage.load("unsupported").await.unwrap_err(),
+            storage
+                .store("unsupported", TokenType::AsdToken(AsdToken::default()))
+                .await
+                .unwrap_err(),
+        ] {
+            assert!(matches!(
+                err.downcast_ref::<TokenStatus>(),
+                Some(TokenStatus::Unknown(_))
+            ));
+        }
+        assert!(storage.is_empty());
+        Ok(())
+    }
+
+    /// Non-missing backend failures retain their original cause.
+    #[test]
+    fn test_token_read_error_preserves_io_failure() {
+        let backend = object_store::Error::Generic {
+            store: "test",
+            source: Box::new(std::io::Error::from(std::io::ErrorKind::PermissionDenied)),
+        };
+        let mapped = token_read_error("asd_token", backend);
+        assert!(matches!(
+            std::error::Error::source(&mapped).and_then(|source| source.source())
+                .and_then(|cause| cause.downcast_ref::<std::io::Error>()),
+            Some(cause) if cause.kind() == std::io::ErrorKind::PermissionDenied
+        ));
     }
 
     #[rstest]
