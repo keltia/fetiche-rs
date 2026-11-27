@@ -15,6 +15,7 @@ use futures::stream::{FuturesUnordered, StreamExt};
 use ractor::factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId};
 use ractor::{ActorProcessingErr, ActorRef, RpcReplyPort, call, cast};
 use tokio::sync::mpsc::{Receiver, channel};
+use tokio::sync::watch;
 use tokio::task::{AbortHandle, JoinHandle};
 use tracing::{debug, info, trace};
 
@@ -52,6 +53,7 @@ pub struct RunnerActor;
 #[derive(Clone, Debug)]
 pub struct RunnerArgs {
     pub queue_capacity: usize,
+    pub cancel: watch::Receiver<bool>,
     /// Reference to the Result actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -61,6 +63,7 @@ pub struct RunnerArgs {
 #[derive(Clone, Debug)]
 pub struct RunnerState {
     queue_capacity: usize,
+    cancel: watch::Receiver<bool>,
     /// Reference to the Result actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -74,6 +77,7 @@ impl Worker for RunnerActor {
     type Arguments = RunnerArgs;
     type State = RunnerState;
 
+    /// Attaches the engine's cancellation signal to the worker's state.
     #[tracing::instrument(skip(self, _factory))]
     async fn pre_start(
         &self,
@@ -84,6 +88,7 @@ impl Worker for RunnerActor {
         trace!("runner {} starting", wid);
         let state = RunnerState {
             queue_capacity: startup_context.queue_capacity,
+            cancel: startup_context.cancel,
             results: startup_context.results.clone(),
             stats: startup_context.stats.clone(),
         };
@@ -140,7 +145,8 @@ impl Worker for RunnerActor {
 
                 match cast!(stat, StatsMsg::New(job_tag.clone())) {
                     Ok(_) => {
-                        outcome.status = run_pipeline(job, state.queue_capacity).await;
+                        outcome.status =
+                            run_pipeline(job, state.queue_capacity, state.cancel.clone()).await;
                         match call!(stat, |port| StatsMsg::Get(job_tag.clone(), port)) {
                             Ok(snapshot) => outcome.stats = snapshot,
                             Err(err) if outcome.status == JobStatus::Succeeded => {
@@ -188,11 +194,19 @@ fn stage_failure(stage: String, error: String) -> JobStatus {
 /// The runner sends a single trigger to the producer, drains and discards terminal
 /// messages, and waits for every stage. An invalid stage fails before any tasks
 /// start. An execution failure or cancellation causes remaining tasks to be
-/// aborted and joined before the status is returned.
+/// aborted and joined before the status is returned. The engine can cancel all
+/// stages through `cancel` when its shutdown grace period expires.
 ///
 /// Each channel has `queue_capacity` message slots. The caller must supply a
 /// capacity accepted by Tokio MPSC.
-async fn run_pipeline(job: EngineJob, queue_capacity: usize) -> JobStatus {
+async fn run_pipeline(
+    job: EngineJob,
+    queue_capacity: usize,
+    cancel: watch::Receiver<bool>,
+) -> JobStatus {
+    if *cancel.borrow() {
+        return JobStatus::Cancelled { stage: None };
+    }
     let mut stages = Vec::with_capacity(job.middle.len() + 2);
     let mut add_stage = |name: String, task, invalid| {
         stages.push((format!("{} ({name})", stages.len() + 1), task, invalid));
@@ -220,7 +234,7 @@ async fn run_pipeline(job: EngineJob, queue_capacity: usize) -> JobStatus {
     let started = trigger.send("start".to_string()).await;
     drop(trigger);
 
-    let status = tasks.drain(output).await;
+    let status = tasks.drain(output, cancel).await;
     if status == JobStatus::Succeeded && started.is_err() {
         return job_failure("could not start producer: receiver closed".into());
     }
@@ -248,31 +262,40 @@ impl StageTasks {
     /// Consumes terminal messages while polling stage joins so a full output
     /// channel cannot prevent a stage from finishing.
     ///
-    /// The first failed or cancelled join determines the status. The receiver is
-    /// dropped, and the remaining tasks are aborted and joined before returning.
-    async fn drain(mut self, mut output: Receiver<String>) -> JobStatus {
+    /// The first failed join or cancellation signal determines the status. The
+    /// receiver is dropped, and remaining tasks are aborted and joined.
+    async fn drain(
+        mut self,
+        mut output: Receiver<String>,
+        mut cancel: watch::Receiver<bool>,
+    ) -> JobStatus {
         let mut output_open = true;
-        while output_open || !self.pending.is_empty() {
+        let status = loop {
+            if !output_open && self.pending.is_empty() {
+                return JobStatus::Succeeded;
+            }
             tokio::select! {
+                true = async { cancel.wait_for(|requested| *requested).await.is_ok() } => {
+                    break JobStatus::Cancelled { stage: None };
+                }
                 message = output.recv(), if output_open => {
                     output_open = message.is_some();
                 }
                 joined = self.pending.next(), if !self.pending.is_empty() => {
                     let Some((stage, result)) = joined else { continue };
-                    let status = match result {
+                    break match result {
                         Ok(Ok(())) => continue,
                         Ok(Err(err)) => stage_failure(stage, format!("{err:#}")),
                         Err(err) if err.is_cancelled() => JobStatus::Cancelled { stage: Some(stage) },
                         Err(err) => stage_failure(stage, err.to_string()),
                     };
-                    drop(output);
-                    self.abort_all();
-                    while self.pending.next().await.is_some() {}
-                    return status;
                 }
             }
-        }
-        JobStatus::Succeeded
+        };
+        drop(output);
+        self.abort_all();
+        while self.pending.next().await.is_some() {}
+        status
     }
 
     /// Requests cancellation for every registered task, including unfinished joins.
@@ -293,6 +316,7 @@ impl Drop for StageTasks {
 #[derive(Clone, Debug)]
 pub struct RunnerBuilder {
     pub queue_capacity: usize,
+    pub cancel: watch::Receiver<bool>,
     /// Reference to the Results actor
     pub results: ActorRef<ResultsMsg>,
     /// Reference to the Stats actor for metrics
@@ -300,12 +324,14 @@ pub struct RunnerBuilder {
 }
 
 impl WorkerBuilder<RunnerActor, RunnerArgs> for RunnerBuilder {
+    /// Builds a worker with the shared engine cancellation receiver.
     #[tracing::instrument(skip(self))]
     fn build(&mut self, wid: WorkerId) -> (RunnerActor, RunnerArgs) {
         (
             RunnerActor,
             RunnerArgs {
                 queue_capacity: self.queue_capacity,
+                cancel: self.cancel.clone(),
                 results: self.results.clone(),
                 stats: self.stat.clone(),
             },
@@ -365,6 +391,7 @@ mod tests {
         let args = FactoryArguments::builder()
             .worker_builder(Box::new(RunnerBuilder {
                 queue_capacity: 1,
+                cancel: tokio::sync::watch::channel(false).1,
                 results: results.clone(),
                 stat: stats.clone(),
             }))
@@ -413,9 +440,12 @@ mod tests {
         job.add(Middle::Tee(Tee::into(copy.to_str().unwrap())));
 
         assert_eq!(
-            timeout(Duration::from_secs(5), run_pipeline(job, 1))
-                .await
-                .unwrap(),
+            timeout(
+                Duration::from_secs(5),
+                run_pipeline(job, 1, watch::channel(false).1)
+            )
+            .await
+            .unwrap(),
             JobStatus::Succeeded
         );
         assert_eq!(std::fs::read_to_string(copy).unwrap(), "DUMMY");
@@ -430,9 +460,12 @@ mod tests {
             .consumer(Consumer::Stdout(Stdout::new()))
             .build();
 
-        let status = timeout(Duration::from_secs(5), run_pipeline(job, 1))
-            .await
-            .unwrap();
+        let status = timeout(
+            Duration::from_secs(5),
+            run_pipeline(job, 1, watch::channel(false).1),
+        )
+        .await
+        .unwrap();
         assert!(matches!(
             status,
             JobStatus::Failed { stage: Some(stage), .. } if stage == "1 (Read)"
@@ -462,9 +495,12 @@ mod tests {
             }),
         );
 
-        let status = timeout(Duration::from_secs(5), stages.drain(output_rx))
-            .await
-            .unwrap();
+        let status = timeout(
+            Duration::from_secs(5),
+            stages.drain(output_rx, watch::channel(false).1),
+        )
+        .await
+        .unwrap();
         assert!(matches!(
             status,
             JobStatus::Failed { stage: Some(stage), error }
@@ -482,9 +518,12 @@ mod tests {
         stages.push("aborted".into(), task);
 
         // Keep the terminal channel open to ensure cancellation can finish without EOF.
-        let status = timeout(Duration::from_secs(5), stages.drain(output_rx))
-            .await
-            .unwrap();
+        let status = timeout(
+            Duration::from_secs(5),
+            stages.drain(output_rx, watch::channel(false).1),
+        )
+        .await
+        .unwrap();
         drop(output_tx);
         assert_eq!(
             status,
@@ -492,5 +531,37 @@ mod tests {
                 stage: Some("aborted".into())
             }
         );
+    }
+
+    /// The engine cancellation signal joins a pending stage before returning.
+    #[tokio::test]
+    async fn shutdown_signal_cancels_and_joins_pipeline_stages() {
+        let mut stages = StageTasks::default();
+        let (output_tx, output_rx) = channel(1);
+        let (cancel, signal) = watch::channel(false);
+        let (started, ready) = tokio::sync::oneshot::channel();
+        let (stage_alive, mut stage_closed) = tokio::sync::oneshot::channel::<()>();
+        stages.push(
+            "stream".into(),
+            tokio::spawn(async move {
+                let _ = started.send(());
+                std::future::pending::<()>().await;
+                drop(stage_alive);
+                drop(output_tx);
+                Ok(())
+            }),
+        );
+        ready.await.unwrap();
+        cancel.send_replace(true);
+        assert_eq!(
+            timeout(Duration::from_secs(5), stages.drain(output_rx, signal))
+                .await
+                .unwrap(),
+            JobStatus::Cancelled { stage: None }
+        );
+        assert!(matches!(
+            stage_closed.try_recv(),
+            Err(tokio::sync::oneshot::error::TryRecvError::Closed)
+        ));
     }
 }

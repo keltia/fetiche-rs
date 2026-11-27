@@ -422,6 +422,7 @@ impl Engine {
         >::default();
         let runner_builder = RunnerBuilder {
             queue_capacity,
+            cancel: tokio::sync::watch::channel(false).1,
             results: results.clone(),
             stat: stat.clone(),
         };

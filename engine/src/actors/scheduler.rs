@@ -23,6 +23,8 @@ pub enum SchedulerMsg {
     Start,
     /// Pauses dispatch while jobs already handed to the factory keep running.
     Suspend,
+    /// Closes admission, cancels queued jobs, and replies when dispatched jobs have exited.
+    BeginShutdown(RpcReplyPort<()>),
     Stop,
     Sync,
     Tick,
@@ -47,6 +49,7 @@ enum Mode {
     Idle,
     Starting,
     Suspended,
+    Draining,
 }
 
 /// Configuration arguments required to initialize the scheduler actor
@@ -79,6 +82,7 @@ pub struct SchedulerState {
     // The queues
     waiting: VecDeque<Work>,
     running: BTreeSet<usize>,
+    drain_waiters: Vec<RpcReplyPort<()>>,
 }
 
 impl SchedulerState {
@@ -124,9 +128,12 @@ impl SchedulerState {
         }
     }
 
-    /// Queues a ready job and creates its completion receiver. Only one outstanding
-    /// job can use a given ID.
+    /// Queues a ready job while admission is open and creates its completion receiver.
+    /// Only one outstanding job can use a given ID.
     fn enqueue(&mut self, job: Job) -> Result<WaitGroup, SchedulerError> {
+        if self.mode == Mode::Draining {
+            return Err(SchedulerError::ShuttingDown);
+        }
         let id = job.id;
         if job.state() != JobState::Ready {
             return Err(SchedulerError::JobNotReady(id));
@@ -158,6 +165,24 @@ impl SchedulerState {
     /// Retires exactly the completed job. Unknown IDs have no effect.
     fn finish(&mut self, id: usize) {
         self.running.remove(&id);
+        self.reply_when_drained();
+    }
+
+    /// Closes admission permanently and cancels every job still in the waiting queue.
+    fn begin_shutdown(&mut self, waiter: RpcReplyPort<()>) {
+        self.mode = Mode::Draining;
+        self.waiting.clear();
+        self.drain_waiters.push(waiter);
+        self.reply_when_drained();
+    }
+
+    /// Acknowledges pending shutdown requests once every dispatched job is retired.
+    fn reply_when_drained(&mut self) {
+        if self.mode == Mode::Draining && self.running.is_empty() {
+            for waiter in self.drain_waiters.drain(..) {
+                let _ = waiter.send(());
+            }
+        }
     }
 }
 
@@ -189,6 +214,7 @@ impl Actor for SchedulerActor {
             factory: args.factory.clone(),
             waiting: VecDeque::new(),
             running: BTreeSet::new(),
+            drain_waiters: Vec::new(),
         })
     }
 
@@ -214,6 +240,9 @@ impl Actor for SchedulerActor {
             // The real start of the scheduler, we will generate clock ticks now.
             //
             SchedulerMsg::Start => {
+                if state.mode == Mode::Draining {
+                    return Ok(());
+                }
                 if state.mode == Mode::Starting {
                     // Begin with a sync.
                     //
@@ -236,6 +265,7 @@ impl Actor for SchedulerActor {
                     state.mode = Mode::Suspended;
                 }
             }
+            SchedulerMsg::BeginShutdown(waiter) => state.begin_shutdown(waiter),
             // Shutdown
             //
             SchedulerMsg::Stop => {
@@ -553,6 +583,39 @@ mod tests {
         assert!(call!(fixture.scheduler, SchedulerMsg::Empty).unwrap());
     }
 
+    /// Shutdown cancels queued jobs, rejects new work, and waits for active work.
+    #[tokio::test]
+    async fn shutdown_closes_admission_and_waits_for_running_jobs() {
+        let mut fixture = Fixture::new(1).await;
+        let running = fixture.enqueue(40).await.unwrap();
+        let queued = fixture.enqueue(90).await.unwrap();
+        fixture.scheduler.cast(SchedulerMsg::Start).unwrap();
+        let (work, reply) = fixture.next_dispatch(40).await;
+        let (drained, mut shutdown) = oneshot::channel();
+        fixture
+            .scheduler
+            .cast(SchedulerMsg::BeginShutdown(drained.into()))
+            .unwrap();
+
+        assert!(matches!(
+            fixture.enqueue(110).await,
+            Err(SchedulerError::ShuttingDown)
+        ));
+        assert_eq!(
+            queued.rx.await.unwrap().status,
+            JobStatus::Cancelled { stage: None }
+        );
+        assert!(matches!(
+            shutdown.try_recv(),
+            Err(oneshot::error::TryRecvError::Empty)
+        ));
+        drop(work);
+        drop(reply);
+        timeout(TEST_TIMEOUT, shutdown).await.unwrap().unwrap();
+        assert_eq!(running.rx.await.unwrap().id, 40);
+        assert!(call!(fixture.scheduler, SchedulerMsg::Empty).unwrap());
+    }
+
     /// Runs a local file job through actual runners and verifies its published outcome.
     #[tokio::test]
     async fn scheduler_runs_and_retires_a_local_file_job() {
@@ -575,6 +638,7 @@ mod tests {
         let args = FactoryArguments::builder()
             .worker_builder(Box::new(RunnerBuilder {
                 queue_capacity: 1,
+                cancel: tokio::sync::watch::channel(false).1,
                 results: results.clone(),
                 stat: stats.clone(),
             }))
