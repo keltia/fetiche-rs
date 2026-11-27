@@ -118,6 +118,17 @@ pub enum StatsError {
 
 #[derive(Debug, Error)]
 pub enum StorageError {
+    /// A storage interval was invalid or could not be represented in seconds.
+    #[error("invalid rotation for storage '{area}': {value}")]
+    InvalidRotation { area: String, value: String },
+    /// A local storage directory could not be created or verified.
+    #[error("storage '{area}' could not use directory {path:?}")]
+    Directory {
+        area: String,
+        path: std::path::PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
     #[error("Can not create directory tree in {0}")]
     CannotCreateTree(String),
 }

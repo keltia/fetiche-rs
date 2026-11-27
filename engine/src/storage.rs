@@ -1,13 +1,12 @@
 use std::collections::BTreeMap;
-use std::num::ParseIntError;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::StorageError;
 use eyre::Result;
 use nom::{
-    IResult,
-    Parser,
-    character::complete::{i8, one_of}, combinator::map_res,
+    IResult, Parser,
+    character::complete::{one_of, u32},
+    combinator::{all_consuming, map_opt},
 };
 use serde::Deserialize;
 use strum::EnumString;
@@ -34,7 +33,7 @@ use tracing::{debug, trace};
 ///   Includes a `path` for file-based Hive shards.
 ///
 #[derive(Clone, Debug, Deserialize)]
-#[serde(untagged)]
+#[serde(untagged, deny_unknown_fields)]
 pub enum StorageConfig {
     /// in-memory K/V store like DragonflyDB or REDIS
     Cache { url: String },
@@ -108,10 +107,10 @@ impl Storage {
     /// ### Returns:
     /// - `Storage`: A `Storage` struct containing the registered storage areas.
     ///
-    /// ### Panics:
-    /// This method panics:
-    /// - If it fails to create directories specified in `StorageConfig::Directory` or
-    ///   `StorageConfig::Hive` entries.
+    /// # Errors
+    ///
+    /// Rejects invalid rotations and paths that cannot be created or verified
+    /// as directories. Filesystem errors include the storage area and path.
     ///
     /// ### Example:
     /// ```rust
@@ -145,18 +144,13 @@ impl Storage {
                 // Local directory
                 //
                 StorageConfig::Directory { path, rotation } => {
-                    if !path.exists() && std::fs::create_dir_all(path).is_err() {
-                        let path = path.to_string_lossy().to_string();
-                        return Err(StorageError::CannotCreateTree(path).into());
-                    }
-                    let rotation = match Self::parse_rotation(rotation.as_str()) {
-                        Ok((_, v)) => v,
-                        Err(_e) => {
-                            return Err(eyre::eyre!(
-                                "Invalid rotation value for storage '{name}': {rotation}"
-                            ));
+                    let (_, rotation) = Self::parse_rotation(rotation).map_err(|_| {
+                        StorageError::InvalidRotation {
+                            area: name.clone(),
+                            value: rotation.clone(),
                         }
-                    };
+                    })?;
+                    ensure_directory(name, path)?;
                     b.insert(
                         name.to_string(),
                         StoreArea::Directory {
@@ -173,10 +167,7 @@ impl Storage {
                 // Future HIVE support
                 //
                 StorageConfig::Hive { path } => {
-                    if !path.exists() && std::fs::create_dir_all(path).is_err() {
-                        let path = path.to_string_lossy().to_string();
-                        return Err(StorageError::CannotCreateTree(path).into());
-                    }
+                    ensure_directory(name, path)?;
                     b.insert(name.to_string(), StoreArea::Hive { path: path.clone() });
                 }
             }
@@ -286,8 +277,8 @@ impl Storage {
     /// - `input`: A string slice that represents the time interval (e.g., `"5h"`).
     ///
     /// ### Returns:
-    /// - `Ok((&str, u32))`: The remaining input and the resulting interval in seconds.
-    /// - `Err`: In case of invalid input or parsing error.
+    /// Returns `Ok(("", seconds))` for a positive interval that fits in `u32`.
+    /// Rejects signs, zero, trailing input, and overflow.
     ///
     /// ### Example:
     /// ```rust
@@ -306,24 +297,40 @@ impl Storage {
     /// - The parsing is case-sensitive and expects valid formats as described above.
     ///
     pub fn parse_rotation(input: &str) -> IResult<&str, u32> {
-        let into_seconds =
-            |(n, tag): (std::primitive::i8, char)| -> std::result::Result<u32, ParseIntError> {
-                let res = match tag {
-                    's' => n as u32,
-                    'm' => (n as u32) * 60,
-                    'h' => (n as u32) * 3_600,
-                    'd' => (n as u32) * 3_600 * 24,
-                    _ => n as u32,
-                };
-                Ok(res)
+        all_consuming(map_opt((u32, one_of("smhd")), |(count, unit)| {
+            let multiplier = match unit {
+                's' => 1,
+                'm' => 60,
+                'h' => 3_600,
+                'd' => 86_400,
+                _ => return None,
             };
-
-        map_res((i8, one_of("smhd")), into_seconds).parse(input)
+            count.checked_mul(multiplier).filter(|seconds| *seconds > 0)
+        }))
+        .parse(input)
     }
 
     pub fn insert<T: Into<String>>(&mut self, key: T, val: StoreArea) -> Option<StoreArea> {
         self.0.insert(key.into(), val)
     }
+}
+
+/// Creates or verifies a storage directory and preserves the underlying I/O cause.
+fn ensure_directory(area: &str, path: &Path) -> Result<(), StorageError> {
+    std::fs::create_dir_all(path)
+        .and_then(|()| std::fs::metadata(path))
+        .and_then(|metadata| {
+            if metadata.is_dir() {
+                Ok(())
+            } else {
+                Err(std::io::ErrorKind::NotADirectory.into())
+            }
+        })
+        .map_err(|source| StorageError::Directory {
+            area: area.to_owned(),
+            path: path.to_path_buf(),
+            source,
+        })
 }
 
 #[cfg(test)]
@@ -333,7 +340,7 @@ mod tests {
     use std::collections::BTreeMap;
     use tempfile::TempDir;
 
-    use crate::{Storage, StorageConfig};
+    use crate::{Storage, StorageConfig, StorageError};
 
     #[rstest]
     #[case("42s", 42_u32)]
@@ -342,9 +349,91 @@ mod tests {
     #[case("5h", 18_000_u32)]
     #[case("24h", 86_400_u32)]
     #[case("1d", 86_400_u32)]
+    #[case("168h", 604_800_u32)]
+    #[case("4294967295s", u32::MAX)]
+    /// Valid intervals consume the entire input and support the full seconds range.
     fn test_parse_rotation(#[case] input: &str, #[case] val: u32) {
-        let (_, v) = Storage::parse_rotation(input).unwrap();
-        assert_eq!(val, v);
+        assert_eq!(Storage::parse_rotation(input), Ok(("", val)));
+    }
+
+    /// Invalid or overflowing intervals fail rather than accepting a prefix.
+    #[rstest]
+    #[case("0s")]
+    #[case("-1s")]
+    #[case("+1s")]
+    #[case("1hgarbage")]
+    #[case("1w")]
+    #[case("1")]
+    #[case("4294967296s")]
+    #[case("4294967295m")]
+    fn test_rejects_invalid_rotation(#[case] input: &str) {
+        assert!(Storage::parse_rotation(input).is_err(), "accepted {input}");
+    }
+
+    /// A regular file cannot be registered as a Hive or directory storage area.
+    #[test]
+    fn test_registration_preserves_file_path_and_io_error() -> eyre::Result<()> {
+        let file = tempfile::NamedTempFile::new()?;
+        let path = file.path().to_path_buf();
+        for config in [
+            StorageConfig::Hive { path: path.clone() },
+            StorageConfig::Directory {
+                path: path.clone(),
+                rotation: "1h".into(),
+            },
+        ] {
+            let err = Storage::register(&BTreeMap::from([("data".into(), config)])).unwrap_err();
+            let Some(StorageError::Directory {
+                area,
+                path: rejected,
+                source,
+            }) = err.downcast_ref::<StorageError>()
+            else {
+                panic!("expected storage directory error: {err:?}");
+            };
+            assert_eq!(area, "data");
+            assert_eq!(rejected, &path);
+            assert!(
+                source.kind() == std::io::ErrorKind::AlreadyExists
+                    || source.kind() == std::io::ErrorKind::NotADirectory
+            );
+        }
+        Ok(())
+    }
+
+    /// An invalid rotation fails before the destination directory is created.
+    #[test]
+    fn test_invalid_rotation_does_not_create_directory() -> eyre::Result<()> {
+        let root = TempDir::new()?;
+        let path = root.path().join("data");
+        let config = StorageConfig::Directory {
+            path: path.clone(),
+            rotation: "1hgarbage".into(),
+        };
+        let err = Storage::register(&BTreeMap::from([("data".into(), config)])).unwrap_err();
+        assert!(matches!(
+            err.downcast_ref::<StorageError>(),
+            Some(StorageError::InvalidRotation { .. })
+        ));
+        assert!(!path.exists());
+        Ok(())
+    }
+
+    /// A malformed directory rotation must not be reinterpreted as a Hive configuration.
+    #[test]
+    fn test_malformed_rotation_does_not_fall_back_to_hive() {
+        if let Ok(config) = hcl::from_str::<StorageConfig>(
+            r#"path = "data"
+rotation = 1"#,
+        ) {
+            assert!(matches!(config, StorageConfig::Directory { .. }));
+            assert!(matches!(
+                Storage::register(&BTreeMap::from([("data".into(), config)]))
+                    .unwrap_err()
+                    .downcast_ref::<StorageError>(),
+                Some(StorageError::InvalidRotation { .. })
+            ));
+        }
     }
 
     #[rstest]
