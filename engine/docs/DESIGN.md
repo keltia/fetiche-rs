@@ -5,6 +5,15 @@ the broader repository layout. The implementation under [
 `../../cmd/fetiched/src/engine`](../../cmd/fetiched/src/engine/mod.rs) has its own execution path and is outside this
 document's scope.
 
+## Engine entry points
+
+The crate root exports `Engine`, `EngineConfig`, and the job and stage types. The configuration schema and its
+validation live in [config.rs](../src/config.rs). The [engine module](../src/engine/mod.rs) holds the engine handle
+and its path accessors. Its files cover [startup and rollback](../src/engine/startup.rs),
+[state sync and shutdown](../src/engine/lifecycle.rs), [job parsing](../src/engine/parse.rs),
+[job submission and control](../src/engine/jobs.rs), [catalogs](../src/engine/catalog.rs), and
+[token actor calls](../src/engine/tokens.rs).
+
 ## Authoritative completion
 
 The architecture review below records the baseline that motivated the pipeline and scheduler changes described here.
@@ -81,7 +90,7 @@ The engine retains the marker if it cannot confirm actor exit. Single-mode clean
 before deleting it. A Tokio blocking operation that has already started can still finish after cancellation.
 
 [Workspace paths](../src/workspace.rs), [Startup](../src/engine/startup.rs), [Lifecycle](../src/engine/lifecycle.rs),
-[Shutdown](../src/engine/subr.rs), [Public API tests](../tests/lifecycle.rs)
+[Shutdown](../src/engine/lifecycle.rs), [Public API tests](../tests/lifecycle.rs)
 
 ## Configuration validation
 
@@ -210,7 +219,7 @@ JSON snapshot on sync and clears its queue collections on startup. Together thes
 without durable job replay. [Scheduler](../src/actors/scheduler.rs), [State](../src/actors/state.rs)
 
 `Engine::shutdown` requests stops for actors in the engine process group and removes the `running` marker. It returns
-without waiting for stage tasks or coordinating a drain of in-flight jobs. [Shutdown implementation](../src/engine/subr.rs)
+without waiting for stage tasks or coordinating a drain of in-flight jobs. [Shutdown implementation](../src/engine/lifecycle.rs)
 
 ## Strengths
 

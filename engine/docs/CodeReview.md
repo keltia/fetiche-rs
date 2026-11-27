@@ -15,13 +15,13 @@ credential logging, scheduler bookkeeping, and shutdown ownership.
 | Storage registration | Partly resolved. `Storage::register` returns errors for directory creation and rotation parsing. An existing regular file can pass the existence check, and the directory error loses the original I/O cause. [Storage](../src/storage.rs) |
 | Rotation syntax | Open. The parser still uses signed `i8`, casts before multiplying, and returns the unconsumed suffix. Registration accepts a successful prefix parse. [Storage](../src/storage.rs) |
 | Startup validation | Partly resolved. Startup checks the config version and queue capacity and creates the run directory. Daemon worker counts and timer intervals still lack explicit validation. [Engine startup](../src/engine/startup.rs) |
-| Graceful shutdown | Partly resolved. `Engine::shutdown` exists, and the runner supervises stage completion. Engine-level shutdown still sends stop signals without joining actors or acknowledging a final state sync. [Shutdown](../src/engine/subr.rs), [Runner](../src/actors/runner.rs) |
+| Graceful shutdown | Partly resolved. `Engine::shutdown` exists, and the runner supervises stage completion. Engine-level shutdown still sends stop signals without joining actors or acknowledging a final state sync. [Shutdown](../src/engine/lifecycle.rs), [Runner](../src/actors/runner.rs) |
 | Token registration and tracing | Partly resolved. Token and storage registration already have tracing spans. Token loading still panics on unsupported entries, and some spans and source logs can expose credentials. [Tokens](../src/actors/tokens.rs), [Storage](../src/storage.rs) |
 | Error typing | Partly resolved. Domain errors and typed job outcomes already coexist with `eyre`. Improve context at specific boundaries, especially storage and token I/O, before considering a crate-wide error type. [Errors](../src/error.rs), [Outcomes](../src/job.rs) |
 | Feature gating and CI | Open. Default builds include FlightAware. Both the no-default-features and all-features library checks failed in this review, and CI uses the default feature set. [Cargo features](../Cargo.toml), [CI](../../.github/workflows/rust.yml) |
 | Observability | Partly resolved. Jobs have identifiers and outcomes, and startup has tracing. Scheduler ticks log at info level without queue depth or worker utilization, and the resolved runtime settings have no dedicated startup summary. [Scheduler](../src/actors/scheduler.rs), [Engine startup](../src/engine/startup.rs) |
 | Tests | Improved. Parser and runner regressions now cover capability errors, backpressure, failed outcomes, and cancellation. Startup, public submission, scheduler, and shutdown still lack an end-to-end test. [Parser tests](../src/engine/parse.rs), [Runner tests](../src/actors/runner.rs) |
-| Listing APIs | Resolved. The engine exposes formatted source, token, and storage listings. [Engine helpers](../src/engine/subr.rs) |
+| Listing APIs | Resolved. The engine exposes formatted source, token, and storage listings. [Catalog](../src/engine/catalog.rs), [Token methods](../src/engine/tokens.rs) |
 | Documentation | Partly resolved. The README has an actor overview and the pipeline has a design document. The checked-in engine HCL still declares version 2 while the loader requires version 3, and the README attributes the state sync timer to the state actor. The scheduler owns that timer. [README](../README.md), [HCL example](../src/engine.hcl), [Scheduler](../src/actors/scheduler.rs) |
 
 ## Priority findings
@@ -55,7 +55,7 @@ and stop admission before draining or cancelling jobs and awaiting final state s
 
 `submit_job_and_wait` also changes the process-wide working directory across an async wait. Concurrent callers can
 resolve relative paths against another job's workspace, and dropping the waiting future bypasses the explicit restore.
-Resolve stage paths against a job workspace instead. [Engine startup](../src/engine/startup.rs), [Shutdown and sync](../src/engine/subr.rs),
+Resolve stage paths against a job workspace instead. [Engine startup](../src/engine/startup.rs), [Shutdown and sync](../src/engine/lifecycle.rs),
 [Submission and destructor](../src/engine/jobs.rs), [State startup and sync](../src/actors/state.rs)
 
 ### Medium — Reject invalid configuration before execution

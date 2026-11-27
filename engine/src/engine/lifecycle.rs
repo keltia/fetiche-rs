@@ -7,17 +7,74 @@ use std::time::Duration;
 
 use eyre::{Result, WrapErr};
 use futures::future::{BoxFuture, FutureExt, Shared};
-use ractor::{ActorCell, ActorRef, Message, call};
+use ractor::{ActorCell, ActorRef, Message, call, cast};
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
+use tracing::trace;
 
 use crate::CANARY_FILE;
 use crate::actors::{SchedulerMsg, StateMsg};
 
-pub(crate) const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
+use super::Engine;
+
+const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
 const FINALIZE_TIMEOUT: Duration = Duration::from_secs(5);
 static NEXT_CLEANUP: AtomicUsize = AtomicUsize::new(0);
+
+impl Engine {
+    /// Synchronizes all engine state by persisting it to disk
+    ///
+    /// This method sends a sync message to the state actor which handles
+    /// writing the current state to the configured state file location.
+    ///
+    #[tracing::instrument(skip(self))]
+    #[inline]
+    pub fn sync(&self) -> Result<()> {
+        trace!("engine::sync");
+
+        Ok(cast!(self.state, StateMsg::Sync)?)
+    }
+
+    /// Shuts down this engine with a five-second grace period for active jobs.
+    ///
+    /// See [`Self::shutdown_with_timeout`] for the shutdown sequence and errors.
+    #[tracing::instrument(skip(self))]
+    pub async fn shutdown(&self) -> Result<()> {
+        self.shutdown_with_timeout(SHUTDOWN_GRACE).await
+    }
+
+    /// Stops admission and gives dispatched jobs up to `grace` to finish.
+    ///
+    /// Queued jobs are cancelled immediately. After the grace period, active
+    /// pipelines receive a cancellation signal. The engine flushes state and
+    /// awaits its actors before removing its running marker. Calls on any
+    /// clone share the same shutdown task and result. The first call sets the
+    /// grace period.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the engine cannot drain or cancel jobs, write final
+    /// state, join the actors, or remove the running marker.
+    ///
+    /// ```no_run
+    /// use fetiche_engine::Engine;
+    /// use std::time::Duration;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> eyre::Result<()> {
+    ///     let engine = Engine::single().await?;
+    ///     engine.shutdown_with_timeout(Duration::from_secs(2)).await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[tracing::instrument(skip(self))]
+    pub async fn shutdown_with_timeout(&self, grace: Duration) -> Result<()> {
+        self.lifecycle
+            .shutdown(self.scheduler.clone(), self.state.clone(), grace)
+            .await
+    }
+}
 
 type Shutdown = Shared<BoxFuture<'static, Result<(), String>>>;
 

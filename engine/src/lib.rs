@@ -1,15 +1,13 @@
-//! Library implementing common part of the transformations
+//! Actor-managed execution of data jobs.
 //!
-//! # Config
-//!
-//! v2: Has basedir and storage components.
-//! v2: Has initial number of workers for the runner factory.
+//! [`Engine`] loads an [`EngineConfig`] and owns the actors for a running instance.
+//! It parses and submits [`Job`]s composed of a [`Producer`], optional [`Middle`]
+//! stages, and a [`Consumer`].
 //!
 //! Example:
 //! ```rust,no_run
 //! # #[tokio::main]
 //! # async fn main() -> eyre::Result<()> {
-//! use tracing::trace;
 //! use fetiche_engine::Engine;
 //!
 //! // Instantiate Engine (in daemon mode).

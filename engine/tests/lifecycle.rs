@@ -73,6 +73,30 @@ async fn write_config(home: &std::path::Path) -> Result<PathBuf> {
     Ok(config)
 }
 
+/// Checks the public configuration paths and the embedded command catalogue.
+#[tokio::test]
+async fn engine_exposes_configuration_paths_and_command_catalogue() -> Result<()> {
+    let home = tempfile::tempdir()?;
+    let config = write_config(home.path()).await?;
+    let engine = Engine::load(config.to_str().unwrap(), EngineMode::Single).await?;
+    for (actual, expected) in [
+        (engine.config_file()?, config),
+        (engine.sources_file()?, home.path().join("sources.hcl")),
+        (engine.state_file()?, home.path().join("state")),
+    ] {
+        assert_eq!(
+            fs::canonicalize(actual).await?,
+            fs::canonicalize(expected).await?
+        );
+    }
+    let commands = engine.list_commands()?;
+    for expected in ["fetch", "convert", "save"] {
+        assert!(commands.contains(expected));
+    }
+    engine.cleanup().await?;
+    Ok(())
+}
+
 /// Runs concurrent jobs with identical relative filenames in separate engine workspaces.
 #[tokio::test]
 async fn concurrent_engines_isolate_jobs_and_share_shutdown_across_clones() -> Result<()> {

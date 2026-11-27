@@ -4,25 +4,30 @@ use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use eyre::Result;
 use object_store::local::LocalFileSystem;
+use object_store::path::Path;
 use ractor::ActorRef;
 use ractor::factory::FactoryMessage;
 use strum::EnumString;
 
 use crate::actors::{
-    ResultsMsg, RunnerMsg, SchedulerMsg, SourcesMsg, StateMsg, StatsMsg, SuperMsg, TokenMsg,
+    ResultsMsg, RunnerMsg, STATE_FILE, SchedulerMsg, SourcesMsg, StateMsg, StatsMsg, SuperMsg,
+    TokenMsg,
 };
-use crate::{Storage, Workspace};
+use crate::config::ENGINE_CONFIG;
+use crate::{SOURCES_CONFIG, Storage, Workspace, version};
 
 use self::lifecycle::Lifecycle;
 
 pub use parse::Freq;
 
+mod catalog;
 mod jobs;
 mod lifecycle;
 mod parse;
 mod startup;
-mod subr;
+mod tokens;
 
 /// The Engine struct serves as the core runtime component responsible for managing and coordinating
 /// various services and actors within the system. It handles the initialization, coordination, and
@@ -91,4 +96,57 @@ pub enum EngineMode {
     #[default]
     Single,
     Daemon,
+}
+
+impl Engine {
+    /// Returns the path of the default state file in the engine's base directory
+    ///
+    /// This method combines the engine's home directory with the STATE_FILE constant
+    /// to provide the full path where state information should be persisted.
+    ///
+    #[inline]
+    pub fn state_file(&self) -> Result<PathBuf> {
+        Ok(self.home.path_to_filesystem(&Path::from(STATE_FILE))?)
+    }
+
+    /// Returns the path to the sources configuration in the engine home directory.
+    #[inline]
+    pub fn sources_file(&self) -> Result<PathBuf> {
+        Ok(self.home.path_to_filesystem(&Path::from(SOURCES_CONFIG))?)
+    }
+
+    /// Returns the full path to the engine's configuration file
+    ///
+    /// Combines the engine's home directory with the ENGINE_CONFIG constant
+    /// to locate the HCL configuration file.
+    ///
+    #[tracing::instrument(skip(self))]
+    pub fn config_file(&self) -> Result<PathBuf> {
+        Ok(self.home.path_to_filesystem(&Path::from(ENGINE_CONFIG))?)
+    }
+
+    /// Returns a clone of the engine's workspace configuration
+    ///
+    /// This method provides access to the engine's workspace settings by returning
+    /// a copy of the WorkSpace instance, which contains information about the
+    /// working environment.
+    ///
+    #[tracing::instrument(skip(self))]
+    pub fn ws(&self) -> Workspace {
+        self.ws.clone()
+    }
+
+    /// Returns a string containing version information for the engine and its modules
+    ///
+    /// Formats a string that includes the engine's version number along with
+    /// version information for the formats and common modules.
+    ///
+    pub fn version(&self) -> String {
+        format!(
+            "{} ({} {})",
+            version(),
+            fetiche_formats::version(),
+            fetiche_common::version(),
+        )
+    }
 }
