@@ -33,18 +33,44 @@
 //! return a string with the transformed output that will be sent to the next stage.
 //!
 pub use actors::{TokenMsg, TokenStorage};
-pub use auth::*;
+pub use auth::{Auth, Expirable, TokenType};
 pub use config::EngineConfig;
-pub use consumer::*;
+pub use consumer::{Archive, Consumer, Save, Stdout, Store};
 pub use engine::{Engine, EngineMode, Freq};
-pub use error::*;
-pub use job::*;
-pub use middle::*;
-pub use producer::*;
-pub use sources::*;
-pub use storage::*;
-pub use task::*;
-pub use workspace::*;
+pub use error::{
+    EngineStatus, ParserError, Pipeline, RunnerError, SchedulerError, StateError, StatsError,
+    StorageError, TokenStatus, WsError,
+};
+pub use job::{Job, JobBuilder, JobOutcome, JobState, JobStatus, WaitGroup, Work};
+pub use middle::{Convert, Copy, Message, Middle, Nothing, Tee};
+pub use producer::{Dummy, Fetch, Producer, Read, Stream};
+#[cfg(feature = "aeroscope")]
+pub use sources::adapters::aeroscope::Aeroscope;
+#[cfg(feature = "asd")]
+pub use sources::adapters::asd::Asd;
+pub use sources::adapters::asd_token::AsdToken;
+#[cfg(feature = "avionix")]
+pub use sources::adapters::avionix::{
+    AvionixServer, Cube, Worker, WorkerArgs, WorkerMode, WorkerMsg, WorkerState,
+};
+#[cfg(feature = "flightaware")]
+pub use sources::adapters::flightaware::{Command, Compress, Events, Flightaware, Param};
+#[cfg(feature = "opensky")]
+pub use sources::adapters::opensky::{
+    CACHE_IDLE, CACHE_MAX, CACHE_SIZE, OpenskyDevice, OpenskyServer,
+};
+#[cfg(feature = "safesky")]
+pub use sources::adapters::safesky::Safesky;
+#[cfg(feature = "senhive")]
+pub use sources::adapters::senhive::Senhive;
+pub use sources::{
+    AccessError, AuthError, Capability, DataError, DataType, Fetchable, FetchableSource,
+    ParamError, Routes, SOURCES_CONFIG, Site, Sources, SourcesConfig, Streamable, StreamableSource,
+};
+pub use stats::Stats;
+pub use storage::{Storage, StorageConfig, StoreArea};
+pub use task::{IO, Runnable, Task};
+pub use workspace::{Workspace, WsItem, WsStatus};
 
 use fetiche_common::{Filter, time};
 

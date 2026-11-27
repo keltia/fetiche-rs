@@ -23,7 +23,8 @@ use tracing::{error, info, trace, warn};
 
 use crate::sources::adapters::{KillActorOnDrop, wait_for_stream};
 use crate::actors::{StatsMsg, Supervisor};
-use crate::{AVIONIX_PG, Auth, AuthError, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, Worker, WorkerArgs, WorkerMode, WorkerMsg};
+use super::AVIONIX_PG;
+use crate::{Auth, AuthError, Filter, Routes, Site, Stats, StatsError, Streamable, StreamableSource, Worker, WorkerArgs, WorkerMode, WorkerMsg};
 use fetiche_formats::Format;
 
 /// TCP streaming port

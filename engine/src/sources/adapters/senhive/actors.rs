@@ -13,9 +13,9 @@ use ractor::{call, Actor, ActorProcessingErr, ActorRef};
 use tracing::{error, trace, warn};
 
 use crate::actors::StatsMsg;
-use crate::{Feed, Stats};
+use crate::Stats;
 
-use super::{from_json_to_csv, from_json_to_nl};
+use super::{Feed, from_json_to_csv, from_json_to_nl};
 
 /// Worker actor responsible for consuming and processing AMQP topic messages.
 ///

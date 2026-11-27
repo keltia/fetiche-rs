@@ -150,6 +150,10 @@ returns `UnknownSite`. A known site with an unsupported or disabled adapter retu
 `cubedata`, an explicit variant chooses the server or local Cube. With no variant, user and API keys select the
 server, and anonymous or omitted authentication selects the local Cube. [Source selectors](../src/sources/selection.rs)
 
+Source HCL loading attaches site names and resolves configured paths. The registry holds those sites and handles
+lookup and listing. Provider-specific code, including provider-owned actors and token types, lives under adapters.
+[Source configuration](../src/sources/config.rs), [Registry](../src/sources/registry.rs), [Adapters](../src/sources/adapters/mod.rs)
+
 1. **Parse and resolve.** `Engine::parse` deserializes the job name, producer, optional `middle` list, and `output`, and
    asks the scheduler for an ID. For `Fetch` and `Stream`, it resolves the named site through the sources actor and
    checks the requested capability. `Read` uses a file path. The parser builds a `Ready` job with concrete stage enum

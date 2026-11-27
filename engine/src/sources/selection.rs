@@ -21,20 +21,21 @@ use serde::{Deserialize, Serialize};
 use fetiche_formats::Format;
 
 #[cfg(feature = "aeroscope")]
-use super::Aeroscope;
+use super::adapters::aeroscope::Aeroscope;
 #[cfg(feature = "asd")]
-use super::Asd;
-#[cfg(feature = "flightaware")]
-use super::Flightaware;
-#[cfg(feature = "safesky")]
-use super::Safesky;
-#[cfg(feature = "senhive")]
-use super::Senhive;
-use super::{AccessError, AuthError, Site, Stats};
+use super::adapters::asd::Asd;
 #[cfg(feature = "avionix")]
-use super::{AvionixServer, Cube};
+use super::adapters::avionix::{AvionixServer, Cube};
+#[cfg(feature = "flightaware")]
+use super::adapters::flightaware::Flightaware;
 #[cfg(feature = "opensky")]
-use super::{OpenskyDevice, OpenskyServer};
+use super::adapters::opensky::{OpenskyDevice, OpenskyServer};
+#[cfg(feature = "safesky")]
+use super::adapters::safesky::Safesky;
+#[cfg(feature = "senhive")]
+use super::adapters::senhive::Senhive;
+use super::{AccessError, AuthError, Site};
+use crate::Stats;
 
 #[cfg_attr(
     any(feature = "asd", feature = "aeroscope", feature = "safesky"),

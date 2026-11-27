@@ -1,4 +1,6 @@
-pub use error::*;
+//! Provider-specific network adapters and their shared stream cleanup.
+
+pub use error::{AccessError, DataError, ParamError};
 
 /// Stops a source actor when its owning stream exits or is cancelled.
 #[cfg(any(feature = "avionix", feature = "senhive"))]
@@ -42,42 +44,26 @@ async fn wait_for_stream(
     }
 }
 
-#[cfg(feature = "aeroscope")]
-pub use aeroscope::*;
-#[cfg(feature = "asd")]
-pub use asd::*;
-#[cfg(feature = "avionix")]
-pub use avionix::*;
-#[cfg(feature = "flightaware")]
-pub use flightaware::*;
-#[cfg(feature = "opensky")]
-pub use opensky::*;
-#[cfg(feature = "safesky")]
-pub use safesky::*;
-#[cfg(feature = "senhive")]
-pub use senhive::*;
-
 mod error;
 
 // The persisted format is also supported when the ASD adapter is disabled.
 #[path = "asd/token.rs"]
-mod asd_token;
-pub use asd_token::AsdToken;
+pub(crate) mod asd_token;
 
 #[cfg(feature = "aeroscope")]
-mod aeroscope;
+pub(crate) mod aeroscope;
 #[cfg(feature = "asd")]
-mod asd;
+pub(crate) mod asd;
 #[cfg(feature = "avionix")]
-mod avionix;
+pub(crate) mod avionix;
 #[cfg(feature = "flightaware")]
-mod flightaware;
+pub(crate) mod flightaware;
 #[cfg(feature = "opensky")]
-mod opensky;
+pub(crate) mod opensky;
 #[cfg(feature = "safesky")]
-mod safesky;
+pub(crate) mod safesky;
 #[cfg(feature = "senhive")]
-mod senhive;
+pub(crate) mod senhive;
 
 #[cfg(all(test, any(feature = "avionix", feature = "senhive")))]
 mod tests {
@@ -133,7 +119,10 @@ mod tests {
         .await
         .expect("worker exit did not complete the stream wait")
         .unwrap_err();
-        assert_eq!(error.to_string(), "source worker stopped before the stream ended");
+        assert_eq!(
+            error.to_string(),
+            "source worker stopped before the stream ended"
+        );
     }
 
     /// Dropping the stream's guard stops its actor even outside the deadline path.

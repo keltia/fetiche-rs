@@ -5,21 +5,19 @@
 //! - authentication (token, API)
 //! - fetching data (GET or POST, etc.).
 //!
+//! The registry stores configured sites, the configuration module loads HCL,
+//! and the selection module maps sites to adapters grouped by provider.
 
-pub use crate::stats::*;
-
-// Re-export these modules for a shorted import path.
-//
-pub use adapters::*;
-pub use capability::*;
+pub use adapters::{AccessError, DataError, ParamError};
+pub use capability::Capability;
 pub use config::{SOURCES_CONFIG, SourcesConfig};
-pub use error::*;
+pub use error::AuthError;
 pub use registry::Sources;
-pub use route::*;
+pub use route::Routes;
 pub use selection::{Fetchable, FetchableSource, Streamable, StreamableSource};
-pub use site::*;
+pub use site::{DataType, Site};
 
-mod adapters;
+pub(crate) mod adapters;
 mod capability;
 mod config;
 mod error;
